@@ -9,6 +9,8 @@ export interface ScoreTile {
   label: string;
   /** null renders "—": unknown is never shown as zero. */
   value: number | null;
+  /** How the number reads ("$9,456", "#7"); a plain count by default. */
+  format?: (n: number) => string;
   /** One short line saying what the number counts. Shown at every width; keep it to two lines on a phone. */
   hint: string;
   /** Full definition for the tooltip. */
@@ -62,6 +64,7 @@ export function GrowScoreboard({ label, tiles, notice, className }: { label: str
             </span>
             <CountUp
               value={t.value}
+              format={t.format}
               className={cn(
                 "mt-1.5 block text-[2rem] font-bold leading-none tracking-[-0.02em] sm:text-[2.5rem]",
                 lit ? TONE_CLASS[tone].text : "text-foreground",

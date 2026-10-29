@@ -1,262 +1,199 @@
-import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { AnimatedCounter } from "@/components/ui/animated-counter";
+/**
+ * BoardLive (/board): the production board built to be screenshotted and posted.
+ *
+ * OVERHAUL-leaderboards (2026-10-29): it reads the same board as the Leaderboard
+ * (leaderboard_team_board, through useTeamBoard), so the two can never disagree. Lead spend is
+ * gone (leads are company-funded; the column only ever said $0). Only agents with $5,000 or
+ * more in the month are ranked or counted, and the rule is printed under the title so it is in
+ * every posted screenshot. The totals are the sum of exactly the rows shown. The income
+ * estimate appears only for a viewer who may read every row's (Sam and the book readers), so a
+ * posted board never lets one agent read another's contract level. Cheers show as a count; the
+ * cheering itself happens on the Leaderboard.
+ *
+ * ?m=-1 shows last month, the board that usually gets posted right after a month closes.
+ */
+import { Link, useSearchParams } from "react-router-dom";
+import { PartyPopper } from "lucide-react";
+import { CountUp } from "@/components/ui/delight/CountUp";
+import { TonePill } from "@/components/ui/delight/ToneBubble";
+import { QueryState, describeQuery } from "@/components/ui/query-state";
+import { useBrand } from "@/hooks/useBrand";
+import { useTeamBoard } from "@/hooks/useTeamBoard";
+import { boardTotals, formatMoney, formatTileMoney, monthName, nextMilestone, plural, rankTone, tenureLabel, type BoardWindow } from "@/lib/leaderboardBoard";
+import { TONE_CLASS } from "@/lib/tones";
 import { cn } from "@/lib/utils";
-import { Link } from "react-router-dom";
 
-// BoardLive — the screenshot/post-ready production board.
-// Deliberately its own page (not the /leaderboard control surface): this one is
-// built to be captured and posted, so it is dark, dense, and reads like a live
-// game tracker. Numbers come from leaderboard_board (AgentLink book + deals
-// posted in-app + Discord-reported, de-duplicated by v_production_canonical);
-// nothing here is padded. Est. income is computed from each producer's true carrier
-// contract levels — we never expose the comp % itself (agents must not be able to
-// compare contracts off a public board).
-
-type BoardRow = {
-  agent_key: string;
-  agent_id: string | null;
-  agent_name: string | null;
-  avatar_url: string | null;
-  deals: number | string;
-  ap: number | string;
-  est_earnings: number | string;
-  lead_cost: number | string;
-  first_policy_date: string | null;
-  tenure_label: string | null;
-  weeks_with_agency: number | string;
-};
-
-function monthBounds(offset = 0) {
-  const now = new Date();
-  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + offset, 1));
-  const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + offset + 1, 1));
-  return { start: start.toISOString().slice(0, 10), end: end.toISOString().slice(0, 10), label: start.toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "UTC" }) };
-}
-
-const money = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 0 });
-
-function hasAgentProfile(agentId: string | null | undefined): agentId is string {
-  return Boolean(agentId && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(agentId));
-}
-
-// Rank treatments: gold / silver / bronze glow for the podium, neutral below.
-// The three glows below are the podium/trophy treatment on a board built to be
-// screenshotted and posted — the medal tiers must read at a glance in an image.
-const RANK_STYLE: Record<number, { ring: string; badge: string; glow: string }> = {
-  // shadow-glow-allow: trophy — 1st place podium tier on the postable board
-  1: { ring: "ring-amber-400/60", badge: "bg-amber-400/15 text-amber-300 border-amber-400/40", glow: "shadow-[0_0_40px_-12px_rgba(251,191,36,0.55)]" },
-  // shadow-glow-allow: trophy — 2nd place podium tier on the postable board
-  2: { ring: "ring-slate-300/50", badge: "bg-slate-300/10 text-slate-200 border-slate-300/30", glow: "shadow-[0_0_32px_-14px_rgba(203,213,225,0.45)]" },
-  // shadow-glow-allow: trophy — 3rd place podium tier on the postable board
-  3: { ring: "ring-orange-400/50", badge: "bg-orange-400/10 text-orange-300 border-orange-400/30", glow: "shadow-[0_0_32px_-14px_rgba(251,146,60,0.45)]" },
-};
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default function BoardLive() {
-  // ?m=-1 shows last month (what usually gets posted right after month close).
-  const [offset, setOffset] = useState(0);
-  useEffect(() => {
-    const m = new URLSearchParams(window.location.search).get("m");
-    if (m && !Number.isNaN(Number(m))) setOffset(Number(m));
-  }, []);
-
-  const bounds = useMemo(() => monthBounds(offset), [offset]);
-
-  const board = useQuery({
-    queryKey: ["board-live", bounds.start, bounds.end],
-    // Live-tracker feel: re-pull while the board is on screen.
-    refetchInterval: 300_000,
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc("leaderboard_board" as any, {
-        p_start: bounds.start,
-        p_end: bounds.end,
-      });
-      if (error) throw error;
-      return ((data ?? []) as BoardRow[]).map((r) => ({
-        ...r,
-        apNum: Number(r.ap ?? 0),
-        dealsNum: Number(r.deals ?? 0),
-        estNum: Number(r.est_earnings ?? 0),
-        leadNum: Number(r.lead_cost ?? 0),
-      }));
-    },
-  });
-
-  const rows = board.data ?? [];
-  const totalAp = rows.reduce((s, r) => s + r.apNum, 0);
-  const totalDeals = rows.reduce((s, r) => s + r.dealsNum, 0);
-  const totalEst = rows.reduce((s, r) => s + r.estNum, 0);
-  const leader = rows[0];
-
-  // Next milestone: round the leader up to the next 5K so there is always a
-  // visible target to chase. This is a GOAL, never presented as achieved.
-  const milestone = leader ? Math.ceil((leader.apNum + 1) / 5000) * 5000 : 0;
-  const pct = leader && milestone ? Math.min(100, (leader.apNum / milestone) * 100) : 0;
+  const [params] = useSearchParams();
+  const window: BoardWindow = params.get("m") === "-1" ? "last_month" : "month";
+  const brand = useBrand();
+  const query = useTeamBoard(window);
+  const board = query.data ?? null;
+  const rows = board?.rows ?? [];
+  const totals = boardTotals(rows);
+  const showEstimate = Boolean(board?.fullReader) && rows.length > 0 && rows.every((r) => r.estEarnings !== null);
+  const totalEstimate = showEstimate ? rows.reduce((sum, r) => sum + (r.estEarnings ?? 0), 0) : null;
+  const leader = rows[0] ?? null;
+  const milestone = leader ? nextMilestone(leader.ap) : 0;
+  const pct = leader && milestone ? Math.min(100, (leader.ap / milestone) * 100) : 0;
+  const month = board ? monthName(board.monthStart, query.todayKey) : null;
 
   return (
-    <div className="min-h-screen bg-background text-foreground px-4 py-8 sm:px-8">
-      <div className="mx-auto w-full max-w-5xl">
-        {board.isError && (
-          <div role="alert" className="mb-4 rounded-lg border border-rose-500/40 bg-rose-500/10 p-4 text-sm font-semibold text-rose-200">
-            Live production is temporarily unavailable. Do not post this board until it reconnects.
-          </div>
-        )}
-        {/* header */}
-        <div className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-6">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
-              </span>
-              Live production board
-            </div>
-            <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">
-              Galaxy <span className="text-amber-400">{bounds.label}</span>
-            </h1>
-          </div>
-          <div className="grid w-full grid-cols-3 gap-3 sm:flex sm:w-auto sm:gap-8">
-            <div>
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground sm:text-[12px]">Total AP</div>
-              <div className="text-lg font-black tabular-nums text-foreground sm:text-3xl">
-                <AnimatedCounter value={totalAp} prefix="$" />
-              </div>
-            </div>
-            <div>
-              {/* Labeled "Est." on purpose: no actual paid-commission feed exists yet
-                  (agentlink_commissions + insuracloud_payouts are empty), so this is
-                  contract-level math, not money confirmed paid. */}
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground sm:text-[12px]">Est. earnings</div>
-              <div className="text-lg font-black tabular-nums text-emerald-400 sm:text-3xl">
-                <AnimatedCounter value={totalEst} prefix="$" />
-              </div>
-            </div>
-            <div>
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground sm:text-[12px]">Policies</div>
-              <div className="text-lg font-black tabular-nums text-foreground sm:text-3xl">
-                <AnimatedCounter value={totalDeals} />
-              </div>
-            </div>
-          </div>
+    <div className="mx-auto w-full max-w-5xl space-y-5 pb-28">
+      {query.isError && board ? (
+        <div role="alert" className="rounded-xl border border-tone-hot/35 bg-tone-hot/8 px-4 py-3 text-[15px] font-semibold text-tone-hot">
+          Live production is not updating right now. Do not post this board until it reconnects.
         </div>
+      ) : null}
 
-        {/* leader milestone chase bar */}
-        {leader ? (
-          <div className="mt-6 rounded-xl border border-amber-400/25 bg-amber-400/5 p-4">
-            <div className="flex items-center justify-between text-sm">
-              <span className="font-semibold text-amber-200">
-                {leader.agent_name} leads · next milestone ${money(milestone)}
-              </span>
-              <span className="tabular-nums text-amber-300/90">
-                ${money(Math.max(milestone - leader.apNum, 0))} to go
-              </span>
+      <header className="flex flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <p className="flex items-center gap-2 text-[15px] font-semibold text-tone-good">
+            <span aria-hidden="true" className="apex-breathe inline-block h-2 w-2 rounded-full bg-tone-good" />
+            Live production board
+          </p>
+          <h1 className="mt-1.5 text-[1.75rem] font-bold leading-tight text-foreground sm:text-4xl">
+            {brand.platformName} <span className="text-tone-gold">{month ?? " "}</span>
+          </h1>
+          {board ? (
+            <p className="mt-1.5 text-[15px] leading-6 text-muted-foreground">
+              Ranked: agents with {formatMoney(board.minimum)} or more in {month}.
+            </p>
+          ) : null}
+        </div>
+        {board && board.access === "team" ? (
+          <dl className="grid grid-cols-3 gap-3 sm:flex sm:gap-8">
+            <div>
+              <dt className="text-[13px] font-semibold text-muted-foreground">Team sales</dt>
+              <dd className="text-xl font-bold tabular-nums text-foreground sm:text-3xl"><CountUp value={totals.sales} format={formatTileMoney} /></dd>
             </div>
-            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-foreground/10">
-              <div
-                className="h-full rounded-full bg-amber-400 transition-all"
-                style={{ width: `${pct}%` }}
-              />
+            {totalEstimate !== null ? (
+              <div>
+                <dt className="text-[13px] font-semibold text-muted-foreground">Est. earnings</dt>
+                <dd className="text-xl font-bold tabular-nums text-tone-good sm:text-3xl"><CountUp value={totalEstimate} format={formatTileMoney} /></dd>
+              </div>
+            ) : null}
+            <div>
+              <dt className="text-[13px] font-semibold text-muted-foreground">Policies</dt>
+              <dd className="text-xl font-bold tabular-nums text-foreground sm:text-3xl"><CountUp value={totals.deals} /></dd>
             </div>
+          </dl>
+        ) : null}
+      </header>
+
+      <QueryState
+        {...describeQuery(query)}
+        label="live production"
+        onRetry={() => void query.refetch()}
+        asOf={query.dataUpdatedAt}
+      >
+        {board && board.access === "none" ? (
+          <p className="rounded-2xl border border-border bg-card px-4 py-6 text-center text-[15px] text-muted-foreground">
+            The production board is for active agents on the team.
+          </p>
+        ) : board ? (
+          <div className="space-y-4">
+            {leader ? (
+              <div className="rounded-2xl border border-tone-gold/35 bg-tone-gold/8 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[15px]">
+                  <span className="font-semibold text-foreground">
+                    {leader.name ?? "—"} leads · next milestone {formatMoney(milestone)}
+                  </span>
+                  <span className="tabular-nums text-tone-gold">{formatMoney(Math.max(milestone - leader.ap, 0))} to go</span>
+                </div>
+                <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-foreground/10" role="presentation">
+                  <div className="h-full rounded-full bg-tone-gold" style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+            ) : null}
+
+            {rows.length === 0 ? (
+              <p className="rounded-2xl border border-dashed border-border bg-card px-4 py-10 text-center text-[15px] text-muted-foreground">
+                Nobody has reached {formatMoney(board.minimum)} in {month} yet.
+              </p>
+            ) : (
+              <ol className="space-y-3">
+                {rows.map((r) => {
+                  const tone = rankTone(r.rank);
+                  const tenure = tenureLabel(r.firstPolicyDate, query.todayKey);
+                  return (
+                    <li
+                      key={r.agentKey}
+                      className={cn("rounded-2xl border bg-card p-4 sm:p-5", tone ? TONE_CLASS[tone].border : "border-border")}
+                    >
+                      {/* One number sits beside the name at every width; with the income column the two
+                          numbers get their own line on phones so neither is squeezed. */}
+                      <div className={cn("flex gap-3", showEstimate ? "flex-col sm:flex-row sm:items-center sm:gap-5" : "flex-row items-center gap-4 sm:gap-5")}>
+                        <div className="flex min-w-0 items-center gap-3 sm:flex-1">
+                          <span
+                            className={cn(
+                              "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border text-lg font-bold tabular-nums",
+                              tone ? cn(TONE_CLASS[tone].soft, TONE_CLASS[tone].text, TONE_CLASS[tone].border) : "border-border bg-muted text-muted-foreground",
+                            )}
+                          >
+                            <span className="sr-only">Rank </span>
+                            {r.rank}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            {r.readable && r.agentId && UUID.test(r.agentId) ? (
+                              <Link
+                                to={`/dashboard/profile?agentId=${encodeURIComponent(r.agentId)}`}
+                                className="-my-2.5 inline-flex items-center text-lg font-bold leading-tight text-foreground underline-offset-4 [overflow-wrap:anywhere] hover:underline focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] sm:my-0 sm:text-xl"
+                              >
+                                {r.name ?? "—"}
+                              </Link>
+                            ) : (
+                              <p className="text-lg font-bold leading-tight text-foreground [overflow-wrap:anywhere] sm:text-xl">{r.name ?? "—"}</p>
+                            )}
+                            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                              {tenure ? <TonePill tone="good">{tenure}</TonePill> : null}
+                              {r.departed ? <TonePill tone="slate">Left the team</TonePill> : null}
+                              <span className="text-sm tabular-nums text-muted-foreground">{plural(r.deals, "policy", "policies")}</span>
+                              {r.cheers > 0 ? (
+                                <span className="inline-flex items-center gap-1 text-sm text-tone-gold">
+                                  <PartyPopper className="h-4 w-4" aria-hidden="true" />
+                                  {plural(r.cheers, "cheer")}
+                                </span>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+                        <dl
+                          className={cn(
+                            showEstimate
+                              ? "grid grid-cols-2 gap-2 border-t border-border pt-3 sm:flex sm:shrink-0 sm:items-center sm:gap-8 sm:border-0 sm:pt-0"
+                              : "shrink-0 text-right",
+                          )}
+                        >
+                          <div className="sm:text-right">
+                            <dt className="text-[13px] font-semibold text-muted-foreground">Production</dt>
+                            <dd className="text-lg font-bold tabular-nums text-foreground sm:text-2xl"><CountUp value={r.ap} format={formatMoney} /></dd>
+                          </div>
+                          {showEstimate ? (
+                            <div className="sm:text-right">
+                              <dt className="text-[13px] font-semibold text-muted-foreground">Est. income</dt>
+                              <dd className="text-lg font-bold tabular-nums text-tone-good sm:text-2xl"><CountUp value={r.estEarnings} format={formatMoney} /></dd>
+                            </div>
+                          ) : null}
+                        </dl>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
           </div>
         ) : null}
+      </QueryState>
 
-        {/* board */}
-        <div className="mt-6 space-y-3">
-          {board.isLoading ? (
-            <div className="space-y-3">
-              {[0, 1, 2, 3, 4].map((n) => (
-                <div key={`sk-${n}`} className="h-24 animate-pulse rounded-xl border border-border bg-foreground/5" />
-              ))}
-            </div>
-          ) : rows.length === 0 ? (
-            <div className="rounded-xl border border-border bg-foreground/5 p-10 text-center text-muted-foreground">
-              No production posted for {bounds.label} yet.
-            </div>
-          ) : (
-            rows.map((r, i) => {
-              const rank = i + 1;
-              const style = RANK_STYLE[rank];
-              return (
-                <div
-                  key={r.agent_key}
-                  className={cn(
-                    "relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.04] p-4 transition-colors hover:bg-white/[0.07] sm:p-5",
-                    style && `ring-1 ${style.ring} ${style.glow}`
-                  )}
-                >
-                  {/* Mobile stacks (identity row, then a 3-up stat grid) so long
-                      names are never truncated; from sm: it becomes one row. */}
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-                    {/* identity: rank + name + tenure */}
-                    <div className="flex items-center gap-3 sm:min-w-0 sm:flex-1">
-                      <div
-                        className={cn(
-                          "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border text-base font-black tabular-nums sm:h-11 sm:w-11 sm:text-lg",
-                          style ? style.badge : "border-white/10 bg-white/5 text-muted-foreground"
-                        )}
-                      >
-                        {rank}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        {hasAgentProfile(r.agent_id) ? (
-                          <Link
-                            to={`/dashboard/profile?agentId=${encodeURIComponent(r.agent_id)}`}
-                            className="block truncate text-base font-bold leading-tight text-foreground underline-offset-4 hover:text-amber-300 hover:underline sm:text-xl"
-                            aria-label={`Open profile for ${r.agent_name ?? "agent"}`}
-                          >
-                            {r.agent_name ?? "Unknown"}
-                          </Link>
-                        ) : (
-                          <div className="truncate text-base font-bold leading-tight text-foreground sm:text-xl">
-                            {r.agent_name ?? "Unknown"}
-                          </div>
-                        )}
-                        <div className="mt-1 flex items-center gap-2">
-                          <span className="whitespace-nowrap rounded-md border border-emerald-400/30 bg-emerald-400/10 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-300">
-                            {r.tenure_label ?? "New"}
-                          </span>
-                          <span className="whitespace-nowrap text-xs text-muted-foreground tabular-nums">
-                            {r.dealsNum} policies
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* stats — even 3-up grid on mobile, right-aligned row on desktop */}
-                    <div className="grid grid-cols-3 gap-2 border-t border-border pt-3 sm:flex sm:shrink-0 sm:items-center sm:gap-8 sm:border-0 sm:pt-0">
-                      <div className="sm:text-right">
-                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground sm:text-[11px]">Production</div>
-                        <div className="text-base font-black tabular-nums text-foreground sm:text-2xl">
-                          <AnimatedCounter value={r.apNum} prefix="$" />
-                        </div>
-                      </div>
-                      <div className="sm:text-right">
-                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground sm:text-[11px]">Est. income</div>
-                        <div className="text-base font-black tabular-nums text-emerald-400 sm:text-2xl">
-                          <AnimatedCounter value={r.estNum} prefix="$" />
-                        </div>
-                      </div>
-                      <div className="sm:text-right">
-                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground sm:text-[11px]">Lead spend</div>
-                        <div className="text-base font-bold tabular-nums text-muted-foreground sm:text-2xl">
-                          ${money(r.leadNum)}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-
-        <p className="mt-8 border-t border-border pt-4 text-[12px] leading-relaxed text-muted-foreground">
-          Production is actual posted annual premium from the carrier book. Est. income is an
-          estimate based on each producer&rsquo;s contract levels and is gross of chargebacks,
-          advances and overrides — individual results vary.
-        </p>
-      </div>
+      <p className="border-t border-border pt-4 text-sm leading-relaxed text-muted-foreground">
+        Production is posted annual premium from the agency&rsquo;s book.
+        {showEstimate
+          ? " Est. income is an estimate from each producer’s contract levels, before chargebacks, advances and overrides; individual results vary."
+          : null}
+      </p>
     </div>
   );
 }

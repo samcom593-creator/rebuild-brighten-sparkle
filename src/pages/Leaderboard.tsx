@@ -1,1000 +1,487 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Crown, Loader2, Medal, TrendingUp, Calendar as CalendarIcon, Target, Users, Activity, CalendarDays, Trophy, DollarSign, TrendingDown, AlertTriangle } from "lucide-react";
+/**
+ * Leaderboard (/dashboard/leaderboard, OVERHAUL-leaderboards 2026-10-29).
+ *
+ * One question: who is selling the most, and where do I stand? Sam's three rules for it
+ * (master prompt 311, item 5):
+ *   - Lead spend is gone. Leads are company-funded, so "Lead spend $0" and "After leads" (the
+ *     same number as Est. income) sat on every row and in a strip above the board.
+ *   - Nobody under $5,000 for the month is ranked or counted, and the board says so.
+ *   - Teammates cheer each other's rows, and the whole team sees who cheered.
+ *
+ * Everything on the sales board comes from one read, leaderboard_team_board() (useTeamBoard),
+ * and its numbers from src/lib/leaderboardBoard.ts, so the four numbers on top and the rows
+ * under them are the same rows. The team sees the team: an agent used to get a board of one
+ * (their own row) because the board followed the CRM's self-and-downline rule; the income
+ * estimate still does, so nobody can read a teammate's contract level off a row.
+ *
+ * Gone from this page, on purpose: the all-time-source hero (its prior month read a different
+ * view than the board), the Top Producing Leg tab (it read the retired AgentLink snapshot and
+ * failed with a permission error for everyone, Sam included), the Activity tab (it added hours,
+ * presentations and dialer calls into one number and read at most 1,000 dialer rows of 7,867 in
+ * October), the Custom range (the $5,000 bar is a calendar-month rule), and the diagnostic empty
+ * card. Leaders (admin, managers, agency owners) keep the Recruiting and Referrals boards.
+ */
+import { Fragment, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { DollarSign, PartyPopper, Target, TrendingUp, Trophy, UserPlus, Users } from "lucide-react";
+import { toast } from "sonner";
 import { PageHeader } from "@/components/ui/page-header";
-import { formatDistanceToNowStrict } from "date-fns";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { GlassCard } from "@/components/ui/glass-card";
-import { EmptyState } from "@/components/ui/empty-state";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { format as fmtDate } from "date-fns";
-import { cn } from "@/lib/utils";
-import { getMetricBounds, type MetricBounds } from "@/lib/metricTruth";
+import { QueryState, describeQuery, errorMessage } from "@/components/ui/query-state";
+import { TonePill, ToneBubble } from "@/components/ui/delight/ToneBubble";
+import { RevealList } from "@/components/ui/delight/Reveal";
+import { GrowScoreboard, type ScoreTile } from "@/components/recruiting/GrowScoreboard";
+import { useAuth } from "@/hooks/useAuth";
+import { useBusinessToday } from "@/hooks/useBusinessToday";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
-import { Link } from "react-router-dom";
+import { useSetCheer, useTeamBoard } from "@/hooks/useTeamBoard";
+import { useRecruitingBoard } from "@/hooks/useRecruitingBoard";
+import { celebrate } from "@/lib/celebrate";
+import { BUSINESS_TIMEZONE } from "@/lib/dateUtils";
+import { personInitials } from "@/lib/personInitials";
+import { TONE_CLASS, type Tone } from "@/lib/tones";
+import { cn } from "@/lib/utils";
+import {
+  BOARD_WINDOWS,
+  DEFAULT_BOARD_WINDOW,
+  boardMonthStart,
+  boardRule,
+  boardTiles,
+  canCheer,
+  cheerLine,
+  emptyBoardText,
+  formatMoney,
+  formatTileMoney,
+  isBoardWindow,
+  monthName,
+  plural,
+  rankTone,
+  recruitingFacts,
+  rowFacts,
+  windowPhrase,
+  type BoardTile,
+  type BoardWindow,
+  type RecruitingKind,
+  type TeamBoard,
+  type TeamBoardRow,
+} from "@/lib/leaderboardBoard";
 
-type Period = "daily" | "weekly" | "monthly" | "last_month" | "custom";
-type Board = "production" | "recruiting" | "referrals" | "activity";
-// Wave B v9 §3/§12 check 8: Top Producing Leg sub-view EXCLUDES Sam James'
-// leg (so it surfaces actual downline managers, not Sam swallowing every
-// agency-wide deal). Toggled inside the Production board only.
-type ProductionMode = "individuals" | "top_legs";
-type Row = {
-  rank: number;
-  // Stable list identity. Equals the canonical agent id when the producer is a
-  // mapped agent, else a `name:<lowercased>` key so unmapped producers (e.g.
-  // Marquay Vaughns, Raheem Sheikh) still get a unique, collision-free React key.
-  agent_key: string;
-  agent_id: string;
-  primary: number;
-  secondary: number;
-  tertiary: number;
-  agent_name: string | null;
-  avatar_url: string | null;
-  // Production-individual rows only. Estimated earnings are calculated by the
-  // leaderboard_board RPC from each producer's stored carrier contract levels.
-  // The contract percentage itself is intentionally never returned to clients.
-  est_earnings?: number;
-  lead_cost?: number;
-  tenure_label?: string | null;
-  // top_legs mode only — number of agents inside the leg
-  leg_size?: number;
-  // Which agency in the IMO this producer's production sits in (leaderboard_board).
-  agency?: string | null;
+type BoardKind = "sales" | RecruitingKind;
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const TILE_ICON: Record<BoardTile["key"], ReactNode> = {
+  rank: <Trophy />,
+  sales: <DollarSign />,
+  next: <TrendingUp />,
+  team: <Users />,
 };
 
-// Podium tints are theme-paired: the bare -400/-500 weights washed out on the
-// white light-theme card (--apex-card: 0 0% 100%).
-const RANK_ICONS: Record<number, { icon: typeof Crown; color: string }> = {
-  1: { icon: Crown, color: "text-amber-600 dark:text-amber-400" },
-  2: { icon: Medal, color: "text-slate-600 dark:text-slate-300" },
-  3: { icon: Medal, color: "text-amber-700 dark:text-amber-500" },
-};
+const formatRank = (n: number) => `#${n.toLocaleString("en-US")}`;
 
-const BOARD_META: Record<Board, { label: string; icon: typeof Crown; source: string }> = {
-  production: { label: "Production", icon: Crown, source: "Deals posted in-app + Discord-reported + historical AgentLink imports · posted date · dead statuses excluded" },
-  recruiting: { label: "Recruiting", icon: Target, source: "applications.created_at + owner attribution" },
-  referrals: { label: "Referral", icon: Users, source: "applications.referral_manager_id" },
-  activity: { label: "Activity", icon: Activity, source: "daily_production manual activity fields" },
-};
-
-function periodToWindow(period: Period) {
-  if (period === "daily") return "day";
-  if (period === "weekly") return "week";
-  // MP-372: the previous full calendar month, so the 1st/2nd of a month is
-  // never a board that reads $0 with no way to see the month that just closed.
-  if (period === "last_month") return "last_month";
-  return "month";
-}
-
-function formatMoney(value: number): string {
-  return `$${value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-}
-
-function hasAgentProfile(agentId: string | null | undefined): agentId is string {
-  return Boolean(agentId && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(agentId));
-}
-
-function dateInputToDate(value: string): Date | undefined {
-  return value ? new Date(`${value}T12:00:00`) : undefined;
-}
-
-function getBounds(period: Period, customFrom: string, customTo: string): MetricBounds {
-  if (period === "custom") {
-    const from = dateInputToDate(customFrom);
-    const to = dateInputToDate(customTo);
-    if (from && to) return getMetricBounds("custom", { from, to });
-  }
-  return getMetricBounds(periodToWindow(period));
-}
-
-function pickOwner(row: any): string | null {
-  // P3/P4: referral_recruiter_id is the canonical credit field; fall back to
-  // the legacy referral_manager_id chain.
+/**
+ * Today · This week · This month · Last month, as one radio group: Tab lands on the picked
+ * window, the arrow keys move the pick the way native radios do.
+ */
+function WindowSwitch({ value, onChange }: { value: BoardWindow; onChange: (w: BoardWindow) => void }) {
+  const refs = useRef<Array<HTMLButtonElement | null>>([]);
+  const move = (from: number, step: number) => {
+    const next = (from + step + BOARD_WINDOWS.length) % BOARD_WINDOWS.length;
+    onChange(BOARD_WINDOWS[next].key);
+    refs.current[next]?.focus();
+  };
+  const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+      event.preventDefault();
+      move(index, 1);
+    } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+      event.preventDefault();
+      move(index, -1);
+    }
+  };
   return (
-    row.referral_recruiter_id ||
-    row.referral_manager_id ||
-    row.recruiter_id ||
-    row.assigned_agent_id ||
-    row.agent_id ||
-    null
+    <div role="radiogroup" aria-label="Time window" className="grid w-full grid-cols-4 gap-1 rounded-xl border border-border bg-card p-1 md:inline-grid md:w-auto">
+      {BOARD_WINDOWS.map((w, index) => {
+        const checked = w.key === value;
+        return (
+          <button
+            key={w.key}
+            ref={(el) => { refs.current[index] = el; }}
+            type="button"
+            role="radio"
+            aria-checked={checked}
+            tabIndex={checked ? 0 : -1}
+            onKeyDown={(event) => onKeyDown(event, index)}
+            onClick={() => onChange(w.key)}
+            className={cn(
+              "min-h-11 select-none whitespace-nowrap rounded-lg px-1.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] sm:px-3 sm:text-[15px] md:min-h-10",
+              checked ? cn(TONE_CLASS.gold.soft, "text-foreground") : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+            )}
+          >
+            {w.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Facts joined by a middle dot. A fact never breaks across lines, and the dot stays with the fact before it. */
+function FactLine({ facts, className }: { facts: string[]; className?: string }) {
+  return (
+    <p className={cn("text-sm leading-5 text-muted-foreground", className)}>
+      {facts.map((fact, i) => (
+        <Fragment key={fact}>
+          <span className="whitespace-nowrap">{i < facts.length - 1 ? `${fact} ·` : fact}</span>
+          {i < facts.length - 1 ? " " : null}
+        </Fragment>
+      ))}
+    </p>
+  );
+}
+
+/** A face: the photo when there is one and it loads, else initials. Decorative; the name is beside it. */
+function Face({ name, url }: { name: string | null; url: string | null }) {
+  const [broken, setBroken] = useState(false);
+  if (url && !broken) {
+    return <img src={url} alt="" loading="lazy" onError={() => setBroken(true)} className="h-10 w-10 shrink-0 rounded-full border border-border object-cover" />;
+  }
+  return (
+    <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-muted text-sm font-semibold text-muted-foreground">
+      {personInitials(name, "—")}
+    </span>
+  );
+}
+
+/** The place on the board, in its podium tone for the first three. The number is the word. */
+function RankMark({ rank }: { rank: number }) {
+  const tone: Tone | null = rankTone(rank);
+  return (
+    <span
+      className={cn(
+        "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[15px] font-bold tabular-nums",
+        tone ? cn("border", TONE_CLASS[tone].soft, TONE_CLASS[tone].text, TONE_CLASS[tone].border) : "text-muted-foreground",
+      )}
+    >
+      <span className="sr-only">Rank </span>
+      {rank.toLocaleString("en-US")}
+    </span>
+  );
+}
+
+function PersonName({ name, agentId, linkable }: { name: string | null; agentId: string | null; linkable: boolean }) {
+  const shown = name ?? "—";
+  if (linkable && agentId && UUID.test(agentId)) {
+    return (
+      <Link
+        to={`/dashboard/profile?agentId=${encodeURIComponent(agentId)}`}
+        // Phones give every link a 44px target (src/index.css); the negative margin keeps that target
+        // without pushing the facts a line down.
+        className="-my-2.5 inline-flex items-center text-base font-semibold leading-6 text-foreground underline-offset-4 [overflow-wrap:anywhere] hover:underline focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] sm:my-0"
+      >
+        {shown}
+      </Link>
+    );
+  }
+  return <span className="text-base font-semibold leading-6 text-foreground [overflow-wrap:anywhere]">{shown}</span>;
+}
+
+function SalesRow({
+  row,
+  board,
+  todayKey,
+  pending,
+  onCheer,
+}: {
+  row: TeamBoardRow;
+  board: TeamBoard;
+  todayKey: string;
+  pending: boolean;
+  onCheer: (row: TeamBoardRow, cheer: boolean, from: HTMLElement) => void;
+}) {
+  const facts = rowFacts(row, todayKey);
+  const cheers = cheerLine(row);
+  const can = canCheer(board, row);
+  const shownName = row.name ?? "this agent";
+  return (
+    <li
+      className={cn(
+        // Rank, then the name with its facts and who cheered, then the amount. On phones the Cheer
+        // button sits under the amount; from sm it sits to the amount's left.
+        "grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-3 px-3 py-3.5 sm:items-center sm:gap-x-4 sm:px-5",
+        row.isViewer && "bg-tone-gold/8",
+      )}
+    >
+      <div className="flex items-center gap-3">
+        <RankMark rank={row.rank} />
+        <span className="hidden sm:flex"><Face name={row.name} url={row.avatarUrl} /></span>
+      </div>
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <PersonName name={row.name} agentId={row.agentId} linkable={row.readable} />
+          {row.isViewer ? <TonePill tone="gold">You</TonePill> : null}
+          {row.departed ? <TonePill tone="slate">Left the team</TonePill> : null}
+          {row.agency && !/^apex financial$/i.test(row.agency) ? <TonePill tone="royal">{row.agency}</TonePill> : null}
+        </div>
+        <FactLine facts={facts} className="mt-0.5" />
+        {cheers ? (
+          <p className="mt-1 flex items-start gap-1.5 text-sm leading-5 text-muted-foreground">
+            <PartyPopper className="mt-0.5 h-4 w-4 shrink-0 text-tone-gold" aria-hidden="true" />
+            <span>{cheers}</span>
+          </p>
+        ) : null}
+      </div>
+      <div className="flex flex-col items-end gap-2 sm:flex-row-reverse sm:items-center sm:gap-5">
+        <span className="pt-0.5 text-lg font-bold leading-6 tabular-nums text-foreground sm:min-w-[6.5rem] sm:pt-0 sm:text-right sm:text-xl">{formatMoney(row.ap)}</span>
+        {can ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            aria-pressed={row.cheeredByMe}
+            aria-label={`${row.cheeredByMe ? "Cheered" : "Cheer"} ${shownName}`}
+            disabled={pending}
+            onClick={(event) => onCheer(row, !row.cheeredByMe, event.currentTarget)}
+            className={cn(
+              "h-9 shrink-0 gap-1.5 rounded-full px-3.5 text-sm font-semibold",
+              row.cheeredByMe && cn(TONE_CLASS.gold.soft, TONE_CLASS.gold.text, TONE_CLASS.gold.border, "hover:bg-tone-gold/12"),
+            )}
+          >
+            <PartyPopper className="h-4 w-4" aria-hidden="true" />
+            {row.cheeredByMe ? "Cheered" : "Cheer"}
+          </Button>
+        ) : null}
+      </div>
+    </li>
+  );
+}
+
+function SalesBoard({ window }: { window: BoardWindow }) {
+  const query = useTeamBoard(window);
+  const setCheer = useSetCheer();
+  const [pendingKey, setPendingKey] = useState<string | null>(null);
+  const { todayKey } = query;
+  const board = query.data ?? null;
+
+  useProductionRealtime(() => {
+    void query.refetch();
+  }, 300);
+
+  const onCheer = (row: TeamBoardRow, cheer: boolean, from: HTMLElement) => {
+    if (!board) return;
+    setPendingKey(row.agentKey);
+    setCheer.mutate(
+      { agentKey: row.agentKey, monthStart: board.monthStart, cheer },
+      {
+        onSuccess: (result) => {
+          if (result.cheeredByMe) void celebrate("save", from);
+        },
+        onError: (error) => {
+          toast.error(`Your cheer did not go through. ${errorMessage(error)}`);
+        },
+        onSettled: () => setPendingKey(null),
+      },
+    );
+  };
+
+  return (
+    <QueryState {...describeQuery(query)} label="the leaderboard" onRetry={() => void query.refetch()} asOf={query.dataUpdatedAt}>
+      {board ? <SalesBoardBody board={board} window={window} todayKey={todayKey} pendingKey={pendingKey} onCheer={onCheer} /> : null}
+    </QueryState>
+  );
+}
+
+function SalesBoardBody({
+  board,
+  window,
+  todayKey,
+  pendingKey,
+  onCheer,
+}: {
+  board: TeamBoard;
+  window: BoardWindow;
+  todayKey: string;
+  pendingKey: string | null;
+  onCheer: (row: TeamBoardRow, cheer: boolean, from: HTMLElement) => void;
+}) {
+  const month = monthName(board.monthStart, todayKey);
+  const when = windowPhrase(window, board.monthStart, todayKey);
+
+  if (board.access === "none") {
+    return (
+      <div className="flex items-start gap-3 rounded-2xl border border-border bg-card p-4 sm:p-5">
+        <ToneBubble tone="slate"><Users /></ToneBubble>
+        <div className="min-w-0">
+          <p className="text-base font-semibold text-foreground">The team board is for active agents</p>
+          <p className="mt-1 text-[15px] leading-6 text-muted-foreground">
+            {board.me
+              ? `Your sales ${when}: ${formatMoney(board.me.ap)} from ${plural(board.me.deals, "deal")}. If you are on the team and think this is wrong, ask your manager to check your account.`
+              : "You need an active agent account to see who is on the board. Ask your manager if you think this is wrong."}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const tiles: ScoreTile[] = boardTiles(board, window, todayKey).map((t) => ({
+    label: t.label,
+    value: t.value,
+    hint: t.hint,
+    tone: t.tone,
+    emphasis: t.emphasis,
+    icon: TILE_ICON[t.key],
+    format: t.kind === "rank" ? formatRank : formatTileMoney,
+  }));
+  const empty = emptyBoardText(board, window, todayKey);
+  const anyEstimate = board.rows.some((r) => r.estEarnings !== null);
+  const below = board.fullReader && board.belowBarAp !== null && board.belowBarAp > 0 ? board.belowBarAp : null;
+
+  return (
+    <div className="space-y-4">
+      <GrowScoreboard label={`Your standing ${when}`} tiles={tiles} />
+
+      <div className="flex items-start gap-3 rounded-xl border border-tone-gold/35 bg-card px-4 py-3">
+        <ToneBubble tone="gold" size="sm"><Target /></ToneBubble>
+        <p className="min-w-0 text-[15px] leading-6 text-foreground">
+          <span className="font-semibold">The {formatMoney(board.minimum)} rule. </span>
+          {boardRule(board, todayKey)}
+        </p>
+      </div>
+
+      {board.rows.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-8 text-center">
+          <p className="text-base font-semibold text-foreground">{empty.title}</p>
+          <p className="mt-1 text-[15px] text-muted-foreground">{empty.body}</p>
+        </div>
+      ) : (
+        <section aria-label={`Leaderboard ${when}`}>
+          <RevealList as="ol" className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
+            {board.rows.map((row) => (
+              <SalesRow key={row.agentKey} row={row} board={board} todayKey={todayKey} pending={pendingKey === row.agentKey} onCheer={onCheer} />
+            ))}
+          </RevealList>
+        </section>
+      )}
+
+      {below !== null || board.agencyGap.length > 0 || anyEstimate ? (
+        <div className="space-y-1.5 px-1 text-sm leading-5 text-muted-foreground">
+          {below !== null ? (
+            <p>
+              {window === "today" || window === "week"
+                ? `Not on the board: ${formatMoney(below)} sold ${when} by agents under ${formatMoney(board.minimum)} for ${month}.`
+                : `Not on the board: ${formatMoney(below)} ${when} from agents under ${formatMoney(board.minimum)}.`}
+            </p>
+          ) : null}
+          {board.agencyGap.map((g) => (
+            <p key={g.agency}>
+              {g.agency}: {formatMoney(g.ap)} from {plural(g.deals, "deal")} the agency reported that is not matched to a seller yet. Not ranked.
+            </p>
+          ))}
+          {anyEstimate ? (
+            <p>Est. income is an estimate from each agent&rsquo;s contract level. It is not paid commission and leaves out chargebacks, advances, renewals and overrides.</p>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function RecruitingBoardView({ kind, window, when }: { kind: RecruitingKind; window: BoardWindow; when: string }) {
+  const query = useRecruitingBoard(kind, window, true);
+  const noun = kind === "referrals" ? "referral" : "application";
+  return (
+    <QueryState
+      {...describeQuery({ ...query, isEmpty: query.data ? query.data.rows.length === 0 : undefined })}
+      label={kind === "referrals" ? "the referral board" : "the recruiting board"}
+      onRetry={() => void query.refetch()}
+      asOf={query.dataUpdatedAt}
+      title={kind === "referrals" ? `No referrals applied ${when}` : `No applications ${when}`}
+      body="The board counts applications created in this window that you can see."
+    >
+      {query.data ? (
+        <div className="space-y-3">
+          {query.data.capped ? (
+            <p role="status" className="rounded-xl border border-tone-warm/35 bg-tone-warm/8 px-4 py-3 text-[15px] text-foreground">
+              This window has more applications than one read returns, so these counts may be low.
+            </p>
+          ) : null}
+          <RevealList as="ol" className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
+            {query.data.rows.map((row) => (
+              <li key={row.ownerId} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 px-3 py-3 sm:gap-x-4 sm:px-5">
+                <div className="flex items-center gap-2.5">
+                  <RankMark rank={row.rank} />
+                  <Face name={row.name} url={row.avatarUrl} />
+                </div>
+                <div className="min-w-0">
+                  <PersonName name={row.name} agentId={row.ownerId} linkable />
+                  <FactLine facts={recruitingFacts(row, kind)} className="mt-0.5" />
+                </div>
+                <div className="text-right">
+                  <span className="block text-lg font-bold leading-6 tabular-nums text-foreground sm:text-xl">{row.applications.toLocaleString("en-US")}</span>
+                  <span className="block text-[13px] leading-4 text-muted-foreground">{row.applications === 1 ? noun : `${noun}s`}</span>
+                </div>
+              </li>
+            ))}
+          </RevealList>
+        </div>
+      ) : null}
+    </QueryState>
   );
 }
 
 export default function Leaderboard() {
-  // Default to Monthly: the book runs on posted/sale date and the business
-  // week resets Monday (America/Chicago), so Weekly reads empty at the top of
-  // each week until deals post. Monthly always shows the live agency picture.
-  const [period, setPeriod] = useState<Period>("monthly");
-  const [board, setBoard] = useState<Board>("production");
-  const [productionMode, setProductionMode] = useState<ProductionMode>("individuals");
-  const [customFrom, setCustomFrom] = useState("");
-  const [customTo, setCustomTo] = useState("");
-  const [rows, setRows] = useState<Row[]>([]);
-  // Sam 2026-09-07: sub-agency producers were on the board with no agency named. Filter + chip.
-  const [agencyFilter, setAgencyFilter] = useState<string | null>(null);
-  const agencyNames = useMemo(() => Array.from(new Set(rows.map((r) => r.agency).filter((a): a is string => !!a))).sort(), [rows]);
-  const primaryAgency = useMemo(() => {
-    const counts = new Map<string, number>();
-    rows.forEach((r) => { if (r.agency) counts.set(r.agency, (counts.get(r.agency) ?? 0) + 1); });
-    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
-  }, [rows]);
-  const visibleRows = useMemo(() => (agencyFilter ? rows.filter((r) => r.agency === agencyFilter) : rows), [rows, agencyFilter]);
-  const [loading, setLoading] = useState(true);
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
-  const [selectedProductionRow, setSelectedProductionRow] = useState<Row | null>(null);
+  const { effectiveMode } = useAuth();
+  const leads = effectiveMode === "admin" || effectiveMode === "manager" || effectiveMode === "agency_owner";
+  const [params, setParams] = useSearchParams();
+  const windowParam = params.get("window");
+  const window: BoardWindow = isBoardWindow(windowParam) ? windowParam : DEFAULT_BOARD_WINDOW;
+  const boardParam = params.get("board");
+  const board: BoardKind = leads && (boardParam === "recruiting" || boardParam === "referrals") ? boardParam : "sales";
+  const todayKey = useBusinessToday(BUSINESS_TIMEZONE);
+  const when = windowPhrase(window, boardMonthStart(window, todayKey), todayKey);
 
-  const bounds = useMemo(() => getBounds(period, customFrom, customTo), [period, customFrom, customTo]);
-
-  // v6 §31 hero data — agency production this month vs prior month. Source of
-  // truth is agentlink_book (fresh, name-attributed AgentLink book) via the
-  // leaderboard_book_hero RPC: posted/sale-date windowed, dead statuses
-  // excluded, Phoenix tz month boundaries per Sam's permanent memory rule.
-  const heroData = useQuery({
-    queryKey: ["leaderboard-hero-agency-production"],
-    refetchInterval: 300_000,
-    staleTime: 55_000,
-    queryFn: async () => {
-      const { data } = await supabase.rpc("leaderboard_book_hero" as any);
-      const row = (Array.isArray(data) ? data[0] : data) as
-        | {
-            total_ap: number | string | null;
-            producers: number | string | null;
-            deal_count: number | string | null;
-            prior_ap: number | string | null;
-            day_of_month: number | string | null;
-            days_in_month: number | string | null;
-            external_gap_ap: number | string | null;
-            external_gap_deals: number | string | null;
-          }
-        | undefined;
-
-      const totalAp = Number(row?.total_ap ?? 0);
-      const producers = Number(row?.producers ?? 0);
-      const dealCount = Number(row?.deal_count ?? 0);
-      const priorAp = Number(row?.prior_ap ?? 0);
-      const dayOfMonth = Number(row?.day_of_month ?? 0);
-      const daysInMonth = Number(row?.days_in_month ?? 0);
-      // Another agency's reported-but-unattributed production. It belongs to
-      // no producer, so no row on the board below can carry it. It used to be
-      // summed into total_ap, which left the headline $15,986 and 10 "deals"
-      // above a list that could not account for either (measured 2026-08-31),
-      // and divided into a producer count that excluded it. Kept, labelled,
-      // and never mixed back in.
-      const externalGapAp = Number(row?.external_gap_ap ?? 0);
-      const externalGapDeals = Number(row?.external_gap_deals ?? 0);
-
-      const avgPerProducer = producers > 0 ? totalAp / producers : 0;
-      // Pace projection: linearly extrapolate month-to-date to full month.
-      const projected = dayOfMonth > 0 ? (totalAp / dayOfMonth) * daysInMonth : totalAp;
-      const paceDelta = priorAp > 0 ? ((projected - priorAp) / priorAp) * 100 : 0;
-
-      return {
-        totalAp,
-        producers,
-        avgPerProducer,
-        dealCount,
-        priorAp,
-        projected,
-        paceDelta,
-        dayOfMonth,
-        daysInMonth,
-        externalGapAp,
-        externalGapDeals,
-      };
-    },
-  });
-
-  // AgentLink history freshness. The header staleness badge that used to read
-  // this was removed (PL-APEX-OS-COHERENCE): AgentLink no longer delivers deals,
-  // so "No AgentLink deal posted in Nd" stayed on permanently while production
-  // kept flowing from posted and Discord deals. The empty state below still
-  // names the newest imported AgentLink policy as context.
-  const bookFreshness = useQuery({
-    queryKey: ["leaderboard-book-freshness"],
-    refetchInterval: 300_000,
-    staleTime: 250_000,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("v_agentlink_book_freshness" as any)
-        .select("latest_posted, days_since_last_posted, deals, last_import, last_successful_refresh")
-        .maybeSingle();
-      return (data ?? null) as {
-        latest_posted: string | null;
-        days_since_last_posted: number | string | null;
-        deals: number | string | null;
-        last_import: string | null;
-        last_successful_refresh: string | null;
-      } | null;
-    },
-  });
-
-  const buildRows = useCallback(async (ids: string[], grouped: Map<string, { primary: number; secondary: number; tertiary: number }>) => {
-    if (ids.length === 0) return [];
-
-    // PL-052: canonicalize duplicate identity rows (e.g. Sam James SJAMES01
-    // == SJAMES02). v_agent_canonical_map returns COALESCE(canonical_agent_id, id)
-    // per agent. Roll up grouped totals onto the canonical id before fetching
-    // agent metadata so each identity gets one leaderboard row.
-    const { data: canonMap } = await supabase
-      .from("v_agent_canonical_map" as any)
-      .select("agent_id, canonical_agent_id")
-      .in("agent_id", ids);
-    const canonical = new Map<string, string>(
-      ((canonMap ?? []) as Array<{ agent_id: string; canonical_agent_id: string }>)
-        .map((r) => [r.agent_id, r.canonical_agent_id])
+  const update = (key: "window" | "board", value: string, fallback: string) => {
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (value === fallback) next.delete(key);
+        else next.set(key, value);
+        return next;
+      },
+      { replace: true },
     );
-    const rolled = new Map<string, { primary: number; secondary: number; tertiary: number }>();
-    for (const [aid, totals] of grouped) {
-      const canon = canonical.get(aid) ?? aid;
-      const row = rolled.get(canon) ?? { primary: 0, secondary: 0, tertiary: 0 };
-      row.primary += totals.primary;
-      row.secondary += totals.secondary;
-      row.tertiary += totals.tertiary;
-      rolled.set(canon, row);
-    }
-    const canonIds = Array.from(rolled.keys());
+  };
 
-    const { data: agents } = await supabase
-      .from("agents")
-      .select("id, display_name, profile:profiles(full_name, avatar_url)")
-      .in("id", canonIds);
-    const byId = new Map((agents ?? []).map((agent: any) => [agent.id, agent]));
-    return canonIds
-      .map((agentId) => {
-        const totals = rolled.get(agentId)!;
-        const agent = byId.get(agentId) as any;
-        return {
-          rank: 0,
-          agent_key: agentId,
-          agent_id: agentId,
-          primary: totals.primary,
-          secondary: totals.secondary,
-          tertiary: totals.tertiary,
-          agent_name: agent?.profile?.full_name ?? agent?.display_name ?? null,
-          avatar_url: agent?.profile?.avatar_url ?? null,
-        };
-      })
-      .sort((a, b) => b.primary - a.primary || b.secondary - a.secondary || b.tertiary - a.tertiary)
-      .map((row, index) => ({ ...row, rank: index + 1 }));
-  }, []);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const grouped = new Map<string, { primary: number; secondary: number; tertiary: number }>();
-      let syncAt: string | null = null;
-
-      if (board === "production" && productionMode === "top_legs") {
-        // Wave B v9: read v_top_legs_excl_sam — manager-rolled-up book from
-        // agentlink_deals_snapshot, excluding Sam's leg. RPC-level guard:
-        // the view itself excludes Sam (agent.id 7c3c5581…) so the client
-        // can't accidentally include him by forgetting a filter.
-        const { data: legs } = await supabase
-          .from("v_top_legs_excl_sam" as any)
-          .select("manager_id, manager_name, deals, premium, leg_size")
-          .order("premium", { ascending: false })
-          .limit(50);
-        const built: Row[] = ((legs ?? []) as Array<{
-          manager_id: string;
-          manager_name: string | null;
-          deals: number | string;
-          premium: number | string;
-          leg_size: number | string;
-        }>).map((leg, index) => ({
-          rank: index + 1,
-          agent_key: leg.manager_id,
-          agent_id: leg.manager_id,
-          primary: Number(leg.premium ?? 0),
-          secondary: Number(leg.deals ?? 0),
-          tertiary: Number(leg.leg_size ?? 0),
-          agent_name: leg.manager_name,
-          avatar_url: null,
-          leg_size: Number(leg.leg_size ?? 0),
-        }));
-        setRows(built);
-        setLastUpdatedAt(new Date().toISOString());
-        setLoading(false);
-        return;
-      }
-
-      if (board === "production") {
-        // Source of truth: agentlink_book (fresh, name-attributed AgentLink
-        // book) via the leaderboard_book RPC. This fixes the four accuracy
-        // bugs the prior snapshot path carried:
-        //   1. Staleness — the book has its own upsert path, not the sync that
-        //      froze agentlink_deals_snapshot at 2026-07-06.
-        //   2. Unmapped producers — the RPC attributes by NAME first, so real
-        //      producers with no al_user_id (Marquay Vaughns, Pranav Kodali,
-        //      Matthew Anduha, Taylen Nash, Jorge Oyervidez, Raheem Sheikh,
-        //      Mahmod Imran, Logan Spatola) rank instead of being join-dropped.
-        //   3. Window — ranks on POSTED/sale date, not effective_date, so a
-        //      policy written this week effective next month counts this week.
-        //   4. Status — Declined / Not Taken / Withdrawn / Lapse are excluded.
-        // Dup identities are canonicalized inside the RPC (v_agent_canonical_map).
-        const { data: rpcRows } = await supabase.rpc("leaderboard_board" as any, {
-          p_start: bounds.startIso.slice(0, 10),
-          p_end: bounds.endIso.slice(0, 10),
-        });
-        const built: Row[] = ((rpcRows ?? []) as Array<{
-          agent_key: string;
-          agent_id: string | null;
-          agent_name: string | null;
-          avatar_url: string | null;
-          deals: number | string;
-          ap: number | string;
-          est_earnings: number | string;
-          lead_cost: number | string;
-          tenure_label: string | null;
-          agency?: string | null;
-        }>).map((r, index) => ({
-          rank: index + 1,
-          agent_key: r.agent_key,
-          agent_id: r.agent_id ?? r.agent_key,
-          primary: Number(r.ap ?? 0),
-          secondary: Number(r.deals ?? 0),
-          tertiary: 0,
-          agent_name: r.agent_name,
-          avatar_url: r.avatar_url,
-          est_earnings: Number(r.est_earnings ?? 0),
-          lead_cost: Number(r.lead_cost ?? 0),
-          tenure_label: r.tenure_label,
-          agency: r.agency ?? null,
-        }));
-        setRows(built);
-        setLastUpdatedAt(new Date().toISOString());
-        setLoading(false);
-        return;
-      }
-
-      if (board === "recruiting") {
-        const { data } = await supabase
-          .from("applications")
-          .select("assigned_agent_id, referral_recruiter_id, referral_manager_id, recruiter_id, status, license_status, contracted_at, first_deal_at, created_at")
-          .gte("created_at", bounds.startIso)
-          .lt("created_at", bounds.endIso)
-          .is("terminated_at", null);
-        for (const app of (data ?? []) as any[]) {
-          const owner = pickOwner(app);
-          if (!owner) continue;
-          const row = grouped.get(owner) ?? { primary: 0, secondary: 0, tertiary: 0 };
-          row.primary += 1;
-          if (["reviewing", "interview", "contracting", "approved"].includes(app.status) || app.license_status === "licensed") row.secondary += 1;
-          if (app.contracted_at || app.first_deal_at) row.tertiary += 1;
-          grouped.set(owner, row);
-        }
-      }
-
-      if (board === "referrals") {
-        const { data } = await supabase
-          .from("applications")
-          .select("referral_manager_id, license_status, contracted_at, first_deal_at, created_at")
-          .not("referral_manager_id", "is", null)
-          .gte("created_at", bounds.startIso)
-          .lt("created_at", bounds.endIso)
-          .is("terminated_at", null);
-        for (const app of (data ?? []) as any[]) {
-          const owner = app.referral_manager_id;
-          if (!owner) continue;
-          const row = grouped.get(owner) ?? { primary: 0, secondary: 0, tertiary: 0 };
-          row.primary += 1;
-          if (app.license_status === "licensed") row.secondary += 1;
-          if (app.contracted_at || app.first_deal_at) row.tertiary += 1;
-          grouped.set(owner, row);
-        }
-      }
-
-      if (board === "activity") {
-        const [{ data: dailyRows }, { data: dialerRows }] = await Promise.all([
-          supabase
-            .from("daily_production")
-            .select("agent_id, presentations, hours_called, referrals_caught, referral_presentations, booked_inhome_referrals, production_date")
-            .gte("production_date", bounds.startIso.slice(0, 10))
-            .lt("production_date", bounds.endIso.slice(0, 10)),
-          // PL-053: also count dialer pages — every ReadyMode dialer call
-          // counts as 1 unit of activity. The table is populated by the
-          // readymode-ingest fn; when it lags the activity number falls
-          // back to daily_production-only (graceful).
-          supabase
-            .from("readymode_dialer_calls" as any)
-            .select("agent_id")
-            .gte("call_started_at", bounds.startIso)
-            .lt("call_started_at", bounds.endIso)
-            .not("agent_id", "is", null),
-        ]);
-        for (const activity of (dailyRows ?? []) as any[]) {
-          const owner = activity.agent_id;
-          if (!owner) continue;
-          const row = grouped.get(owner) ?? { primary: 0, secondary: 0, tertiary: 0 };
-          const presentations = Number(activity.presentations ?? 0);
-          const referrals = Number(activity.referrals_caught ?? 0) + Number(activity.referral_presentations ?? 0) + Number(activity.booked_inhome_referrals ?? 0);
-          const hours = Number(activity.hours_called ?? 0);
-          row.primary += presentations + referrals + hours;
-          row.secondary += presentations;
-          row.tertiary += referrals;
-          grouped.set(owner, row);
-        }
-        // PL-053: roll up dialer pages by agent — each call = 1 activity unit
-        const dialerByAgent = new Map<string, number>();
-        for (const call of (dialerRows ?? []) as Array<{ agent_id: string | null }>) {
-          if (!call.agent_id) continue;
-          dialerByAgent.set(call.agent_id, (dialerByAgent.get(call.agent_id) ?? 0) + 1);
-        }
-        for (const [agentId, pages] of dialerByAgent) {
-          const row = grouped.get(agentId) ?? { primary: 0, secondary: 0, tertiary: 0 };
-          row.primary += pages;
-          grouped.set(agentId, row);
-        }
-      }
-
-      const builtRows = await buildRows(Array.from(grouped.keys()), grouped);
-      setRows(builtRows);
-      setLastUpdatedAt(syncAt ?? new Date().toISOString());
-    } finally {
-      setLoading(false);
-    }
-  }, [board, productionMode, bounds.endIso, bounds.startIso, buildRows]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  useProductionRealtime(() => {
-    load();
-  }, 300);
-
-  const meta = BOARD_META[board];
-  const PrimaryIcon = meta.icon;
-
-  const sourceHint = `${meta.label} leaderboard · ${meta.source} · America/Chicago business window`;
-
-  // Leads are company-funded for this dashboard. Never subtract a fictional
-  // agent expense from estimated earnings.
-  const leadCostPerProducer = 0;
-
-  const productionFinancials = useMemo(() => {
-    if (board !== "production" || productionMode !== "individuals") return null;
-    const estimatedIncome = rows.reduce((sum, row) => sum + (row.est_earnings ?? 0), 0);
-    const leadSpend = rows.length * leadCostPerProducer;
-    return {
-      estimatedIncome,
-      leadSpend,
-      leadCostPerProducer,
-      afterLeadSpend: estimatedIncome - leadSpend,
-    };
-  }, [board, productionMode, rows, leadCostPerProducer]);
-
-  function primaryValue(row: Row): string {
-    if (board === "production") return formatMoney(row.primary);
-    if (board === "activity") return row.primary.toLocaleString(undefined, { maximumFractionDigits: 1 });
-    return row.primary.toLocaleString();
-  }
-
-  // PL-051: Production rows now spell out deals × avg-ALP-per-deal so
-  // managers can see whether a leader is winning on volume or on premium
-  // size. Other boards keep their existing breakdown shape.
-  function subValue(row: Row): string {
-    if (board === "production" && productionMode === "top_legs") {
-      const deals = row.secondary;
-      const size = row.leg_size ?? 0;
-      const sizeLabel = `${size} agent${size === 1 ? "" : "s"} in leg`;
-      if (deals === 0) return `${sizeLabel} · 0 deals in AgentLink history`;
-      const avg = row.primary / deals;
-      return `${sizeLabel} · ${deals} deal${deals === 1 ? "" : "s"} · avg ${formatMoney(avg)}`;
-    }
-    if (board === "production") {
-      const deals = row.secondary;
-      if (deals === 0) return "0 deals";
-      const avg = row.primary / deals;
-      return `${deals} deal${deals === 1 ? "" : "s"} · avg ${formatMoney(avg)} / deal`;
-    }
-    if (board === "recruiting") return `${row.secondary} advanced · ${row.tertiary} contracted/first sale`;
-    if (board === "referrals") return `${row.secondary} licensed · ${row.tertiary} contracted/first sale`;
-    return `${row.secondary} presentations · ${row.tertiary} referral actions`;
-  }
+  const subtitle =
+    board === "recruiting" ? `Who brought in the most applications ${when}.`
+    : board === "referrals" ? `Whose referrals applied ${when}.`
+    : `Top sellers ${when}. Cheer your team on.`;
 
   return (
-    <div className="page-enter mx-auto w-full max-w-6xl space-y-5 px-4 pb-24 sm:px-6">
+    <div className="mx-auto w-full max-w-5xl space-y-5 pb-28">
       <PageHeader
-        accent="amber"
-        eyebrow="Production · Rankings"
-        eyebrowIcon={<Trophy className="h-3 w-3" />}
+        icon={<Trophy />}
+        tone="gold"
         title="Leaderboard"
-        subtitle="Production, recruiting, referral, and activity rankings from live platform tables."
-        actions={
-          <div className="flex items-center gap-2">
-            {lastUpdatedAt && (
-              <Badge variant="outline" className="gap-1.5">
-                <CalendarIcon className="h-3 w-3" />
-                {formatDistanceToNowStrict(new Date(lastUpdatedAt), { addSuffix: true })}
-              </Badge>
-            )}
-          </div>
-        }
+        subtitle={subtitle}
+        viewControls={<WindowSwitch value={window} onChange={(w) => update("window", w, DEFAULT_BOARD_WINDOW)} />}
       />
 
-      {/* v6 §31 canonical hero — month-to-date agency AP, producer count, avg
-          per producer, and projected pace vs prior month.
-          Truth source: v_production_comp_truth via leaderboard_book_hero,
-          which is the same population leaderboard_board ranks below — the two
-          reconcile to the dollar. Unattributed external-agency production is
-          reported on its own line, never inside these figures.
-          Month-to-date AP is the one number Sam reads first, so it is the only
-          emerald figure in the strip; every other tile stays neutral. */}
-      <GlassCard className="p-5">
-        <div className="mb-2 flex items-baseline justify-between gap-2">
-          <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
-            <Activity className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <span className="truncate">Agency production</span>
-          </h3>
-          <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-            <span aria-hidden className="h-2 w-2 rounded-full bg-emerald-500" />
-            Live
-          </span>
-        </div>
-        <details className="mb-4 text-xs text-muted-foreground">
-          <summary className="cursor-pointer select-none font-medium">Show details</summary>
-        <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-          Source · v_production_comp_truth (deals posted in-app + Discord-reported + historical AgentLink imports, de-duplicated) · posted date · America/Phoenix month window · same rows as the board below
-        </p>
-        </details>
-
-        <div className="grid grid-cols-2 gap-4 sm:gap-5 xl:grid-cols-4">
-          <div className="min-w-0 rounded-lg border border-border bg-card p-3 sm:p-4">
-            <div className="mb-1.5 flex items-center gap-2">
-              <DollarSign className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <p className="truncate text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Month-to-date AP</p>
-            </div>
-            <p className="truncate text-2xl font-bold leading-none tabular-nums text-emerald-600 dark:text-emerald-400">
-              {heroData.isLoading ? "—" : formatMoney(heroData.data?.totalAp ?? 0)}
-            </p>
-            <p className="mt-1.5 truncate text-[12px] tabular-nums text-muted-foreground">
-              {heroData.data?.dealCount ?? 0} deals · day {heroData.data?.dayOfMonth ?? "—"}/{heroData.data?.daysInMonth ?? "—"}
-            </p>
-            <p className="mt-1 text-[12px] leading-snug text-muted-foreground">
-              {(heroData.data?.externalGapAp ?? 0) > 0
-                ? `+ ${formatMoney(heroData.data!.externalGapAp)} reported by an outside agency and not yet attributed to a producer — not in the figure above, and not on the board below.`
-                : "Every dollar here is on the board below."}
-            </p>
-          </div>
-
-          <div className="min-w-0 rounded-lg border border-border bg-card p-3 sm:p-4">
-            <div className="mb-1.5 flex items-center gap-2">
-              <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <p className="truncate text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Producers</p>
-            </div>
-            <p className="truncate text-2xl font-bold leading-none tabular-nums text-foreground">
-              {heroData.isLoading ? "—" : (heroData.data?.producers ?? 0).toLocaleString()}
-            </p>
-            <p className="mt-1.5 truncate text-[12px] text-muted-foreground">
-              {heroData.data?.producers === 1 ? "agent posting deals" : "agents posting deals"}
-            </p>
-          </div>
-
-          <div className="min-w-0 rounded-lg border border-border bg-card p-3 sm:p-4">
-            <div className="mb-1.5 flex items-center gap-2">
-              <Target className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <p className="truncate text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Avg / producer</p>
-            </div>
-            <p className="truncate text-2xl font-bold leading-none tabular-nums text-foreground">
-              {heroData.isLoading ? "—" : formatMoney(heroData.data?.avgPerProducer ?? 0)}
-            </p>
-            <p className="mt-1.5 truncate text-[12px] text-muted-foreground">
-              month-to-date per active producer
-            </p>
-          </div>
-
-          {(() => {
-            // A projection from the first few days of a month is statistically
-            // meaningless — 1 deal on day 3 would render "Pace −96%" in alarm-red
-            // and make the whole board look broken at every month rollover. Below
-            // day 6 we suppress the pace % and just show last month's final number
-            // as the anchor, so the tile reads as "new month building" not "crashed".
-            const day = heroData.data?.dayOfMonth ?? 0;
-            const tooEarly = day > 0 && day < 6;
-            const pace = heroData.data?.paceDelta ?? 0;
-            return (
-              <div className="min-w-0 rounded-lg border border-border bg-card p-3 sm:p-4">
-                <div className="mb-1.5 flex items-center gap-2">
-                  {tooEarly ? (
-                    <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  ) : pace >= 0 ? (
-                    <TrendingUp className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                  ) : (
-                    <TrendingDown className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" />
-                  )}
-                  <p className="truncate text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                    {tooEarly ? "Last month" : "Pace vs prior mo"}
-                  </p>
-                </div>
-                <p className={cn(
-                  "truncate text-2xl font-bold leading-none tabular-nums",
-                  tooEarly
-                    ? "text-foreground"
-                    : pace >= 0
-                      ? "text-emerald-600 dark:text-emerald-400"
-                      : "text-rose-600 dark:text-rose-400",
-                )}>
-                  {heroData.isLoading
-                    ? "—"
-                    : tooEarly
-                      ? formatMoney(heroData.data?.priorAp ?? 0)
-                      : `${pace >= 0 ? "+" : ""}${pace.toFixed(0)}%`}
-                </p>
-                <p className="mt-1.5 truncate text-[12px] tabular-nums text-muted-foreground">
-                  {tooEarly
-                    ? `day ${day} — building`
-                    : `proj ${formatMoney(heroData.data?.projected ?? 0)} · prior ${formatMoney(heroData.data?.priorAp ?? 0)}`}
-                </p>
-              </div>
-            );
-          })()}
-        </div>
-      </GlassCard>
-
-      <p className="text-xs leading-relaxed text-muted-foreground">
-        {sourceHint}
-        {board === "production" && productionMode === "top_legs" && (
-          <> · Top Producing Leg reads AgentLink history only (v_top_legs_excl_sam, excludes Sam's leg). It does not include deals posted in-app or the Discord feed.</>
-        )}
-      </p>
-
-      {/* PL-WAVE71: single Tabs root binds TabsList triggers + TabsContent under one Radix tree.
-          Previously rendered as two separate <Tabs value={board}> roots (header trigger row +
-          content map below), which broke aria-controls / keyboard nav and forced parallel state
-          writes. Nested productionMode + period Tabs stay as independent roots — they govern
-          orthogonal axes and don't conflict. */}
-      <Tabs value={board} onValueChange={(value) => setBoard(value as Board)}>
-        <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto">
-            <TabsTrigger value="production">Production</TabsTrigger>
-            <TabsTrigger value="recruiting">Recruiting</TabsTrigger>
-            <TabsTrigger value="referrals">Referral</TabsTrigger>
-            <TabsTrigger value="activity">Activity</TabsTrigger>
+      {leads ? (
+        <Tabs value={board} onValueChange={(value) => update("board", value, "sales")}>
+          <TabsList aria-label="Board">
+            <TabsTrigger value="sales" className="gap-2"><DollarSign className="h-4 w-4" aria-hidden="true" />Sales</TabsTrigger>
+            <TabsTrigger value="recruiting" className="gap-2"><UserPlus className="h-4 w-4" aria-hidden="true" />Recruiting</TabsTrigger>
+            <TabsTrigger value="referrals" className="gap-2"><Users className="h-4 w-4" aria-hidden="true" />Referrals</TabsTrigger>
           </TabsList>
-          {board === "production" && (
-            // The "Top Producing Leg (excl. Sam)" trigger is wider than a phone
-            // viewport — it scrolls inside its own rail so the page body never does.
-            <div className="-mx-4 min-w-0 overflow-x-auto pb-1 sm:mx-0">
-              <div className="flex min-w-max px-4 sm:px-0">
-                <Tabs value={productionMode} onValueChange={(value) => setProductionMode(value as ProductionMode)}>
-                  <TabsList>
-                    <TabsTrigger value="individuals">Individuals</TabsTrigger>
-                    <TabsTrigger value="top_legs">Top Producing Leg (excl. Sam)</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </div>
-            </div>
-          )}
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <Tabs value={period} onValueChange={(value) => setPeriod(value as Period)} className="min-w-0 flex-1 lg:flex-none">
-              <TabsList className="grid w-full grid-cols-5 lg:w-auto">
-                <TabsTrigger value="daily">Daily</TabsTrigger>
-                <TabsTrigger value="weekly">Weekly</TabsTrigger>
-                <TabsTrigger value="monthly">Monthly</TabsTrigger>
-                <TabsTrigger value="last_month">Last Month</TabsTrigger>
-                <TabsTrigger value="custom">Custom</TabsTrigger>
-              </TabsList>
-            </Tabs>
-            {period === "custom" && (
-              <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto">
-                <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="h-10 min-w-0 flex-1 justify-start truncate text-left font-normal sm:h-9 sm:w-[160px] sm:flex-none">
-                      {customFrom ? fmtDate(new Date(customFrom + "T00:00:00"), "MMM d, yyyy") : "From"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar mode="single" selected={customFrom ? new Date(customFrom + "T00:00:00") : undefined}
-                      onSelect={(d) => setCustomFrom(d ? fmtDate(d, "yyyy-MM-dd") : "")} initialFocus />
-                  </PopoverContent>
-                </Popover>
-                <span className="shrink-0 text-sm text-muted-foreground">→</span>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="h-10 min-w-0 flex-1 justify-start truncate text-left font-normal sm:h-9 sm:w-[160px] sm:flex-none">
-                      {customTo ? fmtDate(new Date(customTo + "T00:00:00"), "MMM d, yyyy") : "To"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar mode="single" selected={customTo ? new Date(customTo + "T00:00:00") : undefined}
-                      onSelect={(d) => setCustomTo(d ? fmtDate(d, "yyyy-MM-dd") : "")} initialFocus />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {productionFinancials && !loading && rows.length > 0 && (
-          <div className="mt-3 grid grid-cols-3 gap-2 sm:gap-3">
-            <GlassCard className="min-w-0 p-3 sm:p-4">
-              <p className="truncate text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Est. income</p>
-              <p className="mt-1 truncate text-lg font-bold tabular-nums text-emerald-600 dark:text-emerald-400 sm:text-2xl">
-                {formatMoney(productionFinancials.estimatedIncome)}
-              </p>
-              <p className="mt-1 hidden text-[12px] text-muted-foreground sm:block">Contract-level estimate</p>
-            </GlassCard>
-            <GlassCard className="min-w-0 p-3 sm:p-4">
-              <p className="truncate text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Lead spend</p>
-              <p className="mt-1 truncate text-lg font-bold tabular-nums text-foreground sm:text-2xl">
-                {formatMoney(productionFinancials.leadSpend)}
-              </p>
-              <p className="mt-1 hidden text-[12px] text-muted-foreground sm:block">No agent lead deduction</p>
-            </GlassCard>
-            <GlassCard className="min-w-0 p-3 sm:p-4">
-              <p className="truncate text-[11px] font-bold uppercase tracking-wide text-muted-foreground">After leads</p>
-              <p className={cn(
-                "mt-1 truncate text-lg font-bold tabular-nums sm:text-2xl",
-                productionFinancials.afterLeadSpend >= 0
-                  ? "text-emerald-600 dark:text-emerald-400"
-                  : "text-rose-600 dark:text-rose-400",
-              )}>
-                {formatMoney(productionFinancials.afterLeadSpend)}
-              </p>
-              <p className="mt-1 hidden text-[12px] text-muted-foreground sm:block">Est. income − lead spend</p>
-            </GlassCard>
-          </div>
-        )}
-
-        {(["production", "recruiting", "referrals", "activity"] as Board[]).map((tab) => (
-          <TabsContent key={tab} value={tab} className="mt-3">
-            {loading ? (
-              <GlassCard className="p-4">
-                <div className="space-y-2" aria-label="Loading leaderboard">
-                  {[0,1,2,3,4,5,6,7].map((i) => (
-                    /* stable-key-allow:skeleton */
-                    <div key={i} className="h-16 rounded-lg bg-muted/30 animate-pulse" />
-                  ))}
-                </div>
-              </GlassCard>
-            ) : rows.length === 0 ? (
-              <div className="space-y-3">
-                {/* 2026-06-15 v7.2 diagnostic empty-state · Sam's mandate: never leave
-                    the user wondering WHY. Tell them: fetched count + what's been queried
-                    + a one-tap fallback to widen the window. */}
-                <EmptyState
-                  icon={<Trophy className="h-7 w-7" />}
-                  variant="warning"
-                  title={rows.length === 0 ? `No ${BOARD_META[tab].label.toLowerCase()} rows fetched` : "Filters are hiding everything"}
-                  description={
-                    <>
-                      Fetched <span className="font-bold tabular-nums text-foreground">{rows.length.toLocaleString()}</span> ranked rows for the <span className="font-bold text-foreground">{period.replace("_", " ")}</span> window.
-                      {/* MP-372: on the 1st/2nd of a month every to-date window is honestly empty. Say when the book last moved so an empty board is not read as a broken one. */}
-                      {bookFreshness.data?.latest_posted && (
-                        <> Last imported AgentLink policy posted <span className="font-bold text-foreground">{bookFreshness.data.latest_posted}</span>.</>
-                      )}
-                    </>
-                  }
-                  actions={
-                    period !== "monthly" && period !== "last_month" ? (
-                      <Button
-                        size="sm"
-                        className="h-10 w-full sm:h-9 sm:w-auto"
-                        onClick={() => setPeriod("monthly")}
-                      >
-                        Widen window · switch to monthly
-                      </Button>
-                    ) : period === "monthly" ? (
-                      <Button
-                        size="sm"
-                        className="h-10 w-full sm:h-9 sm:w-auto"
-                        onClick={() => setPeriod("last_month")}
-                      >
-                        Show last month
-                      </Button>
-                    ) : undefined
-                  }
-                />
-                <GlassCard className="p-4">
-                  <div className="mb-1 flex items-baseline justify-between gap-2">
-                    <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
-                      <AlertTriangle className="h-4 w-4 shrink-0 text-muted-foreground" />
-                      <span className="truncate">Zero rows in this window. Likely causes:</span>
-                    </h3>
-                  </div>
-                  <p className="mb-3 text-xs leading-relaxed text-amber-600 dark:text-amber-400">
-                    Empty here means the board fetched nothing — treat the number as missing, not as zero, until one of these is ruled out.
-                  </p>
-                  <ul className="space-y-2">
-                    <li className="rounded-lg border border-border/60 bg-card/60 px-3 py-2.5 text-[12px] leading-relaxed text-muted-foreground">
-                      The current {period} window genuinely has no {BOARD_META[tab].label.toLowerCase()} yet
-                    </li>
-                    <li className="rounded-lg border border-border/60 bg-card/60 px-3 py-2.5 text-[12px] leading-relaxed text-muted-foreground">
-                      Source ({BOARD_META[tab].source}) is dark or RLS-restricted
-                    </li>
-                    <li className="rounded-lg border border-border/60 bg-card/60 px-3 py-2.5 text-[12px] leading-relaxed text-muted-foreground">
-                      Your role can't see other agents' rows on this view
-                    </li>
-                  </ul>
-                  <p className="mt-3 text-[12px] font-semibold text-muted-foreground">Hold the Standard.</p>
-                </GlassCard>
-              </div>
-            ) : (
-              <GlassCard className="p-4">
-                {agencyNames.length > 1 && (
-                  <div className="mb-3 flex flex-wrap items-center gap-1.5">
-                    <button type="button" onClick={() => setAgencyFilter(null)}
-                      className={cn("rounded-full border px-2.5 py-1 text-[12px] font-semibold transition-colors", agencyFilter === null ? "border-primary/40 bg-primary/15 text-primary" : "border-border text-muted-foreground hover:text-foreground")}>
-                      All agencies
-                    </button>
-                    {agencyNames.map((name) => (
-                      <button key={name} type="button" onClick={() => setAgencyFilter(name)}
-                        className={cn("rounded-full border px-2.5 py-1 text-[12px] font-semibold transition-colors", agencyFilter === name ? "border-primary/40 bg-primary/15 text-primary" : "border-border text-muted-foreground hover:text-foreground")}>
-                        {name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <ul className="space-y-2">
-                  {visibleRows.map((row) => {
-                    const RankIcon = RANK_ICONS[row.rank]?.icon ?? TrendingUp;
-                    const rankColor = RANK_ICONS[row.rank]?.color ?? "text-muted-foreground";
-                    const highlight = row.rank <= 3;
-
-                    // v6 §31 Sam: #1 gold, #2 silver, #3 bronze, rest neutral.
-                    // Flattened to a border/soft-fill tint — the ring + glow
-                    // shadow form was the "bolted-on" tell the 2026-06-10 audit
-                    // deleted, and the rank icon + numeral already carry the tier.
-                    const podiumStyle =
-                      row.rank === 1
-                        ? "border-amber-500/50 bg-amber-500/10"
-                        : row.rank === 2
-                        ? "border-border bg-muted/40"
-                        : row.rank === 3
-                        ? "border-border bg-muted/20"
-                        : "";
-                    return (
-                      <li
-                        key={row.agent_key}
-                        className={cn(
-                          "flex gap-3 rounded-lg border border-border/60 bg-card/60 px-3 py-2.5 transition-colors hover:border-border hover:bg-card",
-                          tab === "production" && productionMode === "individuals"
-                            ? "flex-col sm:flex-row sm:items-center"
-                            : "items-center",
-                          highlight && podiumStyle,
-                        )}
-                      >
-                        <div className="flex min-w-0 w-full items-center gap-3 sm:flex-1">
-                          <div className={cn("w-9 shrink-0 text-center text-sm font-bold tabular-nums", rankColor)}>
-                            #{row.rank}
-                          </div>
-                          <RankIcon className={cn("h-4 w-4 shrink-0", rankColor)} />
-                          {row.avatar_url ? (
-                            <img src={row.avatar_url} alt="" className={cn("h-8 w-8 shrink-0 rounded-full ring-2", row.rank === 1 ? "ring-amber-500/50" : "ring-border/40")} />
-                          ) : (
-                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted/50 text-[11px] font-bold text-muted-foreground">
-                              {(row.agent_name ?? "?").split(" ").map((part) => part[0]).slice(0, 2).join("")}
-                            </div>
-                          )}
-                          <div className="min-w-0 flex-1">
-                            {hasAgentProfile(row.agent_id) ? (
-                              <Link
-                                to={`/dashboard/profile?agentId=${encodeURIComponent(row.agent_id)}`}
-                                className="block max-w-full truncate text-sm font-semibold text-foreground underline-offset-2 decoration-dotted transition-colors hover:text-primary hover:underline"
-                                aria-label={`Open profile for ${row.agent_name ?? "agent"}`}
-                              >
-                                {row.agent_name ?? "—"}
-                              </Link>
-                            ) : (
-                              <div className="truncate text-sm font-medium text-foreground">{row.agent_name ?? "—"}</div>
-                            )}
-                            {row.agency && agencyNames.length > 1 && row.agency !== primaryAgency && (
-                              <span className="mt-0.5 inline-block rounded-full border border-border bg-muted/40 px-1.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">{row.agency}</span>
-                            )}
-                            <div className="mt-0.5 truncate text-[12px] text-muted-foreground">
-                              {subValue(row)}
-                              {tab === "production" && productionMode === "individuals" && row.tenure_label
-                                ? ` · ${row.tenure_label}`
-                                : ""}
-                            </div>
-                          </div>
-                        </div>
-
-                        {tab === "production" && productionMode === "individuals" ? (
-                          <div className="grid w-full grid-cols-3 gap-2 border-t border-border/50 pt-2 sm:w-auto sm:min-w-[320px] sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
-                            <div className="min-w-0 sm:text-right">
-                              <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Production</div>
-                              <div className="truncate text-sm font-bold tabular-nums text-foreground">{formatMoney(row.primary)}</div>
-                            </div>
-                            <div className="min-w-0 sm:text-right">
-                              <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Est. income</div>
-                              <button
-                                type="button"
-                                onClick={() => setSelectedProductionRow(row)}
-                                className="truncate py-0.5 text-sm font-bold tabular-nums text-emerald-600 underline-offset-2 hover:underline dark:text-emerald-400"
-                                aria-label={`View income estimate for ${row.agent_name ?? "producer"}`}
-                              >
-                                {formatMoney(row.est_earnings ?? 0)}
-                              </button>
-                            </div>
-                            <div className="min-w-0 sm:text-right">
-                              <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Lead spend</div>
-                              <div className="truncate text-sm font-bold tabular-nums text-foreground">{formatMoney(leadCostPerProducer)}</div>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="shrink-0 text-right">
-                            <div className="text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
-                              {primaryValue(row)}
-                            </div>
-                            <div className="mt-0.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                              {BOARD_META[tab].label}
-                            </div>
-                          </div>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </GlassCard>
-            )}
-          </TabsContent>
-        ))}
-      </Tabs>
-
-      <Dialog
-        open={selectedProductionRow !== null}
-        onOpenChange={(open) => {
-          if (!open) setSelectedProductionRow(null);
-        }}
-      >
-        <DialogContent className="w-[calc(100%-2rem)] sm:max-w-[520px]">
-          <DialogHeader>
-            <DialogTitle>{selectedProductionRow?.agent_name ?? "Producer"} · income estimate</DialogTitle>
-            <DialogDescription>
-              Contract-level estimate for the selected {period} production window.
-            </DialogDescription>
-          </DialogHeader>
-
-          {selectedProductionRow && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-lg border border-border bg-card p-3">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Production</p>
-                  <p className="mt-1 text-xl font-bold tabular-nums text-foreground">{formatMoney(selectedProductionRow.primary)}</p>
-                  <p className="mt-1 text-[12px] text-muted-foreground">{selectedProductionRow.secondary} policies</p>
-                </div>
-                <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Est. income</p>
-                  <p className="mt-1 text-xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
-                    {formatMoney(selectedProductionRow.est_earnings ?? 0)}
-                  </p>
-                  <p className="mt-1 text-[12px] text-muted-foreground">Before deductions</p>
-                </div>
-                <div className="rounded-lg border border-border bg-card p-3">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Lead spend</p>
-                  <p className="mt-1 text-xl font-bold tabular-nums text-foreground">{formatMoney(leadCostPerProducer)}</p>
-                  <p className="mt-1 text-[12px] text-muted-foreground">No agent lead deduction</p>
-                </div>
-                <div className="rounded-lg border border-border bg-card p-3">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">After leads</p>
-                  <p className={cn(
-                    "mt-1 text-xl font-bold tabular-nums",
-                    (selectedProductionRow.est_earnings ?? 0) - leadCostPerProducer >= 0
-                      ? "text-emerald-600 dark:text-emerald-400"
-                      : "text-rose-600 dark:text-rose-400",
-                  )}>
-                    {formatMoney((selectedProductionRow.est_earnings ?? 0) - leadCostPerProducer)}
-                  </p>
-                  <p className="mt-1 text-[12px] text-muted-foreground">Estimated net shown here</p>
-                </div>
-              </div>
-
-              <p className="rounded-lg bg-muted/40 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
-                Estimated income uses canonical posted annual premium and the producer&rsquo;s saved comp level. It is not confirmed paid commission and does not include chargebacks, advances, renewals, or overrides.
-              </p>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+          <TabsContent value="sales" className="mt-5">{board === "sales" ? <SalesBoard window={window} /> : null}</TabsContent>
+          <TabsContent value="recruiting" className="mt-5">{board === "recruiting" ? <RecruitingBoardView kind="recruiting" window={window} when={when} /> : null}</TabsContent>
+          <TabsContent value="referrals" className="mt-5">{board === "referrals" ? <RecruitingBoardView kind="referrals" window={window} when={when} /> : null}</TabsContent>
+        </Tabs>
+      ) : (
+        <SalesBoard window={window} />
+      )}
     </div>
   );
 }

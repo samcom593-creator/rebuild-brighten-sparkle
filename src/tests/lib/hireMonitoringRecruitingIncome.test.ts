@@ -7,11 +7,16 @@ const source = (file: string) => fs.readFileSync(path.resolve(__dirname, `../../
 describe("hire monitoring and recruiting income contract", () => {
   const migration = source("supabase/migrations/20260827241000_zero_lead_spend_recruiting_income.sql");
 
-  it("sets lead spend to zero on both the server and every leaderboard fallback", () => {
+  it("sets lead spend to zero on the server, and no leaderboard shows the category at all", () => {
     expect(migration).toContain("values ('board_lead_cost', '0', now())");
     expect(migration).toContain("0::numeric as lead_cost");
-    expect(source("src/pages/BoardLive.tsx")).toContain("r.lead_cost ?? 0");
-    expect(source("src/pages/Leaderboard.tsx")).toContain("const leadCostPerProducer = 0");
+    // OVERHAUL-leaderboards (2026-10-29): leads are company-funded, so "Lead spend $0" and
+    // "After leads" (always equal to Est. income) were removed from both boards, per Sam.
+    for (const page of ["src/pages/Leaderboard.tsx", "src/pages/BoardLive.tsx"]) {
+      const code = source(page);
+      expect(code).not.toMatch(/lead_cost|leadCost|leadSpend|afterLeadSpend/);
+      expect(code.replace(/\/\*[\s\S]*?\*\//g, "")).not.toMatch(/>[^<]*Lead spend|After leads/);
+    }
   });
 
   it("estimates recruiting income from canonical production and recursive hierarchy comp spread", () => {

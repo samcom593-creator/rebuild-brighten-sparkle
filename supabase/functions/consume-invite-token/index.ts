@@ -223,7 +223,14 @@ serve(async (req) => {
     const nameParts = full_name.split(/\s+/).filter(Boolean);
     const first_name = nameParts[0] ?? "";
     const last_name = nameParts.slice(1).join(" ") || nameParts[0] || "";
-    const licensedJoin = body.licensed === true;
+    // OVERHAUL-1 (2026-10-29): a join link minted as Licensed or Not licensed yet decides the
+    // license path, read from the ROW the claim locked (same rule as the hire branch below).
+    // The recipient's toggle only counts on a link that left the choice open.
+    const lockedJoinLicense = tokenRow.prefill_json?.license_status_locked === true
+      && ["licensed", "unlicensed"].includes(String(tokenRow.prefill_json?.license_status ?? ""))
+      ? String(tokenRow.prefill_json?.license_status)
+      : null;
+    const licensedJoin = lockedJoinLicense ? lockedJoinLicense === "licensed" : body.licensed === true;
     const state = (body.state || "").trim().toUpperCase().slice(0, 2) || null;
 
     const { data: appRow, error: appErr } = await admin
@@ -240,6 +247,9 @@ serve(async (req) => {
         assigned_agent_id: targetManager?.id ?? null,
         referral_manager_id: targetManager?.id ?? null,
         recruiter_id: targetManager?.id ?? null,
+        // The canonical credit column (submit-application, P3 2026-06-08): the person whose
+        // link it is gets the credit, exactly as an /r/<slug> application does.
+        referral_recruiter_id: targetManager?.id ?? null,
         hiring_manager_user_id: targetManager?.user_id ?? null,
         referral_source: `magic_join_link:${(tokenRow.created_by ?? "unknown").toString().slice(0, 8)}`,
       })

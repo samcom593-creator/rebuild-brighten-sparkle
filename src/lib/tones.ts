@@ -142,3 +142,24 @@ export function platformTone(platform: string | null | undefined): Tone {
     default: return "slate";
   }
 }
+
+/**
+ * A recruiting link's license path (src/lib/recruitLinks.ts, OVERHAUL-1): licensed is someone
+ * ready to work, not licensed yet is someone starting out.
+ */
+export function licensePathTone(choice: string | null | undefined): Tone {
+  switch (norm(choice)) {
+    case "licensed": return "good";
+    case "unlicensed": return "cool";
+    default: return "slate";
+  }
+}
+
+/** A recruiting link's lifetime: a permanent link is steady, a temporary one is on a clock. */
+export function linkLifetimeTone(lifetime: string | null | undefined): Tone {
+  switch (norm(lifetime)) {
+    case "permanent": return "good";
+    case "temporary": return "warm";
+    default: return "slate";
+  }
+}

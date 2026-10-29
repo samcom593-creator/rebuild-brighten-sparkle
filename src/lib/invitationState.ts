@@ -61,18 +61,25 @@ export interface InvitationStatusInput {
   is_active?: boolean | null;
   revoked_at?: string | null;
   expires_at?: string | null;
+  /**
+   * OVERHAUL-1 (2026-10-29): the server's permanent flag. A permanent link is stored as
+   * expires_at 'infinity' and reaches the client as expires_at null with permanent true.
+   */
+  permanent?: boolean | null;
 }
 
 /**
  * Same precedence as public.fn_invitation_status(): accepted wins over a later
  * revoke, superseded is reported as itself rather than as the revoke that
  * accompanies it, and a missing expiry counts as expired (unknown never
- * becomes "still usable").
+ * becomes "still usable"). Only the server's permanent flag makes a missing
+ * date usable: that is the server saying 'infinity', not an unknown.
  */
 export function deriveInvitationStatus(row: InvitationStatusInput, now: Date = new Date()): InvitationStatus {
   if (row.used_at) return "accepted";
   if (row.superseded_by) return "superseded";
   if (row.is_active !== true || row.revoked_at) return "revoked";
+  if (row.permanent === true) return "pending";
   const expires = row.expires_at ? Date.parse(row.expires_at) : Number.NaN;
   if (!Number.isFinite(expires) || expires <= now.getTime()) return "expired";
   return "pending";

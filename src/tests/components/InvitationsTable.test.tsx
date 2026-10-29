@@ -274,3 +274,65 @@ describe("InvitationsTable", () => {
     expect(playSoundEffect).toHaveBeenCalledTimes(1);
   });
 });
+
+/**
+ * OVERHAUL-1 (2026-10-29): one kind per page (the server filters and counts), permanent links
+ * read "Never expires", and Refer a recruit's prospect links read as prospects in cards.
+ */
+describe("InvitationsTable by kind", () => {
+  function renderKind(props: Parameters<typeof InvitationsTable>[0]) {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return render(
+      <QueryClientProvider client={qc}>
+        <ConfirmProvider>
+          <InvitationsTable {...props} />
+        </ConfirmProvider>
+      </QueryClientProvider>,
+    );
+  }
+
+  it("asks the server for one kind, so the tab counts are that kind's rows", async () => {
+    renderKind({ kind: "hire" });
+    await screen.findByTestId("invite-card-inv-1");
+    expect(calls.find((c) => c.fn === "list_invitations")?.args).toMatchObject({ p_kind: "hire", p_include_history: false });
+  });
+
+  it("says Never expires only for a link the server marked permanent", async () => {
+    db.rows = [
+      row({ id: "inv-7", status: "pending", recipient_name: "Ever Green", expires_at: null, permanent: true }),
+      row({ id: "inv-8", status: "pending", recipient_name: "Some Day", expires_at: "2026-11-04T15:00:00Z", permanent: false }),
+    ];
+    db.counts = { total: 2, pending: 2, accepted: 0, expired: 0, revoked: 0, superseded: 0 };
+    renderKind({ kind: "hire" });
+    await screen.findByTestId("invite-card-inv-7");
+    expect(card("inv-7").getByText("Never expires")).toBeInTheDocument();
+    expect(card("inv-8").getByText("Expires Nov 4, 2026")).toBeInTheDocument();
+    expect(tableRow("inv-7").getByText("Never expires")).toBeInTheDocument();
+  });
+
+  it("reads a prospect join link as a prospect with its license, in cards at every width", async () => {
+    db.rows = [
+      row({ id: "inv-9", kind: "join", status: "pending", target_role: "referral_prospect", recipient_name: null, license_status: "unlicensed", upline_name: "Ady Thomas", expires_at: null, permanent: true }),
+    ];
+    db.counts = { total: 1, pending: 1, accepted: 0, expired: 0, revoked: 0, superseded: 0 };
+    renderKind({ kind: "join", cardsOnly: true, heading: "Links you made" });
+    expect(await screen.findByRole("heading", { name: "Links you made" })).toBeInTheDocument();
+    await screen.findByTestId("invite-card-inv-9");
+    expect(card("inv-9").getByText("Open link")).toBeInTheDocument();
+    expect(card("inv-9").getByText("Prospect · Not licensed yet · credited to Ady Thomas")).toBeInTheDocument();
+    expect(card("inv-9").getByText("Never expires")).toBeInTheDocument();
+    expect(screen.getByTestId("invite-cards").className).not.toMatch(/\blg:hidden\b/);
+    expect(screen.queryByTestId("invite-table")).toBeNull();
+    openMenu(card("inv-9").getByRole("button", { name: "More actions for this invitation" }));
+    expect(await menuItems()).toEqual(["Their details", "Copy link", "Replace link", "Revoke link"]);
+  });
+
+  it("with hideWhenEmpty shows nothing until this kind has a link, ever", async () => {
+    db.rows = [];
+    db.counts = { total: 0, pending: 0, accepted: 0, expired: 0, revoked: 0, superseded: 0 };
+    const { container } = renderKind({ kind: "join", hideWhenEmpty: true, heading: "Links you made" });
+    await waitFor(() => expect(calls.some((c) => c.fn === "list_invitations")).toBe(true));
+    await waitFor(() => expect(container.textContent).toBe(""));
+    expect(screen.queryByRole("heading", { name: "Links you made" })).toBeNull();
+  });
+});

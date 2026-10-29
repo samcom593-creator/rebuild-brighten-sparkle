@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { supabase } from "@/integrations/supabase/client";
 import type { InvitationStatus } from "@/lib/invitationState";
+import type { InviteLinkKind, ShareChannel } from "@/lib/recruitLinks";
 
 export interface InviteMintOptions {
   is_admin: boolean;
@@ -35,7 +36,12 @@ export interface InvitationRow {
   carrier_exceptions: Array<{ carrier_name: string; pct: number }> | null;
   created_at: string;
   created_by_name: string | null;
-  expires_at: string;
+  /** Null for a permanent link (permanent true); the server never sends 'infinity'. */
+  expires_at: string | null;
+  /** OVERHAUL-1: true when the link never expires. Missing (an older server) reads as temporary. */
+  permanent?: boolean;
+  /** The license path the link was minted with, or null when the recruit chooses. */
+  license_status?: "licensed" | "unlicensed" | null;
   used_at: string | null;
   accepted_agent_name: string | null;
   revoked_at: string | null;
@@ -74,7 +80,11 @@ export function useInviteMintOptions(enabled = true) {
   });
 }
 
-export async function shareInvitation(id: string, channel: "copy" | "email_draft") {
+/**
+ * A share is recorded as SHARED, never as delivered: copy, the share sheet, a text draft and an
+ * email draft all hand the link to the person, and nothing on these pages sends anything.
+ */
+export async function shareInvitation(id: string, channel: ShareChannel) {
   const { data, error } = await supabase.rpc("record_invitation_share" as never, {
     p_id: id,
     p_channel: channel,
@@ -83,18 +93,48 @@ export async function shareInvitation(id: string, channel: "copy" | "email_draft
   return data as unknown as { ok: boolean; status: string; path?: string; recipient_email?: string | null };
 }
 
-export function useInvitations(includeHistory: boolean, search: string) {
+/**
+ * One page, one kind (OVERHAUL-1): Invite an agent lists hire invitations and Refer a recruit
+ * lists prospect join links. The server filters AND counts by kind, so a tab's number is the
+ * number of rows it opens. No kind lists both, as before.
+ */
+export function useInvitations(includeHistory: boolean, search: string, kind?: InviteLinkKind) {
   return useQuery({
-    queryKey: ["invitations", includeHistory, search],
+    queryKey: ["invitations", includeHistory, search, kind ?? "all"],
     queryFn: async (): Promise<InvitationList> => {
       const { data, error } = await supabase.rpc("list_invitations" as never, {
         p_include_history: includeHistory,
         p_search: search.trim() || null,
         p_limit: 500,
+        ...(kind ? { p_kind: kind } : {}),
       } as never);
       if (error) throw error;
       const raw = (data ?? {}) as unknown as InvitationList;
       return { counts: raw.counts, rows: raw.rows ?? [], limit: raw.limit };
+    },
+  });
+}
+
+export interface MyRecruitingLink {
+  active: boolean;
+  agent_id?: string;
+  ref_slug?: string | null;
+  link?: string;
+}
+
+/**
+ * The viewer's own /r/<slug> link (my_recruiting_link(), auth.uid()-scoped). Same query key as
+ * the Home card (MyReferralLinkCard), so both read one cached answer.
+ */
+export function useMyRecruitingLink(userId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["my-recruiting-link", userId],
+    enabled: Boolean(userId),
+    staleTime: 5 * 60_000,
+    queryFn: async (): Promise<MyRecruitingLink> => {
+      const { data, error } = await supabase.rpc("my_recruiting_link" as never);
+      if (error) throw error;
+      return (data ?? { active: false }) as unknown as MyRecruitingLink;
     },
   });
 }

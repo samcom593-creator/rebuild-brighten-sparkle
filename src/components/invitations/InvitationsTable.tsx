@@ -17,6 +17,11 @@
  * useConfirm. Status words come from INVITATION_STATUS_LABEL, so the server's
  * "superseded" reads as "Replaced" everywhere here (finding 39).
  *
+ * OVERHAUL-1 (2026-10-29): each page lists one kind (Invite an agent: hire invitations; Refer a
+ * recruit: prospect join links, as cards, appearing with the first one). The server filters and
+ * counts by kind, so a tab's number is its rows. A permanent link reads "Never expires", only
+ * when the server's permanent flag says so.
+ *
  * Colour layer (2026-10-28, docs/DESIGN_SYSTEM.md "Colour, motion and sound"): the status
  * pill wears the tone INVITATION_STATUS_TONE gives its word (pending warm, accepted good,
  * closed links quiet), the cards and rows rise in once, a copied link pops after the
@@ -57,6 +62,8 @@ import {
   type InvitationStatus,
 } from "@/lib/invitationState";
 import { contractingInfoFor, decodeInviteNote } from "@/lib/inviteContractingInfo";
+import { LICENSE_CHOICE_LABEL, type InviteLinkKind } from "@/lib/recruitLinks";
+import { cn } from "@/lib/utils";
 import { ContractingCopyCard } from "./ContractingCopyCard";
 import { inviteUrlFromPath, shareInvitation, useInvitations, type InvitationRow } from "./invitationApi";
 
@@ -81,7 +88,11 @@ function statusWord(status: string | null | undefined): string {
   return ((INVITATION_STATUS_LABEL as Record<string, string | undefined>)[status] ?? status).toLowerCase();
 }
 
-/** What happened and when: "Expires Nov 4, 2026", "Accepted Oct 30, 2026 · Pat Lee", "Replaced Oct 29, 2026". */
+/**
+ * What happened and when: "Expires Nov 4, 2026", "Never expires", "Accepted Oct 30, 2026 · Pat Lee",
+ * "Replaced Oct 29, 2026". A permanent link (OVERHAUL-1) says so; only the server's permanent flag
+ * makes it so, never a missing date.
+ */
 function whenLine(row: InvitationRow): string {
   const word = INVITATION_STATUS_LABEL[row.status];
   switch (row.status) {
@@ -94,8 +105,17 @@ function whenLine(row: InvitationRow): string {
     case "expired":
       return `${word} ${formatDay(row.expires_at)}`;
     default:
-      return `Expires ${formatDay(row.expires_at)}`;
+      return row.permanent === true ? "Never expires" : `Expires ${formatDay(row.expires_at)}`;
   }
+}
+
+/** A prospect join link's line: "Prospect · Not licensed yet · credited to Ady Thomas". */
+function prospectSummary(row: InvitationRow): string {
+  return [
+    "Prospect",
+    row.license_status ? LICENSE_CHOICE_LABEL[row.license_status] : "license not picked",
+    row.upline_name ? `credited to ${row.upline_name}` : null,
+  ].filter(Boolean).join(" · ");
 }
 
 /** "Created Oct 28, 2026 by Sam James". */
@@ -103,10 +123,10 @@ function createdLine(row: InvitationRow): string {
   return `Created ${formatDay(row.created_at)}${row.created_by_name ? ` by ${row.created_by_name}` : ""}`;
 }
 
-/** "Shared 2 times", or nothing. Shares are copies and mail drafts, never deliveries. */
+/** "Shared 2 times", or nothing. Shares are copies, share sheets, text and mail drafts, never deliveries. */
 function sharedLine(row: InvitationRow): string | null {
   if (row.share_count <= 0) return null;
-  return `Shared ${row.share_count} ${row.share_count === 1 ? "time" : "times"}`;
+  return `Shared ${row.share_count.toLocaleString("en-US")} ${row.share_count === 1 ? "time" : "times"}`;
 }
 
 const offerText = (row: InvitationRow) => (row.offered_comp_pct != null ? `${Number(row.offered_comp_pct)}% comp` : "No comp offer");
@@ -127,6 +147,8 @@ async function fetchLink(id: string): Promise<string | null> {
 
 interface RowMenuProps {
   row: InvitationRow;
+  /** "Contracting info" on a hire invitation, "Their details" on a prospect join link. */
+  infoLabel: string;
   busy: boolean;
   /** True while this row's contracting dialog is open, so closing the menu does not pull focus back out of it. */
   infoOpen: boolean;
@@ -139,7 +161,7 @@ interface RowMenuProps {
 }
 
 /** The one control per row. Every item is a word, 44px tall; Revoke and Replace confirm before they act. */
-function RowMenu({ row, busy, infoOpen, onInfo, onCopy, onEmail, onReplace, onRevoke }: RowMenuProps) {
+function RowMenu({ row, infoLabel, busy, infoOpen, onInfo, onCopy, onEmail, onReplace, onRevoke }: RowMenuProps) {
   const actions = invitationActions(row.status);
   const who = row.recipient_name || row.recipient_email || "this invitation";
   return (
@@ -152,7 +174,7 @@ function RowMenu({ row, busy, infoOpen, onInfo, onCopy, onEmail, onReplace, onRe
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-60" onCloseAutoFocus={(e) => { if (infoOpen) e.preventDefault(); }}>
         <DropdownMenuItem className="min-h-11 gap-2 text-base" onSelect={onInfo}>
-          <ClipboardCopy className="h-4 w-4" /> Contracting info
+          <ClipboardCopy className="h-4 w-4" /> {infoLabel}
         </DropdownMenuItem>
         {actions.copy && (
           <DropdownMenuItem className="min-h-11 gap-2 text-base" onSelect={onCopy}>
@@ -185,10 +207,22 @@ function RowMenu({ row, busy, infoOpen, onInfo, onCopy, onEmail, onReplace, onRe
 export function InvitationsTable({
   roleFilter,
   title = "Invitations",
+  kind,
+  hideWhenEmpty = false,
+  heading,
+  cardsOnly = false,
 }: {
   /** Only show invitations for these target roles (e.g. manager invites). */
   roleFilter?: string[];
   title?: string;
+  /** One kind per page (OVERHAUL-1): the server filters and counts by it. Omitted lists both. */
+  kind?: InviteLinkKind;
+  /** Render nothing until this kind has at least one link, ever (counts are over the full scoped set). */
+  hideWhenEmpty?: boolean;
+  /** A visible heading that comes and goes with the list (with hideWhenEmpty, nothing is left behind). */
+  heading?: string;
+  /** Cards at every width, for a page whose column is too narrow for the six-column table (Refer a recruit). */
+  cardsOnly?: boolean;
 }) {
   const queryClient = useQueryClient();
   const askConfirm = useConfirm();
@@ -196,7 +230,10 @@ export function InvitationsTable({
   const [search, setSearch] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [infoRow, setInfoRow] = useState<InvitationRow | null>(null);
-  const list = useInvitations(history, history ? search : "");
+  const list = useInvitations(history, history ? search : "", kind);
+  const isJoin = kind === "join";
+  const noun = isJoin ? "links" : "invitations";
+  const infoLabel = isJoin ? "Their details" : "Contracting info";
 
   const rows = useMemo(() => {
     const all = list.data?.rows ?? [];
@@ -292,6 +329,7 @@ export function InvitationsTable({
   const menuFor = (row: InvitationRow) => (
     <RowMenu
       row={row}
+      infoLabel={infoLabel}
       busy={busyId === row.id}
       infoOpen={infoRow?.id === row.id}
       onInfo={() => setInfoRow(row)}
@@ -316,8 +354,12 @@ export function InvitationsTable({
     playSoundEffect("tick");
   };
 
+  // Nothing of this kind exists yet: no empty section on the page (it appears with the first link).
+  if (hideWhenEmpty && counts && counts.total === 0) return null;
+
   return (
     <section className="space-y-3" aria-label={title}>
+      {heading && <h2 className="text-lg font-semibold text-foreground">{heading}</h2>}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1 rounded-md border border-border p-0.5" role="tablist" aria-label="Invitation view">
           <Button variant={history ? "ghost" : "secondary"} className="h-11 px-4 text-sm" role="tab" aria-selected={!history} onClick={() => showHistory(false)}>
@@ -331,7 +373,7 @@ export function InvitationsTable({
           <div className="relative w-full sm:w-64">
             <Search className="pointer-events-none absolute left-2.5 top-3.5 h-4 w-4 text-muted-foreground" />
             <Input
-              aria-label="Search invitations"
+              aria-label={`Search ${noun}`}
               className="h-11 pl-8 text-base"
               placeholder="Name, email or note"
               value={search}
@@ -357,21 +399,21 @@ export function InvitationsTable({
         </div>
       ) : list.error ? (
         <p className="rounded-md border border-destructive/30 p-4 text-sm text-destructive">
-          Invitations could not be loaded{list.error instanceof Error ? `: ${list.error.message}` : "."}
+          {isJoin ? "Your links" : "Invitations"} could not be loaded{list.error instanceof Error ? `: ${list.error.message}` : "."}
         </p>
       ) : rows.length === 0 ? (
         <p className="rounded-md border border-border p-6 text-center text-sm text-muted-foreground">
-          {history ? "No invitations match." : "No pending invitations."}
+          {history ? `No ${noun} match.` : isJoin ? "No open links." : "No pending invitations."}
         </p>
       ) : (
         <>
           {/* Phones and tablets: one card per invitation, rising in once, 40ms apart. */}
-          <RevealList as="ul" className="space-y-3 lg:hidden" data-testid="invite-cards">
+          <RevealList as="ul" className={cn("space-y-3", !cardsOnly && "lg:hidden")} data-testid="invite-cards">
             {rows.map((row) => {
               const freeNote = decodeInviteNote(row.notes).note;
               const info = contractingInfoFor(row);
               const agency = row.agency_key ? agencyLabel(row.agency_key, BRAND.legalName) : null;
-              const summary = [
+              const summary = row.kind === "join" ? prospectSummary(row) : [
                 formatRole(row.target_role),
                 row.upline_name ? `under ${row.upline_name}${agency ? ` (${agency})` : ""}` : "upline set on join",
                 offerText(row),
@@ -381,7 +423,7 @@ export function InvitationsTable({
                 <li key={row.id} className="rounded-xl border border-border bg-card p-4" data-testid={`invite-card-${row.id}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-base font-semibold text-foreground">{row.recipient_name || freeNote || "Open invitation"}</p>
+                      <p className="text-base font-semibold text-foreground">{row.recipient_name || freeNote || (row.kind === "join" ? "Open link" : "Open invitation")}</p>
                       <p className="break-words text-sm text-muted-foreground">{row.recipient_email ?? "Any email"}</p>
                       {info.npn && <p className="text-sm text-muted-foreground">NPN {info.npn}</p>}
                     </div>
@@ -404,14 +446,20 @@ export function InvitationsTable({
           </RevealList>
 
           {/* Desktop: the same rows as a table. Text wraps; nothing is forced onto one line. */}
-          <div className="hidden rounded-md border border-border lg:block" data-testid="invite-table">
+          {!cardsOnly && <div className="hidden rounded-md border border-border lg:block" data-testid="invite-table">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Person</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Upline</TableHead>
-                  <TableHead>Offer</TableHead>
+                  {isJoin ? (
+                    <TableHead>Link</TableHead>
+                  ) : (
+                    <>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Upline</TableHead>
+                      <TableHead>Offer</TableHead>
+                    </>
+                  )}
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -424,22 +472,28 @@ export function InvitationsTable({
                   return (
                     <TableRow key={row.id} data-testid={`invite-row-${row.id}`}>
                       <TableCell className="min-w-[12rem]">
-                        <p className="text-base font-medium text-foreground">{row.recipient_name || freeNote || "Open invitation"}</p>
+                        <p className="text-base font-medium text-foreground">{row.recipient_name || freeNote || (row.kind === "join" ? "Open link" : "Open invitation")}</p>
                         {/* overflow-wrap:anywhere, not break-all: the address stays on one line wherever there is room, and at
                             the narrowest desktop width the column can still shrink instead of starving the Status column. */}
                         <p className="text-sm text-muted-foreground [overflow-wrap:anywhere]">{row.recipient_email ?? "Any email"}</p>
                         {info.npn && <p className="text-sm text-muted-foreground">NPN {info.npn}</p>}
                         {row.recipient_name && freeNote && <p className="text-[13px] italic text-muted-foreground">{freeNote}</p>}
                       </TableCell>
-                      <TableCell className="text-sm">{formatRole(row.target_role)}</TableCell>
-                      <TableCell className="text-sm">
-                        <p>{row.upline_name ?? "Set on join"}</p>
-                        <p className="text-[13px] text-muted-foreground">{row.agency_key ? agencyLabel(row.agency_key, BRAND.legalName) : "—"}</p>
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        <p>{offerText(row)}</p>
-                        {exceptions && <p className="text-[13px] text-muted-foreground">{exceptions}</p>}
-                      </TableCell>
+                      {isJoin ? (
+                        <TableCell className="text-sm">{prospectSummary(row)}</TableCell>
+                      ) : (
+                        <>
+                          <TableCell className="text-sm">{formatRole(row.target_role)}</TableCell>
+                          <TableCell className="text-sm">
+                            <p>{row.upline_name ?? "Set on join"}</p>
+                            <p className="text-[13px] text-muted-foreground">{row.agency_key ? agencyLabel(row.agency_key, BRAND.legalName) : "—"}</p>
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            <p>{offerText(row)}</p>
+                            {exceptions && <p className="text-[13px] text-muted-foreground">{exceptions}</p>}
+                          </TableCell>
+                        </>
+                      )}
                       <TableCell>
                         {pillFor(row)}
                         <p className="mt-1 text-[13px] text-muted-foreground">{whenLine(row)}</p>
@@ -452,7 +506,7 @@ export function InvitationsTable({
                 })}
               </TableBody>
             </Table>
-          </div>
+          </div>}
         </>
       )}
       {list.data && list.data.rows.length >= list.data.limit && (
@@ -462,9 +516,11 @@ export function InvitationsTable({
       <Dialog open={infoRow !== null} onOpenChange={(open) => { if (!open) setInfoRow(null); }}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>Contracting info</DialogTitle>
+            <DialogTitle>{infoLabel}</DialogTitle>
             <DialogDescription>
-              {infoRow?.recipient_name ? `${infoRow.recipient_name} · copy each field into the carrier site.` : "Copy each field into the carrier site."}
+              {isJoin
+                ? (infoRow?.recipient_name ? `${infoRow.recipient_name} · copy any value you need.` : "Copy any value you need.")
+                : (infoRow?.recipient_name ? `${infoRow.recipient_name} · copy each field into the carrier site.` : "Copy each field into the carrier site.")}
             </DialogDescription>
             {/* The same status word and tone as the row it came from. */}
             {infoRow && <div className="flex pt-1">{pillFor(infoRow)}</div>}

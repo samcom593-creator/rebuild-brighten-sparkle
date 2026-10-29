@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "Oct 28, 2026",
+    label: "Recruiting links: your own link at the top, and a link for one person in three taps (quick or with details, licensed or not yet, permanent or temporary)",
+    detail: "Sam: give them an option to put in first name, last name, email, NPN and phone, or just make a link they tap; licensed or not licensed yet, either or; a permanent or a temporary link. Invite an agent and Refer a recruit now open with Your link, the permanent /r/ link with Copy and Share (the phone's own share sheet). Make a link asks three things: Quick link or With details, Licensed or Not licensed yet (required, They choose is gone), and Permanent or Temporary, with the moment a temporary link stops working shown before and after it is made. Once made: Copy, Share, Text and Email in one row. Invite an agent makes hire links as before, with the team and offer folded into one line; Refer a recruit makes a prospect link credited to you, and the call-us referral form is still there under Rather we call them. A permanent link never expires but still lets one person in, each page lists and counts only its own kind of link, every grant was proven in a rolled-back transaction as Sam, an agent, a visitor and the server, and /r/ attribution is pinned by a test from the card to the hire.",
+    commit: "OVERHAUL-1",
+  },
+  {
+    ts: "Oct 28, 2026",
     label: "Sold Calls has a Dialer leads tab: every number the dialer ever called, one row each, sorted into the lists worth working (reached and never sold, appointment not sold, objected not sold, never reached, sold), with a CSV per list. Call Training shows each dialer seat's last 30 days.",
     detail: "MP-310 wave 2. ReadyMode's agent, dialer and user report screens are JavaScript apps the bot cannot read headless, and ReadyMode has no lead-list URL, so the same numbers come from the full call log: one row per number dialed (20,621 numbers, 2,488 reached, 132 sold, 1,367 do not call), plus daily and 30-day activity per seat. Do not call numbers are listed so they are honored: they never get a Call link and never appear in another list. Transcript reads and call grades now follow the token governor.",
     commit: "MP-310-W2-DIALER-LEADS",

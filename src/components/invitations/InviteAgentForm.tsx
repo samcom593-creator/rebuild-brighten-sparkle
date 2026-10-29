@@ -1,53 +1,63 @@
 /**
- * Invite Agent — the one form for minting a personal invitation.
+ * Make a link — the one form for minting a personal invitation.
  *
- * Mounted by /admin/invite-links, the Command Center "Invite Team" dialog and
- * the Manager Invites card. Every choice here is re-validated on the server by
- * create_invitation → fn_invite_authorize (who may invite whom, into which
- * role, under which upline, at which comp). The options come from
- * invitation_mint_options(), which already scopes uplines to the caller's
- * downline and comp levels to approved values at or below the caller's own
- * level, so the form cannot even offer what the server would refuse.
+ * Mounted by /admin/invite-links (hire links), /dashboard/referrals/new (prospect join links,
+ * kind="join"), the Command Center "Invite Team" dialog and the Manager Invites card. Every
+ * choice is re-validated on the server by create_invitation -> fn_invite_authorize (who may
+ * invite whom, into which role, under which upline, at which comp). The options come from
+ * invitation_mint_options(), which already scopes uplines to the caller's downline and comp
+ * levels to approved values at or below the caller's own level, so the form cannot even offer
+ * what the server would refuse.
  *
- * Agency is not a free choice: it is derived from the upline (the same
- * hierarchy fn_agent_subagency reads), so picking an agency narrows the upline
- * list and the server stamps the agency from the upline it validated.
+ * OVERHAUL-1 (2026-10-29), Sam: "Give them an option: either put their first name, last name,
+ * email, NPN, phone number... Or an option, just click attach a link, and they just tap it. And
+ * it should be at the box of just licensed, not licensed yet, either or. And there should be an
+ * option to make permanent link or make a temporary link." So the steps are:
+ *   1. Who: Quick link (no details) or With details (first, last, email, phone, NPN, all
+ *      optional). A Quick link sends no details, even ones typed before switching.
+ *   2. License: Licensed or Not licensed yet. Required, no default; "They choose" is gone.
+ *   3. Link type: Permanent (never expires, still one person) or Temporary (1 to 30 days, with
+ *      the moment it stops working shown before and after it is made).
+ *   4. Hire links only: their team and offer (role for admins, agency, upline, comp, carrier
+ *      exceptions, team note), folded into one line that says the current values.
+ * Once a link exists: Copy, Share, Text, Email in one row (LinkShareRow).
  *
- * Grow redesign (2026-10-28): four plain steps (who, role and license, upline,
- * offer) at 16px, and the five contracting fields Sam asked for — first name,
- * last name, email, phone, NPN — with a copy-ready card on the created invite.
- * First and last go to the server as recipient_name; the four non-email fields
- * also ride in the internal note (src/lib/inviteContractingInfo.ts).
+ * Agency is not a free choice: it is derived from the upline (the same hierarchy
+ * fn_agent_subagency reads), so picking an agency narrows the upline list and the server stamps
+ * the agency from the upline it validated. A join link always sits under the person making it.
  *
- * One gold button per screen (council finding 27): once an invitation exists,
- * its Copy link is the gold button and Create steps back to outline; as soon as
- * the form changes (the next person is being typed) gold returns to Create and
- * the card's Copy link goes quiet. The card itself stays until the next create,
- * so a stray keystroke never loses the link.
+ * First and last go to the server as recipient_name; the four non-email fields also ride in the
+ * internal note (src/lib/inviteContractingInfo.ts) for the copy-ready contracting card.
  *
- * Colour layer (2026-10-28, docs/DESIGN_SYSTEM.md "Colour, motion and sound"): the four
- * step numbers sit in 44px bubbles, royal for paperwork ahead, gold for the step in hand
- * (the one the person last touched) and green with a check for a step they left in good
- * order. A created invitation chimes from the Create button and its card pops in; a copied
- * link pops once the clipboard has it. Nothing plays on load or on an error.
+ * One gold button per screen (council finding 27): Make link is gold until a link exists, then
+ * that link's Copy is gold and Make link steps back to outline; as soon as the form changes (the
+ * next person is being typed) gold returns to Make link. The made link stays until the next
+ * one, so a stray keystroke never loses it. A page that holds its gold elsewhere passes quiet.
+ *
+ * Colour layer (docs/DESIGN_SYSTEM.md "Colour, motion and sound"): the step numbers sit in 44px
+ * bubbles, royal for paperwork ahead, gold for the step in hand and green with a check for a
+ * step left in good order. A made link chimes from the Make link button and its card pops in;
+ * a copied link pops once the clipboard has it. Nothing plays on load or on an error.
  */
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Check, Copy, ExternalLink, Link2, Loader2, Mail, Plus, Trash2 } from "lucide-react";
+import { Check, ChevronDown, ExternalLink, Link2, Loader2, Plus, Trash2 } from "lucide-react";
 import { ContractingCopyCard } from "./ContractingCopyCard";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { inviteUrlFromPath, shareInvitation, useInviteMintOptions } from "./invitationApi";
+import { ChoiceGroup } from "./ChoiceGroup";
+import { LinkShareRow } from "./LinkShareRow";
+import { WrappableUrl } from "./WrappableUrl";
 import { resolveBrand } from "@/config/brand";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { EmailTypoHint } from "@/components/ui/email-typo-hint";
-import { ToneBubble } from "@/components/ui/delight/ToneBubble";
-import { playSoundEffect } from "@/hooks/useSoundEffects";
-import { celebrate } from "@/lib/celebrate";
-import type { Tone } from "@/lib/tones";
+import { ToneBubble, TonePill } from "@/components/ui/delight/ToneBubble";
+import { celebrate, prefersReducedMotion } from "@/lib/celebrate";
+import { licensePathTone, linkLifetimeTone, type Tone } from "@/lib/tones";
 import { cn } from "@/lib/utils";
 import { isPlausibleEmail, normalizeEmailInput } from "@/lib/emailValidation";
 import { npnProblem } from "@/lib/contractReview";
@@ -55,32 +65,42 @@ import { encodeInviteNote, freeNoteRoom, type ContractingInfo } from "@/lib/invi
 import {
   agencyLabel,
   formatRole,
-  invitationMailto,
   validateOfferTerms,
   type CarrierExceptionDraft,
   type OfferAuthority,
 } from "@/lib/invitationState";
+import {
+  DEFAULT_TEMPORARY_HOURS,
+  LICENSE_CHOICE_LABEL,
+  LINK_LIFETIME_LABEL,
+  LINK_MODE_LABEL,
+  TEMPORARY_SPANS,
+  detailsToSend,
+  expiryFrom,
+  formatExpiry,
+  hireTargetRole,
+  lifetimeLine,
+  type InviteLinkKind,
+  type LicenseChoice,
+  type LinkLifetime,
+  type LinkMode,
+} from "@/lib/recruitLinks";
 
 const BRAND = resolveBrand();
 
 export interface CreatedInvitation {
   id: string;
-  kind: "hire" | "join";
+  kind: InviteLinkKind;
   path: string;
-  expires_at: string;
+  /** Null for a permanent link. */
+  expires_at: string | null;
+  permanent: boolean;
+  license: LicenseChoice | null;
   recipient_email: string | null;
   recipient_name: string | null;
   /** What the inviter typed, for the copy-ready contracting card. */
   contracting?: ContractingInfo;
 }
-
-const EXPIRY_OPTIONS: Array<{ hours: number; label: string }> = [
-  { hours: 24, label: "24 hours" },
-  { hours: 72, label: "3 days" },
-  { hours: 168, label: "7 days" },
-  { hours: 336, label: "14 days" },
-  { hours: 720, label: "30 days" },
-];
 
 type InviteAs = "agent" | "hired_manager" | "agency_owner" | "staff";
 const INVITE_AS_LABEL: Record<InviteAs, string> = {
@@ -90,11 +110,9 @@ const INVITE_AS_LABEL: Record<InviteAs, string> = {
   staff: "Staff",
 };
 
-type LicensePath = "recruit_chooses" | "licensed" | "unlicensed";
-
 type ExceptionRow = CarrierExceptionDraft & { rowKey: string };
 
-/** The fields Create clears once an invitation exists; role, license, upline and expiry carry over. */
+/** The fields Make link clears once a link exists; mode, license, link type, role and upline carry over. */
 const CLEARED = {
   firstName: "",
   lastName: "",
@@ -108,20 +126,23 @@ const CLEARED = {
 };
 
 type FormValues = typeof CLEARED & {
+  mode: LinkMode;
+  license: LicenseChoice | null;
+  lifetime: LinkLifetime;
+  expiresHours: number;
   inviteAs: InviteAs;
-  licensePath: LicensePath;
   agencyKey: string;
   uplineId: string;
-  expiresHours: number;
 };
 
-/** One string for everything the person can change, so "the form changed since this invitation was created" is one comparison. */
+/** One string for everything the person can change, so "the form changed since this link was made" is one comparison. */
 function fingerprint(v: FormValues): string {
   return JSON.stringify([
-    v.firstName, v.lastName, v.npn, v.recipientEmail, v.recipientPhone,
-    v.inviteAs, v.licensePath, v.agencyKey, v.uplineId,
+    v.mode, v.firstName, v.lastName, v.npn, v.recipientEmail, v.recipientPhone,
+    v.license, v.lifetime, v.expiresHours,
+    v.inviteAs, v.agencyKey, v.uplineId,
     v.compChoice, v.customComp, v.exceptions.map((e) => [e.carrier_id, e.pct, e.note ?? null]),
-    v.expiresHours, v.note,
+    v.note,
   ]);
 }
 
@@ -133,8 +154,6 @@ type StepState = "todo" | "current" | "done";
 
 /** Paperwork ahead is royal, the step in hand gold, a step left behind in good order green (src/lib/tones.ts). */
 const STEP_TONE: Record<StepState, Tone> = { todo: "royal", current: "gold", done: "good" };
-
-const STEP_COUNT = 4;
 
 function Step({ n, title, hint, state, onEnter, children }: {
   n: number;
@@ -163,41 +182,81 @@ function Step({ n, title, hint, state, onEnter, children }: {
   );
 }
 
+// The mode is paperwork (how much you fill in), so it wears the form's royal tone and never
+// competes with the gold Make link button.
+const MODE_OPTIONS = [
+  { value: "quick" as const, label: LINK_MODE_LABEL.quick, tone: "royal" as const },
+  { value: "details" as const, label: LINK_MODE_LABEL.details, tone: "royal" as const },
+];
+const LICENSE_OPTIONS = [
+  { value: "licensed" as const, label: LICENSE_CHOICE_LABEL.licensed, tone: licensePathTone("licensed") },
+  { value: "unlicensed" as const, label: LICENSE_CHOICE_LABEL.unlicensed, tone: licensePathTone("unlicensed") },
+];
+const LIFETIME_OPTIONS = [
+  { value: "permanent" as const, label: LINK_LIFETIME_LABEL.permanent, tone: linkLifetimeTone("permanent") },
+  { value: "temporary" as const, label: LINK_LIFETIME_LABEL.temporary, tone: linkLifetimeTone("temporary") },
+];
+
+/** What each License choice starts, in the words of each kind of link. */
+const LICENSE_RESULT: Record<InviteLinkKind, Record<LicenseChoice, string>> = {
+  hire: {
+    licensed: "Licensed starts contracting when they accept.",
+    unlicensed: "Not licensed yet starts the licensing roadmap when they accept.",
+  },
+  join: {
+    licensed: "Licensed alerts their manager the moment they apply.",
+    unlicensed: "Not licensed yet starts them on the licensing steps after they apply.",
+  },
+};
+
 export function InviteAgentForm({
   defaultInviteAs = "agent",
   licenseHint,
   onCreated,
+  kind = "hire",
+  framed = false,
+  quiet = false,
 }: {
   defaultInviteAs?: InviteAs;
   /** One line under the License step's title, e.g. the page's rule that license status is always required. */
   licenseHint?: string;
   onCreated?: (created: CreatedInvitation) => void;
+  /** hire: /hire/<token>, the recruit joins as an agent. join: /join/<token>, a prospect applies, credited to you. */
+  kind?: InviteLinkKind;
+  /** On a page: the form sits in its own card and the made link in a card of its own beside it (never nested). */
+  framed?: boolean;
+  /** Another part of the page holds the one gold button right now; nothing here is gold. */
+  quiet?: boolean;
 }) {
   const queryClient = useQueryClient();
   const options = useInviteMintOptions();
   const opts = options.data;
+  const isJoin = kind === "join";
 
+  const [mode, setMode] = useState<LinkMode>("quick");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [npn, setNpn] = useState("");
   const [recipientEmail, setRecipientEmail] = useState("");
   const [recipientPhone, setRecipientPhone] = useState("");
+  const [license, setLicense] = useState<LicenseChoice | null>(null);
+  const [lifetime, setLifetime] = useState<LinkLifetime>("temporary");
+  const [expiresHours, setExpiresHours] = useState(DEFAULT_TEMPORARY_HOURS);
   const [inviteAs, setInviteAs] = useState<InviteAs>(defaultInviteAs);
-  const [licensePath, setLicensePath] = useState<LicensePath>("recruit_chooses");
   const [agencyKey, setAgencyKey] = useState<string>("");
   const [uplineId, setUplineId] = useState<string>("");
   const [compChoice, setCompChoice] = useState<string>("none");
   const [customComp, setCustomComp] = useState("");
   const [exceptions, setExceptions] = useState<ExceptionRow[]>([]);
-  const [expiresHours, setExpiresHours] = useState(168);
   const [note, setNote] = useState("");
+  const [teamOpen, setTeamOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [created, setCreated] = useState<CreatedInvitation | null>(null);
   const [createdFingerprint, setCreatedFingerprint] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
   const [triedSubmit, setTriedSubmit] = useState(false);
+  const resultRef = useRef<HTMLDivElement>(null);
   // The step in hand (gold) and the steps the person has been in. A step they left turns green
-  // once it is valid; one they never touched stays royal. Both start over with each invitation.
+  // once it is valid; one they never touched stays royal. Both start over with each link.
   const [currentStep, setCurrentStep] = useState(1);
   const [visitedSteps, setVisitedSteps] = useState<number[]>([1]);
   const enterStep = (n: number) => {
@@ -236,11 +295,11 @@ export function InviteAgentForm({
     if (opts && !roleOptions.includes(inviteAs)) setInviteAs("agent");
   }, [opts, roleOptions, inviteAs]);
 
-  const targetRole = inviteAs === "agent"
-    ? (licensePath === "licensed" ? "hired_licensed" : "hired_unlicensed")
-    : inviteAs;
+  // Staff accounts do not carry a license path; everyone else must be one or the other.
+  const licenseApplies = isJoin || inviteAs !== "staff";
+  const targetRole = isJoin ? "referral_prospect" : hireTargetRole(inviteAs, license);
 
-  const offeredComp: number | null = compChoice === "none"
+  const offeredComp: number | null = isJoin || compChoice === "none"
     ? null
     : compChoice === "custom"
       ? (customComp.trim() === "" ? Number.NaN : Number(customComp))
@@ -257,13 +316,15 @@ export function InviteAgentForm({
       }
     : null;
 
-  const issues = authority
+  const sent = detailsToSend(mode, { firstName, lastName, email: recipientEmail, phone: recipientPhone, npn });
+
+  const issues = authority && !isJoin
     ? validateOfferTerms(
         {
           kind: "hire",
           target_role: targetRole,
           target_manager_id: uplineId || null,
-          recipient_email: recipientEmail,
+          recipient_email: sent.email,
           offered_comp_pct: offeredComp,
           carrier_exceptions: exceptions.map(({ carrier_id, pct, note: n }) => ({ carrier_id, pct, note: n })),
         },
@@ -272,38 +333,50 @@ export function InviteAgentForm({
     : [];
   const issueFor = (field: string) => issues.find((i) => i.field === field)?.message ?? null;
 
-  // Name and email are optional (Sam, 2026-10-14): a link can go out bare and the person fills in their own
-  // details on landing. An email, when given, must be plausible, because it locks the invitation to that address.
-  const emailGiven = recipientEmail.trim() !== "";
-  const emailOk = !emailGiven || isPlausibleEmail(recipientEmail);
-  const npnIssue = npnProblem(npn);
-  const recipientName = `${firstName.trim()} ${lastName.trim()}`.trim();
-  const contractingFields = { firstName, lastName, phone: recipientPhone, npn };
+  // Every detail is optional (Sam, 2026-10-14): a link can go out bare and the person fills in their
+  // own details on landing. An email, when given, must be plausible, because it locks the link to that address.
+  const emailGiven = sent.email !== "";
+  const emailOk = !emailGiven || isPlausibleEmail(sent.email);
+  const npnIssue = npnProblem(sent.npn);
+  const recipientName = `${sent.firstName} ${sent.lastName}`.trim();
+  const contractingFields = { firstName: sent.firstName, lastName: sent.lastName, phone: sent.phone, npn: sent.npn };
   const noteRoom = freeNoteRoom(contractingFields);
   // Typing a name, phone or NPN after the note shrinks the room the server leaves for it. The
-  // note is never cut behind the person's back: it is flagged and the invitation waits until it fits.
-  const noteOver = Math.max(0, note.trim().length - noteRoom);
-  const canSubmit = !!opts && emailOk && !npnIssue && noteOver === 0 && issues.length === 0 && !submitting;
+  // note is never cut behind the person's back: it is flagged and the link waits until it fits.
+  const freeNote = isJoin ? "" : note;
+  const noteOver = Math.max(0, freeNote.trim().length - noteRoom);
+  const licenseMissing = licenseApplies && license === null;
+  const canSubmit = !!opts && emailOk && !npnIssue && !licenseMissing && noteOver === 0 && issues.length === 0 && !submitting;
 
   const chosenUpline = opts?.uplines.find((u) => u.id === uplineId) ?? null;
+  const teamStep = isJoin ? null : 4;
 
-  // Step 1 is all optional, so blank is in good order (an open link); the others are in good order
-  // when the same pre-flight checks that gate Create find nothing wrong with their fields.
+  // Step 1 is all optional, so blank is in good order (an open link); License is in good order once
+  // picked; the others when the same pre-flight checks that gate Make link find nothing wrong.
   const stepValid: Record<number, boolean> = {
     1: emailOk && !npnIssue,
-    2: !issueFor("target_role"),
-    3: !issueFor("target_manager_id"),
-    4: !issueFor("offered_comp_pct") && !issueFor("carrier_exceptions") && noteOver === 0,
+    2: !licenseMissing,
+    3: true,
+    4: !issueFor("target_role") && !issueFor("target_manager_id") && !issueFor("offered_comp_pct") && !issueFor("carrier_exceptions") && noteOver === 0,
   };
   const stepState = (n: number): StepState =>
     n === currentStep ? "current" : visitedSteps.includes(n) && stepValid[n] ? "done" : "todo";
 
-  // The created card is "current" until the person changes anything; then the next invitation is the job,
-  // Create is gold again and the card's Copy link steps back.
-  const createdIsCurrent = created !== null && createdFingerprint === fingerprint({
-    firstName, lastName, npn, recipientEmail, recipientPhone, inviteAs, licensePath, agencyKey, uplineId,
-    compChoice, customComp, exceptions, expiresHours, note,
-  });
+  // A problem inside the folded team step opens it, so the message is never hidden.
+  const teamHasProblem = !isJoin && !stepValid[4];
+  useEffect(() => {
+    if (teamHasProblem && (triedSubmit || noteOver > 0)) setTeamOpen(true);
+  }, [teamHasProblem, triedSubmit, noteOver]);
+
+  const values: FormValues = {
+    mode, firstName, lastName, npn, recipientEmail, recipientPhone, license, lifetime, expiresHours,
+    inviteAs, agencyKey, uplineId, compChoice, customComp, exceptions, note,
+  };
+  // The made link is "current" until the person changes anything; then the next link is the job,
+  // Make link is gold again and the link's Copy steps back.
+  const createdIsCurrent = created !== null && createdFingerprint === fingerprint(values);
+  const goldOnMake = !quiet && !createdIsCurrent;
+  const goldOnCopy = !quiet && createdIsCurrent;
 
   function reset() {
     setFirstName(CLEARED.firstName);
@@ -320,380 +393,484 @@ export function InviteAgentForm({
     setVisitedSteps([1]);
   }
 
-  /** `button` is the Create button the person pressed, read before the round trip so the chime rises from it. */
+  /** `button` is the Make link button the person pressed, read before the round trip so the chime rises from it. */
   async function submit(button: HTMLButtonElement | null) {
     setTriedSubmit(true);
     if (!canSubmit) return;
     setSubmitting(true);
+    const permanent = lifetime === "permanent";
     try {
       const { data, error } = await supabase.rpc("create_invitation" as never, {
-        p_kind: "hire",
+        p_kind: kind,
         p_target_role: targetRole,
-        p_target_manager_id: uplineId,
-        p_recipient_email: emailGiven ? normalizeEmailInput(recipientEmail) : null,
+        // A join link always sits under the person making it: the server resolves null to the caller.
+        p_target_manager_id: isJoin ? null : uplineId,
+        p_recipient_email: emailGiven ? normalizeEmailInput(sent.email) : null,
         p_recipient_name: recipientName || null,
-        p_recipient_phone: recipientPhone.trim() || null,
-        p_license_status: licensePath === "recruit_chooses" ? null : licensePath,
+        p_recipient_phone: sent.phone || null,
+        p_license_status: licenseApplies ? license : null,
         p_offered_comp_pct: offeredComp,
-        p_carrier_exceptions: exceptions.map((ex) => ({ carrier_id: ex.carrier_id, pct: ex.pct, note: ex.note ?? null })),
+        p_carrier_exceptions: isJoin ? [] : exceptions.map((ex) => ({ carrier_id: ex.carrier_id, pct: ex.pct, note: ex.note ?? null })),
         p_expires_hours: expiresHours,
-        p_notes: encodeInviteNote(contractingFields, note),
+        p_notes: encodeInviteNote(contractingFields, freeNote),
+        // Sent only when asked for, so a temporary link is the exact call it always was.
+        ...(permanent ? { p_permanent: true } : {}),
       } as never);
       if (error) {
-        toast.error(error.message || "The invitation was not created.");
+        toast.error(error.message || "The link was not made.");
         return;
       }
-      const row = data as unknown as { id?: string; kind?: "hire" | "join"; path?: string; expires_at?: string } | null;
+      const row = data as unknown as {
+        id?: string; kind?: InviteLinkKind; path?: string; expires_at?: string | null; permanent?: boolean;
+      } | null;
       if (!row?.id || !row.path) {
-        toast.error("The invitation was not returned. Nothing was shared.");
+        toast.error("The link was not returned. Nothing was shared.");
         return;
+      }
+      if (permanent && row.permanent !== true) {
+        // The server made a link but not the one on screen: say so instead of calling it permanent.
+        toast.error("The link was made, but the server did not make it permanent. Replace it from the list below.");
       }
       const result: CreatedInvitation = {
         id: row.id,
-        kind: row.kind ?? "hire",
+        kind: row.kind ?? kind,
         path: row.path,
-        expires_at: row.expires_at ?? "",
-        recipient_email: emailGiven ? normalizeEmailInput(recipientEmail) : null,
+        expires_at: row.expires_at ?? null,
+        permanent: row.permanent === true,
+        license: licenseApplies ? license : null,
+        recipient_email: emailGiven ? normalizeEmailInput(sent.email) : null,
         recipient_name: recipientName || null,
         contracting: {
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          email: emailGiven ? normalizeEmailInput(recipientEmail) : "",
-          phone: recipientPhone.replace(/\D/g, ""),
-          npn: npn.replace(/\D/g, ""),
+          firstName: sent.firstName,
+          lastName: sent.lastName,
+          email: emailGiven ? normalizeEmailInput(sent.email) : "",
+          phone: sent.phone.replace(/\D/g, ""),
+          npn: sent.npn.replace(/\D/g, ""),
         },
       };
       setCreated(result);
-      setCopied(false);
       // What the form looks like right after reset(), so any later change is detected.
-      setCreatedFingerprint(fingerprint({ ...CLEARED, inviteAs, licensePath, agencyKey, uplineId, expiresHours }));
-      toast.success(result.recipient_name ? `Invitation created for ${result.recipient_name}.` : "Open invitation created. Anyone with the link can fill in their own details.");
+      setCreatedFingerprint(fingerprint({ ...values, ...CLEARED }));
+      toast.success(
+        result.recipient_name
+          ? `Link made for ${result.recipient_name}.`
+          : isJoin
+            ? "Link made. They fill in their own details when they open it."
+            : "Open invitation created. Anyone with the link can fill in their own details.",
+      );
       reset();
-      // The invitation exists (the two returns above never reach here): bubbles and a chime from the button.
+      // The link exists (the returns above never reach here): bubbles and a chime from the button.
       void celebrate("booked", button);
       void queryClient.invalidateQueries({ queryKey: ["invitations"] });
       onCreated?.(result);
+      // On a phone the made link lands below the fold: bring it into view.
+      window.setTimeout(() => {
+        resultRef.current?.scrollIntoView?.({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "nearest" });
+      }, 0);
     } finally {
       setSubmitting(false);
     }
   }
 
-  async function copyCreated() {
-    if (!created) return;
-    const url = inviteUrlFromPath(created.path);
-    try {
-      await navigator.clipboard.writeText(url);
-    } catch (err) {
-      console.warn("clipboard blocked", err);
-      toast.error("Clipboard blocked. Select the link and copy it manually.");
-      return;
-    }
-    // The clipboard has it; a blocked clipboard returned above, silent.
-    playSoundEffect("pop");
-    setCopied(true);
-    toast.success("Link copied.");
-    try {
-      await shareInvitation(created.id, "copy");
-    } catch (err) {
-      console.warn("record_invitation_share failed", err);
-    }
-  }
-
-  async function emailCreated() {
-    if (!created?.recipient_email) return;
-    window.location.href = invitationMailto({
-      recipientEmail: created.recipient_email,
-      recipientName: created.recipient_name,
-      url: inviteUrlFromPath(created.path),
-      expiresAt: created.expires_at,
-      orgName: BRAND.legalName,
-    });
-    try {
-      await shareInvitation(created.id, "email_draft");
-    } catch (err) {
-      console.warn("record_invitation_share failed", err);
-    }
-  }
-
+  // Loading and failure sit where the form will be (inside its card on a page), never loose on the page.
+  const frame = (children: ReactNode) => (framed
+    ? <section aria-label={isJoin ? "Make a link" : "New invitation"} className="rounded-xl border border-border bg-card p-5 sm:p-8">{children}</section>
+    : <>{children}</>);
   if (options.isLoading) {
-    return (
-      <div className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading your invite options…
-      </div>
+    return frame(
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" /> Loading your link options…
+      </div>,
     );
   }
   if (options.error || !opts) {
-    return (
-      <p className="p-4 text-sm text-destructive">
-        Invite options could not be loaded{options.error instanceof Error ? `: ${options.error.message}` : "."}
-      </p>
+    const message = typeof (options.error as { message?: unknown } | null)?.message === "string"
+      ? (options.error as { message: string }).message
+      : "";
+    const noAgent = /no active agent/i.test(message);
+    return frame(
+      <div className="flex flex-wrap items-center gap-3">
+        <p role="alert" className="text-sm text-destructive">
+          {noAgent
+            ? "Links come with an active agent account, and this login does not have one."
+            : `Link options could not be loaded${message ? `: ${message}` : "."}`}
+        </p>
+        {!noAgent && (
+          <Button variant="outline" className="h-11" onClick={() => void options.refetch()}>Try again</Button>
+        )}
+      </div>,
     );
   }
 
-  return (
-    <div className="space-y-8" data-testid="invite-agent-form">
-      <Step n={1} title="Who are you inviting?" hint="All optional. Leave it blank for an open link they fill in themselves." state={stepState(1)} onEnter={() => enterStep(1)}>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="invite-first-name" className="text-sm">First name</Label>
-            <Input id="invite-first-name" className={INPUT_CLASS} value={firstName} onChange={(e) => setFirstName(e.target.value)} autoComplete="off" />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="invite-last-name" className="text-sm">Last name</Label>
-            <Input id="invite-last-name" className={INPUT_CLASS} value={lastName} onChange={(e) => setLastName(e.target.value)} autoComplete="off" />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="invite-recipient-email" className="text-sm">Email</Label>
-            <Input
-              id="invite-recipient-email"
-              type="email"
-              className={INPUT_CLASS}
-              value={recipientEmail}
-              onChange={(e) => setRecipientEmail(e.target.value)}
-              placeholder="name@example.com"
-              autoComplete="off"
-            />
-            <EmailTypoHint value={recipientEmail} onAccept={setRecipientEmail} />
-            {emailGiven && !emailOk && (
-              <p className="text-sm text-destructive">Enter a valid email address, or leave it blank.</p>
-            )}
-            <p className="text-[13px] text-muted-foreground">{emailGiven ? "Only this address can accept the invitation." : "Blank means anyone with the link can accept."}</p>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="invite-recipient-phone" className="text-sm">Phone</Label>
-            <Input id="invite-recipient-phone" type="tel" className={INPUT_CLASS} value={recipientPhone} onChange={(e) => setRecipientPhone(e.target.value)} placeholder="(555) 123-4567" autoComplete="off" />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="invite-npn" className="text-sm">NPN <span className="font-normal text-muted-foreground">(licensed agents)</span></Label>
-            <Input id="invite-npn" inputMode="numeric" className={INPUT_CLASS} value={npn} onChange={(e) => setNpn(e.target.value)} placeholder="5 to 10 digits" autoComplete="off" />
-            {npnIssue && <p className="text-sm text-destructive">{npnIssue}</p>}
-          </div>
-        </div>
-      </Step>
+  const previewExpiry = lifetime === "temporary" ? formatExpiry(expiryFrom(expiresHours)) : null;
+  const teamSummary = [
+    roleOptions.length > 1 ? INVITE_AS_LABEL[inviteAs] : null,
+    `Under ${chosenUpline?.name ?? "—"}${chosenUpline?.is_self ? " (me)" : ""}`,
+    chosenUpline ? agencyLabel(chosenUpline.agency_key, BRAND.legalName) : null,
+    offeredComp != null && Number.isFinite(offeredComp) ? `offered ${offeredComp}%` : "no comp offer",
+    exceptions.length ? `${exceptions.length} carrier exception${exceptions.length === 1 ? "" : "s"}` : null,
+    note.trim() ? "team note" : null,
+  ].filter(Boolean).join(" · ");
 
-      <Step n={2} title="Their role and license" hint={licenseHint} state={stepState(2)} onEnter={() => enterStep(2)}>
+  const formBody = (
+    <div className="space-y-8">
+      <Step
+        n={1}
+        title={isJoin ? "Who is it for?" : "Who are you inviting?"}
+        hint={mode === "quick" ? "They fill in their own details when they open it." : "All optional. Fill in what you know."}
+        state={stepState(1)}
+        onEnter={() => enterStep(1)}
+      >
         <div className="space-y-4">
-          <div className="space-y-1.5 sm:max-w-xs">
-            <Label htmlFor="invite-as" className="text-sm">Invite as</Label>
-            <select id="invite-as" className={SELECT_CLASS} value={inviteAs} onChange={(e) => setInviteAs(e.target.value as InviteAs)}>
-              {roleOptions.map((r) => <option key={r} value={r}>{INVITE_AS_LABEL[r]}</option>)}
-            </select>
-            {issueFor("target_role") && <p className="text-sm text-destructive">{issueFor("target_role")}</p>}
-          </div>
-          <div className="space-y-1.5">
-            <span className="text-sm font-medium">License</span>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3" role="radiogroup" aria-label="License path">
-              {([
-                ["recruit_chooses", "They choose"],
-                ["licensed", "Licensed"],
-                ["unlicensed", "Not licensed yet"],
-              ] as Array<[LicensePath, string]>).map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  role="radio"
-                  aria-checked={licensePath === value}
-                  onClick={() => setLicensePath(value)}
-                  className={`h-12 rounded-lg border px-3 text-base font-medium transition-colors focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] ${licensePath === value ? "border-primary/60 bg-primary/15 text-foreground" : "border-border bg-card text-muted-foreground hover:bg-muted/50 hover:text-foreground"}`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            <p className="text-[13px] text-muted-foreground">Licensed starts contracting when they accept. Not licensed starts the licensing roadmap.</p>
-          </div>
-        </div>
-      </Step>
-
-      <Step n={3} title="Who they'll work under" state={stepState(3)} onEnter={() => enterStep(3)}>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="invite-agency" className="text-sm">Agency</Label>
-            <select id="invite-agency" className={SELECT_CLASS} value={agencyKey} onChange={(e) => setAgencyKey(e.target.value)} disabled={agencies.length < 2}>
-              {agencies.length > 1 && <option value="">All agencies</option>}
-              {agencies.map((key) => <option key={key} value={key}>{agencyLabel(key, BRAND.legalName)}</option>)}
-            </select>
-          </div>
-          <div className="space-y-1.5 sm:col-span-2">
-            <Label htmlFor="invite-upline" className="text-sm">Upline</Label>
-            <select id="invite-upline" className={SELECT_CLASS} value={uplineId} onChange={(e) => setUplineId(e.target.value)}>
-              {visibleUplines.length === 0 && <option value="">No eligible upline</option>}
-              {visibleUplines.map((u) => (
-                <option key={u.id} value={u.id}>{u.is_self ? `${u.name} (me)` : u.name}</option>
-              ))}
-            </select>
-            {issueFor("target_manager_id") && <p className="text-sm text-destructive">{issueFor("target_manager_id")}</p>}
-          </div>
-        </div>
-      </Step>
-
-      <Step n={STEP_COUNT} title="The offer" state={stepState(STEP_COUNT)} onEnter={() => enterStep(STEP_COUNT)}>
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="invite-comp" className="text-sm">Offered comp</Label>
-              {opts.can_offer_comp ? (
-                <select id="invite-comp" className={SELECT_CLASS} value={compChoice} onChange={(e) => setCompChoice(e.target.value)}>
-                  <option value="none">No offer (set later)</option>
-                  {opts.comp_levels.map((level) => <option key={level} value={String(level)}>{level}%</option>)}
-                  {opts.is_admin && <option value="custom">Custom level (admin)…</option>}
-                </select>
-              ) : (
-                <p className="flex h-12 items-center rounded-lg border border-border bg-muted px-3 text-base text-muted-foreground">Set by a manager or admin</p>
-              )}
-              {compChoice === "custom" && (
-                <Input
-                  id="invite-comp-custom"
-                  aria-label="Custom offered comp percent"
-                  inputMode="decimal"
-                  className={INPUT_CLASS}
-                  value={customComp}
-                  onChange={(e) => setCustomComp(e.target.value)}
-                  placeholder="50–200"
-                />
-              )}
-              {issueFor("offered_comp_pct") && <p className="text-sm text-destructive">{issueFor("offered_comp_pct")}</p>}
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="invite-expiry" className="text-sm">Link works for</Label>
-              <select id="invite-expiry" className={SELECT_CLASS} value={expiresHours} onChange={(e) => setExpiresHours(Number(e.target.value))}>
-                {EXPIRY_OPTIONS.map((o) => <option key={o.hours} value={o.hours}>{o.label}</option>)}
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="invite-note" className="text-sm">Team note <span className="font-normal text-muted-foreground">(only your team sees it)</span></Label>
-              <Input
-                id="invite-note"
-                className={INPUT_CLASS}
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                maxLength={noteRoom}
-                aria-invalid={noteOver > 0 || undefined}
-                aria-describedby={noteOver > 0 ? "invite-note-over" : undefined}
-              />
-              {noteOver > 0 ? (
-                <p id="invite-note-over" role="alert" className="text-sm text-destructive">
-                  The note is {noteOver} character{noteOver === 1 ? "" : "s"} too long now that the contracting details take part of its space. Shorten it to create the invitation.
-                </p>
-              ) : note.length > noteRoom - 20 ? (
-                <p className="text-[13px] text-muted-foreground">{noteRoom - note.length} characters left</p>
-              ) : null}
-            </div>
-          </div>
-
-          {opts.can_offer_comp && (
-            <div className="space-y-3 rounded-xl border border-border p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-base font-medium">Carrier exceptions</p>
-                  <p className="text-sm text-muted-foreground">Only when a carrier is offered at a different level than the base offer.</p>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-11"
-                  onClick={() => setExceptions((rows) => [...rows, { rowKey: crypto.randomUUID(), carrier_id: "", pct: null, note: null }])}
-                  disabled={exceptions.length >= 10}
-                >
-                  <Plus className="h-4 w-4" /> Add
-                </Button>
+          <ChoiceGroup<LinkMode> label="What you know about them" value={mode} options={MODE_OPTIONS} onChange={setMode} />
+          {mode === "details" && (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="invite-first-name" className="text-sm">First name</Label>
+                <Input id="invite-first-name" className={INPUT_CLASS} value={firstName} onChange={(e) => setFirstName(e.target.value)} autoComplete="off" />
               </div>
-              {exceptions.map((ex) => (
-                <div key={ex.rowKey} className="grid grid-cols-[1fr_7rem_auto] items-center gap-2">
-                  <select
-                    aria-label="Carrier"
-                    className={SELECT_CLASS}
-                    value={ex.carrier_id}
-                    onChange={(e) => setExceptions((rows) => rows.map((r) => r.rowKey === ex.rowKey ? { ...r, carrier_id: e.target.value } : r))}
-                  >
-                    <option value="">Choose carrier</option>
-                    {opts.carriers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                  <select
-                    aria-label="Carrier exception percent"
-                    className={SELECT_CLASS}
-                    value={ex.pct == null ? "" : String(ex.pct)}
-                    onChange={(e) => setExceptions((rows) => rows.map((r) => r.rowKey === ex.rowKey ? { ...r, pct: e.target.value === "" ? null : Number(e.target.value) } : r))}
-                  >
-                    <option value="">%</option>
-                    {opts.comp_levels.map((level) => <option key={level} value={String(level)}>{level}%</option>)}
-                  </select>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="h-11 w-11 px-0"
-                    aria-label="Remove carrier exception"
-                    onClick={() => setExceptions((rows) => rows.filter((r) => r.rowKey !== ex.rowKey))}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-              {issueFor("carrier_exceptions") && <p className="text-sm text-destructive">{issueFor("carrier_exceptions")}</p>}
+              <div className="space-y-1.5">
+                <Label htmlFor="invite-last-name" className="text-sm">Last name</Label>
+                <Input id="invite-last-name" className={INPUT_CLASS} value={lastName} onChange={(e) => setLastName(e.target.value)} autoComplete="off" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="invite-recipient-email" className="text-sm">Email</Label>
+                <Input
+                  id="invite-recipient-email"
+                  type="email"
+                  inputMode="email"
+                  className={INPUT_CLASS}
+                  value={recipientEmail}
+                  onChange={(e) => setRecipientEmail(e.target.value)}
+                  placeholder="name@example.com"
+                  autoComplete="off"
+                />
+                <EmailTypoHint value={recipientEmail} onAccept={setRecipientEmail} />
+                {emailGiven && !emailOk && (
+                  <p role="alert" className="text-sm text-destructive">Enter a valid email address, or leave it blank.</p>
+                )}
+                <p className="text-[13px] text-muted-foreground">{emailGiven ? "Only this address can use the link." : "Blank means anyone with the link can use it."}</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="invite-recipient-phone" className="text-sm">Phone</Label>
+                <Input id="invite-recipient-phone" type="tel" inputMode="tel" className={INPUT_CLASS} value={recipientPhone} onChange={(e) => setRecipientPhone(e.target.value)} placeholder="(555) 123-4567" autoComplete="off" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="invite-npn" className="text-sm">NPN <span className="font-normal text-muted-foreground">(licensed agents)</span></Label>
+                <Input id="invite-npn" inputMode="numeric" className={INPUT_CLASS} value={npn} onChange={(e) => setNpn(e.target.value)} placeholder="5 to 10 digits" autoComplete="off" />
+                {npnIssue && <p role="alert" className="text-sm text-destructive">{npnIssue}</p>}
+              </div>
             </div>
           )}
         </div>
       </Step>
 
+      <Step
+        n={2}
+        title="License"
+        hint={licenseApplies ? (licenseHint ?? "Required. It decides the path they start on.") : undefined}
+        state={stepState(2)}
+        onEnter={() => enterStep(2)}
+      >
+        {licenseApplies ? (
+          <div className="space-y-1.5">
+            <ChoiceGroup<LicenseChoice>
+              label="License"
+              value={license}
+              options={LICENSE_OPTIONS}
+              onChange={setLicense}
+              invalid={triedSubmit && licenseMissing}
+              describedBy={(triedSubmit && licenseMissing) || license ? "invite-license-help" : undefined}
+              stackOnPhone
+            />
+            {triedSubmit && licenseMissing ? (
+              <p id="invite-license-help" role="alert" className="text-sm text-destructive">Pick Licensed or Not licensed yet.</p>
+            ) : license ? (
+              <p id="invite-license-help" className="text-[13px] text-muted-foreground">{LICENSE_RESULT[kind][license]}</p>
+            ) : null}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">Staff accounts do not need a license, so there is nothing to pick.</p>
+        )}
+      </Step>
+
+      <Step n={3} title="Link type" state={stepState(3)} onEnter={() => enterStep(3)}>
+        <div className="space-y-3">
+          <ChoiceGroup<LinkLifetime> label="Link type" value={lifetime} options={LIFETIME_OPTIONS} onChange={setLifetime} describedBy="invite-lifetime-help" />
+          {lifetime === "temporary" ? (
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+              <Label htmlFor="invite-expiry" className="text-sm sm:shrink-0">Works for</Label>
+              <select id="invite-expiry" className={cn(SELECT_CLASS, "sm:w-44")} value={expiresHours} onChange={(e) => setExpiresHours(Number(e.target.value))}>
+                {TEMPORARY_SPANS.map((o) => <option key={o.hours} value={o.hours}>{o.label}</option>)}
+              </select>
+              <p id="invite-lifetime-help" className="text-sm text-muted-foreground" data-testid="invite-expiry-preview">
+                {previewExpiry ? `Stops working ${previewExpiry}.` : "—"}
+              </p>
+            </div>
+          ) : (
+            <p id="invite-lifetime-help" className="text-sm text-muted-foreground">Never expires. It still works for one person.</p>
+          )}
+        </div>
+      </Step>
+
+      {teamStep && (
+        <Step n={teamStep} title="Their team and offer" state={stepState(teamStep)} onEnter={() => enterStep(teamStep)}>
+          <div className="space-y-4">
+            {/* The whole row is the control: the current values, and Change to open them. */}
+            <button
+              type="button"
+              aria-expanded={teamOpen}
+              aria-controls="invite-team-fields"
+              onClick={() => setTeamOpen((open) => !open)}
+              className="flex min-h-12 w-full select-none items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2.5 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
+            >
+              <span className="min-w-0 text-sm text-foreground" data-testid="invite-team-summary">{teamSummary}</span>
+              <span className="flex shrink-0 items-center gap-1 text-sm font-semibold text-foreground">
+                {teamOpen ? "Done" : "Change"}
+                <ChevronDown className={cn("h-4 w-4 transition-transform", teamOpen && "rotate-180")} aria-hidden="true" />
+              </span>
+            </button>
+
+            {teamOpen && (
+              <div id="invite-team-fields" className="space-y-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  {roleOptions.length > 1 && (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="invite-as" className="text-sm">Invite as</Label>
+                      <select id="invite-as" className={SELECT_CLASS} value={inviteAs} onChange={(e) => setInviteAs(e.target.value as InviteAs)}>
+                        {roleOptions.map((r) => <option key={r} value={r}>{INVITE_AS_LABEL[r]}</option>)}
+                      </select>
+                      {issueFor("target_role") && <p role="alert" className="text-sm text-destructive">{issueFor("target_role")}</p>}
+                    </div>
+                  )}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="invite-agency" className="text-sm">Agency</Label>
+                    <select id="invite-agency" className={SELECT_CLASS} value={agencyKey} onChange={(e) => setAgencyKey(e.target.value)} disabled={agencies.length < 2}>
+                      {agencies.length > 1 && <option value="">All agencies</option>}
+                      {agencies.map((key) => <option key={key} value={key}>{agencyLabel(key, BRAND.legalName)}</option>)}
+                    </select>
+                  </div>
+                  <div className={cn("space-y-1.5", roleOptions.length > 1 ? "" : "sm:col-span-2")}>
+                    <Label htmlFor="invite-upline" className="text-sm">Upline</Label>
+                    <select id="invite-upline" className={SELECT_CLASS} value={uplineId} onChange={(e) => setUplineId(e.target.value)}>
+                      {visibleUplines.length === 0 && <option value="">No eligible upline</option>}
+                      {visibleUplines.map((u) => (
+                        <option key={u.id} value={u.id}>{u.is_self ? `${u.name} (me)` : u.name}</option>
+                      ))}
+                    </select>
+                    {issueFor("target_manager_id") && <p role="alert" className="text-sm text-destructive">{issueFor("target_manager_id")}</p>}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="invite-comp" className="text-sm">Offered comp</Label>
+                    {opts.can_offer_comp ? (
+                      <select id="invite-comp" className={SELECT_CLASS} value={compChoice} onChange={(e) => setCompChoice(e.target.value)}>
+                        <option value="none">No offer (set later)</option>
+                        {opts.comp_levels.map((level) => <option key={level} value={String(level)}>{level}%</option>)}
+                        {opts.is_admin && <option value="custom">Custom level (admin)…</option>}
+                      </select>
+                    ) : (
+                      <p className="flex h-12 items-center rounded-lg border border-border bg-muted px-3 text-base text-muted-foreground">Set by a manager or admin</p>
+                    )}
+                    {compChoice === "custom" && (
+                      <Input
+                        id="invite-comp-custom"
+                        aria-label="Custom offered comp percent"
+                        inputMode="decimal"
+                        className={INPUT_CLASS}
+                        value={customComp}
+                        onChange={(e) => setCustomComp(e.target.value)}
+                        placeholder="50–200"
+                      />
+                    )}
+                    {issueFor("offered_comp_pct") && <p role="alert" className="text-sm text-destructive">{issueFor("offered_comp_pct")}</p>}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="invite-note" className="text-sm">Team note <span className="font-normal text-muted-foreground">(only your team sees it)</span></Label>
+                    <Input
+                      id="invite-note"
+                      className={INPUT_CLASS}
+                      value={note}
+                      onChange={(e) => setNote(e.target.value)}
+                      maxLength={noteRoom}
+                      aria-invalid={noteOver > 0 || undefined}
+                      aria-describedby={noteOver > 0 ? "invite-note-over" : undefined}
+                    />
+                    {noteOver > 0 ? (
+                      <p id="invite-note-over" role="alert" className="text-sm text-destructive">
+                        The note is {noteOver} character{noteOver === 1 ? "" : "s"} too long now that the contracting details take part of its space. Shorten it to make the link.
+                      </p>
+                    ) : note.length > noteRoom - 20 ? (
+                      <p className="text-[13px] text-muted-foreground">{noteRoom - note.length} characters left</p>
+                    ) : null}
+                  </div>
+                </div>
+
+                {opts.can_offer_comp && (
+                  <div className="space-y-3 rounded-lg border border-border p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-base font-medium">Carrier exceptions</p>
+                        <p className="text-sm text-muted-foreground">Only when a carrier is offered at a different level than the base offer.</p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-11"
+                        onClick={() => setExceptions((rows) => [...rows, { rowKey: crypto.randomUUID(), carrier_id: "", pct: null, note: null }])}
+                        disabled={exceptions.length >= 10}
+                      >
+                        <Plus className="h-4 w-4" /> Add
+                      </Button>
+                    </div>
+                    {exceptions.map((ex) => (
+                      <div key={ex.rowKey} className="grid grid-cols-[1fr_7rem_auto] items-center gap-2">
+                        <select
+                          aria-label="Carrier"
+                          className={SELECT_CLASS}
+                          value={ex.carrier_id}
+                          onChange={(e) => setExceptions((rows) => rows.map((r) => r.rowKey === ex.rowKey ? { ...r, carrier_id: e.target.value } : r))}
+                        >
+                          <option value="">Choose carrier</option>
+                          {opts.carriers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                        <select
+                          aria-label="Carrier exception percent"
+                          className={SELECT_CLASS}
+                          value={ex.pct == null ? "" : String(ex.pct)}
+                          onChange={(e) => setExceptions((rows) => rows.map((r) => r.rowKey === ex.rowKey ? { ...r, pct: e.target.value === "" ? null : Number(e.target.value) } : r))}
+                        >
+                          <option value="">%</option>
+                          {opts.comp_levels.map((level) => <option key={level} value={String(level)}>{level}%</option>)}
+                        </select>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="h-11 w-11 px-0"
+                          aria-label="Remove carrier exception"
+                          onClick={() => setExceptions((rows) => rows.filter((r) => r.rowKey !== ex.rowKey))}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    {issueFor("carrier_exceptions") && <p role="alert" className="text-sm text-destructive">{issueFor("carrier_exceptions")}</p>}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </Step>
+      )}
+
       <div className="flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground" data-testid="invite-summary">
-          {recipientName ? `${recipientName} · ` : ""}
-          {formatRole(targetRole)} under {chosenUpline?.name ?? "—"}
-          {chosenUpline ? ` · ${agencyLabel(chosenUpline.agency_key, BRAND.legalName)}` : ""}
-          {offeredComp != null && Number.isFinite(offeredComp) ? ` · offered ${offeredComp}%` : " · no comp offer"}
-          {exceptions.length ? ` · ${exceptions.length} carrier exception${exceptions.length === 1 ? "" : "s"}` : ""}
+          {[
+            recipientName || (mode === "quick" ? "Quick link" : "No details yet"),
+            // The role in words without the license, which has its own word next to it.
+            isJoin ? "Prospect" : inviteAs === "agent" ? "Agent" : formatRole(targetRole),
+            licenseApplies ? (license ? LICENSE_CHOICE_LABEL[license] : "license not picked") : null,
+            lifetime === "permanent" ? "Permanent" : `Temporary, ${TEMPORARY_SPANS.find((s) => s.hours === expiresHours)?.label ?? `${expiresHours} hours`}`,
+            !isJoin && chosenUpline ? `under ${chosenUpline.name}` : null,
+          ].filter(Boolean).join(" · ")}
         </p>
         <Button
           onClick={(e) => void submit(e.currentTarget)}
-          variant={createdIsCurrent ? "outline" : "default"}
+          variant={goldOnMake ? "default" : "outline"}
           className="h-12 px-6 text-base"
           disabled={submitting || (triedSubmit && !canSubmit)}
           data-testid="create-invitation"
         >
           {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Link2 className="h-5 w-5" />}
-          Create invitation
+          Make link
         </Button>
       </div>
+    </div>
+  );
 
-      {created && (
-        // Keyed by the invitation so each new one pops in; the previous card is replaced, never animated twice.
-        <div key={created.id} className="apex-pop space-y-4 rounded-xl border border-primary/40 bg-primary/5 p-5" data-testid="invitation-created">
-          <div className="flex items-start gap-3">
-            <ToneBubble tone="gold" size="md" className="mt-0.5">
-              <Check />
-            </ToneBubble>
-            <div className="min-w-0">
-              <p className="text-lg font-semibold leading-6">Invitation ready{created.recipient_name ? ` for ${created.recipient_name}` : ""}</p>
-              <p className="mt-1 break-all font-mono text-sm text-muted-foreground">{inviteUrlFromPath(created.path)}</p>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button variant={createdIsCurrent ? "default" : "outline"} className="h-11" onClick={copyCreated}>
-              {copied ? <><Check className="h-4 w-4" /> Copied</> : <><Copy className="h-4 w-4" /> Copy link</>}
-            </Button>
-            {created.recipient_email && (
-              <Button variant="outline" className="h-11" onClick={emailCreated}>
-                <Mail className="h-4 w-4" /> Email draft
-              </Button>
-            )}
-            <Button asChild variant="outline" className="h-11">
-              <a href={inviteUrlFromPath(created.path)} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-4 w-4" /> Preview
-              </a>
-            </Button>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Nothing has been sent. Copy the link or open a draft in your own mail app.
-            {created.recipient_email ? ` It works once, only for ${created.recipient_email}.` : " Anyone with the link can accept it once."}
+  const createdCard = created && (
+    // Keyed by the invitation so each new one pops in; the previous card is replaced, never animated twice.
+    <div
+      key={created.id}
+      ref={resultRef}
+      className={cn("apex-pop space-y-4 rounded-xl border border-primary/40 bg-primary/5 p-5", framed && "sm:p-6")}
+      data-testid="invitation-created"
+    >
+      <div className="flex items-start gap-3">
+        <ToneBubble tone="gold" size="md" className="mt-0.5">
+          <Check />
+        </ToneBubble>
+        <div className="min-w-0 space-y-2">
+          <p className="text-lg font-semibold leading-6">{created.recipient_name ? `Link ready for ${created.recipient_name}` : "Quick link ready"}</p>
+          <p className="select-all font-mono text-[15px] leading-snug text-muted-foreground [overflow-wrap:anywhere]">
+            <WrappableUrl url={inviteUrlFromPath(created.path)} />
           </p>
-          {created.contracting && (created.contracting.firstName || created.contracting.lastName || created.contracting.npn || created.contracting.phone) && (
-            <div className="space-y-2">
-              <p className="text-sm font-semibold text-foreground">For contracting — copy each field into the carrier site</p>
-              <ContractingCopyCard info={created.contracting} />
-            </div>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {created.license && <TonePill tone={licensePathTone(created.license)}>{LICENSE_CHOICE_LABEL[created.license]}</TonePill>}
+            <TonePill tone={linkLifetimeTone(created.permanent ? "permanent" : "temporary")}>
+              {created.permanent ? LINK_LIFETIME_LABEL.permanent : LINK_LIFETIME_LABEL.temporary}
+            </TonePill>
+            <span className="text-sm text-muted-foreground" data-testid="invitation-lifetime">
+              {lifetimeLine({ permanent: created.permanent, expiresAt: created.expires_at })}
+            </span>
+          </div>
+        </div>
+      </div>
+      <LinkShareRow
+        url={inviteUrlFromPath(created.path)}
+        kind={created.kind}
+        firstName={created.contracting?.firstName || null}
+        phone={created.contracting?.phone || null}
+        email={created.recipient_email}
+        permanent={created.permanent}
+        expiresAt={created.expires_at}
+        recipientLocked={!!created.recipient_email}
+        goldCopy={goldOnCopy}
+        onShared={async (channel) => {
+          try {
+            await shareInvitation(created.id, channel);
+          } catch (err) {
+            console.warn("record_invitation_share failed", err);
+          }
+        }}
+      />
+      <p className="text-sm text-muted-foreground">
+        Nothing has been sent. Share it yourself with the buttons above.
+        {created.recipient_email ? ` It works once, only for ${created.recipient_email}.` : " Anyone with the link can use it once."}{" "}
+        <a
+          href={inviteUrlFromPath(created.path)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex min-h-11 items-center gap-1 align-middle text-foreground underline underline-offset-4 hover:text-primary"
+        >
+          See what they see <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+        </a>
+      </p>
+      {created.kind === "hire" && created.contracting && (created.contracting.firstName || created.contracting.lastName || created.contracting.npn || created.contracting.phone) && (
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-foreground">For contracting — copy each field into the carrier site</p>
+          <ContractingCopyCard info={created.contracting} />
         </div>
       )}
+    </div>
+  );
+
+  if (framed) {
+    return (
+      <div className="space-y-4" data-testid="invite-agent-form">
+        <section aria-label={isJoin ? "Make a link" : "New invitation"} className="rounded-xl border border-border bg-card p-5 sm:p-8">
+          {formBody}
+        </section>
+        {createdCard}
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-8" data-testid="invite-agent-form">
+      {formBody}
+      {createdCard}
     </div>
   );
 }

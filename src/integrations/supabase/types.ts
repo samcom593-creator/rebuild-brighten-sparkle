@@ -160528,11 +160528,14 @@ export type Database = {
         Returns: {
           agent_id: string
           application_id: string
+          applied_at: string
           days_in_stage: number
           display_name: string
           email: string
           entered_at: string
           instagram: string
+          interview_at: string
+          interview_booked_at: string
           is_stalled: boolean
           last_contacted_at: string
           last_sign_in_at: string
@@ -160553,6 +160556,13 @@ export type Database = {
           stage_name: string
           state: string
           status: string
+          xcel_completed_on: string
+          xcel_course: string
+          xcel_enrolled_on: string
+          xcel_last_login_on: string
+          xcel_match: string
+          xcel_pct: number
+          xcel_report_on: string
         }[]
       }
       recruiting_income_estimate: {

@@ -5780,6 +5780,16 @@
         "raw": ""
       }
     ],
+    "home_conversion_people": [
+      {
+        "all": [
+          "p_today"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_today date DEFAULT NULL::date"
+      }
+    ],
     "ig_bucket": [
       {
         "all": [

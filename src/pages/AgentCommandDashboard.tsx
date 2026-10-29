@@ -476,7 +476,7 @@ export default function AgentCommandDashboard() {
               icon={<BarChart3 className="h-6 w-6" />}
               title="No production logged in the last 30 days"
               description="Log your daily numbers — calls, presentations, and deals — and they'll show up here."
-              actions={<Button asChild size="sm"><Link to="/numbers">Log today's numbers</Link></Button>}
+              actions={<Button asChild size="sm" variant="outline"><Link to="/numbers">Log today's numbers</Link></Button>}
             />
           ) : (
             <ResponsiveContainer width="100%" height={220}>
@@ -488,8 +488,8 @@ export default function AgentCommandDashboard() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border)/0.4)" />
-                <XAxis dataKey="day" tickFormatter={(d) => format(new Date(d), "MMM d")} fontSize={10} stroke="hsl(var(--muted-foreground))" />
-                <YAxis fontSize={10} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+                <XAxis dataKey="day" tickFormatter={(d) => format(new Date(d), "MMM d")} fontSize={13} stroke="hsl(var(--muted-foreground))" />
+                <YAxis fontSize={13} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
                 <Tooltip
                   contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
                   labelFormatter={(d) => format(new Date(d), "PPP")}
@@ -644,7 +644,7 @@ export default function AgentCommandDashboard() {
               icon={<Trophy className="h-6 w-6" />}
               title="No deals yet"
               description="First deal coming up? Log it the moment the policy submits — it shows here within seconds."
-              actions={<Button asChild size="sm"><Link to="/dashboard/agent-pipeline">Open pipeline</Link></Button>}
+              actions={<Button asChild size="sm" variant="outline"><Link to="/dashboard/agent-pipeline">Open pipeline</Link></Button>}
             />
           ) : (
             <ul className="divide-y divide-border/40">
@@ -687,8 +687,8 @@ export default function AgentCommandDashboard() {
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={sparkline}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border)/0.4)" />
-                <XAxis dataKey="day" tickFormatter={(d) => format(new Date(d), "M/d")} fontSize={9} stroke="hsl(var(--muted-foreground))" />
-                <YAxis allowDecimals={false} fontSize={10} stroke="hsl(var(--muted-foreground))" />
+                <XAxis dataKey="day" tickFormatter={(d) => format(new Date(d), "M/d")} fontSize={13} stroke="hsl(var(--muted-foreground))" />
+                <YAxis allowDecimals={false} fontSize={13} stroke="hsl(var(--muted-foreground))" />
                 <Tooltip
                   contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
                   labelFormatter={(d) => format(new Date(d), "PPP")}
@@ -2688,8 +2688,8 @@ function AgencyCommandView() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                  <XAxis dataKey="day" tickFormatter={(d) => format(new Date(d), "MMM d")} fontSize={10} stroke="rgba(255,255,255,0.4)" />
-                  <YAxis fontSize={10} stroke="rgba(255,255,255,0.4)" tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+                  <XAxis dataKey="day" tickFormatter={(d) => format(new Date(d), "MMM d")} fontSize={13} stroke="rgba(255,255,255,0.4)" />
+                  <YAxis fontSize={13} stroke="rgba(255,255,255,0.4)" tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
                   <Tooltip
                     contentStyle={{ background: "hsl(220 40% 8%)", border: "1px solid hsl(var(--primary) / 0.4)", borderRadius: 12, color: "#fff" }}
                     labelStyle={{ color: "hsl(var(--primary))" }}
@@ -2715,10 +2715,10 @@ function AgencyCommandView() {
                 <ResponsiveContainer width="100%" height={110}>
                   <BarChart data={trend.data}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                    <XAxis dataKey="day" tickFormatter={(d) => format(new Date(d), "MMM d")} fontSize={9} stroke="rgba(255,255,255,0.4)" />
-                    <YAxis fontSize={9} stroke="rgba(255,255,255,0.4)" allowDecimals={false} />
+                    <XAxis dataKey="day" tickFormatter={(d) => format(new Date(d), "MMM d")} fontSize={13} stroke="rgba(255,255,255,0.4)" />
+                    <YAxis fontSize={13} stroke="rgba(255,255,255,0.4)" allowDecimals={false} />
                     <Tooltip
-                      contentStyle={{ background: "hsl(220 40% 8%)", border: "1px solid hsl(45 85% 55% / 0.4)", borderRadius: 12, color: "#fff", fontSize: 11 }}
+                      contentStyle={{ background: "hsl(220 40% 8%)", border: "1px solid hsl(45 85% 55% / 0.4)", borderRadius: 12, color: "#fff", fontSize: 13 }}
                       labelFormatter={(d) => format(new Date(d), "PPP")}
                       formatter={(v: number) => [`${v} deals`, "Deals"]}
                     />
@@ -3368,7 +3368,7 @@ function CarrierMixPanel({ data, loading }: {
                     ))}
                   </Pie>
                   <Tooltip
-                    contentStyle={{ background: "rgba(15,23,42,0.95)", border: "1px solid rgba(16,185,129,0.4)", borderRadius: 8, fontSize: 11, color: "white" }}
+                    contentStyle={{ background: "rgba(15,23,42,0.95)", border: "1px solid rgba(16,185,129,0.4)", borderRadius: 8, fontSize: 13, color: "white" }}
                     formatter={(value: number, _name, props: any) => [`${fmtUsd(value, true)} · ${props.payload.deals} deals`, props.payload.name]}
                   />
                 </PieChart>
@@ -4168,10 +4168,10 @@ function WeekOverWeekPanel() {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="dayLabel" fontSize={10} stroke="rgba(255,255,255,0.4)" />
-              <YAxis fontSize={10} stroke="rgba(255,255,255,0.4)" tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+              <XAxis dataKey="dayLabel" fontSize={13} stroke="rgba(255,255,255,0.4)" />
+              <YAxis fontSize={13} stroke="rgba(255,255,255,0.4)" tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
               <Tooltip
-                contentStyle={{ background: "hsl(220 40% 8%)", border: "1px solid hsl(var(--primary) / 0.4)", borderRadius: 12, color: "#fff", fontSize: 11 }}
+                contentStyle={{ background: "hsl(220 40% 8%)", border: "1px solid hsl(var(--primary) / 0.4)", borderRadius: 12, color: "#fff", fontSize: 13 }}
                 formatter={(v: number, name: string) => [fmtUsd(v), name === "thisWeek" ? "This week" : "Last week"]}
               />
               <Area type="monotone" dataKey="thisWeek" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#wowThisWk)" />
@@ -4758,10 +4758,10 @@ function HirePace12WPanel() {
             <ResponsiveContainer width="100%" height={120}>
               <BarChart data={d.list}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                <XAxis dataKey="label" fontSize={9} stroke="rgba(255,255,255,0.4)" />
-                <YAxis fontSize={9} stroke="rgba(255,255,255,0.4)" />
+                <XAxis dataKey="label" fontSize={13} stroke="rgba(255,255,255,0.4)" />
+                <YAxis fontSize={13} stroke="rgba(255,255,255,0.4)" />
                 <Tooltip
-                  contentStyle={{ background: "hsl(220 40% 8%)", border: "1px solid hsl(45 85% 55% / 0.4)", borderRadius: 12, color: "#fff", fontSize: 11 }}
+                  contentStyle={{ background: "hsl(220 40% 8%)", border: "1px solid hsl(45 85% 55% / 0.4)", borderRadius: 12, color: "#fff", fontSize: 13 }}
                   formatter={(v: number) => [`${v} hires`, "Hires"]}
                 />
                 <Bar dataKey="count" fill="hsl(45 85% 55%)" radius={[4, 4, 0, 0]} />

@@ -223,7 +223,8 @@ export function ApplicantHome() {
             <div className="flex items-center gap-2 text-sm font-semibold text-foreground"><Phone className="h-4 w-4 text-primary" /> Call or text Sam</div>
             <p className="mt-2 text-sm text-muted-foreground">Direct line, no funnel. Say the email you applied with and we'll connect it.</p>
             <div className="mt-4 flex flex-wrap gap-2">
-              <ActionLink href={SAM_PHONE.tel} external>Call {SAM_PHONE.display}</ActionLink>
+              {/* OVERHAUL-home: one gold button per screen. "Apply now" beside it is the primary step. */}
+              <ActionLink href={SAM_PHONE.tel} external variant="outline">Call {SAM_PHONE.display}</ActionLink>
               <ActionLink href={SAM_PHONE.sms} external variant="outline">Text {SAM_PHONE.display}</ActionLink>
             </div>
           </div>

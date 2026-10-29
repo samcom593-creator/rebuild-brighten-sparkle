@@ -52,12 +52,12 @@ export function HomeAnalyticsPanel({ trend, lifetime, policyStatus }: HomeAnalyt
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={rows} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} width={56}
+                <XAxis dataKey="name" tick={{ fontSize: 13, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fontSize: 13, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} width={56}
                   domain={[0, (dataMax: number) => Math.ceil((dataMax * 1.2) / 5000) * 5000]}
                   tickFormatter={(v: number) => `$${Math.round(v / 1000)}k`} />
                 <ChartTooltip formatter={(v: number) => money(v)}
-                  contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                  contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 13 }} />
                 <Area type="monotone" dataKey="ap" name="ALP" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.16} strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>

@@ -28,6 +28,7 @@ import { TrainingLibrary } from "@/components/calltraining/TrainingLibrary";
 import { AgentCoachingCard } from "@/components/calltraining/AgentCoachingCard";
 import { CallReviewBoard } from "@/components/calltraining/CallReviewBoard";
 import { CallClientPanel } from "@/components/calls/CallClientPanel";
+import { GradeBreakdown } from "@/components/calltraining/GradeBreakdown";
 import { momentsFrom } from "@/lib/callAudio";
 import { cn } from "@/lib/utils";
 import { dispositionLabel } from "@/lib/readymodeDispositions";
@@ -62,6 +63,10 @@ interface GradedCall {
   sentiment: string | null;
   summary: string | null;
   has_packet: boolean;
+  script_score: number | null;
+  script_followed: string | null;
+  script_steps: Array<{ step?: string; status?: string; t?: string; note?: string }> | null;
+  score_reasons: Record<string, { reason?: string; t?: string; quote?: string }> | null;
 }
 interface AgentRow {
   agent_name: string | null;
@@ -73,6 +78,7 @@ interface AgentRow {
   avg_objection_handling: number | null;
   avg_close: number | null;
   urgent_flags: number;
+  avg_script: number | null;
 }
 
 const VIEWS: Array<{ key: string; label: string }> = [
@@ -212,7 +218,7 @@ export default function CallTraining() {
                 <tr>
                   <th className="px-4 py-2">Agent</th><th className="px-2 py-2 text-right">Calls</th><th className="px-2 py-2 text-right">Sold</th>
                   <th className="px-2 py-2 text-right">Graded</th><th className="px-2 py-2 text-right">Avg</th><th className="px-2 py-2 text-right">Great</th>
-                  <th className="px-2 py-2 text-right">Objections</th><th className="px-2 py-2 text-right">Close</th><th className="px-2 py-2 text-right">Urgent</th>
+                  <th className="px-2 py-2 text-right">Objections</th><th className="px-2 py-2 text-right">Close</th><th className="px-2 py-2 text-right">On script</th><th className="px-2 py-2 text-right">Urgent</th>
                 </tr>
               </thead>
               <tbody>
@@ -225,7 +231,7 @@ export default function CallTraining() {
                     <td className={cn("px-2 py-2 text-right font-semibold tabular-nums", scoreTone(a.avg_score))}>{a.avg_score ?? "—"}</td>
                     <td className="px-2 py-2 text-right tabular-nums">{a.great_calls}</td>
                     <td className="px-2 py-2 text-right tabular-nums">{a.avg_objection_handling ?? "—"}</td>
-                    <td className="px-2 py-2 text-right tabular-nums">{a.avg_close ?? "—"}</td>
+                    <td className="px-2 py-2 text-right tabular-nums">{a.avg_close ?? "—"}</td><td className="px-2 py-2 text-right tabular-nums">{a.avg_script ?? ""}</td>
                     <td className={cn("px-2 py-2 text-right tabular-nums", a.urgent_flags ? "text-rose-700 dark:text-rose-300" : "")}>{a.urgent_flags}</td>
                   </tr>
                 ))}
@@ -253,6 +259,7 @@ export default function CallTraining() {
                 <button type="button" onClick={() => setOpenId(open ? null : r.call_id)} aria-expanded={open} className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 text-left">
                   <span className={cn("w-14 text-2xl font-bold tabular-nums", scoreTone(r.overall_score))}>{r.overall_score ?? "—"}</span>
                   {r.great_call && <Badge className="border-amber-500/40 bg-amber-500/15 text-amber-200"><Star className="mr-1 h-3 w-3" /> Great call</Badge>}
+                  {r.script_score != null && <Badge variant="outline">On script {r.script_score}/10</Badge>}
                   <span className="font-medium">{r.agent_name || "Unknown agent"}</span>
                   <span className="text-sm text-muted-foreground">{shortDate(r.call_started_at)} · {dispositionLabel(r.disposition)}{r.duration_seconds ? ` · ${mmss(r.duration_seconds)}` : ""}{r.lead_first_name ? ` · ${r.lead_first_name}` : ""}</span>
                   {r.coaching_priority === "urgent" && <Badge variant="outline" className="border-rose-500/40 text-rose-700 dark:text-rose-300">Urgent</Badge>}
@@ -264,6 +271,7 @@ export default function CallTraining() {
                   <div className="space-y-4 border-t border-border/60 px-4 py-3 text-sm">
                     <CallAudioPlayer callId={r.call_id} moments={[...moments.map((m) => ({ t: m.t, label: m.objection })), ...momentsFrom(r.key_quotes)]} />
                     {leadership && <CallClientPanel callId={r.call_id} />}
+                    <GradeBreakdown scores={r.scores} reasons={r.score_reasons} scriptScore={r.script_score} scriptFollowed={r.script_followed} steps={r.script_steps} />
                     <div className="flex flex-wrap gap-x-4 gap-y-1">
                       {RUBRIC.map((k) => (
                         <span key={k.key} className="text-muted-foreground">{k.label} <span className={cn("font-semibold", scoreTone(r.scores?.[k.key] == null ? null : r.scores[k.key] * 10))}>{r.scores?.[k.key] ?? "—"}</span>/10</span>

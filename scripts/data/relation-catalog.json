@@ -369,6 +369,7 @@
     "public.lead_purchase_requests",
     "public.lead_purchases",
     "public.lead_purchases_dedup_archive",
+    "public.leaderboard_cheers",
     "public.leaderboard_snapshots",
     "public.license_inference_log",
     "public.license_milestone_outbox",

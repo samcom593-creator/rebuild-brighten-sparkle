@@ -176,6 +176,30 @@ export type Database = {
         }
         Relationships: []
       }
+      leaderboard_cheers: {
+        Row: {
+          id: string | null
+          month_start: string | null
+          to_agent_key: string | null
+          from_user_id: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string | null
+          month_start?: string | null
+          to_agent_key?: string | null
+          from_user_id?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string | null
+          month_start?: string | null
+          to_agent_key?: string | null
+          from_user_id?: string | null
+          created_at?: string | null
+        }
+        Relationships: []
+      }
       money_inbox_sources: {
         Row: {
           source: string
@@ -119441,6 +119465,11 @@ export type Database = {
           summary: string | null
           tactics: string[] | null
           training_tags: string[] | null
+          script_score: number | null
+          script_followed: string | null
+          script_steps: Json | null
+          score_reasons: Json | null
+          rubric_version: number | null
         }
         Relationships: []
       }
@@ -119458,6 +119487,7 @@ export type Database = {
           last_call_at: string | null
           sold: number | null
           urgent_flags: number | null
+          avg_script: number | null
         }
         Relationships: []
       }

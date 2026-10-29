@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-10-29T06:09:20Z",
+ "_generated_at": "2026-10-29T13:09:02Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -12576,12 +12576,20 @@
   },
   "recruit_pipeline_list.agent_id": {
    "candidates": [
+    "interview_events.agent_id",
     "magic_login_tokens.agent_id",
     "next_step_progress.agent_id"
    ],
    "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
     "g",
+    "leader",
+    "licensed",
     "manager",
+    "name",
+    "phone",
     "public",
     "resident_state",
     "va",
@@ -12590,11 +12598,38 @@
   },
   "recruit_pipeline_list.application_id": {
    "candidates": [
-    "next_step_progress.application_id"
+    "interview_events.application_id",
+    "next_step_progress.application_id",
+    "xcel_pre_licensing_students.application_id"
    ],
    "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
     "g",
+    "leader",
+    "licensed",
     "manager",
+    "name",
+    "phone",
+    "public",
+    "resident_state",
+    "va",
+    "va_manager"
+   ]
+  },
+  "recruit_pipeline_list.applied_at": {
+   "candidates": [],
+   "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
+    "g",
+    "leader",
+    "licensed",
+    "manager",
+    "name",
+    "phone",
     "public",
     "resident_state",
     "va",
@@ -12604,8 +12639,15 @@
   "recruit_pipeline_list.days_in_stage": {
    "candidates": [],
    "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
     "g",
+    "leader",
+    "licensed",
     "manager",
+    "name",
+    "phone",
     "public",
     "resident_state",
     "va",
@@ -12618,8 +12660,15 @@
     "next_step_stages.display_name"
    ],
    "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
     "g",
+    "leader",
+    "licensed",
     "manager",
+    "name",
+    "phone",
     "public",
     "resident_state",
     "va",
@@ -12631,11 +12680,20 @@
     "agentlink_agents.email",
     "applications.email",
     "magic_login_tokens.email",
-    "profiles.email"
+    "profiles.email",
+    "xcel_events.email",
+    "xcel_pre_licensing_students.email"
    ],
    "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
     "g",
+    "leader",
+    "licensed",
     "manager",
+    "name",
+    "phone",
     "public",
     "resident_state",
     "va",
@@ -12647,8 +12705,15 @@
     "next_step_progress.entered_at"
    ],
    "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
     "g",
+    "leader",
+    "licensed",
     "manager",
+    "name",
+    "phone",
     "public",
     "resident_state",
     "va",
@@ -12658,8 +12723,51 @@
   "recruit_pipeline_list.instagram": {
    "candidates": [],
    "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
     "g",
+    "leader",
+    "licensed",
     "manager",
+    "name",
+    "phone",
+    "public",
+    "resident_state",
+    "va",
+    "va_manager"
+   ]
+  },
+  "recruit_pipeline_list.interview_at": {
+   "candidates": [],
+   "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
+    "g",
+    "leader",
+    "licensed",
+    "manager",
+    "name",
+    "phone",
+    "public",
+    "resident_state",
+    "va",
+    "va_manager"
+   ]
+  },
+  "recruit_pipeline_list.interview_booked_at": {
+   "candidates": [],
+   "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
+    "g",
+    "leader",
+    "licensed",
+    "manager",
+    "name",
+    "phone",
     "public",
     "resident_state",
     "va",
@@ -12671,8 +12779,15 @@
     "next_step_progress.is_stalled"
    ],
    "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
     "g",
+    "leader",
+    "licensed",
     "manager",
+    "name",
+    "phone",
     "public",
     "resident_state",
     "va",
@@ -12684,8 +12799,15 @@
     "applications.last_contacted_at"
    ],
    "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
     "g",
+    "leader",
+    "licensed",
     "manager",
+    "name",
+    "phone",
     "public",
     "resident_state",
     "va",
@@ -12697,8 +12819,15 @@
     "agentlink_agents.last_sign_in_at"
    ],
    "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
     "g",
+    "leader",
+    "licensed",
     "manager",
+    "name",
+    "phone",
     "public",
     "resident_state",
     "va",
@@ -12711,8 +12840,15 @@
     "applications.license_progress"
    ],
    "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
     "g",
+    "leader",
+    "licensed",
     "manager",
+    "name",
+    "phone",
     "public",
     "resident_state",
     "va",
@@ -12725,8 +12861,15 @@
     "applications.license_status"
    ],
    "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
     "g",
+    "leader",
+    "licensed",
     "manager",
+    "name",
+    "phone",
     "public",
     "resident_state",
     "va",
@@ -12736,8 +12879,15 @@
   "recruit_pipeline_list.link_sent_at": {
    "candidates": [],
    "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
     "g",
+    "leader",
+    "licensed",
     "manager",
+    "name",
+    "phone",
     "public",
     "resident_state",
     "va",
@@ -12747,8 +12897,15 @@
   "recruit_pipeline_list.link_used_at": {
    "candidates": [],
    "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
     "g",
+    "leader",
+    "licensed",
     "manager",
+    "name",
+    "phone",
     "public",
     "resident_state",
     "va",
@@ -12758,8 +12915,15 @@
   "recruit_pipeline_list.manager_name": {
    "candidates": [],
    "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
     "g",
+    "leader",
+    "licensed",
     "manager",
+    "name",
+    "phone",
     "public",
     "resident_state",
     "va",
@@ -12771,8 +12935,15 @@
     "next_step_progress.manual_stage_key"
    ],
    "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
     "g",
+    "leader",
+    "licensed",
     "manager",
+    "name",
+    "phone",
     "public",
     "resident_state",
     "va",
@@ -12784,8 +12955,15 @@
     "next_step_stages.next_action_label"
    ],
    "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
     "g",
+    "leader",
+    "licensed",
     "manager",
+    "name",
+    "phone",
     "public",
     "resident_state",
     "va",
@@ -12795,8 +12973,15 @@
   "recruit_pipeline_list.npn": {
    "candidates": [],
    "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
     "g",
+    "leader",
+    "licensed",
     "manager",
+    "name",
+    "phone",
     "public",
     "resident_state",
     "va",
@@ -12808,8 +12993,15 @@
     "next_step_stages.order_index"
    ],
    "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
     "g",
+    "leader",
+    "licensed",
     "manager",
+    "name",
+    "phone",
     "public",
     "resident_state",
     "va",
@@ -12821,8 +13013,15 @@
     "next_step_progress.person_type"
    ],
    "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
     "g",
+    "leader",
+    "licensed",
     "manager",
+    "name",
+    "phone",
     "public",
     "resident_state",
     "va",
@@ -12832,11 +13031,19 @@
   "recruit_pipeline_list.phone": {
    "candidates": [
     "applications.phone",
-    "profiles.phone"
+    "profiles.phone",
+    "xcel_pre_licensing_students.phone"
    ],
    "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
     "g",
+    "leader",
+    "licensed",
     "manager",
+    "name",
+    "phone",
     "public",
     "resident_state",
     "va",
@@ -12846,8 +13053,15 @@
   "recruit_pipeline_list.resident_state": {
    "candidates": [],
    "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
     "g",
+    "leader",
+    "licensed",
     "manager",
+    "name",
+    "phone",
     "public",
     "resident_state",
     "va",
@@ -12859,8 +13073,15 @@
     "next_step_progress.sla_due_at"
    ],
    "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
     "g",
+    "leader",
+    "licensed",
     "manager",
+    "name",
+    "phone",
     "public",
     "resident_state",
     "va",
@@ -12872,8 +13093,15 @@
     "next_step_stages.stage_key"
    ],
    "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
     "g",
+    "leader",
+    "licensed",
     "manager",
+    "name",
+    "phone",
     "public",
     "resident_state",
     "va",
@@ -12883,8 +13111,15 @@
   "recruit_pipeline_list.stage_name": {
    "candidates": [],
    "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
     "g",
+    "leader",
+    "licensed",
     "manager",
+    "name",
+    "phone",
     "public",
     "resident_state",
     "va",
@@ -12895,11 +13130,19 @@
    "candidates": [
     "agentlink_agents.state",
     "applications.state",
-    "profiles.state"
+    "profiles.state",
+    "xcel_events.state"
    ],
    "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
     "g",
+    "leader",
+    "licensed",
     "manager",
+    "name",
+    "phone",
     "public",
     "resident_state",
     "va",
@@ -12910,11 +13153,145 @@
    "candidates": [
     "agents.status",
     "applications.status",
-    "next_step_progress.status"
+    "next_step_progress.status",
+    "xcel_events.status"
    ],
    "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
     "g",
+    "leader",
+    "licensed",
     "manager",
+    "name",
+    "phone",
+    "public",
+    "resident_state",
+    "va",
+    "va_manager"
+   ]
+  },
+  "recruit_pipeline_list.xcel_completed_on": {
+   "candidates": [],
+   "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
+    "g",
+    "leader",
+    "licensed",
+    "manager",
+    "name",
+    "phone",
+    "public",
+    "resident_state",
+    "va",
+    "va_manager"
+   ]
+  },
+  "recruit_pipeline_list.xcel_course": {
+   "candidates": [],
+   "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
+    "g",
+    "leader",
+    "licensed",
+    "manager",
+    "name",
+    "phone",
+    "public",
+    "resident_state",
+    "va",
+    "va_manager"
+   ]
+  },
+  "recruit_pipeline_list.xcel_enrolled_on": {
+   "candidates": [],
+   "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
+    "g",
+    "leader",
+    "licensed",
+    "manager",
+    "name",
+    "phone",
+    "public",
+    "resident_state",
+    "va",
+    "va_manager"
+   ]
+  },
+  "recruit_pipeline_list.xcel_last_login_on": {
+   "candidates": [],
+   "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
+    "g",
+    "leader",
+    "licensed",
+    "manager",
+    "name",
+    "phone",
+    "public",
+    "resident_state",
+    "va",
+    "va_manager"
+   ]
+  },
+  "recruit_pipeline_list.xcel_match": {
+   "candidates": [],
+   "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
+    "g",
+    "leader",
+    "licensed",
+    "manager",
+    "name",
+    "phone",
+    "public",
+    "resident_state",
+    "va",
+    "va_manager"
+   ]
+  },
+  "recruit_pipeline_list.xcel_pct": {
+   "candidates": [],
+   "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
+    "g",
+    "leader",
+    "licensed",
+    "manager",
+    "name",
+    "phone",
+    "public",
+    "resident_state",
+    "va",
+    "va_manager"
+   ]
+  },
+  "recruit_pipeline_list.xcel_report_on": {
+   "candidates": [],
+   "body_literals": [
+    "completion",
+    "email",
+    "enrollment",
+    "g",
+    "leader",
+    "licensed",
+    "manager",
+    "name",
+    "phone",
     "public",
     "resident_state",
     "va",

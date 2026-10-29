@@ -16,7 +16,10 @@ beforeEach(async () => {
     },
   });
   vi.stubGlobal("fetch", vi.fn());
-  await import("../../../supabase/functions/money-inbox-classify/index");
+  // A variable specifier keeps this Deno entry point out of the web tsc program (it has no Deno
+  // types; deno check covers it). vitest still resolves and runs it exactly as before.
+  const entry = "../../../supabase/functions/money-inbox-classify/index";
+  await import(/* @vite-ignore */ entry);
 });
 const request = (text: string, authorized = true) =>
   new Request("https://example.test", {

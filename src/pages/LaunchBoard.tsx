@@ -1,37 +1,37 @@
 // Launch Board — the one content workspace (§11, 2026-10-06).
 //
-// v4: one workflow, Idea → Record → Edit → Review → Ready → Scheduled →
-// Published (src/lib/contentWorkflow.ts + migration 20261006150000). Today
-// answers four questions (record next / needs editing / ready to publish /
-// actually published) above a ≤7 item prioritized queue. Copying a caption or
-// downloading a clip changes nothing; Ready needs an admin approval; Scheduled
-// is a "Manual plan" unless a scheduler job backs it; Published needs a live
-// https post URL on a known platform (server-enforced). The old Content page
-// (/dashboard/content, the content-ops approval queue + invite list) now lives
-// here as the Queue tab and its URL redirects here.
+// v6 (OVERHAUL-launchboard, 2026-10-31). Sam: "still pretty ugly." The Videos view is one list in the order to
+// finish it (src/components/content/LaunchBoardList.tsx over the tested rules in src/lib/launchBoardList.ts): Up next
+// with the page's one gold button, four numbers that each open their list (Ideas, To film, To edit, To post), and
+// every row showing where its video is as a coloured bar and word, with one button for the next step. The Today and
+// Board tabs are that one view now (?tab=board still opens it). Film next lives in New idea; Remake a winner and the
+// momentum numbers moved to Analytics; the testimonials shortcut is the Library's Testimonials chip; the four question
+// cards are the four numbers. Week, Library and Analytics keep their jobs, restyled, with one gold button a screen.
+// Nothing in the database changed.
+//
+// v4: one workflow, Idea → Record → Edit → Review → Ready → Scheduled → Published (src/lib/contentWorkflow.ts +
+// migration 20261006150000). Copying a caption or downloading a clip changes nothing; Ready needs an admin approval;
+// Scheduled is a "Manual plan" unless a scheduler job backs it; Published needs a live https post URL on a known
+// platform (server-enforced). The old Content page (/dashboard/content, the content-ops approval queue + invite list)
+// lives here as the Queue tab and its URL redirects here.
 //
 // Earlier history:
 //
-// v1 (2026-09-07 morning) ported the standalone board. Sam: "make it easier
-// on the eyes, easier to use, more functional — and pull content from my
-// Dropbox (YouTube + TikToks)." v2 is built around four questions, one tab
-// each: what do I post TODAY, where is everything (BOARD), what's the WEEK,
-// and what have I already shot (LIBRARY — a metadata index of the Dropbox
-// video archive, content_clips, ~4,000 clips, no bytes copied).
+// v1 (2026-09-07 morning) ported the standalone board. Sam: "make it easier on the eyes, easier to use, more
+// functional — and pull content from my Dropbox (YouTube + TikToks)." v2 was built around four questions, one tab
+// each: what do I post TODAY, where is everything (BOARD), what's the WEEK, and what have I already shot (LIBRARY — a
+// metadata index of the Dropbox video archive, content_clips, ~4,000 clips, no bytes copied).
 //
-// Library → card is one click ("New card" mints a Recorded card with the clip
-// attached; "Attach" drops the clip onto an existing idea). Post copies the
-// caption and stamps the date — publishing stays in Sam's hands.
+// Library → card is one click ("New card" mints a card in Edit with the clip attached; "Attach" drops the clip onto an
+// existing idea). Publishing stays in Sam's hands.
 //
-// v3 (2026-09-15, vidIQ channel audit): Instagram is retired — every card
-// funnels to apex-financial.org/apply. Brands are now channels (YouTube
-// long-form / Shorts auto-republished by Repurpose.io). The Week tab is a real
-// Mon–Sun calendar with a slot per day.
+// v3 (2026-09-15, vidIQ channel audit): Instagram is retired — every card funnels to apex-financial.org/apply. Brands
+// are now channels (YouTube long-form / Shorts auto-republished by Repurpose.io). The Week tab is a real Mon–Sun
+// calendar with a slot per day.
 //
-// v5 (2026-10-08): repositioned off insurance-sales talking-head to the come-up /
-// self-improvement lane (src/lib/contentWeek.ts themes). The old "80/20 insurance
-// mix" grading is gone; Today leads with a momentum header (streak, subscriber
-// milestone, creator level, week-over-week) and a ranked "film this next" pick.
+// v5 (2026-10-08): repositioned off insurance-sales talking-head to the come-up / self-improvement lane
+// (src/lib/contentWeek.ts themes). The old "80/20 insurance mix" grading is gone; momentum (streak, subscriber
+// milestone, creator level, week-over-week) and a ranked "film this next" pick were added.
 
 import { useRef, Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
 import { externalHref } from "@/lib/externalHref";
@@ -42,10 +42,14 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
 import { PageSkeleton } from "@/components/ui/page-skeleton";
-import { ContentHome, useInsights, usePosts, type Insights } from "@/components/content/AccountsAnalytics";
+import { PageHeader } from "@/components/ui/page-header";
+import { TonePill } from "@/components/ui/delight/ToneBubble";
+import { useInsights, usePosts, type Insights } from "@/components/content/AccountsAnalytics";
 import { FilmNextPanel } from "@/components/content/FilmNextPanel";
 import { FilmingPackSheet } from "@/components/content/FilmingPackSheet";
 import { WinnersPanel } from "@/components/content/WinnersPanel";
+import { LaunchBoardList, VideoStageMark } from "@/components/content/LaunchBoardList";
+import { WeekPlan } from "@/components/content/WeekPlan";
 import { BANK_IDEAS } from "@/data/contentIdeaBank";
 import { ideaFromInsight, usedMarkers, type IdeaEdits, type PickIdea } from "@/lib/contentPicks";
 import {
@@ -53,21 +57,26 @@ import {
   type DbClient, type Dismissal,
 } from "@/lib/contentProjects";
 import type { RemakeDraft } from "@/lib/contentWinners";
-import {
-  LIFECYCLE_LABEL, STAGE_LABEL, STAGE_ORDER, lifecycleText, WORKFLOW, checkPublishUrl, fourQuestions, lifecycleOf, nextAction, nextStatus, phoenixDate, previousStatus,
-  scheduleLabel, stageOf, todayQueue, type Stage, type WorkflowStatus,
-} from "@/lib/contentWorkflow";
-import { DndContext, DragOverlay, MouseSensor, TouchSensor, pointerWithin, rectIntersection, useDraggable, useDroppable, useSensor, useSensors, type CollisionDetection, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
-import { DAY_THEMES, THEME_TONE, WEEKLY_TARGETS, phoenixDateKey, phoenixWeekStart, phoenixWeekday, piecesByDay } from "@/lib/contentWeek";
+import { checkPublishUrl, previousStatus, scheduleLabel, stageOf, type WorkflowStatus } from "@/lib/contentWorkflow";
+import { videoNextStep, videoStep, type BoardVideo, type VideoNextStep } from "@/lib/launchBoardList";
+import { DAY_THEMES, phoenixWeekStart, phoenixWeekday } from "@/lib/contentWeek";
 import { canShareFiles, pullFile, saveMedia, shareFiles } from "@/lib/saveMedia";
+import { celebrate } from "@/lib/celebrate";
+import { TONE_CLASS, platformTone, type Tone } from "@/lib/tones";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  ArrowRight, CalendarClock, Check, Copy, Crown, Download, ExternalLink, Film, Image as ImageIcon, Link2, Loader2, MessageSquareQuote, Paperclip, Pencil, Plus, Search, ShieldCheck, ThumbsDown, ThumbsUp, Trash2, Undo2,
+  DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  CalendarClock, Check, ChevronDown, Clapperboard, Copy, Download, ExternalLink, Film, Flame, Image as ImageIcon, Lightbulb, Loader2,
+  MessageSquareQuote, Paperclip, Plus, Search, SlidersHorizontal, ThumbsDown, ThumbsUp, Trash2, Undo2, X,
 } from "lucide-react";
 
 // The content-ops approval queue + invite list (formerly /dashboard/content) renders as the Queue tab.
@@ -105,37 +114,16 @@ type ProofKind = "all" | "video" | "image";
 const isTestimonial = (k: Clip) => k.testimonial === true || (k.tags ?? []).includes("testimonial");
 const proofKindOf = (k: Clip): Exclude<ProofKind, "all"> => (k.media === "image" ? "image" : "video");
 
-// Stage styling with semantic tokens only. Published (confirmed) reads as done; unconfirmed reads as a warning.
-const STAGES: Stage[] = [...WORKFLOW.slice(0, 6), "published_unconfirmed", "published"];
-const STAGE_TONE: Record<Stage, string> = {
-  idea: "border-border text-muted-foreground",
-  record: "border-border text-foreground",
-  edit: "border-border text-foreground",
-  review: "border-primary/40 text-primary",
-  ready: "border-primary/60 bg-primary/10 text-primary",
-  scheduled: "border-primary/40 text-primary",
-  published_unconfirmed: "border-destructive/40 text-destructive",
-  published: "border-border bg-muted text-muted-foreground",
-};
-const STAGE_BAR: Record<Stage, string> = {
-  idea: "border-l-border", record: "border-l-muted-foreground", edit: "border-l-muted-foreground", review: "border-l-primary/60",
-  ready: "border-l-primary", scheduled: "border-l-primary", published_unconfirmed: "border-l-destructive", published: "border-l-border",
-};
-function StageChip({ stage }: { stage: Stage }) {
-  return <span className={`inline-flex items-center whitespace-nowrap rounded-full border px-3 py-1 text-sm font-semibold ${STAGE_TONE[stage]}`}>{STAGE_LABEL[stage]}</span>;
-}
-const JOBS: { k: Job; label: string; desc: string; accent: string; border: string }[] = [
-  { k: "REACH", label: "Reach", desc: "Get seen — who you are, wider than the offer.", accent: "text-amber-400", border: "border-t-amber-400/70" },
-  { k: "AUTHORITY", label: "Authority", desc: "Give value — a lesson people keep.", accent: "text-sky-400", border: "border-t-sky-400/70" },
-  { k: "PROOF", label: "Proof", desc: "Show it's real — the system, the results.", accent: "text-violet-400", border: "border-t-violet-400/70" },
-  { k: "CONVERT", label: "Convert", desc: "One clear ask — apply.", accent: "text-emerald-400", border: "border-t-emerald-400/70" },
+// The editor's Job select. Labels only: the job is a note on the card, not a grade.
+const JOBS: { k: Job; label: string }[] = [
+  { k: "REACH", label: "Reach" }, { k: "AUTHORITY", label: "Authority" }, { k: "PROOF", label: "Proof" }, { k: "CONVERT", label: "Convert" },
 ];
-const TABS: { k: Tab; label: string }[] = [
-  { k: "today", label: "Today" }, { k: "board", label: "Board" }, { k: "week", label: "Week" }, { k: "library", label: "Library" }, { k: "analytics", label: "Analytics" },
+// The views. Videos is the default (?tab=board, the old Board tab, opens it too). Queue is hidden from the bar while
+// its Mac mini feed is offline (it showed 14 empty "Nothing slated" boxes); ?tab=queue and /dashboard/content open it.
+const VIEWS: { k: Tab; label: string }[] = [
+  { k: "today", label: "Videos" }, { k: "week", label: "Week" }, { k: "library", label: "Library" }, { k: "analytics", label: "Analytics" },
 ];
-// Queue is hidden from the bar while its Mac mini feed is offline (it showed 14 empty "Nothing slated" boxes);
-// ?tab=queue and /dashboard/content still open it.
-const TAB_KEYS = new Set<Tab>([...TABS.map((t) => t.k), "queue"]);
+const TAB_KEYS = new Set<Tab>(["today", "board", "week", "library", "analytics", "queue"]);
 
 // Library footage filters — a way to find clips in the archive, not a grading system. A clip's
 // category is read off its existing AI tags / title / description, so nothing needs re-tagging.
@@ -149,15 +137,18 @@ const PILLARS: { k: PillarKey; label: string; re: RegExp }[] = [
 ];
 const clipHay = (k: Clip) => `${k.title ?? ""} ${k.description ?? ""} ${(k.tags ?? []).join(" ")} ${k.name}`;
 const pillarsOf = (k: Clip): PillarKey[] => PILLARS.filter((p) => p.re.test(clipHay(k))).map((p) => p.k);
+type FolderKey = "all" | "YouTube" | "Reels" | "Screenshots";
+type LengthKey = "all" | "short" | "mid" | "long";
+const FOLDER_LABEL: Record<FolderKey, string> = { all: "Any folder", YouTube: "YouTube · horizontal", Reels: "Reels · vertical", Screenshots: "Screenshots" };
+const LENGTH_LABEL: Record<LengthKey, string> = { all: "Any length", short: "1 min or less", mid: "1 to 5 min", long: "5 min or more" };
 
 // Channels (Instagram retired 2026-09-15). YT = YouTube long-form, SH = Shorts (Repurpose.io republishes to TikTok).
 // Legacy SFD / IMS cards were the two Instagram handles; they render as retired so old rows still make sense.
 const CTA = "Want to sell life insurance with my team? Apply: https://apex-financial.org/apply";
 const hasCta = (s: string) => /apex-financial\.org/i.test(s);
 const brandHandle = (b: string) => (b === "SH" ? "YouTube Shorts → Repurpose" : b === "YT" ? "YouTube" : b === "IMS" ? "@imakesystems · retired" : b === "SFD" ? "@sellfordaddy · retired" : b);
-const brandClass = (b: string) => (b === "SH" ? "text-sky-300 border-sky-400/30 bg-sky-400/10" : b === "YT" ? "text-red-300 border-red-400/30 bg-red-400/10" : "text-zinc-400 border-zinc-500/30 bg-zinc-500/10");
+const brandTone = (b: string) => (b === "SH" || b === "YT" ? platformTone("youtube") : "slate");
 const WEEKDAY = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const fmtDueShort = (d: string) => new Date(`${d.slice(0, 10)}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 const cleanName = (n: string) => n.replace(/\.[a-z0-9]+$/i, "").replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
 const fmtSize = (b: number) => (b >= 1e9 ? `${(b / 1e9).toFixed(1)} GB` : `${Math.max(1, Math.round(b / 1e6))} MB`);
 const fmtDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—");
@@ -168,19 +159,17 @@ const dropboxUrl = (path: string) => {
   const parts = path.split("/"); const name = parts.pop() ?? "";
   return `https://www.dropbox.com/home/${parts.map(encodeURIComponent).join("/")}?preview=${encodeURIComponent(name)}`;
 };
-
-function Chip({ className, children }: { className?: string; children: React.ReactNode }) {
-  return <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[12px] font-semibold uppercase tracking-wide ${className ?? "border-border text-muted-foreground"}`}>{children}</span>;
-}
-function Head({ title, hint }: { title: string; hint?: string }) {
-  return (
-    <div className="mb-3 flex items-baseline gap-3">
-      <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-muted-foreground">{title}</h2>
-      <span className="h-px flex-1 bg-border" />
-      {hint && <span className="text-sm text-muted-foreground">{hint}</span>}
-    </div>
-  );
-}
+/** A filter chip: gold hairline and tint when on, a quiet card when off. */
+const chipClass = (on: boolean) => cn(
+  "inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border px-4 text-[15px] font-medium transition-colors focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
+  on ? "border-primary bg-primary/15 font-semibold text-foreground" : "border-border bg-card text-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:bg-muted",
+);
+/** The traction score's tone, as words beside it: 70+ is strong, 45+ is good, the rest is quiet. */
+const bangerTone = (s: number): Tone => (s >= 70 ? "good" : s >= 45 ? "gold" : "slate");
+/** Where the stage moves when it is sent back, in the list's words. */
+const SEND_BACK_WORDS: Record<WorkflowStatus, string> = {
+  idea: "Ideas", record: "filming", edit: "editing", review: "review", ready: "Ready", scheduled: "Ready", published: "Published",
+};
 
 const emptyDraft = { title: "", brand: "SH", job: "REACH", content_type: "short", hook: "", caption: "", clip: "", day: 0, status: "idea", record_script: "", edit_prompt: "", cta: "", owner: "", due_date: "" };
 // Fields the editor writes. Status is never written from the editor: stage moves go through the workflow actions.
@@ -202,150 +191,6 @@ const editTemplate = (d: Record<string, unknown>) => {
 };
 const FORMAT_LINE = "Long-form: 3840×2160 16:9 30 fps, −14 LUFS, no music, chapters in the description, end card over the last shot. Shorts: 1080×1920 9:16 ≤ 45 s, burned captions, optional CTA over the last shot.";
 
-// ── Week tab (2026-10-06): 7 themed days driven by src/lib/contentWeek.ts. Drag a card between days (or tap the
-// Move select on a phone). Long-form planned vs 5/week, Shorts posted vs 30–60/week.
-const cardIsLong = (c: Card) => c.brand === "YT" || c.content_type === "long";
-const DAY_OPTIONS = [{ v: 0, label: "Unplanned" }, ...[1, 2, 3, 4, 5, 6, 7].map((d) => ({ v: d, label: DAY_THEMES[d].short }))];
-
-function WeekCard({ c, planned, onOpen, onMove }: { c: Card; planned: boolean; onOpen: (c: Card) => void; onMove: (c: Card, day: number) => void }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: c.id });
-  const stage = stageOf(c);
-  return (
-    <div ref={setNodeRef} {...attributes} {...listeners}
-      className={`touch-manipulation rounded-xl border border-l-[3px] border-border bg-background/60 p-3.5 ${STAGE_BAR[stage]} ${isDragging ? "opacity-40" : ""}`}>
-      <button type="button" onClick={() => onOpen(c)} className="line-clamp-4 w-full text-left text-base font-semibold leading-snug text-foreground hover:text-primary">{c.title.replace(/^Story · /, "")}</button>
-      <div className="mt-2.5 flex flex-wrap items-center gap-2">
-        <StageChip stage={stage} />
-        <span className="rounded-full border border-border px-3 py-1 text-sm font-semibold text-muted-foreground">{cardIsLong(c) ? "Long" : "Short"}</span>
-      </div>
-      <select value={planned ? c.day : 0} aria-label={`Move ${c.title}`} onChange={(e) => onMove(c, Number(e.target.value))}
-        className="mt-2.5 h-11 w-full rounded-md border border-border bg-card px-2 text-base text-muted-foreground">
-        {DAY_OPTIONS.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
-      </select>
-    </div>
-  );
-}
-
-function DropZone({ id, className, children }: { id: string; className: string; children: React.ReactNode }) {
-  const { setNodeRef, isOver } = useDroppable({ id });
-  return <div ref={setNodeRef} className={`${className} ${isOver ? "ring-2 ring-primary/60" : ""}`}>{children}</div>;
-}
-
-function WeekTab({ cards, onOpen, onMove, onAdd }: { cards: Card[]; onOpen: (c: Card) => void; onMove: (c: Card, day: number) => void; onAdd: (day: number) => void }) {
-  const todayDow = phoenixWeekday();
-  const [shortsByDay, setShortsByDay] = useState<Record<number, number> | null>(null);
-  const [shortsFailed, setShortsFailed] = useState(false);
-  const [showAllIdeas, setShowAllIdeas] = useState(false);
-  // Mouse + touch, not Pointer: dnd-kit's PointerSensor also claims touches and then loses
-  // them to page scrolling, so on a phone a drag never started. Touch = press and hold.
-  const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 8 } }),
-  );
-  // Drop where the pointer is, not where the (wide) card's rectangle overlaps most.
-  const collision: CollisionDetection = (args) => { const hits = pointerWithin(args); return hits.length ? hits : rectIntersection(args); };
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const dayKeys = useMemo(() => {
-    const [y, m, d] = phoenixDateKey().split("-").map(Number);
-    const base = Date.UTC(y, m - 1, d) - (todayDow - 1) * 86400_000;
-    return Array.from({ length: 7 }, (_, i) => new Date(base + i * 86400_000).toISOString().slice(0, 10));
-  }, [todayDow]);
-  useEffect(() => {
-    let off = false;
-    void (async () => {
-      const { data, error } = await supabase.from("content_posts").select("posted_at, format, platform").gte("posted_at", `${dayKeys[0]}T00:00:00-07:00`);
-      // A failed load shows "—", never a confident 0.
-      if (off || error) { if (!off) setShortsFailed(true); return; }
-      // Repurpose sends one Short to every platform, so a day's Shorts = its busiest platform, not the sum.
-      const byDate = piecesByDay((data ?? []) as { posted_at: string | null; format: string | null; platform: string | null }[], "short");
-      const m: Record<number, number> = {};
-      dayKeys.forEach((k, i) => { if (byDate[k]) m[i + 1] = byDate[k]; });
-      setShortsByDay(m);
-    })();
-    return () => { off = true; };
-  }, [dayKeys]);
-  const shortsTotal = Object.values(shortsByDay ?? {}).reduce((a, b) => a + b, 0);
-  // A card belongs to THIS week only if it was put on a day this week. Older plans go back
-  // to the tray (or drop off once published), so last week's videos never fill this week.
-  const thisWeek = dayKeys[0];
-  const plannedNow = (c: Card) => c.day > 0 && c.planned_week === thisWeek;
-  const isPublished = (c: Card) => { const st = stageOf(c); return st === "published" || st === "published_unconfirmed"; };
-  const longPlanned = cards.filter((c) => plannedNow(c) && cardIsLong(c)).length;
-  const ideas = cards.filter((c) => !plannedNow(c) && !isPublished(c)).sort((a, b) => b.sort - a.sort);
-  const activeCard = activeId ? cards.find((c) => c.id === activeId) ?? null : null;
-  const onDragStart = (e: DragStartEvent) => setActiveId(String(e.active.id));
-  const onDragEnd = (e: DragEndEvent) => {
-    setActiveId(null);
-    if (!e.over) return;
-    const day = Number(String(e.over.id).replace("day-", ""));
-    const c = cards.find((x) => x.id === String(e.active.id));
-    if (c && Number.isFinite(day) && !(plannedNow(c) && c.day === day) && !(day === 0 && !plannedNow(c))) onMove(c, day);
-  };
-  return (
-    <DndContext sensors={sensors} collisionDetection={collision} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setActiveId(null)}>
-      <div className="space-y-5">
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-2xl border border-border bg-card px-4 py-3">
-          <h2 className="text-base font-extrabold text-foreground">This week</h2>
-          <span className="text-sm text-muted-foreground">Long-form planned <b className="tabular-nums text-foreground">{longPlanned}/{WEEKLY_TARGETS.long}</b></span>
-          <span className="text-sm text-muted-foreground">Shorts posted <b className="tabular-nums text-foreground">{shortsFailed ? "—" : shortsByDay ? shortsTotal : "…"}</b> <span className="text-sm">(goal {WEEKLY_TARGETS.shortsMin}–{WEEKLY_TARGETS.shortsMax})</span></span>
-        </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 7 }, (_, i) => i + 1).map((d) => {
-            const t = DAY_THEMES[d];
-            const tone = THEME_TONE[t.theme];
-            const items = cards.filter((c) => plannedNow(c) && c.day === d);
-            const posted = shortsByDay?.[d] ?? 0;
-            const isToday = d === todayDow;
-            return (
-              <div key={d} className={`flex flex-col gap-3 rounded-2xl border bg-card p-4 ${isToday ? `${tone.ring} ring-1 ring-primary/40` : "border-border"}`}>
-                <div>
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="text-lg font-extrabold text-foreground">{t.name}</span>
-                    {isToday && <span className="text-[13px] font-bold uppercase tracking-wide text-primary">Today</span>}
-                  </div>
-                  <span className={`mt-2 inline-flex max-w-full items-center rounded-full border px-3 py-1.5 text-sm font-semibold leading-snug ${tone.chip}`}>{t.themeLabel} · {t.angle}</span>
-                </div>
-                <DropZone id={`day-${d}`} className="flex min-h-[140px] flex-1 flex-col gap-2.5 rounded-xl border border-dashed border-border p-3">
-                  <div className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{t.longTarget > 0 ? "Long-form" : d === 7 ? "Plan & batch" : "Long-form (bonus)"}</div>
-                  {items.map((c) => <WeekCard key={c.id} c={c} planned onOpen={onOpen} onMove={onMove} />)}
-                  {items.length === 0 && <div className="py-2 text-center text-sm text-muted-foreground">Drop a video here</div>}
-                  <button type="button" onClick={() => onAdd(d)} className="mt-auto min-h-[44px] rounded-lg border border-dashed border-border px-3 py-2 text-base font-medium text-muted-foreground hover:border-primary/50 hover:text-primary">+ Add</button>
-                </DropZone>
-                {t.shortsTarget > 0 && (
-                  <div>
-                    <div className="flex justify-between text-base text-muted-foreground"><span>Shorts</span><span className="tabular-nums">{shortsFailed ? "—" : shortsByDay ? `${posted}/${t.shortsTarget}` : "…"}</span></div>
-                    <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted"><div className={`h-full ${tone.bar}`} style={{ width: `${Math.min(100, Math.round((posted / t.shortsTarget) * 100))}%` }} /></div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-        <DropZone id="day-0" className="rounded-2xl border border-dashed border-border bg-card/50 p-3">
-          <div className="mb-2 flex items-center justify-between">
-            <h3 className="text-sm font-bold text-foreground">Ideas (not planned) <span className="font-normal text-muted-foreground">{ideas.length}</span></h3>
-            <span className="text-sm text-muted-foreground">Drag onto a day (on a phone, hold first), or use Move</span>
-          </div>
-          {ideas.length === 0 ? <div className="py-2 text-sm text-muted-foreground">Everything is planned.</div> : (
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-              {(showAllIdeas ? ideas : ideas.slice(0, 8)).map((c) => <WeekCard key={c.id} c={c} planned={false} onOpen={onOpen} onMove={onMove} />)}
-            </div>
-          )}
-          {ideas.length > 8 && <button type="button" onClick={() => setShowAllIdeas(!showAllIdeas)} className="mt-3 rounded-full border border-border px-3 py-1 text-sm font-semibold text-foreground hover:border-primary/60">{showAllIdeas ? "Show fewer" : `Show all (${ideas.length})`}</button>}
-        </DropZone>
-        <p className="rounded-2xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground"><span className="font-bold uppercase tracking-[0.12em] text-foreground">Delivery format</span> · {FORMAT_LINE} Every card carries a script to record and an edit prompt: open the card, copy, paste.</p>
-      </div>
-      <DragOverlay>
-        {activeCard ? (
-          <div className="w-56 rounded-xl border border-primary/60 bg-card p-2.5 text-sm font-semibold text-foreground shadow-lg">
-            {activeCard.title.replace(/^Story · /, "")}
-          </div>
-        ) : null}
-      </DragOverlay>
-    </DndContext>
-  );
-}
-
 export default function LaunchBoard() {
   usePageTitle("Launch Board");
   const askConfirm = useConfirm();
@@ -360,14 +205,17 @@ export default function LaunchBoard() {
   const [dismissalsFailed, setDismissalsFailed] = useState(false);
   const [busyIdeaKey, setBusyIdeaKey] = useState<string | null>(null);
   const [packId, setPackId] = useState<string | null>(null);
+  const [newIdeaOpen, setNewIdeaOpen] = useState(false);
   const [remaking, setRemaking] = useState(false);
   const postsRead = usePosts();
   const insights = useInsights();
   const [clips, setClips] = useState<Clip[]>([]);
   const [loading, setLoading] = useState(true);
+  // The board read failed: the list says so and shows no numbers, rather than an empty board that reads as zero.
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [pillar, setPillar] = useState<"all" | PillarKey>("all");
-  const [folder, setFolder] = useState<"all" | "YouTube" | "Reels" | "Screenshots">("all");
+  const [folder, setFolder] = useState<FolderKey>("all");
   // Testimonials filter. Deep link: /dashboard/launch-board?tab=library&filter=testimonials
   const [searchParams, setSearchParams] = useSearchParams();
   const [proof, setProof] = useState<"all" | "testimonials">(searchParams.get("filter") === "testimonials" ? "testimonials" : "all");
@@ -393,7 +241,7 @@ export default function LaunchBoard() {
     setTabState(t);
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
-      if (t === "today") next.delete("tab"); else next.set("tab", t);
+      if (t === "today" || t === "board") next.delete("tab"); else next.set("tab", t);
       if (t !== "library") next.delete("filter");
       return next;
     }, { replace: true });
@@ -527,7 +375,7 @@ export default function LaunchBoard() {
       toast.error(`Couldn't pull the pack: ${e instanceof Error ? e.message.slice(0, 80) : "unknown"}`);
     } finally { setDownloadingAll(false); setPulling(null); }
   };
-  const [length, setLength] = useState<"all" | "short" | "mid" | "long">("all");
+  const [length, setLength] = useState<LengthKey>("all");
   const [sortBy, setSortBy] = useState<"banger" | "newest">("banger");
   const [shown, setShown] = useState(96);
   const [picked, setPicked] = useState<Set<string>>(new Set());   // Library multi-select for sharing
@@ -552,26 +400,28 @@ export default function LaunchBoard() {
   const [scheduleTarget, setScheduleTarget] = useState<Card | null>(null);
   const [scheduleAt, setScheduleAt] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [boardDetails, setBoardDetails] = useState(false);   // Board: destination / source media / owner hide behind "Show details"
-  const [todayAll, setTodayAll] = useState(false);
-  const [todayDetails, setTodayDetails] = useState(false);
-  const [stageFilter, setStageFilter] = useState<"open" | "all" | Stage>("open");
+  const confirmRef = useRef<HTMLButtonElement | null>(null);   // the burst rises from Confirm published
   // null = not probed yet; false = the §11 migration is not on this database, so new stages cannot be written.
   const [workflowReady, setWorkflowReady] = useState<boolean | null>(null);
   const [attachTarget, setAttachTarget] = useState<Card | null>(null);   // card waiting for a clip from the Library
 
   const load = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    // Only a failed read of the cards themselves blanks the list. A clip page or the classifier read failing later
+    // leaves the board as loaded and says so in a toast.
+    let cardsOk = false;
     try {
       const c = await supabase.from("content_cards").select("*").order("day", { ascending: true }).order("sort", { ascending: true });
       if (c.error) throw c.error;
       const loaded = (c.data ?? []) as (Card & { archived_at?: string | null })[];
       setCards(loaded.filter((card) => !card.archived_at));
       setArchivedCards(loaded.filter((card) => card.archived_at));
+      cardsOk = true;
       // Probe the §11 columns once. A missing column (42703) means the migration has not reached this database:
       // the board still reads, and says plainly that stage moves are unavailable rather than failing on every tap.
       const probe = await supabase.from("content_cards").select("published_url" as never).limit(1);
       setWorkflowReady(!probe.error);
-      // The whole library, paged: PostgREST returns at most 1,000 rows per request.
       // The whole library, paged in PARALLEL: PostgREST returns at most 1,000 rows per request, and seven
       // sequential round-trips were the visible half of "Loading your board…" (the other half was RLS
       // evaluating a SECURITY DEFINER function per row — fixed in migration 20260913031500). Eight ranges
@@ -596,7 +446,9 @@ export default function LaunchBoard() {
       const h = await supabase.from("v_testimonial_classifier_health").select("judged, waiting, testimonials, last_judged_at").maybeSingle();
       if (!h.error && h.data) setHealth({ judged: h.data.judged ?? 0, waiting: h.data.waiting ?? 0, testimonials: h.data.testimonials ?? 0, last_judged_at: h.data.last_judged_at });
     } catch (e: unknown) {
-      toast.error(`Couldn't load the board: ${(e instanceof Error ? e.message : "unknown error").slice(0, 120)}`);
+      const message = (e instanceof Error ? e.message : e && typeof e === "object" && "message" in e ? String((e as { message: unknown }).message) : "unknown error").slice(0, 160);
+      if (cardsOk) toast.error(`The board loaded, but the Library did not: ${message}`);
+      else setLoadError(message);
     } finally { setLoading(false); }
   }, []);
   useEffect(() => { void load(); }, [load]);
@@ -621,33 +473,24 @@ export default function LaunchBoard() {
     setBusyId(c.id);
     try {
       const ok = await patch(c.id, { status: to, ...extra });
-      if (ok) toast.success(msg ?? `Moved to ${STAGE_LABEL[to]}`);
+      if (ok) toast.success(msg ?? "Moved");
       return ok;
     } finally { setBusyId(null); }
   };
-  const forward = (c: Card) => {
-    const stage = stageOf(c);
-    const to = nextStatus(stage);
-    if (!to) return;
-    if (stage === "review") return void approve(c);
-    if (to === "scheduled") { openSchedule(c); return; }
-    if (to === "published") { openPublish(c); return; }
-    void move(c, to);
-  };
-  const sendBack = (c: Card) => {
+  const sendBack = async (c: Card) => {
     const to = previousStatus(stageOf(c));
-    if (!to) return;
+    if (!to) return false;
     // Leaving Ready/Scheduled/Published for an earlier stage drops the approval and any schedule/evidence on the row.
     const extra: Partial<Card> = to === "edit" || to === "record" || to === "idea"
       ? { approved_at: null, scheduled_for: null, schedule_kind: null, schedule_job_ref: null, published_url: null, publish_evidence: null }
       : to === "ready" ? { scheduled_for: null, schedule_kind: null, schedule_job_ref: null, published_url: null, publish_evidence: null } : {};
-    void move(c, to, extra, `Sent back to ${STAGE_LABEL[to]}`);
+    return move(c, to, extra, `Sent back to ${SEND_BACK_WORDS[to]}`);
   };
   // Approval is admin-only and enforced by the database trigger; the button is hidden for everyone else.
-  const approve = (c: Card) => {
-    if (!isAdmin) { toast.error("Only an admin can approve content for publishing."); return; }
-    if (!(c.caption ?? "").trim()) { toast.error("Write the caption before approving."); return; }
-    void move(c, "ready", { approved_at: new Date().toISOString() }, "Approved — Ready to publish");
+  const approve = async (c: Card) => {
+    if (!isAdmin) { toast.error("Only an admin can approve content for publishing."); return false; }
+    if (!(c.caption ?? "").trim()) { toast.error("Write the caption before approving."); return false; }
+    return move(c, "ready", { approved_at: new Date().toISOString() }, "Approved. It is ready to post.");
   };
   const openSchedule = (c: Card) => {
     setScheduleTarget(c);
@@ -660,14 +503,17 @@ export default function LaunchBoard() {
     const when = new Date(scheduleAt);
     if (!scheduleAt || Number.isNaN(when.getTime())) { toast.error("Pick a date and time."); return; }
     // No scheduler integration writes jobs to this board yet, so every schedule a person sets is a manual plan.
-    if (await move(scheduleTarget, "scheduled", { scheduled_for: when.toISOString(), schedule_kind: "manual", schedule_job_ref: null }, "Planned — labelled Manual plan (nothing will post automatically)")) setScheduleTarget(null);
+    if (await move(scheduleTarget, "scheduled", { scheduled_for: when.toISOString(), schedule_kind: "manual", schedule_job_ref: null }, "Planned. It is a manual plan: nothing posts by itself.")) setScheduleTarget(null);
   };
   const openPublish = (c: Card) => { setPostTarget(c); setPublishUrl(c.published_url ?? ""); };
   const publishCheck = useMemo(() => checkPublishUrl(publishUrl, postTarget?.brand), [publishUrl, postTarget]);
   const confirmPublished = async () => {
     if (!postTarget) return;
     if (!publishCheck.ok) { toast.error(publishCheck.reason); return; }
-    if (await move(postTarget, "published", { published_url: publishUrl.trim(), publish_evidence: "manual_confirmation", posted_at: postTarget.posted_at ?? new Date().toISOString() }, `Published — confirmed on ${publishCheck.platform}`)) setPostTarget(null);
+    if (await move(postTarget, "published", { published_url: publishUrl.trim(), publish_evidence: "manual_confirmation", posted_at: postTarget.posted_at ?? new Date().toISOString() }, `Published — confirmed on ${publishCheck.platform}`)) {
+      void celebrate("win", confirmRef.current);
+      setPostTarget(null);
+    }
   };
   const copyCaption = async (text: string) => {
     try { await navigator.clipboard.writeText(text); toast.success("Caption copied"); }
@@ -689,10 +535,12 @@ export default function LaunchBoard() {
 
   const remove = async (c: Card) => {
     const ok = await askConfirm({ title: "Delete this card?", description: c.title, confirmText: "Delete", tone: "danger" });
-    if (!ok) return;
+    if (!ok) return false;
     const prev = cards; setCards((cs) => cs.filter((x) => x.id !== c.id));
     const { error } = await supabase.from("content_cards").delete().eq("id", c.id);
-    if (error) { setCards(prev); toast.error(`Delete failed: ${error.message.slice(0, 120)}`); } else toast.success("Deleted");
+    if (error) { setCards(prev); toast.error(`Delete failed: ${error.message.slice(0, 120)}`); return false; }
+    toast.success("Deleted");
+    return true;
   };
 
   // Library → card
@@ -704,7 +552,7 @@ export default function LaunchBoard() {
     const link = await supabase.from("content_clips").update({ used_by_card: card.id }).eq("id", clip.id);
     if (link.error) toast.error(`Clip attached to the card, but the library link did not save: ${link.error.message.slice(0, 100)}`);
     setClips((ks) => ks.map((k) => (k.id === clip.id ? { ...k, used_by_card: card.id } : k)));
-    setAttachTarget(null); toast.success(`Attached to “${card.title}”`); setTab("board");
+    setAttachTarget(null); toast.success(`Attached to “${card.title}”`); setTab("today");
   };
   const cardFromClip = async (clip: Clip) => {
     const nextSort = (cards.reduce((m, c) => Math.max(m, c.sort), 0) || 0) + 10;
@@ -770,6 +618,7 @@ export default function LaunchBoard() {
       });
       if (!r.ok) { toast.error(`Couldn't pick this video: ${r.error}`); return; }
       putCard(r.card as unknown as Card);
+      setNewIdeaOpen(false);
       setPackId(r.card.id);
       toast.success(r.created ? "Picked for filming. Your pack is ready." : r.restored ? "Brought back from your archive." : "That one is already on your board. Opened it.");
     } finally { setPicking(false); setBusyIdeaKey(null); }
@@ -818,13 +667,7 @@ export default function LaunchBoard() {
   };
   const packCard = packId ? [...cards, ...archivedCards].find((c) => c.id === packId) ?? null : null;
 
-  const openNew = () => { setEditing(null); setDraft({ ...emptyDraft }); setEditorOpen(true); };
   const openEdit = (c: Card) => { setEditing(c); setDraft({ ...c }); setEditorOpen(true); };
-  // Moving the due date changes that one field and nothing else, so no work is lost by rescheduling.
-  const rescheduleCard = async (c: Card, date: string) => {
-    const ok = await patch(c.id, { due_date: date || null });
-    if (ok) toast.success(date ? `Rescheduled to ${fmtDueShort(date)}` : "Due date cleared");
-  };
   const draftStr = (k: string) => String(draft[k] ?? "");
   const setDraftField = (k: string, v: unknown) => setDraft((d) => ({ ...d, [k]: v }));
   const saveDraft = async () => {
@@ -852,21 +695,41 @@ export default function LaunchBoard() {
       toast.error(`Couldn't save: ${(e instanceof Error ? e.message : "unknown error").slice(0, 120)}`);
     } finally { setSaving(false); }
   };
+  const sendBackFromEditor = async (c: Card) => { if (await sendBack(c)) setEditorOpen(false); };
+  const deleteFromEditor = async (c: Card) => { if (await remove(c)) setEditorOpen(false); };
 
-  // The four questions + Today. content_cards is small (29 rows on 2026-10-06) and loaded whole; if it ever
-  // passes 1,000 rows the load above must page the way content_clips does.
-  const isOpen = (c: Card) => { const st = stageOf(c); return st !== "published" && st !== "published_unconfirmed"; };
-  const q4 = useMemo(() => fourQuestions(cards), [cards]);
-  const today = useMemo(() => todayQueue(cards, new Date(), 7), [cards]);
-  const stageCounts = useMemo(() => {
-    const m = Object.fromEntries(STAGES.map((st) => [st, 0])) as Record<Stage, number>;
-    for (const c of cards) m[stageOf(c)] += 1;
-    return m;
-  }, [cards]);
-  const boardRows = useMemo(() => {
-    const rows = cards.filter((c) => (stageFilter === "all" ? true : stageFilter === "open" ? isOpen(c) : stageOf(c) === stageFilter));
-    return rows.sort((a, b) => STAGE_ORDER[stageOf(b)] - STAGE_ORDER[stageOf(a)] || (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999") || (a.day || 9) - (b.day || 9) || a.sort - b.sort);
-  }, [cards, stageFilter]);
+  // The one next step on a row or on Up next. Moves are one server-validated write each; the rest open what the step
+  // needs. A burst follows only a move the server confirmed, from the button that was pressed.
+  const act = async (v: BoardVideo, next: VideoNextStep, origin: HTMLElement | null) => {
+    const c = cards.find((x) => x.id === v.id);
+    if (!c) return;
+    switch (next.kind) {
+      case "film": {
+        const ok = await move(c, "record", {}, "Picked to film. It is in Selected now.");
+        if (!ok) return;
+        void celebrate("save", origin);
+        if ((c.record_script ?? "").trim()) setPackId(c.id);
+        return;
+      }
+      case "advance": {
+        if (!next.to) return;
+        const ok = await move(c, next.to, {}, next.to === "edit" ? "Moved to editing" : "Sent for approval");
+        if (ok) void celebrate("save", origin);
+        return;
+      }
+      case "approve": {
+        if (await approve(c)) void celebrate("booked", origin);
+        return;
+      }
+      case "pack": setPackId(c.id); return;
+      case "attach": setAttachTarget(c); setTab("library"); return;
+      case "post":
+      case "link": openPublish(c); return;
+      default: openEdit(c);
+    }
+  };
+
+  // Library: the clips that match the search and filters, best first.
   const visibleClips = useMemo(() => {
     const q = query.trim().toLowerCase();
     const SYN: Record<string, string> = { gym: "workout", exercise: "workout", weights: "workout", lifting: "workout", fitness: "workout", cars: "car", vehicle: "car", corvette: "car", driving: "car", aerial: "drone", dji: "drone", desk: "office", computer: "office", laptop: "office", talking: "talking-head", speaking: "talking-head", podcast: "talking-head", vlog: "talking-head", outside: "outdoors", street: "outdoors", sunset: "outdoors", crowd: "event", seminar: "event", conference: "event", tiktok: "vertical", reel: "vertical", reels: "vertical", youtube: "horizontal" };
@@ -884,353 +747,209 @@ export default function LaunchBoard() {
     return out;
   }, [clips, query, folder, length, pillar, sortBy, proof, proofKind]);
   const testimonialClips = useMemo(() => clips.filter(isTestimonial), [clips]);
-  const bangerColor = (s?: number | null) => (s == null ? "bg-zinc-600" : s >= 70 ? "bg-emerald-400" : s >= 45 ? "bg-gold" : "bg-zinc-500");
   const fmtDur = (s?: number | null) => (s ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}` : "");
 
-  if (loading) return <PageSkeleton />;
+  if (loading && cards.length === 0 && !loadError) return <PageSkeleton />;
 
-  const todayStr = phoenixDate(new Date());
-  const fmtDue = (d?: string | null) => (d ? new Date(`${d.slice(0, 10)}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "");
-  const dueTone = (d?: string | null) => (!d ? "text-muted-foreground" : d.slice(0, 10) < todayStr ? "font-semibold text-destructive" : d.slice(0, 10) === todayStr ? "font-semibold text-foreground" : "text-muted-foreground");
   const locked = workflowReady === false;
+  const view: Tab = tab === "board" ? "today" : tab;
+  const hasScreenshots = clips.some((k) => k.folder === "Screenshots");
+  const activeFilters: { key: string; label: string; clear: () => void }[] = [
+    ...(folder !== "all" ? [{ key: "folder", label: FOLDER_LABEL[folder], clear: () => setFolder("all") }] : []),
+    ...(length !== "all" ? [{ key: "length", label: LENGTH_LABEL[length], clear: () => setLength("all") }] : []),
+    ...(pillar !== "all" ? [{ key: "pillar", label: PILLARS.find((p) => p.k === pillar)?.label ?? pillar, clear: () => setPillar("all") }] : []),
+  ];
 
-  const clipLine = (c: Card) => c.clip ? (
-    <a href={(() => { const k = clips.find((x) => x.path === c.clip); return (k && directUrl(k)) || dropboxUrl(c.clip); })()} target="_blank" rel="noopener noreferrer" className="flex min-w-0 items-center gap-1.5 text-sm text-primary hover:underline" title={c.clip}>
-      <Film className="h-3 w-3 shrink-0" aria-hidden /><span className="truncate">{c.clip.split("/").pop()}</span>
-    </a>
-  ) : (
-    <button onClick={() => { setAttachTarget(c); setTab("library"); }} className="flex items-center gap-1.5 text-left text-sm text-muted-foreground hover:text-primary">
-      <Paperclip className="h-3 w-3" aria-hidden /> Attach footage
-    </button>
-  );
-
-  // One obvious primary action per card, derived from its stage. Nothing here publishes anything.
-  const primaryAction = (c: Card) => {
-    const stage = stageOf(c);
-    const busy = busyId === c.id;
-    const base = "h-11 px-3 text-sm font-semibold sm:h-7 sm:px-2.5 sm:text-[13px]";
-    if (stage === "published") {
-      const liveHref = externalHref(c.published_url);
-      return liveHref ? <Button asChild size="sm" variant="outline" className={base}><a href={liveHref} target="_blank" rel="noopener noreferrer"><ExternalLink className="mr-1 h-3 w-3" aria-hidden />View post</a></Button> : null;
-    }
-    if (stage === "review" && !isAdmin) return <span className="text-[13px] text-muted-foreground">Awaiting approval</span>;
-    const label: Record<Stage, string> = {
-      idea: "Plan recording", record: "Footage in", edit: "Send to review", review: "Approve", ready: "Publish kit",
-      scheduled: "Confirm live", published_unconfirmed: "Add live URL", published: "",
-    };
-    const icon = stage === "review" ? <ShieldCheck className="mr-1 h-3 w-3" aria-hidden /> : stage === "ready" || stage === "scheduled" || stage === "published_unconfirmed" ? <Link2 className="mr-1 h-3 w-3" aria-hidden /> : <ArrowRight className="mr-1 h-3 w-3" aria-hidden />;
-    const opensDialog = stage === "ready" || stage === "scheduled" || stage === "published_unconfirmed";
-    return (
-      <Button size="sm" disabled={busy || (locked && !opensDialog)} onClick={() => (opensDialog ? openPublish(c) : forward(c))} className={`${base} bg-primary text-primary-foreground hover:bg-primary/90`}>
-        {busy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" aria-hidden /> : icon}{label[stage]}
-      </Button>
-    );
-  };
-  const secondaryActions = (c: Card) => {
-    const stage = stageOf(c);
-    return (
-      <>
-        {stage === "ready" && <Button size="sm" variant="outline" disabled={locked || busyId === c.id} onClick={() => openSchedule(c)} className="h-7 px-2 text-[13px]"><CalendarClock className="mr-1 h-3 w-3" aria-hidden />Plan time</Button>}
-        {previousStatus(stage) && <Button size="sm" variant="ghost" disabled={locked || busyId === c.id} onClick={() => sendBack(c)} className="h-7 px-2 text-[13px] text-muted-foreground" aria-label={`Send ${c.title} back to ${STAGE_LABEL[previousStatus(stage) as Stage]}`}><Undo2 className="h-3.5 w-3.5" aria-hidden /></Button>}
-        <Button size="sm" variant="ghost" onClick={() => openEdit(c)} className="h-7 px-2 text-muted-foreground" aria-label={`Edit ${c.title}`}><Pencil className="h-3.5 w-3.5" aria-hidden /></Button>
-        <Button size="sm" variant="ghost" onClick={() => remove(c)} className="h-7 px-2 text-muted-foreground hover:text-destructive" aria-label={`Delete ${c.title}`}><Trash2 className="h-3.5 w-3.5" aria-hidden /></Button>
-      </>
-    );
-  };
   const scheduleNote = (c: Card) => {
     const s = scheduleLabel(c);
     if (!s || !c.scheduled_for) return null;
     return <span className="text-[13px] text-muted-foreground">{s.label} · {new Date(c.scheduled_for).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>;
   };
 
-  const questions: { key: string; q: string; items: Card[]; count: number; note?: string; noteTone?: string; go: "open" | Stage }[] = [
-    { key: "record", q: "What should I record next?", items: q4.recordNext, count: q4.recordNext.length, go: q4.recordNext.some((c) => stageOf(c) === "record") ? "record" : "idea" },
-    { key: "edit", q: "What needs editing?", items: q4.needsEditing, count: q4.needsEditing.length, note: q4.awaitingApproval.length ? `${q4.awaitingApproval.length} awaiting approval` : undefined, go: "edit" },
-    { key: "ready", q: "What is ready to publish?", items: q4.readyToPublish, count: q4.readyToPublish.length, go: "ready" },
-    { key: "published", q: "What has actually been published?", items: q4.published, count: q4.published.length, note: q4.unconfirmed.length ? `${q4.unconfirmed.length} marked posted with no live URL` : "only cards with a live post URL count", noteTone: q4.unconfirmed.length ? "text-destructive" : undefined, go: "published" },
-  ];
+  const ideasFooter = (unusedIdeas.length > 0 || archivedCards.length > 0) ? (
+    <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-[15px] leading-6 text-muted-foreground">Clear the ideas nobody started. Anything with footage stays, and you can bring them back here.</p>
+      <div className="flex shrink-0 flex-wrap gap-2">
+        {unusedIdeas.length > 0 && <Button type="button" variant="outline" className="h-11" disabled={archiveBusy} onClick={() => void archiveIdeas()}>Clear {unusedIdeas.length} unused {unusedIdeas.length === 1 ? "idea" : "ideas"}</Button>}
+        {archivedCards.length > 0 && <Button type="button" variant="ghost" className="h-11" disabled={archiveBusy} onClick={() => void archiveIdeas(true)}>Bring back {archivedCards.length} cleared</Button>}
+      </div>
+    </div>
+  ) : null;
+
+  const editingStep = editing ? videoStep({ ...editing, ...(draft as Partial<Card>) } as Card, new Date()) : null;
+  const editingNext = editing ? videoNextStep({ ...editing, ...(draft as Partial<Card>) } as Card, { isAdmin, now: new Date() }) : null;
+  const editingBack = editing ? previousStatus(stageOf(editing)) : null;
+  const postStep = postTarget ? videoStep(postTarget, new Date()) : null;
 
   return (
-    <div className="mx-auto max-w-6xl px-4 pb-24 pt-6 sm:px-6">
-      <header className="flex flex-wrap items-end justify-between gap-5 border-b border-border pb-4">
-        <div className="flex items-center gap-3">
-          <Crown className="h-7 w-7 text-primary" aria-hidden />
-          <div>
-            <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-[28px]">Launch Board</h1>
-            <p className="mt-1 max-w-[60ch] text-sm text-muted-foreground">Idea → Selected → Filming → Editing → Ready → Published. Publishing stays approval-gated and in your hands.</p>
-          </div>
-        </div>
-        <div className="hidden flex-wrap gap-2 sm:flex">
-          {[
-            { n: cards.filter(isOpen).length, l: "In progress" },
-            { n: q4.readyToPublish.length, l: "Ready" },
-            { n: q4.published.length, l: "Published" },
-            { n: clips.length.toLocaleString(), l: "Clips indexed" },
-          ].map((s) => (
-            <div key={s.l} className="min-w-[76px] rounded-lg border border-border bg-card px-3 py-2">
-              <div className="text-lg font-extrabold tabular-nums text-foreground">{s.n}</div>
-              <div className="mt-0.5 text-[12.5px] uppercase tracking-[0.09em] text-muted-foreground">{s.l}</div>
-            </div>
-          ))}
-          <button onClick={() => { chooseProof("testimonials"); setTab("library"); }} className="min-w-[76px] rounded-lg border border-primary/40 bg-primary/5 px-3 py-2 text-left hover:bg-primary/10" title="Every testimonial — calls, videos, screenshots, texts — one tap from download">
-            <div className="text-lg font-extrabold tabular-nums text-primary">{testimonialClips.length.toLocaleString()}</div>
-            <div className="mt-0.5 text-[12.5px] uppercase tracking-[0.09em] text-primary">Testimonials</div>
-          </button>
-        </div>
-      </header>
+    <div className="mx-auto w-full max-w-6xl px-4 pb-24 pt-4 sm:px-6">
+      <PageHeader
+        className="mb-3"
+        eyebrow="Owner"
+        icon={<Clapperboard />}
+        tone="gold"
+        title="Launch Board"
+        subtitle="Every video from idea to published."
+        primaryAction={
+          // Outline on purpose: the one gold button is Up next's.
+          <Button type="button" variant="outline" className="h-11 bg-card" onClick={() => setNewIdeaOpen(true)}>
+            <Lightbulb className="h-4 w-4" aria-hidden /> New idea
+          </Button>
+        }
+      />
 
-      <nav aria-label="Board sections" className="sticky top-0 z-10 -mx-4 mb-6 flex gap-1 overflow-x-auto border-b border-border bg-background px-4 py-2 sm:mx-0 sm:px-0">
-        {TABS.map((t) => (
-          <button key={t.k} onClick={() => setTab(t.k)} aria-current={tab === t.k ? "page" : undefined} className={`rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${tab === t.k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>{t.label}</button>
-        ))}
-        <span className="ml-auto self-center whitespace-nowrap text-sm text-muted-foreground">{attachTarget ? <>Attaching to <b className="text-foreground">{attachTarget.title}</b> · <button className="underline" onClick={() => setAttachTarget(null)}>cancel</button></> : null}</span>
-        <Button size="sm" onClick={openNew} className="ml-2 h-8 bg-primary text-primary-foreground hover:bg-primary/90"><Plus className="mr-1 h-3.5 w-3.5" aria-hidden />New idea</Button>
+      <nav aria-label="Launch Board views" className="mb-5 flex gap-1 overflow-x-auto border-b border-border [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {VIEWS.map((v) => {
+          const active = view === v.k;
+          return (
+            <button
+              key={v.k}
+              type="button"
+              onClick={() => setTab(v.k)}
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "inline-flex min-h-11 shrink-0 items-center whitespace-nowrap border-b-2 px-3 text-[15px] font-semibold transition-colors focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
+                active ? "border-primary text-foreground" : "border-transparent text-muted-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:text-foreground",
+              )}
+            >
+              {v.label}
+            </button>
+          );
+        })}
       </nav>
 
       {locked && (
-        <div role="status" className="mb-5 rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-foreground">
-          The content workflow migration (20261006150000) is not on this database yet. The board, library and downloads work; stage moves, approvals, schedules and publish confirmations are disabled until it is applied.
+        <div role="status" className={cn("mb-5 rounded-lg border px-4 py-3 text-[15px] leading-6 text-foreground", TONE_CLASS.hot.border, "bg-tone-hot/8")}>
+          The content workflow migration (20261006150000) is not on this database yet. The board, library and downloads work; stage moves, approvals, plans and publish confirmations are off until it is applied.
         </div>
       )}
 
-      {tab === "today" && (
-        <div className="space-y-8">
-          <section>
-            <Head title="Needs finishing" hint={today.length ? `${today.length} to work, most urgent first` : "nothing urgent"} />
-            {today.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">Nothing is due, ready or waiting on approval. Plan a recording from an idea, or add one.</div>
-            ) : (
-              <>
-              <ul className="space-y-3 md:hidden" aria-label="Needs finishing">
-                {(todayAll ? today : today.slice(0, 5)).map((t) => (
-                  <li key={t.card.id} className="rounded-lg border border-border bg-card p-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <button onClick={() => openEdit(t.card)} className="min-h-[40px] text-left text-base font-semibold text-foreground">{t.card.title}</button>
-                      <span className="shrink-0 whitespace-nowrap rounded-full border border-border px-2.5 py-0.5 text-xs font-semibold text-foreground">{lifecycleText(t.card)}</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{t.reason}{t.card.owner ? ` · ${t.card.owner}` : ""}</p>
-                    <p className="mt-1 text-sm text-foreground"><b>Next:</b> {nextAction(t.card)}</p>
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <input type="date" value={(t.card.due_date ?? "").slice(0, 10)} onChange={(e) => void rescheduleCard(t.card, e.target.value)}
-                        aria-label={`Due date for ${t.card.title}`} className={`min-h-[44px] rounded-md border border-border bg-background px-2 text-sm ${dueTone(t.card.due_date)}`} />
-                      {(t.card.record_script ?? "").trim() && ["idea", "selected", "filming"].includes(lifecycleOf(t.card)) ? <Button size="sm" variant="outline" className="h-11 px-3 text-sm" onClick={() => setPackId(t.card.id)} aria-label={`Open the filming pack for ${t.card.title}`}>Open pack</Button> : null}
-                      {primaryAction(t.card)}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-              <div className="hidden overflow-x-auto rounded-lg border border-border md:block">
-                <table className="w-full min-w-[640px] text-sm">
-                  <thead className="bg-muted/50 text-left text-[13px] uppercase tracking-wide text-muted-foreground">
-                    <tr><th className="w-8 px-3 py-2">#</th><th className="px-3 py-2">Item</th><th className="px-3 py-2">Where it is</th><th className="px-3 py-2">Next action</th><th className="px-3 py-2">Due</th><th className="px-3 py-2 text-right">Do it</th></tr>
-                  </thead>
-                  <tbody>
-                    {(todayAll ? today : today.slice(0, 5)).map((t, i) => (
-                      <tr key={t.card.id} className="border-t border-border align-top">
-                        <td className="px-3 py-2.5 font-bold tabular-nums text-muted-foreground">{i + 1}</td>
-                        <td className="px-3 py-2.5">
-                          <button onClick={() => openEdit(t.card)} className="text-left font-semibold text-foreground hover:text-primary">{t.card.title}</button>
-                          <div className="text-[13px] text-muted-foreground">{t.reason}{t.card.owner ? ` · ${t.card.owner}` : ""}</div>
-                        </td>
-                        <td className="px-3 py-2.5"><span className="inline-flex items-center whitespace-nowrap rounded-full border border-border px-3 py-1 text-sm font-semibold text-foreground">{lifecycleText(t.card)}</span></td>
-                        <td className="px-3 py-2.5 text-sm text-foreground">{nextAction(t.card)}</td>
-                        <td className="px-3 py-2.5 text-sm">
-                          <input type="date" value={(t.card.due_date ?? "").slice(0, 10)} onChange={(e) => void rescheduleCard(t.card, e.target.value)}
-                            aria-label={`Due date for ${t.card.title}`} className={`min-h-[40px] rounded-md border border-border bg-background px-2 text-sm ${dueTone(t.card.due_date)}`} />
-                        </td>
-                        <td className="px-3 py-2.5 text-right">
-                          <div className="flex flex-wrap justify-end gap-1.5">
-                            {(t.card.record_script ?? "").trim() && ["idea", "selected", "filming"].includes(lifecycleOf(t.card)) ? <Button size="sm" variant="outline" className="h-8 px-2.5 text-[13px]" onClick={() => setPackId(t.card.id)} aria-label={`Open the filming pack for ${t.card.title}`}>Open pack</Button> : null}
-                            {primaryAction(t.card)}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              </>
-            )}
-            {today.length > 5 && <button type="button" onClick={() => setTodayAll(!todayAll)} className="mt-3 rounded-full border border-border px-3 py-1 text-sm font-semibold text-foreground hover:border-primary/60">{todayAll ? "Show fewer" : `Show all (${today.length})`}</button>}
-          </section>
-
-          <FilmNextPanel
-            ideas={ideas} used={usedIdeas} dismissed={dismissals} dismissalsFailed={dismissalsFailed} busyKey={busyIdeaKey}
-            onFilm={(i, e) => void pickIdea(i, e)} onSaveLater={(i) => void saveIdeaLater(i)}
-            onDismiss={(i, r) => void dismissIdea(i, r)} onBringBack={(k) => void undoDismiss(k)}
-          />
-
-          <WinnersPanel
-            posts={postsRead.posts} loading={postsRead.loading} failed={postsRead.failed} onRetry={() => void postsRead.load()}
-            cards={[...cards, ...archivedCards]} busy={remaking} onRemake={(d) => void remake(d)}
-            onOpenCard={(id) => setPackId(id)} onLogResults={() => setTab("analytics")}
-          />
-
-          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border p-3">
-            <span className="text-sm text-muted-foreground">Clear unused ideas. Videos with footage and work in progress stay on the board.</span>
-            <Button variant="outline" disabled={archiveBusy || !unusedIdeas.length} onClick={() => void archiveIdeas()}>Clear unused ideas ({unusedIdeas.length})</Button>
-            {archivedCards.length > 0 && <Button variant="ghost" disabled={archiveBusy} onClick={() => void archiveIdeas(true)}>Restore cleared ideas ({archivedCards.length})</Button>}
-          </div>
-          <ContentHome hidePicks posts={postsRead.posts} onOpenAnalytics={() => setTab("analytics")} />
-
-          <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2">
-            <MessageSquareQuote className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-            <div className="min-w-0 flex-1 truncate text-sm" title={health && health.waiting > 0 ? `${health.waiting.toLocaleString()} clips still being judged` : undefined}>
-              <b className="text-foreground">{testimonialClips.length.toLocaleString()} testimonials</b>
-              <span className="text-muted-foreground"> · {testimonialClips.filter((k) => k.media !== "image").length} calls &amp; videos · {testimonialClips.filter((k) => k.media === "image").length} screenshots</span>
-            </div>
-            <Button size="sm" variant="outline" onClick={() => { chooseProof("testimonials"); setTab("library"); }} className="h-8 shrink-0"><Download className="mr-1.5 h-3.5 w-3.5" aria-hidden />Open pack</Button>
-          </div>
-
-          <div>
-            <button type="button" onClick={() => setTodayDetails(!todayDetails)} aria-expanded={todayDetails} className="rounded-full border border-border px-3 py-1 text-sm font-semibold text-foreground hover:border-primary/60">{todayDetails ? "Hide details" : "Show details"}</button>
-            {todayDetails && (
-          <section aria-label="Four questions" className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {questions.map((qq) => (
-              <div key={qq.key} className="flex flex-col gap-2 rounded-lg border border-border bg-card p-4">
-                <div className="text-sm font-semibold text-muted-foreground">{qq.q}</div>
-                <button onClick={() => { setStageFilter(qq.go); setTab("board"); }} className="self-start text-2xl font-extrabold tabular-nums text-foreground hover:text-primary" aria-label={`${qq.q} ${qq.count} — open on the board`}>{qq.count}</button>
-                {qq.note && <div className={`text-[13px] ${qq.noteTone ?? "text-muted-foreground"}`}>{qq.note}</div>}
-                <ul className="mt-auto space-y-1">
-                  {qq.items.slice(0, 3).map((c) => (
-                    <li key={c.id}><button onClick={() => openEdit(c)} className="w-full line-clamp-2 text-left text-sm text-foreground hover:text-primary" title={c.title}>{c.title}</button></li>
-                  ))}
-                  {qq.items.length === 0 && <li className="text-sm text-muted-foreground">None</li>}
-                </ul>
-              </div>
-            ))}
-          </section>
-
-            )}
-          </div>
-        </div>
+      {view === "today" && (
+        <LaunchBoardList
+          cards={cards}
+          status={loadError ? "error" : loading && cards.length === 0 ? "loading" : "ready"}
+          error={loadError}
+          onRetry={() => void load()}
+          isAdmin={isAdmin}
+          busyId={busyId}
+          locked={locked}
+          onAct={(v, next, origin) => void act(v, next, origin)}
+          onOpen={(v) => { const c = cards.find((x) => x.id === v.id); if (c) openEdit(c); }}
+          onNewIdea={() => setNewIdeaOpen(true)}
+          ideasFooter={ideasFooter}
+        />
       )}
 
-      {tab === "board" && (
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filter by stage">
-            {([{ k: "open", label: "In progress", n: cards.filter(isOpen).length }, ...STAGES.map((st) => ({ k: st, label: STAGE_LABEL[st], n: stageCounts[st] })), { k: "all", label: "All", n: cards.length }] as { k: "open" | "all" | Stage; label: string; n: number }[])
-              .filter((f) => f.k !== "published_unconfirmed" || f.n > 0)
-              .map((f) => (
-                <button key={f.k} onClick={() => setStageFilter(f.k)} aria-pressed={stageFilter === f.k} className={`rounded-full border px-3 py-1 text-sm font-semibold ${stageFilter === f.k ? "border-primary/40 bg-primary/15 text-primary" : "border-border text-muted-foreground hover:text-foreground"}`}>
-                  {f.label} <span className="opacity-60 tabular-nums">{f.n}</span>
-                </button>
-              ))}
-          </div>
-          <div className="flex justify-end"><button type="button" onClick={() => setBoardDetails(!boardDetails)} aria-pressed={boardDetails} className="rounded-full border border-border px-3 py-1 text-sm font-semibold text-foreground hover:border-primary/60">{boardDetails ? "Hide details" : "Show details"}</button></div>
-          <div className="overflow-x-auto rounded-lg border border-border">
-            <table className={`w-full text-sm ${boardDetails ? "min-w-[880px]" : "min-w-[560px]"}`}>
-              <thead className="bg-muted/50 text-left text-[13px] uppercase tracking-wide text-muted-foreground">
-                <tr>
-                  <th className="px-3 py-2">Item</th><th className="px-3 py-2">Stage</th>{boardDetails && <><th className="px-3 py-2">Destination</th><th className="px-3 py-2">Source media</th><th className="px-3 py-2">Owner</th></>}<th className="px-3 py-2">Due</th><th className="px-3 py-2">Next action</th><th className="px-3 py-2 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {boardRows.length === 0 && <tr><td colSpan={boardDetails ? 8 : 5} className="px-3 py-6 text-center text-sm text-muted-foreground">No cards in this stage.</td></tr>}
-                {boardRows.map((c) => (
-                  <tr key={c.id} className="border-t border-border align-top">
-                    <td className="max-w-[280px] px-3 py-3.5">
-                      <button onClick={() => openEdit(c)} className="text-left font-semibold leading-snug text-foreground hover:text-primary">{c.title}</button>
-                      {c.hook && <div className="line-clamp-2 text-[13px] text-muted-foreground">{c.hook}</div>}
-                      {scheduleNote(c)}
-                    </td>
-                    <td className="px-3 py-3.5"><StageChip stage={stageOf(c)} /></td>
-                    {boardDetails && <><td className="px-3 py-3.5"><Chip className={brandClass(c.brand)}>{brandHandle(c.brand)}</Chip>{c.day > 0 && <div className="mt-1 text-[13px] text-muted-foreground">{WEEKDAY[c.day]} slot</div>}</td>
-                    <td className="max-w-[180px] px-3 py-3.5">{clipLine(c)}</td>
-                    <td className="px-3 py-3.5 text-sm text-foreground">{c.owner || <span className="text-muted-foreground">—</span>}</td></>}
-                    <td className={`px-3 py-3.5 text-sm ${dueTone(c.due_date)}`}>{fmtDue(c.due_date) || "—"}</td>
-                    <td className="max-w-[220px] px-3 py-3.5 text-sm text-foreground">{nextAction(c)}</td>
-                    <td className="px-3 py-3.5"><div className="flex flex-wrap items-center justify-end gap-1">{primaryAction(c)}{secondaryActions(c)}</div></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {tab === "week" && (
-        <WeekTab cards={cards} onOpen={openEdit}
-          onMove={(c, day) => { void patch(c.id, { day, planned_week: day ? phoenixWeekStart() : null }).then((ok) => { if (ok) toast.success(day ? `Moved to ${DAY_THEMES[day].name}` : "Moved to Ideas"); }); }}
+      {view === "week" && (
+        <WeekPlan cards={cards} formatLine={FORMAT_LINE} onOpen={(c) => openEdit(c as Card)}
+          onMove={(c, day) => { void patch(c.id, { day, planned_week: day ? phoenixWeekStart() : null }).then((ok) => { if (ok) toast.success(day ? `Moved to ${DAY_THEMES[day].name}` : "Moved to Not planned yet"); }); }}
           onAdd={(d) => { const long = DAY_THEMES[d].longTarget > 0; setDraft({ ...emptyDraft, day: d, brand: long ? "YT" : "SH", content_type: long ? "long" : "short" }); setEditing(null); setEditorOpen(true); }} />
       )}
 
-      {tab === "library" && (
+      {view === "library" && (
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative min-w-[240px] flex-1">
-              <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by what's in the clip — car, gym, drone, office…" className="pl-8" />
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+              <Input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search what's in a clip: car, gym, drone, office" aria-label="Search the library" enterKeyHint="search" className="h-11 bg-card pl-9 text-base" />
             </div>
-            {/* Testimonials: FaceTime/phone calls where someone praises Sam, plus screenshots and texts saying how good it is.
-                Verdicts come from what the clip SAYS (whisper transcript / OCR), judged by the classifier daemon; Sam's tap wins. */}
-            <button onClick={() => chooseProof(proof === "testimonials" ? "all" : "testimonials")} title="FaceTime calls, videos with someone praising the agency, screenshots and texts"
-              className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-bold ${proof === "testimonials" ? "border-gold bg-gold/20 text-gold" : "border-gold/40 text-gold/90 hover:bg-gold/10"}`}>
-              <MessageSquareQuote className="h-3.5 w-3.5" /> Testimonials <span className="opacity-70">{testimonialClips.length}</span>
-            </button>
-            {proof === "testimonials" && ([{ k: "all", label: "All" }, { k: "video", label: "Calls & videos" }, { k: "image", label: "Screenshots & texts" }] as { k: ProofKind; label: string }[]).map((p) => {
-              const n = p.k === "all" ? testimonialClips.length : testimonialClips.filter((k) => proofKindOf(k) === p.k).length;
-              return (
-                <button key={p.k} onClick={() => setProofKind(p.k)} className={`rounded-full border px-3 py-1 text-sm font-semibold ${proofKind === p.k ? "border-gold/60 bg-gold/15 text-gold" : "border-border text-muted-foreground hover:text-foreground"}`}>
-                  {p.label} <span className="opacity-60">{n}</span>
-                </button>
-              );
-            })}
-            {proof === "testimonials" && (
-              <Button size="sm" disabled={downloadingAll || visibleClips.length === 0} onClick={() => void downloadAll(visibleClips)} className="h-7 bg-emerald-500/15 px-3 text-sm font-bold text-emerald-400 hover:bg-emerald-500/25" title="Fire every fresh direct link in this set — allow multiple downloads when Chrome asks once">
-                {downloadingAll ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-1 h-3.5 w-3.5" />}{downloadingAll && pulling ? `Pulling ${pulling}` : batch?.files.length && mobileSave ? `Save ${batch.files.length} to camera roll` : `${mobileSave ? "Get all" : "Download all"} ${visibleClips.length}`}
+            <div className="flex gap-2">
+              {/* Testimonials: FaceTime/phone calls where someone praises Sam, plus screenshots and texts saying how good it is.
+                  Verdicts come from what the clip SAYS (whisper transcript / OCR), judged by the classifier daemon; Sam's tap wins. */}
+              <button type="button" aria-pressed={proof === "testimonials"} onClick={() => chooseProof(proof === "testimonials" ? "all" : "testimonials")} title="FaceTime calls, videos with someone praising the agency, screenshots and texts" className={chipClass(proof === "testimonials")}>
+                <MessageSquareQuote className="h-4 w-4" aria-hidden /> Testimonials <span className="tabular-nums text-muted-foreground">{testimonialClips.length.toLocaleString()}</span>
+              </button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button type="button" className={chipClass(activeFilters.length > 0 || sortBy !== "banger")} aria-label={activeFilters.length ? `Filters, ${activeFilters.length} on` : "Filters and order"}>
+                    <SlidersHorizontal className="h-4 w-4" aria-hidden /> Filters{activeFilters.length ? <span className="tabular-nums text-muted-foreground">{activeFilters.length}</span> : null}
+                    <ChevronDown className="h-4 w-4" aria-hidden />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="max-h-[70dvh] w-72 overflow-y-auto">
+                  <DropdownMenuLabel className="text-[13px] font-semibold text-muted-foreground">Folder</DropdownMenuLabel>
+                  <DropdownMenuRadioGroup value={folder} onValueChange={(v) => setFolder(v as FolderKey)}>
+                    {(["all", "YouTube", "Reels", "Screenshots"] as const).filter((f) => f !== "Screenshots" || hasScreenshots).map((f) => (
+                      <DropdownMenuRadioItem key={f} value={f} className="min-h-11 text-[15px]">{FOLDER_LABEL[f]}</DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-[13px] font-semibold text-muted-foreground">Length</DropdownMenuLabel>
+                  <DropdownMenuRadioGroup value={length} onValueChange={(v) => setLength(v as LengthKey)}>
+                    {(["all", "short", "mid", "long"] as const).map((l) => <DropdownMenuRadioItem key={l} value={l} className="min-h-11 text-[15px]">{LENGTH_LABEL[l]}</DropdownMenuRadioItem>)}
+                  </DropdownMenuRadioGroup>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-[13px] font-semibold text-muted-foreground">Topic</DropdownMenuLabel>
+                  <DropdownMenuRadioGroup value={pillar} onValueChange={(v) => setPillar(v as "all" | PillarKey)}>
+                    <DropdownMenuRadioItem value="all" className="min-h-11 justify-between text-[15px]"><span>Any topic</span><span className="tabular-nums text-muted-foreground">{clips.length.toLocaleString()}</span></DropdownMenuRadioItem>
+                    {PILLARS.map((p) => (
+                      <DropdownMenuRadioItem key={p.k} value={p.k} className="min-h-11 justify-between gap-3 text-[15px]">
+                        <span>{p.label}</span><span className="tabular-nums text-muted-foreground">{clips.filter((k) => pillarsOf(k).includes(p.k)).length.toLocaleString()}</span>
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-[13px] font-semibold text-muted-foreground">Order</DropdownMenuLabel>
+                  <DropdownMenuRadioGroup value={sortBy} onValueChange={(v) => setSortBy(v as "banger" | "newest")}>
+                    <DropdownMenuRadioItem value="banger" className="min-h-11 text-[15px]">Strongest first</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="newest" className="min-h-11 text-[15px]">Newest first</DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+          {proof === "testimonials" && (
+            <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Which testimonials">
+              {([{ k: "all", label: "All" }, { k: "video", label: "Calls and videos" }, { k: "image", label: "Screenshots and texts" }] as { k: ProofKind; label: string }[]).map((p) => {
+                const n = p.k === "all" ? testimonialClips.length : testimonialClips.filter((k) => proofKindOf(k) === p.k).length;
+                return (
+                  <button key={p.k} type="button" aria-pressed={proofKind === p.k} onClick={() => setProofKind(p.k)} className={chipClass(proofKind === p.k)}>
+                    {p.label} <span className="tabular-nums text-muted-foreground">{n.toLocaleString()}</span>
+                  </button>
+                );
+              })}
+              <Button type="button" variant="outline" disabled={downloadingAll || visibleClips.length === 0} onClick={() => void downloadAll(visibleClips)} className={cn("h-11 sm:ml-auto", TONE_CLASS.good.text, TONE_CLASS.good.border)} title="Fire every fresh direct link in this set — allow multiple downloads when Chrome asks once">
+                {downloadingAll ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Download className="h-4 w-4" aria-hidden />}{downloadingAll && pulling ? `Pulling ${pulling}` : batch?.files.length && mobileSave ? `Save ${batch.files.length} to camera roll` : `${mobileSave ? "Get all" : "Download all"} ${visibleClips.length.toLocaleString()}`}
               </Button>
-            )}
-            <span className="mx-1 hidden h-5 w-px bg-border sm:block" aria-hidden />
-            {(["all", "YouTube", "Reels", "Screenshots"] as const).filter((f) => f !== "Screenshots" || clips.some((k) => k.folder === "Screenshots")).map((f) => (
-              <button key={f} onClick={() => setFolder(f)} className={`rounded-full border px-3 py-1 text-sm font-semibold ${folder === f ? "border-primary/40 bg-primary/15 text-primary" : "border-border text-muted-foreground hover:text-foreground"}`}>
-                {f === "all" ? "All" : f === "YouTube" ? "YouTube · horizontal" : f === "Reels" ? "Reels · vertical" : "Screenshots"}
-              </button>
-            ))}
-            {(["all", "short", "mid", "long"] as const).map((l) => (
-              <button key={l} onClick={() => setLength(l)} className={`rounded-full border px-3 py-1 text-sm font-semibold ${length === l ? "border-primary/40 bg-primary/15 text-primary" : "border-border text-muted-foreground hover:text-foreground"}`}>
-                {l === "all" ? "Any length" : l === "short" ? "≤ 1 min" : l === "mid" ? "1–5 min" : "5 min +"}
-              </button>
-            ))}
-            <span className="mx-1 hidden h-5 w-px bg-border sm:block" aria-hidden />
-            {([{ k: "all" as const, label: "All pillars" }, ...PILLARS] as { k: "all" | PillarKey; label: string }[]).map((p) => {
-              const n = p.k === "all" ? clips.length : clips.filter((k) => pillarsOf(k).includes(p.k as PillarKey)).length;
-              return (
-                <button key={p.k} onClick={() => setPillar(p.k)} className={`rounded-full border px-3 py-1 text-sm font-semibold ${pillar === p.k ? "border-primary/40 bg-primary/15 text-primary" : "border-border text-muted-foreground hover:text-foreground"}`}>
-                  {p.label} <span className="opacity-60">{n}</span>
-                </button>
-              );
-            })}
-            <div className="ml-auto flex items-center gap-1.5">
-              {(["banger", "newest"] as const).map((s) => (
-                <button key={s} onClick={() => setSortBy(s)} className={`rounded-full border px-3 py-1 text-sm font-semibold ${sortBy === s ? "border-primary/40 bg-primary/15 text-primary" : "border-border text-muted-foreground hover:text-foreground"}`}>
-                  {s === "banger" ? "🔥 Bangers first" : "Newest"}
+            </div>
+          )}
+          {activeFilters.length > 0 && (
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Filters on">
+              {activeFilters.map((f) => (
+                <button key={f.key} type="button" onClick={f.clear} aria-label={`Remove filter: ${f.label}`} className={cn(chipClass(true), "min-h-10 px-3")}>
+                  {f.label} <X className="h-4 w-4" aria-hidden />
                 </button>
               ))}
             </div>
-            <span className="w-full text-sm text-muted-foreground">
-              <button onClick={() => setShowDetails(!showDetails)} aria-pressed={showDetails} className="mr-2 rounded-full border border-border px-2.5 py-0.5 font-semibold text-foreground hover:border-primary/60">{showDetails ? "Hide details" : "Show details"}</button>
-              {visibleClips.length.toLocaleString()} match · {clips.filter((k) => k.thumb_url).length.toLocaleString()} with previews
-              {health && (proof === "testimonials" || health.waiting > 0) && (
-                <> · classifier: <b className="text-foreground">{health.judged.toLocaleString()}</b> judged, <b className="text-foreground">{health.waiting.toLocaleString()}</b> still waiting{health.last_judged_at ? ` · last ${fmtDate(health.last_judged_at)}` : ""} — the list grows as it works</>
-              )}
-            </span>
-          </div>
-          {attachTarget && <div className="rounded-xl border border-gold/40 bg-gold/10 px-3 py-2 text-sm text-foreground">Pick the clip for <b>{attachTarget.title}</b> — tap <b>Attach</b> on a row.</div>}
+          )}
+          <p className="text-[15px] leading-6 text-muted-foreground">
+            <span className="font-semibold text-foreground">{visibleClips.length.toLocaleString()} {visibleClips.length === 1 ? "clip" : "clips"}</span>
+            {sortBy === "banger" ? ", strongest first" : ", newest first"}
+            {health && (proof === "testimonials" || health.waiting > 0) && (
+              <> · The classifier has judged {health.judged.toLocaleString()} and has {health.waiting.toLocaleString()} still to go{health.last_judged_at ? ` (last ${fmtDate(health.last_judged_at)})` : ""}, so this list grows as it works.</>
+            )}
+            {" "}<button type="button" onClick={() => setShowDetails(!showDetails)} aria-pressed={showDetails} className="font-semibold text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]">{showDetails ? "Hide details" : "Show details"}</button>
+          </p>
+          {attachTarget && (
+            <div role="status" className={cn("flex flex-col gap-2 rounded-xl border px-4 py-3 text-[15px] text-foreground sm:flex-row sm:items-center sm:justify-between", TONE_CLASS.gold.border, "bg-tone-gold/8")}>
+              <span>Pick the footage for <b>{attachTarget.title}</b>, then tap Attach on its clip.</span>
+              <Button type="button" variant="ghost" className="h-11 shrink-0" onClick={() => { setAttachTarget(null); setTab("today"); }}>Cancel</Button>
+            </div>
+          )}
           {picked.size > 0 && (
-            <div className="sticky top-14 z-10 flex flex-wrap items-center gap-2 rounded-xl border border-primary/40 bg-background/95 px-3 py-2 text-sm backdrop-blur">
+            <div className="sticky top-16 z-10 flex flex-wrap items-center gap-2 rounded-xl border border-primary/40 bg-background px-3 py-2 text-[15px]">
               <span className="font-semibold text-foreground">{picked.size} selected</span>
-              <Button size="sm" onClick={shareSelected} className="h-8 bg-primary text-primary-foreground hover:bg-primary/90"><Copy className="mr-1.5 h-3.5 w-3.5" />Copy share link</Button>
-              <Button size="sm" variant="ghost" onClick={() => setPicked(new Set())} className="h-8 text-muted-foreground">Clear</Button>
-              <span className="text-sm text-muted-foreground">Anyone with the link can preview and download these originals — no login.</span>
+              <Button size="sm" onClick={shareSelected} className="h-11"><Copy className="h-4 w-4" aria-hidden />Copy share link</Button>
+              <Button size="sm" variant="ghost" onClick={() => setPicked(new Set())} className="h-11 text-muted-foreground">Clear</Button>
+              <span className="text-sm text-muted-foreground">Anyone with the link can preview and download these originals, no login.</span>
             </div>
           )}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {visibleClips.length === 0 && <p className="col-span-full p-4 text-sm text-muted-foreground">No clips match. Previews and titles fill in as the mini indexes your Dropbox (newest first).</p>}
+            {visibleClips.length === 0 && <p className="col-span-full rounded-xl border border-dashed border-border p-6 text-[15px] text-muted-foreground">No clips match. Previews and titles fill in as the Mac mini indexes your Dropbox, newest first.</p>}
             {visibleClips.slice(0, shown).map((k) => (
-              <div key={k.id} className={`group relative flex flex-col overflow-hidden rounded-2xl border bg-card ${picked.has(k.id) ? "border-primary ring-1 ring-primary/50" : "border-border"}`}>
-                <label className="absolute left-2 top-2 z-10 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border border-border bg-background/85 text-primary" title="Select to share">
-                  <input type="checkbox" checked={picked.has(k.id)} onChange={() => togglePick(k.id)} className="h-3.5 w-3.5 accent-[hsl(var(--primary))]" />
+              <div key={k.id} className={cn("group relative flex flex-col overflow-hidden rounded-xl border bg-card", picked.has(k.id) ? "border-primary" : "border-border")}>
+                <label className="absolute left-2 top-2 z-10 flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border border-border bg-background/90 text-primary" title="Select to share">
+                  <input type="checkbox" checked={picked.has(k.id)} onChange={() => togglePick(k.id)} aria-label={`Select ${k.find_label || k.title || cleanName(k.name)} to share`} className="h-4 w-4 accent-[hsl(var(--primary))]" />
                 </label>
                 <a href={directUrl(k) ?? dropboxUrl(k.path)} target="_blank" rel="noopener noreferrer"
                   onClick={(e) => {
@@ -1238,13 +957,13 @@ export default function LaunchBoard() {
                     const v = e.currentTarget.querySelector("video");
                     if (v && v.paused && window.matchMedia("(hover: none)").matches) { e.preventDefault(); v.style.opacity = "1"; void v.play(); }
                   }}
-                  className={`relative block bg-muted/40 ${k.kind === "vertical" ? "aspect-[9/16] max-h-64" : "aspect-video"}`} title={k.media === "image" ? "Open the screenshot" : "Open in Dropbox"}>
+                  className={cn("relative block bg-muted/40", k.kind === "vertical" ? "aspect-[9/16] max-h-64" : "aspect-video")} title={k.media === "image" ? "Open the screenshot" : "Open in Dropbox"}>
                   {k.thumb_url ? (
                     <>
-                      <img src={k.thumb_url} alt="" loading="lazy" className={`h-full w-full ${k.media === "image" ? "object-contain bg-black/40" : "object-cover"}`} />
+                      <img src={k.thumb_url} alt="" loading="lazy" className={cn("h-full w-full", k.media === "image" ? "object-contain bg-muted" : "object-cover")} />
                       {isTestimonial(k) && (
-                        <span className="absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded-full bg-gold px-1.5 py-0.5 text-[12px] font-extrabold text-zinc-950" title={k.testimonial_reason ?? "testimonial"}>
-                          <MessageSquareQuote className="h-3 w-3" /> {k.media === "image" ? "TEXT" : k.testimonial_kind === "video_call" ? "CALL" : "TESTIMONIAL"}
+                        <span className={cn("absolute bottom-1.5 left-1.5 inline-flex items-center gap-1 rounded-full bg-background/90 px-2 py-0.5 text-[13px] font-semibold", TONE_CLASS.gold.text)} title={k.testimonial_reason ?? "testimonial"}>
+                          <MessageSquareQuote className="h-3.5 w-3.5" aria-hidden /> {k.media === "image" ? "Text" : k.testimonial_kind === "video_call" ? "Call" : "Testimonial"}
                         </span>
                       )}
                       {k.preview_url && k.media !== "image" && (
@@ -1252,59 +971,61 @@ export default function LaunchBoard() {
                       )}
                     </>
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center text-muted-foreground">{k.media === "image" ? <ImageIcon className="h-6 w-6" /> : <Film className="h-6 w-6" />}</div>
+                    <div className="flex h-full w-full items-center justify-center text-muted-foreground">{k.media === "image" ? <ImageIcon className="h-6 w-6" aria-hidden /> : <Film className="h-6 w-6" aria-hidden />}</div>
                   )}
-                  {k.duration_s ? <span className="absolute bottom-1.5 right-1.5 rounded bg-background/80 px-1.5 py-0.5 text-[12px] font-semibold tabular-nums text-foreground">{fmtDur(k.duration_s)}</span> : null}
-                  {k.used_by_card && <span className="absolute left-1.5 top-1.5 rounded bg-emerald-500/90 px-1.5 py-0.5 text-[12px] font-semibold text-emerald-950">on a card</span>}
+                  {k.duration_s ? <span className="absolute bottom-1.5 right-1.5 rounded-md bg-background/90 px-1.5 py-0.5 text-[13px] font-semibold tabular-nums text-foreground">{fmtDur(k.duration_s)}</span> : null}
+                  {k.used_by_card && <span className={cn("absolute left-11 top-2.5 rounded-md bg-background/90 px-1.5 py-0.5 text-[13px] font-semibold", TONE_CLASS.good.text)}>On a card</span>}
                   {k.banger_score != null && (
-                    <span className={`absolute right-1.5 top-1.5 flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[12px] font-extrabold tabular-nums text-zinc-950 ${bangerColor(k.banger_score)}`} title={k.banger_reason ?? "traction potential"}>🔥 {k.banger_score}</span>
+                    <span className={cn("absolute right-1.5 top-1.5 inline-flex items-center gap-1 rounded-full bg-background/90 px-2 py-0.5 text-[13px] font-semibold tabular-nums", TONE_CLASS[bangerTone(k.banger_score)].text)} title={k.banger_reason ?? "traction potential"}>
+                      <Flame className="h-3.5 w-3.5" aria-hidden /> {k.banger_score}
+                    </span>
                   )}
                 </a>
                 <div className="flex flex-1 flex-col gap-1.5 p-3">
                   {renaming?.id === k.id ? (
-                    <input autoFocus value={renaming.text} onChange={(e) => setRenaming({ id: k.id, text: e.target.value })} onBlur={() => void saveRename()} onKeyDown={(e) => { if (e.key === "Enter") void saveRename(); if (e.key === "Escape") { renameDone.current = true; setRenaming(null); } }} aria-label="Clip title" className="w-full rounded border border-primary/60 bg-background px-2 py-1 text-sm font-bold text-foreground outline-none" />
+                    <input autoFocus value={renaming.text} onChange={(e) => setRenaming({ id: k.id, text: e.target.value })} onBlur={() => void saveRename()} onKeyDown={(e) => { if (e.key === "Enter") void saveRename(); if (e.key === "Escape") { renameDone.current = true; setRenaming(null); } }} aria-label="Clip title" className="w-full rounded-md border border-primary/60 bg-background px-2 py-1 text-base font-semibold text-foreground outline-none" />
                   ) : (
-                    <button onClick={() => { renameDone.current = false; setRenaming({ id: k.id, text: k.find_label || k.title || cleanName(k.name) }); }} title="Tap to rename" className="line-clamp-2 text-left text-sm font-bold leading-snug text-foreground hover:text-primary">{k.find_label || k.title || cleanName(k.name)}</button>
+                    <button type="button" onClick={() => { renameDone.current = false; setRenaming({ id: k.id, text: k.find_label || k.title || cleanName(k.name) }); }} title="Tap to rename" className="line-clamp-2 text-left text-[15px] font-semibold leading-snug text-foreground [overflow-wrap:anywhere] [@media(hover:hover)_and_(pointer:fine)]:hover:text-primary">{k.find_label || k.title || cleanName(k.name)}</button>
                   )}
-                  {k.hook_title && <button onClick={() => { void navigator.clipboard?.writeText(k.hook_title ?? "").then(() => toast.success("Hook copied")).catch(() => toast.error("Clipboard blocked")); }} title="Tap to copy the hook" className="line-clamp-1 text-left text-sm italic text-muted-foreground hover:text-foreground">🎬 {k.hook_title}</button>}
-                  {isTestimonial(k) && k.testimonial_reason && <div className="line-clamp-2 text-[13px] text-gold/90" title={k.testimonial_reason}>{k.testimonial_reason}</div>}
-                  {!isTestimonial(k) && k.transcript && proof === "all" && query && <div className="line-clamp-2 text-[12.5px] italic text-muted-foreground" title={k.transcript}>“{k.transcript.slice(0, 140)}”</div>}
-                  {(showDetails || proof === "testimonials") && <div className="flex items-center gap-1">
-                    <span className="text-[12px] text-muted-foreground">{k.testimonial == null ? "not judged yet" : isTestimonial(k) ? (k.testimonial_source === "manual" ? "testimonial · you" : "testimonial") : "not a testimonial"}</span>
-                    <button onClick={() => void setVerdict(k, true)} title="Mark as a testimonial" className={`rounded border p-0.5 ${isTestimonial(k) ? "border-gold/60 bg-gold/15 text-gold" : "border-border text-muted-foreground hover:text-gold"}`}><ThumbsUp className="h-3 w-3" /></button>
-                    <button onClick={() => void setVerdict(k, false)} title="Not a testimonial" className={`rounded border p-0.5 ${k.testimonial === false ? "border-border bg-muted text-foreground" : "border-border text-muted-foreground hover:text-foreground"}`}><ThumbsDown className="h-3 w-3" /></button>
+                  {k.hook_title && <button type="button" onClick={() => { void navigator.clipboard?.writeText(k.hook_title ?? "").then(() => toast.success("Hook copied")).catch(() => toast.error("Clipboard blocked")); }} title="Tap to copy the hook" className="line-clamp-1 text-left text-sm italic text-muted-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:text-foreground">Hook: {k.hook_title}</button>}
+                  {isTestimonial(k) && k.testimonial_reason && <div className={cn("line-clamp-2 text-sm", TONE_CLASS.gold.text)} title={k.testimonial_reason}>{k.testimonial_reason}</div>}
+                  {!isTestimonial(k) && k.transcript && proof === "all" && query && <div className="line-clamp-2 text-sm italic text-muted-foreground" title={k.transcript}>“{k.transcript.slice(0, 140)}”</div>}
+                  {(showDetails || proof === "testimonials") && <div className="flex items-center gap-1.5">
+                    <span className="text-[13px] text-muted-foreground">{k.testimonial == null ? "Not judged yet" : isTestimonial(k) ? (k.testimonial_source === "manual" ? "Testimonial, marked by you" : "Testimonial") : "Not a testimonial"}</span>
+                    <button type="button" onClick={() => void setVerdict(k, true)} aria-label="Mark as a testimonial" title="Mark as a testimonial" className={cn("rounded-md border p-1", isTestimonial(k) ? cn(TONE_CLASS.gold.border, TONE_CLASS.gold.soft, TONE_CLASS.gold.text) : "border-border text-muted-foreground")}><ThumbsUp className="h-3.5 w-3.5" aria-hidden /></button>
+                    <button type="button" onClick={() => void setVerdict(k, false)} aria-label="Not a testimonial" title="Not a testimonial" className={cn("rounded-md border p-1", k.testimonial === false ? "border-border bg-muted text-foreground" : "border-border text-muted-foreground")}><ThumbsDown className="h-3.5 w-3.5" aria-hidden /></button>
                   </div>}
                   {showDetails && k.banger_score != null && (
-                    <div className="flex items-center gap-2">
-                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted"><div className={`h-full ${bangerColor(k.banger_score)}`} style={{ width: `${k.banger_score}%` }} /></div>
+                    <div className="flex items-center gap-2" aria-hidden>
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted"><div className={cn("h-full", TONE_CLASS[bangerTone(k.banger_score)].dot)} style={{ width: `${k.banger_score}%` }} /></div>
                     </div>
                   )}
                   {showDetails && <div className="flex flex-wrap gap-1">
                     {PILLARS.map((p) => {
                       const on = pillarsOf(k).includes(p.k);
                       return (
-                        <button key={p.k} title={on ? `Tagged ${p.label}` : `Tag as ${p.label}`} onClick={() => void togglePillar(k, p.k)}
-                          className={`rounded border px-1.5 py-0.5 text-[12px] font-semibold ${on ? "border-primary/40 bg-primary/15 text-primary" : "border-border text-muted-foreground hover:text-foreground"}`}>
-                          {p.label.split(" ")[0]}
+                        <button key={p.k} type="button" title={on ? `Tagged ${p.label}` : `Tag as ${p.label}`} onClick={() => void togglePillar(k, p.k)}
+                          className={cn("rounded-md border px-1.5 py-0.5 text-[13px] font-semibold", on ? "border-primary bg-primary/15 text-foreground" : "border-border text-muted-foreground")}>
+                          {p.label}
                         </button>
                       );
                     })}
                   </div>}
-                  {showDetails && k.tags && k.tags.length > 0 && <div className="flex flex-wrap gap-1">{k.tags.slice(0, 4).map((tg) => <button key={tg} onClick={() => setQuery(tg)} className="rounded-full border border-border px-1.5 py-0.5 text-[12px] text-muted-foreground hover:text-foreground">{tg}</button>)}</div>}
+                  {showDetails && k.tags && k.tags.length > 0 && <div className="flex flex-wrap gap-1">{k.tags.slice(0, 4).map((tg) => <button key={tg} type="button" onClick={() => setQuery(tg)} className="rounded-full border border-border px-2 py-0.5 text-[13px] text-muted-foreground">{tg}</button>)}</div>}
                   <div className="mt-auto text-[13px] text-muted-foreground">{k.folder} · {fmtDate(k.modified_at)} · {fmtSize(k.size_bytes)}</div>
                   <div className="flex gap-1.5">
                     {attachTarget
-                      ? <Button size="sm" onClick={() => attachClip(k, attachTarget)} className="h-7 flex-1 bg-primary px-2.5 text-[13px] text-primary-foreground hover:bg-primary/90"><Paperclip className="mr-1 h-3 w-3" />Attach</Button>
-                      : <Button size="sm" variant="outline" onClick={() => cardFromClip(k)} className="h-7 flex-1 px-2.5 text-[13px]"><Plus className="mr-1 h-3 w-3" />New card</Button>}
+                      ? <Button size="sm" variant="outline" onClick={() => attachClip(k, attachTarget)} className="h-10 flex-1 px-2.5 text-[13px]"><Paperclip className="h-3.5 w-3.5" aria-hidden />Attach</Button>
+                      : <Button size="sm" variant="outline" onClick={() => cardFromClip(k)} className="h-10 flex-1 px-2.5 text-[13px]"><Plus className="h-3.5 w-3.5" aria-hidden />New card</Button>}
                     {(directUrl(k) || k.phone_url)
-                      ? <Button size="sm" disabled={mobileSave && !!pull[k.id] && pull[k.id].pct !== null && pull[k.id].pct! < 100 && !pull[k.id].error} onClick={() => void saveOne(k)}
-                          className={`h-7 px-2.5 text-[13px] font-semibold ${pull[k.id]?.file ? "bg-gold text-zinc-950 hover:bg-gold/90" : "bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25"}`}
+                      ? <Button size="sm" variant="outline" disabled={mobileSave && !!pull[k.id] && pull[k.id].pct !== null && pull[k.id].pct! < 100 && !pull[k.id].error} onClick={() => void saveOne(k)}
+                          className={cn("h-10 px-2.5 text-[13px] font-semibold", TONE_CLASS.good.text, TONE_CLASS.good.border, pull[k.id]?.file && TONE_CLASS.good.soft)}
                           title={mobileSave ? (k.phone_url ? "Phone-size copy — tap to pull, tap again to save to camera roll" : "Tap to pull, tap again to save to camera roll") : "Download the original — one tap"}>
-                          {mobileSave && pull[k.id] && !pull[k.id].file && !pull[k.id].error ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-1 h-3.5 w-3.5" />}
+                          {mobileSave && pull[k.id] && !pull[k.id].file && !pull[k.id].error ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <Download className="h-3.5 w-3.5" aria-hidden />}
                           {!mobileSave ? "Download" : pull[k.id]?.file ? "Save to camera roll" : pull[k.id] && !pull[k.id].error ? (pull[k.id].pct !== null ? `${pull[k.id].pct}%` : fmtSize(pull[k.id].loaded)) : k.phone_url ? `Get · ${fmtSize(k.phone_bytes ?? 0)}` : "Get"}
                         </Button>
-                      : <Button asChild size="sm" variant="outline" className="h-7 px-2.5 text-[13px] text-muted-foreground"><a href={dropboxUrl(k.path)} target="_blank" rel="noopener noreferrer" title="Direct link is being re-minted (every 20 min) — this opens the file in Dropbox, where Download is one tap"><ExternalLink className="mr-1 h-3.5 w-3.5" />Dropbox</a></Button>}
-                    <Button size="sm" variant="ghost" onClick={() => { void navigator.clipboard?.writeText(k.path).then(() => toast.success("Path copied")).catch(() => toast.error("Clipboard blocked")); }} className="h-7 px-2 text-muted-foreground" title="Copy Dropbox path (for getclips / editors)"><Copy className="h-3.5 w-3.5" /></Button>
+                      : <Button asChild size="sm" variant="outline" className="h-10 px-2.5 text-[13px] text-muted-foreground"><a href={dropboxUrl(k.path)} target="_blank" rel="noopener noreferrer" title="Direct link is being re-minted (every 20 min) — this opens the file in Dropbox, where Download is one tap"><ExternalLink className="h-3.5 w-3.5" aria-hidden />Dropbox</a></Button>}
+                    <Button size="sm" variant="ghost" onClick={() => { void navigator.clipboard?.writeText(k.path).then(() => toast.success("Path copied")).catch(() => toast.error("Clipboard blocked")); }} className="h-10 w-10 px-0 text-muted-foreground" aria-label="Copy the Dropbox path" title="Copy Dropbox path (for getclips / editors)"><Copy className="h-4 w-4" aria-hidden /></Button>
                   </div>
                 </div>
               </div>
@@ -1312,64 +1033,88 @@ export default function LaunchBoard() {
           </div>
           {visibleClips.length > shown && (
             <div className="flex justify-center pt-2">
-              <Button variant="outline" onClick={() => setShown((n) => n + 96)}>Load more · {visibleClips.length - shown} left</Button>
+              <Button variant="outline" className="h-11" onClick={() => setShown((n) => n + 96)}>Show {Math.min(96, visibleClips.length - shown)} more ({(visibleClips.length - shown).toLocaleString()} not shown yet)</Button>
             </div>
           )}
         </div>
       )}
 
-      {tab === "analytics" && (
+      {view === "analytics" && (
         <Suspense fallback={<PageSkeleton />}>
-          <AccountsAnalytics />
+          <AccountsAnalytics
+            lead={(
+              <WinnersPanel
+                posts={postsRead.posts} loading={postsRead.loading} failed={postsRead.failed} onRetry={() => void postsRead.load()}
+                cards={[...cards, ...archivedCards]} busy={remaking} onRemake={(d) => void remake(d)}
+                onOpenCard={(id) => setPackId(id)} onLogResults={() => { document.getElementById("log-a-post")?.scrollIntoView({ behavior: "smooth", block: "center" }); }}
+              />
+            )}
+          />
         </Suspense>
       )}
-      {tab === "queue" && (
+      {view === "queue" && (
         <Suspense fallback={<PageSkeleton />}>
           <ContentQueue embedded />
         </Suspense>
       )}
 
-      <p className="pt-10 text-center text-sm leading-relaxed text-muted-foreground">Saves on every change. Copying a caption or downloading a clip never changes a stage; Published needs the live post URL.</p>
+      {/* New idea: three picks from the idea bank, or write your own. Picking one opens its filming pack. */}
+      <Sheet open={newIdeaOpen} onOpenChange={setNewIdeaOpen}>
+        <SheetContent side="right" className="w-full overflow-y-auto p-4 sm:max-w-2xl sm:p-6" aria-describedby="new-idea-desc">
+          <SheetHeader className="pr-10 text-left">
+            <SheetTitle className="text-xl">New idea</SheetTitle>
+            <SheetDescription id="new-idea-desc">The one you pick goes on the board in Selected, with its filming pack open.</SheetDescription>
+          </SheetHeader>
+          <div className="mt-4">
+            <FilmNextPanel
+              ideas={ideas} used={usedIdeas} dismissed={dismissals} dismissalsFailed={dismissalsFailed} busyKey={busyIdeaKey}
+              onFilm={(i, e) => void pickIdea(i, e)} onSaveLater={(i) => void saveIdeaLater(i)}
+              onDismiss={(i, r) => void dismissIdea(i, r)} onBringBack={(k) => void undoDismiss(k)}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Publish kit: caption + clip to post by hand, then the live URL that proves it. */}
       <Dialog open={!!postTarget} onOpenChange={(o) => !o && setPostTarget(null)}>
         <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>Publish: {postTarget?.title}</DialogTitle></DialogHeader>
-          {postTarget && (
+          <DialogHeader><DialogTitle className="pr-8 leading-snug">Post it: {postTarget?.title}</DialogTitle></DialogHeader>
+          {postTarget && postStep && (
             <div className="grid gap-3">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <Chip className={brandClass(postTarget.brand)}>{brandHandle(postTarget.brand)}</Chip>
-                <StageChip stage={stageOf(postTarget)} />
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <VideoStageMark step={postStep} />
+                <TonePill tone={brandTone(postTarget.brand)}>{brandHandle(postTarget.brand)}</TonePill>
                 {scheduleNote(postTarget)}
               </div>
-              <Textarea readOnly rows={5} aria-label="Caption" value={postTarget.caption || "(no caption yet — edit the card to add one)"} className="text-sm" />
+              <Textarea readOnly rows={5} aria-label="Caption" value={postTarget.caption || "(no caption yet — edit the card to add one)"} className="text-base" />
               {postTarget.cta && <p className="text-sm text-muted-foreground">Call to action: <span className="text-foreground">{postTarget.cta}</span></p>}
               {postTarget.caption && !hasCta(postTarget.caption) && !hasCta(postTarget.cta ?? "") && (
                 <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-foreground">
-                  <span>No website CTA in this caption.</span>
-                  <Button size="sm" variant="outline" className="h-7 text-[13px]" onClick={async () => { const cap = `${postTarget.caption.trim()}\n\n${CTA}`; if (await patch(postTarget.id, { caption: cap })) setPostTarget({ ...postTarget, caption: cap }); }}>Add apex-financial.org/apply</Button>
+                  <span>No website link in this caption.</span>
+                  <Button size="sm" variant="outline" className="h-10" onClick={async () => { const cap = `${postTarget.caption.trim()}\n\n${CTA}`; if (await patch(postTarget.id, { caption: cap })) setPostTarget({ ...postTarget, caption: cap }); }}>Add apex-financial.org/apply</Button>
                 </div>
               )}
               <div className="flex flex-wrap gap-2">
-                <Button variant="outline" onClick={() => copyCaption(postTarget.caption)} disabled={!postTarget.caption}><Copy className="mr-1.5 h-4 w-4" aria-hidden />Copy caption</Button>
+                <Button variant="outline" className="h-11" onClick={() => copyCaption(postTarget.caption)} disabled={!postTarget.caption}><Copy className="h-4 w-4" aria-hidden />Copy caption</Button>
                 {postTarget.clip && (() => { const k = clips.find((x) => x.path === postTarget.clip); const d = k ? directUrl(k) : null; return d
-                  ? <Button asChild variant="outline"><a href={d} download={k?.name}><Download className="mr-1.5 h-4 w-4" aria-hidden />Download the clip</a></Button>
-                  : <Button asChild variant="outline"><a href={dropboxUrl(postTarget.clip)} target="_blank" rel="noopener noreferrer"><ExternalLink className="mr-1.5 h-4 w-4" aria-hidden />Open clip in Dropbox</a></Button>; })()}
+                  ? <Button asChild variant="outline" className="h-11"><a href={d} download={k?.name}><Download className="h-4 w-4" aria-hidden />Download the clip</a></Button>
+                  : <Button asChild variant="outline" className="h-11"><a href={dropboxUrl(postTarget.clip)} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" aria-hidden />Open clip in Dropbox</a></Button>; })()}
+                {stageOf(postTarget) === "ready" && <Button variant="ghost" className="h-11" disabled={locked} onClick={() => { const c = postTarget; setPostTarget(null); openSchedule(c); }}><CalendarClock className="h-4 w-4" aria-hidden />Plan a time instead</Button>}
               </div>
               <p className="text-[13px] text-muted-foreground">Copying and downloading do not change the stage. Post it on the platform yourself, then paste the live link below.</p>
               <div className="grid gap-1.5 border-t border-border pt-3">
-                <Label htmlFor="lb-live-url">Live post URL</Label>
-                <Input id="lb-live-url" inputMode="url" autoComplete="off" value={publishUrl} onChange={(e) => setPublishUrl(e.target.value)} placeholder="https://www.youtube.com/shorts/…" />
+                <Label htmlFor="lb-live-url">Live post link</Label>
+                <Input id="lb-live-url" inputMode="url" autoComplete="off" value={publishUrl} onChange={(e) => setPublishUrl(e.target.value)} placeholder="https://www.youtube.com/shorts/…" className="h-11 text-base" />
                 {publishUrl.trim() !== "" && (publishCheck.ok
                   ? <p className="text-[13px] text-muted-foreground">Looks like a {publishCheck.platform} post.{publishCheck.warning ? ` ${publishCheck.warning}` : ""}</p>
-                  : <p className="text-[13px] text-destructive">{publishCheck.reason}</p>)}
+                  : <p className={cn("text-[13px]", TONE_CLASS.hot.text)}>{publishCheck.reason}</p>)}
               </div>
             </div>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPostTarget(null)}>Not yet</Button>
-            <Button onClick={() => void confirmPublished()} disabled={locked || !publishCheck.ok || (postTarget ? busyId === postTarget.id : false) || (postTarget ? !["ready", "scheduled", "published_unconfirmed", "published"].includes(stageOf(postTarget)) : true)} className="bg-primary text-primary-foreground hover:bg-primary/90">
-              <Check className="mr-1.5 h-4 w-4" aria-hidden />Confirm published
+          <DialogFooter className="gap-2">
+            <Button variant="outline" className="h-11" onClick={() => setPostTarget(null)}>Not yet</Button>
+            <Button ref={confirmRef} className="h-11" onClick={() => void confirmPublished()} disabled={locked || !publishCheck.ok || (postTarget ? busyId === postTarget.id : false) || (postTarget ? !["ready", "scheduled", "published_unconfirmed", "published"].includes(stageOf(postTarget)) : true)}>
+              <Check className="h-4 w-4" aria-hidden />Confirm published
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1378,82 +1123,89 @@ export default function LaunchBoard() {
       {/* Plan a time. No scheduler integration writes to this board, so it is always a labelled manual plan. */}
       <Dialog open={!!scheduleTarget} onOpenChange={(o) => !o && setScheduleTarget(null)}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Plan a post time: {scheduleTarget?.title}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="pr-8 leading-snug">Plan a post time: {scheduleTarget?.title}</DialogTitle></DialogHeader>
           <div className="grid gap-2">
             <Label htmlFor="lb-schedule-at">Post at (your local time)</Label>
-            <Input id="lb-schedule-at" type="datetime-local" value={scheduleAt} onChange={(e) => setScheduleAt(e.target.value)} />
-            <p className="text-[13px] text-muted-foreground">This is a <b className="text-foreground">Manual plan</b>: nothing posts automatically. It shows on Today when the time comes; post it yourself, then confirm the live URL.</p>
+            <Input id="lb-schedule-at" type="datetime-local" value={scheduleAt} onChange={(e) => setScheduleAt(e.target.value)} className="h-11 text-base" />
+            <p className="text-[13px] text-muted-foreground">This is a <b className="text-foreground">manual plan</b>: nothing posts by itself. It moves to the top of the list when the time comes; post it, then paste the live link.</p>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setScheduleTarget(null)}>Cancel</Button>
-            <Button onClick={() => void saveSchedule()} disabled={locked || (scheduleTarget ? busyId === scheduleTarget.id : false)} className="bg-primary text-primary-foreground hover:bg-primary/90"><CalendarClock className="mr-1.5 h-4 w-4" aria-hidden />Save manual plan</Button>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" className="h-11" onClick={() => setScheduleTarget(null)}>Cancel</Button>
+            <Button className="h-11" onClick={() => void saveSchedule()} disabled={locked || (scheduleTarget ? busyId === scheduleTarget.id : false)}><CalendarClock className="h-4 w-4" aria-hidden />Save the plan</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Editor: only execution fields. Stage moves happen through the workflow actions, never from here. */}
       <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
-        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
-          <DialogHeader><DialogTitle>{editing ? "Edit card" : "New idea"}</DialogTitle></DialogHeader>
-          {editing && (
-            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm">
-              <StageChip stage={stageOf(editing)} />
-              <span className="text-muted-foreground">Next action:</span>
-              <span className="font-semibold text-foreground">{nextAction({ ...editing, ...(draft as Partial<Card>) } as Card)}</span>
-              {editing.approved_at && <span className="text-muted-foreground">· approved {fmtDate(editing.approved_at)}</span>}
-              {externalHref(editing.published_url) && <a href={externalHref(editing.published_url) ?? undefined} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">· live post</a>}
+        <DialogContent className="max-h-[90dvh] max-w-2xl overflow-y-auto">
+          <DialogHeader><DialogTitle>{editing ? "Edit the card" : "New idea"}</DialogTitle></DialogHeader>
+          {editing && editingStep && editingNext && (
+            <div className="flex flex-wrap items-start gap-x-4 gap-y-2 rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+              <VideoStageMark step={editingStep} />
+              <span className="text-sm leading-5 text-foreground"><span className="text-muted-foreground">Next: </span>{editingNext.title}</span>
+              {editing.approved_at && <span className="text-sm leading-5 text-muted-foreground">Approved {fmtDate(editing.approved_at)}</span>}
+              {externalHref(editing.published_url) && <a href={externalHref(editing.published_url) ?? undefined} target="_blank" rel="noopener noreferrer" className="text-sm leading-5 text-foreground underline underline-offset-4">Live post</a>}
             </div>
           )}
           <div className="grid gap-3">
-            <div className="grid gap-1.5"><Label htmlFor="lb-title">Title</Label><Input id="lb-title" value={draftStr("title")} onChange={(e) => setDraftField("title", e.target.value)} placeholder="What's the video?" /></div>
-            <div className="grid gap-1.5"><Label htmlFor="lb-hook">Hook</Label><Textarea id="lb-hook" rows={2} value={draftStr("hook")} onChange={(e) => setDraftField("hook", e.target.value)} placeholder="The opening line, in the first 1.5 seconds" /></div>
+            <div className="grid gap-1.5"><Label htmlFor="lb-title">Title</Label><Input id="lb-title" value={draftStr("title")} onChange={(e) => setDraftField("title", e.target.value)} placeholder="What's the video?" className="text-base" /></div>
+            <div className="grid gap-1.5"><Label htmlFor="lb-hook">Opening line</Label><Textarea id="lb-hook" rows={2} value={draftStr("hook")} onChange={(e) => setDraftField("hook", e.target.value)} placeholder="The first thing they hear, in the first 1.5 seconds" className="text-base" /></div>
             <div className="grid gap-1.5">
-              <Label htmlFor="lb-script" className="flex items-center justify-between">Recording script / shot list <span className="flex gap-2">
-                {!draftStr("record_script") && <button type="button" onClick={() => setDraftField("record_script", recordTemplate(draft))} className="text-[13px] font-semibold text-primary underline-offset-2 hover:underline">Fill from template</button>}
-                {draftStr("record_script") && <button type="button" onClick={() => copyText(draftStr("record_script"), "Shot list")} className="text-[13px] font-semibold text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">Copy</button>}
+              <Label htmlFor="lb-script" className="flex items-center justify-between">Shot list and script <span className="flex gap-3">
+                {!draftStr("record_script") && <button type="button" onClick={() => setDraftField("record_script", recordTemplate(draft))} className="text-[13px] font-semibold text-foreground underline underline-offset-4">Fill from template</button>}
+                {draftStr("record_script") && <button type="button" onClick={() => copyText(draftStr("record_script"), "Shot list")} className="text-[13px] font-semibold text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">Copy</button>}
               </span></Label>
-              <Textarea id="lb-script" rows={5} value={draftStr("record_script")} onChange={(e) => setDraftField("record_script", e.target.value)} placeholder="Camera, where, the hook line, the beats, the lesson" className="font-mono text-sm" />
+              <Textarea id="lb-script" rows={5} value={draftStr("record_script")} onChange={(e) => setDraftField("record_script", e.target.value)} placeholder="Camera, where, the opening line, the beats, the lesson" className="font-mono text-sm" />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="lb-clip" className="flex items-center justify-between">Source media
-                {editing && <button type="button" onClick={() => { setAttachTarget(editing); setEditorOpen(false); setTab("library"); }} className="text-[13px] font-semibold text-primary underline-offset-2 hover:underline">Pick from Library</button>}
+              <Label htmlFor="lb-clip" className="flex items-center justify-between">Footage
+                {editing && <button type="button" onClick={() => { setAttachTarget(editing); setEditorOpen(false); setTab("library"); }} className="text-[13px] font-semibold text-foreground underline underline-offset-4">Pick from the Library</button>}
               </Label>
-              <Input id="lb-clip" value={draftStr("clip")} onChange={(e) => setDraftField("clip", e.target.value)} placeholder="Reels/2026/09/clip.mp4 (Dropbox path)" />
+              <Input id="lb-clip" value={draftStr("clip")} onChange={(e) => setDraftField("clip", e.target.value)} placeholder="Reels/2026/09/clip.mp4 (Dropbox path)" className="text-base" />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="lb-edit" className="flex items-center justify-between">Edit instructions <span className="flex gap-2">
-                {!draftStr("edit_prompt") && <button type="button" onClick={() => setDraftField("edit_prompt", editTemplate(draft))} className="text-[13px] font-semibold text-primary underline-offset-2 hover:underline">Fill from template</button>}
-                {draftStr("edit_prompt") && <button type="button" onClick={() => copyText(draftStr("edit_prompt"), "Edit instructions")} className="text-[13px] font-semibold text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">Copy</button>}
+              <Label htmlFor="lb-edit" className="flex items-center justify-between">Edit instructions <span className="flex gap-3">
+                {!draftStr("edit_prompt") && <button type="button" onClick={() => setDraftField("edit_prompt", editTemplate(draft))} className="text-[13px] font-semibold text-foreground underline underline-offset-4">Fill from template</button>}
+                {draftStr("edit_prompt") && <button type="button" onClick={() => copyText(draftStr("edit_prompt"), "Edit instructions")} className="text-[13px] font-semibold text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">Copy</button>}
               </span></Label>
-              <Textarea id="lb-edit" rows={4} value={draftStr("edit_prompt")} onChange={(e) => setDraftField("edit_prompt", e.target.value)} placeholder="How to cut it (format, length, captions, what to exclude)" className="font-mono text-sm" />
+              <Textarea id="lb-edit" rows={4} value={draftStr("edit_prompt")} onChange={(e) => setDraftField("edit_prompt", e.target.value)} placeholder="How to cut it: format, length, captions, what to leave out" className="font-mono text-sm" />
               <p className="text-[13px] text-muted-foreground">{FORMAT_LINE}</p>
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="lb-cap">Caption</Label>
-              <Textarea id="lb-cap" rows={3} value={draftStr("caption")} onChange={(e) => setDraftField("caption", e.target.value)} placeholder="The caption you'll post with" />
+              <Textarea id="lb-cap" rows={3} value={draftStr("caption")} onChange={(e) => setDraftField("caption", e.target.value)} placeholder="The caption you'll post with" className="text-base" />
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="lb-cta" className="flex items-center justify-between">Call to action
-                {!draftStr("cta") && <button type="button" onClick={() => setDraftField("cta", CTA)} className="text-[13px] font-semibold text-primary underline-offset-2 hover:underline">Use the apply CTA</button>}
+                {!draftStr("cta") && <button type="button" onClick={() => setDraftField("cta", CTA)} className="text-[13px] font-semibold text-foreground underline underline-offset-4">Use the apply link</button>}
               </Label>
-              <Input id="lb-cta" value={draftStr("cta")} disabled={!workflowReady} onChange={(e) => setDraftField("cta", e.target.value)} placeholder="What the viewer should do" />
+              <Input id="lb-cta" value={draftStr("cta")} disabled={!workflowReady} onChange={(e) => setDraftField("cta", e.target.value)} placeholder="What the viewer should do" className="text-base" />
             </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <div className="grid gap-1.5"><Label className="text-[13px] uppercase tracking-wide text-muted-foreground">Destination</Label>
-                <Select value={draftStr("brand")} onValueChange={(v) => setDraftField("brand", v)}><SelectTrigger aria-label="Destination channel"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="SH">Shorts → Repurpose</SelectItem><SelectItem value="YT">YouTube long-form</SelectItem>{(draftStr("brand") === "SFD" || draftStr("brand") === "IMS") && <SelectItem value={draftStr("brand")}>{brandHandle(draftStr("brand"))}</SelectItem>}</SelectContent></Select></div>
-              <div className="grid gap-1.5"><Label className="text-[13px] uppercase tracking-wide text-muted-foreground">Job</Label>
-                <Select value={draftStr("job")} onValueChange={(v) => setDraftField("job", v)}><SelectTrigger aria-label="Content job"><SelectValue /></SelectTrigger><SelectContent>{JOBS.map((j) => <SelectItem key={j.k} value={j.k}>{j.label}</SelectItem>)}</SelectContent></Select></div>
-              <div className="grid gap-1.5"><Label className="text-[13px] uppercase tracking-wide text-muted-foreground">Week slot</Label>
-                <Select value={draftStr("day")} onValueChange={(v) => setDraftField("day", Number(v))}><SelectTrigger aria-label="Week slot"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="0">—</SelectItem>{[1, 2, 3, 4, 5, 6, 7].map((d) => <SelectItem key={d} value={String(d)}>{WEEKDAY[d]} · {DAY_THEMES[d].angle}</SelectItem>)}</SelectContent></Select></div>
-              <div className="grid gap-1.5"><Label htmlFor="lb-owner" className="text-[13px] uppercase tracking-wide text-muted-foreground">Owner</Label>
-                <Input id="lb-owner" value={draftStr("owner")} disabled={!workflowReady} onChange={(e) => setDraftField("owner", e.target.value)} placeholder="Who does the next step" /></div>
-              <div className="grid gap-1.5"><Label htmlFor="lb-due" className="text-[13px] uppercase tracking-wide text-muted-foreground">Deadline</Label>
-                <Input id="lb-due" type="date" value={draftStr("due_date").slice(0, 10)} disabled={!workflowReady} onChange={(e) => setDraftField("due_date", e.target.value)} /></div>
+            <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 sm:grid-cols-3">
+              <div className="grid gap-1.5"><Label htmlFor="lb-destination">Destination</Label>
+                <Select value={draftStr("brand")} onValueChange={(v) => setDraftField("brand", v)}><SelectTrigger id="lb-destination" aria-label="Destination channel"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="SH">Shorts → Repurpose</SelectItem><SelectItem value="YT">YouTube long-form</SelectItem>{(draftStr("brand") === "SFD" || draftStr("brand") === "IMS") && <SelectItem value={draftStr("brand")}>{brandHandle(draftStr("brand"))}</SelectItem>}</SelectContent></Select></div>
+              <div className="grid gap-1.5"><Label htmlFor="lb-job">Job</Label>
+                <Select value={draftStr("job")} onValueChange={(v) => setDraftField("job", v)}><SelectTrigger id="lb-job" aria-label="Content job"><SelectValue /></SelectTrigger><SelectContent>{JOBS.map((j) => <SelectItem key={j.k} value={j.k}>{j.label}</SelectItem>)}</SelectContent></Select></div>
+              <div className="grid gap-1.5"><Label htmlFor="lb-slot">Week slot</Label>
+                <Select value={draftStr("day")} onValueChange={(v) => setDraftField("day", Number(v))}><SelectTrigger id="lb-slot" aria-label="Week slot"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="0">Not planned</SelectItem>{[1, 2, 3, 4, 5, 6, 7].map((d) => <SelectItem key={d} value={String(d)}>{WEEKDAY[d]} · {DAY_THEMES[d].angle}</SelectItem>)}</SelectContent></Select></div>
+              <div className="grid gap-1.5"><Label htmlFor="lb-owner">Owner</Label>
+                <Input id="lb-owner" value={draftStr("owner")} disabled={!workflowReady} onChange={(e) => setDraftField("owner", e.target.value)} placeholder="Who does the next step" className="text-base" /></div>
+              <div className="grid gap-1.5"><Label htmlFor="lb-due">Due date</Label>
+                <Input id="lb-due" type="date" value={draftStr("due_date").slice(0, 10)} disabled={!workflowReady} onChange={(e) => setDraftField("due_date", e.target.value)} className="text-base" /></div>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditorOpen(false)}>Cancel</Button>
-            <Button onClick={saveDraft} disabled={saving} className="bg-primary text-primary-foreground hover:bg-primary/90">{saving && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden />}{editing ? "Save" : "Add idea"}</Button>
+          <DialogFooter className="gap-2 sm:justify-between">
+            {editing ? (
+              <div className="flex flex-wrap gap-2">
+                {editingBack && <Button type="button" variant="ghost" className="h-11" disabled={locked || busyId === editing.id} onClick={() => void sendBackFromEditor(editing)}><Undo2 className="h-4 w-4" aria-hidden />Send back to {SEND_BACK_WORDS[editingBack]}</Button>}
+                <Button type="button" variant="ghost" className={cn("h-11", TONE_CLASS.hot.text)} onClick={() => void deleteFromEditor(editing)}><Trash2 className="h-4 w-4" aria-hidden />Delete</Button>
+              </div>
+            ) : <span aria-hidden className="hidden sm:block" />}
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button variant="outline" className="h-11" onClick={() => setEditorOpen(false)}>Cancel</Button>
+              <Button onClick={saveDraft} disabled={saving} className="h-11">{saving && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}{editing ? "Save" : "Add idea"}</Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

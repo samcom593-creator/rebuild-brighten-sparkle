@@ -9,6 +9,8 @@
 // Built as: one long-form each weekday (5/week) + 7 Shorts a day Mon–Sat (42/week). Each long-form
 // is cut into 5+ Shorts, so only ~2 fresh Shorts need filming a day.
 
+import { TONE_CLASS, tonePill } from "@/lib/tones";
+
 export type DayThemeKey = "sales" | "mindset" | "reset";
 
 export interface DayTheme {
@@ -44,11 +46,15 @@ export const DAY_THEMES: Record<number, DayTheme> = {
 
 export const WEEKLY_TARGETS = { long: 5, shortsMin: 30, shortsMax: 60, shortsPlanned: 42 } as const;
 
-/** Tailwind classes per theme, readable in both themes. */
+/**
+ * Tailwind classes per theme, from the tone tokens so they read in both themes (OVERHAUL-launchboard: the mindset
+ * days were sky-300 text, which all but vanished on the light theme's cream card). The build days are gold, the
+ * get-better days blue, Sunday's reset quiet.
+ */
 export const THEME_TONE: Record<DayThemeKey, { chip: string; bar: string; ring: string }> = {
-  sales:   { chip: "bg-primary/15 text-primary border-primary/40", bar: "bg-primary", ring: "border-primary/50" },
-  mindset: { chip: "bg-sky-500/15 text-sky-300 border-sky-400/40 dark:text-sky-300", bar: "bg-sky-400", ring: "border-sky-400/50" },
-  reset:   { chip: "bg-muted text-muted-foreground border-border", bar: "bg-muted-foreground/50", ring: "border-border" },
+  sales:   { chip: tonePill("gold"), bar: TONE_CLASS.gold.dot, ring: TONE_CLASS.gold.border },
+  mindset: { chip: tonePill("cool"), bar: TONE_CLASS.cool.dot, ring: TONE_CLASS.cool.border },
+  reset:   { chip: tonePill("slate"), bar: TONE_CLASS.slate.dot, ring: TONE_CLASS.slate.border },
 };
 
 /** Today's ISO weekday (1–7) in Sam's time zone (Phoenix, no DST). */

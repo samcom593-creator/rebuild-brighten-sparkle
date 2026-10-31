@@ -343,3 +343,24 @@ export function teamStepTone(step: string | null | undefined): Tone {
     default: return "slate";
   }
 }
+
+/**
+ * Where a video is on the Launch Board (src/lib/launchBoardList.ts, OVERHAUL-launchboard, 2026-10-31). An idea is
+ * quiet; picked to film and filming are the camera step, new and blue like a booked call (they are the two halves of
+ * the one Record stage, so they share it); editing is production paperwork, violet like contracting; ready is the
+ * brand moment, gold like Hired, the last step before it goes live; published is going well. A video marked posted
+ * with no live link is quiet again: a full bar in grey says "probably live, not proven", beside its own words. No
+ * amber: warm and gold sit too close to tell apart in a bar (see clientStepTone), and ready is gold.
+ */
+export function contentStepTone(step: string | null | undefined): Tone {
+  switch (norm(step)) {
+    case "idea": return "slate";
+    case "selected": return "cool";
+    case "filming": return "cool";
+    case "editing": return "royal";
+    case "ready": return "gold";
+    case "no_link": return "slate";
+    case "published": return "good";
+    default: return "slate";
+  }
+}

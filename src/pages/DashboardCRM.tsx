@@ -359,7 +359,7 @@ export default function DashboardCRM() {
         ) : mode === "link" ? (
           <ContractingCallList />
         ) : (
-          <TeamEngagementPanel />
+          <TeamEngagementPanel defaultOpen />
         )}
       </div>
 

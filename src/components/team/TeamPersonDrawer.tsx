@@ -105,7 +105,7 @@ export function TeamPersonDrawer({ open, onOpenChange, row, onOpenContracting, m
           </div>
 
           {manage ? (
-            <Section title="Stage and work days">
+            <Section title="Training stage and work days">
               {facts ? (
                 <div className="space-y-3">
                   <div className="flex flex-wrap items-center gap-3">

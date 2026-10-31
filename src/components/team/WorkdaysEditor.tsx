@@ -40,7 +40,7 @@ export function WorkdaysEditor({ name, weekdays, scheduleSet, nextSchedule, canE
   return (
     <div className="space-y-2">
       <p className="text-sm text-foreground">{workdaysSummary(current)}</p>
-      {nextSchedule ? <p className="text-xs text-muted-foreground">From {nextSchedule.effective_from}: {workdaysSummary(nextSchedule.weekdays)}</p> : null}
+      {nextSchedule ? <p className="text-[13px] text-muted-foreground">From {nextSchedule.effective_from}: {workdaysSummary(nextSchedule.weekdays)}</p> : null}
       {canEdit ? (
         <fieldset className="space-y-2" disabled={saving}>
           <legend className="sr-only">Work days for {name}</legend>
@@ -57,16 +57,16 @@ export function WorkdaysEditor({ name, weekdays, scheduleSet, nextSchedule, canE
             })}
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <label className="text-xs text-muted-foreground">
+            <label className="text-[13px] text-muted-foreground">
               Starting
               <input type="date" value={from} min={today} onChange={(e) => { setFrom(e.target.value); setTouched(true); setError(null); }} aria-label={`Start date for ${name}'s schedule (blank means today)`}
                 className="ml-1 h-9 rounded-md border border-input bg-background px-2 text-sm text-foreground" />
             </label>
-            <Button type="button" size="sm" className="h-9" disabled={!dirty && !from} onClick={() => void save()}>
+            <Button type="button" size="sm" variant="outline" className="h-10" disabled={!dirty && !from} onClick={() => void save()}>
               {saving ? "Saving…" : from ? `Save from ${from}` : "Save"}
             </Button>
             {touched ? <Button type="button" variant="ghost" size="sm" onClick={() => { setDraft(current ?? []); setFrom(""); setTouched(false); setError(null); }}>Discard edit</Button> : null}
-            <span className="text-xs text-muted-foreground">Preview: {workdaysSummary(draft)}</span>
+            <span className="text-[13px] text-muted-foreground">Preview: {workdaysSummary(draft)}</span>
           </div>
           {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
         </fieldset>

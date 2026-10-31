@@ -92,5 +92,7 @@ describe("sidebar items only reach routes their audience can open", () => {
     expect(agentCloudBreadcrumb("/dashboard/contracting/requests")).toEqual(["Contracting", "Requests"]);
     expect(agentCloudBreadcrumb("/dashboard/contracting/history")).toEqual(["Contracting", "Intake history"]);
     expect(agentCloudBreadcrumb("/dashboard/help")).toEqual(["Support desk"]);
+    // My Team shares its path with Grow's "Contracting review" link (?view=contracting); its crumb is its own name.
+    expect(agentCloudBreadcrumb("/dashboard/team")).toEqual(["Team", "My Team"]);
   });
 });

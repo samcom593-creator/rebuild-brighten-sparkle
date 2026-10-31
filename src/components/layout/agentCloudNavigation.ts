@@ -458,6 +458,9 @@ export function toggleNavGroup(state: NavGroupExpansion, label: string): NavGrou
  */
 const ROUTE_CRUMBS: Record<string, string[]> = {
   "/dashboard/inbox/instagram": ["Grow", "Instagram"],
+  // Grow's "Contracting review" (a support-team link to ?view=contracting) shares this path and is listed first, so the
+  // path-only walk named My Team "Grow / Contracting review" for everyone (OVERHAUL-myteam, 2026-10-31).
+  "/dashboard/team": ["Team", "My Team"],
   "/dashboard/contracting/requests": ["Contracting", "Requests"],
   "/dashboard/contracting/history": ["Contracting", "Intake history"],
   "/dashboard/contracting/carriers": ["Contracting", "Carriers"],

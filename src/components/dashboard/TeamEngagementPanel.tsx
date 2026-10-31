@@ -81,12 +81,15 @@ function toCsv(rows: Row[]): string {
   return [cols.join(","), ...rows.map((r) => cols.map((c) => esc(r[c])).join(","))].join("\n");
 }
 
-export function TeamEngagementPanel() {
+export function TeamEngagementPanel({ defaultOpen = false }: {
+  /** Open on arrival: My Team's Logins view is this panel alone, so it starts open there. */
+  defaultOpen?: boolean;
+} = {}) {
   const [filter, setFilter] = useState<FilterKey>("all");
   const [search, setSearch] = useState("");
   // See BrandLeadsPanel: d3cc9bdf referenced `open`/`setOpen` without declaring
   // them, so the toggle threw and the panel could never collapse.
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
 
   const query = useQuery({
     queryKey: ["admin-team-engagement"],

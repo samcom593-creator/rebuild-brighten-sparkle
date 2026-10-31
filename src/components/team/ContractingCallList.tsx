@@ -80,7 +80,7 @@ export function ContractingCallList() {
           </button>
           <div className="flex shrink-0 gap-1.5">
             {call ? (
-              <a href={call} {...contactLinkProps(call)} onClick={() => start(r, "call")} className={cn(buttonVariants({ size: "sm" }), "h-10 flex-1 gap-1.5 px-3 sm:flex-none")} aria-label={`Call ${r.display_name}`}>
+              <a href={call} {...contactLinkProps(call)} onClick={() => start(r, "call")} className={cn(buttonVariants({ size: "sm", variant: "outline" }), "h-10 flex-1 gap-1.5 px-3 sm:flex-none")} aria-label={`Call ${r.display_name}`}>
                 <Phone className="h-4 w-4" aria-hidden /> Call
               </a>
             ) : null}

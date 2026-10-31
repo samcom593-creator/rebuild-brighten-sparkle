@@ -6,15 +6,18 @@ import { contactLinkProps, phoneHref } from "@/lib/phone";
 import { daysSince, plural, usdOrNull, type RosterRow } from "@/lib/teamRoster";
 import { useContractReview } from "@/hooks/useContractReview";
 import { levelText } from "@/lib/contractReview";
-import { accessSummary, workdaysSummary, type PersonFacts, type StageKey } from "@/lib/teamStage";
+import { accessSummary, type PersonFacts, type StageKey } from "@/lib/teamStage";
+import type { TeamStage } from "@/lib/teamList";
 import { OnboardingProgress } from "@/components/team/OnboardingProgress";
 import { StageSelect } from "@/components/team/StageBadge";
 import { WorkdaysEditor } from "@/components/team/WorkdaysEditor";
+import { TeamStageMark } from "@/components/team/TeamList";
 
+// The card opens in a portal, outside the page's type floor, so its small text is set at 13px here.
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="space-y-2 border-t border-border pt-4 first:border-t-0 first:pt-0" aria-label={title}>
-      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+      <h3 className="text-[15px] font-semibold text-foreground">{title}</h3>
       {children}
     </section>
   );
@@ -23,8 +26,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div>
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="text-base font-semibold tabular-nums text-foreground">{value}{sub ? <span className="ml-1 text-xs font-normal text-muted-foreground">{sub}</span> : null}</dd>
+      <dt className="text-[13px] text-muted-foreground">{label}</dt>
+      <dd className="text-base font-semibold tabular-nums text-foreground">{value}{sub ? <span className="ml-1 text-[13px] font-normal text-muted-foreground">{sub}</span> : null}</dd>
     </div>
   );
 }
@@ -55,13 +58,15 @@ export interface TeamPersonManage {
  * lives in the contracting review, so there is one place to confirm a carrier; this drawer only says where that stands
  * and links to it.
  */
-export function TeamPersonDrawer({ open, onOpenChange, row, onOpenContracting, manage }: {
+export function TeamPersonDrawer({ open, onOpenChange, row, onOpenContracting, manage, stage }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   row: RosterRow | undefined;
   /** Closes this drawer and brings the contracting review to this person. */
   onOpenContracting: (agentId: string) => void;
   manage?: TeamPersonManage;
+  /** Where they are on My Team (src/lib/teamList.ts), shown under their name exactly as their row shows it. */
+  stage?: TeamStage;
 }) {
   const review = useContractReview(open);
   const name = row?.full_name ?? "Name not on file";
@@ -83,6 +88,7 @@ export function TeamPersonDrawer({ open, onOpenChange, row, onOpenContracting, m
             {[row?.license_status, row?.status].filter((x): x is string => Boolean(x)).map((x) => x[0].toUpperCase() + x.slice(1))
               .concat(row?.manager_name ? [`Upline ${row.manager_name}`] : []).join(" · ") || "Team member"}
           </SheetDescription>
+          {stage ? <div className="pt-1"><TeamStageMark stage={stage} /></div> : null}
         </SheetHeader>
 
         <div className="mt-4 space-y-4">
@@ -99,12 +105,11 @@ export function TeamPersonDrawer({ open, onOpenChange, row, onOpenContracting, m
           </div>
 
           {manage ? (
-            <Section title="Stage and work days">
+            <Section title="Training stage and work days">
               {facts ? (
                 <div className="space-y-3">
                   <div className="flex flex-wrap items-center gap-3">
                     <StageSelect name={name} stage={facts.stage} canEdit={manage.canEdit} saving={manage.saving("stage")} onChange={manage.setStage} />
-                    <span className="text-sm text-muted-foreground">{workdaysSummary(facts.schedule_set ? facts.weekdays ?? [] : null)}</span>
                     {access ? <span className={access.tone === "ok" ? "text-sm text-muted-foreground" : "text-sm text-amber-700 dark:text-amber-400"}>{access.text}</span> : null}
                   </div>
                   <WorkdaysEditor name={name} weekdays={facts.weekdays} scheduleSet={facts.schedule_set} nextSchedule={facts.next_schedule} canEdit={manage.canEdit}

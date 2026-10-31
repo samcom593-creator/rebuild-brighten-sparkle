@@ -5,7 +5,7 @@ import { STAGES, STAGE_UNSET_LABEL, stageLabel, type StageKey } from "@/lib/team
 export function StageBadge({ stage, className }: { stage: StageKey | null | undefined; className?: string }) {
   const set = !!stage;
   return (
-    <span className={cn("inline-flex h-5 shrink-0 items-center rounded-full border px-1.5 text-[11px] font-semibold",
+    <span className={cn("inline-flex h-6 shrink-0 items-center rounded-full border px-2 text-[13px] font-semibold leading-5",
       set ? "border-primary/40 bg-primary/10 text-foreground" : "border-dashed border-muted-foreground/50 text-muted-foreground", className)}>
       {stageLabel(stage)}
     </span>

@@ -327,3 +327,19 @@ export function clientStepTone(step: string | null | undefined): Tone {
     default: return "slate";
   }
 }
+
+/**
+ * Where a person on My Team is (src/lib/teamList.ts, OVERHAUL-myteam, 2026-10-31). Getting licensed is
+ * paperwork, royal like licensing on a recruit's bar; licensed with no sale yet needs a nudge; selling is
+ * going well; a seller who has gone quiet is the act-now state, red like a dead lane. Four different hues,
+ * so the four never read alike in a bar.
+ */
+export function teamStepTone(step: string | null | undefined): Tone {
+  switch (norm(step)) {
+    case "licensing": return recruitStepTone("licensing");
+    case "no_sale": return "warm";
+    case "selling": return "good";
+    case "quiet": return "hot";
+    default: return "slate";
+  }
+}

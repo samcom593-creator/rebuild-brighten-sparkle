@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, formatDistanceToNow, isBefore } from "date-fns";
 import { ArrowLeft, CheckCircle2, MessageSquare, PhoneCall, ReceiptText } from "lucide-react";
@@ -16,6 +16,7 @@ import { SubmitDealDialog, type PostedDealReceipt } from "@/components/deals/Sub
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { contactLinkProps, phoneHref, smsHref } from "@/lib/phone";
+import { pipelineBackTo } from "@/lib/clientPipelineView";
 
 interface ClientRow {
   id: string;
@@ -155,6 +156,8 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
 
 export default function ClientDetail() {
   const { clientId } = useParams<{ clientId: string }>();
+  // Back returns to the My Pipeline list (and search) this client was opened from.
+  const backTo = pipelineBackTo(useLocation().state);
   usePageTitle("Client Workspace · Galaxy");
   const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
@@ -274,7 +277,7 @@ export default function ClientDetail() {
   };
 
   if (client.isLoading) return <div className="page-enter space-y-4 px-4 pb-24 sm:px-6"><Skeleton className="h-24 w-full" /><Skeleton className="h-[620px] w-full" /></div>;
-  if (!c) return <div className="page-enter space-y-4 px-4 pb-24 sm:px-6"><PageHeader eyebrow="Client not found" title="No client at this ID" subtitle="The client may have been deleted or you may not have access." /><Button asChild variant="outline"><Link to="/dashboard/clients"><ArrowLeft className="mr-1.5 h-4 w-4" /> Back to pipeline</Link></Button></div>;
+  if (!c) return <div className="page-enter space-y-4 px-4 pb-24 sm:px-6"><PageHeader eyebrow="Client not found" title="No client at this ID" subtitle="The client may have been deleted or you may not have access." /><Button asChild variant="outline"><Link to={backTo}><ArrowLeft className="mr-1.5 h-4 w-4" /> Back to pipeline</Link></Button></div>;
 
   const displayName = [c.first_name, c.last_name].filter(Boolean).join(" ") || "—";
   const stage = c.pipeline_stage ?? "NEW_INITIAL";
@@ -289,7 +292,7 @@ export default function ClientDetail() {
 
   return (
     <div className="page-enter space-y-3 px-4 pb-24 sm:px-6">
-      <Button asChild variant="ghost" size="sm" className="w-fit"><Link to="/dashboard/clients"><ArrowLeft className="mr-1.5 h-4 w-4" /> Back to pipeline</Link></Button>
+      <Button asChild variant="ghost" size="sm" className="w-fit"><Link to={backTo}><ArrowLeft className="mr-1.5 h-4 w-4" /> Back to pipeline</Link></Button>
 
       <section className="overflow-hidden rounded-lg border border-border bg-background">
         <header className="flex flex-col gap-3 border-b border-border bg-card px-4 py-4 lg:flex-row lg:items-center lg:justify-between">

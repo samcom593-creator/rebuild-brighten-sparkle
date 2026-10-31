@@ -6,12 +6,14 @@ const source = (file: string) => fs.readFileSync(path.resolve(__dirname, `../../
 
 describe("P0 repair packet", () => {
   it("renders live production skeletons without placeholder money", () => {
+    // OVERHAUL-myteam (2026-10-31): My Team's numbers are the four list counts in src/components/team/TeamList.tsx;
+    // while the roster loads they read "—" and the list is a skeleton (pinned in src/tests/pages/DashboardCRM.test.tsx).
     const crm = source("pages/DashboardCRM.tsx");
-    const metrics = source("components/dashboard/ProductionMetricsCard.tsx");
-    expect(crm).toContain("<ProductionMetricsCard");
-    expect(metrics).toContain("Loading live team production metrics");
-    expect(metrics).toContain("<Skeleton");
-    expect(`${crm}\n${metrics}`).not.toContain('"$40K"');
+    const list = source("components/team/TeamList.tsx");
+    expect(crm).toContain("<TeamList");
+    expect(list).toContain("Loading your team");
+    expect(list).toContain("<Skeleton");
+    expect(`${crm}\n${list}`).not.toContain('"$40K"');
   });
 
   it("serializes the real deals ledger and returns a replay receipt", () => {

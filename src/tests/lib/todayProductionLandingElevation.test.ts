@@ -14,14 +14,15 @@ describe("today production and landing elevation", () => {
     expect(migration).toContain("crm_can_read_agent_scope(d.agent_id)");
   });
 
-  it("keeps the CRM headline live and visibly reports today's policies and streak", () => {
+  it("keeps My Team live and says who sold today", () => {
+    // OVERHAUL-myteam (2026-10-31): the eight-figure strip with its "Sold Today" line is gone (four numbers at
+    // most). A posted deal still refreshes the roster at once, and the seller's row says "Sold today".
     const crm = source("src/pages/DashboardCRM.tsx");
-    const metrics = source("src/components/dashboard/ProductionMetricsCard.tsx");
-    expect(crm).toContain('queryKey: ["crm-today-production"]');
-    expect(crm).toContain('rpc("crm_today_production"');
+    const list = source("src/lib/teamList.ts");
+    expect(crm).toContain('queryKey: ["crm-agent-roster"]');
+    expect(crm).toContain('rpc("crm_agent_sales_pulse"');
     expect(crm).toContain('table: "deals"');
-    expect(metrics).toContain("Sold Today:");
-    expect(metrics).toContain("active selling streak");
+    expect(list).toContain('parts.push("Sold today")');
   });
 
   it("positions the landing page for each APEX partner path", () => {

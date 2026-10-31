@@ -23,12 +23,17 @@ export const SOURCE_SEGMENTS = "crm_roster_segments";
 export const SOURCE_ROSTER = "crm_agent_roster";
 export const SOURCE_TODAY = "crm_today_production";
 
-/** The four RPCs the roster read is assembled from. Any one failing fails the roster. */
+/**
+ * The reads the roster is assembled from. Any one failing fails the roster. The canonical map
+ * (OVERHAUL-myteam, 2026-10-31) is read after the four RPCs, for their agent ids, so a merged duplicate's
+ * production joins its canonical person instead of listing that person twice (src/lib/teamList.ts).
+ */
 export const ROSTER_PARTS = {
   roster: SOURCE_ROSTER,
   salesPulse: "crm_agent_sales_pulse",
   contacts: "crm_agent_contacts",
   freeLeads: "crm_agent_free_leads_status",
+  canonical: "v_agent_canonical_map",
 } as const;
 
 /** Plain-English names for every read the strip can report on. Copy prints these, with the RPC name in parentheses. */
@@ -39,6 +44,7 @@ const SOURCE_LABELS: Readonly<Record<string, string>> = {
   [ROSTER_PARTS.salesPulse]: "today's sales by agent",
   [ROSTER_PARTS.contacts]: "agent contact details",
   [ROSTER_PARTS.freeLeads]: "free-lead status",
+  [ROSTER_PARTS.canonical]: "merged duplicate records",
 };
 
 /** The plain-English name of a read; an unknown read keeps its RPC name. */

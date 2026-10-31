@@ -110,22 +110,32 @@ describe("AgentCloud parity surfaces", () => {
     expect(consumer).toContain('reason: "manual_portal_review"');
   });
 
-  it("shows today's sale state and current streak on every Team roster row", () => {
-    // The data reads stay on the page; the Production rows that draw them moved to RosterRows.tsx.
-    const crm = `${source("pages/DashboardCRM.tsx")}\n${source("components/team/RosterRows.tsx")}`;
+  it("shows today's sale state on the Team list and the current streak on the person's card", () => {
+    // OVERHAUL-myteam (2026-10-31): the reads stay on the page; a row says "Sold today" in its step's fact
+    // (src/lib/teamList.ts) and the card carries the streak with every other production number.
+    const crm = source("pages/DashboardCRM.tsx");
+    const list = source("lib/teamList.ts");
+    const card = source("components/team/TeamPersonDrawer.tsx");
     expect(crm).toContain('supabase.rpc("crm_agent_sales_pulse"');
-    expect(crm).toContain("Sold today");
-    expect(crm).toContain("No sale today");
     expect(crm).toContain("selling_streak_days");
+    expect(list).toContain("Sold today");
+    expect(card).toContain("Selling streak");
+    expect(card).toContain("No sale");
   });
 
   it("shows direct contacts and keeps Team scoped to the recursive hierarchy", () => {
-    const crm = `${source("pages/DashboardCRM.tsx")}\n${source("components/team/RosterRows.tsx")}`;
+    // The row's Call and the card's Call and Email reach the person directly; a dial goes through phoneHref so a
+    // desktop opens Google Voice in a new tab instead of a dead tel: click.
+    const crm = source("pages/DashboardCRM.tsx");
+    const list = source("components/team/TeamList.tsx");
+    const card = source("components/team/TeamPersonDrawer.tsx");
     const app = source("App.tsx");
     const migration = source("../supabase/migrations/20260825223500_team_hierarchy_contacts_training.sql");
     expect(crm).toContain('supabase.rpc("crm_agent_contacts"');
-    expect(crm).toContain("mailto:${r.email}");
-    expect(crm).toContain("tel:${r.phone}");
+    expect(list).toContain("phoneHref(member.row.phone)");
+    expect(list).toContain("contactLinkProps(tel)");
+    expect(card).toContain("mailto:${email}");
+    expect(card).toContain("phoneHref(phone)");
     expect(app).toContain('<Route path="/dashboard/team" element={<ProtectedRoute><DashboardCRM /></ProtectedRoute>} />');
     expect(migration).toContain("child.invited_by_manager_id = parent.id");
     expect(migration).toContain("public.apex_can_read_agent(p_agent_id)");

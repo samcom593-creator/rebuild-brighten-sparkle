@@ -24,13 +24,15 @@ describe("client pipeline fast-call workflow", () => {
     expect(callSheet).toContain("Full financial picture and banking");
   });
 
-  it("loads the entire scoped book and renders a phone-first priority cockpit", () => {
+  // OVERHAUL-agentpipeline (2026-10-31): the cockpit's game plan, coverage bar and "Work next client"
+  // became one list led by Up next, the client to call now with the page's one gold button. Its
+  // behaviour is pinned in src/tests/pages/ClientPipeline.test.tsx; this keeps the whole-book load.
+  it("loads the entire scoped book and leads with the next client to call", () => {
     const pipeline = source("pages/ClientPipeline.tsx");
     expect(pipeline).toContain("for (let from = 0; ; from += pageSize)");
     expect(pipeline).toContain(".range(from, from + pageSize - 1)");
-    expect(pipeline).toContain("Today&apos;s game plan");
-    expect(pipeline).toContain("Work next client");
-    expect(pipeline).toContain("Follow-up coverage");
+    expect(pipeline).toContain("Up next: ");
+    expect(pipeline).toContain("pipelineListRows(searched, list, now)");
     expect(pipeline).not.toContain('min-w-[940px]');
   });
 

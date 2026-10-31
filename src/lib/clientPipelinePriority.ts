@@ -41,7 +41,8 @@ export function isActivePipelineClient(client: Pick<ClientPriorityInput, "pipeli
   return !CLOSED_STAGES.has(client.pipeline_stage ?? "");
 }
 
-function earliestSchedule(client: ClientPriorityInput): { date: string; kind: "Callback" | "Next action" } | null {
+/** The client's earliest promise: a callback or a next action, whichever date comes first. An unreadable date counts as none. */
+export function earliestSchedule(client: ClientPriorityInput): { date: string; kind: "Callback" | "Next action" } | null {
   const callback = pipelineDateKey(client.callback_date);
   const nextAction = pipelineDateKey(client.next_action_date);
   if (callback && nextAction) return callback <= nextAction ? { date: callback, kind: "Callback" } : { date: nextAction, kind: "Next action" };

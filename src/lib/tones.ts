@@ -310,3 +310,20 @@ export function evidenceTone(key: string | null | undefined): Tone {
     default: return "slate";
   }
 }
+
+/**
+ * A client's step on My Pipeline (src/lib/clientPipelineView.ts, OVERHAUL-agentpipeline, 2026-10-31).
+ * New is new (blue, like New lead everywhere); a callback is waiting on us (a nudge); almost there is an
+ * appointment set to finish the sale (the call sheet's "Appointment set"), royal like an appointment on
+ * Book Flips; sold is going well. Not interested and inactive are quiet. Four different hues, so the four
+ * steps never read alike: warm and gold sit too close to tell apart in a bar.
+ */
+export function clientStepTone(step: string | null | undefined): Tone {
+  switch (norm(step)) {
+    case "new": return "cool";
+    case "callback": return "warm";
+    case "almost": return flipStatusTone("appointment");
+    case "sold": return "good";
+    default: return "slate";
+  }
+}

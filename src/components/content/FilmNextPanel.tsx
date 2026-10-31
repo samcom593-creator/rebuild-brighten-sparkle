@@ -24,8 +24,10 @@ function minutesText(m: number): string {
 }
 const placesText = (p: Place[]) => (p.includes("anywhere") && p.length === 1 ? "Film it anywhere" : p.map((x) => PLACE_LABEL[x]).join(", "));
 
-function PickCard({ idea, busy, onFilm, onDismiss }: {
+function PickCard({ idea, busy, lead, onFilm, onDismiss }: {
   idea: PickIdea; busy: boolean;
+  /** The first pick carries the one gold button; the others are outlined, so the screen has one obvious choice. */
+  lead: boolean;
   onFilm: (edits?: IdeaEdits) => void;
   onDismiss: (reason: string) => void;
 }) {
@@ -34,7 +36,7 @@ function PickCard({ idea, busy, onFilm, onDismiss }: {
   const [reason, setReason] = useState("");
   return (
     <li className="rounded-lg border border-border bg-card p-4" aria-label={idea.title}>
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] font-semibold text-muted-foreground">
         <span className="rounded-full border border-border px-2 py-0.5 text-foreground">{LANE_LABEL[idea.lane]}</span>
         <span>{FORMAT_LABEL[idea.format]}{idea.kind === "vlog" ? " vlog" : ""}</span>
         <span>· {minutesText(idea.minutes)}</span>
@@ -53,7 +55,7 @@ function PickCard({ idea, busy, onFilm, onDismiss }: {
             <textarea value={edits.premise} onChange={(e) => setEdits({ ...edits, premise: e.target.value })} rows={3} className={`${FIELD} mt-1 py-2`} maxLength={600} />
           </label>
           <div className="flex flex-wrap gap-2">
-            <Button className="h-11" disabled={busy || !edits.title.trim()} onClick={() => onFilm(edits)} aria-label={`Film this with my changes: ${edits.title}`}>
+            <Button variant="outline" className="h-11" disabled={busy || !edits.title.trim()} onClick={() => onFilm(edits)} aria-label={`Film this with my changes: ${edits.title}`}>
               {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> : null}Film this with my changes
             </Button>
             <Button variant="ghost" className="h-11" disabled={busy} onClick={() => { setEdits({ title: idea.title, hook: idea.hook, premise: idea.premise }); setMode("view"); }}>Cancel</Button>
@@ -84,7 +86,7 @@ function PickCard({ idea, busy, onFilm, onDismiss }: {
         </div>
       ) : mode === "view" ? (
         <div className="mt-3 flex flex-wrap gap-2">
-          <Button className="h-11" disabled={busy} onClick={() => onFilm()} aria-label={`Film this: ${idea.title}`}>
+          <Button variant={lead ? "default" : "outline"} className="h-11" disabled={busy} onClick={() => onFilm()} aria-label={`Film this: ${idea.title}`}>
             {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> : null}Film this
           </Button>
           <Button variant="outline" className="h-11" disabled={busy} onClick={() => setMode("edit")} aria-label={`Edit before filming: ${idea.title}`}>Edit</Button>
@@ -154,7 +156,7 @@ export function FilmNextPanel({ ideas, used, dismissed, dismissalsFailed, busyKe
             </select>
           </label>
           <div className="flex flex-wrap gap-2">
-            <Button className="h-11" disabled={!ownReady || anyBusy} onClick={() => { const i = ownIdea(own, ownId()); onFilm(i); setOwn({ title: "", hook: "", premise: "", format: "short" }); setOwnOpen(false); }}>Film this</Button>
+            <Button variant="outline" className="h-11" disabled={!ownReady || anyBusy} onClick={() => { const i = ownIdea(own, ownId()); onFilm(i); setOwn({ title: "", hook: "", premise: "", format: "short" }); setOwnOpen(false); }}>Film this</Button>
             <Button variant="outline" className="h-11" disabled={!ownReady || anyBusy} onClick={() => { const i = ownIdea(own, ownId()); onSaveLater(i); setOwn({ title: "", hook: "", premise: "", format: "short" }); setOwnOpen(false); }}>Save for later</Button>
           </div>
         </div>
@@ -162,20 +164,20 @@ export function FilmNextPanel({ ideas, used, dismissed, dismissalsFailed, busyKe
 
       <div className="space-y-2" role="group" aria-label="Filter the picks">
         <div className="grid gap-2 sm:grid-cols-3">
-          <label className="text-xs text-muted-foreground">Platform
+          <label className="text-[13px] text-muted-foreground">Platform
             <select value={filters.platform} onChange={(e) => set("platform", e.target.value as PickFilters["platform"])} className={`${FIELD} mt-0.5`}>
               <option value="any">Any platform</option>
               {(["YouTube", "Instagram", "TikTok"] as Platform[]).map((p) => <option key={p} value={p}>{p}</option>)}
             </select>
           </label>
-          <label className="text-xs text-muted-foreground">Format
+          <label className="text-[13px] text-muted-foreground">Format
             <select value={filters.format} onChange={(e) => set("format", e.target.value as PickFilters["format"])} className={`${FIELD} mt-0.5`}>
               <option value="any">Long-form and Shorts</option>
               <option value="long">Long-form</option>
               <option value="short">Shorts</option>
             </select>
           </label>
-          <label className="text-xs text-muted-foreground">Topic
+          <label className="text-[13px] text-muted-foreground">Topic
             <select value={filters.lane} onChange={(e) => set("lane", e.target.value as PickFilters["lane"])} className={`${FIELD} mt-0.5`}>
               <option value="any">Any topic</option>
               {(Object.keys(LANE_LABEL) as Lane[]).map((l) => <option key={l} value={l}>{LANE_LABEL[l]}</option>)}
@@ -188,13 +190,13 @@ export function FilmNextPanel({ ideas, used, dismissed, dismissalsFailed, busyKe
         </button>
         {more ? (
           <div className="grid gap-2 sm:grid-cols-3">
-            <label className="text-xs text-muted-foreground">Time to film
+            <label className="text-[13px] text-muted-foreground">Time to film
               <select value={String(filters.minutes)} onChange={(e) => set("minutes", e.target.value === "any" ? "any" : Number(e.target.value))} className={`${FIELD} mt-0.5`}>
                 <option value="any">Any amount of time</option>
                 {TIME_OPTIONS.map((t) => <option key={t.value} value={t.value}>Up to {t.label}</option>)}
               </select>
             </label>
-            <label className="text-xs text-muted-foreground">Where I am
+            <label className="text-[13px] text-muted-foreground">Where I am
               <select value={filters.place} onChange={(e) => set("place", e.target.value as PickFilters["place"])} className={`${FIELD} mt-0.5`}>
                 <option value="any">Anywhere</option>
                 {(Object.keys(PLACE_LABEL) as Place[]).filter((p) => p !== "anywhere").map((p) => <option key={p} value={p}>{PLACE_LABEL[p]}</option>)}
@@ -211,7 +213,7 @@ export function FilmNextPanel({ ideas, used, dismissed, dismissalsFailed, busyKe
       </div>
 
       {dismissalsFailed ? (
-        <p className="rounded-md border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-sm text-foreground" role="alert">
+        <p className="rounded-md border border-tone-warm/35 bg-tone-warm/8 px-3 py-2 text-sm text-foreground" role="alert">
           Your dismissed ideas could not be loaded, so one you dismissed before may show up again.
         </p>
       ) : null}
@@ -219,9 +221,9 @@ export function FilmNextPanel({ ideas, used, dismissed, dismissalsFailed, busyKe
       {picks.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-foreground">{note ?? "No ideas to show."}</div>
       ) : (
-        <ol className="grid gap-3 lg:grid-cols-3">
-          {picks.map((idea) => (
-            <PickCard key={idea.key} idea={idea} busy={busyKey === idea.key || anyBusy}
+        <ol className="grid gap-3">
+          {picks.map((idea, i) => (
+            <PickCard key={idea.key} idea={idea} lead={i === 0 && !ownOpen} busy={busyKey === idea.key || anyBusy}
               onFilm={(edits) => onFilm(idea, edits)} onDismiss={(reason) => onDismiss(idea, reason)} />
           ))}
         </ol>
@@ -236,7 +238,7 @@ export function FilmNextPanel({ ideas, used, dismissed, dismissalsFailed, busyKe
               <li key={d.idea_key} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2">
                 <div className="min-w-0 text-sm">
                   <p className="font-medium text-foreground">{d.title ?? d.idea_key}</p>
-                  <p className="text-xs text-muted-foreground">{d.reason ? `Reason: ${d.reason}` : "No reason given"}</p>
+                  <p className="text-[13px] text-muted-foreground">{d.reason ? `Reason: ${d.reason}` : "No reason given"}</p>
                 </div>
                 <Button variant="outline" size="sm" className="h-10" disabled={anyBusy} onClick={() => onBringBack(d.idea_key)} aria-label={`Bring back: ${d.title ?? d.idea_key}`}>Bring back</Button>
               </li>

@@ -26,8 +26,8 @@ function WinnerRow({ winner, existing, busy, onRemake, onOpen, now }: {
   const p = winner.post;
   return (
     <li className="rounded-lg border border-border bg-card p-4" aria-label={p.title ?? "Untitled post"}>
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold text-muted-foreground">
-        <span className="rounded-full border border-primary/50 bg-primary/10 px-2 py-0.5 text-foreground">{winner.ratio}x your usual</span>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] font-semibold text-muted-foreground">
+        <span className="rounded-full border border-tone-gold/35 bg-tone-gold/12 px-2 py-0.5 text-foreground">{winner.ratio}x your usual</span>
         <span>{platformName(p.platform)}</span><span>· {formatName(p.format)}</span>
         <span>· {winner.ageDays} days of views</span>
       </div>
@@ -58,9 +58,9 @@ function WinnerRow({ winner, existing, busy, onRemake, onOpen, now }: {
           <p className="text-sm text-muted-foreground"><b className="text-foreground">New draft:</b> {draft.title}. The original and its numbers stay exactly as they are.</p>
           <div className="flex flex-wrap gap-2">
             {made ? (
-              <Button className="h-11" onClick={() => onOpen(made.id)}>Open the draft you already made</Button>
+              <Button variant="outline" className="h-11" onClick={() => onOpen(made.id)}>Open the draft you already made</Button>
             ) : (
-              <Button className="h-11" disabled={busy} onClick={() => onRemake(draft)}>
+              <Button variant="outline" className="h-11" disabled={busy} onClick={() => onRemake(draft)}>
                 {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> : null}Create the draft
               </Button>
             )}
@@ -109,7 +109,7 @@ export function WinnersPanel({ posts, loading, failed, onRetry, cards, busy, onR
       {loading ? (
         <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground" role="status">Loading your results…</div>
       ) : failed ? (
-        <div className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-4 text-sm text-foreground" role="alert">
+        <div className="rounded-lg border border-tone-warm/35 bg-tone-warm/8 p-4 text-sm text-foreground" role="alert">
           Your results could not be loaded, so no winners are shown. <button type="button" className="font-semibold underline" onClick={onRetry}>Retry</button>
         </div>
       ) : report.winners.length === 0 ? (

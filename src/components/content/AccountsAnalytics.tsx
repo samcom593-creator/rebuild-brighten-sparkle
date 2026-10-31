@@ -1,7 +1,7 @@
 // Launch Board → Analytics (Sam 2026-10-06): every post across every account, short vs long,
 // purposeful vs not, by content category. YouTube fills itself (apex-youtube-sync.py, every 3h);
 // Instagram / TikTok / Facebook posts are logged here with one tap.
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,10 @@ import { Input } from "@/components/ui/input";
 import { formatTimeAgo } from "@/lib/dateUtils";
 import { DAY_THEMES, THEME_TONE, WEEKLY_TARGETS, countPieces, phoenixDateKey, phoenixWeekday, piecesByDay } from "@/lib/contentWeek";
 import { level, nextMilestone, streak, totalPieces, weekOverWeek } from "@/lib/contentMomentum";
+import { Flame, Snowflake } from "lucide-react";
+import { ToneBubble } from "@/components/ui/delight/ToneBubble";
+import { TONE_CLASS, type Tone } from "@/lib/tones";
+import { cn } from "@/lib/utils";
 
 export type Post = {
   id: number; platform: string; account: string | null; format: string; category: string | null; title: string | null;
@@ -48,13 +52,14 @@ function scorer(posts: Scored[]) {
     return Math.max(0, Math.min(100, Math.round(50 + 25 * Math.log2(Math.max(p.views, 1) / base))));
   };
 }
-const scoreTone = (n: number) => (n >= 80 ? "bg-emerald-500 text-emerald-950" : n >= 50 ? "bg-primary text-primary-foreground" : "bg-muted text-foreground");
+// Score badges: the tone as text on a near-opaque ground, so they read over a thumbnail in both themes (was a solid fill).
+const scoreTone = (n: number) => `bg-background/90 ${TONE_CLASS[n >= 80 ? "good" : n >= 50 ? "gold" : "slate"].text}`;
 const fmtNum = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1)}M` : n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : String(n));
 
 function Pill({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button type="button" onClick={onClick} aria-pressed={on}
-      className={`rounded-full border px-3 py-1.5 text-sm font-semibold transition ${on ? "border-primary bg-primary text-primary-foreground" : "border-border text-foreground hover:border-primary/60"}`}>
+      className={`inline-flex min-h-10 items-center rounded-full border px-3.5 py-1.5 text-sm font-semibold transition-colors ${on ? "border-primary bg-primary/15 text-foreground" : "border-border text-foreground hover:border-primary/60"}`}>
       {children}
     </button>
   );
@@ -202,11 +207,17 @@ function useYtStats(): YtStats {
 /** A small up/down/flat delta chip. Hidden when there's no honest comparison (prior window empty). */
 function Delta({ pct }: { pct: number | null }) {
   if (pct == null) return null;
-  const tone = pct > 0 ? "text-emerald-400" : pct < 0 ? "text-red-400" : "text-muted-foreground";
+  const tone = pct > 0 ? TONE_CLASS.good.text : pct < 0 ? TONE_CLASS.hot.text : "text-muted-foreground";
   return <span className={`text-sm font-bold tabular-nums ${tone}`}>{pct > 0 ? "↑" : pct < 0 ? "↓" : "→"} {Math.abs(pct)}%</span>;
 }
 
-/** The momentum header for the Today tab: the streak you don't want to break, the climb to the next
+/** The 8% wash behind the streak banner, the depth of a selected tile. Written out so Tailwind sees each class. */
+const WASH: Record<Tone, string> = {
+  good: "bg-tone-good/8", warm: "bg-tone-warm/8", hot: "bg-tone-hot/8", cool: "bg-tone-cool/8",
+  royal: "bg-tone-royal/8", gold: "bg-tone-gold/8", slate: "bg-tone-slate/8",
+};
+
+/** The momentum header for the Analytics view (the Today tab's until OVERHAUL-launchboard): the streak you don't want to break, the climb to the next
  *  subscriber milestone, a creator level that ticks up with every upload, and honest week-over-week.
  *  Every number is real (from the posts already loaded + the live sub count); anything we can't
  *  compute honestly is hidden rather than faked. */
@@ -219,7 +230,8 @@ export function MomentumStrip({ posts, yt }: { posts: Post[]; yt: YtStats }) {
   const ms = useMemo(() => nextMilestone(yt.subs), [yt.subs]);
   const wow = useMemo(() => weekOverWeek(posts), [posts]);
   const broken = s.days === 0 && s.missed > 0;
-  const bannerTone = broken ? "border-red-400/50 bg-red-400/10" : s.atRisk ? "border-amber-400/50 bg-amber-400/10" : s.days > 0 ? "border-primary/40 bg-primary/5" : "border-border bg-card";
+  const streakTone: Tone = broken ? "hot" : s.atRisk ? "warm" : s.days > 0 ? "gold" : "slate";
+  const bannerTone = s.days > 0 || broken ? cn(TONE_CLASS[streakTone].border, WASH[streakTone]) : "border-border bg-card";
   const statusLine = broken ? `You haven't posted in ${s.missed} day${s.missed === 1 ? "" : "s"}. Post one to reset it to zero.`
     : s.days === 0 ? "Post one video today and start the streak."
     : s.alive ? "Posted today — don't break the chain."
@@ -231,10 +243,10 @@ export function MomentumStrip({ posts, yt }: { posts: Post[]; yt: YtStats }) {
     <section aria-label="Your momentum" className="flex flex-col gap-4">
       <div className={`flex flex-wrap items-center gap-x-6 gap-y-3 rounded-2xl border p-4 ${bannerTone}`}>
         <div className="flex items-center gap-4">
-          <div className="text-4xl leading-none" aria-hidden>{broken ? "❄️" : "🔥"}</div>
+          <ToneBubble tone={streakTone} size="lg">{broken ? <Snowflake /> : <Flame />}</ToneBubble>
           <div className="min-w-0">
-            <div className={`text-3xl font-extrabold tabular-nums leading-none ${broken ? "text-red-400" : "text-foreground"}`}>{broken ? `−${s.missed}` : s.days}<span className="ml-1.5 text-base font-bold text-muted-foreground">{broken ? `day${s.missed === 1 ? "" : "s"} no post` : `day${s.days === 1 ? "" : "s"} in a row`}</span></div>
-            <div className={`mt-1 text-sm font-semibold ${broken ? "text-red-400" : s.atRisk ? "text-amber-400" : "text-primary"}`}>{statusLine}</div>
+            <div className={`text-3xl font-extrabold tabular-nums leading-none ${broken ? TONE_CLASS.hot.text : "text-foreground"}`}>{broken ? `−${s.missed}` : s.days}<span className="ml-1.5 text-base font-bold text-muted-foreground">{broken ? `day${s.missed === 1 ? "" : "s"} no post` : `day${s.days === 1 ? "" : "s"} in a row`}</span></div>
+            <div className={`mt-1 text-sm font-semibold ${TONE_CLASS[streakTone === "slate" ? "gold" : streakTone].text}`}>{statusLine}</div>
           </div>
         </div>
         <div className="ml-auto flex items-center gap-2">
@@ -246,10 +258,10 @@ export function MomentumStrip({ posts, yt }: { posts: Post[]; yt: YtStats }) {
         <div className="rounded-2xl border border-border bg-card p-5">
           <div className="flex items-center justify-between gap-2">
             <span className="text-sm font-semibold text-muted-foreground">YouTube subscribers</span>
-            {yt.weekDelta != null && yt.weekDelta !== 0 && <span className={`text-sm font-bold tabular-nums ${yt.weekDelta > 0 ? "text-emerald-400" : "text-red-400"}`}>{yt.weekDelta > 0 ? "↑" : "↓"} {fmtNum(Math.abs(yt.weekDelta))} / wk</span>}
+            {yt.weekDelta != null && yt.weekDelta !== 0 && <span className={`text-sm font-bold tabular-nums ${yt.weekDelta > 0 ? TONE_CLASS.good.text : TONE_CLASS.hot.text}`}>{yt.weekDelta > 0 ? "↑" : "↓"} {fmtNum(Math.abs(yt.weekDelta))} / wk</span>}
           </div>
           <div className="mt-0.5 text-2xl font-extrabold tabular-nums text-foreground">{yt.subs != null ? fmtNum(yt.subs) : "—"}</div>
-          {ms ? (<>{bar(ms.pct / 100)}<div className="mt-1 text-[13px] font-semibold text-primary">{fmtNum(ms.remaining)} to {fmtNum(ms.next)}</div></>) : <div className="mt-2 text-[13px] text-muted-foreground">updates every 3 hours</div>}
+          {ms ? (<>{bar(ms.pct / 100)}<div className={`mt-1 text-[13px] font-semibold ${TONE_CLASS.gold.text}`}>{fmtNum(ms.remaining)} to {fmtNum(ms.next)}</div></>) : <div className="mt-2 text-[13px] text-muted-foreground">updates every 3 hours</div>}
           {(yt.long != null || yt.short != null) && <div className="mt-2 border-t border-border/60 pt-2 text-[13px] text-muted-foreground"><b className="tabular-nums text-foreground">{yt.long ?? "—"}</b> long-form · <b className="tabular-nums text-foreground">{yt.short ?? "—"}</b> Shorts on YouTube</div>}
         </div>
         <div className="rounded-2xl border border-border bg-card p-5">
@@ -342,8 +354,14 @@ export function PostedTodayStrip({ onOpen }: { onOpen: () => void }) {
   );
 }
 
-export default function AccountsAnalytics() {
+/**
+ * Analytics. On the Launch Board it leads with the momentum (the streak, subscribers and this week against last; moved
+ * here from the Videos view in OVERHAUL-launchboard, so that view keeps to four numbers) and whatever the page passes as
+ * `lead` (Remake a winner).
+ */
+export default function AccountsAnalytics({ lead }: { lead?: ReactNode } = {}) {
   const { posts, setPosts, loading, failed, load: reloadPosts } = usePosts();
+  const ytStats = useYtStats();
   const ins = useInsights();
   const [logOpen, setLogOpen] = useState(false);
   const [platform, setPlatform] = useState<string>("instagram");
@@ -357,12 +375,6 @@ export default function AccountsAnalytics() {
   const [saving, setSaving] = useState(false);
   const [filterAccount, setFilterAccount] = useState<string>("all");
   const [sort, setSort] = useState<"new" | "views">("new");
-  const [yt, setYt] = useState<{ subscribers?: number; at?: string } | null>(null);
-
-  useEffect(() => {
-    void supabase.from("system_settings").select("value").eq("key", "youtube_channel_stats").maybeSingle()
-      .then(({ data }) => { try { setYt(data?.value ? JSON.parse(data.value) : null); } catch { setYt(null); } });
-  }, []);
 
   const accounts = useMemo(() => {
     const set = new Set<string>(SUGGESTED_ACCOUNTS);
@@ -451,7 +463,7 @@ export default function AccountsAnalytics() {
   const ideasByDay = useMemo(() => [1, 2, 3, 4, 5, 6].map((d) => ({ d, items: (ins?.ideas ?? []).filter((i) => i.day === d).sort(sortIdeas) })).filter((g) => g.items.length > 0), [ins]);
   const coach = ins?.coach;
   const coachCols: { k: "start" | "keep" | "stop"; label: string; tone: string }[] = [
-    { k: "start", label: "Start", tone: "text-emerald-400" }, { k: "keep", label: "Keep", tone: "text-primary" }, { k: "stop", label: "Stop", tone: "text-red-400" },
+    { k: "start", label: "Start", tone: TONE_CLASS.good.text }, { k: "keep", label: "Keep", tone: TONE_CLASS.gold.text }, { k: "stop", label: "Stop", tone: TONE_CLASS.hot.text },
   ];
   const aud = ins?.audience;
   const winnerCard = (p: Post, rank: number) => { const tb = thumb(p); const sc = score(p); return (
@@ -474,11 +486,13 @@ export default function AccountsAnalytics() {
           <button type="button" onClick={() => void reloadPosts()} className="rounded-full border border-border px-3 py-1 font-semibold hover:border-primary/60">Retry</button>
         </div>
       )}
-      <section aria-label="Totals" className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <Stat label="Posted today" value={loading || failed ? "…" : String(countPieces(todayPosts, "short") + countPieces(todayPosts, "long"))} sub={`${countPieces(todayPosts, "short")} short · ${countPieces(todayPosts, "long")} long · ${todayPosts.length} platform posts`} />
-        <Stat label="Last 7 days" value={loading || failed ? "…" : String(countPieces(week, "short") + countPieces(week, "long"))} sub={`${countPieces(week, "short")} short · ${countPieces(week, "long")} long · ${week.length} platform posts`} />
-        <Stat label="Views, 30 days" value={loading || failed ? "…" : fmtNum(views30)} sub={`${month.length} posts`} />
-        <Stat label="YouTube subs" value={yt?.subscribers != null ? fmtNum(yt.subscribers) : "—"} sub="updates every 3 hours" />
+      <MomentumStrip posts={posts} yt={ytStats} />
+      {lead}
+      {/* YouTube subscribers live in the momentum strip above, with the climb to the next milestone. */}
+      <section aria-label="Totals" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <Stat label="Posted today" value={loading ? "…" : failed ? "—" : String(countPieces(todayPosts, "short") + countPieces(todayPosts, "long"))} sub={`${countPieces(todayPosts, "short")} short · ${countPieces(todayPosts, "long")} long · ${todayPosts.length} platform posts`} />
+        <Stat label="Last 7 days" value={loading ? "…" : failed ? "—" : String(countPieces(week, "short") + countPieces(week, "long"))} sub={`${countPieces(week, "short")} short · ${countPieces(week, "long")} long · ${week.length} platform posts`} />
+        <Stat label="Views, 30 days" value={loading ? "…" : failed ? "—" : fmtNum(views30)} sub={`${month.length} posts`} />
       </section>
 
       <section aria-label="What's working" className="flex flex-col gap-3">
@@ -528,7 +542,7 @@ export default function AccountsAnalytics() {
               <ul className="mt-2 flex flex-col gap-2.5">
                 {coach.trends!.map((tr) => (
                   <li key={tr.title} className="text-sm">
-                    {tr.url ? <a href={tr.url} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">{tr.title}</a> : <span className="font-semibold text-foreground">{tr.title}</span>}
+                    {tr.url ? <a href={tr.url} target="_blank" rel="noopener noreferrer" className={`font-semibold underline-offset-4 hover:underline ${TONE_CLASS.gold.text}`}>{tr.title}</a> : <span className="font-semibold text-foreground">{tr.title}</span>}
                     {tr.why && <span className="block text-muted-foreground">{tr.why}</span>}
                   </li>
                 ))}
@@ -582,10 +596,10 @@ export default function AccountsAnalytics() {
         </section>
       )}
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div id="log-a-post" className="flex flex-wrap items-center gap-2">
         <Pill on={filterAccount === "all"} onClick={() => setFilterAccount("all")}>All accounts</Pill>
         {accountKeys.map(([k, label]) => <Pill key={k} on={filterAccount === k} onClick={() => setFilterAccount(k)}>{label}</Pill>)}
-        <Button size="sm" onClick={() => setLogOpen(!logOpen)} className="ml-auto h-9 bg-primary px-4 text-primary-foreground hover:bg-primary/90">{logOpen ? "Close" : "+ Log a post (IG / TikTok / Snapchat / FB)"}</Button>
+        <Button size="sm" variant="outline" aria-expanded={logOpen} onClick={() => setLogOpen(!logOpen)} className="ml-auto h-11 px-4">{logOpen ? "Close" : "Log a post (IG, TikTok, Snapchat, FB)"}</Button>
       </div>
 
       {logOpen && (
@@ -607,7 +621,7 @@ export default function AccountsAnalytics() {
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title or hook (optional)" className="h-10 min-w-[200px] flex-1" />
             <Input value={views} onChange={(e) => setViews(e.target.value)} inputMode="numeric" placeholder="Views (optional)" className="h-10 w-36" />
             <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Link (optional)" className="h-10 min-w-[160px] flex-1" />
-            <Button onClick={() => void logPost()} disabled={saving} className="h-10 bg-primary px-6 text-primary-foreground hover:bg-primary/90">{saving ? "Saving…" : "Log it"}</Button>
+            <Button onClick={() => void logPost()} disabled={saving} className="h-11 px-6">{saving ? "Saving…" : "Log it"}</Button>
           </div>
         </section>
       )}
@@ -615,13 +629,13 @@ export default function AccountsAnalytics() {
       <section aria-label="Posts per day" className="rounded-lg border border-border bg-card p-4">
         <div className="mb-3 flex items-center gap-4 text-sm"><b className="text-foreground">Posts per day</b>
           <span className="flex items-center gap-1.5 text-muted-foreground"><span className="h-3 w-3 rounded-sm bg-primary" />short</span>
-          <span className="flex items-center gap-1.5 text-muted-foreground"><span className="h-3 w-3 rounded-sm bg-sky-400" />long</span></div>
+          <span className="flex items-center gap-1.5 text-muted-foreground"><span className={`h-3 w-3 rounded-sm ${TONE_CLASS.cool.dot}`} />long</span></div>
         <div className="flex h-40 items-end gap-1.5">
           {days.map((d) => (
             <div key={d.k} className="flex flex-1 flex-col items-center gap-1" title={`${d.label}: ${d.short} short, ${d.long} long`}>
               <span className="text-sm tabular-nums text-foreground">{d.short + d.long || ""}</span>
               <div className="flex w-full flex-col justify-end overflow-hidden rounded-sm" style={{ height: Math.max(2, Math.round(((d.short + d.long) / maxDay) * 96)) }}>
-                <div className="bg-sky-400" style={{ flex: d.long }} /><div className="bg-primary" style={{ flex: d.short }} />
+                <div className={TONE_CLASS.cool.dot} style={{ flex: d.long }} /><div className="bg-primary" style={{ flex: d.short }} />
               </div>
               <span className="text-[13px] text-muted-foreground">{new Date(`${d.k}T12:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short" })}</span>
             </div>

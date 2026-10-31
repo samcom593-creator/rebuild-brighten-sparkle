@@ -81,7 +81,7 @@ export function FilmingPackSheet({ card, open, onOpenChange, onSave, onOpenEdito
           <div>
             <div className="flex items-baseline justify-between gap-2 text-sm">
               <span className="font-semibold text-foreground">{progress.total === 0 ? "No checklist yet" : `${progress.done} of ${progress.total} done`}</span>
-              <span role="status" className={cn("text-xs", status === "error" ? "font-semibold text-destructive" : "text-muted-foreground")}>
+              <span role="status" className={cn("text-[13px]", status === "error" ? "font-semibold text-destructive" : "text-muted-foreground")}>
                 {status === "saving" ? <span className="inline-flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" aria-hidden />Saving</span>
                   : status === "error" ? <>Not saved. <button type="button" className="underline" onClick={() => void persist(textRef.current)}>Retry</button></>
                   : <span className="inline-flex items-center gap-1"><Check className="h-3 w-3" aria-hidden />Saved</span>}
@@ -97,7 +97,7 @@ export function FilmingPackSheet({ card, open, onOpenChange, onSave, onOpenEdito
               <label className="block text-sm text-muted-foreground">Pack text
                 <textarea value={draft} onChange={(e) => setDraft(e.target.value)} rows={16} className="mt-1 w-full rounded-md border border-border bg-background p-3 font-mono text-sm text-foreground" />
               </label>
-              <p className="text-xs text-muted-foreground">Lines that start with “- [ ]” are checklist items. Everything else is free text.</p>
+              <p className="text-[13px] text-muted-foreground">Lines that start with “- [ ]” are checklist items. Everything else is free text.</p>
               <div className="flex gap-2">
                 <Button className="h-11" onClick={() => { void persist(draft); setEditing(false); }}>Save text</Button>
                 <Button variant="ghost" className="h-11" onClick={() => setEditing(false)}>Cancel</Button>

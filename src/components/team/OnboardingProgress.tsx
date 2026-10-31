@@ -26,8 +26,8 @@ export function OnboardingProgress({ row }: { row: RosterRow }) {
   return (
     <div className="min-w-[120px]">
       <div className="flex items-center gap-1.5">
-        <span className={cn("text-[12px] font-semibold", done ? "text-success" : "text-foreground")}>{label}</span>
-        <span className="text-[11px] tabular-nums text-muted-foreground">{step + 1}/5</span>
+        <span className={cn("text-[13px] font-semibold", done ? "text-success" : "text-foreground")}>{label}</span>
+        <span className="text-[13px] tabular-nums text-muted-foreground">{step + 1}/5</span>
       </div>
       <div className="mt-1 flex gap-0.5" aria-label={`Onboarding step ${step + 1} of 5: ${label}`}>
         {ONBOARDING_LADDER.map((name, i) => (

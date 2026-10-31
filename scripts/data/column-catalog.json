@@ -6908,6 +6908,10 @@
       "refreshed_at",
       "updated_at"
     ],
+    "us_area_codes": [
+      "area_code",
+      "state"
+    ],
     "user_dashboard_prefs": [
       "created_at",
       "hidden_cards",
@@ -8070,6 +8074,8 @@
       "annual_premium",
       "carrier",
       "client_name",
+      "client_state",
+      "client_state_source",
       "effective_date",
       "origin",
       "policy_number",

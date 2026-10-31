@@ -12,6 +12,7 @@ import { ClientContactLine } from "@/components/clients/ClientContactLine";
 import { BookRowWork } from "@/components/books/BookRowWork";
 import { BookRowCallsPanel } from "@/components/books/BookRowCallsPanel";
 import { BookStandingBoard } from "@/components/books/BookStandingBoard";
+import { LeadStatesPanel } from "@/components/books/LeadStatesPanel";
 import { dispositionLabel } from "@/lib/readymodeDispositions";
 import { looseSupabase } from "@/lib/looseSupabase";
 import { splitClientName } from "@/lib/clientFacts";
@@ -44,6 +45,13 @@ import {
   dealsPageMayContinue,
   type DealsCursor,
 } from "@/lib/productionBook";
+import {
+  STATE_NOT_KNOWN,
+  parseLeadYield,
+  parseStateParam,
+  parseStateSummary,
+  stateLabel,
+} from "@/lib/leadStates";
 
 type DealRow = {
   row_key: string;
@@ -63,6 +71,10 @@ type DealRow = {
   status_key: string | null;
   /** active / pending / lapsing / gone / unknown, from v_book_of_business. */
   standing: string | null;
+  /** OVERHAUL-states: the client's state (two letters), or null when it is not known. */
+  client_state?: string | null;
+  /** How the state is known: "on_file" (client record, sold call, lead list) or "area_code" (the phone's area code, likely). */
+  client_state_source?: string | null;
 };
 
 /** One server page of the book, with the server's exact count of rows matching from its cursor on. */
@@ -204,7 +216,8 @@ function DealRowItem({
           <ClientContactLine
             phone={client?.phone}
             dob={client?.dob}
-            state={client?.state}
+            state={d.client_state ?? client?.state}
+            stateLikely={Boolean(d.client_state) && d.client_state_source === "area_code"}
             city={client?.city}
             doNotCall={client?.do_not_call || client?.flip_status === "do_not_call"}
             badNumber={client?.flip_status === "bad_number"}
@@ -309,6 +322,9 @@ export default function MyDeals() {
   // survives a reload and can be shared. ?standing= is one of the four tiles (or "unknown"),
   // ?status= one status inside it; the page's older ?group= and ?status= links still read.
   const { standing, statusKey } = readStandingParams(searchParams);
+  // OVERHAUL-states: ?state=TX lists the clients in one state (?state=unknown: no state known), from the
+  // same client_state v_book_of_business carries and book_state_summary() counts.
+  const stateFilter = parseStateParam(searchParams.get("state"));
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [visible, setVisible] = useState(PAGE);
   const focusRef = useRef<HTMLDivElement | null>(null);
@@ -332,7 +348,7 @@ export default function MyDeals() {
   const teamListReady = !isTeamManager || downline.ids !== undefined;
   const scopeReady = fullBook || (!identityLoading && teamListReady && scopedAgentIds.length > 0);
   const enabled = Boolean(user?.id) && scopeReady;
-  const filterKey = `${standing ?? "everyone"}:${statusKey ?? "all"}`;
+  const filterKey = `${standing ?? "everyone"}:${statusKey ?? "all"}:${stateFilter ?? "any-state"}`;
 
   // One source for the whole book: v_book_of_business is every row of the
   // unified production book (imported production and native posts, deduped)
@@ -362,6 +378,8 @@ export default function MyDeals() {
       if (standing === "unknown") query = query.not("standing", "in", KNOWN_STANDINGS_IN_LIST);
       else if (standing) query = query.eq("standing", standing);
       if (statusKey) query = query.eq("status_key", statusKey);
+      if (stateFilter === STATE_NOT_KNOWN) query = query.is("client_state", null);
+      else if (stateFilter) query = query.eq("client_state", stateFilter);
       if (pageParam) query = query.or(dealsPageCursorFilter(pageParam));
       const { data, error, count } = await query;
       if (error) throw error;
@@ -390,6 +408,8 @@ export default function MyDeals() {
       if (standing === "unknown") query = query.not("standing", "in", KNOWN_STANDINGS_IN_LIST);
       else if (standing) query = query.eq("standing", standing);
       if (statusKey) query = query.eq("status_key", statusKey);
+      if (stateFilter === STATE_NOT_KNOWN) query = query.is("client_state", null);
+      else if (stateFilter) query = query.eq("client_state", stateFilter);
       const { count, error } = await query;
       if (error) throw error;
       if (count === null) throw new Error("The server did not return a policy count.");
@@ -413,6 +433,34 @@ export default function MyDeals() {
     },
   });
   const standingSummary = standingQuery.data ?? null;
+
+  // OVERHAUL-states (Sam, 2026-10-30: "show what states I should get, in order"): the book by client state,
+  // for the full-book readers, who buy the leads. book_state_summary() counts v_book_of_business by
+  // client_state inside the caller's scope, so a state's number is the list ?state= opens and the states add
+  // up to the tiles. The lead lists (lead_state_yield) are slower and admin data: read after, cached longer.
+  const stateSummaryQuery = useQuery({
+    queryKey: ["book-state-summary"],
+    enabled: enabled && fullBook,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("book_state_summary", {});
+      if (error) throw error;
+      return parseStateSummary(data);
+    },
+  });
+  const leadYieldQuery = useQuery({
+    queryKey: ["lead-state-yield"],
+    enabled: enabled && fullBook,
+    staleTime: 10 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("lead_state_yield");
+      if (error) throw error;
+      return parseLeadYield(data);
+    },
+  });
+  const stateRow = stateFilter && stateSummaryQuery.data
+    ? stateSummaryQuery.data.find((r) => (r.state ?? STATE_NOT_KNOWN) === stateFilter) ?? null
+    : null;
   // A failed read with nothing on hand shows dashes and why; a failed refresh keeps the last
   // numbers and says how old they are. Either way Try again is beside it, and nothing reads 0.
   const standingNotice = standingQuery.isError
@@ -499,6 +547,8 @@ export default function MyDeals() {
   const showBook = (nextStanding: BookStanding | null, nextStatus: string | null = null) => {
     const next = new URLSearchParams(searchParams);
     next.delete("group");
+    // The four tiles count the whole book, so choosing one leaves any state behind.
+    next.delete("state");
     if (nextStanding) next.set("standing", nextStanding);
     else next.delete("standing");
     if (nextStatus) next.set("status", nextStatus);
@@ -510,14 +560,50 @@ export default function MyDeals() {
   // A tile opens its list. On a phone the list starts below the four tiles, so bring it up to
   // where the person is looking; on a wide screen it is already in view and nothing moves.
   const listRef = useRef<HTMLDivElement | null>(null);
-  const openStanding = (nextStanding: BookStanding | null) => {
-    showBook(nextStanding);
-    if (!nextStanding) return;
+  const bringListUp = () => {
     requestAnimationFrame(() => {
       const el = listRef.current;
       if (!el || el.getBoundingClientRect().top < window.innerHeight * 0.6) return;
       el.scrollIntoView?.({ block: "start", behavior: prefersReducedMotion() ? "auto" : "smooth" });
     });
+  };
+  const openStanding = (nextStanding: BookStanding | null) => {
+    showBook(nextStanding);
+    if (!nextStanding) return;
+    bringListUp();
+  };
+  // A state (from Where to buy leads) opens the book filtered to it: the whole state, any standing. Choosing
+  // the state that is already open closes it again.
+  const openState = (code: string) => {
+    const nextCode = parseStateParam(code);
+    const next = new URLSearchParams(searchParams);
+    next.delete("group");
+    next.delete("standing");
+    next.delete("status");
+    if (nextCode && nextCode !== stateFilter) next.set("state", nextCode);
+    else next.delete("state");
+    setSearchParams(next, { replace: true });
+    setVisible(PAGE);
+    setExpandedId(null);
+    if (nextCode && nextCode !== stateFilter) bringListUp();
+  };
+  // Inside a state, one standing at a time (the counts come from the same summary as the state's row).
+  const showStateStanding = (nextStanding: BookStanding | null) => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("group");
+    next.delete("status");
+    if (nextStanding) next.set("standing", nextStanding);
+    else next.delete("standing");
+    setSearchParams(next, { replace: true });
+    setVisible(PAGE);
+    setExpandedId(null);
+  };
+  const clearState = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("state");
+    setSearchParams(next, { replace: true });
+    setVisible(PAGE);
+    setExpandedId(null);
   };
 
   const latestSync = deals.reduce<string | null>((acc, d) => {
@@ -622,18 +708,43 @@ export default function MyDeals() {
 
   // The list heading names what is showing, in the tile's own words.
   const standingMeta = standing ? STANDING_META[standing] : null;
-  const listTitle = standingMeta ? standingMeta.label : "Everyone";
+  const stateName = stateFilter ? stateLabel(stateFilter === STATE_NOT_KNOWN ? null : stateFilter) : null;
+  const listTitle = stateName ?? (standingMeta ? standingMeta.label : "Everyone");
   const statusLabel = statusKey ? statusKeyLabel(statusKey) : null;
-  const emptyTitle = statusLabel
-    ? `No ${statusLabel.toLowerCase()} policies ${scopeWords}`
-    : standingMeta
-      ? `${standingMeta.emptyTitle} ${scopeWords}`
-      : "Nothing on the book yet";
-  // The statuses inside the chosen tile, from the same counts, so each chip equals its list.
-  const standingStatuses = standing && standingSummary ? standingSummary.statuses[standing] : [];
+  const inState = stateFilter === STATE_NOT_KNOWN ? "with no state known" : stateName ? `in ${stateName}` : null;
+  const emptyTitle = inState
+    ? standingMeta
+      ? `${standingMeta.emptyTitle} ${inState}`
+      : `No policies ${inState}`
+    : statusLabel
+      ? `No ${statusLabel.toLowerCase()} policies ${scopeWords}`
+      : standingMeta
+        ? `${standingMeta.emptyTitle} ${scopeWords}`
+        : "Nothing on the book yet";
+  // The statuses inside the chosen tile, from the same counts, so each chip equals its list. Inside a state
+  // the chips are the state's standings instead (from book_state_summary(), the same rows).
+  const standingStatuses = standing && standingSummary && !stateFilter ? standingSummary.statuses[standing] : [];
+  const stateStandings: { key: BookStanding; label: string; n: number }[] = stateRow
+    ? ([
+        { key: "active", label: STANDING_META.active.label, n: stateRow.active },
+        { key: "pending", label: STANDING_META.pending.label, n: stateRow.pending },
+        { key: "lapsing", label: STANDING_META.lapsing.label, n: stateRow.lapsing },
+        { key: "gone", label: STANDING_META.gone.label, n: stateRow.gone },
+        { key: "unknown", label: STANDING_META.unknown.label, n: stateRow.no_status },
+      ] as { key: BookStanding; label: string; n: number }[]).filter((s) => s.n > 0 || s.key === standing)
+    : [];
+  const stateLine = stateFilter && stateRow
+    ? stateFilter === STATE_NOT_KNOWN
+      ? `${stateRow.no_client.toLocaleString()} reported as agency totals with no client; the other ${(stateRow.policies - stateRow.no_client).toLocaleString()} have no state on file and no phone with a US area code.`
+      : stateRow.on_file === stateRow.policies
+        ? `Every one has the client's state on file.`
+        : stateRow.on_file === 0
+          ? `Likely ${stateName}, by the client's phone area code: no state is on file for these clients.`
+          : `${stateRow.on_file.toLocaleString()} with the state on file; the other ${(stateRow.policies - stateRow.on_file).toLocaleString()} are likely ${stateName}, by the phone's area code.`
+    : null;
   const showEveryoneButton = (
-    <Button type="button" size="sm" variant="outline" className="h-9 px-3" onClick={() => showBook(null)}>
-      Show everyone
+    <Button type="button" size="sm" variant="outline" className="h-9 px-3" onClick={() => (stateFilter ? clearState() : showBook(null))}>
+      {stateFilter ? "Show every state" : "Show everyone"}
     </Button>
   );
 
@@ -667,7 +778,7 @@ export default function MyDeals() {
           summary={standingSummary}
           notice={standingNotice}
           onRetry={() => void standingQuery.refetch()}
-          selected={standing}
+          selected={stateFilter ? null : standing}
           onSelect={openStanding}
         />
       ) : identityLoading ? (
@@ -675,6 +786,25 @@ export default function MyDeals() {
       ) : (
         <p className="text-sm text-muted-foreground">The counts appear once your book is known. The list below says what is missing.</p>
       )}
+
+      {/* OVERHAUL-states: where the deals come from by state and how to split the next lead order. For the
+          full-book readers (Sam's admin logins and the book readers), who buy the leads. */}
+      {fullBook && enabled ? (
+        <LeadStatesPanel
+          summary={stateSummaryQuery.data ?? null}
+          summaryLoading={stateSummaryQuery.isPending}
+          summaryError={stateSummaryQuery.isError ? stateSummaryQuery.error : null}
+          summaryUpdatedAt={stateSummaryQuery.dataUpdatedAt}
+          onRetrySummary={() => void stateSummaryQuery.refetch()}
+          leads={leadYieldQuery.data ?? null}
+          leadsLoading={leadYieldQuery.isPending}
+          leadsError={leadYieldQuery.isError ? leadYieldQuery.error : null}
+          onRetryLeads={() => void leadYieldQuery.refetch()}
+          bookTotal={standingSummary ? standingSummary.total : null}
+          selectedState={stateFilter}
+          onOpenState={openState}
+        />
+      ) : null}
 
       {focusDealId && enabled && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
@@ -727,6 +857,7 @@ export default function MyDeals() {
             <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
               <CardTitle className="text-base">
                 {listTitle}
+                {stateName && standingMeta && <span className="font-normal text-muted-foreground"> · {standingMeta.label}</span>}
                 {statusLabel && <span className="font-normal text-muted-foreground"> · {statusLabel}</span>}
               </CardTitle>
               {enabled && (
@@ -737,7 +868,7 @@ export default function MyDeals() {
                 </div>
               )}
             </div>
-            {(standing || showDialerFilter) && (
+            {(standing || stateFilter || showDialerFilter) && (
               <div className="flex flex-wrap items-center gap-2">
                 {showDialerFilter && (
                   <Select value={dialerChip} onValueChange={(v) => { setDialerChip(v as DialerChip); setVisible(PAGE); }}>
@@ -751,10 +882,38 @@ export default function MyDeals() {
                     </SelectContent>
                   </Select>
                 )}
-                {standing && showEveryoneButton}
+                {(standing || stateFilter) && showEveryoneButton}
               </div>
             )}
           </div>
+          {stateLine && <p className="text-sm text-muted-foreground">{stateLine}</p>}
+          {stateFilter && stateStandings.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2" role="group" aria-label={`${stateName ?? ""} by standing`}>
+              <Button
+                type="button"
+                size="sm"
+                variant={standing ? "outline" : "secondary"}
+                className="h-9 px-3"
+                aria-pressed={!standing}
+                onClick={() => showStateStanding(null)}
+              >
+                All <span className="ml-1 tabular-nums text-muted-foreground">{stateRow?.policies.toLocaleString()}</span>
+              </Button>
+              {stateStandings.map((s) => (
+                <Button
+                  key={s.key}
+                  type="button"
+                  size="sm"
+                  variant={standing === s.key ? "secondary" : "outline"}
+                  className="h-9 px-3"
+                  aria-pressed={standing === s.key}
+                  onClick={() => showStateStanding(standing === s.key ? null : s.key)}
+                >
+                  {s.label} <span className="ml-1 tabular-nums text-muted-foreground">{s.n.toLocaleString()}</span>
+                </Button>
+              ))}
+            </div>
+          )}
           {showDialerFilter && dialerChip !== "all" && (
             <p className="text-sm text-muted-foreground">
               {DIALER_CHIPS.find((c) => c.key === dialerChip)?.label}: {visibleDeals.length.toLocaleString()} of the {deals.length.toLocaleString()} loaded rows.
@@ -822,7 +981,7 @@ export default function MyDeals() {
                 asOf={dealsQuery.dataUpdatedAt}
                 className="p-4"
                 title={emptyTitle}
-                body={standing ? <>The rest of the book is still here. {showEveryoneButton}</> : "Use Post a Deal to record the first one."}
+                body={standing || stateFilter ? <>The rest of the book is still here. {showEveryoneButton}</> : "Use Post a Deal to record the first one."}
               >
                 {clientDetails.failed && (
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2 text-xs" role="status">

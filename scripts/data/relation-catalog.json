@@ -532,6 +532,7 @@
     "public.today_tasks",
     "public.transfer_requests",
     "public.truth_refresh_state",
+    "public.us_area_codes",
     "public.user_dashboard_prefs",
     "public.user_roles",
     "public.v_active_agents_skool",

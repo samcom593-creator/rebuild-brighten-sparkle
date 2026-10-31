@@ -1222,6 +1222,16 @@
         "raw": "p_agent_ids uuid[] DEFAULT NULL::uuid[]"
       }
     ],
+    "book_state_summary": [
+      {
+        "all": [
+          "p_agent_ids"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_agent_ids uuid[] DEFAULT NULL::uuid[]"
+      }
+    ],
     "booking_packet_fix_number": [
       {
         "all": [
@@ -6421,6 +6431,14 @@
         "raw": "p_bundle uuid, p_user uuid"
       }
     ],
+    "lead_state_yield": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "leaderboard_board": [
       {
         "all": [
@@ -9552,6 +9570,18 @@
         ],
         "unnamed": false,
         "raw": "p_rows jsonb"
+      }
+    ],
+    "us_state_code": [
+      {
+        "all": [
+          "p_value"
+        ],
+        "required": [
+          "p_value"
+        ],
+        "unnamed": false,
+        "raw": "p_value text"
       }
     ],
     "uuid_from_text": [

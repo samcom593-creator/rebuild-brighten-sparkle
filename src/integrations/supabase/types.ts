@@ -101562,6 +101562,21 @@ export type Database = {
         }
         Relationships: []
       }
+      us_area_codes: {
+        Row: {
+          area_code: string
+          state: string
+        }
+        Insert: {
+          area_code: string
+          state: string
+        }
+        Update: {
+          area_code?: string
+          state?: string
+        }
+        Relationships: []
+      }
       user_dashboard_prefs: {
         Row: {
           created_at: string
@@ -117994,6 +118009,8 @@ export type Database = {
           annual_premium: number | null
           carrier: string | null
           client_name: string | null
+          client_state: string | null
+          client_state_source: string | null
           effective_date: string | null
           origin: string | null
           policy_number: string | null
@@ -157549,6 +157566,28 @@ export type Database = {
           status_key: string
         }[]
       }
+      book_state_summary: {
+        Args: { p_agent_ids?: string[] }
+        Returns: {
+          active: number
+          active_writers: number
+          annual_premium: number
+          clients: number
+          gone: number
+          lapsing: number
+          last_30_days: number
+          last_90_days: number
+          licensed_agents: number
+          no_client: number
+          no_status: number
+          on_file: number
+          pending: number
+          policies: number
+          premium_policies: number
+          prior_90_days: number
+          state: string
+        }[]
+      }
       booking_packet_fix_number: {
         Args: { p_field: string; p_packet_id: string; p_value: string }
         Returns: Json
@@ -159944,6 +159983,20 @@ export type Database = {
         }[]
       }
       landing_unclaimed_summary: { Args: never; Returns: Json }
+      lead_state_yield: {
+        Args: never
+        Returns: {
+          area_checked: number
+          area_matched: number
+          calls_since: string
+          dialed_sales: number
+          leads_bought: number
+          leads_dialed: number
+          lists_loaded: string
+          never_called: number
+          state: string
+        }[]
+      }
       leaderboard_board: {
         Args: { p_end: string; p_start: string }
         Returns: {
@@ -161380,6 +161433,7 @@ export type Database = {
         Returns: Json
       }
       upsert_readymode_dialer_calls: { Args: { p_rows: Json }; Returns: number }
+      us_state_code: { Args: { p_value: string }; Returns: string }
       uuid_from_text: { Args: { p_value: string }; Returns: string }
       void_strike: {
         Args: { p_strike_id: string; p_void_reason: string }

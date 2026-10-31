@@ -2262,6 +2262,229 @@
     "public"
    ]
   },
+  "book_state_summary.active": {
+   "candidates": [],
+   "body_literals": [
+    "",
+    "America/Phoenix",
+    "active",
+    "gone",
+    "lapsing",
+    "on_file",
+    "pending",
+    "{}"
+   ]
+  },
+  "book_state_summary.active_writers": {
+   "candidates": [],
+   "body_literals": [
+    "",
+    "America/Phoenix",
+    "active",
+    "gone",
+    "lapsing",
+    "on_file",
+    "pending",
+    "{}"
+   ]
+  },
+  "book_state_summary.annual_premium": {
+   "candidates": [
+    "v_book_of_business.annual_premium"
+   ],
+   "body_literals": [
+    "",
+    "America/Phoenix",
+    "active",
+    "gone",
+    "lapsing",
+    "on_file",
+    "pending",
+    "{}"
+   ]
+  },
+  "book_state_summary.clients": {
+   "candidates": [],
+   "body_literals": [
+    "",
+    "America/Phoenix",
+    "active",
+    "gone",
+    "lapsing",
+    "on_file",
+    "pending",
+    "{}"
+   ]
+  },
+  "book_state_summary.gone": {
+   "candidates": [],
+   "body_literals": [
+    "",
+    "America/Phoenix",
+    "active",
+    "gone",
+    "lapsing",
+    "on_file",
+    "pending",
+    "{}"
+   ]
+  },
+  "book_state_summary.lapsing": {
+   "candidates": [],
+   "body_literals": [
+    "",
+    "America/Phoenix",
+    "active",
+    "gone",
+    "lapsing",
+    "on_file",
+    "pending",
+    "{}"
+   ]
+  },
+  "book_state_summary.last_30_days": {
+   "candidates": [],
+   "body_literals": [
+    "",
+    "America/Phoenix",
+    "active",
+    "gone",
+    "lapsing",
+    "on_file",
+    "pending",
+    "{}"
+   ]
+  },
+  "book_state_summary.last_90_days": {
+   "candidates": [],
+   "body_literals": [
+    "",
+    "America/Phoenix",
+    "active",
+    "gone",
+    "lapsing",
+    "on_file",
+    "pending",
+    "{}"
+   ]
+  },
+  "book_state_summary.licensed_agents": {
+   "candidates": [],
+   "body_literals": [
+    "",
+    "America/Phoenix",
+    "active",
+    "gone",
+    "lapsing",
+    "on_file",
+    "pending",
+    "{}"
+   ]
+  },
+  "book_state_summary.no_client": {
+   "candidates": [],
+   "body_literals": [
+    "",
+    "America/Phoenix",
+    "active",
+    "gone",
+    "lapsing",
+    "on_file",
+    "pending",
+    "{}"
+   ]
+  },
+  "book_state_summary.no_status": {
+   "candidates": [],
+   "body_literals": [
+    "",
+    "America/Phoenix",
+    "active",
+    "gone",
+    "lapsing",
+    "on_file",
+    "pending",
+    "{}"
+   ]
+  },
+  "book_state_summary.on_file": {
+   "candidates": [],
+   "body_literals": [
+    "",
+    "America/Phoenix",
+    "active",
+    "gone",
+    "lapsing",
+    "on_file",
+    "pending",
+    "{}"
+   ]
+  },
+  "book_state_summary.pending": {
+   "candidates": [],
+   "body_literals": [
+    "",
+    "America/Phoenix",
+    "active",
+    "gone",
+    "lapsing",
+    "on_file",
+    "pending",
+    "{}"
+   ]
+  },
+  "book_state_summary.policies": {
+   "candidates": [],
+   "body_literals": [
+    "",
+    "America/Phoenix",
+    "active",
+    "gone",
+    "lapsing",
+    "on_file",
+    "pending",
+    "{}"
+   ]
+  },
+  "book_state_summary.premium_policies": {
+   "candidates": [],
+   "body_literals": [
+    "",
+    "America/Phoenix",
+    "active",
+    "gone",
+    "lapsing",
+    "on_file",
+    "pending",
+    "{}"
+   ]
+  },
+  "book_state_summary.prior_90_days": {
+   "candidates": [],
+   "body_literals": [
+    "",
+    "America/Phoenix",
+    "active",
+    "gone",
+    "lapsing",
+    "on_file",
+    "pending",
+    "{}"
+   ]
+  },
+  "book_state_summary.state": {
+   "candidates": [],
+   "body_literals": [
+    "",
+    "America/Phoenix",
+    "active",
+    "gone",
+    "lapsing",
+    "on_file",
+    "pending",
+    "{}"
+   ]
+  },
   "booking_packet_reveal_sensitive.bank_account": {
    "candidates": [],
    "body_literals": [
@@ -9727,6 +9950,162 @@
     "D",
     "blocked",
     "pos",
+    "public"
+   ]
+  },
+  "lead_state_yield.area_checked": {
+   "candidates": [],
+   "body_literals": [
+    "",
+    " ",
+    "42501",
+    "America/Phoenix",
+    "Only the full-book readers can read the lead lists.",
+    "\\D",
+    "^[2-9][0-9]{2}[2-9][0-9]{6}$",
+    "agentlink",
+    "apex_native",
+    "ethos_customers",
+    "g",
+    "public"
+   ]
+  },
+  "lead_state_yield.area_matched": {
+   "candidates": [],
+   "body_literals": [
+    "",
+    " ",
+    "42501",
+    "America/Phoenix",
+    "Only the full-book readers can read the lead lists.",
+    "\\D",
+    "^[2-9][0-9]{2}[2-9][0-9]{6}$",
+    "agentlink",
+    "apex_native",
+    "ethos_customers",
+    "g",
+    "public"
+   ]
+  },
+  "lead_state_yield.calls_since": {
+   "candidates": [],
+   "body_literals": [
+    "",
+    " ",
+    "42501",
+    "America/Phoenix",
+    "Only the full-book readers can read the lead lists.",
+    "\\D",
+    "^[2-9][0-9]{2}[2-9][0-9]{6}$",
+    "agentlink",
+    "apex_native",
+    "ethos_customers",
+    "g",
+    "public"
+   ]
+  },
+  "lead_state_yield.dialed_sales": {
+   "candidates": [],
+   "body_literals": [
+    "",
+    " ",
+    "42501",
+    "America/Phoenix",
+    "Only the full-book readers can read the lead lists.",
+    "\\D",
+    "^[2-9][0-9]{2}[2-9][0-9]{6}$",
+    "agentlink",
+    "apex_native",
+    "ethos_customers",
+    "g",
+    "public"
+   ]
+  },
+  "lead_state_yield.leads_bought": {
+   "candidates": [],
+   "body_literals": [
+    "",
+    " ",
+    "42501",
+    "America/Phoenix",
+    "Only the full-book readers can read the lead lists.",
+    "\\D",
+    "^[2-9][0-9]{2}[2-9][0-9]{6}$",
+    "agentlink",
+    "apex_native",
+    "ethos_customers",
+    "g",
+    "public"
+   ]
+  },
+  "lead_state_yield.leads_dialed": {
+   "candidates": [],
+   "body_literals": [
+    "",
+    " ",
+    "42501",
+    "America/Phoenix",
+    "Only the full-book readers can read the lead lists.",
+    "\\D",
+    "^[2-9][0-9]{2}[2-9][0-9]{6}$",
+    "agentlink",
+    "apex_native",
+    "ethos_customers",
+    "g",
+    "public"
+   ]
+  },
+  "lead_state_yield.lists_loaded": {
+   "candidates": [],
+   "body_literals": [
+    "",
+    " ",
+    "42501",
+    "America/Phoenix",
+    "Only the full-book readers can read the lead lists.",
+    "\\D",
+    "^[2-9][0-9]{2}[2-9][0-9]{6}$",
+    "agentlink",
+    "apex_native",
+    "ethos_customers",
+    "g",
+    "public"
+   ]
+  },
+  "lead_state_yield.never_called": {
+   "candidates": [],
+   "body_literals": [
+    "",
+    " ",
+    "42501",
+    "America/Phoenix",
+    "Only the full-book readers can read the lead lists.",
+    "\\D",
+    "^[2-9][0-9]{2}[2-9][0-9]{6}$",
+    "agentlink",
+    "apex_native",
+    "ethos_customers",
+    "g",
+    "public"
+   ]
+  },
+  "lead_state_yield.state": {
+   "candidates": [
+    "client_leads.state",
+    "us_area_codes.state"
+   ],
+   "body_literals": [
+    "",
+    " ",
+    "42501",
+    "America/Phoenix",
+    "Only the full-book readers can read the lead lists.",
+    "\\D",
+    "^[2-9][0-9]{2}[2-9][0-9]{6}$",
+    "agentlink",
+    "apex_native",
+    "ethos_customers",
+    "g",
     "public"
    ]
   },

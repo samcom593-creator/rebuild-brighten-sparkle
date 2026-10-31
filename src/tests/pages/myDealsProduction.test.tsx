@@ -309,7 +309,8 @@ describe("Book of Business", () => {
     const statuses = screen.getByRole("group", { name: "Lapsing by status" });
     fireEvent.click(within(statuses).getByRole("button", { name: /Lapsed\s*1/ }));
     await waitFor(() => expect(screen.queryByText("Client1 Last1")).not.toBeInTheDocument());
-    expect(screen.getByText("Client2 Last2")).toBeInTheDocument();
+    // The new filter's rows arrive after the old ones leave (OVERHAUL-states: the page does more on load).
+    expect(await screen.findByText("Client2 Last2")).toBeInTheDocument();
     expect(lastListRead()?.eqs).toEqual([["standing", "lapsing"], ["status_key", "lapsed"]]);
     expect(lastSearch).toBe("?standing=lapsing&status=lapsed");
 

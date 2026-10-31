@@ -7,10 +7,12 @@ import { contactLinkProps, formatPhoneDisplay, phoneHref, smsHref } from "@/lib/
 import { Skeleton } from "@/components/ui/skeleton";
 import { ageFromDob, dobDisplay } from "@/lib/clientFacts";
 
-export function ClientContactLine({ phone, dob, state, city, doNotCall, badNumber, bestTime, loading, failed }: {
+export function ClientContactLine({ phone, dob, state, stateLikely = false, city, doNotCall, badNumber, bestTime, loading, failed }: {
   phone: string | null | undefined;
   dob: string | null | undefined;
   state?: string | null;
+  /** OVERHAUL-states: the state is the phone's area code, not one on file, so it reads "likely". */
+  stateLikely?: boolean;
   city?: string | null;
   doNotCall?: boolean | null;
   /** Marked Bad number in Book Flips: the number is shown, but not offered as a call. */
@@ -53,7 +55,12 @@ export function ClientContactLine({ phone, dob, state, city, doNotCall, badNumbe
         </a>
       )}
       <span className="text-foreground">{dobText ? `DOB ${dobText}${age != null ? ` · ${age} yrs` : ""}` : "DOB not on file"}</span>
-      {place && <span className="text-foreground">{place}</span>}
+      {place && (
+        <span className="text-foreground" title={stateLikely ? "No state is on file for this client; this is the state of the phone's area code." : undefined}>
+          {place}
+          {stateLikely && state ? <span className="text-muted-foreground"> · likely, by area code</span> : null}
+        </span>
+      )}
       {bestTime && <span>best time {bestTime}</span>}
     </div>
   );

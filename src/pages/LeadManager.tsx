@@ -16,7 +16,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { cn } from "@/lib/utils";
 import {
   Layers, Send, Download, Archive, DollarSign, AlertTriangle, UserRound, X,
-  Trophy, Phone, RotateCcw, Boxes, ClipboardList, Users as UsersIcon,
+  Trophy, Phone, RotateCcw, Boxes, ClipboardList, Users as UsersIcon, Check,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -170,24 +170,29 @@ export default function LeadManager() {
   const [note, setNote] = useState("");
 
   // reset tier/flag selections when switching pools (they differ per pool)
-  useEffect(() => { setTiers(new Set()); setFlags(new Set()); setVantageOnly(false); }, [pool]);
+  useEffect(() => {
+    setTiers(new Set()); setFlags(new Set()); setVantageOnly(false);
+    setStates(""); setMinAge(""); setMaxAge("");
+  }, [pool]);
 
-  const [agentSearch, setAgentSearch] = useState("");
   const [agent, setAgent] = useState<AssignableAgent | null>(null);
-  const [highlight, setHighlight] = useState(0);
-  const debouncedAgentSearch = useDebounced(agentSearch, 200);
+  const [agentFilter, setAgentFilter] = useState("");
 
   const filters = useMemo(() => {
     const f: Record<string, unknown> = { exclude_dnc: excludeDnc, exclude_resold: excludeResold, sort };
     if (tiers.size) f.tiers = Array.from(tiers);
     if (flags.size) f.require_flags = Array.from(flags);
-    const st = states.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean);
-    if (st.length) f.states = st;
-    if (minAge) f.min_age = Number(minAge);
-    if (maxAge) f.max_age = Number(maxAge);
+    // state/age inputs only exist for the marketing pool — never leak them into
+    // dialer/rewrite/winback (which emit null state/age) and silently zero them.
+    if (pool === "marketing") {
+      const st = states.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean);
+      if (st.length) f.states = st;
+      if (minAge) f.min_age = Number(minAge);
+      if (maxAge) f.max_age = Number(maxAge);
+    }
     if (vantageOnly) f.vantage_only = true;
     return f;
-  }, [tiers, flags, states, minAge, maxAge, vantageOnly, excludeDnc, excludeResold, sort]);
+  }, [pool, tiers, flags, states, minAge, maxAge, vantageOnly, excludeDnc, excludeResold, sort]);
 
   const debouncedFilters = useDebounced(filters, 350);
 
@@ -216,14 +221,19 @@ export default function LeadManager() {
   });
 
   const { data: agents = [] } = useQuery<AssignableAgent[]>({
-    queryKey: ["assignable-agents", debouncedAgentSearch],
+    queryKey: ["assignable-agents-all"],
     queryFn: async () => {
-      const { data, error } = await rpc("lead_assignable_agents", { p_search: debouncedAgentSearch || null });
+      const { data, error } = await rpc("lead_assignable_agents", { p_search: null });
       if (error) throw error;
       return (data as AssignableAgent[]) ?? [];
     },
-    staleTime: 60_000,
+    staleTime: 120_000,
   });
+  const shownAgents = useMemo(() => {
+    const qq = agentFilter.trim().toLowerCase();
+    if (!qq) return agents;
+    return agents.filter((a) => a.display_name.toLowerCase().includes(qq) || (a.subagency ?? "").toLowerCase().includes(qq));
+  }, [agents, agentFilter]);
 
   const { data: recent = [] } = useQuery<RecentBundle[]>({
     queryKey: ["lead-bundles-recent"],
@@ -259,7 +269,7 @@ export default function LeadManager() {
     },
     onSuccess: (res) => {
       toast.success(`${res.items} lead${res.items === 1 ? "" : "s"} dropped into ${res.agent}'s portal`);
-      setAgent(null); setAgentSearch(""); setNote("");
+      setAgent(null); setAgentFilter(""); setNote("");
       queryClient.invalidateQueries({ queryKey: ["lead-bundles-recent"] });
       queryClient.invalidateQueries({ queryKey: ["lead-pool"] });
     },
@@ -288,7 +298,6 @@ export default function LeadManager() {
 
   const tierOpts = POOL_TIERS[pool];
   const flagOpts = POOL_FLAGS[pool];
-  const activeAgents = agents.slice(0, 8);
 
   return (
     <div className="mx-auto max-w-6xl space-y-5 p-4 sm:p-6">
@@ -474,7 +483,7 @@ export default function LeadManager() {
         <CardContent className="space-y-3">
           {agent ? (
             <div className="flex flex-wrap items-center gap-2 rounded-lg border border-primary/40 bg-primary/5 p-3">
-              <span className="text-sm text-muted-foreground">Dropping to</span>
+              <span className="text-sm text-muted-foreground">Dropping {dropCount.toLocaleString()} to</span>
               <span className="inline-flex items-center gap-1.5 font-semibold">
                 <UserRound className="h-4 w-4 text-primary" />{agent.display_name}
               </span>
@@ -484,38 +493,39 @@ export default function LeadManager() {
               </Button>
             </div>
           ) : (
-            <div className="relative max-w-md">
-              <Input
-                placeholder="Type a live agent's name…"
-                value={agentSearch}
-                onChange={(e) => { setAgentSearch(e.target.value); setHighlight(0); }}
-                onKeyDown={(e) => {
-                  if (!activeAgents.length) return;
-                  if (e.key === "ArrowDown") { e.preventDefault(); setHighlight((h) => Math.min(h + 1, activeAgents.length - 1)); }
-                  else if (e.key === "ArrowUp") { e.preventDefault(); setHighlight((h) => Math.max(h - 1, 0)); }
-                  else if (e.key === "Enter") { e.preventDefault(); const a = activeAgents[highlight]; if (a) { setAgent(a); setAgentSearch(""); } }
-                }}
-                aria-label="Search live agents"
-              />
-              {agentSearch.trim().length > 0 && activeAgents.length > 0 && (
-                <div className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-md border border-border bg-popover shadow-lg">
-                  {activeAgents.map((a, i) => (
-                    <button
-                      key={a.user_id}
-                      type="button"
-                      className={cn("flex w-full items-center justify-between px-3 py-2 text-left text-sm",
-                        i === highlight ? "bg-muted" : "hover:bg-muted")}
-                      onMouseEnter={() => setHighlight(i)}
-                      onClick={() => { setAgent(a); setAgentSearch(""); }}
-                    >
-                      <span>{a.display_name}</span>
-                      {a.subagency && <span className="text-xs text-muted-foreground">{a.subagency}</span>}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            <p className="text-sm text-muted-foreground">
+              Tap an agent to drop {dropCount.toLocaleString()} {POOLS.find((p) => p.key === pool)?.label.toLowerCase()} lead{dropCount === 1 ? "" : "s"} into their portal.
+            </p>
           )}
+
+          <Input value={agentFilter} onChange={(e) => setAgentFilter(e.target.value)}
+            placeholder={`Filter ${agents.length} live agents…`} className="max-w-xs" aria-label="Filter agents" />
+
+          <div className="flex max-h-60 flex-wrap gap-2 overflow-y-auto">
+            {shownAgents.length === 0 ? (
+              <span className="text-sm text-muted-foreground">{agents.length === 0 ? "Loading agents…" : "No live agents match."}</span>
+            ) : (
+              shownAgents.map((a) => {
+                const on = agent?.user_id === a.user_id;
+                return (
+                  <button
+                    key={a.user_id}
+                    type="button"
+                    onClick={() => setAgent(on ? null : a)}
+                    aria-pressed={on}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors",
+                      on ? "border-primary bg-primary/15 font-semibold text-primary" : "border-border/60 bg-card hover:bg-muted/50",
+                    )}
+                  >
+                    {on ? <Check className="h-3.5 w-3.5" /> : <UserRound className="h-3.5 w-3.5 opacity-60" />}
+                    {a.display_name}
+                    {a.subagency && <span className="text-xs opacity-70">· {a.subagency}</span>}
+                  </button>
+                );
+              })
+            )}
+          </div>
 
           <Input placeholder="Optional note (shown with the pack)" value={note}
             onChange={(e) => setNote(e.target.value)} className="max-w-md" aria-label="Pack note" />
@@ -526,7 +536,7 @@ export default function LeadManager() {
             <Send className="mr-1.5 h-4 w-4" />
             {assign.isPending ? "Dropping…"
               : agent ? `Drop ${dropCount.toLocaleString()} into ${agent.display_name}'s portal`
-                : "Pick an agent to drop into"}
+                : "Tap an agent above"}
           </Button>
         </CardContent>
       </Card>

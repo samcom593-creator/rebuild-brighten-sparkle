@@ -1,8 +1,11 @@
--- APEX lead engine wave 2 (MP-LEAD-MANAGER, 2026-11-03): four normalized pools
--- (marketing / dialer / re-write pile / lapsed win-back), a dispatcher, unified
--- counts+assign, a recording path + log RPC for the agent call flow, a closers
--- leaderboard, and a bundle drill-down. Applied live via bot-sql; mirrored here.
--- Owned leads + own-pipeline re-work + lapsed win-back to OWN agents only.
+-- APEX lead engine wave 2 (MP-LEAD-MANAGER, 2026-11-03), review-hardened.
+-- Four normalized pools (marketing/dialer/re-write/lapsed win-back), a dispatcher,
+-- unified counts+assign, agent record+log flow, closers leaderboard, drill-down.
+-- Applied live via bot-sql; mirrored here. Owned leads + own-pipeline re-work +
+-- lapsed-only win-back to OWN agents. SSN/bank surface as presence booleans only.
+-- Hardened after adversarial review: dialer holds back ALL do-not-call (tier
+-- 'blocked'); win-back excludes in-force deals; closers credit the agent who
+-- marked the close; the raw sellable_* engines are NOT callable by clients.
 
 alter table public.lead_bundle_items add column if not exists recording_path text;
 
@@ -53,7 +56,7 @@ create view public.v_pool_dialer with (security_invoker = true) as
     NULL::integer AS age,
     quality_tier AS tier,
     quality_reason AS tags,
-    jsonb_build_object('dnc', lower(COALESCE(last_disposition, ''::text)) = 'do not call'::text, 'campaign', campaign) AS flags,
+    jsonb_build_object('dnc', quality_tier = 'blocked'::text OR lower(COALESCE(last_disposition, ''::text)) = 'do not call'::text, 'campaign', campaign) AS flags,
     days_since_dialed AS lead_age_days,
     false AS under_9mo
    FROM v_readymode_lead_quality q;
@@ -137,7 +140,7 @@ create view public.v_pool_winback with (security_invoker = true) as
     false AS under_9mo
    FROM deals d
      LEFT JOIN carriers c ON c.id = d.carrier_id
-  WHERE (lower(COALESCE(d.status, ''::text)) = ANY (ARRAY['lapsed'::text, 'cancelled'::text])) OR d.policy_status_standard ~* 'laps|cancel|withdrawn|declined|not taken'::text;
+  WHERE ((lower(COALESCE(d.status, ''::text)) = ANY (ARRAY['lapsed'::text, 'cancelled'::text])) OR d.policy_status_standard ~* 'laps|cancel|withdrawn|declined|not taken'::text) AND (lower(COALESCE(d.status, ''::text)) <> ALL (ARRAY['active'::text, 'in_force'::text, 'submitted'::text, 'pending'::text]));
 
 CREATE OR REPLACE FUNCTION public.sellable_pool(p_source text, p_filters jsonb DEFAULT '{}'::jsonb)
  RETURNS TABLE(lead_id uuid, phone10 text, first_name text, last_name text, email text, state text, age integer, tier text, tags text, flags jsonb, lead_age_days integer, under_9mo boolean, already_sold boolean, in_bundle boolean)
@@ -318,11 +321,11 @@ begin
       (select a.display_name from public.agents a where a.user_id = g.user_id
          order by (a.canonical_agent_id is null) desc, a.created_at limit 1) as display_name,
       count(i.id)::int as dropped,
-      count(i.id) filter (where i.status <> 'new')::int as worked,
-      count(i.id) filter (where i.status = 'sold')::int as sold,
-      count(i.id) filter (where i.status = 'appointment')::int as appointments,
-      count(i.id) filter (where i.recording_path is not null)::int as recorded,
-      round(100.0 * count(i.id) filter (where i.status = 'sold') / nullif(count(i.id), 0), 1) as sold_rate
+      count(i.id) filter (where i.status <> 'new' and i.status_by = g.user_id)::int as worked,
+      count(i.id) filter (where i.status = 'sold' and i.status_by = g.user_id)::int as sold,
+      count(i.id) filter (where i.status = 'appointment' and i.status_by = g.user_id)::int as appointments,
+      count(i.id) filter (where i.recording_path is not null and i.status_by = g.user_id)::int as recorded,
+      round(100.0 * count(i.id) filter (where i.status = 'sold' and i.status_by = g.user_id) / nullif(count(i.id), 0), 1) as sold_rate
     from public.lead_bundle_grants g
     join public.lead_bundle_items i on i.bundle_id = g.bundle_id and i.removed_at is null
     where g.revoked_at is null
@@ -355,9 +358,15 @@ begin
   return v;
 end $function$;
 
-grant execute on function public.sellable_pool(text, jsonb) to authenticated;
 grant execute on function public.lead_pool_counts(text, jsonb) to authenticated;
 grant execute on function public.lead_pool_assign(text, jsonb, integer, uuid, text, text) to authenticated;
 grant execute on function public.lead_bundle_item_log(uuid, text, text, text) to authenticated;
 grant execute on function public.lead_closers_leaderboard() to authenticated;
 grant execute on function public.lead_bundle_items_manage(uuid) to authenticated;
+
+-- Raw engines: owner-only. The SECURITY DEFINER wrappers call them as owner, so
+-- revoking direct EXECUTE blocks client PII access without breaking the wrappers.
+revoke execute on function public.sellable_pool(text, jsonb) from public;
+revoke execute on function public.sellable_pool(text, jsonb) from authenticated;
+revoke execute on function public.sellable_leads_match(jsonb) from public;
+revoke execute on function public.sellable_leads_match(jsonb) from authenticated;

@@ -138,6 +138,12 @@ if (typeof window !== "undefined") {
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") healCheck();
   });
+  // 2026-11-03: also heal on window focus and on a 2-min timer, so a tab that
+  // never loses visibility (operator staring at one screen) still picks up a new
+  // deploy instead of showing a stale, empty-looking page. The build-id guard
+  // keeps it to one reload per new server build, so this never loops.
+  window.addEventListener("focus", healCheck);
+  window.setInterval(healCheck, 120000);
 }
 
 createRoot(document.getElementById("root")!).render(<App />);

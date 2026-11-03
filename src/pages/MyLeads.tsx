@@ -5,7 +5,7 @@
 // good, and the number never goes into another bundle.
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Inbox, Phone } from "lucide-react";
+import { Inbox, Phone, Mic, Check, Trophy } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -19,6 +19,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { contactLinkProps, formatPhoneDisplay, phoneHref } from "@/lib/phone";
 import { dispositionLabel } from "@/lib/readymodeDispositions";
 import { LEAD_STATUS_BUTTONS, canDial, formatLabel, isOpenLead, leadStatusLabel, tierLabel } from "@/lib/leadBundles";
+import { CallCenterVoiceRecorder } from "@/components/callcenter/CallCenterVoiceRecorder";
 
 interface MyLead {
   item_id: string;
@@ -59,19 +60,31 @@ export default function MyLeads() {
   const q = useQuery({ queryKey: ["my-leads"], queryFn: fetchMine, staleTime: 30_000 });
   const [show, setShow] = useState<Show>("open");
   const [notes, setNotes] = useState<Record<string, string>>({});
+  // the one lead whose recorder is open, and per-lead saved recording paths
+  const [recordingFor, setRecordingFor] = useState<string | null>(null);
+  const [recordings, setRecordings] = useState<Record<string, string>>({});
   const set = useMutation({
     mutationFn: async ({ item, status }: { item: string; status: string }) => {
-      const { error } = await supabase.rpc("lead_bundle_item_set" as never, { p_item: item, p_status: status, p_note: (notes[item] ?? "").trim() || null } as never);
+      // lead_bundle_item_log is the superset of item_set: same status + note, plus
+      // it stores the voice-note path when the agent recorded the call.
+      const { error } = await supabase.rpc("lead_bundle_item_log" as never, {
+        p_item: item, p_status: status,
+        p_note: (notes[item] ?? "").trim() || null,
+        p_recording_path: recordings[item] ?? null,
+      } as never);
       if (error) throw new Error(error.message);
     },
     onSuccess: (_r, v) => {
       toast.success(`Marked ${leadStatusLabel(v.status).toLowerCase()}.`);
       setNotes((n) => ({ ...n, [v.item]: "" }));
+      setRecordingFor((cur) => (cur === v.item ? null : cur));
       void qc.invalidateQueries({ queryKey: ["my-leads"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
   const rows = q.data ?? [];
+  const mySold = rows.filter((r) => r.status === "sold").length;
+  const myWorked = rows.filter((r) => !isOpenLead(r.status)).length;
   const count = (s: Show) => rows.filter((r) => s === "all" || (s === "open" ? isOpenLead(r.status) : !isOpenLead(r.status))).length;
   const visible = rows.filter((r) => show === "all" || (show === "open" ? isOpenLead(r.status) : !isOpenLead(r.status)));
   const groups: Array<{ id: string; name: string; format: string; leads: MyLead[] }> = [];
@@ -83,6 +96,16 @@ export default function MyLeads() {
   return (
     <div className="space-y-6">
       <PageHeader title="My Leads" subtitle="Leads given to you to work. Call, then tap what happened." />
+      {rows.length > 0 && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-border/60 bg-muted/20 p-3 text-sm">
+          <span className="inline-flex items-center gap-1.5 font-semibold">
+            <Trophy className="h-4 w-4 text-primary" /> You: {myWorked} worked · {mySold} sold
+          </span>
+          <span className="text-muted-foreground">
+            Work a lead: <b className="text-foreground">1.</b> Call · <b className="text-foreground">2.</b> Record what happened · <b className="text-foreground">3.</b> Tap the result
+          </span>
+        </div>
+      )}
       {q.isLoading ? (
         <div className="space-y-2">{[1, 2, 3, 4].map((n) => <Skeleton key={`lead-sk-${n}`} className="h-20 w-full" />)}</div>
       ) : q.isError ? (
@@ -125,11 +148,26 @@ export default function MyLeads() {
                           {l.last_dialed_at ? ` · last dialed ${shortDate(l.last_dialed_at)}` : ""}
                           {l.last_disposition ? ` (${dispositionLabel(l.last_disposition)})` : ""}
                         </p>
-                        <div className="flex flex-wrap items-center gap-2">
-                          {LEAD_STATUS_BUTTONS.map((b) => (
-                            <Button key={b.key} type="button" size="sm" variant={l.status === b.key ? "default" : "outline"} disabled={set.isPending} onClick={() => set.mutate({ item: l.item_id, status: b.key })}>{b.label}</Button>
-                          ))}
-                          <Input value={notes[l.item_id] ?? ""} onChange={(e) => setNotes((n) => ({ ...n, [l.item_id]: e.target.value }))} placeholder="Note (saved with the next tap)" className="h-8 min-w-[12rem] flex-1" maxLength={300} aria-label="Note" />
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            {LEAD_STATUS_BUTTONS.map((b) => (
+                              <Button key={b.key} type="button" size="sm" variant={l.status === b.key ? "default" : "outline"} disabled={set.isPending} onClick={() => set.mutate({ item: l.item_id, status: b.key })}>{b.label}</Button>
+                            ))}
+                            <Button type="button" size="sm" variant={recordingFor === l.item_id ? "default" : "outline"} onClick={() => setRecordingFor((c) => (c === l.item_id ? null : l.item_id))}>
+                              <Mic className="mr-1 h-3.5 w-3.5" />{recordingFor === l.item_id ? "Close recorder" : "Record"}
+                            </Button>
+                            {recordings[l.item_id] && (
+                              <Badge variant="outline" className="bg-green-600/15 border-green-600/40 text-green-300"><Check className="mr-1 h-3 w-3" />recorded</Badge>
+                            )}
+                            <Input value={notes[l.item_id] ?? ""} onChange={(e) => setNotes((n) => ({ ...n, [l.item_id]: e.target.value }))} placeholder="Note (saved with the next tap)" className="h-8 min-w-[12rem] flex-1" maxLength={300} aria-label="Note" />
+                          </div>
+                          {recordingFor === l.item_id && (
+                            <CallCenterVoiceRecorder
+                              onTranscriptionUpdate={() => { /* transcript not needed here — audio + summary only */ }}
+                              onAudioSaved={(p) => { setRecordings((r) => ({ ...r, [l.item_id]: p })); toast.success("Recording saved — now tap what happened"); }}
+                              className="rounded-lg border border-border/60 p-3"
+                            />
+                          )}
                         </div>
                       </li>
                     );

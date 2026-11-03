@@ -6319,6 +6319,16 @@
         "raw": ""
       }
     ],
+    "lead_assignable_agents": [
+      {
+        "all": [
+          "p_search"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_search text DEFAULT NULL::text"
+      }
+    ],
     "lead_bundle_archive": [
       {
         "all": [
@@ -6329,6 +6339,39 @@
         ],
         "unnamed": false,
         "raw": "p_bundle uuid"
+      }
+    ],
+    "lead_bundle_assign": [
+      {
+        "all": [
+          "p_agent_user_id",
+          "p_filters",
+          "p_limit",
+          "p_name",
+          "p_note"
+        ],
+        "required": [
+          "p_agent_user_id",
+          "p_filters",
+          "p_limit"
+        ],
+        "unnamed": false,
+        "raw": "p_filters jsonb, p_limit integer, p_agent_user_id uuid, p_name text DEFAULT NULL::text, p_note text DEFAULT NULL::text"
+      }
+    ],
+    "lead_bundle_build": [
+      {
+        "all": [
+          "p_filters",
+          "p_limit",
+          "p_name",
+          "p_note"
+        ],
+        "required": [
+          "p_name"
+        ],
+        "unnamed": false,
+        "raw": "p_name text, p_filters jsonb DEFAULT '{}'::jsonb, p_limit integer DEFAULT 100, p_note text DEFAULT NULL::text"
       }
     ],
     "lead_bundle_create": [
@@ -6348,6 +6391,18 @@
         ],
         "unnamed": false,
         "raw": "p_name text, p_format text, p_tiers text[], p_min_days_since_dialed integer DEFAULT 7, p_limit integer DEFAULT 100, p_note text DEFAULT NULL::text"
+      }
+    ],
+    "lead_bundle_export": [
+      {
+        "all": [
+          "p_bundle"
+        ],
+        "required": [
+          "p_bundle"
+        ],
+        "unnamed": false,
+        "raw": "p_bundle uuid"
       }
     ],
     "lead_bundle_grant": [
@@ -6380,6 +6435,22 @@
         "raw": "p_phone10 text, p_user uuid, p_note text DEFAULT NULL::text"
       }
     ],
+    "lead_bundle_item_log": [
+      {
+        "all": [
+          "p_item",
+          "p_note",
+          "p_recording_path",
+          "p_status"
+        ],
+        "required": [
+          "p_item",
+          "p_status"
+        ],
+        "unnamed": false,
+        "raw": "p_item uuid, p_status text, p_note text DEFAULT NULL::text, p_recording_path text DEFAULT NULL::text"
+      }
+    ],
     "lead_bundle_item_set": [
       {
         "all": [
@@ -6395,6 +6466,33 @@
         "raw": "p_item uuid, p_status text, p_note text DEFAULT NULL::text"
       }
     ],
+    "lead_bundle_items_manage": [
+      {
+        "all": [
+          "p_bundle"
+        ],
+        "required": [
+          "p_bundle"
+        ],
+        "unnamed": false,
+        "raw": "p_bundle uuid"
+      }
+    ],
+    "lead_bundle_mark_sold": [
+      {
+        "all": [
+          "p_bundle",
+          "p_note",
+          "p_price_cents",
+          "p_sold_to"
+        ],
+        "required": [
+          "p_bundle"
+        ],
+        "unnamed": false,
+        "raw": "p_bundle uuid, p_sold_to text DEFAULT NULL::text, p_price_cents integer DEFAULT NULL::integer, p_note text DEFAULT NULL::text"
+      }
+    ],
     "lead_bundle_pool": [
       {
         "all": [
@@ -6403,6 +6501,16 @@
         "required": [],
         "unnamed": false,
         "raw": "p_min_days_since_dialed integer DEFAULT 7"
+      }
+    ],
+    "lead_bundle_recent": [
+      {
+        "all": [
+          "p_limit"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_limit integer DEFAULT 50"
       }
     ],
     "lead_bundle_remove_item": [
@@ -6429,6 +6537,57 @@
         ],
         "unnamed": false,
         "raw": "p_bundle uuid, p_user uuid"
+      }
+    ],
+    "lead_closers_leaderboard": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "lead_pool_assign": [
+      {
+        "all": [
+          "p_agent_user_id",
+          "p_filters",
+          "p_limit",
+          "p_name",
+          "p_note",
+          "p_source"
+        ],
+        "required": [
+          "p_agent_user_id",
+          "p_filters",
+          "p_limit",
+          "p_source"
+        ],
+        "unnamed": false,
+        "raw": "p_source text, p_filters jsonb, p_limit integer, p_agent_user_id uuid, p_name text DEFAULT NULL::text, p_note text DEFAULT NULL::text"
+      }
+    ],
+    "lead_pool_counts": [
+      {
+        "all": [
+          "p_filters",
+          "p_source"
+        ],
+        "required": [
+          "p_source"
+        ],
+        "unnamed": false,
+        "raw": "p_source text, p_filters jsonb DEFAULT '{}'::jsonb"
+      }
+    ],
+    "lead_resale_pool_counts": [
+      {
+        "all": [
+          "p_filters"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_filters jsonb DEFAULT '{}'::jsonb"
       }
     ],
     "lead_state_yield": [
@@ -8076,6 +8235,31 @@
         ],
         "unnamed": false,
         "raw": "p_q text, p_limit integer DEFAULT 8"
+      }
+    ],
+    "sellable_leads_match": [
+      {
+        "all": [
+          "p_filters"
+        ],
+        "required": [
+          "p_filters"
+        ],
+        "unnamed": false,
+        "raw": "p_filters jsonb"
+      }
+    ],
+    "sellable_pool": [
+      {
+        "all": [
+          "p_filters",
+          "p_source"
+        ],
+        "required": [
+          "p_source"
+        ],
+        "unnamed": false,
+        "raw": "p_source text, p_filters jsonb DEFAULT '{}'::jsonb"
       }
     ],
     "send_completion_contracting_handoff": [

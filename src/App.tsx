@@ -292,7 +292,6 @@ const BookFlips = lazy(() => import("./pages/BookFlips"));
 const SoldCalls = lazy(() => import("./pages/SoldCalls"));
 const EasyResells = lazy(() => import("./pages/EasyResells"));
 const CallTraining = lazy(() => import("./pages/CallTraining"));
-const LeadBundles = lazy(() => import("./pages/LeadBundles"));
 const MyLeads = lazy(() => import("./pages/MyLeads"));
 const LeadManager = lazy(() => import("./pages/LeadManager"));
 const AyroBook = lazy(() => import("./pages/AyroBook"));
@@ -864,7 +863,8 @@ const App = () => (
                            <Route path="/dashboard/sold-calls" element={<ProtectedRoute requireAdmin allowManagers><SoldCalls /></ProtectedRoute>} />
                            <Route path="/dashboard/easy-resells" element={<ProtectedRoute requireAdmin allowManagers><EasyResells /></ProtectedRoute>} />
                            <Route path="/dashboard/call-training" element={<ProtectedRoute><CallTraining /></ProtectedRoute>} />
-                           <Route path="/dashboard/lead-bundles" element={<ProtectedRoute requireAdmin allowManagers><LeadBundles /></ProtectedRoute>} />
+                           {/* MP-LEAD-MANAGER: old dialer-only Lead Bundles merged into the unified Lead Manager; URL kept so bookmarks/links still work. */}
+                           <Route path="/dashboard/lead-bundles" element={<ProtectedRoute requireAdmin allowManagers><LeadManager /></ProtectedRoute>} />
                            <Route path="/dashboard/my-leads" element={<ProtectedRoute><MyLeads /></ProtectedRoute>} />
                            <Route path="/dashboard/lead-manager" element={<ProtectedRoute requireAdmin allowManagers><LeadManager /></ProtectedRoute>} />
                            <Route path="/dashboard/ayro-book" element={<ProtectedRoute requireAdmin allowManagers><AyroBook /></ProtectedRoute>} />

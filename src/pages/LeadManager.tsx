@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,135 +16,203 @@ import { PageHeader } from "@/components/ui/page-header";
 import { cn } from "@/lib/utils";
 import {
   Layers, Send, Download, Archive, DollarSign, AlertTriangle, UserRound, X,
+  Trophy, Phone, RotateCcw, Boxes, ClipboardList, Users as UsersIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
-// CSV-injection-safe cell: quote commas/quotes/newlines, and neutralise a
-// leading =,+,-,@ so a spreadsheet renders it as text instead of a formula.
-function csvField(value: unknown): string {
-  const raw = value === null || value === undefined ? "" : String(value);
-  const deFanged = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw;
-  return /[",\n\r]/.test(deFanged) ? `"${deFanged.replace(/"/g, '""')}"` : deFanged;
-}
-
 /**
- * Lead Manager — Sam/Aisha console for the owned aged-lead resale pool
- * (public.client_leads). Set a filter, type a live agent's name, drop the pack
- * straight into their portal. No "create bundle" step. Everything is gated
- * server-side by can_view_sold_calls(); the resale ledger stops a lead going
- * out twice, and DNC numbers are excluded by default.
+ * Lead Manager — the one console Sam + Aisha use to package leads and drop them
+ * into an agent's portal. One switch picks the POOL; the filters and tiers adapt;
+ * you type a live agent, see their name, and drop the pack. A resale ledger stops
+ * a lead going out twice and Do-Not-Call numbers are held back (and counted, so
+ * the number makes sense). Dropped leads land on the agent's My Leads page.
  *
- * Leads here are aged marketing PROSPECTS, not policyholders — so they carry no
- * chargeback; the "under 9 months" tag and the chargeback-first sort order on
- * the lead_date age, the window where a resold prospect is freshest.
+ * Pools: marketing (owned client_leads), dialer (ReadyMode graded calls),
+ * rewrite (booking calls where data was collected but never booked — the easy
+ * re-writes), winback (lapsed/cancelled policies, re-approached by our OWN agents;
+ * a Vantage filter, never a resale of anything in force). Backed by the
+ * lead_pool_* / lead_bundle_* / lead_closers_leaderboard RPCs, all gated server
+ * side by can_view_sold_calls().
  */
 
-// The generated Functions union is near TypeScript's instantiation-depth limit
-// and the committed types.ts is drifted (missing these admin RPCs), so they are
-// called through a shallow cast — the repo's standard rpc pattern.
+// Admin RPCs aren't in the drifted committed types.ts — shallow-cast (repo pattern).
 type RpcResult = { data: unknown; error: { message: string } | null };
 const rpc = supabase.rpc as unknown as (fn: string, args?: Record<string, unknown>) => Promise<RpcResult>;
 
-const GRADES = ["A", "B", "C", "D"] as const;
-const GRADE_HINT: Record<string, string> = {
-  A: "A list", B: "B list", C: "C list", D: "Ungraded / remaining",
+type PoolKey = "marketing" | "dialer" | "rewrite" | "winback";
+
+const POOLS: { key: PoolKey; label: string; icon: typeof Layers; blurb: string }[] = [
+  { key: "marketing", label: "Marketing", icon: Layers, blurb: "Owned aged leads" },
+  { key: "dialer", label: "Dialer", icon: Phone, blurb: "Called & graded" },
+  { key: "rewrite", label: "Re-write pile", icon: RotateCcw, blurb: "Collected, never booked" },
+  { key: "winback", label: "Win-back", icon: Boxes, blurb: "Lapsed policies" },
+];
+
+// Which tier chips + which controls each pool shows.
+const POOL_TIERS: Record<PoolKey, { v: string; label: string }[]> = {
+  marketing: [{ v: "A", label: "A" }, { v: "B", label: "B" }, { v: "C", label: "C" }, { v: "D", label: "D" }],
+  dialer: [{ v: "A", label: "A" }, { v: "B", label: "B" }, { v: "C", label: "C" }, { v: "D", label: "D" }, { v: "pos", label: "POS" }],
+  rewrite: [{ v: "S", label: "S" }, { v: "A", label: "A" }, { v: "B", label: "B" }],
+  winback: [{ v: "A", label: "Lapsed" }, { v: "B", label: "Other out-of-force" }],
 };
-const ATTRS = [
-  { key: "wants_mortgage", label: "Mortgage" },
-  { key: "is_veteran", label: "Veteran" },
-  { key: "is_homeowner", label: "Homeowner" },
-  { key: "policyholders_only", label: "Has a policy" },
-] as const;
+
+const POOL_FLAGS: Record<PoolKey, { key: string; label: string }[]> = {
+  marketing: [
+    { key: "mortgage", label: "Mortgage" }, { key: "veteran", label: "Veteran" },
+    { key: "homeowner", label: "Homeowner" }, { key: "policyholder", label: "Has a policy" },
+  ],
+  dialer: [],
+  rewrite: [
+    { key: "cc", label: "Card on file" }, { key: "no_bank", label: "No bank" },
+    { key: "ssn_collected", label: "SSN collected" }, { key: "bank_collected", label: "Bank collected" },
+    { key: "spouse", label: "Spouse opp" },
+  ],
+  winback: [],
+};
+
+const TIER_STYLE: Record<string, string> = {
+  S: "bg-primary/15 border-primary/40 text-primary",
+  A: "bg-emerald-500/15 border-emerald-500/40 text-emerald-300",
+  B: "bg-blue-500/15 border-blue-500/40 text-blue-300",
+  C: "bg-slate-500/15 border-slate-500/40 text-muted-foreground",
+  D: "bg-slate-500/10 border-slate-500/30 text-muted-foreground",
+  pos: "bg-violet-500/15 border-violet-500/40 text-violet-300",
+};
+
+const FLAG_BADGE: Record<string, { label: string; cls: string }> = {
+  mortgage: { label: "Mortgage", cls: "bg-blue-500/15 border-blue-500/40 text-blue-300" },
+  veteran: { label: "Veteran", cls: "bg-emerald-500/15 border-emerald-500/40 text-emerald-300" },
+  homeowner: { label: "Homeowner", cls: "bg-cyan-500/15 border-cyan-500/40 text-cyan-300" },
+  policyholder: { label: "Policyholder", cls: "bg-violet-500/15 border-violet-500/40 text-violet-300" },
+  cc: { label: "Card on file", cls: "bg-emerald-500/15 border-emerald-500/40 text-emerald-300" },
+  direct_express: { label: "Direct Express", cls: "bg-cyan-500/15 border-cyan-500/40 text-cyan-300" },
+  bank_on_file: { label: "Bank on file", cls: "bg-emerald-500/15 border-emerald-500/40 text-emerald-300" },
+  no_bank: { label: "No bank", cls: "bg-rose-500/15 border-rose-500/40 text-rose-300" },
+  ssn_collected: { label: "SSN ✓", cls: "bg-slate-500/15 border-slate-500/40 text-muted-foreground" },
+  bank_collected: { label: "Bank ✓", cls: "bg-slate-500/15 border-slate-500/40 text-muted-foreground" },
+  hung_up: { label: "Data collected", cls: "bg-amber-500/15 border-amber-500/40 text-amber-300" },
+  spouse: { label: "Spouse opp", cls: "bg-violet-500/15 border-violet-500/40 text-violet-300" },
+  lapsed: { label: "Lapsed", cls: "bg-amber-500/15 border-amber-500/40 text-amber-300" },
+  vantage: { label: "Vantage", cls: "bg-primary/15 border-primary/40 text-primary" },
+};
 
 type PoolCounts = {
   total: number;
-  by_grade: Record<string, number>;
+  by_tier: Record<string, number>;
   under_9mo: number;
+  dnc_excluded: number;
+  resold_excluded: number;
+  in_bundle_excluded: number;
   sample: Array<{
     first_name: string | null; last_name: string | null; phone_masked: string;
-    state: string | null; age: number | null; grade: string;
-    wants_mortgage: boolean; is_veteran: boolean; is_policyholder: boolean;
-    lead_age_days: number; under_9mo: boolean;
+    state: string | null; age: number | null; tier: string; tags: string | null;
+    flags: Record<string, unknown>; lead_age_days: number; under_9mo: boolean;
   }>;
 };
-
 type AssignableAgent = { user_id: string; agent_id: string; display_name: string; subagency: string | null };
-
 type RecentBundle = {
   bundle_id: string; name: string; note: string | null; created_at: string; archived_at: string | null;
   live_items: number; sold: number; under_9mo: number; resold: boolean;
   holders: Array<{ user_id: string; name: string | null; granted_at: string }>;
 };
-
+type Closer = {
+  user_id: string; display_name: string | null; dropped: number; worked: number;
+  sold: number; appointments: number; recorded: number; sold_rate: number | null;
+};
 type ExportRow = {
   first_name: string | null; last_name: string | null; phone10: string | null; email: string | null;
   state: string | null; age: number | null; grade: string | null; tags: string | null; status: string | null;
 };
 
-function useDebounced<T>(value: T, ms: number): T {
-  const [v, setV] = useState(value);
-  useEffect(() => {
-    const t = setTimeout(() => setV(value), ms);
-    return () => clearTimeout(t);
-  }, [value, ms]);
-  return v;
+function csvField(value: unknown): string {
+  const raw = value === null || value === undefined ? "" : String(value);
+  const deFanged = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw;
+  return /[",\n\r]/.test(deFanged) ? `"${deFanged.replace(/"/g, '""')}"` : deFanged;
 }
-
 function downloadCsv(filename: string, headers: string[], rows: unknown[][]) {
   const body = [headers.map(csvField).join(","), ...rows.map((r) => r.map(csvField).join(","))].join("\n");
   const blob = new Blob([`${body}\n`], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
+  a.href = url; a.download = filename; a.click();
   URL.revokeObjectURL(url);
+}
+function useDebounced<T>(value: T, ms: number): T {
+  const [v, setV] = useState(value);
+  useEffect(() => { const t = setTimeout(() => setV(value), ms); return () => clearTimeout(t); }, [value, ms]);
+  return v;
+}
+function flagBadges(flags: Record<string, unknown>, under9: boolean) {
+  const out: { key: string; label: string; cls: string }[] = [];
+  if (under9) out.push({ key: "u9", label: "Under 9mo", cls: "bg-amber-500/15 border-amber-500/40 text-amber-300" });
+  for (const [k, v] of Object.entries(flags ?? {})) {
+    if (v === true && FLAG_BADGE[k]) out.push({ key: k, ...FLAG_BADGE[k] });
+  }
+  return out;
 }
 
 export default function LeadManager() {
   const queryClient = useQueryClient();
+  const [pool, setPool] = useState<PoolKey>("marketing");
 
-  // ---- filter state ----
-  const [grades, setGrades] = useState<Set<string>>(new Set());
-  const [attrs, setAttrs] = useState<Set<string>>(new Set());
+  // filter state (shared object; controls shown depend on pool)
+  const [tiers, setTiers] = useState<Set<string>>(new Set());
+  const [flags, setFlags] = useState<Set<string>>(new Set());
   const [states, setStates] = useState("");
   const [minAge, setMinAge] = useState("");
   const [maxAge, setMaxAge] = useState("");
-  const [maxLeadAge, setMaxLeadAge] = useState("");
+  const [vantageOnly, setVantageOnly] = useState(false);
   const [excludeDnc, setExcludeDnc] = useState(true);
   const [excludeResold, setExcludeResold] = useState(true);
-  const [sort, setSort] = useState("grade");
+  const [sort, setSort] = useState("tier");
   const [limit, setLimit] = useState(100);
   const [note, setNote] = useState("");
 
-  // ---- agent picker ----
+  // reset tier/flag selections when switching pools (they differ per pool)
+  useEffect(() => { setTiers(new Set()); setFlags(new Set()); setVantageOnly(false); }, [pool]);
+
   const [agentSearch, setAgentSearch] = useState("");
   const [agent, setAgent] = useState<AssignableAgent | null>(null);
-  const debouncedAgentSearch = useDebounced(agentSearch, 250);
+  const [highlight, setHighlight] = useState(0);
+  const debouncedAgentSearch = useDebounced(agentSearch, 200);
 
   const filters = useMemo(() => {
     const f: Record<string, unknown> = { exclude_dnc: excludeDnc, exclude_resold: excludeResold, sort };
-    if (grades.size) f.grades = Array.from(grades);
-    for (const a of attrs) f[a] = true;
+    if (tiers.size) f.tiers = Array.from(tiers);
+    if (flags.size) f.require_flags = Array.from(flags);
     const st = states.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean);
     if (st.length) f.states = st;
     if (minAge) f.min_age = Number(minAge);
     if (maxAge) f.max_age = Number(maxAge);
-    if (maxLeadAge) f.max_lead_age_days = Number(maxLeadAge);
+    if (vantageOnly) f.vantage_only = true;
     return f;
-  }, [grades, attrs, states, minAge, maxAge, maxLeadAge, excludeDnc, excludeResold, sort]);
+  }, [tiers, flags, states, minAge, maxAge, vantageOnly, excludeDnc, excludeResold, sort]);
 
-  const debouncedFilters = useDebounced(filters, 400);
+  const debouncedFilters = useDebounced(filters, 350);
 
-  const { data: pool, isFetching } = useQuery<PoolCounts>({
-    queryKey: ["lead-pool", debouncedFilters],
+  // per-pool switch totals (unfiltered), fetched once
+  const { data: totals = {} } = useQuery<Record<string, number>>({
+    queryKey: ["lead-pool-totals"],
     queryFn: async () => {
-      const { data, error } = await rpc("lead_resale_pool_counts", { p_filters: debouncedFilters });
-      if (error) throw error;
-      return (data as PoolCounts) ?? { total: 0, by_grade: {}, under_9mo: 0, sample: [] };
+      const out: Record<string, number> = {};
+      await Promise.all(POOLS.map(async (p) => {
+        const { data } = await rpc("lead_pool_counts", { p_source: p.key, p_filters: {} });
+        out[p.key] = (data as PoolCounts | null)?.total ?? 0;
+      }));
+      return out;
     },
-    staleTime: 15_000,
+    staleTime: 60_000,
+  });
+
+  const { data: counts, isFetching } = useQuery<PoolCounts>({
+    queryKey: ["lead-pool", pool, debouncedFilters],
+    queryFn: async () => {
+      const { data, error } = await rpc("lead_pool_counts", { p_source: pool, p_filters: debouncedFilters });
+      if (error) throw error;
+      return (data as PoolCounts) ?? { total: 0, by_tier: {}, under_9mo: 0, dnc_excluded: 0, resold_excluded: 0, in_bundle_excluded: 0, sample: [] };
+    },
+    staleTime: 10_000,
   });
 
   const { data: agents = [] } = useQuery<AssignableAgent[]>({
@@ -167,26 +235,31 @@ export default function LeadManager() {
     staleTime: 15_000,
   });
 
-  const dropCount = Math.min(limit, pool?.total ?? 0);
+  const { data: closers = [] } = useQuery<Closer[]>({
+    queryKey: ["lead-closers"],
+    queryFn: async () => {
+      const { data, error } = await rpc("lead_closers_leaderboard");
+      if (error) throw error;
+      return (data as Closer[]) ?? [];
+    },
+    staleTime: 30_000,
+  });
+
+  const dropCount = Math.min(limit, counts?.total ?? 0);
 
   const assign = useMutation({
     mutationFn: async () => {
       if (!agent) throw new Error("Pick a live agent first.");
-      const { data, error } = await rpc("lead_bundle_assign", {
-        p_filters: filters,
-        p_limit: limit,
-        p_agent_user_id: agent.user_id,
-        p_name: null,
-        p_note: note.trim() || null,
+      const { data, error } = await rpc("lead_pool_assign", {
+        p_source: pool, p_filters: filters, p_limit: limit,
+        p_agent_user_id: agent.user_id, p_name: null, p_note: note.trim() || null,
       });
       if (error) throw error;
       return data as { items: number; agent: string };
     },
     onSuccess: (res) => {
       toast.success(`${res.items} lead${res.items === 1 ? "" : "s"} dropped into ${res.agent}'s portal`);
-      setAgent(null);
-      setAgentSearch("");
-      setNote("");
+      setAgent(null); setAgentSearch(""); setNote("");
       queryClient.invalidateQueries({ queryKey: ["lead-bundles-recent"] });
       queryClient.invalidateQueries({ queryKey: ["lead-pool"] });
     },
@@ -198,189 +271,190 @@ export default function LeadManager() {
       const { error } = await rpc("lead_bundle_archive", { p_bundle: bundleId });
       if (error) throw error;
     },
-    onSuccess: () => {
-      toast.success("Archived");
-      queryClient.invalidateQueries({ queryKey: ["lead-bundles-recent"] });
-    },
+    onSuccess: () => { toast.success("Archived"); queryClient.invalidateQueries({ queryKey: ["lead-bundles-recent"] }); },
     onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "Could not archive"),
   });
 
   async function exportPack(b: RecentBundle) {
     const { data, error } = await rpc("lead_bundle_export", { p_bundle: b.bundle_id });
-    if (error) {
-      toast.error("Could not export pack");
-      return;
-    }
+    if (error) { toast.error("Could not export pack"); return; }
     const rows = ((data as ExportRow[]) ?? []).map((r) => [
       r.first_name, r.last_name, r.phone10, r.email, r.state, r.age, r.grade, r.tags, r.status,
     ]);
-    downloadCsv(
-      `${b.name.replace(/[^\w.-]+/g, "_")}.csv`,
-      ["First", "Last", "Phone", "Email", "State", "Age", "Grade", "Tags", "Status"],
-      rows,
-    );
+    downloadCsv(`${b.name.replace(/[^\w.-]+/g, "_")}.csv`,
+      ["First", "Last", "Phone", "Email", "State", "Age", "Tier", "Tags", "Status"], rows);
     toast.success(`Exported ${rows.length} leads`);
   }
 
+  const tierOpts = POOL_TIERS[pool];
+  const flagOpts = POOL_FLAGS[pool];
+  const activeAgents = agents.slice(0, 8);
+
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
+    <div className="mx-auto max-w-6xl space-y-5 p-4 sm:p-6">
       <PageHeader
         eyebrowIcon={<Layers className="h-5 w-5" />}
         title="Lead Manager"
-        subtitle="Filter the owned lead pool, pick a live agent, drop the pack straight into their portal."
+        subtitle="Pick a pool, filter it, type an agent's name, drop the pack into their portal."
       />
 
+      {/* POOL SWITCH */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {POOLS.map((p) => {
+          const on = pool === p.key;
+          const Icon = p.icon;
+          return (
+            <button
+              key={p.key}
+              type="button"
+              onClick={() => setPool(p.key)}
+              aria-pressed={on}
+              className={cn(
+                "flex flex-col items-start gap-0.5 rounded-xl border p-3 text-left transition-colors",
+                on ? "border-primary bg-primary/10" : "border-border/60 bg-card hover:bg-muted/40",
+              )}
+            >
+              <div className="flex w-full items-center justify-between">
+                <Icon className={cn("h-4 w-4", on ? "text-primary" : "text-muted-foreground")} />
+                <span className="text-lg font-bold tabular-nums">
+                  {totals[p.key]?.toLocaleString() ?? "—"}
+                </span>
+              </div>
+              <span className="text-sm font-medium">{p.label}</span>
+              <span className="text-xs text-muted-foreground">{p.blurb}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* FILTER + PREVIEW */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">1 · Filter the pool</CardTitle>
+          <CardTitle className="text-base">Filter the {POOLS.find((p) => p.key === pool)?.label} pool</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label className="text-xs uppercase tracking-wide text-muted-foreground">Grade</Label>
+            <Label className="text-xs uppercase tracking-wide text-muted-foreground">Tier</Label>
             <div className="flex flex-wrap gap-2">
-              {GRADES.map((g) => {
-                const on = grades.has(g);
+              {tierOpts.map((t) => {
+                const on = tiers.has(t.v);
                 return (
-                  <Button
-                    key={g}
-                    type="button"
-                    size="sm"
-                    variant={on ? "default" : "outline"}
-                    className="rounded-full"
-                    onClick={() =>
-                      setGrades((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(g)) next.delete(g); else next.add(g);
-                        return next;
-                      })
-                    }
-                    title={GRADE_HINT[g]}
-                  >
-                    {g}
-                    {pool?.by_grade?.[g] != null && (
-                      <span className="ml-1.5 text-xs opacity-70">{pool.by_grade[g]}</span>
-                    )}
+                  <Button key={t.v} type="button" size="sm" variant={on ? "default" : "outline"} className="rounded-full"
+                    onClick={() => setTiers((prev) => { const n = new Set(prev); n.has(t.v) ? n.delete(t.v) : n.add(t.v); return n; })}>
+                    {t.label}
+                    {counts?.by_tier?.[t.v] != null && <span className="ml-1.5 text-xs opacity-70">{counts.by_tier[t.v]}</span>}
                   </Button>
                 );
               })}
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label className="text-xs uppercase tracking-wide text-muted-foreground">Attributes</Label>
-            <div className="flex flex-wrap gap-2">
-              {ATTRS.map((a) => {
-                const on = attrs.has(a.key);
-                return (
-                  <Button
-                    key={a.key}
-                    type="button"
-                    size="sm"
-                    variant={on ? "default" : "outline"}
-                    className="rounded-full"
-                    onClick={() =>
-                      setAttrs((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(a.key)) next.delete(a.key); else next.add(a.key);
-                        return next;
-                      })
-                    }
-                  >
-                    {a.label}
-                  </Button>
-                );
-              })}
+          {flagOpts.length > 0 && (
+            <div className="space-y-2">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Must have</Label>
+              <div className="flex flex-wrap gap-2">
+                {flagOpts.map((f) => {
+                  const on = flags.has(f.key);
+                  return (
+                    <Button key={f.key} type="button" size="sm" variant={on ? "default" : "outline"} className="rounded-full"
+                      onClick={() => setFlags((prev) => { const n = new Set(prev); n.has(f.key) ? n.delete(f.key) : n.add(f.key); return n; })}>
+                      {f.label}
+                    </Button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">States (e.g. TX, FL)</Label>
-              <Input value={states} onChange={(e) => setStates(e.target.value)} placeholder="All states" />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Min age</Label>
-              <Input type="number" inputMode="numeric" value={minAge} onChange={(e) => setMinAge(e.target.value)} placeholder="—" />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Max age</Label>
-              <Input type="number" inputMode="numeric" value={maxAge} onChange={(e) => setMaxAge(e.target.value)} placeholder="—" />
-            </div>
+            {pool === "marketing" && (
+              <>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">States (TX, FL)</Label>
+                  <Input value={states} onChange={(e) => setStates(e.target.value)} placeholder="All states" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Min age</Label>
+                  <Input type="number" inputMode="numeric" value={minAge} onChange={(e) => setMinAge(e.target.value)} placeholder="—" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Max age</Label>
+                  <Input type="number" inputMode="numeric" value={maxAge} onChange={(e) => setMaxAge(e.target.value)} placeholder="—" />
+                </div>
+              </>
+            )}
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">Sort</Label>
               <Select value={sort} onValueChange={setSort}>
                 <SelectTrigger aria-label="Sort order"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="grade">Best grade first</SelectItem>
-                  <SelectItem value="chargeback">Chargeback window first (under 9mo)</SelectItem>
-                  <SelectItem value="oldest">Oldest leads first</SelectItem>
+                  <SelectItem value="tier">Best tier first</SelectItem>
+                  <SelectItem value="chargeback">Chargeback window first</SelectItem>
+                  <SelectItem value="oldest">Oldest first</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+            {pool === "winback" && (
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox checked={vantageOnly} onCheckedChange={(v) => setVantageOnly(Boolean(v))} />
+                Vantage only
+              </label>
+            )}
             <label className="flex items-center gap-2 text-sm">
               <Checkbox checked={excludeDnc} onCheckedChange={(v) => setExcludeDnc(Boolean(v))} />
-              Exclude Do-Not-Call
+              Hold back Do-Not-Call
             </label>
             <label className="flex items-center gap-2 text-sm">
               <Checkbox checked={excludeResold} onCheckedChange={(v) => setExcludeResold(Boolean(v))} />
-              Exclude already-sold
+              Hold back already-sold
             </label>
             <div className="flex items-center gap-2 text-sm">
-              <span className="text-muted-foreground">Max in pack</span>
-              <Input
-                type="number"
-                inputMode="numeric"
-                value={limit}
+              <span className="text-muted-foreground">Pack size</span>
+              <Input type="number" inputMode="numeric" value={limit}
                 onChange={(e) => setLimit(Math.max(1, Math.min(5000, Number(e.target.value) || 1)))}
-                className="h-9 w-24"
-              />
+                className="h-9 w-24" aria-label="Pack size" />
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border/60 bg-muted/30 p-3">
-            <div className="text-2xl font-bold tabular-nums">
-              {isFetching ? "…" : (pool?.total ?? 0).toLocaleString()}
-            </div>
-            <div className="text-sm text-muted-foreground">leads match</div>
-            {(pool?.under_9mo ?? 0) > 0 && (
-              <Badge variant="outline" className="bg-amber-500/15 border-amber-500/40 text-amber-300">
-                <AlertTriangle className="mr-1 h-3 w-3" />
-                {pool?.under_9mo?.toLocaleString()} under 9mo
-              </Badge>
-            )}
+          {/* STAT TILES */}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <StatTile label="Ready to drop" value={isFetching ? "…" : (counts?.total ?? 0).toLocaleString()} accent />
+            <StatTile label="Under 9 months" value={(counts?.under_9mo ?? 0).toLocaleString()} warn={!!counts?.under_9mo} />
+            <StatTile label="Held: Do-Not-Call" value={(counts?.dnc_excluded ?? 0).toLocaleString()} />
+            <StatTile label="Held: already sold" value={(counts?.resold_excluded ?? 0).toLocaleString()} />
           </div>
 
-          {(pool?.sample?.length ?? 0) > 0 && (
+          {(counts?.sample?.length ?? 0) > 0 && (
             <div className="overflow-x-auto rounded-lg border border-border/60">
               <table className="w-full text-sm">
                 <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
                   <tr>
                     <th className="px-3 py-2 text-left">Name</th>
                     <th className="px-3 py-2 text-left">Phone</th>
-                    <th className="px-3 py-2 text-left">State</th>
-                    <th className="px-3 py-2 text-left">Age</th>
-                    <th className="px-3 py-2 text-left">Grade</th>
-                    <th className="px-3 py-2 text-left">Tags</th>
+                    <th className="px-3 py-2 text-left">Tier</th>
+                    <th className="px-3 py-2 text-left">Flags</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {(pool?.sample ?? []).slice(0, 12).map((s, i) => (
+                  {(counts?.sample ?? []).slice(0, 12).map((s, i) => (
                     <tr key={`${s.phone_masked}-${i}`} className="border-t border-border/40">
-                      <td className="px-3 py-1.5">{[s.first_name, s.last_name].filter(Boolean).join(" ") || "—"}</td>
+                      <td className="px-3 py-1.5">
+                        {[s.first_name, s.last_name].filter(Boolean).join(" ") || "—"}
+                        {(s.state || s.age) && <span className="ml-1 text-xs text-muted-foreground">{[s.state, s.age].filter(Boolean).join(" · ")}</span>}
+                      </td>
                       <td className="px-3 py-1.5 font-mono text-xs">{s.phone_masked}</td>
-                      <td className="px-3 py-1.5">{s.state ?? "—"}</td>
-                      <td className="px-3 py-1.5">{s.age ?? "—"}</td>
-                      <td className="px-3 py-1.5">{s.grade}</td>
-                      <td className="px-3 py-1.5 text-xs text-muted-foreground">
-                        {[
-                          s.wants_mortgage && "mortgage",
-                          s.is_veteran && "veteran",
-                          s.is_policyholder && "policyholder",
-                          s.under_9mo && "under-9mo",
-                        ].filter(Boolean).join(", ") || "—"}
+                      <td className="px-3 py-1.5">
+                        <Badge variant="outline" className={TIER_STYLE[s.tier] ?? TIER_STYLE.C}>{s.tier}</Badge>
+                      </td>
+                      <td className="px-3 py-1.5">
+                        <div className="flex flex-wrap gap-1">
+                          {flagBadges(s.flags, s.under_9mo).slice(0, 4).map((b) => (
+                            <Badge key={b.key} variant="outline" className={cn("text-[10px]", b.cls)}>{b.label}</Badge>
+                          ))}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -392,19 +466,20 @@ export default function LeadManager() {
         </CardContent>
       </Card>
 
+      {/* DROP TO AGENT */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">2 · Drop into an agent's portal</CardTitle>
+          <CardTitle className="text-base">Drop into an agent's portal</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {agent ? (
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="gap-1.5 bg-emerald-500/15 border-emerald-500/40 text-emerald-300 py-1.5 px-3">
-                <UserRound className="h-3.5 w-3.5" />
-                {agent.display_name}
-                {agent.subagency && <span className="opacity-70">· {agent.subagency}</span>}
-              </Badge>
-              <Button type="button" size="sm" variant="ghost" onClick={() => setAgent(null)}>
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-primary/40 bg-primary/5 p-3">
+              <span className="text-sm text-muted-foreground">Dropping to</span>
+              <span className="inline-flex items-center gap-1.5 font-semibold">
+                <UserRound className="h-4 w-4 text-primary" />{agent.display_name}
+              </span>
+              {agent.subagency && <Badge variant="outline" className="text-xs">{agent.subagency}</Badge>}
+              <Button type="button" size="sm" variant="ghost" className="ml-auto" onClick={() => setAgent(null)}>
                 <X className="h-4 w-4" /> Change
               </Button>
             </div>
@@ -413,15 +488,24 @@ export default function LeadManager() {
               <Input
                 placeholder="Type a live agent's name…"
                 value={agentSearch}
-                onChange={(e) => setAgentSearch(e.target.value)}
+                onChange={(e) => { setAgentSearch(e.target.value); setHighlight(0); }}
+                onKeyDown={(e) => {
+                  if (!activeAgents.length) return;
+                  if (e.key === "ArrowDown") { e.preventDefault(); setHighlight((h) => Math.min(h + 1, activeAgents.length - 1)); }
+                  else if (e.key === "ArrowUp") { e.preventDefault(); setHighlight((h) => Math.max(h - 1, 0)); }
+                  else if (e.key === "Enter") { e.preventDefault(); const a = activeAgents[highlight]; if (a) { setAgent(a); setAgentSearch(""); } }
+                }}
+                aria-label="Search live agents"
               />
-              {agentSearch.trim().length > 0 && agents.length > 0 && (
+              {agentSearch.trim().length > 0 && activeAgents.length > 0 && (
                 <div className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-md border border-border bg-popover shadow-lg">
-                  {agents.map((a) => (
+                  {activeAgents.map((a, i) => (
                     <button
                       key={a.user_id}
                       type="button"
-                      className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted"
+                      className={cn("flex w-full items-center justify-between px-3 py-2 text-left text-sm",
+                        i === highlight ? "bg-muted" : "hover:bg-muted")}
+                      onMouseEnter={() => setHighlight(i)}
                       onClick={() => { setAgent(a); setAgentSearch(""); }}
                     >
                       <span>{a.display_name}</span>
@@ -433,75 +517,101 @@ export default function LeadManager() {
             </div>
           )}
 
-          <Input
-            placeholder="Optional note (shown with the pack)"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            className="max-w-md"
-          />
+          <Input placeholder="Optional note (shown with the pack)" value={note}
+            onChange={(e) => setNote(e.target.value)} className="max-w-md" aria-label="Pack note" />
 
-          <Button
-            type="button"
-            data-primary-action
+          <Button type="button" data-primary-action size="lg"
             disabled={!agent || dropCount < 1 || assign.isPending}
-            onClick={() => assign.mutate()}
-          >
+            onClick={() => assign.mutate()}>
             <Send className="mr-1.5 h-4 w-4" />
-            {assign.isPending
-              ? "Dropping…"
-              : agent
-                ? `Drop ${dropCount.toLocaleString()} into ${agent.display_name}'s portal`
+            {assign.isPending ? "Dropping…"
+              : agent ? `Drop ${dropCount.toLocaleString()} into ${agent.display_name}'s portal`
                 : "Pick an agent to drop into"}
           </Button>
         </CardContent>
       </Card>
 
+      {/* CLOSERS LEADERBOARD */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Trophy className="h-4 w-4 text-primary" /> Top closers
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {closers.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No closes yet. Drop some packs and the leaderboard lights up as agents sell.</p>
+          ) : (
+            <div className="space-y-1.5">
+              {closers.slice(0, 10).map((c, i) => (
+                <div key={c.user_id} className="flex items-center gap-3 rounded-lg border border-border/50 px-3 py-2">
+                  <span className={cn("w-6 text-center text-sm font-bold tabular-nums",
+                    i === 0 ? "text-primary" : "text-muted-foreground")}>{i + 1}</span>
+                  <span className="flex-1 truncate text-sm font-medium">{c.display_name ?? "Agent"}</span>
+                  <span className="text-xs text-muted-foreground">{c.worked}/{c.dropped} worked</span>
+                  {c.recorded > 0 && <Badge variant="outline" className="text-[10px]"><Phone className="mr-1 h-3 w-3" />{c.recorded}</Badge>}
+                  <Badge variant="outline" className="bg-green-600/15 border-green-600/40 text-green-300">{c.sold} sold</Badge>
+                  {c.sold_rate != null && <span className="w-12 text-right text-xs font-semibold text-primary">{c.sold_rate}%</span>}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* RECENT DROPS */}
       <div className="space-y-3">
-        <h2 className="text-base font-semibold">Recent drops</h2>
+        <h2 className="flex items-center gap-2 text-base font-semibold"><ClipboardList className="h-4 w-4" /> Recent drops</h2>
         {recent.length === 0 ? (
-          <Card>
-            <CardContent className="p-6 text-center text-sm text-muted-foreground">
-              Nothing dropped yet. Build a pack above and it shows up here.
-            </CardContent>
-          </Card>
+          <Card><CardContent className="p-6 text-center text-sm text-muted-foreground">Nothing dropped yet. Build a pack above and it shows up here.</CardContent></Card>
         ) : (
           recent.map((b) => (
             <Card key={b.bundle_id} className={cn(b.archived_at && "opacity-60")}>
-              <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
-                <div className="min-w-0">
-                  <div className="font-medium">{b.name}</div>
-                  <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                    <span>{b.live_items} live</span>
-                    {b.sold > 0 && <span className="text-green-400">{b.sold} sold</span>}
-                    {b.under_9mo > 0 && (
-                      <span className="text-amber-400">{b.under_9mo} under-9mo</span>
+              <CardContent className="space-y-3 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-medium">{b.name}</div>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      <span>{b.live_items} live</span>
+                      {b.sold > 0 && <span className="text-green-400">{b.sold} sold</span>}
+                      {b.under_9mo > 0 && <span className="text-amber-400">{b.under_9mo} under-9mo</span>}
+                      <span>·</span>
+                      <span className="inline-flex items-center gap-1"><UsersIcon className="h-3 w-3" />{b.holders.map((h) => h.name).filter(Boolean).join(", ") || "unassigned"}</span>
+                      <span>·</span>
+                      <span>{new Date(b.created_at).toLocaleDateString()}</span>
+                      {b.resold && <Badge variant="outline" className="bg-green-600/15 border-green-600/40 text-green-300">sold</Badge>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Button type="button" size="sm" variant="outline" onClick={() => exportPack(b)}><Download className="mr-1 h-4 w-4" /> Pack</Button>
+                    <MarkSoldDialog bundle={b} onDone={() => {
+                      queryClient.invalidateQueries({ queryKey: ["lead-bundles-recent"] });
+                      queryClient.invalidateQueries({ queryKey: ["lead-pool"] });
+                      queryClient.invalidateQueries({ queryKey: ["lead-closers"] });
+                    }} />
+                    {!b.archived_at && (
+                      <Button type="button" size="sm" variant="ghost" aria-label="Archive pack" onClick={() => archive.mutate(b.bundle_id)}><Archive className="h-4 w-4" /></Button>
                     )}
-                    <span>·</span>
-                    <span>{b.holders.map((h) => h.name).filter(Boolean).join(", ") || "unassigned"}</span>
-                    <span>·</span>
-                    <span>{new Date(b.created_at).toLocaleDateString()}</span>
-                    {b.resold && <Badge variant="outline" className="bg-green-600/15 border-green-600/40 text-green-300">sold</Badge>}
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <Button type="button" size="sm" variant="outline" onClick={() => exportPack(b)}>
-                    <Download className="mr-1 h-4 w-4" /> Pack
-                  </Button>
-                  <MarkSoldDialog bundle={b} onDone={() => {
-                    queryClient.invalidateQueries({ queryKey: ["lead-bundles-recent"] });
-                    queryClient.invalidateQueries({ queryKey: ["lead-pool"] });
-                  }} />
-                  {!b.archived_at && (
-                    <Button type="button" size="sm" variant="ghost" onClick={() => archive.mutate(b.bundle_id)}>
-                      <Archive className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
+                <BundleManage bundle={b} onChange={() => {
+                  queryClient.invalidateQueries({ queryKey: ["lead-bundles-recent"] });
+                  queryClient.invalidateQueries({ queryKey: ["lead-pool"] });
+                }} />
               </CardContent>
             </Card>
           ))
         )}
       </div>
+    </div>
+  );
+}
+
+function StatTile({ label, value, accent, warn }: { label: string; value: string; accent?: boolean; warn?: boolean }) {
+  return (
+    <div className={cn("rounded-lg border p-3", accent ? "border-primary/40 bg-primary/5" : "border-border/60 bg-muted/20")}>
+      <div className={cn("text-xl font-bold tabular-nums", warn && "text-amber-400", accent && "text-primary")}>{value}</div>
+      <div className="text-xs text-muted-foreground">{label}</div>
     </div>
   );
 }
@@ -516,40 +626,27 @@ function MarkSoldDialog({ bundle, onDone }: { bundle: RecentBundle; onDone: () =
     setPending(true);
     try {
       const { data, error } = await rpc("lead_bundle_mark_sold", {
-        p_bundle: bundle.bundle_id,
-        p_sold_to: buyer.trim() || null,
-        p_price_cents: price ? Math.round(Number(price) * 100) : null,
-        p_note: null,
+        p_bundle: bundle.bundle_id, p_sold_to: buyer.trim() || null,
+        p_price_cents: price ? Math.round(Number(price) * 100) : null, p_note: null,
       });
       if (error) throw error;
       const res = data as { newly_ledgered: number };
       toast.success(`Marked sold — ${res.newly_ledgered} leads locked from resale`);
-      setOpen(false);
-      setBuyer("");
-      setPrice("");
-      onDone();
+      setOpen(false); setBuyer(""); setPrice(""); onDone();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not mark sold");
-    } finally {
-      setPending(false);
-    }
+    } finally { setPending(false); }
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button type="button" size="sm" variant="outline">
-          <DollarSign className="mr-1 h-4 w-4" /> Sold
-        </Button>
+        <Button type="button" size="sm" variant="outline"><DollarSign className="mr-1 h-4 w-4" /> Sold</Button>
       </DialogTrigger>
       <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Mark "{bundle.name}" sold</DialogTitle>
-        </DialogHeader>
+        <DialogHeader><DialogTitle>Mark "{bundle.name}" sold</DialogTitle></DialogHeader>
         <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Every lead in this pack gets locked in the resale ledger so it can never go out again.
-          </p>
+          <p className="text-sm text-muted-foreground">Every lead in this pack gets locked in the resale ledger so it can never go out again.</p>
           <div className="space-y-1">
             <Label className="text-xs text-muted-foreground">Sold to (optional)</Label>
             <Input value={buyer} onChange={(e) => setBuyer(e.target.value)} placeholder="Buyer name" />
@@ -561,11 +658,124 @@ function MarkSoldDialog({ bundle, onDone }: { bundle: RecentBundle; onDone: () =
         </div>
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button type="button" data-primary-action disabled={pending} onClick={submit}>
-            {pending ? "Saving…" : "Lock as sold"}
-          </Button>
+          <Button type="button" data-primary-action disabled={pending} onClick={submit}>{pending ? "Saving…" : "Lock as sold"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+type ManageItem = {
+  item_id: string; name: string | null; phone_masked: string;
+  tier: string | null; status: string; tags: string | null; has_recording: boolean;
+};
+
+function BundleManage({ bundle, onChange }: { bundle: RecentBundle; onChange: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const dsearch = useDebounced(search, 200);
+  const [items, setItems] = useState<ManageItem[] | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function loadItems() {
+    const { data, error } = await rpc("lead_bundle_items_manage", { p_bundle: bundle.bundle_id });
+    if (!error) setItems((data as ManageItem[]) ?? []);
+  }
+  function toggle() { const n = !open; setOpen(n); if (n && items === null) void loadItems(); }
+
+  const { data: agents = [] } = useQuery<AssignableAgent[]>({
+    queryKey: ["manage-agents", bundle.bundle_id, dsearch],
+    enabled: open && dsearch.trim().length > 0,
+    queryFn: async () => {
+      const { data, error } = await rpc("lead_assignable_agents", { p_search: dsearch });
+      if (error) throw error;
+      return (data as AssignableAgent[]) ?? [];
+    },
+    staleTime: 60_000,
+  });
+
+  async function grant(a: AssignableAgent) {
+    setBusy(true);
+    try {
+      const { error } = await rpc("lead_bundle_grant", { p_bundle: bundle.bundle_id, p_user: a.user_id, p_note: null });
+      if (error) throw error;
+      toast.success(`Also dropped to ${a.display_name}`); setSearch(""); onChange();
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Could not grant"); } finally { setBusy(false); }
+  }
+  async function revoke(userId: string, name: string | null) {
+    setBusy(true);
+    try {
+      const { error } = await rpc("lead_bundle_revoke", { p_bundle: bundle.bundle_id, p_user: userId });
+      if (error) throw error;
+      toast.success(`Took back from ${name ?? "agent"}`); onChange();
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Could not take back"); } finally { setBusy(false); }
+  }
+  async function removeItem(itemId: string) {
+    setBusy(true);
+    try {
+      const { error } = await rpc("lead_bundle_remove_item", { p_item: itemId });
+      if (error) throw error;
+      await loadItems(); onChange();
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Could not remove"); } finally { setBusy(false); }
+  }
+
+  return (
+    <div>
+      <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs text-muted-foreground" onClick={toggle}>
+        {open ? "Hide manage" : "Manage access & leads"}
+      </Button>
+      {open && (
+        <div className="mt-2 space-y-3 rounded-lg border border-border/60 bg-muted/20 p-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Who has this pack</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {bundle.holders.length === 0 && <span className="text-xs text-muted-foreground">No one yet.</span>}
+              {bundle.holders.map((h) => (
+                <Badge key={h.user_id} variant="outline" className="gap-1 py-1">
+                  {h.name ?? "agent"}
+                  <button type="button" disabled={busy} onClick={() => revoke(h.user_id, h.name)}
+                    aria-label={`Take back from ${h.name ?? "agent"}`} className="ml-0.5 text-muted-foreground hover:text-rose-400">
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+            <div className="relative max-w-xs">
+              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Give to another agent…" className="h-8" aria-label="Grant pack to another agent" />
+              {dsearch.trim().length > 0 && agents.length > 0 && (
+                <div className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-md border border-border bg-popover shadow-lg">
+                  {agents.slice(0, 6).map((a) => (
+                    <button key={a.user_id} type="button" disabled={busy}
+                      className="flex w-full items-center justify-between px-3 py-1.5 text-left text-sm hover:bg-muted" onClick={() => grant(a)}>
+                      <span>{a.display_name}</span>{a.subagency && <span className="text-xs text-muted-foreground">{a.subagency}</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Leads in this pack</Label>
+            {items === null ? (
+              <p className="text-xs text-muted-foreground">Loading…</p>
+            ) : items.length === 0 ? (
+              <p className="text-xs text-muted-foreground">Empty.</p>
+            ) : (
+              <div className="max-h-60 overflow-y-auto rounded border border-border/50">
+                {items.map((it) => (
+                  <div key={it.item_id} className="flex items-center gap-2 border-b border-border/40 px-2 py-1 text-xs last:border-0">
+                    <span className="flex-1 truncate">{it.name ?? "—"} <span className="font-mono text-muted-foreground">{it.phone_masked}</span></span>
+                    <Badge variant="outline" className={cn("text-[10px]", TIER_STYLE[it.tier ?? "C"] ?? TIER_STYLE.C)}>{it.tier}</Badge>
+                    <span className="text-muted-foreground">{it.status}</span>
+                    {it.has_recording && <Phone className="h-3 w-3 text-green-400" />}
+                    <button type="button" disabled={busy} onClick={() => removeItem(it.item_id)} aria-label="Remove lead from pack" className="text-muted-foreground hover:text-rose-400"><X className="h-3.5 w-3.5" /></button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

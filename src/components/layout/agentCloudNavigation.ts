@@ -34,7 +34,6 @@ import {
   Send,
   PhoneCall,
   Radar,
-  Boxes,
   Inbox,
   Layers,
 } from "lucide-react";
@@ -222,11 +221,11 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       { label: "Sold Calls", href: "/dashboard/sold-calls", icon: PhoneCall, grant: "sold_calls" },
       // Graded dialer calls for training (MP-310, 2026-10-28): the great calls and the objections turned. Same access as Sold Calls.
       { label: "Call Training", href: "/dashboard/call-training", icon: GraduationCap },
-      // Lead bundles (MP-310 wave 3): Sam and Aisha package dialer leads by quality and pick who works them.
-      { label: "Lead Bundles", href: "/dashboard/lead-bundles", icon: Boxes, grant: "sold_calls" },
-      // Lead Manager (MP-LEAD-MANAGER, 2026-11-03): the owned client_leads pool — filter by grade/attributes, type a
-      // live agent's name, drop the pack into their portal; resale ledger stops a lead going out twice.
-      { label: "Lead Manager", href: "/dashboard/lead-manager", icon: Layers, grant: "sold_calls" },
+      // Leads (MP-LEAD-MANAGER, 2026-11-03): ONE console over every pool — marketing (client_leads),
+      // dialer, the re-write pile and lapsed win-back. Filter, type a live agent, drop the pack into their
+      // portal; resale ledger stops a lead going out twice. Supersedes the old dialer-only Lead Bundles page,
+      // whose /dashboard/lead-bundles URL now redirects here.
+      { label: "Leads", href: "/dashboard/lead-manager", icon: Layers, grant: "sold_calls" },
       // The leads given to you to work (MP-310 wave 3). Every producer.
       { label: "My Leads", href: "/dashboard/my-leads", icon: Inbox },
       { label: "My Commissions", href: "/dashboard/my-commissions", icon: WalletCards },

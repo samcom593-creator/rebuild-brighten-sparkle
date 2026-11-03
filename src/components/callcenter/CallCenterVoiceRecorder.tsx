@@ -44,6 +44,8 @@ interface CallCenterVoiceRecorderProps {
   onRecordingStateChange?: (isRecording: boolean) => void;
   onSummaryComplete?: (summary: CallSummary) => void;
   onSendFollowUp?: (calendarLink?: string) => Promise<void>;
+  /** Fired with the storage path once a recording finishes uploading. */
+  onAudioSaved?: (path: string) => void;
   className?: string;
 }
 
@@ -52,6 +54,7 @@ export function CallCenterVoiceRecorder({
   onRecordingStateChange,
   onSummaryComplete,
   onSendFollowUp,
+  onAudioSaved,
   className,
 }: CallCenterVoiceRecorderProps) {
   const [isRecording, setIsRecording] = useState(false);
@@ -279,6 +282,7 @@ export function CallCenterVoiceRecorder({
         return;
       }
       setAudioStoragePath(path);
+      onAudioSaved?.(path);
       if (import.meta.env.DEV) console.log(`[CallCenterVoiceRecorder] upload OK → ${path}`);
       toast.success(`Audio saved (${(blob.size / 1024).toFixed(0)} KB) → ${path}`);
     } catch (e: any) {

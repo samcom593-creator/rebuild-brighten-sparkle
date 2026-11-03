@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-10-29T15:50:36Z",
+ "_generated_at": "2026-11-03T18:58:27Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -503,12 +503,22 @@
   "landing_next_step_for": "jsonb",
   "landing_unclaimed_summary": "jsonb",
   "lead_bundle_archive": "jsonb",
+  "lead_bundle_assign": "jsonb",
+  "lead_bundle_build": "jsonb",
   "lead_bundle_create": "jsonb",
   "lead_bundle_grant": "jsonb",
   "lead_bundle_handoff": "jsonb",
+  "lead_bundle_item_log": "jsonb",
   "lead_bundle_item_set": "jsonb",
+  "lead_bundle_items_manage": "jsonb",
+  "lead_bundle_mark_sold": "jsonb",
+  "lead_bundle_recent": "jsonb",
   "lead_bundle_remove_item": "jsonb",
   "lead_bundle_revoke": "jsonb",
+  "lead_closers_leaderboard": "jsonb",
+  "lead_pool_assign": "jsonb",
+  "lead_pool_counts": "jsonb",
+  "lead_resale_pool_counts": "jsonb",
   "leaderboard_set_cheer": "jsonb",
   "leaderboard_team_board": "jsonb",
   "leaderboard_viewer_is_teammate": "boolean",
@@ -743,6 +753,7 @@
   "update_scheduled_interviews_updated_at": "trigger",
   "update_updated_at_column": "trigger",
   "upsert_readymode_dialer_calls": "integer",
+  "us_state_code": "text",
   "uuid_from_text": "uuid",
   "void_strike": "agent_strikes",
   "webhook_health_check": "jsonb",
@@ -2263,226 +2274,203 @@
    ]
   },
   "book_state_summary.active": {
-   "candidates": [],
+   "candidates": [
+    "carriers.active"
+   ],
    "body_literals": [
-    "",
-    "America/Phoenix",
     "active",
     "gone",
     "lapsing",
     "on_file",
     "pending",
-    "{}"
+    "public"
    ]
   },
   "book_state_summary.active_writers": {
    "candidates": [],
    "body_literals": [
-    "",
-    "America/Phoenix",
     "active",
     "gone",
     "lapsing",
     "on_file",
     "pending",
-    "{}"
+    "public"
    ]
   },
   "book_state_summary.annual_premium": {
    "candidates": [
-    "v_book_of_business.annual_premium"
+    "agentlink_book.annual_premium",
+    "deals.annual_premium",
+    "v_agentlink_book_scoped.annual_premium",
+    "v_book_of_business.annual_premium",
+    "v_production_canonical.annual_premium",
+    "v_production_unified.annual_premium"
    ],
    "body_literals": [
-    "",
-    "America/Phoenix",
     "active",
     "gone",
     "lapsing",
     "on_file",
     "pending",
-    "{}"
+    "public"
    ]
   },
   "book_state_summary.clients": {
    "candidates": [],
    "body_literals": [
-    "",
-    "America/Phoenix",
     "active",
     "gone",
     "lapsing",
     "on_file",
     "pending",
-    "{}"
+    "public"
    ]
   },
   "book_state_summary.gone": {
    "candidates": [],
    "body_literals": [
-    "",
-    "America/Phoenix",
     "active",
     "gone",
     "lapsing",
     "on_file",
     "pending",
-    "{}"
+    "public"
    ]
   },
   "book_state_summary.lapsing": {
    "candidates": [],
    "body_literals": [
-    "",
-    "America/Phoenix",
     "active",
     "gone",
     "lapsing",
     "on_file",
     "pending",
-    "{}"
+    "public"
    ]
   },
   "book_state_summary.last_30_days": {
    "candidates": [],
    "body_literals": [
-    "",
-    "America/Phoenix",
     "active",
     "gone",
     "lapsing",
     "on_file",
     "pending",
-    "{}"
+    "public"
    ]
   },
   "book_state_summary.last_90_days": {
    "candidates": [],
    "body_literals": [
-    "",
-    "America/Phoenix",
     "active",
     "gone",
     "lapsing",
     "on_file",
     "pending",
-    "{}"
+    "public"
    ]
   },
   "book_state_summary.licensed_agents": {
    "candidates": [],
    "body_literals": [
-    "",
-    "America/Phoenix",
     "active",
     "gone",
     "lapsing",
     "on_file",
     "pending",
-    "{}"
+    "public"
    ]
   },
   "book_state_summary.no_client": {
    "candidates": [],
    "body_literals": [
-    "",
-    "America/Phoenix",
     "active",
     "gone",
     "lapsing",
     "on_file",
     "pending",
-    "{}"
+    "public"
    ]
   },
   "book_state_summary.no_status": {
    "candidates": [],
    "body_literals": [
-    "",
-    "America/Phoenix",
     "active",
     "gone",
     "lapsing",
     "on_file",
     "pending",
-    "{}"
+    "public"
    ]
   },
   "book_state_summary.on_file": {
    "candidates": [],
    "body_literals": [
-    "",
-    "America/Phoenix",
     "active",
     "gone",
     "lapsing",
     "on_file",
     "pending",
-    "{}"
+    "public"
    ]
   },
   "book_state_summary.pending": {
    "candidates": [],
    "body_literals": [
-    "",
-    "America/Phoenix",
     "active",
     "gone",
     "lapsing",
     "on_file",
     "pending",
-    "{}"
+    "public"
    ]
   },
   "book_state_summary.policies": {
    "candidates": [],
    "body_literals": [
-    "",
-    "America/Phoenix",
     "active",
     "gone",
     "lapsing",
     "on_file",
     "pending",
-    "{}"
+    "public"
    ]
   },
   "book_state_summary.premium_policies": {
    "candidates": [],
    "body_literals": [
-    "",
-    "America/Phoenix",
     "active",
     "gone",
     "lapsing",
     "on_file",
     "pending",
-    "{}"
+    "public"
    ]
   },
   "book_state_summary.prior_90_days": {
    "candidates": [],
    "body_literals": [
-    "",
-    "America/Phoenix",
     "active",
     "gone",
     "lapsing",
     "on_file",
     "pending",
-    "{}"
+    "public"
    ]
   },
   "book_state_summary.state": {
-   "candidates": [],
+   "candidates": [
+    "agentlink_clients.state",
+    "client_leads.state",
+    "us_area_codes.state"
+   ],
    "body_literals": [
-    "",
-    "America/Phoenix",
     "active",
     "gone",
     "lapsing",
     "on_file",
     "pending",
-    "{}"
+    "public"
    ]
   },
   "booking_packet_reveal_sensitive.bank_account": {
@@ -6614,6 +6602,9 @@
     "pushback",
     "ready_to_finish",
     "resold",
+    "s number or its packet",
+    "s or the packet",
+    "sold_not_booked",
     "to_call",
     "vantage",
     "warm_objection",
@@ -6657,6 +6648,9 @@
     "pushback",
     "ready_to_finish",
     "resold",
+    "s number or its packet",
+    "s or the packet",
+    "sold_not_booked",
     "to_call",
     "vantage",
     "warm_objection",
@@ -6702,6 +6696,9 @@
     "pushback",
     "ready_to_finish",
     "resold",
+    "s number or its packet",
+    "s or the packet",
+    "sold_not_booked",
     "to_call",
     "vantage",
     "warm_objection",
@@ -6746,6 +6743,9 @@
     "pushback",
     "ready_to_finish",
     "resold",
+    "s number or its packet",
+    "s or the packet",
+    "sold_not_booked",
     "to_call",
     "vantage",
     "warm_objection",
@@ -6787,6 +6787,9 @@
     "pushback",
     "ready_to_finish",
     "resold",
+    "s number or its packet",
+    "s or the packet",
+    "sold_not_booked",
     "to_call",
     "vantage",
     "warm_objection",
@@ -6835,6 +6838,9 @@
     "pushback",
     "ready_to_finish",
     "resold",
+    "s number or its packet",
+    "s or the packet",
+    "sold_not_booked",
     "to_call",
     "vantage",
     "warm_objection",
@@ -6879,6 +6885,9 @@
     "pushback",
     "ready_to_finish",
     "resold",
+    "s number or its packet",
+    "s or the packet",
+    "sold_not_booked",
     "to_call",
     "vantage",
     "warm_objection",
@@ -6926,6 +6935,9 @@
     "pushback",
     "ready_to_finish",
     "resold",
+    "s number or its packet",
+    "s or the packet",
+    "sold_not_booked",
     "to_call",
     "vantage",
     "warm_objection",
@@ -6970,6 +6982,9 @@
     "pushback",
     "ready_to_finish",
     "resold",
+    "s number or its packet",
+    "s or the packet",
+    "sold_not_booked",
     "to_call",
     "vantage",
     "warm_objection",
@@ -7013,6 +7028,9 @@
     "pushback",
     "ready_to_finish",
     "resold",
+    "s number or its packet",
+    "s or the packet",
+    "sold_not_booked",
     "to_call",
     "vantage",
     "warm_objection",
@@ -7054,6 +7072,9 @@
     "pushback",
     "ready_to_finish",
     "resold",
+    "s number or its packet",
+    "s or the packet",
+    "sold_not_booked",
     "to_call",
     "vantage",
     "warm_objection",
@@ -7095,6 +7116,9 @@
     "pushback",
     "ready_to_finish",
     "resold",
+    "s number or its packet",
+    "s or the packet",
+    "sold_not_booked",
     "to_call",
     "vantage",
     "warm_objection",
@@ -7136,6 +7160,9 @@
     "pushback",
     "ready_to_finish",
     "resold",
+    "s number or its packet",
+    "s or the packet",
+    "sold_not_booked",
     "to_call",
     "vantage",
     "warm_objection",
@@ -7177,6 +7204,9 @@
     "pushback",
     "ready_to_finish",
     "resold",
+    "s number or its packet",
+    "s or the packet",
+    "sold_not_booked",
     "to_call",
     "vantage",
     "warm_objection",
@@ -7221,6 +7251,9 @@
     "pushback",
     "ready_to_finish",
     "resold",
+    "s number or its packet",
+    "s or the packet",
+    "sold_not_booked",
     "to_call",
     "vantage",
     "warm_objection",
@@ -7262,6 +7295,9 @@
     "pushback",
     "ready_to_finish",
     "resold",
+    "s number or its packet",
+    "s or the packet",
+    "sold_not_booked",
     "to_call",
     "vantage",
     "warm_objection",
@@ -7303,6 +7339,9 @@
     "pushback",
     "ready_to_finish",
     "resold",
+    "s number or its packet",
+    "s or the packet",
+    "sold_not_booked",
     "to_call",
     "vantage",
     "warm_objection",
@@ -7350,6 +7389,9 @@
     "pushback",
     "ready_to_finish",
     "resold",
+    "s number or its packet",
+    "s or the packet",
+    "sold_not_booked",
     "to_call",
     "vantage",
     "warm_objection",
@@ -7391,6 +7433,9 @@
     "pushback",
     "ready_to_finish",
     "resold",
+    "s number or its packet",
+    "s or the packet",
+    "sold_not_booked",
     "to_call",
     "vantage",
     "warm_objection",
@@ -7436,6 +7481,9 @@
     "pushback",
     "ready_to_finish",
     "resold",
+    "s number or its packet",
+    "s or the packet",
+    "sold_not_booked",
     "to_call",
     "vantage",
     "warm_objection",
@@ -7477,6 +7525,9 @@
     "pushback",
     "ready_to_finish",
     "resold",
+    "s number or its packet",
+    "s or the packet",
+    "sold_not_booked",
     "to_call",
     "vantage",
     "warm_objection",
@@ -7523,6 +7574,9 @@
     "pushback",
     "ready_to_finish",
     "resold",
+    "s number or its packet",
+    "s or the packet",
+    "sold_not_booked",
     "to_call",
     "vantage",
     "warm_objection",
@@ -7564,6 +7618,9 @@
     "pushback",
     "ready_to_finish",
     "resold",
+    "s number or its packet",
+    "s or the packet",
+    "sold_not_booked",
     "to_call",
     "vantage",
     "warm_objection",
@@ -7608,6 +7665,9 @@
     "pushback",
     "ready_to_finish",
     "resold",
+    "s number or its packet",
+    "s or the packet",
+    "sold_not_booked",
     "to_call",
     "vantage",
     "warm_objection",
@@ -7649,6 +7709,9 @@
     "pushback",
     "ready_to_finish",
     "resold",
+    "s number or its packet",
+    "s or the packet",
+    "sold_not_booked",
     "to_call",
     "vantage",
     "warm_objection",
@@ -7692,6 +7755,9 @@
     "pushback",
     "ready_to_finish",
     "resold",
+    "s number or its packet",
+    "s or the packet",
+    "sold_not_booked",
     "to_call",
     "vantage",
     "warm_objection",
@@ -9899,6 +9965,142 @@
     "public"
    ]
   },
+  "lead_assignable_agents.agent_id": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "public"
+   ]
+  },
+  "lead_assignable_agents.display_name": {
+   "candidates": [
+    "agents.display_name"
+   ],
+   "body_literals": [
+    "active",
+    "public"
+   ]
+  },
+  "lead_assignable_agents.subagency": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "public"
+   ]
+  },
+  "lead_assignable_agents.user_id": {
+   "candidates": [
+    "agents.user_id"
+   ],
+   "body_literals": [
+    "active",
+    "public"
+   ]
+  },
+  "lead_bundle_export.age": {
+   "candidates": [
+    "lead_bundle_items.age"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "public"
+   ]
+  },
+  "lead_bundle_export.email": {
+   "candidates": [
+    "lead_bundle_items.email"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "public"
+   ]
+  },
+  "lead_bundle_export.first_name": {
+   "candidates": [
+    "lead_bundle_items.first_name"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "public"
+   ]
+  },
+  "lead_bundle_export.grade": {
+   "candidates": [],
+   "body_literals": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "public"
+   ]
+  },
+  "lead_bundle_export.last_name": {
+   "candidates": [
+    "lead_bundle_items.last_name"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "public"
+   ]
+  },
+  "lead_bundle_export.phone10": {
+   "candidates": [
+    "lead_bundle_items.phone10"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "public"
+   ]
+  },
+  "lead_bundle_export.state": {
+   "candidates": [
+    "lead_bundle_items.state"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "public"
+   ]
+  },
+  "lead_bundle_export.status": {
+   "candidates": [
+    "lead_bundle_items.status"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "public"
+   ]
+  },
+  "lead_bundle_export.tags": {
+   "candidates": [],
+   "body_literals": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "public"
+   ]
+  },
   "lead_bundle_pool.available": {
    "candidates": [],
    "body_literals": [
@@ -9956,13 +10158,6 @@
   "lead_state_yield.area_checked": {
    "candidates": [],
    "body_literals": [
-    "",
-    " ",
-    "42501",
-    "America/Phoenix",
-    "Only the full-book readers can read the lead lists.",
-    "\\D",
-    "^[2-9][0-9]{2}[2-9][0-9]{6}$",
     "agentlink",
     "apex_native",
     "ethos_customers",
@@ -9973,13 +10168,6 @@
   "lead_state_yield.area_matched": {
    "candidates": [],
    "body_literals": [
-    "",
-    " ",
-    "42501",
-    "America/Phoenix",
-    "Only the full-book readers can read the lead lists.",
-    "\\D",
-    "^[2-9][0-9]{2}[2-9][0-9]{6}$",
     "agentlink",
     "apex_native",
     "ethos_customers",
@@ -9990,13 +10178,6 @@
   "lead_state_yield.calls_since": {
    "candidates": [],
    "body_literals": [
-    "",
-    " ",
-    "42501",
-    "America/Phoenix",
-    "Only the full-book readers can read the lead lists.",
-    "\\D",
-    "^[2-9][0-9]{2}[2-9][0-9]{6}$",
     "agentlink",
     "apex_native",
     "ethos_customers",
@@ -10007,13 +10188,6 @@
   "lead_state_yield.dialed_sales": {
    "candidates": [],
    "body_literals": [
-    "",
-    " ",
-    "42501",
-    "America/Phoenix",
-    "Only the full-book readers can read the lead lists.",
-    "\\D",
-    "^[2-9][0-9]{2}[2-9][0-9]{6}$",
     "agentlink",
     "apex_native",
     "ethos_customers",
@@ -10024,13 +10198,6 @@
   "lead_state_yield.leads_bought": {
    "candidates": [],
    "body_literals": [
-    "",
-    " ",
-    "42501",
-    "America/Phoenix",
-    "Only the full-book readers can read the lead lists.",
-    "\\D",
-    "^[2-9][0-9]{2}[2-9][0-9]{6}$",
     "agentlink",
     "apex_native",
     "ethos_customers",
@@ -10041,13 +10208,6 @@
   "lead_state_yield.leads_dialed": {
    "candidates": [],
    "body_literals": [
-    "",
-    " ",
-    "42501",
-    "America/Phoenix",
-    "Only the full-book readers can read the lead lists.",
-    "\\D",
-    "^[2-9][0-9]{2}[2-9][0-9]{6}$",
     "agentlink",
     "apex_native",
     "ethos_customers",
@@ -10058,13 +10218,6 @@
   "lead_state_yield.lists_loaded": {
    "candidates": [],
    "body_literals": [
-    "",
-    " ",
-    "42501",
-    "America/Phoenix",
-    "Only the full-book readers can read the lead lists.",
-    "\\D",
-    "^[2-9][0-9]{2}[2-9][0-9]{6}$",
     "agentlink",
     "apex_native",
     "ethos_customers",
@@ -10075,13 +10228,6 @@
   "lead_state_yield.never_called": {
    "candidates": [],
    "body_literals": [
-    "",
-    " ",
-    "42501",
-    "America/Phoenix",
-    "Only the full-book readers can read the lead lists.",
-    "\\D",
-    "^[2-9][0-9]{2}[2-9][0-9]{6}$",
     "agentlink",
     "apex_native",
     "ethos_customers",
@@ -10091,17 +10237,11 @@
   },
   "lead_state_yield.state": {
    "candidates": [
+    "agentlink_clients.state",
     "client_leads.state",
     "us_area_codes.state"
    ],
    "body_literals": [
-    "",
-    " ",
-    "42501",
-    "America/Phoenix",
-    "Only the full-book readers can read the lead lists.",
-    "\\D",
-    "^[2-9][0-9]{2}[2-9][0-9]{6}$",
     "agentlink",
     "apex_native",
     "ethos_customers",
@@ -14164,6 +14304,94 @@
     "website-seminar-form"
    ]
   },
+  "resell_evidence.answered": {
+   "candidates": [],
+   "body_literals": [
+    "Completed Sale",
+    "Not Available",
+    "g",
+    "name",
+    "phone",
+    "public"
+   ]
+  },
+  "resell_evidence.dials": {
+   "candidates": [],
+   "body_literals": [
+    "Completed Sale",
+    "Not Available",
+    "g",
+    "name",
+    "phone",
+    "public"
+   ]
+  },
+  "resell_evidence.gave_ssn_and_bank": {
+   "candidates": [],
+   "body_literals": [
+    "Completed Sale",
+    "Not Available",
+    "g",
+    "name",
+    "phone",
+    "public"
+   ]
+  },
+  "resell_evidence.kind": {
+   "candidates": [],
+   "body_literals": [
+    "Completed Sale",
+    "Not Available",
+    "g",
+    "name",
+    "phone",
+    "public"
+   ]
+  },
+  "resell_evidence.last_answered_at": {
+   "candidates": [],
+   "body_literals": [
+    "Completed Sale",
+    "Not Available",
+    "g",
+    "name",
+    "phone",
+    "public"
+   ]
+  },
+  "resell_evidence.last_sold_at": {
+   "candidates": [],
+   "body_literals": [
+    "Completed Sale",
+    "Not Available",
+    "g",
+    "name",
+    "phone",
+    "public"
+   ]
+  },
+  "resell_evidence.match_key": {
+   "candidates": [],
+   "body_literals": [
+    "Completed Sale",
+    "Not Available",
+    "g",
+    "name",
+    "phone",
+    "public"
+   ]
+  },
+  "resell_evidence.sold_calls": {
+   "candidates": [],
+   "body_literals": [
+    "Completed Sale",
+    "Not Available",
+    "g",
+    "name",
+    "phone",
+    "public"
+   ]
+  },
   "resolve_application_for_invitee.application_id": {
    "candidates": [],
    "body_literals": [
@@ -14318,6 +14546,747 @@
    "body_literals": [
     "admin",
     "public"
+   ]
+  },
+  "sellable_leads_match.age": {
+   "candidates": [
+    "client_leads.age",
+    "lead_bundle_items.age",
+    "v_sellable_client_leads.age"
+   ],
+   "body_literals": [
+    "array",
+    "exclude_dnc",
+    "exclude_resold",
+    "grades",
+    "is_homeowner",
+    "is_veteran",
+    "max_age",
+    "max_lead_age_days",
+    "min_age",
+    "policyholders_only",
+    "public",
+    "states",
+    "wants_mortgage"
+   ]
+  },
+  "sellable_leads_match.dial_count": {
+   "candidates": [
+    "client_leads.dial_count",
+    "v_sellable_client_leads.dial_count"
+   ],
+   "body_literals": [
+    "array",
+    "exclude_dnc",
+    "exclude_resold",
+    "grades",
+    "is_homeowner",
+    "is_veteran",
+    "max_age",
+    "max_lead_age_days",
+    "min_age",
+    "policyholders_only",
+    "public",
+    "states",
+    "wants_mortgage"
+   ]
+  },
+  "sellable_leads_match.dnc": {
+   "candidates": [
+    "client_leads.dnc",
+    "v_sellable_client_leads.dnc"
+   ],
+   "body_literals": [
+    "array",
+    "exclude_dnc",
+    "exclude_resold",
+    "grades",
+    "is_homeowner",
+    "is_veteran",
+    "max_age",
+    "max_lead_age_days",
+    "min_age",
+    "policyholders_only",
+    "public",
+    "states",
+    "wants_mortgage"
+   ]
+  },
+  "sellable_leads_match.email": {
+   "candidates": [
+    "client_leads.email",
+    "lead_bundle_items.email",
+    "v_sellable_client_leads.email"
+   ],
+   "body_literals": [
+    "array",
+    "exclude_dnc",
+    "exclude_resold",
+    "grades",
+    "is_homeowner",
+    "is_veteran",
+    "max_age",
+    "max_lead_age_days",
+    "min_age",
+    "policyholders_only",
+    "public",
+    "states",
+    "wants_mortgage"
+   ]
+  },
+  "sellable_leads_match.first_name": {
+   "candidates": [
+    "client_leads.first_name",
+    "lead_bundle_items.first_name",
+    "v_sellable_client_leads.first_name"
+   ],
+   "body_literals": [
+    "array",
+    "exclude_dnc",
+    "exclude_resold",
+    "grades",
+    "is_homeowner",
+    "is_veteran",
+    "max_age",
+    "max_lead_age_days",
+    "min_age",
+    "policyholders_only",
+    "public",
+    "states",
+    "wants_mortgage"
+   ]
+  },
+  "sellable_leads_match.grade": {
+   "candidates": [
+    "v_sellable_client_leads.grade"
+   ],
+   "body_literals": [
+    "array",
+    "exclude_dnc",
+    "exclude_resold",
+    "grades",
+    "is_homeowner",
+    "is_veteran",
+    "max_age",
+    "max_lead_age_days",
+    "min_age",
+    "policyholders_only",
+    "public",
+    "states",
+    "wants_mortgage"
+   ]
+  },
+  "sellable_leads_match.is_homeowner": {
+   "candidates": [
+    "client_leads.is_homeowner",
+    "v_sellable_client_leads.is_homeowner"
+   ],
+   "body_literals": [
+    "array",
+    "exclude_dnc",
+    "exclude_resold",
+    "grades",
+    "is_homeowner",
+    "is_veteran",
+    "max_age",
+    "max_lead_age_days",
+    "min_age",
+    "policyholders_only",
+    "public",
+    "states",
+    "wants_mortgage"
+   ]
+  },
+  "sellable_leads_match.is_policyholder": {
+   "candidates": [
+    "v_sellable_client_leads.is_policyholder"
+   ],
+   "body_literals": [
+    "array",
+    "exclude_dnc",
+    "exclude_resold",
+    "grades",
+    "is_homeowner",
+    "is_veteran",
+    "max_age",
+    "max_lead_age_days",
+    "min_age",
+    "policyholders_only",
+    "public",
+    "states",
+    "wants_mortgage"
+   ]
+  },
+  "sellable_leads_match.is_veteran": {
+   "candidates": [
+    "v_sellable_client_leads.is_veteran"
+   ],
+   "body_literals": [
+    "array",
+    "exclude_dnc",
+    "exclude_resold",
+    "grades",
+    "is_homeowner",
+    "is_veteran",
+    "max_age",
+    "max_lead_age_days",
+    "min_age",
+    "policyholders_only",
+    "public",
+    "states",
+    "wants_mortgage"
+   ]
+  },
+  "sellable_leads_match.last_dialed_at": {
+   "candidates": [
+    "client_leads.last_dialed_at",
+    "lead_bundle_items.last_dialed_at",
+    "v_sellable_client_leads.last_dialed_at"
+   ],
+   "body_literals": [
+    "array",
+    "exclude_dnc",
+    "exclude_resold",
+    "grades",
+    "is_homeowner",
+    "is_veteran",
+    "max_age",
+    "max_lead_age_days",
+    "min_age",
+    "policyholders_only",
+    "public",
+    "states",
+    "wants_mortgage"
+   ]
+  },
+  "sellable_leads_match.last_disposition": {
+   "candidates": [
+    "client_leads.last_disposition",
+    "lead_bundle_items.last_disposition",
+    "v_sellable_client_leads.last_disposition"
+   ],
+   "body_literals": [
+    "array",
+    "exclude_dnc",
+    "exclude_resold",
+    "grades",
+    "is_homeowner",
+    "is_veteran",
+    "max_age",
+    "max_lead_age_days",
+    "min_age",
+    "policyholders_only",
+    "public",
+    "states",
+    "wants_mortgage"
+   ]
+  },
+  "sellable_leads_match.last_name": {
+   "candidates": [
+    "client_leads.last_name",
+    "lead_bundle_items.last_name",
+    "v_sellable_client_leads.last_name"
+   ],
+   "body_literals": [
+    "array",
+    "exclude_dnc",
+    "exclude_resold",
+    "grades",
+    "is_homeowner",
+    "is_veteran",
+    "max_age",
+    "max_lead_age_days",
+    "min_age",
+    "policyholders_only",
+    "public",
+    "states",
+    "wants_mortgage"
+   ]
+  },
+  "sellable_leads_match.lead_age_days": {
+   "candidates": [
+    "v_sellable_client_leads.lead_age_days"
+   ],
+   "body_literals": [
+    "array",
+    "exclude_dnc",
+    "exclude_resold",
+    "grades",
+    "is_homeowner",
+    "is_veteran",
+    "max_age",
+    "max_lead_age_days",
+    "min_age",
+    "policyholders_only",
+    "public",
+    "states",
+    "wants_mortgage"
+   ]
+  },
+  "sellable_leads_match.lead_id": {
+   "candidates": [
+    "lead_bundle_items.lead_id",
+    "lead_resale_ledger.lead_id",
+    "v_sellable_client_leads.lead_id"
+   ],
+   "body_literals": [
+    "array",
+    "exclude_dnc",
+    "exclude_resold",
+    "grades",
+    "is_homeowner",
+    "is_veteran",
+    "max_age",
+    "max_lead_age_days",
+    "min_age",
+    "policyholders_only",
+    "public",
+    "states",
+    "wants_mortgage"
+   ]
+  },
+  "sellable_leads_match.phone10": {
+   "candidates": [
+    "lead_bundle_items.phone10",
+    "lead_resale_ledger.phone10",
+    "v_sellable_client_leads.phone10"
+   ],
+   "body_literals": [
+    "array",
+    "exclude_dnc",
+    "exclude_resold",
+    "grades",
+    "is_homeowner",
+    "is_veteran",
+    "max_age",
+    "max_lead_age_days",
+    "min_age",
+    "policyholders_only",
+    "public",
+    "states",
+    "wants_mortgage"
+   ]
+  },
+  "sellable_leads_match.policy_carrier": {
+   "candidates": [
+    "client_leads.policy_carrier",
+    "v_sellable_client_leads.policy_carrier"
+   ],
+   "body_literals": [
+    "array",
+    "exclude_dnc",
+    "exclude_resold",
+    "grades",
+    "is_homeowner",
+    "is_veteran",
+    "max_age",
+    "max_lead_age_days",
+    "min_age",
+    "policyholders_only",
+    "public",
+    "states",
+    "wants_mortgage"
+   ]
+  },
+  "sellable_leads_match.policy_face_amount": {
+   "candidates": [
+    "client_leads.policy_face_amount",
+    "v_sellable_client_leads.policy_face_amount"
+   ],
+   "body_literals": [
+    "array",
+    "exclude_dnc",
+    "exclude_resold",
+    "grades",
+    "is_homeowner",
+    "is_veteran",
+    "max_age",
+    "max_lead_age_days",
+    "min_age",
+    "policyholders_only",
+    "public",
+    "states",
+    "wants_mortgage"
+   ]
+  },
+  "sellable_leads_match.state": {
+   "candidates": [
+    "client_leads.state",
+    "lead_bundle_items.state",
+    "v_sellable_client_leads.state"
+   ],
+   "body_literals": [
+    "array",
+    "exclude_dnc",
+    "exclude_resold",
+    "grades",
+    "is_homeowner",
+    "is_veteran",
+    "max_age",
+    "max_lead_age_days",
+    "min_age",
+    "policyholders_only",
+    "public",
+    "states",
+    "wants_mortgage"
+   ]
+  },
+  "sellable_leads_match.wants_mortgage": {
+   "candidates": [
+    "v_sellable_client_leads.wants_mortgage"
+   ],
+   "body_literals": [
+    "array",
+    "exclude_dnc",
+    "exclude_resold",
+    "grades",
+    "is_homeowner",
+    "is_veteran",
+    "max_age",
+    "max_lead_age_days",
+    "min_age",
+    "policyholders_only",
+    "public",
+    "states",
+    "wants_mortgage"
+   ]
+  },
+  "sellable_pool.age": {
+   "candidates": [
+    "lead_bundle_items.age"
+   ],
+   "body_literals": [
+    "array",
+    "dialer",
+    "marketing",
+    "max_age",
+    "max_lead_age_days",
+    "min_age",
+    "public",
+    "require_flags",
+    "rewrite",
+    "states",
+    "tiers",
+    "v_pool_dialer",
+    "v_pool_marketing",
+    "v_pool_rewrite",
+    "v_pool_winback",
+    "vantage",
+    "vantage_only",
+    "winback"
+   ]
+  },
+  "sellable_pool.already_sold": {
+   "candidates": [],
+   "body_literals": [
+    "array",
+    "dialer",
+    "marketing",
+    "max_age",
+    "max_lead_age_days",
+    "min_age",
+    "public",
+    "require_flags",
+    "rewrite",
+    "states",
+    "tiers",
+    "v_pool_dialer",
+    "v_pool_marketing",
+    "v_pool_rewrite",
+    "v_pool_winback",
+    "vantage",
+    "vantage_only",
+    "winback"
+   ]
+  },
+  "sellable_pool.email": {
+   "candidates": [
+    "lead_bundle_items.email"
+   ],
+   "body_literals": [
+    "array",
+    "dialer",
+    "marketing",
+    "max_age",
+    "max_lead_age_days",
+    "min_age",
+    "public",
+    "require_flags",
+    "rewrite",
+    "states",
+    "tiers",
+    "v_pool_dialer",
+    "v_pool_marketing",
+    "v_pool_rewrite",
+    "v_pool_winback",
+    "vantage",
+    "vantage_only",
+    "winback"
+   ]
+  },
+  "sellable_pool.first_name": {
+   "candidates": [
+    "lead_bundle_items.first_name"
+   ],
+   "body_literals": [
+    "array",
+    "dialer",
+    "marketing",
+    "max_age",
+    "max_lead_age_days",
+    "min_age",
+    "public",
+    "require_flags",
+    "rewrite",
+    "states",
+    "tiers",
+    "v_pool_dialer",
+    "v_pool_marketing",
+    "v_pool_rewrite",
+    "v_pool_winback",
+    "vantage",
+    "vantage_only",
+    "winback"
+   ]
+  },
+  "sellable_pool.flags": {
+   "candidates": [],
+   "body_literals": [
+    "array",
+    "dialer",
+    "marketing",
+    "max_age",
+    "max_lead_age_days",
+    "min_age",
+    "public",
+    "require_flags",
+    "rewrite",
+    "states",
+    "tiers",
+    "v_pool_dialer",
+    "v_pool_marketing",
+    "v_pool_rewrite",
+    "v_pool_winback",
+    "vantage",
+    "vantage_only",
+    "winback"
+   ]
+  },
+  "sellable_pool.in_bundle": {
+   "candidates": [],
+   "body_literals": [
+    "array",
+    "dialer",
+    "marketing",
+    "max_age",
+    "max_lead_age_days",
+    "min_age",
+    "public",
+    "require_flags",
+    "rewrite",
+    "states",
+    "tiers",
+    "v_pool_dialer",
+    "v_pool_marketing",
+    "v_pool_rewrite",
+    "v_pool_winback",
+    "vantage",
+    "vantage_only",
+    "winback"
+   ]
+  },
+  "sellable_pool.last_name": {
+   "candidates": [
+    "lead_bundle_items.last_name"
+   ],
+   "body_literals": [
+    "array",
+    "dialer",
+    "marketing",
+    "max_age",
+    "max_lead_age_days",
+    "min_age",
+    "public",
+    "require_flags",
+    "rewrite",
+    "states",
+    "tiers",
+    "v_pool_dialer",
+    "v_pool_marketing",
+    "v_pool_rewrite",
+    "v_pool_winback",
+    "vantage",
+    "vantage_only",
+    "winback"
+   ]
+  },
+  "sellable_pool.lead_age_days": {
+   "candidates": [],
+   "body_literals": [
+    "array",
+    "dialer",
+    "marketing",
+    "max_age",
+    "max_lead_age_days",
+    "min_age",
+    "public",
+    "require_flags",
+    "rewrite",
+    "states",
+    "tiers",
+    "v_pool_dialer",
+    "v_pool_marketing",
+    "v_pool_rewrite",
+    "v_pool_winback",
+    "vantage",
+    "vantage_only",
+    "winback"
+   ]
+  },
+  "sellable_pool.lead_id": {
+   "candidates": [
+    "lead_bundle_items.lead_id",
+    "lead_resale_ledger.lead_id"
+   ],
+   "body_literals": [
+    "array",
+    "dialer",
+    "marketing",
+    "max_age",
+    "max_lead_age_days",
+    "min_age",
+    "public",
+    "require_flags",
+    "rewrite",
+    "states",
+    "tiers",
+    "v_pool_dialer",
+    "v_pool_marketing",
+    "v_pool_rewrite",
+    "v_pool_winback",
+    "vantage",
+    "vantage_only",
+    "winback"
+   ]
+  },
+  "sellable_pool.phone10": {
+   "candidates": [
+    "lead_bundle_items.phone10",
+    "lead_resale_ledger.phone10"
+   ],
+   "body_literals": [
+    "array",
+    "dialer",
+    "marketing",
+    "max_age",
+    "max_lead_age_days",
+    "min_age",
+    "public",
+    "require_flags",
+    "rewrite",
+    "states",
+    "tiers",
+    "v_pool_dialer",
+    "v_pool_marketing",
+    "v_pool_rewrite",
+    "v_pool_winback",
+    "vantage",
+    "vantage_only",
+    "winback"
+   ]
+  },
+  "sellable_pool.state": {
+   "candidates": [
+    "lead_bundle_items.state"
+   ],
+   "body_literals": [
+    "array",
+    "dialer",
+    "marketing",
+    "max_age",
+    "max_lead_age_days",
+    "min_age",
+    "public",
+    "require_flags",
+    "rewrite",
+    "states",
+    "tiers",
+    "v_pool_dialer",
+    "v_pool_marketing",
+    "v_pool_rewrite",
+    "v_pool_winback",
+    "vantage",
+    "vantage_only",
+    "winback"
+   ]
+  },
+  "sellable_pool.tags": {
+   "candidates": [],
+   "body_literals": [
+    "array",
+    "dialer",
+    "marketing",
+    "max_age",
+    "max_lead_age_days",
+    "min_age",
+    "public",
+    "require_flags",
+    "rewrite",
+    "states",
+    "tiers",
+    "v_pool_dialer",
+    "v_pool_marketing",
+    "v_pool_rewrite",
+    "v_pool_winback",
+    "vantage",
+    "vantage_only",
+    "winback"
+   ]
+  },
+  "sellable_pool.tier": {
+   "candidates": [],
+   "body_literals": [
+    "array",
+    "dialer",
+    "marketing",
+    "max_age",
+    "max_lead_age_days",
+    "min_age",
+    "public",
+    "require_flags",
+    "rewrite",
+    "states",
+    "tiers",
+    "v_pool_dialer",
+    "v_pool_marketing",
+    "v_pool_rewrite",
+    "v_pool_winback",
+    "vantage",
+    "vantage_only",
+    "winback"
+   ]
+  },
+  "sellable_pool.under_9mo": {
+   "candidates": [],
+   "body_literals": [
+    "array",
+    "dialer",
+    "marketing",
+    "max_age",
+    "max_lead_age_days",
+    "min_age",
+    "public",
+    "require_flags",
+    "rewrite",
+    "states",
+    "tiers",
+    "v_pool_dialer",
+    "v_pool_marketing",
+    "v_pool_rewrite",
+    "v_pool_winback",
+    "vantage",
+    "vantage_only",
+    "winback"
    ]
   },
   "slack_outbox_emitters.event_type": {

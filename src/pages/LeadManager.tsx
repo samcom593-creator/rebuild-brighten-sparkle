@@ -220,15 +220,45 @@ export default function LeadManager() {
     staleTime: 10_000,
   });
 
-  const { data: agents = [] } = useQuery<AssignableAgent[]>({
+  // The agent list is the one thing that was leaving the picker dead: the RPC is
+  // gated server-side on the caller's login, so when a tab's Supabase token has
+  // gone stale (this repo has a documented session-wipe-on-reload history) the
+  // call runs unauthenticated and the gate returns an EMPTY list WITH NO ERROR.
+  // The old render read that empty as "Loading agents…" forever, with no way
+  // out. So: self-heal here (refresh the session once and retry before giving
+  // up) and let the render below distinguish loading / error / empty so the
+  // operator is never stuck and never has to reload to drop a pack.
+  const agentsQuery = useQuery<AssignableAgent[]>({
     queryKey: ["assignable-agents-all"],
     queryFn: async () => {
-      const { data, error } = await rpc("lead_assignable_agents", { p_search: null });
-      if (error) throw error;
-      return (data as AssignableAgent[]) ?? [];
+      const fetchAgents = async () => {
+        const { data, error } = await rpc("lead_assignable_agents", { p_search: null });
+        if (error) throw error;
+        return (data as AssignableAgent[]) ?? [];
+      };
+      let rows = await fetchAgents();
+      if (rows.length === 0) {
+        const { data: s } = await supabase.auth.getSession();
+        if (s.session) {
+          // refreshSession resolves {data,error}; a thrown transport error here
+          // bubbles to React Query's retry, then to the error state below.
+          await supabase.auth.refreshSession();
+          rows = await fetchAgents();
+        }
+      }
+      return rows;
     },
+    retry: 1,
     staleTime: 120_000,
   });
+  const agents = useMemo(() => agentsQuery.data ?? [], [agentsQuery.data]);
+  const refreshAgents = async () => {
+    // Always refetch, even if the session refresh itself errors — the refetch
+    // is what repopulates the list once the token is good again.
+    try { await supabase.auth.refreshSession(); } finally { agentsQuery.refetch(); }
+  };
+  // internal-nav-href-allow:auth-recovery — a dead/stale session needs a full app reboot, not an in-SPA nav that keeps the broken client in memory.
+  const goLogin = () => window.location.assign("/login");
   const shownAgents = useMemo(() => {
     const qq = agentFilter.trim().toLowerCase();
     if (!qq) return agents;
@@ -498,12 +528,40 @@ export default function LeadManager() {
             </p>
           )}
 
-          <Input value={agentFilter} onChange={(e) => setAgentFilter(e.target.value)}
-            placeholder={`Filter ${agents.length} live agents…`} className="max-w-xs" aria-label="Filter agents" />
+          <div className="flex items-center gap-2">
+            <Input value={agentFilter} onChange={(e) => setAgentFilter(e.target.value)}
+              placeholder={agents.length ? `Filter ${agents.length} live agents…` : "Agents"} className="max-w-xs" aria-label="Filter agents" />
+            <Button type="button" size="sm" variant="ghost" onClick={refreshAgents}
+              disabled={agentsQuery.isFetching} aria-label="Refresh agent list" title="Refresh agent list">
+              <RotateCcw className={cn("h-4 w-4", agentsQuery.isFetching && "animate-spin")} />
+            </Button>
+          </div>
 
           <div className="flex max-h-60 flex-wrap gap-2 overflow-y-auto">
-            {shownAgents.length === 0 ? (
-              <span className="text-sm text-muted-foreground">{agents.length === 0 ? "Loading agents…" : "No live agents match."}</span>
+            {agentsQuery.isLoading ? (
+              <span className="text-sm text-muted-foreground">Loading agents…</span>
+            ) : agentsQuery.isError ? (
+              <div className="flex flex-col gap-2">
+                <span className="flex items-center gap-1.5 text-sm text-red-400">
+                  <AlertTriangle className="h-4 w-4" /> Couldn't load agents — your login in this tab may have expired.
+                </span>
+                <div className="flex gap-2">
+                  <Button type="button" size="sm" variant="outline" onClick={refreshAgents}>Refresh agents</Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={goLogin}>Log in again</Button>
+                </div>
+              </div>
+            ) : agents.length === 0 ? (
+              <div className="flex flex-col gap-2">
+                <span className="flex items-center gap-1.5 text-sm text-amber-400">
+                  <AlertTriangle className="h-4 w-4" /> No agents came back. Your login in this tab likely went stale.
+                </span>
+                <div className="flex gap-2">
+                  <Button type="button" size="sm" variant="outline" onClick={refreshAgents}>Refresh agents</Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={goLogin}>Log in again</Button>
+                </div>
+              </div>
+            ) : shownAgents.length === 0 ? (
+              <span className="text-sm text-muted-foreground">No live agents match.</span>
             ) : (
               shownAgents.map((a) => {
                 const on = agent?.user_id === a.user_id;

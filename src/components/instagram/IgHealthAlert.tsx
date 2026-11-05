@@ -23,12 +23,14 @@ export interface IgPauseStatus {
 const H = 3_600_000;
 
 export function alertVerdict(status: IgStatus, waiting: number, now: number = Date.now(), pause: IgPauseStatus | null = null): IgAlertVerdict | null {
+  // A paused bot is quiet on purpose: it outranks every "the bot is not sending" verdict below,
+  // including a dead token, which while paused is housekeeping (names on the desk), not an outage.
+  if (pause?.paused) {
+    const base = ALERT.paused(pause.since ? shortAgo(pause.since, now) : "");
+    return { kind: "paused", sentence: status.token_ok === false ? `${base} ${ALERT.pausedTokenDead}` : base };
+  }
   if (status.token_ok === false) {
     return { kind: "token_dead", sentence: ALERT.tokenDead(agoWords(status.token_checked_at ?? now, now)) };
-  }
-  // A paused bot is quiet on purpose: it outranks every "the bot is not sending" verdict below.
-  if (pause?.paused) {
-    return { kind: "paused", sentence: ALERT.paused(pause.since ? shortAgo(pause.since, now) : "") };
   }
   if (status.links_blocked) {
     return { kind: "links_blocked", sentence: ALERT.linksBlocked(shortAgo(status.links_blocked_at, now)) };
@@ -77,11 +79,17 @@ export function IgHealthAlert({ status, waiting, reconnectHref, onHowToFix, onSe
   if (!v) return null;
   const fix = "h-11 shrink-0 sm:h-10";
   if (v.kind === "paused") {
-    // Not an alarm: nothing is broken. Calm surface, no button; the resume is a terminal command.
+    // Not an alarm: nothing is broken. Calm surface; the resume is a terminal command. The only
+    // button is the optional reconnect, and only when the app token is dead.
     return (
       <div role="status" className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3">
         <PauseCircle className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
         <p className="min-w-0 flex-1 text-[15px] font-medium leading-[22px] text-foreground">{v.sentence}</p>
+        {status.token_ok === false && (
+          <Button asChild variant="outline" className={fix}>
+            <a href={reconnectHref} target="_blank" rel="noopener noreferrer">{BUTTON.reconnect}</a>
+          </Button>
+        )}
       </div>
     );
   }

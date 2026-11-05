@@ -357,6 +357,7 @@ export const SHEET = {
 
 export const ALERT = {
   paused: (since: string) => `Instagram automation is paused${since ? ` (since ${since})` : ""}. Nothing automated goes out. New DMs still land here and licensed leads still page your phone. Reply as you from a thread, or in the Instagram app.`,
+  pausedTokenDead: "The app token is also dead. Reconnecting is optional while paused: it only makes new DMs show names here and sends nothing.",
   tokenDead: (checked: string) => `The Instagram token is dead (checked ${checked}). The bot can't reply.`,
   linksBlocked: (ago: string) => `Meta blocked links ${ago}. Replies go out without links.`,
   botSilent: (ago: string, waiting: number) => `The bot hasn't sent anything in ${ago}. ${waiting} ${waiting === 1 ? "person is" : "people are"} waiting.`,

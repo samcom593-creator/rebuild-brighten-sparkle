@@ -32,8 +32,14 @@ describe("Instagram pause banner", () => {
     expect(v?.sentence).toContain("since");
   });
 
-  it("a dead token still outranks the pause", () => {
+  it("paused wins over a dead token and says the token is dead too", () => {
     const v = alertVerdict(status({ token_ok: false }), 0, NOW, { paused: true, since: iso(2) });
+    expect(v?.kind).toBe("paused");
+    expect(v?.sentence).toContain("token is also dead");
+  });
+
+  it("a dead token is still the top fault when nothing is paused", () => {
+    const v = alertVerdict(status({ token_ok: false }), 0, NOW, null);
     expect(v?.kind).toBe("token_dead");
   });
 

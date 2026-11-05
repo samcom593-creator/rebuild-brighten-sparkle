@@ -1333,6 +1333,17 @@
       "user_agent",
       "user_id"
     ],
+    "analytics_events_2027_01": [
+      "created_at",
+      "event_category",
+      "event_name",
+      "id",
+      "properties",
+      "session_id",
+      "url",
+      "user_agent",
+      "user_id"
+    ],
     "analytics_events_default": [
       "created_at",
       "event_category",
@@ -1942,6 +1953,20 @@
       "user_agent"
     ],
     "audit_log_2026_12": [
+      "action",
+      "actor_role",
+      "actor_user_id",
+      "after_data",
+      "before_data",
+      "created_at",
+      "entity_id",
+      "entity_type",
+      "id",
+      "ip_address",
+      "request_id",
+      "user_agent"
+    ],
+    "audit_log_2027_01": [
       "action",
       "actor_role",
       "actor_user_id",
@@ -4359,6 +4384,16 @@
       "payload",
       "user_id"
     ],
+    "instagram_pause_refusals": [
+      "caller",
+      "comment_id",
+      "created_at",
+      "external_id",
+      "id",
+      "kind",
+      "message",
+      "meta"
+    ],
     "instagram_subscriptions": [
       "agent_id",
       "created_at",
@@ -4624,7 +4659,9 @@
     ],
     "lead_bundle_items": [
       "added_at",
+      "age",
       "attempts",
+      "attrs",
       "bundle_id",
       "email",
       "first_name",
@@ -4633,10 +4670,14 @@
       "last_dialed_at",
       "last_disposition",
       "last_name",
+      "lead_id",
       "phone10",
       "quality_reason",
       "quality_tier",
+      "recording_path",
       "removed_at",
+      "source_kind",
+      "state",
       "status",
       "status_at",
       "status_by",
@@ -4711,6 +4752,19 @@
       "archived_at",
       "id",
       "original_row"
+    ],
+    "lead_resale_ledger": [
+      "bundle_id",
+      "id",
+      "lead_age_days_at_sale",
+      "lead_id",
+      "marked_by",
+      "note",
+      "phone10",
+      "price_cents",
+      "sold_at",
+      "sold_to",
+      "source_kind"
     ],
     "leaderboard_cheers": [
       "created_at",
@@ -11352,6 +11406,62 @@
       "source",
       "status"
     ],
+    "v_pool_dialer": [
+      "age",
+      "email",
+      "first_name",
+      "flags",
+      "last_name",
+      "lead_age_days",
+      "lead_id",
+      "phone10",
+      "state",
+      "tags",
+      "tier",
+      "under_9mo"
+    ],
+    "v_pool_marketing": [
+      "age",
+      "email",
+      "first_name",
+      "flags",
+      "last_name",
+      "lead_age_days",
+      "lead_id",
+      "phone10",
+      "state",
+      "tags",
+      "tier",
+      "under_9mo"
+    ],
+    "v_pool_rewrite": [
+      "age",
+      "email",
+      "first_name",
+      "flags",
+      "last_name",
+      "lead_age_days",
+      "lead_id",
+      "phone10",
+      "state",
+      "tags",
+      "tier",
+      "under_9mo"
+    ],
+    "v_pool_winback": [
+      "age",
+      "email",
+      "first_name",
+      "flags",
+      "last_name",
+      "lead_age_days",
+      "lead_id",
+      "phone10",
+      "state",
+      "tags",
+      "tier",
+      "under_9mo"
+    ],
     "v_pre_licensing_tracker": [
       "app_status",
       "application_id",
@@ -12120,6 +12230,31 @@
       "skipped_pct",
       "step",
       "step_order"
+    ],
+    "v_sellable_client_leads": [
+      "age",
+      "dial_count",
+      "dnc",
+      "email",
+      "estimated_equity",
+      "first_name",
+      "grade",
+      "is_homeowner",
+      "is_policyholder",
+      "is_veteran",
+      "last_dialed_at",
+      "last_disposition",
+      "last_name",
+      "lead_age_days",
+      "lead_id",
+      "lead_pack",
+      "lead_tier",
+      "lead_type",
+      "phone10",
+      "policy_carrier",
+      "policy_face_amount",
+      "state",
+      "wants_mortgage"
     ],
     "v_seminar_dashboard": [
       "application_id",

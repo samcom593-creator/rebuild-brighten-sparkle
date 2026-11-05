@@ -6,6 +6,7 @@
 //
 // pg_cron every 30 min. Auth: Bearer APEX_BOT_TOKEN. ?posts=N (default 30).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { instagramPaused } from "../_shared/instagram-pause.ts";
 
 const MAX_REPLIES_PER_RUN = 25;
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { "Content-Type": "application/json" } });
@@ -16,6 +17,11 @@ Deno.serve(async (req) => {
   const sb = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", { auth: { persistSession: false } });
   const base = Deno.env.get("SUPABASE_URL") ?? "https://xrzweoneiieddzxogewk.supabase.co";
   const posts = Math.min(60, Number(new URL(req.url).searchParams.get("posts") ?? 30));
+
+  // Sam's pause (2026-11-04): paused = this run reads nothing and posts nothing. Its pg_cron job
+  // is also switched off; this is the second lock for a hand invocation.
+  const pause = await instagramPaused(sb);
+  if (pause.paused) return json({ ok: true, paused: true, since: pause.since, reason: pause.reason, verified: pause.verified, skipped: "instagram automation paused", posts: 0, comments_seen: 0, answered: 0, dms: 0 });
 
   const { data: st } = await sb.from("system_settings").select("value").eq("key", "meta_instagram_token").limit(1);
   const token = String(st?.[0]?.value ?? "").trim().replace(/^"|"$/g, "");

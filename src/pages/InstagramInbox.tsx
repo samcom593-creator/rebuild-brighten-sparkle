@@ -37,7 +37,7 @@ import { phoenixTime, sentenceCase, shortAgo } from "@/components/instagram/igFo
 import { who } from "@/components/instagram/igRowLogic";
 import { LIST_KEYS, peopleLists, stageOf, tileTrend, type IgListKey } from "@/components/instagram/igScore";
 import { IgCompose } from "@/components/instagram/IgCompose";
-import { IgHealthAlert, IgHowToFixSheet } from "@/components/instagram/IgHealthAlert";
+import { IgHealthAlert, IgHowToFixSheet, type IgPauseStatus } from "@/components/instagram/IgHealthAlert";
 import { IgHistorySheet } from "@/components/instagram/IgHistorySheet";
 import { IgLever } from "@/components/instagram/IgLever";
 import { IgNeedsYou } from "@/components/instagram/IgNeedsYou";
@@ -132,6 +132,19 @@ export default function InstagramInbox() {
       const { data, error } = await (supabase as any).rpc("fn_ig_dashboard", { p_window: "30d" });
       if (error) throw error;
       return data as IgDashboard;
+    },
+  });
+  // Sam's pause (2026-11-04): one small read beside the dashboard so the banner can say the quiet
+  // bot is quiet on purpose, not broken. An unreadable status shows no banner; the sender is the gate.
+  const automationPause = useQuery({
+    queryKey: ["ig-automation-pause"],
+    refetchInterval: paused ? false : REFETCH_MS,
+    queryFn: async () => {
+      // fn_ig_automation_pause_status is newer than the generated client types.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc("fn_ig_automation_pause_status");
+      if (error) throw error;
+      return (data ?? null) as IgPauseStatus | null;
     },
   });
 
@@ -367,6 +380,7 @@ export default function InstagramInbox() {
         onSeeThem={() => jump("do")}
         onSeeWhy={() => { go("numbers"); window.setTimeout(() => document.getElementById("ig-numbers-health")?.scrollIntoView?.({ block: "start" }), 50); }}
         now={now}
+        pause={automationPause.data ?? null}
       />
 
       <GrowScoreboard label={SCORE.label} tiles={tiles} className="mt-4" />

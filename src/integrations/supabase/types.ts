@@ -14,342 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      lead_bundle_events: {
-        Row: {
-          id: number | null
-          bundle_id: string | null
-          item_id: string | null
-          user_id: string | null
-          actor: string | null
-          action: string | null
-          detail: Json | null
-          at: string | null
-        }
-        Insert: {
-          id?: number | null
-          bundle_id?: string | null
-          item_id?: string | null
-          user_id?: string | null
-          actor?: string | null
-          action?: string | null
-          detail?: Json | null
-          at?: string | null
-        }
-        Update: {
-          id?: number | null
-          bundle_id?: string | null
-          item_id?: string | null
-          user_id?: string | null
-          actor?: string | null
-          action?: string | null
-          detail?: Json | null
-          at?: string | null
-        }
-        Relationships: []
-      }
-      lead_bundle_grants: {
-        Row: {
-          id: string | null
-          bundle_id: string | null
-          user_id: string | null
-          granted_by: string | null
-          granted_at: string | null
-          revoked_by: string | null
-          revoked_at: string | null
-          note: string | null
-        }
-        Insert: {
-          id?: string | null
-          bundle_id?: string | null
-          user_id?: string | null
-          granted_by?: string | null
-          granted_at?: string | null
-          revoked_by?: string | null
-          revoked_at?: string | null
-          note?: string | null
-        }
-        Update: {
-          id?: string | null
-          bundle_id?: string | null
-          user_id?: string | null
-          granted_by?: string | null
-          granted_at?: string | null
-          revoked_by?: string | null
-          revoked_at?: string | null
-          note?: string | null
-        }
-        Relationships: []
-      }
-      lead_bundle_items: {
-        Row: {
-          id: string | null
-          bundle_id: string | null
-          phone10: string | null
-          first_name: string | null
-          last_name: string | null
-          email: string | null
-          quality_tier: string | null
-          quality_reason: string | null
-          attempts: number | null
-          last_dialed_at: string | null
-          last_disposition: string | null
-          last_agent: string | null
-          added_at: string | null
-          removed_at: string | null
-          status: string | null
-          status_note: string | null
-          status_by: string | null
-          status_at: string | null
-        }
-        Insert: {
-          id?: string | null
-          bundle_id?: string | null
-          phone10?: string | null
-          first_name?: string | null
-          last_name?: string | null
-          email?: string | null
-          quality_tier?: string | null
-          quality_reason?: string | null
-          attempts?: number | null
-          last_dialed_at?: string | null
-          last_disposition?: string | null
-          last_agent?: string | null
-          added_at?: string | null
-          removed_at?: string | null
-          status?: string | null
-          status_note?: string | null
-          status_by?: string | null
-          status_at?: string | null
-        }
-        Update: {
-          id?: string | null
-          bundle_id?: string | null
-          phone10?: string | null
-          first_name?: string | null
-          last_name?: string | null
-          email?: string | null
-          quality_tier?: string | null
-          quality_reason?: string | null
-          attempts?: number | null
-          last_dialed_at?: string | null
-          last_disposition?: string | null
-          last_agent?: string | null
-          added_at?: string | null
-          removed_at?: string | null
-          status?: string | null
-          status_note?: string | null
-          status_by?: string | null
-          status_at?: string | null
-        }
-        Relationships: []
-      }
-      lead_bundles: {
-        Row: {
-          id: string | null
-          name: string | null
-          format: string | null
-          criteria: Json | null
-          note: string | null
-          created_by: string | null
-          created_at: string | null
-          archived_at: string | null
-        }
-        Insert: {
-          id?: string | null
-          name?: string | null
-          format?: string | null
-          criteria?: Json | null
-          note?: string | null
-          created_by?: string | null
-          created_at?: string | null
-          archived_at?: string | null
-        }
-        Update: {
-          id?: string | null
-          name?: string | null
-          format?: string | null
-          criteria?: Json | null
-          note?: string | null
-          created_by?: string | null
-          created_at?: string | null
-          archived_at?: string | null
-        }
-        Relationships: []
-      }
-      leaderboard_cheers: {
-        Row: {
-          id: string | null
-          month_start: string | null
-          to_agent_key: string | null
-          from_user_id: string | null
-          created_at: string | null
-        }
-        Insert: {
-          id?: string | null
-          month_start?: string | null
-          to_agent_key?: string | null
-          from_user_id?: string | null
-          created_at?: string | null
-        }
-        Update: {
-          id?: string | null
-          month_start?: string | null
-          to_agent_key?: string | null
-          from_user_id?: string | null
-          created_at?: string | null
-        }
-        Relationships: []
-      }
-      money_inbox_sources: {
-        Row: {
-          source: string
-          connected: boolean
-          reason: string
-          last_ingested_at: string | null
-          checked_at: string
-        }
-        Insert: {
-          source: string
-          connected: boolean
-          reason: string
-          last_ingested_at?: string | null
-          checked_at?: string
-        }
-        Update: {
-          source?: string
-          connected?: boolean
-          reason?: string
-          last_ingested_at?: string | null
-          checked_at?: string
-        }
-        Relationships: []
-      }
-      money_inbox_threads: {
-        Row: {
-          source: string
-          topics: string[]
-          priority: number
-          private: boolean
-          privacy_reason: string | null
-          classified_at: string | null
-          snoozed_until: string | null
-          source_url: string | null
-          send_supported: boolean
-          send_started_at: string | null
-          delivered_at: string | null
-          delivery_latency_ms: number | null
-          id: string
-          chat_guid: string
-          chat_identifier: string | null
-          handle: string | null
-          display_name: string | null
-          is_group: boolean
-          category: string | null
-          money_score: number
-          money_reasons: string[]
-          rank: number | null
-          awaiting_reply: boolean
-          last_inbound_at: string | null
-          last_inbound_text: string | null
-          last_outbound_at: string | null
-          excerpt: Json
-          draft_reply: string | null
-          draft_engine: string | null
-          final_reply: string | null
-          status: string
-          approved_at: string | null
-          sent_at: string | null
-          send_receipt: string | null
-          send_error: string | null
-          muted: boolean
-          in_scan: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          source?: string
-          topics?: string[]
-          priority?: number
-          private?: boolean
-          privacy_reason?: string | null
-          classified_at?: string | null
-          snoozed_until?: string | null
-          source_url?: string | null
-          send_supported?: boolean
-          send_started_at?: string | null
-          delivered_at?: string | null
-          delivery_latency_ms?: number | null
-          id?: string
-          chat_guid?: string
-          chat_identifier?: string | null
-          handle?: string | null
-          display_name?: string | null
-          is_group?: boolean
-          category?: string | null
-          money_score?: number
-          money_reasons?: string[]
-          rank?: number | null
-          awaiting_reply?: boolean
-          last_inbound_at?: string | null
-          last_inbound_text?: string | null
-          last_outbound_at?: string | null
-          excerpt?: Json
-          draft_reply?: string | null
-          draft_engine?: string | null
-          final_reply?: string | null
-          status?: string
-          approved_at?: string | null
-          sent_at?: string | null
-          send_receipt?: string | null
-          send_error?: string | null
-          muted?: boolean
-          in_scan?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          source?: string
-          topics?: string[]
-          priority?: number
-          private?: boolean
-          privacy_reason?: string | null
-          classified_at?: string | null
-          snoozed_until?: string | null
-          source_url?: string | null
-          send_supported?: boolean
-          send_started_at?: string | null
-          delivered_at?: string | null
-          delivery_latency_ms?: number | null
-          id?: string
-          chat_guid?: string
-          chat_identifier?: string | null
-          handle?: string | null
-          display_name?: string | null
-          is_group?: boolean
-          category?: string | null
-          money_score?: number
-          money_reasons?: string[]
-          rank?: number | null
-          awaiting_reply?: boolean
-          last_inbound_at?: string | null
-          last_inbound_text?: string | null
-          last_outbound_at?: string | null
-          excerpt?: Json
-          draft_reply?: string | null
-          draft_engine?: string | null
-          final_reply?: string | null
-          status?: string
-          approved_at?: string | null
-          sent_at?: string | null
-          send_receipt?: string | null
-          send_error?: string | null
-          muted?: boolean
-          in_scan?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       _backup_20261014_contracting_sheet_fix: {
         Row: {
           agent_id: string | null
@@ -376,22 +40,22 @@ export type Database = {
       }
       _backup_20261025_jr_kj_termination: {
         Row: {
+          created_at: string | null
           kind: string | null
           ref_id: string | null
           row: Json | null
-          created_at: string | null
         }
         Insert: {
+          created_at?: string | null
           kind?: string | null
           ref_id?: string | null
           row?: Json | null
-          created_at?: string | null
         }
         Update: {
+          created_at?: string | null
           kind?: string | null
           ref_id?: string | null
           row?: Json | null
-          created_at?: string | null
         }
         Relationships: []
       }
@@ -583,6 +247,13 @@ export type Database = {
             columns: ["matched_agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "account_claims_matched_agent_id_fkey"
+            columns: ["matched_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -1044,6 +715,13 @@ export type Database = {
             foreignKeyName: "account_claims_matched_application_id_fkey"
             columns: ["matched_application_id"]
             isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "account_claims_matched_application_id_fkey"
+            columns: ["matched_application_id"]
+            isOneToOne: false
             referencedRelation: "v_recruiter_bounty_candidates"
             referencedColumns: ["application_id"]
           },
@@ -1435,6 +1113,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "aflac_submissions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -2062,6 +1747,13 @@ export type Database = {
             foreignKeyName: "aged_leads_assigned_agent_id_fkey"
             columns: ["assigned_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "aged_leads_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -2560,6 +2252,13 @@ export type Database = {
             columns: ["assigned_manager_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "aged_leads_assigned_manager_id_fkey"
+            columns: ["assigned_manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -3257,6 +2956,13 @@ export type Database = {
             foreignKeyName: "agent_achievements_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_achievements_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -3801,6 +3507,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_attendance_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -4408,6 +4121,13 @@ export type Database = {
             foreignKeyName: "agent_award_profiles_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: true
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_award_profiles_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -4961,6 +4681,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_carrier_comp_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -5604,6 +5331,13 @@ export type Database = {
             foreignKeyName: "agent_contract_levels_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: true
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_contract_levels_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -6157,6 +5891,13 @@ export type Database = {
             foreignKeyName: "agent_contract_profile_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: true
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_contract_profile_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -6692,6 +6433,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_contract_status_history_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -7260,6 +7008,13 @@ export type Database = {
             foreignKeyName: "agent_credentials_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_credentials_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -7820,6 +7575,13 @@ export type Database = {
             foreignKeyName: "agent_documents_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_documents_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -8349,6 +8111,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -8964,6 +8733,13 @@ export type Database = {
             foreignKeyName: "agent_lead_stats_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_lead_stats_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -9508,6 +9284,13 @@ export type Database = {
             foreignKeyName: "agent_license_alerts_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_license_alerts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -10034,6 +9817,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_manager_reparent_log_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -10587,6 +10377,13 @@ export type Database = {
             foreignKeyName: "agent_metrics_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_metrics_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -11110,6 +10907,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_notes_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -11660,6 +11464,13 @@ export type Database = {
             foreignKeyName: "agent_onboarding_queue_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_onboarding_queue_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -12186,6 +11997,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_ratings_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -12730,6 +12548,13 @@ export type Database = {
             foreignKeyName: "agent_removal_requests_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_removal_requests_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -13253,6 +13078,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: true
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_stage_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -13830,6 +13662,13 @@ export type Database = {
             foreignKeyName: "agent_stage_moves_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_stage_moves_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -14383,6 +14222,13 @@ export type Database = {
             foreignKeyName: "agent_start_plans_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: true
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_start_plans_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -14912,6 +14758,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_status_changes_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -15486,6 +15339,13 @@ export type Database = {
             foreignKeyName: "agent_strikes_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_strikes_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -15948,6 +15808,13 @@ export type Database = {
             foreignKeyName: "agent_strikes_related_application_id_fkey"
             columns: ["related_application_id"]
             isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "agent_strikes_related_application_id_fkey"
+            columns: ["related_application_id"]
+            isOneToOne: false
             referencedRelation: "v_recruiter_bounty_candidates"
             referencedColumns: ["application_id"]
           },
@@ -16263,6 +16130,13 @@ export type Database = {
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_touches_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -16767,6 +16641,13 @@ export type Database = {
             columns: ["subject_agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_touches_subject_agent_id_fkey"
+            columns: ["subject_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -17228,6 +17109,13 @@ export type Database = {
             foreignKeyName: "agent_touches_subject_application_id_fkey"
             columns: ["subject_application_id"]
             isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "agent_touches_subject_application_id_fkey"
+            columns: ["subject_application_id"]
+            isOneToOne: false
             referencedRelation: "v_recruiter_bounty_candidates"
             referencedColumns: ["application_id"]
           },
@@ -17473,6 +17361,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_work_commitments_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -18170,6 +18065,13 @@ export type Database = {
             foreignKeyName: "agentlink_agents_local_agent_id_fkey"
             columns: ["local_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agentlink_agents_local_agent_id_fkey"
+            columns: ["local_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -18753,6 +18655,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agentlink_appointments_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -19433,6 +19342,13 @@ export type Database = {
             foreignKeyName: "agentlink_binary_docs_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agentlink_binary_docs_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -20007,6 +19923,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agentlink_book_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -20602,6 +20525,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agentlink_book_of_business_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -21529,6 +21459,13 @@ export type Database = {
             foreignKeyName: "agentlink_clients_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agentlink_clients_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -22115,6 +22052,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agentlink_commissions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -22712,6 +22656,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agentlink_contracts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -23402,6 +23353,13 @@ export type Database = {
             foreignKeyName: "agentlink_leads_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agentlink_leads_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -23985,6 +23943,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agentlink_rewards_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -24916,6 +24881,13 @@ export type Database = {
             foreignKeyName: "agents_canonical_agent_id_fkey"
             columns: ["canonical_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_canonical_agent_id_fkey"
+            columns: ["canonical_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -25427,6 +25399,13 @@ export type Database = {
             foreignKeyName: "agents_invited_by_manager_id_fkey"
             columns: ["invited_by_manager_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_invited_by_manager_id_fkey"
+            columns: ["invited_by_manager_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -25925,6 +25904,13 @@ export type Database = {
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -26407,6 +26393,13 @@ export type Database = {
             foreignKeyName: "agents_source_application_id_fkey"
             columns: ["source_application_id"]
             isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "agents_source_application_id_fkey"
+            columns: ["source_application_id"]
+            isOneToOne: false
             referencedRelation: "v_recruiter_bounty_candidates"
             referencedColumns: ["application_id"]
           },
@@ -26597,6 +26590,13 @@ export type Database = {
             columns: ["switched_to_manager_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_switched_to_manager_id_fkey"
+            columns: ["switched_to_manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -27101,6 +27101,13 @@ export type Database = {
             columns: ["training_stage_override_by"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_training_stage_override_by_fkey"
+            columns: ["training_stage_override_by"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -28226,6 +28233,42 @@ export type Database = {
         }
         Relationships: []
       }
+      analytics_events_2027_01: {
+        Row: {
+          created_at: string
+          event_category: string | null
+          event_name: string
+          id: string
+          properties: Json | null
+          session_id: string | null
+          url: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_category?: string | null
+          event_name: string
+          id?: string
+          properties?: Json | null
+          session_id?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_category?: string | null
+          event_name?: string
+          id?: string
+          properties?: Json | null
+          session_id?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       analytics_events_default: {
         Row: {
           created_at: string
@@ -28475,6 +28518,13 @@ export type Database = {
             columns: ["application_id"]
             isOneToOne: false
             referencedRelation: "v_queue_stalled_applications"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "apex_agent_journeys_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
             referencedColumns: ["application_id"]
           },
           {
@@ -28806,6 +28856,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "apex_carrier_contracts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -29377,6 +29434,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "apex_challenge_unlocks_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -30014,6 +30078,13 @@ export type Database = {
             foreignKeyName: "apex_contact_actions_application_id_fkey"
             columns: ["application_id"]
             isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "apex_contact_actions_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
             referencedRelation: "v_recruiter_bounty_candidates"
             referencedColumns: ["application_id"]
           },
@@ -30556,6 +30627,13 @@ export type Database = {
             foreignKeyName: "applicant_checkins_application_id_fkey"
             columns: ["application_id"]
             isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "applicant_checkins_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
             referencedRelation: "v_recruiter_bounty_candidates"
             referencedColumns: ["application_id"]
           },
@@ -30746,6 +30824,13 @@ export type Database = {
             foreignKeyName: "applicant_login_queue_application_id_fkey"
             columns: ["application_id"]
             isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "applicant_login_queue_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
             referencedRelation: "v_recruiter_bounty_candidates"
             referencedColumns: ["application_id"]
           },
@@ -30924,6 +31009,13 @@ export type Database = {
             foreignKeyName: "applicant_stage_moves_application_id_fkey"
             columns: ["application_id"]
             isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "applicant_stage_moves_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
             referencedRelation: "v_recruiter_bounty_candidates"
             referencedColumns: ["application_id"]
           },
@@ -31096,6 +31188,13 @@ export type Database = {
             columns: ["application_id"]
             isOneToOne: false
             referencedRelation: "v_queue_stalled_applications"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "applicant_touchpoints_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
             referencedColumns: ["application_id"]
           },
           {
@@ -31304,6 +31403,13 @@ export type Database = {
             columns: ["application_id"]
             isOneToOne: false
             referencedRelation: "v_queue_stalled_applications"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "application_contact_log_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
             referencedColumns: ["application_id"]
           },
           {
@@ -32001,6 +32107,13 @@ export type Database = {
             foreignKeyName: "applications_assigned_agent_id_fkey"
             columns: ["assigned_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -32526,6 +32639,13 @@ export type Database = {
             foreignKeyName: "applications_referral_manager_id_fkey"
             columns: ["referral_manager_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_referral_manager_id_fkey"
+            columns: ["referral_manager_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -33030,6 +33150,13 @@ export type Database = {
             foreignKeyName: "applications_referral_recruiter_id_fkey"
             columns: ["referral_recruiter_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_referral_recruiter_id_fkey"
+            columns: ["referral_recruiter_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -33528,6 +33655,13 @@ export type Database = {
             columns: ["referrer_agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_referrer_agent_id_fkey"
+            columns: ["referrer_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -34474,6 +34608,51 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_log_2027_01: {
+        Row: {
+          action: string
+          actor_role: string | null
+          actor_user_id: string | null
+          after_data: Json | null
+          before_data: Json | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          ip_address: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_role?: string | null
+          actor_user_id?: string | null
+          after_data?: Json | null
+          before_data?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_role?: string | null
+          actor_user_id?: string | null
+          after_data?: Json | null
+          before_data?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       audit_log_default: {
         Row: {
           action: string
@@ -34964,6 +35143,13 @@ export type Database = {
             columns: ["winner_agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "award_batches_winner_agent_id_fkey"
+            columns: ["winner_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -36159,6 +36345,13 @@ export type Database = {
             foreignKeyName: "call_activity_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "call_activity_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -36903,6 +37096,13 @@ export type Database = {
             foreignKeyName: "call_recordings_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "call_recordings_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -37527,6 +37727,13 @@ export type Database = {
             foreignKeyName: "call_transcripts_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "call_transcripts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -37976,6 +38183,13 @@ export type Database = {
             columns: ["application_id"]
             isOneToOne: false
             referencedRelation: "v_queue_stalled_applications"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "call_transcripts_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
             referencedColumns: ["application_id"]
           },
           {
@@ -38215,6 +38429,13 @@ export type Database = {
             foreignKeyName: "candidate_notes_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "candidate_notes_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -38664,6 +38885,13 @@ export type Database = {
             columns: ["application_id"]
             isOneToOne: false
             referencedRelation: "v_queue_stalled_applications"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "candidate_notes_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
             referencedColumns: ["application_id"]
           },
           {
@@ -38922,6 +39150,13 @@ export type Database = {
             foreignKeyName: "candidate_smart_goals_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "candidate_smart_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -39371,6 +39606,13 @@ export type Database = {
             columns: ["application_id"]
             isOneToOne: false
             referencedRelation: "v_queue_stalled_applications"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "candidate_smart_goals_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
             referencedColumns: ["application_id"]
           },
           {
@@ -39679,6 +39921,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_policies_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -40464,6 +40713,13 @@ export type Database = {
             foreignKeyName: "channel_deprovision_queue_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "channel_deprovision_queue_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -41085,6 +41341,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "churn_risk_alerts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -42178,6 +42441,13 @@ export type Database = {
             foreignKeyName: "commission_audit_log_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "commission_audit_log_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -42818,6 +43088,13 @@ export type Database = {
             foreignKeyName: "commission_ledger_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "commission_ledger_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -43443,6 +43720,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "commission_recovery_attempts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -44126,6 +44410,13 @@ export type Database = {
             foreignKeyName: "comp_rates_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "comp_rates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -44685,6 +44976,13 @@ export type Database = {
             foreignKeyName: "contact_history_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contact_history_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -45134,6 +45432,13 @@ export type Database = {
             columns: ["application_id"]
             isOneToOne: false
             referencedRelation: "v_queue_stalled_applications"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "contact_history_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
             referencedColumns: ["application_id"]
           },
           {
@@ -46089,6 +46394,13 @@ export type Database = {
             foreignKeyName: "contract_review_marks_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contract_review_marks_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -46810,6 +47122,13 @@ export type Database = {
             foreignKeyName: "contracting_case_tracking_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_case_tracking_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -47458,6 +47777,13 @@ export type Database = {
             foreignKeyName: "contracting_checkins_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: true
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_checkins_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -48092,6 +48418,13 @@ export type Database = {
             foreignKeyName: "contracting_ethos_approvals_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: true
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_ethos_approvals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -48662,6 +48995,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_followups_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -49311,6 +49651,13 @@ export type Database = {
             foreignKeyName: "contracting_intakes_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -49877,6 +50224,13 @@ export type Database = {
             foreignKeyName: "contracting_link_opens_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: true
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_link_opens_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -50400,6 +50754,13 @@ export type Database = {
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_links_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -51029,6 +51390,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_requests_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -51666,6 +52034,13 @@ export type Database = {
             foreignKeyName: "culture_events_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "culture_events_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -52254,6 +52629,13 @@ export type Database = {
             foreignKeyName: "culture_events_manager_id_fkey"
             columns: ["manager_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "culture_events_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -52786,6 +53168,13 @@ export type Database = {
             foreignKeyName: "culture_manager_credits_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "culture_manager_credits_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -53298,6 +53687,13 @@ export type Database = {
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "culture_manager_credits_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -54732,6 +55128,13 @@ export type Database = {
             foreignKeyName: "daily_brief_log_recipient_agent_id_fkey"
             columns: ["recipient_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "daily_brief_log_recipient_agent_id_fkey"
+            columns: ["recipient_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -55282,6 +55685,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "daily_production_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -56785,6 +57195,13 @@ export type Database = {
             foreignKeyName: "deals_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "deals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -57367,6 +57784,13 @@ export type Database = {
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "deals_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -58049,6 +58473,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "dialer_weekly_payments_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -58972,6 +59403,13 @@ export type Database = {
             foreignKeyName: "email_delivery_log_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "email_delivery_log_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -59534,6 +59972,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "email_tracking_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -60171,6 +60616,13 @@ export type Database = {
             columns: ["owner_agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "ethos_book_policies_owner_agent_id_fkey"
+            columns: ["owner_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -60959,6 +61411,13 @@ export type Database = {
             foreignKeyName: "field_checkins_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "field_checkins_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -61491,6 +61950,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "free_leads_weekly_delivery_log_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -62113,6 +62579,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: true
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "getting_started_progress_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -63067,60 +63540,6 @@ export type Database = {
         }
         Relationships: []
       }
-      ig_trial_reel_queue: {
-        Row: {
-          id: string
-          source_path: string
-          storage_path: string
-          video_url: string
-          caption: string
-          duration_s: number | null
-          status: string
-          container_id: string | null
-          container_at: string | null
-          media_id: string | null
-          permalink: string | null
-          attempts: number
-          error: string | null
-          created_at: string
-          published_at: string | null
-        }
-        Insert: {
-          id?: string
-          source_path: string
-          storage_path: string
-          video_url: string
-          caption?: string
-          duration_s?: number | null
-          status?: string
-          container_id?: string | null
-          container_at?: string | null
-          media_id?: string | null
-          permalink?: string | null
-          attempts?: number
-          error?: string | null
-          created_at?: string
-          published_at?: string | null
-        }
-        Update: {
-          id?: string
-          source_path?: string
-          storage_path?: string
-          video_url?: string
-          caption?: string
-          duration_s?: number | null
-          status?: string
-          container_id?: string | null
-          container_at?: string | null
-          media_id?: string | null
-          permalink?: string | null
-          attempts?: number
-          error?: string | null
-          created_at?: string
-          published_at?: string | null
-        }
-        Relationships: []
-      }
       ig_reels_cache: {
         Row: {
           caption: string | null
@@ -63162,34 +63581,91 @@ export type Database = {
       }
       ig_thread_actions: {
         Row: {
-          id: string | null
-          external_id: string | null
-          action: string | null
-          snoozed_until: string | null
-          note: string | null
-          meta: Json | null
+          action: string
           actor_id: string | null
-          created_at: string | null
+          created_at: string
+          external_id: string
+          id: string
+          meta: Json
+          note: string | null
+          snoozed_until: string | null
         }
         Insert: {
-          id?: string | null
-          external_id?: string | null
-          action?: string | null
-          snoozed_until?: string | null
-          note?: string | null
-          meta?: Json | null
+          action: string
           actor_id?: string | null
-          created_at?: string | null
+          created_at?: string
+          external_id: string
+          id?: string
+          meta?: Json
+          note?: string | null
+          snoozed_until?: string | null
         }
         Update: {
-          id?: string | null
-          external_id?: string | null
-          action?: string | null
-          snoozed_until?: string | null
-          note?: string | null
-          meta?: Json | null
+          action?: string
           actor_id?: string | null
-          created_at?: string | null
+          created_at?: string
+          external_id?: string
+          id?: string
+          meta?: Json
+          note?: string | null
+          snoozed_until?: string | null
+        }
+        Relationships: []
+      }
+      ig_trial_reel_queue: {
+        Row: {
+          attempts: number
+          caption: string
+          container_at: string | null
+          container_id: string | null
+          created_at: string
+          duration_s: number | null
+          error: string | null
+          id: string
+          media_id: string | null
+          permalink: string | null
+          published_at: string | null
+          source: string | null
+          source_path: string
+          status: string
+          storage_path: string
+          video_url: string
+        }
+        Insert: {
+          attempts?: number
+          caption?: string
+          container_at?: string | null
+          container_id?: string | null
+          created_at?: string
+          duration_s?: number | null
+          error?: string | null
+          id?: string
+          media_id?: string | null
+          permalink?: string | null
+          published_at?: string | null
+          source?: string | null
+          source_path: string
+          status?: string
+          storage_path: string
+          video_url: string
+        }
+        Update: {
+          attempts?: number
+          caption?: string
+          container_at?: string | null
+          container_id?: string | null
+          created_at?: string
+          duration_s?: number | null
+          error?: string | null
+          id?: string
+          media_id?: string | null
+          permalink?: string | null
+          published_at?: string | null
+          source?: string | null
+          source_path?: string
+          status?: string
+          storage_path?: string
+          video_url?: string
         }
         Relationships: []
       }
@@ -63396,6 +63872,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "inactive_agent_queue_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -64008,6 +64491,13 @@ export type Database = {
             foreignKeyName: "inbound_leads_owner_agent_id_fkey"
             columns: ["owner_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "inbound_leads_owner_agent_id_fkey"
+            columns: ["owner_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -64524,6 +65014,13 @@ export type Database = {
             foreignKeyName: "inbox_messages_application_id_fkey"
             columns: ["application_id"]
             isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "inbox_messages_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
             referencedRelation: "v_recruiter_bounty_candidates"
             referencedColumns: ["application_id"]
           },
@@ -64741,6 +65238,39 @@ export type Database = {
         }
         Relationships: []
       }
+      instagram_pause_refusals: {
+        Row: {
+          caller: string | null
+          comment_id: string | null
+          created_at: string
+          external_id: string | null
+          id: string
+          kind: string
+          message: string | null
+          meta: Json
+        }
+        Insert: {
+          caller?: string | null
+          comment_id?: string | null
+          created_at?: string
+          external_id?: string | null
+          id?: string
+          kind: string
+          message?: string | null
+          meta?: Json
+        }
+        Update: {
+          caller?: string | null
+          comment_id?: string | null
+          created_at?: string
+          external_id?: string | null
+          id?: string
+          kind?: string
+          message?: string | null
+          meta?: Json
+        }
+        Relationships: []
+      }
       instagram_subscriptions: {
         Row: {
           agent_id: string
@@ -64905,6 +65435,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: true
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "instagram_subscriptions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -65491,6 +66028,13 @@ export type Database = {
             foreignKeyName: "insuracloud_downline_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "insuracloud_downline_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -66023,6 +66567,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "insuracloud_payouts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -66588,6 +67139,13 @@ export type Database = {
             foreignKeyName: "insuracloud_policies_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "insuracloud_policies_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -67141,6 +67699,13 @@ export type Database = {
             foreignKeyName: "insuracloud_snapshots_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "insuracloud_snapshots_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -67676,6 +68241,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "insuracloud_sync_log_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -68539,6 +69111,13 @@ export type Database = {
             foreignKeyName: "interview_events_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "interview_events_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -68988,6 +69567,13 @@ export type Database = {
             columns: ["application_id"]
             isOneToOne: false
             referencedRelation: "v_queue_stalled_applications"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "interview_events_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
             referencedColumns: ["application_id"]
           },
           {
@@ -69244,6 +69830,13 @@ export type Database = {
             foreignKeyName: "interview_recordings_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "interview_recordings_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -69699,6 +70292,13 @@ export type Database = {
             foreignKeyName: "interview_recordings_application_id_fkey"
             columns: ["application_id"]
             isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "interview_recordings_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
             referencedRelation: "v_recruiter_bounty_candidates"
             referencedColumns: ["application_id"]
           },
@@ -69911,6 +70511,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "invitation_seen_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -70521,6 +71128,13 @@ export type Database = {
             foreignKeyName: "invite_tokens_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "invite_tokens_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -71026,6 +71640,13 @@ export type Database = {
             columns: ["revoked_by"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "invite_tokens_revoked_by_fkey"
+            columns: ["revoked_by"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -71543,6 +72164,13 @@ export type Database = {
             foreignKeyName: "invite_tokens_target_manager_id_fkey"
             columns: ["target_manager_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "invite_tokens_target_manager_id_fkey"
+            columns: ["target_manager_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -72047,6 +72675,13 @@ export type Database = {
             foreignKeyName: "invite_tokens_used_by_agent_id_fkey"
             columns: ["used_by_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "invite_tokens_used_by_agent_id_fkey"
+            columns: ["used_by_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -72496,6 +73131,13 @@ export type Database = {
             columns: ["used_by_application_id"]
             isOneToOne: false
             referencedRelation: "v_queue_stalled_applications"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "invite_tokens_used_by_application_id_fkey"
+            columns: ["used_by_application_id"]
+            isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
             referencedColumns: ["application_id"]
           },
           {
@@ -72719,6 +73361,13 @@ export type Database = {
             foreignKeyName: "lead_activity_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "lead_activity_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
             referencedRelation: "v_recruiter_bounty_candidates"
             referencedColumns: ["application_id"]
           },
@@ -72772,6 +73421,231 @@ export type Database = {
             referencedColumns: ["application_id"]
           },
         ]
+      }
+      lead_bundle_events: {
+        Row: {
+          action: string
+          actor: string | null
+          at: string
+          bundle_id: string | null
+          detail: Json | null
+          id: number
+          item_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          actor?: string | null
+          at?: string
+          bundle_id?: string | null
+          detail?: Json | null
+          id?: number
+          item_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor?: string | null
+          at?: string
+          bundle_id?: string | null
+          detail?: Json | null
+          id?: number
+          item_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_bundle_events_bundle_id_fkey"
+            columns: ["bundle_id"]
+            isOneToOne: false
+            referencedRelation: "lead_bundles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_bundle_events_bundle_id_fkey"
+            columns: ["bundle_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_bundle_summary"
+            referencedColumns: ["bundle_id"]
+          },
+        ]
+      }
+      lead_bundle_grants: {
+        Row: {
+          bundle_id: string
+          granted_at: string
+          granted_by: string | null
+          id: string
+          note: string | null
+          revoked_at: string | null
+          revoked_by: string | null
+          user_id: string
+        }
+        Insert: {
+          bundle_id: string
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          note?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          user_id: string
+        }
+        Update: {
+          bundle_id?: string
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          note?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_bundle_grants_bundle_id_fkey"
+            columns: ["bundle_id"]
+            isOneToOne: false
+            referencedRelation: "lead_bundles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_bundle_grants_bundle_id_fkey"
+            columns: ["bundle_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_bundle_summary"
+            referencedColumns: ["bundle_id"]
+          },
+        ]
+      }
+      lead_bundle_items: {
+        Row: {
+          added_at: string
+          age: number | null
+          attempts: number | null
+          attrs: Json | null
+          bundle_id: string
+          email: string | null
+          first_name: string | null
+          id: string
+          last_agent: string | null
+          last_dialed_at: string | null
+          last_disposition: string | null
+          last_name: string | null
+          lead_id: string | null
+          phone10: string
+          quality_reason: string | null
+          quality_tier: string | null
+          recording_path: string | null
+          removed_at: string | null
+          source_kind: string | null
+          state: string | null
+          status: string
+          status_at: string | null
+          status_by: string | null
+          status_note: string | null
+        }
+        Insert: {
+          added_at?: string
+          age?: number | null
+          attempts?: number | null
+          attrs?: Json | null
+          bundle_id: string
+          email?: string | null
+          first_name?: string | null
+          id?: string
+          last_agent?: string | null
+          last_dialed_at?: string | null
+          last_disposition?: string | null
+          last_name?: string | null
+          lead_id?: string | null
+          phone10: string
+          quality_reason?: string | null
+          quality_tier?: string | null
+          recording_path?: string | null
+          removed_at?: string | null
+          source_kind?: string | null
+          state?: string | null
+          status?: string
+          status_at?: string | null
+          status_by?: string | null
+          status_note?: string | null
+        }
+        Update: {
+          added_at?: string
+          age?: number | null
+          attempts?: number | null
+          attrs?: Json | null
+          bundle_id?: string
+          email?: string | null
+          first_name?: string | null
+          id?: string
+          last_agent?: string | null
+          last_dialed_at?: string | null
+          last_disposition?: string | null
+          last_name?: string | null
+          lead_id?: string | null
+          phone10?: string
+          quality_reason?: string | null
+          quality_tier?: string | null
+          recording_path?: string | null
+          removed_at?: string | null
+          source_kind?: string | null
+          state?: string | null
+          status?: string
+          status_at?: string | null
+          status_by?: string | null
+          status_note?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_bundle_items_bundle_id_fkey"
+            columns: ["bundle_id"]
+            isOneToOne: false
+            referencedRelation: "lead_bundles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_bundle_items_bundle_id_fkey"
+            columns: ["bundle_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_bundle_summary"
+            referencedColumns: ["bundle_id"]
+          },
+        ]
+      }
+      lead_bundles: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          created_by: string | null
+          criteria: Json
+          format: string
+          id: string
+          name: string
+          note: string | null
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          criteria?: Json
+          format: string
+          id?: string
+          name: string
+          note?: string | null
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          criteria?: Json
+          format?: string
+          id?: string
+          name?: string
+          note?: string | null
+        }
+        Relationships: []
       }
       lead_counter: {
         Row: {
@@ -72958,6 +73832,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "lead_payment_tracking_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -73505,6 +74386,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "lead_purchase_requests_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -74100,6 +74988,13 @@ export type Database = {
             foreignKeyName: "lead_purchases_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "lead_purchases_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -74483,6 +75378,95 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_resale_ledger: {
+        Row: {
+          bundle_id: string | null
+          id: string
+          lead_age_days_at_sale: number | null
+          lead_id: string | null
+          marked_by: string | null
+          note: string | null
+          phone10: string
+          price_cents: number | null
+          sold_at: string
+          sold_to: string | null
+          source_kind: string
+        }
+        Insert: {
+          bundle_id?: string | null
+          id?: string
+          lead_age_days_at_sale?: number | null
+          lead_id?: string | null
+          marked_by?: string | null
+          note?: string | null
+          phone10: string
+          price_cents?: number | null
+          sold_at?: string
+          sold_to?: string | null
+          source_kind?: string
+        }
+        Update: {
+          bundle_id?: string | null
+          id?: string
+          lead_age_days_at_sale?: number | null
+          lead_id?: string | null
+          marked_by?: string | null
+          note?: string | null
+          phone10?: string
+          price_cents?: number | null
+          sold_at?: string
+          sold_to?: string | null
+          source_kind?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_resale_ledger_bundle_id_fkey"
+            columns: ["bundle_id"]
+            isOneToOne: false
+            referencedRelation: "lead_bundles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_resale_ledger_bundle_id_fkey"
+            columns: ["bundle_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_bundle_summary"
+            referencedColumns: ["bundle_id"]
+          },
+        ]
+      }
+      leaderboard_cheers: {
+        Row: {
+          created_at: string
+          from_user_id: string
+          id: string
+          month_start: string
+          to_agent_key: string
+        }
+        Insert: {
+          created_at?: string
+          from_user_id: string
+          id?: string
+          month_start: string
+          to_agent_key: string
+        }
+        Update: {
+          created_at?: string
+          from_user_id?: string
+          id?: string
+          month_start?: string
+          to_agent_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leaderboard_cheers_from_user_id_fkey"
+            columns: ["from_user_id"]
+            isOneToOne: false
+            referencedRelation: "v_departed_logins_to_revoke"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       leaderboard_snapshots: {
         Row: {
           agent_id: string
@@ -74656,6 +75640,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "leaderboard_snapshots_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -75194,6 +76185,13 @@ export type Database = {
             foreignKeyName: "license_inference_log_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "license_inference_log_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -75695,6 +76693,13 @@ export type Database = {
             foreignKeyName: "license_milestone_outbox_application_id_fkey"
             columns: ["application_id"]
             isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "license_milestone_outbox_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
             referencedRelation: "v_recruiter_bounty_candidates"
             referencedColumns: ["application_id"]
           },
@@ -75934,6 +76939,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "license_renewal_alerts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -76486,6 +77498,13 @@ export type Database = {
             foreignKeyName: "licensing_delegates_application_id_fkey"
             columns: ["application_id"]
             isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "licensing_delegates_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
             referencedRelation: "v_recruiter_bounty_candidates"
             referencedColumns: ["application_id"]
           },
@@ -76676,6 +77695,13 @@ export type Database = {
             columns: ["delegate_agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "licensing_delegates_delegate_agent_id_fkey"
+            columns: ["delegate_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -77180,6 +78206,13 @@ export type Database = {
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "licensing_delegates_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -77727,6 +78760,13 @@ export type Database = {
             foreignKeyName: "licensing_milestone_events_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "licensing_milestone_events_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -78182,6 +79222,13 @@ export type Database = {
             foreignKeyName: "licensing_milestone_events_application_id_fkey"
             columns: ["application_id"]
             isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "licensing_milestone_events_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
             referencedRelation: "v_recruiter_bounty_candidates"
             referencedColumns: ["application_id"]
           },
@@ -78451,6 +79498,13 @@ export type Database = {
             foreignKeyName: "licensing_students_application_id_fkey"
             columns: ["application_id"]
             isOneToOne: true
+            referencedRelation: "v_readymode_lead_pool"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "licensing_students_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: true
             referencedRelation: "v_recruiter_bounty_candidates"
             referencedColumns: ["application_id"]
           },
@@ -78682,6 +79736,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "magic_login_tokens_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -79171,6 +80232,13 @@ export type Database = {
             foreignKeyName: "manager_alerts_application_id_fkey"
             columns: ["application_id"]
             isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "manager_alerts_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
             referencedRelation: "v_recruiter_bounty_candidates"
             referencedColumns: ["application_id"]
           },
@@ -79437,6 +80505,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "manager_growth_stats_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -80020,6 +81095,13 @@ export type Database = {
             foreignKeyName: "manager_invite_links_manager_agent_id_fkey"
             columns: ["manager_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "manager_invite_links_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -80588,6 +81670,13 @@ export type Database = {
             foreignKeyName: "manager_social_posts_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "manager_social_posts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -80988,43 +82077,43 @@ export type Database = {
       }
       manager_transition_notices: {
         Row: {
-          email: string | null
-          person_kind: string | null
-          person_id: string | null
-          first_name: string | null
-          former_manager: string | null
-          status: string | null
-          skip_reason: string | null
-          sent_at: string | null
-          resend_id: string | null
-          error: string | null
           created_at: string | null
+          email: string
+          error: string | null
+          first_name: string | null
+          former_manager: string
+          person_id: string
+          person_kind: string
+          resend_id: string | null
+          sent_at: string | null
+          skip_reason: string | null
+          status: string
         }
         Insert: {
-          email?: string | null
-          person_kind?: string | null
-          person_id?: string | null
-          first_name?: string | null
-          former_manager?: string | null
-          status?: string | null
-          skip_reason?: string | null
-          sent_at?: string | null
-          resend_id?: string | null
-          error?: string | null
           created_at?: string | null
+          email: string
+          error?: string | null
+          first_name?: string | null
+          former_manager: string
+          person_id: string
+          person_kind: string
+          resend_id?: string | null
+          sent_at?: string | null
+          skip_reason?: string | null
+          status?: string
         }
         Update: {
-          email?: string | null
-          person_kind?: string | null
-          person_id?: string | null
-          first_name?: string | null
-          former_manager?: string | null
-          status?: string | null
-          skip_reason?: string | null
-          sent_at?: string | null
-          resend_id?: string | null
-          error?: string | null
           created_at?: string | null
+          email?: string
+          error?: string | null
+          first_name?: string | null
+          former_manager?: string
+          person_id?: string
+          person_kind?: string
+          resend_id?: string | null
+          sent_at?: string | null
+          skip_reason?: string | null
+          status?: string
         }
         Relationships: []
       }
@@ -81214,6 +82303,13 @@ export type Database = {
             columns: ["source_application_id"]
             isOneToOne: false
             referencedRelation: "v_queue_stalled_applications"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "manual_interview_entries_source_application_id_fkey"
+            columns: ["source_application_id"]
+            isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
             referencedColumns: ["application_id"]
           },
           {
@@ -81606,6 +82702,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "messaging_audience_exclusions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -82290,6 +83393,13 @@ export type Database = {
             foreignKeyName: "messaging_destinations_manager_agent_id_fkey"
             columns: ["manager_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "messaging_destinations_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -82844,6 +83954,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "messaging_identity_links_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -83492,6 +84609,156 @@ export type Database = {
         }
         Relationships: []
       }
+      money_inbox_sources: {
+        Row: {
+          checked_at: string
+          connected: boolean
+          last_ingested_at: string | null
+          reason: string
+          source: string
+        }
+        Insert: {
+          checked_at?: string
+          connected: boolean
+          last_ingested_at?: string | null
+          reason: string
+          source: string
+        }
+        Update: {
+          checked_at?: string
+          connected?: boolean
+          last_ingested_at?: string | null
+          reason?: string
+          source?: string
+        }
+        Relationships: []
+      }
+      money_inbox_threads: {
+        Row: {
+          approved_at: string | null
+          awaiting_reply: boolean
+          category: string | null
+          chat_guid: string
+          chat_identifier: string | null
+          classified_at: string | null
+          created_at: string
+          delivered_at: string | null
+          delivery_latency_ms: number | null
+          display_name: string | null
+          draft_engine: string | null
+          draft_reply: string | null
+          excerpt: Json
+          final_reply: string | null
+          handle: string | null
+          id: string
+          in_scan: boolean
+          is_group: boolean
+          last_inbound_at: string | null
+          last_inbound_text: string | null
+          last_outbound_at: string | null
+          money_reasons: string[]
+          money_score: number
+          muted: boolean
+          priority: number
+          privacy_reason: string | null
+          private: boolean
+          rank: number | null
+          send_error: string | null
+          send_receipt: string | null
+          send_started_at: string | null
+          send_supported: boolean
+          sent_at: string | null
+          snoozed_until: string | null
+          source: string
+          source_url: string | null
+          status: string
+          topics: string[]
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          awaiting_reply?: boolean
+          category?: string | null
+          chat_guid: string
+          chat_identifier?: string | null
+          classified_at?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          delivery_latency_ms?: number | null
+          display_name?: string | null
+          draft_engine?: string | null
+          draft_reply?: string | null
+          excerpt?: Json
+          final_reply?: string | null
+          handle?: string | null
+          id?: string
+          in_scan?: boolean
+          is_group?: boolean
+          last_inbound_at?: string | null
+          last_inbound_text?: string | null
+          last_outbound_at?: string | null
+          money_reasons?: string[]
+          money_score?: number
+          muted?: boolean
+          priority?: number
+          privacy_reason?: string | null
+          private?: boolean
+          rank?: number | null
+          send_error?: string | null
+          send_receipt?: string | null
+          send_started_at?: string | null
+          send_supported?: boolean
+          sent_at?: string | null
+          snoozed_until?: string | null
+          source?: string
+          source_url?: string | null
+          status?: string
+          topics?: string[]
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          awaiting_reply?: boolean
+          category?: string | null
+          chat_guid?: string
+          chat_identifier?: string | null
+          classified_at?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          delivery_latency_ms?: number | null
+          display_name?: string | null
+          draft_engine?: string | null
+          draft_reply?: string | null
+          excerpt?: Json
+          final_reply?: string | null
+          handle?: string | null
+          id?: string
+          in_scan?: boolean
+          is_group?: boolean
+          last_inbound_at?: string | null
+          last_inbound_text?: string | null
+          last_outbound_at?: string | null
+          money_reasons?: string[]
+          money_score?: number
+          muted?: boolean
+          priority?: number
+          privacy_reason?: string | null
+          private?: boolean
+          rank?: number | null
+          send_error?: string | null
+          send_receipt?: string | null
+          send_started_at?: string | null
+          send_supported?: boolean
+          sent_at?: string | null
+          snoozed_until?: string | null
+          source?: string
+          source_url?: string | null
+          status?: string
+          topics?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       myday_alerts_sent: {
         Row: {
           day: string
@@ -83713,6 +84980,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "next_step_events_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -84168,6 +85442,13 @@ export type Database = {
             columns: ["application_id"]
             isOneToOne: false
             referencedRelation: "v_queue_stalled_applications"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "next_step_events_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
             referencedColumns: ["application_id"]
           },
           {
@@ -84448,6 +85729,13 @@ export type Database = {
             foreignKeyName: "next_step_messages_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "next_step_messages_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -84897,6 +86185,13 @@ export type Database = {
             columns: ["application_id"]
             isOneToOne: false
             referencedRelation: "v_queue_stalled_applications"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "next_step_messages_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
             referencedColumns: ["application_id"]
           },
           {
@@ -85189,6 +86484,13 @@ export type Database = {
             foreignKeyName: "next_step_progress_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "next_step_progress_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -85638,6 +86940,13 @@ export type Database = {
             columns: ["application_id"]
             isOneToOne: false
             referencedRelation: "v_queue_stalled_applications"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "next_step_progress_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
             referencedColumns: ["application_id"]
           },
           {
@@ -85989,6 +87298,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "notification_log_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -86657,6 +87973,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "numbers_reminder_delivery_log_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -87782,6 +89105,13 @@ export type Database = {
             foreignKeyName: "personal_records_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "personal_records_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -88601,6 +89931,13 @@ export type Database = {
             foreignKeyName: "plaque_awards_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "plaque_awards_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -89343,6 +90680,13 @@ export type Database = {
             foreignKeyName: "production_external_deals_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "production_external_deals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -89893,6 +91237,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "production_ledger_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -90505,6 +91856,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "production_submission_notifications_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -91735,43 +93093,43 @@ export type Database = {
       }
       readymode_agent_coaching: {
         Row: {
-          agent_name: string | null
-          summary: string | null
-          habits: string[] | null
-          watch_outs: string[] | null
-          coaching_tips: string[] | null
-          strengths: string[] | null
-          next_call_focus: string | null
-          source_count: number | null
+          agent_name: string
+          coaching_tips: string[]
+          generated_at: string
+          habits: string[]
           last_graded_at: string | null
           model: string | null
-          generated_at: string | null
+          next_call_focus: string | null
+          source_count: number
+          strengths: string[]
+          summary: string | null
+          watch_outs: string[]
         }
         Insert: {
-          agent_name?: string | null
-          summary?: string | null
-          habits?: string[] | null
-          watch_outs?: string[] | null
-          coaching_tips?: string[] | null
-          strengths?: string[] | null
-          next_call_focus?: string | null
-          source_count?: number | null
+          agent_name: string
+          coaching_tips?: string[]
+          generated_at?: string
+          habits?: string[]
           last_graded_at?: string | null
           model?: string | null
-          generated_at?: string | null
+          next_call_focus?: string | null
+          source_count?: number
+          strengths?: string[]
+          summary?: string | null
+          watch_outs?: string[]
         }
         Update: {
-          agent_name?: string | null
-          summary?: string | null
-          habits?: string[] | null
-          watch_outs?: string[] | null
-          coaching_tips?: string[] | null
-          strengths?: string[] | null
-          next_call_focus?: string | null
-          source_count?: number | null
+          agent_name?: string
+          coaching_tips?: string[]
+          generated_at?: string
+          habits?: string[]
           last_graded_at?: string | null
           model?: string | null
-          generated_at?: string | null
+          next_call_focus?: string | null
+          source_count?: number
+          strengths?: string[]
+          summary?: string | null
+          watch_outs?: string[]
         }
         Relationships: []
       }
@@ -91926,6 +93284,34 @@ export type Database = {
             foreignKeyName: "readymode_booking_packets_call_id_fkey"
             columns: ["call_id"]
             isOneToOne: false
+            referencedRelation: "v_call_client"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_booking_packets_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_dropoff_risk"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_booking_packets_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_easy_closes"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_booking_packets_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_more_coverage"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_booking_packets_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
             referencedRelation: "v_objection_calls"
             referencedColumns: ["call_id"]
           },
@@ -91962,6 +93348,20 @@ export type Database = {
             columns: ["call_id"]
             isOneToOne: false
             referencedRelation: "v_readymode_viral"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_booking_packets_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_sold_call_book_match"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_booking_packets_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_sold_call_quality"
             referencedColumns: ["call_id"]
           },
           {
@@ -92028,18 +93428,33 @@ export type Database = {
           compliance_flags: Json | null
           cost_usd: number | null
           external_call_id: string | null
+          grader_model: string | null
+          great_call: boolean
           id: string
+          improvements: string[]
           intent: string | null
           key_quotes: Json | null
           model: string
+          objection_moments: Json
           off_script: boolean
           off_script_reasons: Json | null
           off_script_severity: number | null
           outcome_quality: number | null
+          overall_score: number | null
           prompt_tokens: number | null
           raw_response: Json | null
+          rubric_version: number
+          score_reasons: Json
+          scores: Json | null
+          script_followed: string | null
+          script_score: number | null
+          script_steps: Json
           sentiment: string | null
+          stage_reached: string | null
+          strengths: string[]
           summary: string | null
+          tactics: string[]
+          training_tags: string[]
           transcript_id: string
           viral_reasons: Json | null
           viral_score: number
@@ -92053,18 +93468,33 @@ export type Database = {
           compliance_flags?: Json | null
           cost_usd?: number | null
           external_call_id?: string | null
+          grader_model?: string | null
+          great_call?: boolean
           id?: string
+          improvements?: string[]
           intent?: string | null
           key_quotes?: Json | null
           model?: string
+          objection_moments?: Json
           off_script?: boolean
           off_script_reasons?: Json | null
           off_script_severity?: number | null
           outcome_quality?: number | null
+          overall_score?: number | null
           prompt_tokens?: number | null
           raw_response?: Json | null
+          rubric_version?: number
+          score_reasons?: Json
+          scores?: Json | null
+          script_followed?: string | null
+          script_score?: number | null
+          script_steps?: Json
           sentiment?: string | null
+          stage_reached?: string | null
+          strengths?: string[]
           summary?: string | null
+          tactics?: string[]
+          training_tags?: string[]
           transcript_id: string
           viral_reasons?: Json | null
           viral_score?: number
@@ -92078,18 +93508,33 @@ export type Database = {
           compliance_flags?: Json | null
           cost_usd?: number | null
           external_call_id?: string | null
+          grader_model?: string | null
+          great_call?: boolean
           id?: string
+          improvements?: string[]
           intent?: string | null
           key_quotes?: Json | null
           model?: string
+          objection_moments?: Json
           off_script?: boolean
           off_script_reasons?: Json | null
           off_script_severity?: number | null
           outcome_quality?: number | null
+          overall_score?: number | null
           prompt_tokens?: number | null
           raw_response?: Json | null
+          rubric_version?: number
+          score_reasons?: Json
+          scores?: Json | null
+          script_followed?: string | null
+          script_score?: number | null
+          script_steps?: Json
           sentiment?: string | null
+          stage_reached?: string | null
+          strengths?: string[]
           summary?: string | null
+          tactics?: string[]
+          training_tags?: string[]
           transcript_id?: string
           viral_reasons?: Json | null
           viral_score?: number
@@ -92101,6 +93546,34 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "readymode_dialer_calls"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_call_analysis_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_call_client"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_analysis_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_dropoff_risk"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_analysis_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_easy_closes"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_analysis_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_more_coverage"
+            referencedColumns: ["call_id"]
           },
           {
             foreignKeyName: "readymode_call_analysis_call_id_fkey"
@@ -92148,6 +93621,20 @@ export type Database = {
             foreignKeyName: "readymode_call_analysis_call_id_fkey"
             columns: ["call_id"]
             isOneToOne: false
+            referencedRelation: "v_sold_call_book_match"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_analysis_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_sold_call_quality"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_analysis_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
             referencedRelation: "v_sold_calls_queue"
             referencedColumns: ["call_id"]
           },
@@ -92162,39 +93649,138 @@ export type Database = {
       }
       readymode_call_audio: {
         Row: {
-          call_id: string | null
-          external_call_id: string | null
-          raw_path: string | null
-          redacted_path: string | null
+          call_id: string
           duration_seconds: number | null
-          muted_ranges: Json | null
-          muted_seconds: number | null
-          team_visible: boolean | null
-          published_at: string | null
+          external_call_id: string
+          muted_ranges: Json
+          muted_seconds: number
+          published_at: string
+          raw_path: string | null
+          redacted_path: string
+          team_visible: boolean
         }
         Insert: {
-          call_id?: string | null
-          external_call_id?: string | null
-          raw_path?: string | null
-          redacted_path?: string | null
+          call_id: string
           duration_seconds?: number | null
-          muted_ranges?: Json | null
-          muted_seconds?: number | null
-          team_visible?: boolean | null
-          published_at?: string | null
+          external_call_id: string
+          muted_ranges?: Json
+          muted_seconds?: number
+          published_at?: string
+          raw_path?: string | null
+          redacted_path: string
+          team_visible?: boolean
         }
         Update: {
-          call_id?: string | null
-          external_call_id?: string | null
-          raw_path?: string | null
-          redacted_path?: string | null
+          call_id?: string
           duration_seconds?: number | null
-          muted_ranges?: Json | null
-          muted_seconds?: number | null
-          team_visible?: boolean | null
-          published_at?: string | null
+          external_call_id?: string
+          muted_ranges?: Json
+          muted_seconds?: number
+          published_at?: string
+          raw_path?: string | null
+          redacted_path?: string
+          team_visible?: boolean
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "readymode_call_audio_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: true
+            referencedRelation: "readymode_dialer_calls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_call_audio_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: true
+            referencedRelation: "v_call_client"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_audio_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: true
+            referencedRelation: "v_dropoff_risk"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_audio_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: true
+            referencedRelation: "v_easy_closes"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_audio_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: true
+            referencedRelation: "v_more_coverage"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_audio_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: true
+            referencedRelation: "v_objection_calls"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_audio_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: true
+            referencedRelation: "v_readymode_coaching_queue"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_audio_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: true
+            referencedRelation: "v_readymode_off_script"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_audio_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: true
+            referencedRelation: "v_readymode_pipeline_status"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_audio_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: true
+            referencedRelation: "v_readymode_today"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_call_audio_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: true
+            referencedRelation: "v_readymode_viral"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_audio_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: true
+            referencedRelation: "v_sold_call_book_match"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_audio_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: true
+            referencedRelation: "v_sold_call_quality"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_audio_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: true
+            referencedRelation: "v_sold_calls_queue"
+            referencedColumns: ["call_id"]
+          },
+        ]
       }
       readymode_call_insights: {
         Row: {
@@ -92266,6 +93852,34 @@ export type Database = {
             foreignKeyName: "readymode_call_insights_call_id_fkey"
             columns: ["call_id"]
             isOneToOne: true
+            referencedRelation: "v_call_client"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_insights_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: true
+            referencedRelation: "v_dropoff_risk"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_insights_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: true
+            referencedRelation: "v_easy_closes"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_insights_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: true
+            referencedRelation: "v_more_coverage"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_insights_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: true
             referencedRelation: "v_objection_calls"
             referencedColumns: ["call_id"]
           },
@@ -92302,6 +93916,20 @@ export type Database = {
             columns: ["call_id"]
             isOneToOne: true
             referencedRelation: "v_readymode_viral"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_insights_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: true
+            referencedRelation: "v_sold_call_book_match"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_insights_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: true
+            referencedRelation: "v_sold_call_quality"
             referencedColumns: ["call_id"]
           },
           {
@@ -92368,6 +93996,34 @@ export type Database = {
             foreignKeyName: "readymode_call_transcripts_call_id_fkey"
             columns: ["call_id"]
             isOneToOne: false
+            referencedRelation: "v_call_client"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_transcripts_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_dropoff_risk"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_transcripts_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_easy_closes"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_transcripts_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_more_coverage"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_transcripts_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
             referencedRelation: "v_objection_calls"
             referencedColumns: ["call_id"]
           },
@@ -92410,6 +94066,20 @@ export type Database = {
             foreignKeyName: "readymode_call_transcripts_call_id_fkey"
             columns: ["call_id"]
             isOneToOne: false
+            referencedRelation: "v_sold_call_book_match"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_transcripts_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_sold_call_quality"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_transcripts_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
             referencedRelation: "v_sold_calls_queue"
             referencedColumns: ["call_id"]
           },
@@ -92438,7 +94108,9 @@ export type Database = {
           lead_email: string | null
           lead_first_name: string | null
           lead_last_name: string | null
+          lead_name_key: string | null
           lead_phone: string | null
+          lead_phone10: string | null
           matched_application_id: string | null
           matched_lead_id: string | null
           notes: string | null
@@ -92462,7 +94134,9 @@ export type Database = {
           lead_email?: string | null
           lead_first_name?: string | null
           lead_last_name?: string | null
+          lead_name_key?: string | null
           lead_phone?: string | null
+          lead_phone10?: string | null
           matched_application_id?: string | null
           matched_lead_id?: string | null
           notes?: string | null
@@ -92486,7 +94160,9 @@ export type Database = {
           lead_email?: string | null
           lead_first_name?: string | null
           lead_last_name?: string | null
+          lead_name_key?: string | null
           lead_phone?: string | null
+          lead_phone10?: string | null
           matched_application_id?: string | null
           matched_lead_id?: string | null
           notes?: string | null
@@ -92634,6 +94310,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -93095,6 +94778,13 @@ export type Database = {
             foreignKeyName: "readymode_dialer_calls_matched_application_id_fkey"
             columns: ["matched_application_id"]
             isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_matched_application_id_fkey"
+            columns: ["matched_application_id"]
+            isOneToOne: false
             referencedRelation: "v_recruiter_bounty_candidates"
             referencedColumns: ["application_id"]
           },
@@ -93151,36 +94841,135 @@ export type Database = {
       }
       readymode_grade_feedback: {
         Row: {
-          id: string | null
-          call_id: string | null
-          verdict: string | null
+          call_id: string
           corrected_score: number | null
-          note: string | null
+          created_at: string
+          created_by: string
           graded_score: number | null
-          created_by: string | null
-          created_at: string | null
+          id: string
+          note: string | null
+          verdict: string
         }
         Insert: {
-          id?: string | null
-          call_id?: string | null
-          verdict?: string | null
+          call_id: string
           corrected_score?: number | null
-          note?: string | null
+          created_at?: string
+          created_by?: string
           graded_score?: number | null
-          created_by?: string | null
-          created_at?: string | null
+          id?: string
+          note?: string | null
+          verdict: string
         }
         Update: {
-          id?: string | null
-          call_id?: string | null
-          verdict?: string | null
+          call_id?: string
           corrected_score?: number | null
-          note?: string | null
+          created_at?: string
+          created_by?: string
           graded_score?: number | null
-          created_by?: string | null
-          created_at?: string | null
+          id?: string
+          note?: string | null
+          verdict?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "readymode_grade_feedback_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "readymode_dialer_calls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_grade_feedback_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_call_client"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_grade_feedback_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_dropoff_risk"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_grade_feedback_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_easy_closes"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_grade_feedback_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_more_coverage"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_grade_feedback_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_objection_calls"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_grade_feedback_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_readymode_coaching_queue"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_grade_feedback_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_readymode_off_script"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_grade_feedback_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_readymode_pipeline_status"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_grade_feedback_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_readymode_today"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_grade_feedback_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_readymode_viral"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_grade_feedback_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_sold_call_book_match"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_grade_feedback_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_sold_call_quality"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_grade_feedback_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_sold_calls_queue"
+            referencedColumns: ["call_id"]
+          },
+        ]
       }
       readymode_packet_access_log: {
         Row: {
@@ -93267,6 +95056,34 @@ export type Database = {
             foreignKeyName: "readymode_recordings_call_id_fkey"
             columns: ["call_id"]
             isOneToOne: false
+            referencedRelation: "v_call_client"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_recordings_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_dropoff_risk"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_recordings_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_easy_closes"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_recordings_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_more_coverage"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_recordings_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
             referencedRelation: "v_objection_calls"
             referencedColumns: ["call_id"]
           },
@@ -93303,6 +95120,20 @@ export type Database = {
             columns: ["call_id"]
             isOneToOne: false
             referencedRelation: "v_readymode_viral"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_recordings_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_sold_call_book_match"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_recordings_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_sold_call_quality"
             referencedColumns: ["call_id"]
           },
           {
@@ -93553,6 +95384,13 @@ export type Database = {
             columns: ["recruited_agent_id"]
             isOneToOne: true
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "recruiter_bounties_recruited_agent_id_fkey"
+            columns: ["recruited_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -94057,6 +95895,13 @@ export type Database = {
             columns: ["recruiter_agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "recruiter_bounties_recruiter_agent_id_fkey"
+            columns: ["recruiter_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -94675,6 +96520,13 @@ export type Database = {
             foreignKeyName: "referrals_application_id_fkey"
             columns: ["application_id"]
             isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "referrals_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
             referencedRelation: "v_recruiter_bounty_candidates"
             referencedColumns: ["application_id"]
           },
@@ -94963,6 +96815,13 @@ export type Database = {
             columns: ["referrer_agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "referrals_referrer_agent_id_fkey"
+            columns: ["referrer_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -95474,6 +97333,13 @@ export type Database = {
             columns: ["resulting_agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "referrals_resulting_agent_id_fkey"
+            columns: ["resulting_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -96045,6 +97911,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: true
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "roster_exclusions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -96792,6 +98665,13 @@ export type Database = {
             foreignKeyName: "scheduled_interviews_application_id_fkey"
             columns: ["application_id"]
             isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "scheduled_interviews_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
             referencedRelation: "v_recruiter_bounty_candidates"
             referencedColumns: ["application_id"]
           },
@@ -97069,6 +98949,13 @@ export type Database = {
             columns: ["application_id"]
             isOneToOne: false
             referencedRelation: "v_queue_stalled_applications"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "seminar_registrations_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
             referencedColumns: ["application_id"]
           },
           {
@@ -97644,28 +99531,28 @@ export type Database = {
       }
       social_lane_alert_state: {
         Row: {
-          lane: string | null
-          tier: string | null
-          verdict: string | null
+          checked_at: string
           dead_since: string | null
+          lane: string
           last_alerted_at: string | null
-          checked_at: string | null
+          tier: string
+          verdict: string
         }
         Insert: {
-          lane?: string | null
-          tier?: string | null
-          verdict?: string | null
+          checked_at?: string
           dead_since?: string | null
+          lane: string
           last_alerted_at?: string | null
-          checked_at?: string | null
+          tier: string
+          verdict: string
         }
         Update: {
-          lane?: string | null
-          tier?: string | null
-          verdict?: string | null
+          checked_at?: string
           dead_since?: string | null
+          lane?: string
           last_alerted_at?: string | null
-          checked_at?: string | null
+          tier?: string
+          verdict?: string
         }
         Relationships: []
       }
@@ -97766,6 +99653,34 @@ export type Database = {
             foreignKeyName: "sold_call_work_call_id_fkey"
             columns: ["call_id"]
             isOneToOne: true
+            referencedRelation: "v_call_client"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "sold_call_work_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: true
+            referencedRelation: "v_dropoff_risk"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "sold_call_work_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: true
+            referencedRelation: "v_easy_closes"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "sold_call_work_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: true
+            referencedRelation: "v_more_coverage"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "sold_call_work_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: true
             referencedRelation: "v_objection_calls"
             referencedColumns: ["call_id"]
           },
@@ -97802,6 +99717,20 @@ export type Database = {
             columns: ["call_id"]
             isOneToOne: true
             referencedRelation: "v_readymode_viral"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "sold_call_work_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: true
+            referencedRelation: "v_sold_call_book_match"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "sold_call_work_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: true
+            referencedRelation: "v_sold_call_quality"
             referencedColumns: ["call_id"]
           },
           {
@@ -97850,6 +99779,34 @@ export type Database = {
             foreignKeyName: "sold_call_work_events_call_id_fkey"
             columns: ["call_id"]
             isOneToOne: false
+            referencedRelation: "v_call_client"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "sold_call_work_events_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_dropoff_risk"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "sold_call_work_events_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_easy_closes"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "sold_call_work_events_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_more_coverage"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "sold_call_work_events_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
             referencedRelation: "v_objection_calls"
             referencedColumns: ["call_id"]
           },
@@ -97886,6 +99843,20 @@ export type Database = {
             columns: ["call_id"]
             isOneToOne: false
             referencedRelation: "v_readymode_viral"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "sold_call_work_events_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_sold_call_book_match"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "sold_call_work_events_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_sold_call_quality"
             referencedColumns: ["call_id"]
           },
           {
@@ -98350,6 +100321,13 @@ export type Database = {
             columns: ["requester_agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "support_requests_requester_agent_id_fkey"
+            columns: ["requester_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -99038,6 +101016,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: true
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_memberships_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -99923,6 +101908,13 @@ export type Database = {
             foreignKeyName: "telegram_users_agent_fk"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "telegram_users_agent_fk"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -100378,6 +102370,13 @@ export type Database = {
             foreignKeyName: "telegram_users_applicant_fk"
             columns: ["applicant_id"]
             isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "telegram_users_applicant_fk"
+            columns: ["applicant_id"]
+            isOneToOne: false
             referencedRelation: "v_recruiter_bounty_candidates"
             referencedColumns: ["application_id"]
           },
@@ -100614,6 +102613,13 @@ export type Database = {
             columns: ["owner_agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "today_tasks_owner_agent_id_fkey"
+            columns: ["owner_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -101164,6 +103170,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "transfer_requests_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -101791,6 +103804,13 @@ export type Database = {
             columns: ["apex_agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "vantage_producer_map_apex_agent_id_fkey"
+            columns: ["apex_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -102526,6 +104546,13 @@ export type Database = {
             foreignKeyName: "xcel_pre_licensing_students_application_id_fkey"
             columns: ["application_id"]
             isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "xcel_pre_licensing_students_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
             referencedRelation: "v_recruiter_bounty_candidates"
             referencedColumns: ["application_id"]
           },
@@ -102720,6 +104747,13 @@ export type Database = {
             columns: ["applicant_id"]
             isOneToOne: false
             referencedRelation: "v_queue_stalled_applications"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "xcel_progress_applicant_id_fkey"
+            columns: ["applicant_id"]
+            isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
             referencedColumns: ["application_id"]
           },
           {
@@ -103168,6 +105202,13 @@ export type Database = {
             foreignKeyName: "applications_assigned_agent_id_fkey"
             columns: ["assigned_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -103569,24 +105610,536 @@ export type Database = {
       }
       v_agent_business_quality: {
         Row: {
-          agent_name: string | null
-          agent_id: string | null
-          agent_raw: string | null
-          sold_calls: number | null
-          in_book: number | null
-          not_in_book: number | null
           active: number | null
-          pending: number | null
-          lapsing: number | null
-          fell_off: number | null
-          status_unknown: number | null
+          agent_id: string | null
+          agent_name: string | null
+          agent_raw: string | null
           compliance_flagged: number | null
-          urgent_flags: number | null
           declined_after_ssn_bank: number | null
           fall_off_pct: number | null
+          fell_off: number | null
+          in_book: number | null
+          lapsing: number | null
           last_sale_at: string | null
+          not_in_book: number | null
+          pending: number | null
+          sold_calls: number | null
+          status_unknown: number | null
+          urgent_flags: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "mv_agent_truth"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_admin_applicant_overview"
+            referencedColumns: ["became_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_20k_target_leaderboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_account_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_canonical_map"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_command_center"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_crm_active"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicate_candidates"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicates"
+            referencedColumns: ["canonical_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicates"
+            referencedColumns: ["dup_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_manager_conflicts"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_monthly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_owner_truth"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_quality_score"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_skool_membership"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_status_contradictions"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_training_stage"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_with_downline_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_full"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_al_link"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_al_user_id"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_numbers_today"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_needs_attention"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_onboarding_status"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_apex_roster"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_builder_operating_dashboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_channel_deprovision_needed"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_audit"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_carrier_cases"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_reconciliation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_worklist"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_ethos_agent_updates"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_ethos_paste_rows"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_activity"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_launch_board"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_notification_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hired_licensed_missing_course"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_kj_seminar_control"
+            referencedColumns: ["converted_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_command_center"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_command_center"
+            referencedColumns: ["manager_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_departure_orphan_risk"
+            referencedColumns: ["manager_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_new_hire_showup"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_new_hires_activation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_newhire_needs_portal_login"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_offboarding_preservation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_call_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_integrity"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_sequence"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_paid_applicants"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_pulse"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_reactivation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_trend_alert"
+            referencedColumns: ["producer_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producers_missing_license"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_active_no_first_sale"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_hired_no_onboarding"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_licensed_inactive"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_activations_alp"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_hires"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_reclaimable_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recruiter_bounty_candidates"
+            referencedColumns: ["recruited_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recruiter_pipeline"
+            referencedColumns: ["recruiter_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_sam_builders_dashboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_slack_invite_eligibility"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_strike_summary"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_top_legs_excl_sam"
+            referencedColumns: ["manager_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_training_required_completion"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_unsendable_contacts"
+            referencedColumns: ["agent_id"]
+          },
+        ]
       }
       v_agent_canonical_map: {
         Row: {
@@ -103754,6 +106307,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agentlink_book_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -104323,6 +106883,13 @@ export type Database = {
             foreignKeyName: "agents_manager_id_fkey"
             columns: ["manager_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -104884,6 +107451,13 @@ export type Database = {
             foreignKeyName: "agentlink_book_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agentlink_book_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -105408,6 +107982,13 @@ export type Database = {
             columns: ["canonical_agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_canonical_agent_id_fkey"
+            columns: ["canonical_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -105951,6 +108532,13 @@ export type Database = {
             foreignKeyName: "agent_license_alerts_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_license_alerts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -106469,6 +109057,13 @@ export type Database = {
             foreignKeyName: "agents_invited_by_manager_id_fkey"
             columns: ["invited_by_manager_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_invited_by_manager_id_fkey"
+            columns: ["invited_by_manager_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -106967,6 +109562,13 @@ export type Database = {
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -107514,6 +110116,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agentlink_book_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -108089,6 +110698,13 @@ export type Database = {
             foreignKeyName: "referrals_referrer_agent_id_fkey"
             columns: ["referrer_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "referrals_referrer_agent_id_fkey"
+            columns: ["referrer_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -108465,27 +111081,539 @@ export type Database = {
       }
       v_agent_slump: {
         Row: {
-          agent_name: string | null
           agent_id: string | null
+          agent_name: string | null
           agent_raw: string | null
-          recent_contacts: number | null
-          recent_sold: number | null
-          recent_objections: number | null
-          recent_bank: number | null
-          recent_ssn: number | null
-          recent_gave_up: number | null
-          base_contacts: number | null
-          base_sold: number | null
-          base_objections: number | null
-          last_contact_day: string | null
-          recent_close_pct: number | null
           base_close_pct: number | null
-          recent_objection_pct: number | null
+          base_contacts: number | null
           base_objection_pct: number | null
+          base_objections: number | null
+          base_sold: number | null
+          last_contact_day: string | null
+          recent_bank: number | null
+          recent_close_pct: number | null
+          recent_contacts: number | null
+          recent_gave_up: number | null
+          recent_objection_pct: number | null
+          recent_objections: number | null
+          recent_sold: number | null
+          recent_ssn: number | null
           top_objection: string | null
           verdict: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "mv_agent_truth"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_admin_applicant_overview"
+            referencedColumns: ["became_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_20k_target_leaderboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_account_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_canonical_map"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_command_center"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_crm_active"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicate_candidates"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicates"
+            referencedColumns: ["canonical_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicates"
+            referencedColumns: ["dup_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_manager_conflicts"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_monthly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_owner_truth"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_quality_score"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_skool_membership"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_status_contradictions"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_training_stage"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_with_downline_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_full"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_al_link"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_al_user_id"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_numbers_today"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_needs_attention"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_onboarding_status"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_apex_roster"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_builder_operating_dashboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_channel_deprovision_needed"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_audit"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_carrier_cases"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_reconciliation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_worklist"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_ethos_agent_updates"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_ethos_paste_rows"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_activity"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_launch_board"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_notification_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hired_licensed_missing_course"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_kj_seminar_control"
+            referencedColumns: ["converted_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_command_center"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_command_center"
+            referencedColumns: ["manager_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_departure_orphan_risk"
+            referencedColumns: ["manager_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_new_hire_showup"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_new_hires_activation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_newhire_needs_portal_login"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_offboarding_preservation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_call_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_integrity"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_sequence"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_paid_applicants"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_pulse"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_reactivation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_trend_alert"
+            referencedColumns: ["producer_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producers_missing_license"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_active_no_first_sale"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_hired_no_onboarding"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_licensed_inactive"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_activations_alp"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_hires"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_reclaimable_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recruiter_bounty_candidates"
+            referencedColumns: ["recruited_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recruiter_pipeline"
+            referencedColumns: ["recruiter_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_sam_builders_dashboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_slack_invite_eligibility"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_strike_summary"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_top_legs_excl_sam"
+            referencedColumns: ["manager_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_training_required_completion"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_unsendable_contacts"
+            referencedColumns: ["agent_id"]
+          },
+        ]
       }
       v_agent_status_contradictions: {
         Row: {
@@ -108667,6 +111795,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_strikes_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -109135,6 +112270,13 @@ export type Database = {
             foreignKeyName: "agent_strikes_related_application_id_fkey"
             columns: ["related_application_id"]
             isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "agent_strikes_related_application_id_fkey"
+            columns: ["related_application_id"]
+            isOneToOne: false
             referencedRelation: "v_recruiter_bounty_candidates"
             referencedColumns: ["application_id"]
           },
@@ -109397,6 +112539,13 @@ export type Database = {
             columns: ["training_stage_override_by"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_training_stage_override_by_fkey"
+            columns: ["training_stage_override_by"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -109778,13 +112927,13 @@ export type Database = {
       v_agent_winback_pool: {
         Row: {
           agent_id: string | null
+          deactivation_reason: string | null
           display_name: string | null
           email: string | null
-          phone: string | null
-          status: string | null
-          deactivation_reason: string | null
           inactive_since: string | null
           notes: string | null
+          phone: string | null
+          status: string | null
         }
         Relationships: []
       }
@@ -109944,6 +113093,13 @@ export type Database = {
             columns: ["invited_by_manager_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_invited_by_manager_id_fkey"
+            columns: ["invited_by_manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -110448,6 +113604,13 @@ export type Database = {
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -111009,6 +114172,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agentlink_book_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -111874,6 +115044,13 @@ export type Database = {
             foreignKeyName: "agents_canonical_agent_id_fkey"
             columns: ["canonical_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_canonical_agent_id_fkey"
+            columns: ["canonical_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -112385,6 +115562,13 @@ export type Database = {
             foreignKeyName: "agents_invited_by_manager_id_fkey"
             columns: ["invited_by_manager_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_invited_by_manager_id_fkey"
+            columns: ["invited_by_manager_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -112883,6 +116067,13 @@ export type Database = {
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -113365,6 +116556,13 @@ export type Database = {
             foreignKeyName: "agents_source_application_id_fkey"
             columns: ["source_application_id"]
             isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "agents_source_application_id_fkey"
+            columns: ["source_application_id"]
+            isOneToOne: false
             referencedRelation: "v_recruiter_bounty_candidates"
             referencedColumns: ["application_id"]
           },
@@ -113555,6 +116753,13 @@ export type Database = {
             columns: ["switched_to_manager_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_switched_to_manager_id_fkey"
+            columns: ["switched_to_manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -114059,6 +117264,13 @@ export type Database = {
             columns: ["training_stage_override_by"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_training_stage_override_by_fkey"
+            columns: ["training_stage_override_by"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -114745,6 +117957,13 @@ export type Database = {
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -115706,6 +118925,13 @@ export type Database = {
             foreignKeyName: "applications_assigned_agent_id_fkey"
             columns: ["assigned_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -116224,6 +119450,13 @@ export type Database = {
             foreignKeyName: "applications_referral_manager_id_fkey"
             columns: ["referral_manager_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_referral_manager_id_fkey"
+            columns: ["referral_manager_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -116728,6 +119961,13 @@ export type Database = {
             foreignKeyName: "applications_referral_recruiter_id_fkey"
             columns: ["referral_recruiter_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_referral_recruiter_id_fkey"
+            columns: ["referral_recruiter_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -117226,6 +120466,13 @@ export type Database = {
             columns: ["referrer_agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_referrer_agent_id_fkey"
+            columns: ["referrer_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -117741,27 +120988,27 @@ export type Database = {
       }
       v_best_closers: {
         Row: {
-          agent_name: string | null
-          calls_30d: number | null
-          reached_30d: number | null
-          sold_30d: number | null
-          close_pct_30d: number | null
-          calls_all: number | null
-          reached_all: number | null
-          sold_all: number | null
-          close_pct_all: number | null
-          avg_grade: number | null
-          great_calls: number | null
-          avg_objection_handling: number | null
-          avg_close: number | null
-          dialer_sales: number | null
           active: number | null
-          lapsing: number | null
-          fell_off: number | null
+          agent_name: string | null
+          avg_close: number | null
+          avg_grade: number | null
+          avg_objection_handling: number | null
+          calls_30d: number | null
+          calls_all: number | null
+          close_pct_30d: number | null
+          close_pct_all: number | null
           compliance_flagged: number | null
+          dialer_sales: number | null
           fall_off_pct: number | null
-          sticky_close_score: number | null
+          fell_off: number | null
+          great_calls: number | null
+          lapsing: number | null
           last_call_at: string | null
+          reached_30d: number | null
+          reached_all: number | null
+          sold_30d: number | null
+          sold_all: number | null
+          sticky_close_score: number | null
         }
         Relationships: []
       }
@@ -118116,7 +121363,519 @@ export type Database = {
           word_count: number | null
           work_status: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "mv_agent_truth"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_admin_applicant_overview"
+            referencedColumns: ["became_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_20k_target_leaderboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_account_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_canonical_map"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_command_center"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_crm_active"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicate_candidates"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicates"
+            referencedColumns: ["canonical_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicates"
+            referencedColumns: ["dup_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_manager_conflicts"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_monthly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_owner_truth"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_quality_score"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_skool_membership"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_status_contradictions"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_training_stage"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_with_downline_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_full"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_al_link"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_al_user_id"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_numbers_today"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_needs_attention"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_onboarding_status"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_apex_roster"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_builder_operating_dashboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_channel_deprovision_needed"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_audit"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_carrier_cases"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_reconciliation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_worklist"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_ethos_agent_updates"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_ethos_paste_rows"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_activity"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_launch_board"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_notification_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hired_licensed_missing_course"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_kj_seminar_control"
+            referencedColumns: ["converted_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_command_center"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_command_center"
+            referencedColumns: ["manager_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_departure_orphan_risk"
+            referencedColumns: ["manager_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_new_hire_showup"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_new_hires_activation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_newhire_needs_portal_login"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_offboarding_preservation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_call_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_integrity"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_sequence"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_paid_applicants"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_pulse"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_reactivation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_trend_alert"
+            referencedColumns: ["producer_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producers_missing_license"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_active_no_first_sale"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_hired_no_onboarding"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_licensed_inactive"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_activations_alp"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_hires"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_reclaimable_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recruiter_bounty_candidates"
+            referencedColumns: ["recruited_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recruiter_pipeline"
+            referencedColumns: ["recruiter_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_sam_builders_dashboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_slack_invite_eligibility"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_strike_summary"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_top_legs_excl_sam"
+            referencedColumns: ["manager_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_training_required_completion"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_unsendable_contacts"
+            referencedColumns: ["agent_id"]
+          },
+        ]
       }
       v_book_row_call_summary: {
         Row: {
@@ -118159,7 +121918,519 @@ export type Database = {
           matched_by: string | null
           recording_url: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "mv_agent_truth"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_admin_applicant_overview"
+            referencedColumns: ["became_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_20k_target_leaderboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_account_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_canonical_map"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_command_center"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_crm_active"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicate_candidates"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicates"
+            referencedColumns: ["canonical_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicates"
+            referencedColumns: ["dup_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_manager_conflicts"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_monthly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_owner_truth"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_quality_score"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_skool_membership"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_status_contradictions"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_training_stage"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_with_downline_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_full"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_al_link"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_al_user_id"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_numbers_today"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_needs_attention"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_onboarding_status"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_apex_roster"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_builder_operating_dashboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_channel_deprovision_needed"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_audit"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_carrier_cases"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_reconciliation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_worklist"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_ethos_agent_updates"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_ethos_paste_rows"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_activity"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_launch_board"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_notification_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hired_licensed_missing_course"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_kj_seminar_control"
+            referencedColumns: ["converted_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_command_center"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_command_center"
+            referencedColumns: ["manager_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_departure_orphan_risk"
+            referencedColumns: ["manager_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_new_hire_showup"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_new_hires_activation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_newhire_needs_portal_login"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_offboarding_preservation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_call_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_integrity"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_sequence"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_paid_applicants"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_pulse"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_reactivation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_trend_alert"
+            referencedColumns: ["producer_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producers_missing_license"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_active_no_first_sale"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_hired_no_onboarding"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_licensed_inactive"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_activations_alp"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_hires"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_reclaimable_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recruiter_bounty_candidates"
+            referencedColumns: ["recruited_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recruiter_pipeline"
+            referencedColumns: ["recruiter_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_sam_builders_dashboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_slack_invite_eligibility"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_strike_summary"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_top_legs_excl_sam"
+            referencedColumns: ["manager_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_training_required_completion"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_unsendable_contacts"
+            referencedColumns: ["agent_id"]
+          },
+        ]
       }
       v_book_status_segments: {
         Row: {
@@ -118488,6 +122759,13 @@ export type Database = {
             columns: ["invited_by_manager_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_invited_by_manager_id_fkey"
+            columns: ["invited_by_manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -118992,6 +123270,13 @@ export type Database = {
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -119454,52 +123739,52 @@ export type Database = {
       }
       v_call_client: {
         Row: {
-          call_id: string | null
-          external_call_id: string | null
-          call_started_at: string | null
-          disposition: string | null
           agent_raw: string | null
+          approval_quote: string | null
+          approval_status: string | null
+          bank_name: string | null
+          bank_objection: boolean | null
+          beneficiaries: Json | null
+          call_id: string | null
+          call_started_at: string | null
+          call_summary: string | null
+          carrier: string | null
+          client_city: string | null
+          client_dob: string | null
+          client_email: string | null
+          client_first_name: string | null
+          client_last_name: string | null
+          client_phone: string | null
+          client_state: string | null
+          client_street: string | null
+          client_zip: string | null
+          disposition: string | null
+          do_not_call: boolean | null
+          draft_day: string | null
+          external_call_id: string | null
+          face_amount: number | null
+          gave_bank: boolean | null
+          gave_ssn: boolean | null
+          health_notes: string | null
+          key_points: Json | null
+          lead_email: string | null
           lead_first_name: string | null
           lead_last_name: string | null
           lead_phone10: string | null
-          lead_email: string | null
-          packet_id: string | null
-          client_first_name: string | null
-          client_last_name: string | null
-          client_dob: string | null
-          client_phone: string | null
-          client_email: string | null
-          client_street: string | null
-          client_city: string | null
-          client_state: string | null
-          client_zip: string | null
-          carrier: string | null
-          product: string | null
-          face_amount: number | null
-          monthly_premium: number | null
-          draft_day: string | null
-          payment_method_type: string | null
-          bank_name: string | null
-          policy_number: string | null
-          beneficiaries: Json | null
-          health_notes: string | null
-          tobacco: boolean | null
           missing_fields: string[] | null
-          call_summary: string | null
-          key_points: Json | null
-          ssn_last4: string | null
-          resell_angle: string | null
-          approval_status: string | null
-          approval_quote: string | null
-          gave_ssn: boolean | null
-          gave_bank: boolean | null
-          price_objection: boolean | null
-          bank_objection: boolean | null
-          ssn_objection: boolean | null
-          spouse_coverage: boolean | null
+          monthly_premium: number | null
           mortgage_protection: boolean | null
           other_opportunities: string[] | null
-          do_not_call: boolean | null
+          packet_id: string | null
+          payment_method_type: string | null
+          policy_number: string | null
+          price_objection: boolean | null
+          product: string | null
+          resell_angle: string | null
+          spouse_coverage: boolean | null
+          ssn_last4: string | null
+          ssn_objection: boolean | null
+          tobacco: boolean | null
         }
         Relationships: []
       }
@@ -119528,20 +123813,630 @@ export type Database = {
           overall_score: number | null
           recording_url: string | null
           resell_summary: string | null
+          rubric_version: number | null
+          score_reasons: Json | null
           scores: Json | null
+          script_followed: string | null
+          script_score: number | null
+          script_steps: Json | null
           sentiment: string | null
           stage_reached: string | null
           strengths: string[] | null
           summary: string | null
           tactics: string[] | null
           training_tags: string[] | null
-          script_score: number | null
-          script_followed: string | null
-          script_steps: Json | null
-          score_reasons: Json | null
-          rubric_version: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "readymode_call_analysis_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "readymode_dialer_calls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_call_analysis_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_call_client"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_analysis_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_dropoff_risk"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_analysis_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_easy_closes"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_analysis_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_more_coverage"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_analysis_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_objection_calls"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_analysis_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_readymode_coaching_queue"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_analysis_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_readymode_off_script"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_analysis_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_readymode_pipeline_status"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_analysis_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_readymode_today"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_call_analysis_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_readymode_viral"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_analysis_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_sold_call_book_match"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_analysis_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_sold_call_quality"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_call_analysis_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_sold_calls_queue"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "mv_agent_truth"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_admin_applicant_overview"
+            referencedColumns: ["became_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_20k_target_leaderboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_account_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_canonical_map"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_command_center"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_crm_active"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicate_candidates"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicates"
+            referencedColumns: ["canonical_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicates"
+            referencedColumns: ["dup_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_manager_conflicts"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_monthly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_owner_truth"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_quality_score"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_skool_membership"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_status_contradictions"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_training_stage"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_with_downline_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_full"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_al_link"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_al_user_id"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_numbers_today"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_needs_attention"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_onboarding_status"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_apex_roster"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_builder_operating_dashboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_channel_deprovision_needed"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_audit"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_carrier_cases"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_reconciliation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_worklist"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_ethos_agent_updates"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_ethos_paste_rows"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_activity"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_launch_board"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_notification_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hired_licensed_missing_course"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_kj_seminar_control"
+            referencedColumns: ["converted_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_command_center"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_command_center"
+            referencedColumns: ["manager_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_departure_orphan_risk"
+            referencedColumns: ["manager_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_new_hire_showup"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_new_hires_activation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_newhire_needs_portal_login"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_offboarding_preservation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_call_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_integrity"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_sequence"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_paid_applicants"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_pulse"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_reactivation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_trend_alert"
+            referencedColumns: ["producer_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producers_missing_license"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_active_no_first_sale"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_hired_no_onboarding"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_licensed_inactive"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_activations_alp"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_hires"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_reclaimable_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recruiter_bounty_candidates"
+            referencedColumns: ["recruited_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recruiter_pipeline"
+            referencedColumns: ["recruiter_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_sam_builders_dashboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_slack_invite_eligibility"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_strike_summary"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_top_legs_excl_sam"
+            referencedColumns: ["manager_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_training_required_completion"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_unsendable_contacts"
+            referencedColumns: ["agent_id"]
+          },
+        ]
       }
       v_call_training_agents: {
         Row: {
@@ -119551,15 +124446,527 @@ export type Database = {
           avg_close: number | null
           avg_objection_handling: number | null
           avg_score: number | null
+          avg_script: number | null
           calls_total: number | null
           graded: number | null
           great_calls: number | null
           last_call_at: string | null
           sold: number | null
           urgent_flags: number | null
-          avg_script: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "mv_agent_truth"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_admin_applicant_overview"
+            referencedColumns: ["became_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_20k_target_leaderboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_account_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_canonical_map"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_command_center"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_crm_active"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicate_candidates"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicates"
+            referencedColumns: ["canonical_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicates"
+            referencedColumns: ["dup_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_manager_conflicts"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_monthly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_owner_truth"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_quality_score"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_skool_membership"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_status_contradictions"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_training_stage"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_with_downline_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_full"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_al_link"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_al_user_id"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_numbers_today"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_needs_attention"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_onboarding_status"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_apex_roster"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_builder_operating_dashboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_channel_deprovision_needed"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_audit"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_carrier_cases"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_reconciliation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_worklist"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_ethos_agent_updates"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_ethos_paste_rows"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_activity"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_launch_board"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_notification_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hired_licensed_missing_course"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_kj_seminar_control"
+            referencedColumns: ["converted_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_command_center"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_command_center"
+            referencedColumns: ["manager_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_departure_orphan_risk"
+            referencedColumns: ["manager_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_new_hire_showup"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_new_hires_activation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_newhire_needs_portal_login"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_offboarding_preservation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_call_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_integrity"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_sequence"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_paid_applicants"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_pulse"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_reactivation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_trend_alert"
+            referencedColumns: ["producer_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producers_missing_license"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_active_no_first_sale"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_hired_no_onboarding"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_licensed_inactive"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_activations_alp"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_hires"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_reclaimable_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recruiter_bounty_candidates"
+            referencedColumns: ["recruited_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recruiter_pipeline"
+            referencedColumns: ["recruiter_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_sam_builders_dashboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_slack_invite_eligibility"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_strike_summary"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_top_legs_excl_sam"
+            referencedColumns: ["manager_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_training_required_completion"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_unsendable_contacts"
+            referencedColumns: ["agent_id"]
+          },
+        ]
       }
       v_call_winners: {
         Row: {
@@ -119721,6 +125128,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "call_recordings_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -120261,6 +125675,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_policies_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -120880,6 +126301,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_policies_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -121650,6 +127078,13 @@ export type Database = {
             foreignKeyName: "lead_purchases_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "lead_purchases_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -122197,6 +127632,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agentlink_book_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -122823,6 +128265,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_policies_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -123480,6 +128929,13 @@ export type Database = {
             foreignKeyName: "agents_manager_id_fkey"
             columns: ["manager_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -124061,6 +129517,13 @@ export type Database = {
             columns: ["canonical_agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_canonical_agent_id_fkey"
+            columns: ["canonical_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -124865,6 +130328,13 @@ export type Database = {
             foreignKeyName: "deals_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "deals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -125230,12 +130700,12 @@ export type Database = {
       v_deals_left_on_table: {
         Row: {
           agent_name: string | null
-          warm_not_sold: number | null
+          appointment_not_sold: number | null
+          gave_up: number | null
+          last_30d: number | null
           stopped_at_bank: number | null
           stopped_at_ssn: number | null
-          gave_up: number | null
-          appointment_not_sold: number | null
-          last_30d: number | null
+          warm_not_sold: number | null
         }
         Relationships: []
       }
@@ -125412,6 +130882,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "deals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -125847,24 +131324,24 @@ export type Database = {
       }
       v_dropoff_risk: {
         Row: {
+          agent_name: string | null
+          approval_status: string | null
+          book_carrier: string | null
+          book_status: string | null
           call_id: string | null
           call_started_at: string | null
-          agent_name: string | null
+          coaching_notes: string | null
+          compliance_flag_count: number | null
+          declined_after_ssn_bank: boolean | null
+          do_not_call: boolean | null
           first_name: string | null
           last_name: string | null
+          packet_monthly_premium: number | null
           phone10: string | null
           quality_verdict: string | null
-          book_status: string | null
-          status_group: string | null
-          book_carrier: string | null
-          packet_monthly_premium: number | null
-          compliance_flag_count: number | null
-          approval_status: string | null
-          declined_after_ssn_bank: boolean | null
-          coaching_notes: string | null
-          what_happened: string | null
           risk: string | null
-          do_not_call: boolean | null
+          status_group: string | null
+          what_happened: string | null
         }
         Relationships: []
       }
@@ -125914,6 +131391,7 @@ export type Database = {
       }
       v_earnings_estimate: {
         Row: {
+          advance_factor: number | null
           agent_id: string | null
           agent_name: string | null
           basis: string | null
@@ -125923,32 +131401,36 @@ export type Database = {
           est_earned_30d: number | null
           est_earned_in_force: number | null
           est_earned_mtd: number | null
+          est_first_year_in_force: number | null
           est_pending_if_issued: number | null
+          est_unknown_status_first_year: number | null
           in_force_deals: number | null
           manager: string | null
+          submitted_deals: number | null
+          unknown_status_deals: number | null
         }
         Relationships: []
       }
       v_easy_closes: {
         Row: {
-          phone10: string | null
-          first_name: string | null
-          last_name: string | null
-          call_id: string | null
-          disposition: string | null
-          call_started_at: string | null
           agent_name: string | null
-          days_ago: number | null
-          what_happened: string | null
           approval_status: string | null
-          price_objection: boolean | null
           bank_objection: boolean | null
-          ssn_objection: boolean | null
-          gave_ssn: boolean | null
-          gave_bank: boolean | null
-          opportunities: string | null
           call_grade: number | null
+          call_id: string | null
+          call_started_at: string | null
+          days_ago: number | null
+          disposition: string | null
+          first_name: string | null
+          gave_bank: boolean | null
+          gave_ssn: boolean | null
           in_a_bundle: boolean | null
+          last_name: string | null
+          opportunities: string | null
+          phone10: string | null
+          price_objection: boolean | null
+          ssn_objection: boolean | null
+          what_happened: string | null
         }
         Relationships: []
       }
@@ -126205,6 +131687,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_policies_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -126779,6 +132268,13 @@ export type Database = {
             foreignKeyName: "deals_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "deals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -127333,6 +132829,13 @@ export type Database = {
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -127900,6 +133403,13 @@ export type Database = {
             foreignKeyName: "agents_invited_by_manager_id_fkey"
             columns: ["invited_by_manager_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_invited_by_manager_id_fkey"
+            columns: ["invited_by_manager_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -128355,6 +133865,13 @@ export type Database = {
             foreignKeyName: "agents_source_application_id_fkey"
             columns: ["source_application_id"]
             isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "agents_source_application_id_fkey"
+            columns: ["source_application_id"]
+            isOneToOne: false
             referencedRelation: "v_recruiter_bounty_candidates"
             referencedColumns: ["application_id"]
           },
@@ -128614,6 +134131,13 @@ export type Database = {
             columns: ["assigned_agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -129051,12 +134575,12 @@ export type Database = {
       v_ig_dm_delivery_truth: {
         Row: {
           day: string | null
-          inbound_msgs: number | null
-          inbound_people: number | null
-          delivered_msgs: number | null
           delivered_by_bot: number | null
           delivered_by_sam: number | null
+          delivered_msgs: number | null
           failed_rows: number | null
+          inbound_msgs: number | null
+          inbound_people: number | null
           people_without_delivered_reply_24h: number | null
         }
         Relationships: []
@@ -129066,13 +134590,13 @@ export type Database = {
           day: string | null
           nudge1_delivered: number | null
           nudge2_delivered: number | null
-          nudges_refused: number | null
-          replied_within_6h: number | null
-          recovery_emails_sent: number | null
           nudge3_delivered: number | null
           nudge3_refused: number | null
+          nudges_refused: number | null
+          recovery_emails_sent: number | null
           reengage_emails: number | null
           reengage_no_channel: number | null
+          replied_within_6h: number | null
         }
         Relationships: []
       }
@@ -129327,6 +134851,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "deals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -129870,6 +135401,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "deals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -130428,6 +135966,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "deals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -131006,6 +136551,13 @@ export type Database = {
             foreignKeyName: "deals_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "deals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -131524,6 +137076,13 @@ export type Database = {
             foreignKeyName: "deals_manager_id_fkey"
             columns: ["manager_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "deals_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -131982,12 +137541,12 @@ export type Database = {
       }
       v_interview_outcome_truth: {
         Row: {
-          calls_ended_7d: number | null
-          outcomes_7d: number | null
           asked_7d: number | null
-          unasked_now: number | null
-          oldest_unasked_h: number | null
+          calls_ended_7d: number | null
           last_ask_at: string | null
+          oldest_unasked_h: number | null
+          outcomes_7d: number | null
+          unasked_now: number | null
         }
         Relationships: []
       }
@@ -132207,6 +137766,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "interview_events_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -132668,6 +138234,13 @@ export type Database = {
             foreignKeyName: "interview_events_application_id_fkey"
             columns: ["application_id"]
             isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "interview_events_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
             referencedRelation: "v_recruiter_bounty_candidates"
             referencedColumns: ["application_id"]
           },
@@ -132891,6 +138464,13 @@ export type Database = {
             foreignKeyName: "seminar_registrations_application_id_fkey"
             columns: ["application_id"]
             isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "seminar_registrations_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
             referencedRelation: "v_recruiter_bounty_candidates"
             referencedColumns: ["application_id"]
           },
@@ -133101,6 +138681,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_policies_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -133632,6 +139219,13 @@ export type Database = {
             foreignKeyName: "deals_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "deals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -134013,19 +139607,19 @@ export type Database = {
       }
       v_lead_bundle_summary: {
         Row: {
-          bundle_id: string | null
-          name: string | null
-          format: string | null
-          criteria: Json | null
-          note: string | null
-          created_at: string | null
-          archived_at: string | null
-          live_items: number | null
-          untouched: number | null
           appointments: number | null
-          sold: number | null
+          archived_at: string | null
+          bundle_id: string | null
           closed_out: number | null
+          created_at: string | null
+          criteria: Json | null
+          format: string | null
           holders: Json | null
+          live_items: number | null
+          name: string | null
+          note: string | null
+          sold: number | null
+          untouched: number | null
         }
         Relationships: []
       }
@@ -134202,6 +139796,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "lead_purchases_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -134942,6 +140543,13 @@ export type Database = {
             foreignKeyName: "interview_events_application_id_fkey"
             columns: ["application_id"]
             isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "interview_events_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
             referencedRelation: "v_recruiter_bounty_candidates"
             referencedColumns: ["application_id"]
           },
@@ -135104,6 +140712,13 @@ export type Database = {
             columns: ["application_id"]
             isOneToOne: true
             referencedRelation: "v_queue_stalled_applications"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "licensing_students_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: true
+            referencedRelation: "v_readymode_lead_pool"
             referencedColumns: ["application_id"]
           },
           {
@@ -135309,6 +140924,13 @@ export type Database = {
             columns: ["application_id"]
             isOneToOne: true
             referencedRelation: "v_queue_stalled_applications"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "licensing_students_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: true
+            referencedRelation: "v_readymode_lead_pool"
             referencedColumns: ["application_id"]
           },
           {
@@ -135555,6 +141177,13 @@ export type Database = {
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "culture_manager_credits_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -136121,6 +141750,13 @@ export type Database = {
             foreignKeyName: "agents_manager_id_fkey"
             columns: ["manager_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -136553,20 +142189,20 @@ export type Database = {
       }
       v_more_coverage: {
         Row: {
+          agent_name: string | null
+          book_status: string | null
           call_id: string | null
           call_started_at: string | null
-          agent_name: string | null
           first_name: string | null
-          last_name: string | null
-          phone10: string | null
           in_book: boolean | null
-          book_status: string | null
-          status_group: string | null
-          packet_carrier: string | null
-          packet_monthly_premium: number | null
-          spouse_coverage: boolean | null
+          last_name: string | null
           mortgage_protection: boolean | null
           opportunities: string | null
+          packet_carrier: string | null
+          packet_monthly_premium: number | null
+          phone10: string | null
+          spouse_coverage: boolean | null
+          status_group: string | null
           what_happened: string | null
         }
         Relationships: []
@@ -137029,6 +142665,13 @@ export type Database = {
             foreignKeyName: "applications_assigned_agent_id_fkey"
             columns: ["assigned_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -137533,6 +143176,13 @@ export type Database = {
             foreignKeyName: "applications_referral_manager_id_fkey"
             columns: ["referral_manager_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_referral_manager_id_fkey"
+            columns: ["referral_manager_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -138031,6 +143681,13 @@ export type Database = {
             columns: ["referrer_agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_referrer_agent_id_fkey"
+            columns: ["referrer_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -138557,6 +144214,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "apex_carrier_contracts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -139100,6 +144764,13 @@ export type Database = {
             foreignKeyName: "agents_manager_id_fkey"
             columns: ["manager_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -139611,6 +145282,13 @@ export type Database = {
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_invited_by_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -140266,6 +145944,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "notification_log_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -140967,6 +146652,13 @@ export type Database = {
             foreignKeyName: "applications_assigned_agent_id_fkey"
             columns: ["assigned_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -141478,6 +147170,13 @@ export type Database = {
             foreignKeyName: "applications_referral_manager_id_fkey"
             columns: ["referral_manager_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_referral_manager_id_fkey"
+            columns: ["referral_manager_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -141976,6 +147675,13 @@ export type Database = {
             columns: ["referrer_agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_referrer_agent_id_fkey"
+            columns: ["referrer_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -142608,6 +148314,13 @@ export type Database = {
             foreignKeyName: "applications_assigned_agent_id_fkey"
             columns: ["assigned_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -143119,6 +148832,13 @@ export type Database = {
             foreignKeyName: "applications_referral_manager_id_fkey"
             columns: ["referral_manager_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_referral_manager_id_fkey"
+            columns: ["referral_manager_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -143617,6 +149337,13 @@ export type Database = {
             columns: ["referrer_agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_referrer_agent_id_fkey"
+            columns: ["referrer_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -144191,6 +149918,13 @@ export type Database = {
             foreignKeyName: "interview_events_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "interview_events_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -144646,6 +150380,13 @@ export type Database = {
             foreignKeyName: "interview_events_application_id_fkey"
             columns: ["application_id"]
             isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "interview_events_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
             referencedRelation: "v_recruiter_bounty_candidates"
             referencedColumns: ["application_id"]
           },
@@ -144958,6 +150699,102 @@ export type Database = {
         }
         Relationships: []
       }
+      v_pool_dialer: {
+        Row: {
+          age: number | null
+          email: string | null
+          first_name: string | null
+          flags: Json | null
+          last_name: string | null
+          lead_age_days: number | null
+          lead_id: string | null
+          phone10: string | null
+          state: string | null
+          tags: string | null
+          tier: string | null
+          under_9mo: boolean | null
+        }
+        Relationships: []
+      }
+      v_pool_marketing: {
+        Row: {
+          age: number | null
+          email: string | null
+          first_name: string | null
+          flags: Json | null
+          last_name: string | null
+          lead_age_days: number | null
+          lead_id: string | null
+          phone10: string | null
+          state: string | null
+          tags: string | null
+          tier: string | null
+          under_9mo: boolean | null
+        }
+        Insert: {
+          age?: number | null
+          email?: never
+          first_name?: never
+          flags?: never
+          last_name?: never
+          lead_age_days?: never
+          lead_id?: string | null
+          phone10?: never
+          state?: never
+          tags?: never
+          tier?: never
+          under_9mo?: never
+        }
+        Update: {
+          age?: number | null
+          email?: never
+          first_name?: never
+          flags?: never
+          last_name?: never
+          lead_age_days?: never
+          lead_id?: string | null
+          phone10?: never
+          state?: never
+          tags?: never
+          tier?: never
+          under_9mo?: never
+        }
+        Relationships: []
+      }
+      v_pool_rewrite: {
+        Row: {
+          age: number | null
+          email: string | null
+          first_name: string | null
+          flags: Json | null
+          last_name: string | null
+          lead_age_days: number | null
+          lead_id: string | null
+          phone10: string | null
+          state: string | null
+          tags: string | null
+          tier: string | null
+          under_9mo: boolean | null
+        }
+        Relationships: []
+      }
+      v_pool_winback: {
+        Row: {
+          age: number | null
+          email: string | null
+          first_name: string | null
+          flags: Json | null
+          last_name: string | null
+          lead_age_days: number | null
+          lead_id: string | null
+          phone10: string | null
+          state: string | null
+          tags: string | null
+          tier: string | null
+          under_9mo: boolean | null
+        }
+        Relationships: []
+      }
       v_pre_licensing_tracker: {
         Row: {
           app_status: string | null
@@ -145069,6 +150906,13 @@ export type Database = {
             columns: ["application_id"]
             isOneToOne: false
             referencedRelation: "v_queue_stalled_applications"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "xcel_pre_licensing_students_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
             referencedColumns: ["application_id"]
           },
           {
@@ -145288,6 +151132,13 @@ export type Database = {
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -146005,6 +151856,13 @@ export type Database = {
             foreignKeyName: "interview_events_application_id_fkey"
             columns: ["application_id"]
             isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "interview_events_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
             referencedRelation: "v_recruiter_bounty_candidates"
             referencedColumns: ["application_id"]
           },
@@ -146232,6 +152090,13 @@ export type Database = {
             columns: ["assigned_agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -146609,42 +152474,1066 @@ export type Database = {
       }
       v_readymode_agent_daily: {
         Row: {
-          agent_name: string | null
           agent_id: string | null
+          agent_name: string | null
           agent_raw: string | null
-          day: string | null
+          appointments: number | null
           calls: number | null
           contacts: number | null
-          sold: number | null
-          appointments: number | null
-          objections: number | null
+          day: string | null
           dnc: number | null
-          talk_seconds: number | null
           first_call_at: string | null
           last_call_at: string | null
+          objections: number | null
+          sold: number | null
+          talk_seconds: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "mv_agent_truth"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_admin_applicant_overview"
+            referencedColumns: ["became_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_20k_target_leaderboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_account_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_canonical_map"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_command_center"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_crm_active"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicate_candidates"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicates"
+            referencedColumns: ["canonical_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicates"
+            referencedColumns: ["dup_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_manager_conflicts"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_monthly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_owner_truth"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_quality_score"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_skool_membership"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_status_contradictions"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_training_stage"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_with_downline_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_full"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_al_link"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_al_user_id"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_numbers_today"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_needs_attention"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_onboarding_status"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_apex_roster"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_builder_operating_dashboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_channel_deprovision_needed"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_audit"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_carrier_cases"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_reconciliation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_worklist"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_ethos_agent_updates"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_ethos_paste_rows"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_activity"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_launch_board"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_notification_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hired_licensed_missing_course"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_kj_seminar_control"
+            referencedColumns: ["converted_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_command_center"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_command_center"
+            referencedColumns: ["manager_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_departure_orphan_risk"
+            referencedColumns: ["manager_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_new_hire_showup"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_new_hires_activation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_newhire_needs_portal_login"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_offboarding_preservation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_call_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_integrity"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_sequence"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_paid_applicants"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_pulse"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_reactivation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_trend_alert"
+            referencedColumns: ["producer_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producers_missing_license"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_active_no_first_sale"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_hired_no_onboarding"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_licensed_inactive"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_activations_alp"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_hires"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_reclaimable_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recruiter_bounty_candidates"
+            referencedColumns: ["recruited_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recruiter_pipeline"
+            referencedColumns: ["recruiter_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_sam_builders_dashboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_slack_invite_eligibility"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_strike_summary"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_top_legs_excl_sam"
+            referencedColumns: ["manager_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_training_required_completion"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_unsendable_contacts"
+            referencedColumns: ["agent_id"]
+          },
+        ]
       }
       v_readymode_agent_scorecard: {
         Row: {
-          agent_name: string | null
           agent_id: string | null
+          agent_name: string | null
           agent_raw: string | null
-          calls_30d: number | null
-          contacts_30d: number | null
-          sold_30d: number | null
           appointments_30d: number | null
-          talk_seconds_30d: number | null
-          days_dialed_30d: number | null
+          calls_30d: number | null
           calls_all: number | null
+          contacts_30d: number | null
           contacts_all: number | null
-          sold_all: number | null
+          days_dialed_30d: number | null
           dnc_all: number | null
-          sold_per_100_contacts: number | null
           first_day: string | null
           last_call_at: string | null
+          sold_30d: number | null
+          sold_all: number | null
+          sold_per_100_contacts: number | null
+          talk_seconds_30d: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "mv_agent_truth"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_admin_applicant_overview"
+            referencedColumns: ["became_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_20k_target_leaderboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_account_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_canonical_map"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_command_center"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_crm_active"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicate_candidates"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicates"
+            referencedColumns: ["canonical_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicates"
+            referencedColumns: ["dup_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_manager_conflicts"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_monthly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_owner_truth"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_quality_score"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_skool_membership"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_status_contradictions"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_training_stage"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_with_downline_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_full"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_al_link"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_al_user_id"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_numbers_today"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_needs_attention"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_onboarding_status"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_apex_roster"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_builder_operating_dashboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_channel_deprovision_needed"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_audit"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_carrier_cases"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_reconciliation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_worklist"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_ethos_agent_updates"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_ethos_paste_rows"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_activity"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_launch_board"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_notification_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hired_licensed_missing_course"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_kj_seminar_control"
+            referencedColumns: ["converted_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_command_center"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_command_center"
+            referencedColumns: ["manager_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_departure_orphan_risk"
+            referencedColumns: ["manager_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_new_hire_showup"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_new_hires_activation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_newhire_needs_portal_login"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_offboarding_preservation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_call_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_integrity"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_sequence"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_paid_applicants"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_pulse"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_reactivation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_trend_alert"
+            referencedColumns: ["producer_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producers_missing_license"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_active_no_first_sale"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_hired_no_onboarding"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_licensed_inactive"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_activations_alp"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_hires"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_reclaimable_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recruiter_bounty_candidates"
+            referencedColumns: ["recruited_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recruiter_pipeline"
+            referencedColumns: ["recruiter_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_sam_builders_dashboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_slack_invite_eligibility"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_strike_summary"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_top_legs_excl_sam"
+            referencedColumns: ["manager_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_training_required_completion"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_unsendable_contacts"
+            referencedColumns: ["agent_id"]
+          },
+        ]
       }
       v_readymode_agent_today: {
         Row: {
@@ -146796,6 +153685,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -147323,6 +154219,13 @@ export type Database = {
             foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -147704,37 +154607,37 @@ export type Database = {
       }
       v_readymode_lead_pool: {
         Row: {
+          app_status: string | null
           application_id: string | null
+          applied_on: string | null
+          email: string | null
           first_name: string | null
+          last_contact_outcome: string | null
+          last_contacted: string | null
           last_name: string | null
+          licensed: boolean | null
           phone: string | null
           phone10: string | null
-          email: string | null
           state: string | null
-          applied_on: string | null
-          licensed: boolean | null
-          app_status: string | null
-          last_contacted: string | null
-          last_contact_outcome: string | null
           utm_source: string | null
         }
         Relationships: []
       }
       v_readymode_lead_quality: {
         Row: {
-          phone10: string | null
-          first_name: string | null
-          last_name: string | null
-          email: string | null
           attempts: number | null
+          campaign: string | null
+          days_since_dialed: number | null
+          email: string | null
           first_dialed_at: string | null
+          first_name: string | null
+          last_agent: string | null
           last_dialed_at: string | null
           last_disposition: string | null
-          last_agent: string | null
-          campaign: string | null
-          quality_tier: string | null
+          last_name: string | null
+          phone10: string | null
           quality_reason: string | null
-          days_since_dialed: number | null
+          quality_tier: string | null
         }
         Relationships: []
       }
@@ -147750,21 +154653,22 @@ export type Database = {
       }
       v_readymode_leads: {
         Row: {
-          phone10: string | null
-          first_name: string | null
-          last_name: string | null
-          email: string | null
           attempts: number | null
+          campaign: string | null
+          do_not_call: boolean | null
+          email: string | null
+          ever_appointment: boolean | null
+          ever_late_objection: boolean | null
+          ever_objection: boolean | null
+          ever_reached: boolean | null
+          ever_sold: boolean | null
           first_dialed_at: string | null
+          first_name: string | null
+          last_agent: string | null
           last_dialed_at: string | null
           last_disposition: string | null
-          last_agent: string | null
-          ever_sold: boolean | null
-          do_not_call: boolean | null
-          ever_objection: boolean | null
-          ever_appointment: boolean | null
-          ever_reached: boolean | null
-          campaign: string | null
+          last_name: string | null
+          phone10: string | null
         }
         Relationships: []
       }
@@ -147923,6 +154827,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -148469,6 +155380,13 @@ export type Database = {
             foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -148924,6 +155842,13 @@ export type Database = {
             foreignKeyName: "readymode_dialer_calls_matched_application_id_fkey"
             columns: ["matched_application_id"]
             isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_matched_application_id_fkey"
+            columns: ["matched_application_id"]
+            isOneToOne: false
             referencedRelation: "v_recruiter_bounty_candidates"
             referencedColumns: ["application_id"]
           },
@@ -149135,6 +156060,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -149846,6 +156778,13 @@ export type Database = {
             foreignKeyName: "referrals_referrer_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "referrals_referrer_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -150338,6 +157277,13 @@ export type Database = {
             foreignKeyName: "referrals_application_id_fkey"
             columns: ["application_id"]
             isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "referrals_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
             referencedRelation: "v_recruiter_bounty_candidates"
             referencedColumns: ["application_id"]
           },
@@ -150626,6 +157572,13 @@ export type Database = {
             columns: ["referrer_agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "referrals_referrer_agent_id_fkey"
+            columns: ["referrer_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -151130,6 +158083,13 @@ export type Database = {
             columns: ["resulting_agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "referrals_resulting_agent_id_fkey"
+            columns: ["resulting_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -151750,16 +158710,94 @@ export type Database = {
       }
       v_script_step_impact: {
         Row: {
-          script_followed: string | null
-          step: string | null
-          step_order: number | null
           calls: number | null
-          done: number | null
-          partly: number | null
-          skipped: number | null
-          skipped_pct: number | null
           close_pct_when_done: number | null
           close_pct_when_missed: number | null
+          done: number | null
+          partly: number | null
+          script_followed: string | null
+          skipped: number | null
+          skipped_pct: number | null
+          step: string | null
+          step_order: number | null
+        }
+        Relationships: []
+      }
+      v_sellable_client_leads: {
+        Row: {
+          age: number | null
+          dial_count: number | null
+          dnc: boolean | null
+          email: string | null
+          estimated_equity: number | null
+          first_name: string | null
+          grade: string | null
+          is_homeowner: boolean | null
+          is_policyholder: boolean | null
+          is_veteran: boolean | null
+          last_dialed_at: string | null
+          last_disposition: string | null
+          last_name: string | null
+          lead_age_days: number | null
+          lead_id: string | null
+          lead_pack: string | null
+          lead_tier: string | null
+          lead_type: string | null
+          phone10: string | null
+          policy_carrier: string | null
+          policy_face_amount: number | null
+          state: string | null
+          wants_mortgage: boolean | null
+        }
+        Insert: {
+          age?: number | null
+          dial_count?: number | null
+          dnc?: never
+          email?: never
+          estimated_equity?: number | null
+          first_name?: never
+          grade?: never
+          is_homeowner?: never
+          is_policyholder?: never
+          is_veteran?: never
+          last_dialed_at?: string | null
+          last_disposition?: string | null
+          last_name?: never
+          lead_age_days?: never
+          lead_id?: string | null
+          lead_pack?: string | null
+          lead_tier?: string | null
+          lead_type?: string | null
+          phone10?: never
+          policy_carrier?: string | null
+          policy_face_amount?: number | null
+          state?: never
+          wants_mortgage?: never
+        }
+        Update: {
+          age?: number | null
+          dial_count?: number | null
+          dnc?: never
+          email?: never
+          estimated_equity?: number | null
+          first_name?: never
+          grade?: never
+          is_homeowner?: never
+          is_policyholder?: never
+          is_veteran?: never
+          last_dialed_at?: string | null
+          last_disposition?: string | null
+          last_name?: never
+          lead_age_days?: never
+          lead_id?: string | null
+          lead_pack?: string | null
+          lead_tier?: string | null
+          lead_type?: string | null
+          phone10?: never
+          policy_carrier?: string | null
+          policy_face_amount?: number | null
+          state?: never
+          wants_mortgage?: never
         }
         Relationships: []
       }
@@ -151930,6 +158968,13 @@ export type Database = {
             columns: ["assigned_agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -152411,53 +159456,53 @@ export type Database = {
       }
       v_social_funnel_30d: {
         Row: {
-          platform: string | null
-          posts: number | null
-          views: number | null
-          post_comments: number | null
+          applications: number | null
+          booked_or_further: number | null
+          licensed: number | null
           messages_in: number | null
+          partials_abandoned: number | null
           people_in: number | null
           people_replied: number | null
-          partials_abandoned: number | null
-          applications: number | null
-          licensed: number | null
-          booked_or_further: number | null
+          platform: string | null
+          post_comments: number | null
+          posts: number | null
+          views: number | null
         }
         Relationships: []
       }
       v_social_inbox_priority: {
         Row: {
-          source: string | null
-          sender_handle: string | null
-          sender_name: string | null
-          avatar: string | null
-          last_in: string | null
-          last_out: string | null
-          inbound_count: number | null
-          last_intent: string | null
-          sam_touched: boolean | null
-          last_text: string | null
           application_id: string | null
+          application_license: string | null
+          application_status: string | null
+          avatar: string | null
+          bucket: string | null
+          inbound_count: number | null
+          last_in: string | null
+          last_intent: string | null
+          last_out: string | null
+          last_text: string | null
           lead_score: number | null
           media_id: string | null
+          sam_touched: boolean | null
+          sender_handle: string | null
+          sender_name: string | null
+          source: string | null
           waiting_on_us: boolean | null
-          bucket: string | null
-          application_status: string | null
-          application_license: string | null
         }
         Relationships: []
       }
       v_social_lane_health: {
         Row: {
-          lane: string | null
-          tier: string | null
-          last_seen: string | null
           expires_at: string | null
-          owner: string | null
           fix: string | null
-          verdict: string | null
-          hours_silent: number | null
           hours_left: number | null
+          hours_silent: number | null
+          lane: string | null
+          last_seen: string | null
+          owner: string | null
+          tier: string | null
+          verdict: string | null
         }
         Relationships: []
       }
@@ -152480,13 +159525,13 @@ export type Database = {
       }
       v_social_what_pulls_90d: {
         Row: {
-          platform: string | null
-          lever: string | null
           applications: number | null
-          licensed: number | null
           booked_or_further: number | null
           last_30d: number | null
           last_application: string | null
+          lever: string | null
+          licensed: number | null
+          platform: string | null
         }
         Relationships: []
       }
@@ -152514,7 +159559,519 @@ export type Database = {
           status_group: string | null
           work_status: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "mv_agent_truth"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_admin_applicant_overview"
+            referencedColumns: ["became_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_20k_target_leaderboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_account_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_canonical_map"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_command_center"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_crm_active"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicate_candidates"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicates"
+            referencedColumns: ["canonical_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicates"
+            referencedColumns: ["dup_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_manager_conflicts"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_monthly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_owner_truth"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_quality_score"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_skool_membership"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_status_contradictions"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_training_stage"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_with_downline_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_full"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_al_link"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_al_user_id"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_numbers_today"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_needs_attention"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_onboarding_status"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_apex_roster"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_builder_operating_dashboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_channel_deprovision_needed"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_audit"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_carrier_cases"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_reconciliation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_worklist"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_ethos_agent_updates"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_ethos_paste_rows"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_activity"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_launch_board"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_notification_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hired_licensed_missing_course"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_kj_seminar_control"
+            referencedColumns: ["converted_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_command_center"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_command_center"
+            referencedColumns: ["manager_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_departure_orphan_risk"
+            referencedColumns: ["manager_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_new_hire_showup"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_new_hires_activation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_newhire_needs_portal_login"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_offboarding_preservation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_call_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_integrity"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_sequence"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_paid_applicants"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_pulse"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_reactivation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_trend_alert"
+            referencedColumns: ["producer_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producers_missing_license"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_active_no_first_sale"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_hired_no_onboarding"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_licensed_inactive"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_activations_alp"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_hires"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_reclaimable_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recruiter_bounty_candidates"
+            referencedColumns: ["recruited_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recruiter_pipeline"
+            referencedColumns: ["recruiter_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_sam_builders_dashboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_slack_invite_eligibility"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_strike_summary"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_top_legs_excl_sam"
+            referencedColumns: ["manager_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_training_required_completion"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_unsendable_contacts"
+            referencedColumns: ["agent_id"]
+          },
+        ]
       }
       v_sold_call_packets: {
         Row: {
@@ -152573,6 +160130,34 @@ export type Database = {
             foreignKeyName: "readymode_booking_packets_call_id_fkey"
             columns: ["call_id"]
             isOneToOne: false
+            referencedRelation: "v_call_client"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_booking_packets_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_dropoff_risk"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_booking_packets_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_easy_closes"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_booking_packets_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_more_coverage"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_booking_packets_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
             referencedRelation: "v_objection_calls"
             referencedColumns: ["call_id"]
           },
@@ -152615,6 +160200,20 @@ export type Database = {
             foreignKeyName: "readymode_booking_packets_call_id_fkey"
             columns: ["call_id"]
             isOneToOne: false
+            referencedRelation: "v_sold_call_book_match"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_booking_packets_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "v_sold_call_quality"
+            referencedColumns: ["call_id"]
+          },
+          {
+            foreignKeyName: "readymode_booking_packets_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
             referencedRelation: "v_sold_calls_queue"
             referencedColumns: ["call_id"]
           },
@@ -152622,35 +160221,547 @@ export type Database = {
       }
       v_sold_call_quality: {
         Row: {
-          call_id: string | null
-          external_call_id: string | null
-          call_started_at: string | null
-          agent_name: string | null
           agent_id: string | null
+          agent_name: string | null
           agent_raw: string | null
-          lead_first_name: string | null
-          lead_last_name: string | null
-          in_book: boolean | null
-          book_status: string | null
-          status_group: string | null
+          approval_status: string | null
           book_carrier: string | null
           book_policy_number: string | null
-          packet_id: string | null
-          packet_carrier: string | null
-          packet_monthly_premium: number | null
-          work_status: string | null
-          overall_score: number | null
-          coaching_priority: string | null
-          compliance_flags: Json | null
+          book_status: string | null
+          call_id: string | null
+          call_started_at: string | null
           coaching_notes: string | null
-          approval_status: string | null
-          declined_after_ssn_bank: boolean | null
-          price_objection: boolean | null
-          resell_summary: string | null
+          coaching_priority: string | null
           compliance_flag_count: number | null
+          compliance_flags: Json | null
+          declined_after_ssn_bank: boolean | null
+          external_call_id: string | null
+          in_book: boolean | null
+          lead_first_name: string | null
+          lead_last_name: string | null
+          overall_score: number | null
+          packet_carrier: string | null
+          packet_id: string | null
+          packet_monthly_premium: number | null
+          price_objection: boolean | null
           quality_verdict: string | null
+          resell_summary: string | null
+          status_group: string | null
+          work_status: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "mv_agent_truth"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_admin_applicant_overview"
+            referencedColumns: ["became_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_20k_target_leaderboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_account_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_canonical_map"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_command_center"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_crm_active"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicate_candidates"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicates"
+            referencedColumns: ["canonical_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicates"
+            referencedColumns: ["dup_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_manager_conflicts"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_monthly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_owner_truth"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_quality_score"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_skool_membership"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_status_contradictions"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_training_stage"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_with_downline_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_full"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_al_link"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_al_user_id"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_numbers_today"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_needs_attention"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_onboarding_status"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_apex_roster"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_builder_operating_dashboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_channel_deprovision_needed"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_audit"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_carrier_cases"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_reconciliation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_worklist"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_ethos_agent_updates"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_ethos_paste_rows"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_activity"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_launch_board"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_notification_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hired_licensed_missing_course"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_kj_seminar_control"
+            referencedColumns: ["converted_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_command_center"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_command_center"
+            referencedColumns: ["manager_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_departure_orphan_risk"
+            referencedColumns: ["manager_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_new_hire_showup"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_new_hires_activation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_newhire_needs_portal_login"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_offboarding_preservation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_call_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_integrity"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_sequence"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_paid_applicants"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_pulse"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_reactivation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_trend_alert"
+            referencedColumns: ["producer_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producers_missing_license"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_active_no_first_sale"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_hired_no_onboarding"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_licensed_inactive"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_activations_alp"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_hires"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_reclaimable_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recruiter_bounty_candidates"
+            referencedColumns: ["recruited_agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recruiter_pipeline"
+            referencedColumns: ["recruiter_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_sam_builders_dashboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_slack_invite_eligibility"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_strike_summary"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_top_legs_excl_sam"
+            referencedColumns: ["manager_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_training_required_completion"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_unsendable_contacts"
+            referencedColumns: ["agent_id"]
+          },
+        ]
       }
       v_sold_calls_queue: {
         Row: {
@@ -152852,6 +160963,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "readymode_dialer_calls_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -153378,6 +161496,13 @@ export type Database = {
             columns: ["assigned_agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -154196,6 +162321,13 @@ export type Database = {
             foreignKeyName: "telegram_users_agent_fk"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "telegram_users_agent_fk"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -154651,6 +162783,13 @@ export type Database = {
             foreignKeyName: "telegram_users_applicant_fk"
             columns: ["applicant_id"]
             isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "telegram_users_applicant_fk"
+            columns: ["applicant_id"]
+            isOneToOne: false
             referencedRelation: "v_recruiter_bounty_candidates"
             referencedColumns: ["application_id"]
           },
@@ -154943,6 +163082,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "transfer_requests_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -155483,6 +163629,13 @@ export type Database = {
             foreignKeyName: "applications_assigned_agent_id_fkey"
             columns: ["assigned_agent_id"]
             isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
             referencedRelation: "v_agent_with_downline_production"
             referencedColumns: ["agent_id"]
           },
@@ -155981,6 +164134,13 @@ export type Database = {
             columns: ["referral_manager_id"]
             isOneToOne: false
             referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_referral_manager_id_fkey"
+            columns: ["referral_manager_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
             referencedColumns: ["agent_id"]
           },
           {
@@ -156582,6 +164742,13 @@ export type Database = {
             foreignKeyName: "xcel_pre_licensing_students_application_id_fkey"
             columns: ["application_id"]
             isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "xcel_pre_licensing_students_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
             referencedRelation: "v_recruiter_bounty_candidates"
             referencedColumns: ["application_id"]
           },
@@ -156755,6 +164922,13 @@ export type Database = {
             columns: ["application_id"]
             isOneToOne: false
             referencedRelation: "v_queue_stalled_applications"
+            referencedColumns: ["application_id"]
+          },
+          {
+            foreignKeyName: "xcel_pre_licensing_students_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "v_readymode_lead_pool"
             referencedColumns: ["application_id"]
           },
           {
@@ -157702,6 +165876,55 @@ export type Database = {
           n: number
         }[]
       }
+      call_audio_for: {
+        Args: { p_call_ids: string[] }
+        Returns: {
+          call_id: string
+          duration_seconds: number
+          muted_ranges: Json
+          path: string
+          variant: string
+        }[]
+      }
+      call_review_queue: {
+        Args: { p_limit?: number }
+        Returns: {
+          agent_name: string
+          call_id: string
+          call_started_at: string
+          coaching_priority: string
+          disposition: string
+          overall_score: number
+          reason: string
+          script_score: number
+        }[]
+      }
+      call_training_digest: { Args: never; Returns: Json }
+      call_training_library: {
+        Args: never
+        Returns: {
+          agent_name: string
+          call_id: string
+          call_started_at: string
+          disposition: string
+          duration_seconds: number
+          great_call: boolean
+          key_quotes: Json
+          objection_moments: Json
+          overall_score: number
+          score_reasons: Json
+          scores: Json
+          script_followed: string
+          script_score: number
+          script_steps: Json
+          stage_reached: string
+          strengths: string[]
+          summary: string
+          tactics: string[]
+          training_tags: string[]
+        }[]
+      }
+      can_play_call_audio: { Args: { p_path: string }; Returns: boolean }
       can_view_sold_calls: { Args: never; Returns: boolean }
       can_work_application: {
         Args: { p_application_id: string }
@@ -158133,6 +166356,15 @@ export type Database = {
       }
       cleanup_expired_idempotency_keys: { Args: never; Returns: undefined }
       client_birthday_wisher: { Args: never; Returns: Json }
+      closer_candidates: {
+        Args: never
+        Returns: {
+          agent_name: string
+          close_pct_all: number
+          sticky_close_score: number
+          user_id: string
+        }[]
+      }
       commission_ledger_reconcile: { Args: never; Returns: Json }
       content_can_access: { Args: never; Returns: boolean }
       content_clips_canon_tags: {
@@ -158508,6 +166740,7 @@ export type Database = {
           p_license_status?: string
           p_notes?: string
           p_offered_comp_pct?: number
+          p_permanent?: boolean
           p_recipient_email?: string
           p_recipient_name?: string
           p_recipient_phone?: string
@@ -158667,6 +166900,7 @@ export type Database = {
           today_policies: number
         }[]
       }
+      csv_cell: { Args: { t: string }; Returns: string }
       current_agent_id: { Args: never; Returns: string }
       current_manager_agent_id: { Args: never; Returns: string }
       cw_dashboard_payload: { Args: never; Returns: Json }
@@ -158860,6 +167094,7 @@ export type Database = {
         Returns: Json
       }
       flex_hire: { Args: { p_agent_id: string }; Returns: Json }
+      fn_access_violation_alert: { Args: never; Returns: number }
       fn_agent_contract_pct: {
         Args: { p_agent_id: string }
         Returns: {
@@ -159058,6 +167293,7 @@ export type Database = {
         Returns: Json
       }
       fn_close_communication_gaps: { Args: { p_limit?: number }; Returns: Json }
+      fn_commission_advance_factor: { Args: never; Returns: number }
       fn_commission_rate: {
         Args: { p_agent_id: string; p_carrier_id: string }
         Returns: {
@@ -159193,6 +167429,64 @@ export type Database = {
       fn_hire_stage_rank: { Args: { p_stage: string }; Returns: number }
       fn_identity_collision_anchor: { Args: never; Returns: string }
       fn_identity_collision_observe: { Args: never; Returns: number }
+      fn_ig_abandoned_partials: {
+        Args: never
+        Returns: {
+          email: string
+          first_name: string
+          id: string
+          step: string
+        }[]
+      }
+      fn_ig_automation_pause_status: { Args: never; Returns: Json }
+      fn_ig_dashboard: { Args: { p_window?: string }; Returns: Json }
+      fn_ig_nudge_candidates: {
+        Args: never
+        Returns: {
+          business: boolean
+          external_id: string
+          last_in: string
+          last_out: string
+          last_out_body: string
+          nudges: number
+          sender_handle: string
+          stage: number
+        }[]
+      }
+      fn_ig_phone10: { Args: { p_text: string }; Returns: string }
+      fn_ig_reengage_candidates: {
+        Args: never
+        Returns: {
+          days_quiet: number
+          email: string
+          external_id: string
+          first_name: string
+          lane: string
+          last_in: string
+          last_in_body: string
+          last_out_attempt: string
+          last_out_delivered: string
+          phone: string
+          reason: string
+          sender_handle: string
+        }[]
+      }
+      fn_ig_thread: { Args: { p_external_id: string }; Returns: Json }
+      fn_ig_thread_action: {
+        Args: {
+          p_action: string
+          p_external_id: string
+          p_intent?: string
+          p_meta?: Json
+          p_note?: string
+          p_until?: string
+        }
+        Returns: Json
+      }
+      fn_ig_thread_action_latest: {
+        Args: { p_external_id: string; p_within?: string }
+        Returns: string
+      }
       fn_insuracloud_lane_verdict: {
         Args: {
           p_fires_7d: number
@@ -159204,6 +167498,7 @@ export type Database = {
         Returns: string
       }
       fn_insuracloud_refusal_anchor: { Args: never; Returns: string }
+      fn_interview_outcome_ask: { Args: never; Returns: Json }
       fn_invitation_status: {
         Args: {
           p_expires_at: string
@@ -159517,6 +167812,8 @@ export type Database = {
       fn_site_page_ladder_anchor: { Args: never; Returns: string }
       fn_skool_members_replace: { Args: { p_members: Json }; Returns: number }
       fn_sms_receipt_fix_anchor: { Args: never; Returns: string }
+      fn_social_drafts_archive_stale: { Args: never; Returns: number }
+      fn_social_lane_alert: { Args: never; Returns: Json }
       fn_stage_label: { Args: { p_stage: string }; Returns: string }
       fn_status_answer_indicates_licensed: {
         Args: { p_status: string }
@@ -159745,6 +168042,15 @@ export type Database = {
           weekly_aop: number
         }[]
       }
+      grade_feedback_set: {
+        Args: {
+          p_call_id: string
+          p_corrected_score?: number
+          p_note?: string
+          p_verdict: string
+        }
+        Returns: Json
+      }
       has_agent: {
         Args: { app: Database["public"]["Tables"]["applications"]["Row"] }
         Returns: boolean
@@ -159764,6 +168070,7 @@ export type Database = {
         Args: { p_bucket: string; p_max: number; p_window_seconds: number }
         Returns: boolean
       }
+      home_conversion_people: { Args: { p_today?: string }; Returns: Json }
       ig_bucket: {
         Args: { last_msg_at: string; last_sender: string }
         Returns: string
@@ -159887,6 +168194,7 @@ export type Database = {
         Args: { p_claim_id: string; p_invitation_id: string }
         Returns: boolean
       }
+      is_active_agent_login: { Args: never; Returns: boolean }
       is_agency_staff: { Args: never; Returns: boolean }
       is_first_monday_of_month: { Args: never; Returns: boolean }
       is_fresh_deal_close: {
@@ -159983,6 +168291,123 @@ export type Database = {
         }[]
       }
       landing_unclaimed_summary: { Args: never; Returns: Json }
+      lead_assignable_agents: {
+        Args: { p_search?: string }
+        Returns: {
+          agent_id: string
+          display_name: string
+          subagency: string
+          user_id: string
+        }[]
+      }
+      lead_bundle_archive: { Args: { p_bundle: string }; Returns: Json }
+      lead_bundle_assign: {
+        Args: {
+          p_agent_user_id: string
+          p_filters: Json
+          p_limit: number
+          p_name?: string
+          p_note?: string
+        }
+        Returns: Json
+      }
+      lead_bundle_build: {
+        Args: {
+          p_filters?: Json
+          p_limit?: number
+          p_name: string
+          p_note?: string
+        }
+        Returns: Json
+      }
+      lead_bundle_create: {
+        Args: {
+          p_format: string
+          p_limit?: number
+          p_min_days_since_dialed?: number
+          p_name: string
+          p_note?: string
+          p_tiers: string[]
+        }
+        Returns: Json
+      }
+      lead_bundle_export: {
+        Args: { p_bundle: string }
+        Returns: {
+          age: number
+          email: string
+          first_name: string
+          grade: string
+          last_name: string
+          phone10: string
+          state: string
+          status: string
+          tags: string
+        }[]
+      }
+      lead_bundle_grant: {
+        Args: { p_bundle: string; p_note?: string; p_user: string }
+        Returns: Json
+      }
+      lead_bundle_handoff: {
+        Args: { p_note?: string; p_phone10: string; p_user: string }
+        Returns: Json
+      }
+      lead_bundle_item_log: {
+        Args: {
+          p_item: string
+          p_note?: string
+          p_recording_path?: string
+          p_status: string
+        }
+        Returns: Json
+      }
+      lead_bundle_item_set: {
+        Args: { p_item: string; p_note?: string; p_status: string }
+        Returns: Json
+      }
+      lead_bundle_items_manage: { Args: { p_bundle: string }; Returns: Json }
+      lead_bundle_mark_sold: {
+        Args: {
+          p_bundle: string
+          p_note?: string
+          p_price_cents?: number
+          p_sold_to?: string
+        }
+        Returns: Json
+      }
+      lead_bundle_pool: {
+        Args: { p_min_days_since_dialed?: number }
+        Returns: {
+          available: number
+          in_live_bundles: number
+          quality_reason: string
+          quality_tier: string
+        }[]
+      }
+      lead_bundle_recent: { Args: { p_limit?: number }; Returns: Json }
+      lead_bundle_remove_item: { Args: { p_item: string }; Returns: Json }
+      lead_bundle_revoke: {
+        Args: { p_bundle: string; p_user: string }
+        Returns: Json
+      }
+      lead_closers_leaderboard: { Args: never; Returns: Json }
+      lead_pool_assign: {
+        Args: {
+          p_agent_user_id: string
+          p_filters: Json
+          p_limit: number
+          p_name?: string
+          p_note?: string
+          p_source: string
+        }
+        Returns: Json
+      }
+      lead_pool_counts: {
+        Args: { p_filters?: Json; p_source: string }
+        Returns: Json
+      }
+      lead_resale_pool_counts: { Args: { p_filters?: Json }; Returns: Json }
       lead_state_yield: {
         Args: never
         Returns: {
@@ -160053,6 +168478,15 @@ export type Database = {
           weeks_with_agency: number
         }[]
       }
+      leaderboard_set_cheer: {
+        Args: { p_agent_key: string; p_cheer: boolean; p_month: string }
+        Returns: Json
+      }
+      leaderboard_team_board: {
+        Args: { p_end: string; p_start: string }
+        Returns: Json
+      }
+      leaderboard_viewer_is_teammate: { Args: never; Returns: boolean }
       list_abandoned_partial_applications: {
         Args: never
         Returns: {
@@ -160089,6 +168523,7 @@ export type Database = {
       list_invitations: {
         Args: {
           p_include_history?: boolean
+          p_kind?: string
           p_limit?: number
           p_search?: string
         }
@@ -160235,6 +168670,28 @@ export type Database = {
           license_status: string
           manager_name: string
           onboarding_stage: string
+        }[]
+      }
+      my_lead_bundles: {
+        Args: never
+        Returns: {
+          attempts: number
+          bundle_id: string
+          bundle_name: string
+          email: string
+          first_name: string
+          format: string
+          granted_at: string
+          item_id: string
+          last_dialed_at: string
+          last_disposition: string
+          last_name: string
+          phone10: string
+          quality_reason: string
+          quality_tier: string
+          status: string
+          status_at: string
+          status_note: string
         }[]
       }
       my_new_hire_showup: {
@@ -160753,6 +169210,7 @@ export type Database = {
         Args: { p_application_id: string }
         Returns: Json
       }
+      refresh_call_audio_team_visible: { Args: never; Returns: number }
       refresh_mat_production_unified_if_needed: { Args: never; Returns: Json }
       refresh_production_truth: { Args: { p_force?: boolean }; Returns: Json }
       refresh_sync_health: { Args: never; Returns: undefined }
@@ -161023,6 +169481,49 @@ export type Database = {
         Returns: Json
       }
       search_people: { Args: { p_limit?: number; p_q: string }; Returns: Json }
+      sellable_leads_match: {
+        Args: { p_filters: Json }
+        Returns: {
+          age: number
+          dial_count: number
+          dnc: boolean
+          email: string
+          first_name: string
+          grade: string
+          is_homeowner: boolean
+          is_policyholder: boolean
+          is_veteran: boolean
+          last_dialed_at: string
+          last_disposition: string
+          last_name: string
+          lead_age_days: number
+          lead_id: string
+          phone10: string
+          policy_carrier: string
+          policy_face_amount: number
+          state: string
+          wants_mortgage: boolean
+        }[]
+      }
+      sellable_pool: {
+        Args: { p_filters?: Json; p_source: string }
+        Returns: {
+          age: number
+          already_sold: boolean
+          email: string
+          first_name: string
+          flags: Json
+          in_bundle: boolean
+          last_name: string
+          lead_age_days: number
+          lead_id: string
+          phone10: string
+          state: string
+          tags: string
+          tier: string
+          under_9mo: boolean
+        }[]
+      }
       send_completion_contracting_handoff: { Args: never; Returns: Json }
       send_reapply_blast: {
         Args: { p_dry_run?: boolean; p_limit?: number }
@@ -161275,6 +169776,16 @@ export type Database = {
         Returns: boolean
       }
       snapshot_aged_leads_daily: { Args: never; Returns: undefined }
+      social_command_center: { Args: never; Returns: Json }
+      social_draft_set_status: {
+        Args: { p_id: number; p_note?: string; p_status: string }
+        Returns: Json
+      }
+      social_lead_csv: { Args: { p_list: string }; Returns: string }
+      social_source_of: {
+        Args: { landing: string; referrer: string; utm: string }
+        Returns: string
+      }
       sold_call_set_status: {
         Args: { p_call_id: string; p_note?: string; p_status?: string }
         Returns: {

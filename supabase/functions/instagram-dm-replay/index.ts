@@ -22,6 +22,7 @@
 //     "token_dead" verdict — never a storm of 190s.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { probeInstagramToken } from "../_shared/instagram-token-dead.ts";
+import { instagramPaused } from "../_shared/instagram-pause.ts";
 
 const BASE = Deno.env.get("SUPABASE_URL") ?? "https://xrzweoneiieddzxogewk.supabase.co";
 const SRK  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -43,6 +44,10 @@ Deno.serve(async (req) => {
   const dryRun = url.searchParams.get("dry_run") === "1";
 
   const sb = createClient(BASE, SRK, { auth: { persistSession: false } });
+  // Sam's pause (2026-11-04): a replay is a send. While paused nothing is attempted and the held
+  // rows stay held; the token is not even probed.
+  const pause = await instagramPaused(sb);
+  if (pause.paused) return json({ ok: false, action: "paused", paused: true, since: pause.since, reason: pause.reason, verified: pause.verified, attempted: 0 });
   const { data: tokRow } = await sb.from("system_settings").select("value").eq("key", "meta_instagram_token").maybeSingle();
   const token = typeof tokRow?.value === "string" ? tokRow.value.replace(/^"|"$/g, "") : null;
   const live = await probeInstagramToken(token);

@@ -34,6 +34,7 @@
 
 import { isTokenDeadError, pageTokenDead } from "../_shared/instagram-token-dead.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { instagramPaused, pausedResponse, recordPauseRefusal } from "../_shared/instagram-pause.ts";
 import { raiseApexAlert } from "../_shared/alert-raise.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -190,6 +191,21 @@ Deno.serve(async (req) => {
   if ((!recipientId && !commentId) || !message) {
     return new Response(JSON.stringify({ ok: false, error: "recipient_id or comment_id + message required" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+
+  // Sam's pause (2026-11-04): nothing automated leaves for Instagram. The one send that may pass
+  // is a reply a signed-in human typed on the desk (tag "desk" under a user JWT); bots, crons,
+  // triggers and function-to-function calls arrive as "service" and are refused HERE, before any
+  // token is read, so a paused run never reaches graph.instagram.com. See _shared/instagram-pause.ts.
+  const pause = await instagramPaused(sb);
+  const humanDesk = (auth.caller ?? "").startsWith("user:") && body.tag === "desk";
+  if (pause.paused && !humanDesk) {
+    const kind = commentId ? (body.public === true ? "public_reply" : "private_reply") : "dm";
+    await recordPauseRefusal(sb, {
+      kind, external_id: externalId, comment_id: commentId, message, caller: auth.caller ?? null,
+      meta: { tag: typeof body.tag === "string" ? body.tag : null, verified: pause.verified, fn: "send-instagram-dm" },
+    });
+    return pausedResponse(pause, { kind }, corsHeaders);
   }
 
   const { token, pageId } = await resolveSecrets(sb);

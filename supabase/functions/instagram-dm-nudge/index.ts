@@ -14,6 +14,7 @@
 // (single source of truth; the SQL excludes any thread Sam typed in).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { sendEmail } from "../_shared/email.ts";
+import { instagramPaused } from "../_shared/instagram-pause.ts";
 
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { "Content-Type": "application/json" } });
 const MAX_SENDS_PER_RUN = 20;
@@ -39,8 +40,15 @@ Deno.serve(async (req) => {
   let sent = 0, failed = 0, emailed = 0;
 
   // ── DM nudges ──
-  const { data: cands, error: cErr } = await sb.rpc("fn_ig_nudge_candidates");
-  if (cErr) return json({ ok: false, error: `candidates: ${cErr.message}` }, 500);
+  // Sam's pause (2026-11-04): while paused the candidates are not even read, so no DM leaves and
+  // nothing is marked attempted. The recovery emails further down are not Instagram and still run.
+  const pause = await instagramPaused(sb);
+  let cands: unknown[] | null = null;
+  if (!pause.paused) {
+    const { data, error: cErr } = await sb.rpc("fn_ig_nudge_candidates");
+    if (cErr) return json({ ok: false, error: `candidates: ${cErr.message}` }, 500);
+    cands = data;
+  }
   for (const c of (cands ?? []) as Array<{ external_id: string; sender_handle: string | null; stage: number; business: boolean; last_out_body: string | null }>) {
     if (sent + failed >= MAX_SENDS_PER_RUN) break;
     const text = c.stage === 2 ? pick(NUDGE2, c.external_id) : pick(c.business ? NUDGE1_BUSINESS : NUDGE1_OPENER, c.external_id);
@@ -84,5 +92,5 @@ Deno.serve(async (req) => {
     } catch (e) { receipts.push({ partial_id: p.id, error: String(e).slice(0, 160) }); }
   }
 
-  return json({ ok: true, dry_run: dryRun, candidates: (cands ?? []).length, sent, failed, partials: (parts ?? []).length, emailed, receipts: receipts.slice(0, 40) });
+  return json({ ok: true, dry_run: dryRun, paused: pause.paused, candidates: (cands ?? []).length, sent, failed, partials: (parts ?? []).length, emailed, receipts: receipts.slice(0, 40) });
 });

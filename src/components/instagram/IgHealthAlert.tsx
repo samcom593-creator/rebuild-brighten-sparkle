@@ -1,6 +1,6 @@
 // Renders ONLY when something is broken. Precedence top to bottom, one wins; the words say what
 // broke and the button is the fix. The full health detail lives on the Numbers tab.
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, PauseCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ToneBubble } from "@/components/ui/delight/ToneBubble";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -8,15 +8,27 @@ import { ALERT, BUTTON } from "./igCopy";
 import { agoWords, shortAge, shortAgo } from "./igFormat";
 import type { IgStatus } from "./igTypes";
 
-export type IgAlertKind = "token_dead" | "links_blocked" | "bot_silent" | "followups_stale";
+export type IgAlertKind = "paused" | "token_dead" | "links_blocked" | "bot_silent" | "followups_stale";
 
 export interface IgAlertVerdict { kind: IgAlertKind; sentence: string }
 
+/** fn_ig_automation_pause_status(): Sam's 2026-11-04 pause of every automated Instagram action. */
+export interface IgPauseStatus {
+  paused: boolean;
+  since: string | null;
+  reason?: string | null;
+  refusals_24h?: number;
+}
+
 const H = 3_600_000;
 
-export function alertVerdict(status: IgStatus, waiting: number, now: number = Date.now()): IgAlertVerdict | null {
+export function alertVerdict(status: IgStatus, waiting: number, now: number = Date.now(), pause: IgPauseStatus | null = null): IgAlertVerdict | null {
   if (status.token_ok === false) {
     return { kind: "token_dead", sentence: ALERT.tokenDead(agoWords(status.token_checked_at ?? now, now)) };
+  }
+  // A paused bot is quiet on purpose: it outranks every "the bot is not sending" verdict below.
+  if (pause?.paused) {
+    return { kind: "paused", sentence: ALERT.paused(pause.since ? shortAgo(pause.since, now) : "") };
   }
   if (status.links_blocked) {
     return { kind: "links_blocked", sentence: ALERT.linksBlocked(shortAgo(status.links_blocked_at, now)) };
@@ -57,12 +69,22 @@ export interface IgHealthAlertProps {
   onSeeThem: () => void;
   onSeeWhy: () => void;
   now: number;
+  pause?: IgPauseStatus | null;
 }
 
-export function IgHealthAlert({ status, waiting, reconnectHref, onHowToFix, onSeeThem, onSeeWhy, now }: IgHealthAlertProps) {
-  const v = alertVerdict(status, waiting, now);
+export function IgHealthAlert({ status, waiting, reconnectHref, onHowToFix, onSeeThem, onSeeWhy, now, pause = null }: IgHealthAlertProps) {
+  const v = alertVerdict(status, waiting, now, pause);
   if (!v) return null;
   const fix = "h-11 shrink-0 sm:h-10";
+  if (v.kind === "paused") {
+    // Not an alarm: nothing is broken. Calm surface, no button; the resume is a terminal command.
+    return (
+      <div role="status" className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3">
+        <PauseCircle className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
+        <p className="min-w-0 flex-1 text-[15px] font-medium leading-[22px] text-foreground">{v.sentence}</p>
+      </div>
+    );
+  }
   return (
     <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-tone-hot/35 bg-tone-hot/8 px-4 py-3">
       <ToneBubble tone="hot" size="sm"><AlertTriangle /></ToneBubble>

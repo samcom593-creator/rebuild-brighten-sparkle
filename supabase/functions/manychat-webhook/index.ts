@@ -20,6 +20,7 @@
 // Response: { ok, intent, lead_score, auto_reply, apply_url, ... }
 
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { instagramPaused, recordPauseRefusal } from "../_shared/instagram-pause.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1291,13 +1292,30 @@ Deno.serve(async (req) => {
       }
     }
   }
+  // Sam's pause (2026-11-04): while system_settings.instagram_automation_paused_at is set, the
+  // native Instagram transport gets nothing to send. The brain still classifies, logs the inbound
+  // row (reply_path "paused" says why no reply left), pages the licensed lead and notifies Sam;
+  // he answers by hand. Scoped to source "instagram" so ManyChat-sourced requests (the lane this
+  // pause moves traffic to) and the YouTube comment pointer are untouched. dry_run keeps returning
+  // the undimmed decision so apex-doctor's probes still read the routing logic.
+  const pause = rawSource === "instagram" ? await instagramPaused(supabase) : null;
+  if (pause?.paused && !dryRun) {
+    if (decision.auto_reply || decision.public_reply) {
+      await recordPauseRefusal(supabase, {
+        kind: channel === "comment" ? "comment_brain" : "dm_brain", external_id: subscriberId,
+        message: decision.auto_reply ?? decision.public_reply, caller: "manychat-webhook",
+        meta: { intent: decision.intent, reply_path: decision.reply_path, channel, source, verified: pause.verified },
+      });
+    }
+    decision.auto_reply = null; decision.public_reply = null; decision.email = null; decision.booking = null; decision.reply_path = "paused";
+  }
   // Test traffic never pages or emails anyone (today's tests sent Sam ~55 alerts).
   const isTest = /test|^(m\d|mx-|fu-|q\d?-|v6|tone|nb-|soc|cmt|fl\d?-|cf-|yt-|t\d-|e2e|dup_)/i.test(`${senderName ?? ""} ${senderHandle ?? ""} ${subscriberId ?? ""}`) || /^9999/.test(subscriberId ?? "");
   if (isTest) { decision.urgent = false; decision.email = null; decision.notify = null; }
   // Two emails per licensed lead at most: "licensed" and "call booked". The rest is phone push only.
   if (decision.email && !/^(LICENSED lead|CALL BOOKED)/.test(decision.email.subject)) decision.email = null;
   if (dryRun) {
-    return new Response(JSON.stringify({ ok: true, dry_run: true, intent: decision.intent, lead_score: decision.lead_score, reply_path: decision.reply_path, urgent: decision.urgent, auto_reply: decision.auto_reply, public_reply: decision.public_reply ?? null, notify: decision.notify ?? null, booking: decision.booking ?? null }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ ok: true, dry_run: true, paused: pause?.paused ?? false, intent: decision.intent, lead_score: decision.lead_score, reply_path: decision.reply_path, urgent: decision.urgent, auto_reply: decision.auto_reply, public_reply: decision.public_reply ?? null, notify: decision.notify ?? null, booking: decision.booking ?? null }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
   const { intent, lead_score, reply_path, urgent, auto_reply, alert_text, notify } = decision;
   if (decision.email) await emailSam(decision.email.subject, decision.email.body);

@@ -10,9 +10,17 @@
 // once per 6h window through the real alert ladder and carries the reconnect link,
 // so the page says how to fix it instead of only that it broke.
 import { raiseApexAlert } from "./alert-raise.ts";
+import { instagramPaused } from "./instagram-pause.ts";
 
 // deno-lint-ignore no-explicit-any
 type Sb = any;
+
+// Sam's pause (2026-11-04): while every automated send is paused a dead token stops nothing that
+// was going to happen, so the 6-hourly "DMs are DOWN, tap to reconnect" page became a 4x/day nag
+// to reconnect a bot he had just switched off (three pages on 2026-11-05 alone). Paused = one
+// page per week, worded as optional housekeeping: reconnecting only restores names on the desk
+// and readies the resume; it sends nothing.
+export const TOKEN_DEAD_PAGE_WINDOW_HOURS_PAUSED = 24 * 7;
 
 export const TOKEN_DEAD_EVENT = "instagram_token_dead";
 export const TOKEN_DEAD_PAGE_WINDOW_HOURS = 6;
@@ -56,19 +64,31 @@ export async function reconnectLink(): Promise<string | null> {
  * Returns what happened so the caller can put it in its own response body.
  */
 export async function pageTokenDead(sb: Sb, source: string, errorText: string): Promise<{ paged: boolean; receipt: string }> {
-  const since = new Date(Date.now() - TOKEN_DEAD_PAGE_WINDOW_HOURS * 3600 * 1000).toISOString();
+  const pause = await instagramPaused(sb);
+  const windowHours = pause.paused ? TOKEN_DEAD_PAGE_WINDOW_HOURS_PAUSED : TOKEN_DEAD_PAGE_WINDOW_HOURS;
+  const since = new Date(Date.now() - windowHours * 3600 * 1000).toISOString();
   const { data: recent, error: qErr } = await sb.from("bot_alerts").select("id").eq("event_type", TOKEN_DEAD_EVENT).gte("created_at", since).limit(1);
   // If the dedupe read itself fails, page anyway: a lost page costs more than a repeat.
-  if (!qErr && recent?.length) return { paged: false, receipt: `deduped: ${TOKEN_DEAD_EVENT} already raised within ${TOKEN_DEAD_PAGE_WINDOW_HOURS}h` };
+  if (!qErr && recent?.length) return { paged: false, receipt: `deduped: ${TOKEN_DEAD_EVENT} already raised within ${windowHours}h${pause.paused ? " (automation paused)" : ""}` };
   const link = await reconnectLink();
-  const raised = await raiseApexAlert({
-    source,
-    eventType: TOKEN_DEAD_EVENT,
-    severity: "critical",
-    subject: "Instagram DMs are DOWN — token dead, tap to reconnect",
-    body: `Meta rejected the Instagram token (${errorText}). Every DM and comment reply from the assistant is failing until you reconnect. Tap, then Allow: ${link ?? "(link unavailable — open instagram-auth?link=1)"} — replies that failed while it was down are replayed automatically the moment the new token lands.`,
-    smsBody: "IG DMs DOWN: token dead. Tap the reconnect link in email/Discord.".slice(0, 90),
-    actionLink: link ?? undefined,
-  });
+  const raised = await raiseApexAlert(pause.paused
+    ? {
+      source,
+      eventType: TOKEN_DEAD_EVENT,
+      severity: "critical",
+      subject: "Instagram app token is dead (automation is paused, nothing is sending)",
+      body: `Meta rejected the Instagram app token (${errorText}). Nothing automated is sending anyway: you paused Instagram automation on 2026-11-04. Reconnecting is optional; it only makes new DMs show names instead of numbers on the desk and readies the resume, and it sends nothing. If you want that: ${link ?? "(link unavailable — open instagram-auth?link=1)"}`,
+      smsBody: "IG app token dead. Automation is paused, nothing sends. Reconnect is optional.".slice(0, 90),
+      actionLink: link ?? undefined,
+    }
+    : {
+      source,
+      eventType: TOKEN_DEAD_EVENT,
+      severity: "critical",
+      subject: "Instagram DMs are DOWN — token dead, tap to reconnect",
+      body: `Meta rejected the Instagram token (${errorText}). Every DM and comment reply from the assistant is failing until you reconnect. Tap, then Allow: ${link ?? "(link unavailable — open instagram-auth?link=1)"} — replies that failed while it was down are replayed automatically the moment the new token lands.`,
+      smsBody: "IG DMs DOWN: token dead. Tap the reconnect link in email/Discord.".slice(0, 90),
+      actionLink: link ?? undefined,
+    });
   return { paged: raised.ok, receipt: raised.receipt };
 }

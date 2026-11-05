@@ -10,6 +10,7 @@
 // ig_trial_reels_min_gap_hours (default 5). A Graph failure is never a 200: the row
 // carries the error and the response is 502 so the edge-call ledger grades it red.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { instagramPaused } from "../_shared/instagram-pause.ts";
 
 const GRAPH = "https://graph.instagram.com/v23.0";
 const BUCKET = "ig-trial-reels";
@@ -20,6 +21,11 @@ Deno.serve(async (req) => {
   if (!expected || (req.headers.get("authorization") ?? "") !== `Bearer ${expected}`) return json({ ok: false, error: "unauthorized" }, 401);
   const sb = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", { auth: { persistSession: false } });
   const dry = new URL(req.url).searchParams.get("dry_run") === "1";
+
+  // Sam's pause (2026-11-04): publishing is an automated action on Instagram. Paused = nothing is
+  // created or published; the queue keeps waiting for the resume.
+  const pause = await instagramPaused(sb);
+  if (pause.paused) return json({ ok: true, paused: true, since: pause.since, reason: pause.reason, verified: pause.verified, paced: false, published_24h: null, pending: null, receipts: [] });
 
   const { data: st } = await sb.from("system_settings").select("key,value")
     .in("key", ["meta_instagram_token", "meta_instagram_page_id", "ig_trial_reels_per_day", "ig_trial_reels_min_gap_hours"]);

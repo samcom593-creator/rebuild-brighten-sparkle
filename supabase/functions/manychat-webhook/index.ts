@@ -652,6 +652,7 @@ type Decision = Classification & {
   notify?: string | null;         // non-urgent phone ping title
   email?: { subject: string; body: string } | null;
   booking?: { calendly_event: string | null; start_at: string; label: string } | null;
+  paused?: boolean;               // Sam's 2026-11-04 Instagram pause: the lane was chosen and withheld, nothing left
 };
 
 type Lane = "opportunity" | "licensed" | "fitness" | "mentorship" | "rentals" | "partnership";
@@ -1307,7 +1308,8 @@ Deno.serve(async (req) => {
         meta: { intent: decision.intent, reply_path: decision.reply_path, channel, source, verified: pause.verified },
       });
     }
-    decision.auto_reply = null; decision.public_reply = null; decision.email = null; decision.booking = null; decision.reply_path = "paused";
+    // The lane stays on the row (Sam sees what the bot would have said); `paused` says why nothing left.
+    decision.auto_reply = null; decision.public_reply = null; decision.email = null; decision.booking = null; decision.paused = true;
   }
   // Test traffic never pages or emails anyone (today's tests sent Sam ~55 alerts).
   const isTest = /test|^(m\d|mx-|fu-|q\d?-|v6|tone|nb-|soc|cmt|fl\d?-|cf-|yt-|t\d-|e2e|dup_)/i.test(`${senderName ?? ""} ${senderHandle ?? ""} ${subscriberId ?? ""}`) || /^9999/.test(subscriberId ?? "");
@@ -1381,7 +1383,7 @@ Deno.serve(async (req) => {
     source, external_id: subscriberId, sender_handle: senderHandle, sender_name: senderName,
     sender_avatar: senderAvatar, body: text, direction: "inbound", intent, lead_score,
     auto_replied: !!auto_reply,
-    raw_payload: { ...body, partial_application_id: partialApplicationId, session_id: sessionId, reply_path, public_reply: decision.public_reply ?? null },
+    raw_payload: { ...body, partial_application_id: partialApplicationId, session_id: sessionId, reply_path, public_reply: decision.public_reply ?? null, paused: decision.paused === true },
     replied_at: auto_reply ? new Date().toISOString() : null,
   };
 
@@ -1407,7 +1409,7 @@ Deno.serve(async (req) => {
   }
 
   return new Response(JSON.stringify({
-    ok: true, intent, lead_score, urgent, auto_reply, reply_path, public_reply: decision.public_reply ?? null, booking: decision.booking ?? null,
+    ok: true, intent, lead_score, urgent, auto_reply, reply_path, paused: decision.paused === true, public_reply: decision.public_reply ?? null, booking: decision.booking ?? null,
     message_id: (inboundRow as { id?: string } | null)?.id,
     partial_application_id: partialApplicationId,
     lead_source: source,

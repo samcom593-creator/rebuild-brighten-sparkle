@@ -25,6 +25,13 @@ interface LooseQuery<T> {
 
 interface LooseSupabase {
   from<T extends object = Record<string, unknown>>(table: string): LooseQuery<T>;
+  /**
+   * Untyped RPC. The generated overloads of supabase.rpc are "excessively deep" for the compiler
+   * (TS2589) once types.ts carries 879 relations (regen of 2026-11-05), and the old
+   * `supabase.rpc as (...) => ReturnType<typeof supabase.rpc>` casts tipped over one by one.
+   * The caller narrows `data` by hand, exactly as it already did.
+   */
+  rpc<T = unknown>(fn: string, args?: Record<string, unknown>): Promise<LooseResult<T>>;
 }
 
 export const looseSupabase = supabase as unknown as LooseSupabase;

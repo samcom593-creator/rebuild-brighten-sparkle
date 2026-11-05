@@ -103,6 +103,14 @@ open(sys.argv[2], "w").write(ts)
 print("wrote %s (%d chars)" % (sys.argv[2], len(ts)))
 PY
 
+# 2026-11-05 (MP-IG-PAUSE): the raw artifact carries every RPC in the database (686 and
+# growing). supabase-js types `rpc` over that whole union, and past ~630 members the
+# compiler reports TS2589 at the first `vi.mocked(supabase.rpc)` / `ReturnType<typeof
+# supabase.rpc>` site it reaches, then at the next one when that is fixed - the gate went
+# 71 -> 72 -> 73 on unchanged code. Keep only the functions src names; see the pruner's
+# header for why that can never hide a missing signature.
+python3 "$REPO_ROOT/scripts/prune-unreferenced-rpc-types.py"
+
 echo
 echo "types.ts refreshed. Now prove it — read each script's own verdict line:"
 echo "  node scripts/check-tsc-error-count.mjs"

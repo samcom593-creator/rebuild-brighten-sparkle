@@ -24,6 +24,7 @@ import {
   BadgeDollarSign,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { looseSupabase } from "@/lib/looseSupabase";
 import { HireStageSelect } from "@/components/hires/HireStageControl";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -161,10 +162,9 @@ export default function DashboardAccounts() {
       // Profiles/roles can survive an auth deletion. Intersect the visible
       // candidates with auth.users through a staff-only security-definer RPC;
       // otherwise 44 legacy records currently inflate this screen.
-      const { data: authRows, error: authError } = await (supabase.rpc as (
-        fn: string,
-        args: Record<string, unknown>,
-      ) => ReturnType<typeof supabase.rpc>)("staff_existing_auth_user_ids", {
+      // looseSupabase.rpc: the ReturnType<typeof supabase.rpc> cast is "excessively deep" (TS2589)
+      // once types.ts carries 879 relations (regen of 2026-11-05); the result is narrowed by hand below.
+      const { data: authRows, error: authError } = await looseSupabase.rpc("staff_existing_auth_user_ids", {
         p_user_ids: candidateUserIds,
       });
       if (authError) throw authError;

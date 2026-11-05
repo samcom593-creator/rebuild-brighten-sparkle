@@ -134,10 +134,9 @@ export function AgentOnboardingCommandCenter({
     enabled: !!agentId,
     staleTime: 20_000,
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as (fn: string, args: Record<string, unknown>) => ReturnType<typeof supabase.rpc>)(
-        "apex_agent_contract_checklist",
-        { p_agent_id: agentId },
-      );
+      // looseSupabase.rpc: the ReturnType<typeof supabase.rpc> cast is "excessively deep" (TS2589)
+      // once types.ts carries 879 relations (regen of 2026-11-05).
+      const { data, error } = await looseSupabase.rpc("apex_agent_contract_checklist", { p_agent_id: agentId });
       if (error) throw error;
       return ((data ?? []) as unknown as ContractChecklistRow[]);
     },
@@ -145,10 +144,9 @@ export function AgentOnboardingCommandCenter({
 
   const statusMutation = useMutation({
     mutationFn: async ({ carrierId, status }: { carrierId: string; status: WorkflowStatus }) => {
-      const { error } = await (supabase.rpc as (fn: string, args: Record<string, unknown>) => ReturnType<typeof supabase.rpc>)(
-        "apex_set_agent_contract_status",
-        { p_agent_id: agentId, p_carrier_id: carrierId, p_status: status, p_note: null },
-      );
+      const { error } = await looseSupabase.rpc("apex_set_agent_contract_status", {
+        p_agent_id: agentId, p_carrier_id: carrierId, p_status: status, p_note: null,
+      });
       if (error) throw error;
       return status;
     },

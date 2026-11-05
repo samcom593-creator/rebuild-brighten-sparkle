@@ -250,6 +250,16 @@ export default function LeadManager() {
     },
     retry: 1,
     staleTime: 120_000,
+    // Sam's network flaps (documented Wi-Fi / MagicDNS drops). The app's global
+    // default is networkMode:"offlineFirst" (src/shared/api/queryClient.ts),
+    // which serves a cached-empty roster and then refuses to re-hit the network
+    // while the browser momentarily looks offline — i.e. "zero agents" with no
+    // request in the server logs at all. This query has the longest staleTime
+    // on the page (2 min vs 10-15s on counts/recent), so it is the one that gets
+    // stuck. Force it to always attempt the network and always refetch on mount
+    // so a flap can never leave the picker silently empty.
+    networkMode: "always",
+    refetchOnMount: "always",
   });
   const agents = useMemo(() => agentsQuery.data ?? [], [agentsQuery.data]);
   const refreshAgents = async () => {
@@ -548,6 +558,7 @@ export default function LeadManager() {
                 <div className="flex gap-2">
                   <Button type="button" size="sm" variant="outline" onClick={refreshAgents}>Refresh agents</Button>
                   <Button type="button" size="sm" variant="ghost" onClick={goLogin}>Log in again</Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={hardReset}>Reload fresh</Button>
                 </div>
               </div>
             ) : agents.length === 0 ? (
@@ -558,6 +569,7 @@ export default function LeadManager() {
                 <div className="flex gap-2">
                   <Button type="button" size="sm" variant="outline" onClick={refreshAgents}>Refresh agents</Button>
                   <Button type="button" size="sm" variant="ghost" onClick={goLogin}>Log in again</Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={hardReset}>Reload fresh</Button>
                 </div>
               </div>
             ) : shownAgents.length === 0 ? (
@@ -738,6 +750,26 @@ type ManageItem = {
   tier: string | null; status: string; tags: string | null; has_recording: boolean;
 };
 
+// A wedged client (stale service worker, or a network flap that left React Query
+// serving a cached-empty roster) is cured by a clean reboot: drop every service
+// worker and cache, then reload. Offered in the picker's empty/error states so an
+// operator is never stuck staring at zero agents with no way out but a manual
+// hard-refresh they shouldn't have to know to perform.
+async function hardReset() {
+  try {
+    if ("serviceWorker" in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.allSettled(regs.map((r) => r.unregister()));
+    }
+    if ("caches" in window) {
+      const keys = await caches.keys();
+      await Promise.allSettled(keys.map((k) => caches.delete(k)));
+    }
+  } finally {
+    window.location.reload();
+  }
+}
+
 function BundleManage({ bundle, onChange }: { bundle: RecentBundle; onChange: () => void }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -751,16 +783,30 @@ function BundleManage({ bundle, onChange }: { bundle: RecentBundle; onChange: ()
   }
   function toggle() { const n = !open; setOpen(n); if (n && items === null) void loadItems(); }
 
-  const { data: agents = [] } = useQuery<AssignableAgent[]>({
+  const agentsQ = useQuery<AssignableAgent[]>({
     queryKey: ["manage-agents", bundle.bundle_id, dsearch],
     enabled: open && dsearch.trim().length > 0,
     queryFn: async () => {
-      const { data, error } = await rpc("lead_assignable_agents", { p_search: dsearch });
-      if (error) throw error;
-      return (data as AssignableAgent[]) ?? [];
+      const run = async () => {
+        const { data, error } = await rpc("lead_assignable_agents", { p_search: dsearch });
+        if (error) throw error;
+        return (data as AssignableAgent[]) ?? [];
+      };
+      let rows = await run();
+      if (rows.length === 0) {
+        // Same self-heal as the main picker: a stale tab token returns an empty
+        // list with no error. refreshSession resolves {data,error} (no throw).
+        const { data: s } = await supabase.auth.getSession();
+        if (s.session) { await supabase.auth.refreshSession(); rows = await run(); }
+      }
+      return rows;
     },
     staleTime: 60_000,
+    // Never let a network flap leave this typeahead silently blank (see the
+    // main picker's agentsQuery note).
+    networkMode: "always",
   });
+  const agents = agentsQ.data ?? [];
 
   async function grant(a: AssignableAgent) {
     setBusy(true);
@@ -818,6 +864,13 @@ function BundleManage({ bundle, onChange }: { bundle: RecentBundle; onChange: ()
                       <span>{a.display_name}</span>{a.subagency && <span className="text-xs text-muted-foreground">{a.subagency}</span>}
                     </button>
                   ))}
+                </div>
+              )}
+              {dsearch.trim().length > 0 && !agentsQ.isFetching && agents.length === 0 && (
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-amber-400">
+                  <AlertTriangle className="h-3 w-3" /> No match, or your login went stale.
+                  <button type="button" className="underline hover:text-amber-300" onClick={() => agentsQ.refetch()}>Retry</button>
+                  <button type="button" className="underline hover:text-amber-300" onClick={hardReset}>Reload fresh</button>
                 </div>
               )}
             </div>

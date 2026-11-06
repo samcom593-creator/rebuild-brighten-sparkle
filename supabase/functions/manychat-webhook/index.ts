@@ -846,7 +846,9 @@ async function isKnownAgent(senderName: string | null): Promise<boolean> {
   } catch (e) { console.error("[manychat-webhook] isKnownAgent failed", e); return false; }
 }
 
-async function decide(text: string, rawSource: string, firstName: string | undefined, externalId: string | null, handle: string | null, channel: string, senderName: string | null): Promise<Decision> {
+// `paused` (Sam's 2026-11-04 Instagram pause): the classification runs unchanged, but the side
+// effects a reply would have explained (a Calendly booking, an emailed link) are withheld with it.
+async function decide(text: string, rawSource: string, firstName: string | undefined, externalId: string | null, handle: string | null, channel: string, senderName: string | null, paused = false): Promise<Decision> {
   const base = classify(text);
   if (base.intent === "spam" || base.intent === "not_interested") return { ...base, auto_reply: null };
   // Insults / trolling get nothing. Arguing with a hater in DMs only feeds them.
@@ -925,8 +927,10 @@ async function decide(text: string, rawSource: string, firstName: string | undef
       }
       const whenText = whenNow ? text : (st.whenText ?? text);
       const tz = tzOf(whenText);
-      const cal = email ? await bookOnCalendly(senderName ?? handle ?? "IG prospect", email, phone, handle, when, tz) : null;
-      const bookedId = cal ? null : await bookCall(senderName, handle, phone, when, whenText, externalId);
+      // Sam's pause (2026-11-04): no booking is created while paused, because the reply that would
+      // tell the prospect about it is withheld; Sam still gets the licensed page and calls by hand.
+      const cal = email && !paused ? await bookOnCalendly(senderName ?? handle ?? "IG prospect", email, phone, handle, when, tz) : null;
+      const bookedId = cal || paused ? null : await bookCall(senderName, handle, phone, when, whenText, externalId);
       const label = cal?.label ?? when.label;
       const line = `CALL BOOKED ${label} with ${who} at ${phone}${cal ? " (on Calendly" + (cal.exact ? "" : ", nearest open slot") + ")" : bookedId ? " (internal, no email given)" : " (booking row failed, call anyway)"}`;
       const reply = cal
@@ -979,7 +983,8 @@ async function decide(text: string, rawSource: string, firstName: string | undef
     const em = text.match(EMAIL_RE)![0];
     const lane = laneOf(st, text);
     const link = laneLink(lane, rawSource);
-    const sent = await emailProspect(em, lane, link, handle);
+    // Sam's pause (2026-11-04): the link is not emailed while paused either; Sam is still notified.
+    const sent = paused ? false : await emailProspect(em, lane, link, handle);
     return { intent: st.threadIntent ?? "opportunity", lead_score: 75, reply_path: "llm", urgent: false,
       auto_reply: sent ? `sent it, check your inbox (spam too). tap it and i'll reach out 🙏` : `got it 🙏 ${L(link, "the link's in my bio")}, tap it and i'll reach out`,
       notify: `Email from a ${lane} prospect: ${em}${sent ? " (link emailed)" : " (email send FAILED, link not delivered)"}` };
@@ -1206,7 +1211,11 @@ Deno.serve(async (req) => {
     }
   }
   await refreshLinkPolicy();
-  const decision = await decide(text, rawSource, senderName?.split(" ")[0], subscriberId, senderHandle, channel, senderName);
+  // Sam's pause (2026-11-04): read once, before decide(), because decide() itself books Calendly
+  // calls and emails prospects their link; while paused those stay off too, since the reply that
+  // would explain them is withheld. The reply-withholding gate below reuses this verdict.
+  const pause = rawSource === "instagram" ? await instagramPaused(supabase) : null;
+  const decision = await decide(text, rawSource, senderName?.split(" ")[0], subscriberId, senderHandle, channel, senderName, pause?.paused === true);
   // Same words twice in a row reads like a machine. Once: "like i said". Twice: nothing.
   if (decision.auto_reply && decision.reply_path !== "props") {
     const hist = await fetchHistory(subscriberId, senderHandle);
@@ -1299,7 +1308,6 @@ Deno.serve(async (req) => {
   // he answers by hand. Scoped to source "instagram" so ManyChat-sourced requests (the lane this
   // pause moves traffic to) and the YouTube comment pointer are untouched. dry_run keeps returning
   // the undimmed decision so apex-doctor's probes still read the routing logic.
-  const pause = rawSource === "instagram" ? await instagramPaused(supabase) : null;
   if (pause?.paused && !dryRun) {
     if (decision.auto_reply || decision.public_reply) {
       await recordPauseRefusal(supabase, {

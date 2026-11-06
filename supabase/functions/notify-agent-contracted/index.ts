@@ -78,6 +78,21 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
+    // Slack is the team workspace — Discord left the agent journey (owner
+    // directive 2026-10-05; send-agent-onboarding-email enforces the same rule).
+    // Link the invite when the setting exists; when it doesn't, name the Slack
+    // email that carries it instead of pointing at a room we no longer use.
+    const { data: slackRows } = await supabase
+      .from("system_settings")
+      .select("value")
+      .eq("key", "slack_community_invite_url")
+      .limit(1);
+    const slackRaw = (slackRows?.[0]?.value ?? null) as string | null;
+    const slackInviteUrl = slackRaw && slackRaw.trim().length > 0 ? slackRaw.trim() : null;
+    const slackBullet = slackInviteUrl
+      ? `<a href="${slackInviteUrl}" style="color:#14b8a6;text-decoration:underline;">Join the team Slack</a> for daily training and support`
+      : `Join the team Slack for daily training and support (your invite is in the "Join the Galaxy Slack" email)`;
+
     // Build CC list
     const ccList = [ADMIN_EMAIL, managerEmail]
       .filter(Boolean)
@@ -117,7 +132,7 @@ const handler = async (req: Request): Promise<Response> => {
         <p style="font-size:14px;color:#9ca3af;margin:0;">
           <strong style="color:#ffffff;">What to expect next:</strong><br>
           • Complete your CRM setup using the link above<br>
-          • Join our team Discord for daily training and support<br>
+          • ${slackBullet}<br>
           • Start receiving leads and building your pipeline<br>
           • Schedule your first week of training sessions
         </p>

@@ -104,6 +104,17 @@ export async function postNtfyGraded(url: string, opts: NtfyOptions): Promise<Nt
   if (opts.click) headers.Click = headerSafe(opts.click);
   if (opts.attach) headers.Attach = headerSafe(opts.attach);
 
+  // 42908 binds the daily quota to the VISITOR IP, and Supabase's shared egress
+  // IP exhausts the anonymous allowance on OTHER tenants' traffic — no cadence
+  // change here can fix that. A free-account bearer pins publishes to Apex's own
+  // quota (account in ~/.config/apex-creds/ntfy-account.json, minted 2026-11-09).
+  // Env-gated: without the secret the old anonymous behaviour is unchanged.
+  let ntfyToken = "";
+  try {
+    ntfyToken = Deno.env.get("NTFY_TOKEN") ?? "";
+  } catch { /* empty-catch-allow:ntfy-token-env — no env permission (tests/local) = stay anonymous, the pre-token behaviour */ }
+  if (ntfyToken && url.startsWith("https://ntfy.sh/")) headers.Authorization = `Bearer ${headerSafe(ntfyToken)}`;
+
   let last: NtfyResult = { ok: false, receipt: "error:never attempted", code: null, status: null };
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {

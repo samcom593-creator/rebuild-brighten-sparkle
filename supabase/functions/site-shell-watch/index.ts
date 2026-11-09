@@ -280,6 +280,13 @@ async function sql(path: string, init: RequestInit): Promise<Response> {
 type ChannelResult = { receipt: string | null; error: string | null };
 
 async function pushNtfy(body: string): Promise<ChannelResult> {
+  // NTFY_TOKEN pins this publish to Apex's own free-account quota instead of the
+  // shared Supabase egress IP's anonymous allowance (the 42908 both 2026-08-19
+  // refusals almost certainly hit). Env-gated: absent secret = old behaviour.
+  let ntfyToken = "";
+  try {
+    ntfyToken = Deno.env.get("NTFY_TOKEN") ?? "";
+  } catch { /* empty-catch-allow:ntfy-token-env — no env permission = stay anonymous, the pre-token behaviour */ }
   const res = await fetch(NTFY, {
     method: "POST",
     signal: AbortSignal.timeout(10000),
@@ -288,6 +295,7 @@ async function pushNtfy(body: string): Promise<ChannelResult> {
       Title: "Galaxy site DOWN (off-laptop watcher)",
       Priority: "5",
       Tags: "rotating_light",
+      ...(ntfyToken ? { Authorization: `Bearer ${ntfyToken}` } : {}),
     },
     body,
   });

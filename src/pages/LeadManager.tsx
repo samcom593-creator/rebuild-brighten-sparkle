@@ -97,7 +97,7 @@ type PoolCounts = {
     flags: Record<string, unknown>; lead_age_days: number; under_9mo: boolean;
   }>;
 };
-type AssignableAgent = { user_id: string; agent_id: string; display_name: string; subagency: string | null };
+type AssignableAgent = { user_id: string; agent_id: string; display_name: string; subagency: string | null; is_live?: boolean };
 type RecentBundle = {
   bundle_id: string; name: string; note: string | null; created_at: string; archived_at: string | null;
   live_items: number; sold: number; under_9mo: number; resold: boolean;
@@ -132,7 +132,7 @@ function useDebounced<T>(value: T, ms: number): T {
   return v;
 }
 
-const ROSTER_CACHE_KEY = "lead-agent-roster-v1";
+const ROSTER_CACHE_KEY = "lead-agent-roster-v2"; // v2: rows carry is_live
 
 function readRosterCache(): AssignableAgent[] | null {
   try {
@@ -240,9 +240,26 @@ function AgentDropdown({
   widthClass?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [showAll, setShowAll] = useState(false);
   const selected = selectedId ? agents.find((a) => a.user_id === selectedId) ?? null : null;
+  // Sam (2026-11-09): "the only people who I'm gonna possibly get leads will be
+  // agents who are marked as live, in the field." Default list = is_live agents
+  // (field stage OR pack history — see lead_assignable_agents). Typing a search
+  // or tapping "Show all" spans everyone, and granting to someone new creates
+  // the grant row that marks them live, so the short list maintains itself.
+  // is_live !== false (not === true) so pre-v2 cached rows without the field
+  // still render instead of blanking the list.
+  const live = agents.filter((a) => a.is_live !== false);
+  const expanded = showAll || query.trim().length > 0 || live.length === 0;
+  const shown = expanded
+    ? agents
+    : selected && !live.some((a) => a.user_id === selected.user_id)
+      ? [...live, selected]
+      : live;
+  const hiddenCount = agents.length - live.length;
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setShowAll(false); setQuery(""); } }}>
       <PopoverTrigger asChild>
         <Button
           type="button"
@@ -266,7 +283,7 @@ function AgentDropdown({
       </PopoverTrigger>
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] min-w-64 p-0" align="start">
         <Command>
-          <CommandInput placeholder="Search (optional)…" />
+          <CommandInput placeholder="Search all agents…" value={query} onValueChange={setQuery} />
           <CommandList className="max-h-72">
             {degraded && (
               <div className="flex items-center gap-1.5 border-b border-border/50 px-3 py-1.5 text-[11px] text-amber-400">
@@ -274,7 +291,7 @@ function AgentDropdown({
               </div>
             )}
             <CommandEmpty>{isLoading ? "Loading agents…" : "No agents match."}</CommandEmpty>
-            {agents.map((a) => (
+            {shown.map((a) => (
               <CommandItem
                 key={a.user_id}
                 value={`${a.display_name} ${a.subagency ?? ""}`}
@@ -287,6 +304,15 @@ function AgentDropdown({
               </CommandItem>
             ))}
           </CommandList>
+          {!expanded && hiddenCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowAll(true)}
+              className="flex w-full items-center justify-center gap-1 border-t border-border/50 px-3 py-2 text-xs text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Show all {agents.length} agents
+            </button>
+          )}
         </Command>
       </PopoverContent>
     </Popover>

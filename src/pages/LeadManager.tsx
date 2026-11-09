@@ -24,7 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 /**
  * Lead Manager — the one console Sam + Aisha use to package leads and drop them
  * into an agent's portal. One switch picks the POOL; the filters and tiers adapt;
- * you type a live agent, see their name, and drop the pack. A resale ledger stops
+ * you tap a live agent from the always-visible list, and drop the pack. A resale ledger stops
  * a lead going out twice and Do-Not-Call numbers are held back (and counted, so
  * the number makes sense). Dropped leads land on the agent's My Leads page.
  *
@@ -152,6 +152,97 @@ function flagBadges(flags: Record<string, unknown>, under9: boolean) {
   return out;
 }
 
+const ROSTER_CACHE_KEY = "lead-agent-roster-v1";
+
+function readRosterCache(): AssignableAgent[] | null {
+  try {
+    const raw = localStorage.getItem(ROSTER_CACHE_KEY);
+    if (!raw) return null;
+    const rows = JSON.parse(raw) as AssignableAgent[];
+    const sound = Array.isArray(rows) && rows.length > 0
+      && rows.every((r) => typeof r?.user_id === "string" && typeof r?.display_name === "string");
+    return sound ? rows : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeRosterCache(rows: AssignableAgent[]) {
+  try {
+    localStorage.setItem(ROSTER_CACHE_KEY, JSON.stringify(rows));
+  } catch {
+    return; // storage unavailable (private window) — the roster just won't survive reloads
+  }
+}
+
+// The roster both pickers tap from. Design rule after two field failures: the list is
+// NEVER allowed to render dead.
+// (1) An expired tab token THROWS from the rpc, and the old self-heal ran only on the
+//     EMPTY branch — so the one failure Sam actually hits (401 after the tab sat open
+//     overnight) skipped the session refresh entirely and went straight to a red wall.
+//     Both branches heal now: error → refresh → retry; empty-with-session → refresh → retry.
+// (2) The last good roster is cached in localStorage and rendered whenever the live read
+//     has nothing, so mid-flap or mid-heal Sam still sees tappable agents with a quiet
+//     "refreshing" note instead of an error wall. The wall remains only for a cold cache
+//     plus a hard failure, and while in that state the query retries itself every 20s.
+function useAgentRoster() {
+  const q = useQuery<AssignableAgent[]>({
+    queryKey: ["assignable-agents-all"],
+    queryFn: async () => {
+      const fetchAgents = async () => {
+        const { data, error } = await rpc("lead_assignable_agents", { p_search: null });
+        if (error) throw error;
+        return (data as AssignableAgent[]) ?? [];
+      };
+      let rows: AssignableAgent[];
+      try {
+        rows = await fetchAgents();
+      } catch (firstErr) {
+        // A 401/expired token lands HERE, not in the empty branch. refreshSession
+        // resolves {data,error} (no throw); the retried fetch is the real verdict.
+        await supabase.auth.refreshSession();
+        try {
+          rows = await fetchAgents();
+        } catch {
+          throw firstErr instanceof Error ? firstErr : new Error("Could not load agents");
+        }
+      }
+      if (rows.length === 0) {
+        // The gate returns an empty list WITH NO ERROR when the caller resolves
+        // unauthenticated (documented session-wipe history) — heal that path too.
+        const { data: s } = await supabase.auth.getSession();
+        if (s.session) {
+          await supabase.auth.refreshSession();
+          rows = await fetchAgents();
+        }
+      }
+      if (rows.length > 0) writeRosterCache(rows);
+      return rows;
+    },
+    retry: 1,
+    staleTime: 120_000,
+    // Sam's network flaps (documented Wi-Fi / MagicDNS drops): the app default
+    // networkMode:"offlineFirst" would serve a cached-empty roster and refuse the
+    // network while the browser momentarily looks offline.
+    networkMode: "always",
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    refetchInterval: (query) => (query.state.status === "error" ? 20_000 : false),
+  });
+  const fallback = useMemo(() => readRosterCache() ?? [], []);
+  const roster = q.data && q.data.length > 0 ? q.data : fallback;
+  // True when what's on screen is the cached list, not a confirmed live read.
+  const degraded = roster.length > 0 && (q.isError || !q.data || q.data.length === 0);
+  return {
+    roster,
+    degraded,
+    isLoading: q.isPending && roster.length === 0,
+    isError: q.isError,
+    isFetching: q.isFetching,
+    refetch: q.refetch,
+  };
+}
+
 export default function LeadManager() {
   const queryClient = useQueryClient();
   const [pool, setPool] = useState<PoolKey>("marketing");
@@ -220,53 +311,35 @@ export default function LeadManager() {
     staleTime: 10_000,
   });
 
-  // The agent list is the one thing that was leaving the picker dead: the RPC is
-  // gated server-side on the caller's login, so when a tab's Supabase token has
-  // gone stale (this repo has a documented session-wipe-on-reload history) the
-  // call runs unauthenticated and the gate returns an EMPTY list WITH NO ERROR.
-  // The old render read that empty as "Loading agents…" forever, with no way
-  // out. So: self-heal here (refresh the session once and retry before giving
-  // up) and let the render below distinguish loading / error / empty so the
-  // operator is never stuck and never has to reload to drop a pack.
-  const agentsQuery = useQuery<AssignableAgent[]>({
-    queryKey: ["assignable-agents-all"],
-    queryFn: async () => {
-      const fetchAgents = async () => {
-        const { data, error } = await rpc("lead_assignable_agents", { p_search: null });
-        if (error) throw error;
-        return (data as AssignableAgent[]) ?? [];
-      };
-      let rows = await fetchAgents();
-      if (rows.length === 0) {
-        const { data: s } = await supabase.auth.getSession();
-        if (s.session) {
-          // refreshSession resolves {data,error}; a thrown transport error here
-          // bubbles to React Query's retry, then to the error state below.
-          await supabase.auth.refreshSession();
-          rows = await fetchAgents();
-        }
-      }
-      return rows;
-    },
-    retry: 1,
-    staleTime: 120_000,
-    // Sam's network flaps (documented Wi-Fi / MagicDNS drops). The app's global
-    // default is networkMode:"offlineFirst" (src/shared/api/queryClient.ts),
-    // which serves a cached-empty roster and then refuses to re-hit the network
-    // while the browser momentarily looks offline — i.e. "zero agents" with no
-    // request in the server logs at all. This query has the longest staleTime
-    // on the page (2 min vs 10-15s on counts/recent), so it is the one that gets
-    // stuck. Force it to always attempt the network and always refetch on mount
-    // so a flap can never leave the picker silently empty.
-    networkMode: "always",
-    refetchOnMount: "always",
-  });
-  const agents = useMemo(() => agentsQuery.data ?? [], [agentsQuery.data]);
+  // Shared tap-roster (see useAgentRoster above) — the same list BundleManage taps from.
+  const agentsRoster = useAgentRoster();
+  const agents = agentsRoster.roster;
   const refreshAgents = async () => {
     // Always refetch, even if the session refresh itself errors — the refetch
     // is what repopulates the list once the token is good again.
-    try { await supabase.auth.refreshSession(); } finally { agentsQuery.refetch(); }
+    try { await supabase.auth.refreshSession(); } finally { agentsRoster.refetch(); }
   };
+  // Keep the tab's token alive so the rpcs never fire with a dead one: on every
+  // return to the tab (and on mount) refresh when expiry is inside two minutes.
+  // This is the failure Sam kept hitting — a tab left open overnight, then
+  // "login to this tab may have expired" on the first tap of the day.
+  useEffect(() => {
+    const nudge = async () => {
+      if (document.visibilityState !== "visible") return;
+      const { data } = await supabase.auth.getSession();
+      const expMs = (data.session?.expires_at ?? 0) * 1000;
+      if (!data.session || expMs - Date.now() < 120_000) {
+        await supabase.auth.refreshSession();
+      }
+    };
+    void nudge();
+    document.addEventListener("visibilitychange", nudge);
+    window.addEventListener("focus", nudge);
+    return () => {
+      document.removeEventListener("visibilitychange", nudge);
+      window.removeEventListener("focus", nudge);
+    };
+  }, []);
   // internal-nav-href-allow:auth-recovery — a dead/stale session needs a full app reboot, not an in-SPA nav that keeps the broken client in memory.
   const goLogin = () => window.location.assign("/login");
   const shownAgents = useMemo(() => {
@@ -540,34 +613,31 @@ export default function LeadManager() {
 
           <div className="flex items-center gap-2">
             <Input value={agentFilter} onChange={(e) => setAgentFilter(e.target.value)}
-              placeholder={agents.length ? `Filter ${agents.length} live agents…` : "Agents"} className="max-w-xs" aria-label="Filter agents" />
+              placeholder={agents.length ? `Filter ${agents.length} live agents (optional)…` : "Agents"} className="max-w-xs" aria-label="Filter agents" />
             <Button type="button" size="sm" variant="ghost" onClick={refreshAgents}
-              disabled={agentsQuery.isFetching} aria-label="Refresh agent list" title="Refresh agent list">
-              <RotateCcw className={cn("h-4 w-4", agentsQuery.isFetching && "animate-spin")} />
+              disabled={agentsRoster.isFetching} aria-label="Refresh agent list" title="Refresh agent list">
+              <RotateCcw className={cn("h-4 w-4", agentsRoster.isFetching && "animate-spin")} />
             </Button>
           </div>
 
+          {agentsRoster.degraded && (
+            <span className="flex items-center gap-1.5 text-xs text-amber-400">
+              <AlertTriangle className="h-3.5 w-3.5" /> Refreshing the live list — these are the last known agents. Tapping still works.
+            </span>
+          )}
+
           <div className="flex max-h-60 flex-wrap gap-2 overflow-y-auto">
-            {agentsQuery.isLoading ? (
+            {agentsRoster.isLoading ? (
               <span className="text-sm text-muted-foreground">Loading agents…</span>
-            ) : agentsQuery.isError ? (
+            ) : agents.length === 0 ? (
+              // Only reachable on a cold cache + hard failure; the roster query
+              // keeps retrying itself every 20s while this shows.
               <div className="flex flex-col gap-2">
                 <span className="flex items-center gap-1.5 text-sm text-red-400">
-                  <AlertTriangle className="h-4 w-4" /> Couldn't load agents — your login in this tab may have expired.
+                  <AlertTriangle className="h-4 w-4" /> Couldn't load agents — retrying automatically every few seconds.
                 </span>
                 <div className="flex gap-2">
-                  <Button type="button" size="sm" variant="outline" onClick={refreshAgents}>Refresh agents</Button>
-                  <Button type="button" size="sm" variant="ghost" onClick={goLogin}>Log in again</Button>
-                  <Button type="button" size="sm" variant="ghost" onClick={hardReset}>Reload fresh</Button>
-                </div>
-              </div>
-            ) : agents.length === 0 ? (
-              <div className="flex flex-col gap-2">
-                <span className="flex items-center gap-1.5 text-sm text-amber-400">
-                  <AlertTriangle className="h-4 w-4" /> No agents came back. Your login in this tab likely went stale.
-                </span>
-                <div className="flex gap-2">
-                  <Button type="button" size="sm" variant="outline" onClick={refreshAgents}>Refresh agents</Button>
+                  <Button type="button" size="sm" variant="outline" onClick={refreshAgents}>Refresh now</Button>
                   <Button type="button" size="sm" variant="ghost" onClick={goLogin}>Log in again</Button>
                   <Button type="button" size="sm" variant="ghost" onClick={hardReset}>Reload fresh</Button>
                 </div>
@@ -773,7 +843,6 @@ async function hardReset() {
 function BundleManage({ bundle, onChange }: { bundle: RecentBundle; onChange: () => void }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const dsearch = useDebounced(search, 200);
   const [items, setItems] = useState<ManageItem[] | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -783,30 +852,15 @@ function BundleManage({ bundle, onChange }: { bundle: RecentBundle; onChange: ()
   }
   function toggle() { const n = !open; setOpen(n); if (n && items === null) void loadItems(); }
 
-  const agentsQ = useQuery<AssignableAgent[]>({
-    queryKey: ["manage-agents", bundle.bundle_id, dsearch],
-    enabled: open && dsearch.trim().length > 0,
-    queryFn: async () => {
-      const run = async () => {
-        const { data, error } = await rpc("lead_assignable_agents", { p_search: dsearch });
-        if (error) throw error;
-        return (data as AssignableAgent[]) ?? [];
-      };
-      let rows = await run();
-      if (rows.length === 0) {
-        // Same self-heal as the main picker: a stale tab token returns an empty
-        // list with no error. refreshSession resolves {data,error} (no throw).
-        const { data: s } = await supabase.auth.getSession();
-        if (s.session) { await supabase.auth.refreshSession(); rows = await run(); }
-      }
-      return rows;
-    },
-    staleTime: 60_000,
-    // Never let a network flap leave this typeahead silently blank (see the
-    // main picker's agentsQuery note).
-    networkMode: "always",
-  });
-  const agents = agentsQ.data ?? [];
+  // Same shared always-alive roster as the main picker (one query key, one cache,
+  // one self-heal) — the old per-keystroke typeahead query is gone. Sam taps a
+  // name; the filter box only narrows the visible chips.
+  const { roster, degraded } = useAgentRoster();
+  const holderIds = new Set(bundle.holders.map((h) => h.user_id));
+  const q = search.trim().toLowerCase();
+  const candidates = roster.filter((a) =>
+    !holderIds.has(a.user_id)
+    && (!q || a.display_name.toLowerCase().includes(q) || (a.subagency ?? "").toLowerCase().includes(q)));
 
   async function grant(a: AssignableAgent) {
     setBusy(true);
@@ -854,25 +908,36 @@ function BundleManage({ bundle, onChange }: { bundle: RecentBundle; onChange: ()
                 </Badge>
               ))}
             </div>
-            <div className="relative max-w-xs">
-              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Give to another agent…" className="h-8" aria-label="Grant pack to another agent" />
-              {dsearch.trim().length > 0 && agents.length > 0 && (
-                <div className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-md border border-border bg-popover shadow-lg">
-                  {agents.slice(0, 6).map((a) => (
-                    <button key={a.user_id} type="button" disabled={busy}
-                      className="flex w-full items-center justify-between px-3 py-1.5 text-left text-sm hover:bg-muted" onClick={() => grant(a)}>
-                      <span>{a.display_name}</span>{a.subagency && <span className="text-xs text-muted-foreground">{a.subagency}</span>}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Give to another agent — tap a name</Label>
+              {degraded && (
+                <span className="flex items-center gap-1 text-[11px] text-amber-400">
+                  <AlertTriangle className="h-3 w-3" /> Refreshing — showing the last known agents.
+                </span>
+              )}
+              {roster.length > 8 && (
+                <Input value={search} onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Filter (optional)…" className="h-8 max-w-xs" aria-label="Filter agents to grant this pack to" />
+              )}
+              <div className="flex max-h-40 flex-wrap gap-1.5 overflow-y-auto">
+                {roster.length === 0 ? (
+                  <span className="flex items-center gap-1.5 text-xs text-amber-400">
+                    <AlertTriangle className="h-3 w-3" /> Loading agents — retrying automatically.
+                    <button type="button" className="underline hover:text-amber-300" onClick={hardReset}>Reload fresh</button>
+                  </span>
+                ) : candidates.length === 0 ? (
+                  <span className="text-xs text-muted-foreground">{q ? "No live agents match." : "Everyone already has this pack."}</span>
+                ) : (
+                  candidates.map((a) => (
+                    <button key={a.user_id} type="button" disabled={busy} onClick={() => grant(a)}
+                      className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-card px-2.5 py-1 text-xs hover:bg-muted/50">
+                      <UserRound className="h-3 w-3 opacity-60" />
+                      {a.display_name}
+                      {a.subagency && <span className="opacity-70">· {a.subagency}</span>}
                     </button>
-                  ))}
-                </div>
-              )}
-              {dsearch.trim().length > 0 && !agentsQ.isFetching && agents.length === 0 && (
-                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-amber-400">
-                  <AlertTriangle className="h-3 w-3" /> No match, or your login went stale.
-                  <button type="button" className="underline hover:text-amber-300" onClick={() => agentsQ.refetch()}>Retry</button>
-                  <button type="button" className="underline hover:text-amber-300" onClick={hardReset}>Reload fresh</button>
-                </div>
-              )}
+                  ))
+                )}
+              </div>
             </div>
           </div>
           <div className="space-y-1">

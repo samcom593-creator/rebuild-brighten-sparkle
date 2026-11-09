@@ -68,6 +68,8 @@ begin
       'draft_day', p.draft_day, 'payment_method', p.payment_method_type, 'bank_name', p.bank_name,
       'beneficiaries', p.beneficiaries, 'call_summary', p.call_summary, 'key_points', p.key_points,
       'call_date', p.call_at, 'original_call_agent', p.agent_raw,
+      'call_recording', dc.recording_url, 'call_duration_seconds', dc.duration_seconds,
+      'transcript_excerpt', p.transcript_excerpt,
       'missing_fields', p.missing_fields))
     into v_detail
     from public.readymode_booking_packets p
@@ -105,6 +107,7 @@ begin
       'campaign', dc.campaign_name, 'last_call_at', dc.call_started_at,
       'last_call_seconds', dc.duration_seconds, 'last_disposition', dc.disposition,
       'last_call_agent', dc.agent_raw, 'email', dc.lead_email, 'call_notes', dc.notes,
+      'call_recording', dc.recording_url,
       'times_called', (select count(*) from public.readymode_dialer_calls x where x.lead_phone10 = v.phone10)))
     into v_detail
     from public.readymode_dialer_calls dc

@@ -83,7 +83,7 @@ function prettyVal(k: string, v: unknown): string {
   }
   return JSON.stringify(v);
 }
-const LONG_FIELDS = new Set(["call_summary", "health_notes", "notes", "key_points", "beneficiaries", "missing_fields", "call_notes"]);
+const LONG_FIELDS = new Set(["call_summary", "health_notes", "notes", "key_points", "beneficiaries", "missing_fields", "call_notes", "transcript_excerpt"]);
 
 function LeadDetailGrid({ itemId }: { itemId: string }) {
   const q = useQuery({
@@ -104,7 +104,17 @@ function LeadDetailGrid({ itemId }: { itemId: string }) {
       {entries.map(([k, v]) => (
         <div key={k} className={cn("min-w-0", LONG_FIELDS.has(k) && "sm:col-span-2")}>
           <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">{prettyKey(k)}</dt>
-          <dd className="break-words">{prettyVal(k, v)}</dd>
+          <dd className="break-words">
+            {/* the call itself (Sam, 2026-11-09): a recording URL renders as a
+                tappable listen link, not a wall of URL text */}
+            {k === "call_recording" && typeof v === "string" && v.startsWith("http") ? (
+              <a href={v} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-medium text-primary hover:underline">
+                <Mic className="h-3.5 w-3.5" /> Listen to the call
+              </a>
+            ) : (
+              prettyVal(k, v)
+            )}
+          </dd>
         </div>
       ))}
     </dl>

@@ -7,7 +7,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ShieldCheck, X } from "lucide-react";
-import { looseSupabase } from "@/lib/looseSupabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 
@@ -15,10 +15,10 @@ interface GrantRow { user_id: string; note: string | null; created_at: string }
 interface PersonRow { user_id: string; full_name: string | null; email: string | null }
 
 async function fetchGrants(): Promise<GrantRow[]> {
-  const { data, error } = await (looseSupabase
+  const { data, error } = await supabase
     .from("call_access_grants")
     .select("user_id, note, created_at")
-    .order("created_at", { ascending: true }) as unknown as Promise<{ data: GrantRow[] | null; error: { message: string } | null }>);
+    .order("created_at", { ascending: true });
   if (error) throw new Error(error.message);
   return data ?? [];
 }
@@ -26,17 +26,17 @@ async function fetchGrants(): Promise<GrantRow[]> {
 // Staff the grant can be offered to: everyone holding a staff role (user_roles), named via
 // profiles. Small set (~15 rows), fetched only when an admin opens the panel.
 async function fetchStaff(): Promise<PersonRow[]> {
-  const { data: roleRows, error: roleError } = await (looseSupabase
+  const { data: roleRows, error: roleError } = await supabase
     .from("user_roles")
     .select("user_id")
-    .in("role", ["manager", "va_manager", "recruiter", "va"]) as unknown as Promise<{ data: { user_id: string }[] | null; error: { message: string } | null }>);
+    .in("role", ["manager", "va_manager", "recruiter", "va"]);
   if (roleError) throw new Error(roleError.message);
   const ids = [...new Set((roleRows ?? []).map((r) => r.user_id))];
   if (ids.length === 0) return [];
-  const { data, error } = await (looseSupabase
+  const { data, error } = await supabase
     .from("profiles")
     .select("user_id, full_name, email")
-    .in("user_id", ids) as unknown as Promise<{ data: PersonRow[] | null; error: { message: string } | null }>);
+    .in("user_id", ids);
   if (error) throw new Error(error.message);
   return (data ?? []).sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? ""));
 }
@@ -45,10 +45,10 @@ async function fetchStaff(): Promise<PersonRow[]> {
 // longer holds a staff role still shows a name instead of a bare uuid.
 async function fetchNames(ids: string[]): Promise<Map<string, PersonRow>> {
   if (ids.length === 0) return new Map();
-  const { data, error } = await (looseSupabase
+  const { data, error } = await supabase
     .from("profiles")
     .select("user_id, full_name, email")
-    .in("user_id", ids) as unknown as Promise<{ data: PersonRow[] | null; error: { message: string } | null }>);
+    .in("user_id", ids);
   if (error) throw new Error(error.message);
   return new Map((data ?? []).map((p) => [p.user_id, p]));
 }
@@ -82,11 +82,11 @@ export function CallAccessManager() {
     if (!person) return;
     setBusy(true);
     try {
-      const { error } = await (looseSupabase.from("call_access_grants").insert({
+      const { error } = await supabase.from("call_access_grants").insert({
         user_id: person.user_id,
         note: `${person.full_name ?? person.email ?? person.user_id} — granted from Sold Calls`,
         granted_by: user?.id ?? null,
-      }) as unknown as Promise<{ error: { message: string } | null }>);
+      });
       if (error) throw new Error(error.message);
       toast.success(`${person.full_name ?? "Granted"} can now see agent calls`);
       setPickedId("");
@@ -101,10 +101,10 @@ export function CallAccessManager() {
   const revoke = async (g: GrantRow, label: string) => {
     setBusy(true);
     try {
-      const { error } = await (looseSupabase
+      const { error } = await supabase
         .from("call_access_grants")
         .delete()
-        .eq("user_id", g.user_id) as unknown as Promise<{ error: { message: string } | null }>);
+        .eq("user_id", g.user_id);
       if (error) throw new Error(error.message);
       toast.success(`${label} no longer sees agent calls`);
       await refresh();

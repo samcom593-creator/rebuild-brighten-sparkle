@@ -456,7 +456,7 @@ export default function LeadManager() {
     },
     onSuccess: (res) => {
       toast.success(`${res.items} lead${res.items === 1 ? "" : "s"} dropped into ${res.agent}'s portal`);
-      setAgent(null); setAgentFilter(""); setNote("");
+      setAgent(null); setNote("");
       queryClient.invalidateQueries({ queryKey: ["lead-bundles-recent"] });
       queryClient.invalidateQueries({ queryKey: ["lead-pool"] });
     },

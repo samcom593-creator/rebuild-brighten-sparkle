@@ -37,8 +37,11 @@ import { supabase } from "@/integrations/supabase/client";
  */
 
 // Admin RPCs aren't in the drifted committed types.ts — shallow-cast (repo pattern).
+// MUST stay .bind(supabase): a bare `supabase.rpc as ...` detaches the method, so `this`
+// is undefined at call time and every query on this page throws before reaching the
+// network ("Cannot read properties of undefined (reading 'rest')") — live 11-03→11-09.
 type RpcResult = { data: unknown; error: { message: string } | null };
-const rpc = supabase.rpc as unknown as (fn: string, args?: Record<string, unknown>) => Promise<RpcResult>;
+const rpc = supabase.rpc.bind(supabase) as unknown as (fn: string, args?: Record<string, unknown>) => Promise<RpcResult>;
 
 type PoolKey = "marketing" | "dialer" | "rewrite" | "winback";
 

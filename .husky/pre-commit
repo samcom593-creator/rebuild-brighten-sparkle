@@ -86,6 +86,15 @@ if match '^(supabase/functions/.*\.(ts|tsx)$|scripts/check-unsafe-supabase-catch
   node scripts/check-unsafe-supabase-catch.mjs
 fi
 
+# ---------- check-detached-supabase (MP-LEAD-MANAGER-7, 2026-11-09) ----------
+# Trigger: any src ts/tsx or the script itself. A method aliased off the
+# supabase client without .bind() detaches `this` and throws before the network
+# on every call — LeadManager's whole data layer shipped dead that way 11-03.
+if match '^(src/.*\.(ts|tsx)$|scripts/check-detached-supabase\.mjs$)'; then
+  echo "[pre-commit] src ts file staged — running check:detached-supabase…"
+  node scripts/check-detached-supabase.mjs
+fi
+
 # ---------- check-agent-name-fallback (MP-327) ----------
 # Trigger: any src ts/tsx or the script itself. MP-325 closed the profiles read
 # and every `profile:profiles(full_name)` embed silently began returning null

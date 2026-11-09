@@ -15,8 +15,15 @@ import {
 import { PageHeader } from "@/components/ui/page-header";
 import { cn } from "@/lib/utils";
 import {
+  Popover, PopoverContent, PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command, CommandEmpty, CommandInput, CommandItem, CommandList,
+} from "@/components/ui/command";
+import {
   Layers, Send, Download, Archive, DollarSign, AlertTriangle, UserRound, X,
   Trophy, Phone, RotateCcw, Boxes, ClipboardList, Users as UsersIcon, Check,
+  ChevronsUpDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,7 +31,7 @@ import { supabase } from "@/integrations/supabase/client";
 /**
  * Lead Manager — the one console Sam + Aisha use to package leads and drop them
  * into an agent's portal. One switch picks the POOL; the filters and tiers adapt;
- * you tap a live agent from the always-visible list, and drop the pack. A resale ledger stops
+ * you open the agent drop-down, tap a name, and drop the pack. A resale ledger stops
  * a lead going out twice and Do-Not-Call numbers are held back (and counted, so
  * the number makes sense). Dropped leads land on the agent's My Leads page.
  *
@@ -246,6 +253,76 @@ function useAgentRoster() {
   };
 }
 
+// One clean drop-down for every "pick an agent" moment on this page (Sam,
+// 2026-11-09: the always-visible 66-chip wall was "bulky and ugly" — he asked
+// for a drop-down he taps open, taps a name, done). Search inside the panel is
+// optional; the list itself is the primary surface, sized for thumbs.
+function AgentDropdown({
+  agents, degraded, isLoading, selectedId, onPick, placeholder, disabled, widthClass,
+}: {
+  agents: AssignableAgent[];
+  degraded: boolean;
+  isLoading: boolean;
+  selectedId?: string | null;
+  onPick: (a: AssignableAgent) => void;
+  placeholder: string;
+  disabled?: boolean;
+  widthClass?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = selectedId ? agents.find((a) => a.user_id === selectedId) ?? null : null;
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          disabled={disabled}
+          className={cn("h-11 justify-between px-3 font-normal", widthClass ?? "w-full sm:w-80")}
+        >
+          <span className="flex min-w-0 items-center gap-2">
+            <UserRound className={cn("h-4 w-4 shrink-0", selected ? "text-primary" : "opacity-50")} />
+            <span className={cn("truncate", !selected && "text-muted-foreground")}>
+              {selected ? selected.display_name : isLoading ? "Loading agents…" : placeholder}
+            </span>
+            {selected?.subagency && (
+              <Badge variant="outline" className="shrink-0 text-[10px]">{selected.subagency}</Badge>
+            )}
+          </span>
+          <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] min-w-64 p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Search (optional)…" />
+          <CommandList className="max-h-72">
+            {degraded && (
+              <div className="flex items-center gap-1.5 border-b border-border/50 px-3 py-1.5 text-[11px] text-amber-400">
+                <AlertTriangle className="h-3 w-3 shrink-0" /> Refreshing — showing the last known list. Tapping works.
+              </div>
+            )}
+            <CommandEmpty>{isLoading ? "Loading agents…" : "No agents match."}</CommandEmpty>
+            {agents.map((a) => (
+              <CommandItem
+                key={a.user_id}
+                value={`${a.display_name} ${a.subagency ?? ""}`}
+                onSelect={() => { onPick(a); setOpen(false); }}
+                className="gap-2 py-2.5"
+              >
+                <Check className={cn("h-4 w-4 shrink-0", selectedId === a.user_id ? "text-primary opacity-100" : "opacity-0")} />
+                <span className="flex-1 truncate">{a.display_name}</span>
+                {a.subagency && <span className="shrink-0 text-xs text-muted-foreground">{a.subagency}</span>}
+              </CommandItem>
+            ))}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export default function LeadManager() {
   const queryClient = useQueryClient();
   const [pool, setPool] = useState<PoolKey>("marketing");
@@ -270,7 +347,6 @@ export default function LeadManager() {
   }, [pool]);
 
   const [agent, setAgent] = useState<AssignableAgent | null>(null);
-  const [agentFilter, setAgentFilter] = useState("");
 
   const filters = useMemo(() => {
     const f: Record<string, unknown> = { exclude_dnc: excludeDnc, exclude_resold: excludeResold, sort };
@@ -345,11 +421,6 @@ export default function LeadManager() {
   }, []);
   // internal-nav-href-allow:auth-recovery — a dead/stale session needs a full app reboot, not an in-SPA nav that keeps the broken client in memory.
   const goLogin = () => window.location.assign("/login");
-  const shownAgents = useMemo(() => {
-    const qq = agentFilter.trim().toLowerCase();
-    if (!qq) return agents;
-    return agents.filter((a) => a.display_name.toLowerCase().includes(qq) || (a.subagency ?? "").toLowerCase().includes(qq));
-  }, [agents, agentFilter]);
 
   const { data: recent = [] } = useQuery<RecentBundle[]>({
     queryKey: ["lead-bundles-recent"],
@@ -420,7 +491,7 @@ export default function LeadManager() {
       <PageHeader
         eyebrowIcon={<Layers className="h-5 w-5" />}
         title="Lead Manager"
-        subtitle="Pick a pool, filter it, type an agent's name, drop the pack into their portal."
+        subtitle="Pick a pool, filter it, tap an agent in the drop-down, drop the pack into their portal."
       />
 
       {/* POOL SWITCH */}
@@ -597,78 +668,37 @@ export default function LeadManager() {
           <CardTitle className="text-base">Drop into an agent's portal</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {agent ? (
-            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-primary/40 bg-primary/5 p-3">
-              <span className="text-sm text-muted-foreground">Dropping {dropCount.toLocaleString()} to</span>
-              <span className="inline-flex items-center gap-1.5 font-semibold">
-                <UserRound className="h-4 w-4 text-primary" />{agent.display_name}
-              </span>
-              {agent.subagency && <Badge variant="outline" className="text-xs">{agent.subagency}</Badge>}
-              <Button type="button" size="sm" variant="ghost" className="ml-auto" onClick={() => setAgent(null)}>
-                <X className="h-4 w-4" /> Change
-              </Button>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Tap an agent to drop {dropCount.toLocaleString()} {POOLS.find((p) => p.key === pool)?.label.toLowerCase()} lead{dropCount === 1 ? "" : "s"} into their portal.
-            </p>
-          )}
-
           <div className="flex items-center gap-2">
-            <Input value={agentFilter} onChange={(e) => setAgentFilter(e.target.value)}
-              placeholder={agents.length ? `Filter ${agents.length} live agents (optional)…` : "Agents"} className="max-w-xs" aria-label="Filter agents" />
-            <Button type="button" size="sm" variant="ghost" onClick={refreshAgents}
+            <AgentDropdown
+              agents={agents}
+              degraded={agentsRoster.degraded}
+              isLoading={agentsRoster.isLoading}
+              selectedId={agent?.user_id ?? null}
+              onPick={(a) => setAgent(agent?.user_id === a.user_id ? null : a)}
+              placeholder="Pick an agent…"
+            />
+            {agent && (
+              <Button type="button" size="icon" variant="ghost" className="h-11 w-9 shrink-0"
+                onClick={() => setAgent(null)} aria-label="Clear picked agent">
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+            <Button type="button" size="icon" variant="ghost" className="h-11 w-9 shrink-0" onClick={refreshAgents}
               disabled={agentsRoster.isFetching} aria-label="Refresh agent list" title="Refresh agent list">
               <RotateCcw className={cn("h-4 w-4", agentsRoster.isFetching && "animate-spin")} />
             </Button>
           </div>
 
-          {agentsRoster.degraded && (
-            <span className="flex items-center gap-1.5 text-xs text-amber-400">
-              <AlertTriangle className="h-3.5 w-3.5" /> Refreshing the live list — these are the last known agents. Tapping still works.
-            </span>
+          {agents.length === 0 && !agentsRoster.isLoading && (
+            // Only reachable on a cold cache + hard failure; the roster query
+            // keeps retrying itself every 20s while this shows.
+            <div className="flex flex-wrap items-center gap-2 text-sm text-red-400">
+              <AlertTriangle className="h-4 w-4 shrink-0" /> Couldn't load agents — retrying automatically.
+              <Button type="button" size="sm" variant="outline" onClick={refreshAgents}>Refresh now</Button>
+              <Button type="button" size="sm" variant="ghost" onClick={goLogin}>Log in again</Button>
+              <Button type="button" size="sm" variant="ghost" onClick={hardReset}>Reload fresh</Button>
+            </div>
           )}
-
-          <div className="flex max-h-60 flex-wrap gap-2 overflow-y-auto">
-            {agentsRoster.isLoading ? (
-              <span className="text-sm text-muted-foreground">Loading agents…</span>
-            ) : agents.length === 0 ? (
-              // Only reachable on a cold cache + hard failure; the roster query
-              // keeps retrying itself every 20s while this shows.
-              <div className="flex flex-col gap-2">
-                <span className="flex items-center gap-1.5 text-sm text-red-400">
-                  <AlertTriangle className="h-4 w-4" /> Couldn't load agents — retrying automatically every few seconds.
-                </span>
-                <div className="flex gap-2">
-                  <Button type="button" size="sm" variant="outline" onClick={refreshAgents}>Refresh now</Button>
-                  <Button type="button" size="sm" variant="ghost" onClick={goLogin}>Log in again</Button>
-                  <Button type="button" size="sm" variant="ghost" onClick={hardReset}>Reload fresh</Button>
-                </div>
-              </div>
-            ) : shownAgents.length === 0 ? (
-              <span className="text-sm text-muted-foreground">No live agents match.</span>
-            ) : (
-              shownAgents.map((a) => {
-                const on = agent?.user_id === a.user_id;
-                return (
-                  <button
-                    key={a.user_id}
-                    type="button"
-                    onClick={() => setAgent(on ? null : a)}
-                    aria-pressed={on}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors",
-                      on ? "border-primary bg-primary/15 font-semibold text-primary" : "border-border/60 bg-card hover:bg-muted/50",
-                    )}
-                  >
-                    {on ? <Check className="h-3.5 w-3.5" /> : <UserRound className="h-3.5 w-3.5 opacity-60" />}
-                    {a.display_name}
-                    {a.subagency && <span className="text-xs opacity-70">· {a.subagency}</span>}
-                  </button>
-                );
-              })
-            )}
-          </div>
 
           <Input placeholder="Optional note (shown with the pack)" value={note}
             onChange={(e) => setNote(e.target.value)} className="max-w-md" aria-label="Pack note" />
@@ -845,7 +875,6 @@ async function hardReset() {
 
 function BundleManage({ bundle, onChange }: { bundle: RecentBundle; onChange: () => void }) {
   const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
   const [items, setItems] = useState<ManageItem[] | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -856,21 +885,18 @@ function BundleManage({ bundle, onChange }: { bundle: RecentBundle; onChange: ()
   function toggle() { const n = !open; setOpen(n); if (n && items === null) void loadItems(); }
 
   // Same shared always-alive roster as the main picker (one query key, one cache,
-  // one self-heal) — the old per-keystroke typeahead query is gone. Sam taps a
-  // name; the filter box only narrows the visible chips.
+  // one self-heal) — rendered through the same AgentDropdown; picking a name
+  // grants immediately.
   const { roster, degraded } = useAgentRoster();
   const holderIds = new Set(bundle.holders.map((h) => h.user_id));
-  const q = search.trim().toLowerCase();
-  const candidates = roster.filter((a) =>
-    !holderIds.has(a.user_id)
-    && (!q || a.display_name.toLowerCase().includes(q) || (a.subagency ?? "").toLowerCase().includes(q)));
+  const candidates = roster.filter((a) => !holderIds.has(a.user_id));
 
   async function grant(a: AssignableAgent) {
     setBusy(true);
     try {
       const { error } = await rpc("lead_bundle_grant", { p_bundle: bundle.bundle_id, p_user: a.user_id, p_note: null });
       if (error) throw error;
-      toast.success(`Also dropped to ${a.display_name}`); setSearch(""); onChange();
+      toast.success(`Also dropped to ${a.display_name}`); onChange();
     } catch (e) { toast.error(e instanceof Error ? e.message : "Could not grant"); } finally { setBusy(false); }
   }
   async function revoke(userId: string, name: string | null) {
@@ -912,35 +938,27 @@ function BundleManage({ bundle, onChange }: { bundle: RecentBundle; onChange: ()
               ))}
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Give to another agent — tap a name</Label>
-              {degraded && (
-                <span className="flex items-center gap-1 text-[11px] text-amber-400">
-                  <AlertTriangle className="h-3 w-3" /> Refreshing — showing the last known agents.
+              <Label className="text-xs text-muted-foreground">Give to another agent</Label>
+              {candidates.length === 0 && roster.length > 0 ? (
+                <p className="text-xs text-muted-foreground">Everyone already has this pack.</p>
+              ) : (
+                <AgentDropdown
+                  agents={candidates}
+                  degraded={degraded}
+                  isLoading={roster.length === 0}
+                  selectedId={null}
+                  onPick={(a) => void grant(a)}
+                  placeholder="Add an agent to this pack…"
+                  disabled={busy}
+                  widthClass="w-full sm:w-72"
+                />
+              )}
+              {roster.length === 0 && (
+                <span className="flex items-center gap-1.5 text-xs text-amber-400">
+                  <AlertTriangle className="h-3 w-3" /> Loading agents — retrying automatically.
+                  <button type="button" className="underline hover:text-amber-300" onClick={hardReset}>Reload fresh</button>
                 </span>
               )}
-              {roster.length > 8 && (
-                <Input value={search} onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Filter (optional)…" className="h-8 max-w-xs" aria-label="Filter agents to grant this pack to" />
-              )}
-              <div className="flex max-h-40 flex-wrap gap-1.5 overflow-y-auto">
-                {roster.length === 0 ? (
-                  <span className="flex items-center gap-1.5 text-xs text-amber-400">
-                    <AlertTriangle className="h-3 w-3" /> Loading agents — retrying automatically.
-                    <button type="button" className="underline hover:text-amber-300" onClick={hardReset}>Reload fresh</button>
-                  </span>
-                ) : candidates.length === 0 ? (
-                  <span className="text-xs text-muted-foreground">{q ? "No live agents match." : "Everyone already has this pack."}</span>
-                ) : (
-                  candidates.map((a) => (
-                    <button key={a.user_id} type="button" disabled={busy} onClick={() => grant(a)}
-                      className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-card px-2.5 py-1 text-xs hover:bg-muted/50">
-                      <UserRound className="h-3 w-3 opacity-60" />
-                      {a.display_name}
-                      {a.subagency && <span className="opacity-70">· {a.subagency}</span>}
-                    </button>
-                  ))
-                )}
-              </div>
             </div>
           </div>
           <div className="space-y-1">

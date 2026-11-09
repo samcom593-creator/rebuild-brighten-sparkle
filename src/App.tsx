@@ -568,7 +568,7 @@ const App = () => (
                     {/* Every authenticated agent can open Team. Server RPCs scope
                         the roster to self + recursive downline; staff keep their
                         agency-wide operating view. */}
-                    <Route path="/dashboard/team" element={<ProtectedRoute requireAdmin allowManagers><DashboardCRM /></ProtectedRoute>} />
+                    <Route path="/dashboard/team" element={<ProtectedRoute><DashboardCRM /></ProtectedRoute>} />
                   <Route path="/dashboard/recruiting-links" element={<ProtectedRoute requireAdmin><RecruitingLinks /></ProtectedRoute>} />
                   {/* §11: the Content page (approval queue + invite list) is the Launch Board's Queue tab now. Single hop. */}
                   <Route path="/dashboard/content" element={<LegacyWorkspaceRedirect to="/dashboard/launch-board?tab=queue" />} />
@@ -862,7 +862,7 @@ const App = () => (
                            <Route path="/dashboard/books" element={<ProtectedRoute requireAdmin allowManagers><BookFlips /></ProtectedRoute>} />
                            <Route path="/dashboard/sold-calls" element={<ProtectedRoute requireAdmin allowManagers><SoldCalls /></ProtectedRoute>} />
                            <Route path="/dashboard/easy-resells" element={<ProtectedRoute requireAdmin allowManagers><EasyResells /></ProtectedRoute>} />
-                           <Route path="/dashboard/call-training" element={<ProtectedRoute><CallTraining /></ProtectedRoute>} />
+                           <Route path="/dashboard/call-training" element={<ProtectedRoute requireAdmin allowManagers><CallTraining /></ProtectedRoute>} />
                            {/* MP-LEAD-MANAGER: old dialer-only Lead Bundles merged into the unified Lead Manager; URL kept so bookmarks/links still work. */}
                            <Route path="/dashboard/lead-bundles" element={<ProtectedRoute requireAdmin allowManagers><LeadManager /></ProtectedRoute>} />
                            <Route path="/dashboard/my-leads" element={<ProtectedRoute><MyLeads /></ProtectedRoute>} />

@@ -221,7 +221,7 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       // work in manager mode, so a mode list could not reach them.
       { label: "Sold Calls", href: "/dashboard/sold-calls", icon: PhoneCall, grant: "sold_calls" },
       // Graded dialer calls for training (MP-310, 2026-10-28): the great calls and the objections turned. Same access as Sold Calls.
-      { label: "Call Training", href: "/dashboard/call-training", icon: GraduationCap },
+      { label: "Call Training", href: "/dashboard/call-training", icon: GraduationCap, grant: "sold_calls" },
       // Leads (MP-LEAD-MANAGER, 2026-11-03): ONE console over every pool — marketing (client_leads),
       // dialer, the re-write pile and lapsed win-back. Filter, type a live agent, drop the pack into their
       // portal; resale ledger stops a lead going out twice. Supersedes the old dialer-only Lead Bundles page,
@@ -230,7 +230,7 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       // The leads given to you to work (MP-310 wave 3). Every producer.
       { label: "My Leads", href: "/dashboard/my-leads", icon: Inbox },
       { label: "My Commissions", href: "/dashboard/my-commissions", icon: WalletCards },
-      { label: "Retention", href: "/dashboard/retention", icon: Shield },
+      { label: "Retention", href: "/dashboard/retention", icon: Shield, grant: "sold_calls" },
     ],
   },
 

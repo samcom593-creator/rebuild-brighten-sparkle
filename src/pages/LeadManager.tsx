@@ -336,19 +336,19 @@ export default function LeadManager() {
 
   const debouncedFilters = useDebounced(filters, 350);
 
-  // per-pool switch totals + tier mix (unfiltered), fetched once
+  // per-pool switch totals + tier mix (unfiltered). One RPC for all four pools
+  // (lead_pool_tiles, ~2.8s server-side) cached for 10 minutes — this is what
+  // made the page FEEL slow: it used to fire four counts calls (~5.7s of DB
+  // work, marketing scanned twice) on every single visit.
   const { data: totals = {} } = useQuery<Record<string, { total: number; by_tier: Record<string, number> }>>({
-    queryKey: ["lead-pool-totals"],
+    queryKey: ["lead-pool-tiles"],
     queryFn: async () => {
-      const out: Record<string, { total: number; by_tier: Record<string, number> }> = {};
-      await Promise.all(POOLS.map(async (p) => {
-        const { data } = await rpc("lead_pool_counts", { p_source: p.key, p_filters: {} });
-        const c = data as PoolCounts | null;
-        out[p.key] = { total: c?.total ?? 0, by_tier: c?.by_tier ?? {} };
-      }));
-      return out;
+      const { data, error } = await rpc("lead_pool_tiles");
+      if (error) throw error;
+      return (data ?? {}) as Record<string, { total: number; by_tier: Record<string, number> }>;
     },
-    staleTime: 60_000,
+    staleTime: 10 * 60_000,
+    gcTime: 30 * 60_000,
   });
 
   const { data: counts, isFetching } = useQuery<PoolCounts>({
@@ -358,7 +358,10 @@ export default function LeadManager() {
       if (error) throw error;
       return (data as PoolCounts) ?? { total: 0, by_tier: {}, under_9mo: 0, dnc_excluded: 0, resold_excluded: 0, in_bundle_excluded: 0, sample: [] };
     },
-    staleTime: 10_000,
+    staleTime: 60_000,
+    // A marketing count is a ~3s scan: keep the previous numbers on screen with
+    // the spinner while a filter tweak recomputes, instead of blanking to "—".
+    placeholderData: (prev) => prev,
   });
 
   // Shared tap-roster (see useAgentRoster above) — the same list BundleManage taps from.

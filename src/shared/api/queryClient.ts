@@ -24,7 +24,17 @@ function smartRetry(failureCount: number, error: unknown): boolean {
  */
 async function logClientError(scope: "query" | "mutation", key: string, error: unknown) {
   try {
-    const message = error instanceof Error ? error.message : String(error);
+    // PostgREST errors are plain objects, so String() yields "[object Object]" —
+    // which cost three diagnoses on 2026-11-09 alone (the lead-drop 409 had to be
+    // recovered from the edge + postgres logs). Serialize the fields instead.
+    const message = error instanceof Error
+      ? error.message
+      : (() => {
+          const e = error as { message?: string; code?: string; details?: string; hint?: string } | null;
+          const parts = [e?.code, e?.message, e?.details, e?.hint].filter(Boolean);
+          if (parts.length) return parts.join(" | ").slice(0, 500);
+          try { return JSON.stringify(error).slice(0, 500); } catch { return String(error); }
+        })();
     const stack = error instanceof Error ? error.stack : undefined;
     const { supabase } = await import("@/integrations/supabase/client");
     // function_errors is not anon-writable (RLS). On public pages (hall-of-fame,

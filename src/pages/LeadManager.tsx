@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/ui/page-header";
 import { cn } from "@/lib/utils";
+import { formatTimeAgo } from "@/lib/dateUtils";
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover";
@@ -124,7 +125,8 @@ type AssignableAgent = { user_id: string; agent_id: string; display_name: string
 type RecentBundle = {
   bundle_id: string; name: string; note: string | null; created_at: string; archived_at: string | null;
   live_items: number; sold: number; under_9mo: number; resold: boolean;
-  holders: Array<{ user_id: string; name: string | null; granted_at: string }>;
+  worked: number; dialed: number; last_worked_at: string | null;
+  holders: Array<{ user_id: string; name: string | null; granted_at: string; worked: number; dialed: number }>;
 };
 type Closer = {
   user_id: string; display_name: string | null; dropped: number; worked: number;
@@ -366,14 +368,15 @@ export default function LeadManager() {
 
   const debouncedFilters = useDebounced(filters, 350);
 
-  // per-pool switch totals (unfiltered), fetched once
-  const { data: totals = {} } = useQuery<Record<string, number>>({
+  // per-pool switch totals + tier mix (unfiltered), fetched once
+  const { data: totals = {} } = useQuery<Record<string, { total: number; by_tier: Record<string, number> }>>({
     queryKey: ["lead-pool-totals"],
     queryFn: async () => {
-      const out: Record<string, number> = {};
+      const out: Record<string, { total: number; by_tier: Record<string, number> }> = {};
       await Promise.all(POOLS.map(async (p) => {
         const { data } = await rpc("lead_pool_counts", { p_source: p.key, p_filters: {} });
-        out[p.key] = (data as PoolCounts | null)?.total ?? 0;
+        const c = data as PoolCounts | null;
+        out[p.key] = { total: c?.total ?? 0, by_tier: c?.by_tier ?? {} };
       }));
       return out;
     },
@@ -513,11 +516,20 @@ export default function LeadManager() {
               <div className="flex w-full items-center justify-between">
                 <Icon className={cn("h-4 w-4", on ? "text-primary" : "text-muted-foreground")} />
                 <span className="text-lg font-bold tabular-nums">
-                  {totals[p.key]?.toLocaleString() ?? "—"}
+                  {totals[p.key]?.total.toLocaleString() ?? "—"}
                 </span>
               </div>
               <span className="text-sm font-medium">{p.label}</span>
               <span className="text-xs text-muted-foreground">{p.blurb}</span>
+              {totals[p.key] && Object.keys(totals[p.key].by_tier).length > 0 && (
+                <span className="mt-0.5 flex flex-wrap gap-x-2 text-[10px] tabular-nums text-muted-foreground">
+                  {["S", "A", "B", "C", "D"].filter((t) => (totals[p.key].by_tier[t] ?? 0) > 0).map((t) => (
+                    <span key={t}>
+                      <span className="font-semibold text-foreground/80">{t}</span> {totals[p.key].by_tier[t].toLocaleString()}
+                    </span>
+                  ))}
+                </span>
+              )}
             </button>
           );
         })}
@@ -756,10 +768,23 @@ export default function LeadManager() {
                     <div className="font-medium">{b.name}</div>
                     <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                       <span>{b.live_items} live</span>
+                      {/* The question this line answers: is the pack being worked? */}
+                      {b.live_items > 0 && (
+                        b.worked > 0 ? (
+                          <span className="text-green-400">{b.worked}/{b.live_items} worked</span>
+                        ) : b.archived_at ? null : (
+                          <span className="text-amber-400">untouched</span>
+                        )
+                      )}
+                      {b.last_worked_at && <span>last touch {formatTimeAgo(b.last_worked_at)}</span>}
                       {b.sold > 0 && <span className="text-green-400">{b.sold} sold</span>}
                       {b.under_9mo > 0 && <span className="text-amber-400">{b.under_9mo} under-9mo</span>}
                       <span>·</span>
-                      <span className="inline-flex items-center gap-1"><UsersIcon className="h-3 w-3" />{b.holders.map((h) => h.name).filter(Boolean).join(", ") || "unassigned"}</span>
+                      <span className="inline-flex items-center gap-1">
+                        <UsersIcon className="h-3 w-3" />
+                        {b.holders.length === 0 ? "unassigned"
+                          : b.holders.map((h) => `${h.name ?? "agent"} ${h.worked}/${b.live_items}`).join(", ")}
+                      </span>
                       <span>·</span>
                       <span>{new Date(b.created_at).toLocaleDateString()}</span>
                       {b.resold && <Badge variant="outline" className="bg-green-600/15 border-green-600/40 text-green-300">sold</Badge>}

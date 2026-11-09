@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-11-09T02:28:49Z",
+ "_generated_at": "2026-11-09T21:16:33Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -519,6 +519,7 @@
   "lead_closers_leaderboard": "jsonb",
   "lead_pool_assign": "jsonb",
   "lead_pool_counts": "jsonb",
+  "lead_pool_tiles": "jsonb",
   "lead_resale_pool_counts": "jsonb",
   "leaderboard_set_cheer": "jsonb",
   "leaderboard_team_board": "jsonb",
@@ -537,6 +538,7 @@
   "my_agent_account_gaps": "SETOF v_agent_account_gaps",
   "my_agent_profile": "jsonb",
   "my_course_progress": "jsonb",
+  "my_lead_detail": "jsonb",
   "my_new_hire_showup": "SETOF v_new_hire_showup",
   "my_recruiting_link": "jsonb",
   "my_recruiting_standing": "jsonb",
@@ -9970,6 +9972,8 @@
    "candidates": [],
    "body_literals": [
     "active",
+    "in_field_training",
+    "live",
     "public"
    ]
   },
@@ -9979,6 +9983,17 @@
    ],
    "body_literals": [
     "active",
+    "in_field_training",
+    "live",
+    "public"
+   ]
+  },
+  "lead_assignable_agents.is_live": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "in_field_training",
+    "live",
     "public"
    ]
   },
@@ -9986,15 +10001,20 @@
    "candidates": [],
    "body_literals": [
     "active",
+    "in_field_training",
+    "live",
     "public"
    ]
   },
   "lead_assignable_agents.user_id": {
    "candidates": [
-    "agents.user_id"
+    "agents.user_id",
+    "lead_bundle_grants.user_id"
    ],
    "body_literals": [
     "active",
+    "in_field_training",
+    "live",
     "public"
    ]
   },
@@ -10943,9 +10963,37 @@
     "public"
    ]
   },
+  "my_lead_bundles.age": {
+   "candidates": [
+    "lead_bundle_items.age"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "Do Not Call",
+    "pos",
+    "public"
+   ]
+  },
   "my_lead_bundles.attempts": {
    "candidates": [
     "lead_bundle_items.attempts"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "Do Not Call",
+    "pos",
+    "public"
+   ]
+  },
+  "my_lead_bundles.attrs": {
+   "candidates": [
+    "lead_bundle_items.attrs"
    ],
    "body_literals": [
     "A",
@@ -10973,6 +11021,18 @@
    ]
   },
   "my_lead_bundles.bundle_name": {
+   "candidates": [],
+   "body_literals": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "Do Not Call",
+    "pos",
+    "public"
+   ]
+  },
+  "my_lead_bundles.bundle_note": {
    "candidates": [],
    "body_literals": [
     "A",
@@ -11125,6 +11185,20 @@
   "my_lead_bundles.quality_tier": {
    "candidates": [
     "lead_bundle_items.quality_tier"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "Do Not Call",
+    "pos",
+    "public"
+   ]
+  },
+  "my_lead_bundles.state": {
+   "candidates": [
+    "lead_bundle_items.state"
    ],
    "body_literals": [
     "A",

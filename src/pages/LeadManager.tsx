@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/ui/page-header";
 import { cn } from "@/lib/utils";
-import { TIER_STYLE, flagBadges } from "@/lib/leadBundles";
+import { TIER_STYLE, flagBadges, tierLegendFor } from "@/lib/leadBundles";
 import { formatTimeAgo } from "@/lib/dateUtils";
 import {
   Popover, PopoverContent, PopoverTrigger,
@@ -25,7 +25,7 @@ import {
 import {
   Layers, Send, Download, Archive, DollarSign, AlertTriangle, UserRound, X,
   Trophy, Phone, RotateCcw, Boxes, ClipboardList, Users as UsersIcon, Check,
-  ChevronsUpDown,
+  ChevronsUpDown, Info,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -539,7 +539,29 @@ export default function LeadManager() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label className="text-xs uppercase tracking-wide text-muted-foreground">Tier</Label>
+            <div className="flex items-center gap-1.5">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Tier</Label>
+              {/* Sam (2026-11-09): "explain the differences between A, B, C, D type
+                  of leads" — the ladder for the ACTIVE pool, same copy agents see. */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button type="button" aria-label="What the tiers mean" className="text-muted-foreground transition-colors hover:text-foreground">
+                    <Info className="h-3.5 w-3.5" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 text-sm" align="start">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tiers in the {POOLS.find((p) => p.key === pool)?.label} pool</p>
+                  <ul className="space-y-1.5">
+                    {tierLegendFor(pool).map((t) => (
+                      <li key={t.tier} className="flex gap-2">
+                        <Badge variant="outline" className={cn("h-5 shrink-0 font-normal", TIER_STYLE[t.tier] ?? "")}>{t.tier}</Badge>
+                        <span className="text-muted-foreground">{t.desc}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </PopoverContent>
+              </Popover>
+            </div>
             <div className="flex flex-wrap gap-2">
               {tierOpts.map((t) => {
                 const on = tiers.has(t.v);

@@ -82,3 +82,36 @@ export function flagBadges(flags: Record<string, unknown>, under9: boolean) {
   }
   return out;
 }
+
+// What each tier MEANS, per pool — Sam (2026-11-09): "explain the differences
+// between A, B, C, D type of leads." Derived from the pool views' own CASE
+// logic (v_sellable_client_leads grade, v_readymode_lead_quality,
+// v_pool_rewrite, v_pool_winback) — if a view's grading changes, change this
+// with it. Rendered on Lead Manager (per active pool) and in the agent's
+// work screen (per the lead's attrs.pool).
+export const TIER_LEGEND: Record<string, ReadonlyArray<{ tier: string; desc: string }>> = {
+  marketing: [
+    { tier: "A", desc: "A-list purchased lead — best data, often a named beneficiary" },
+    { tier: "B", desc: "B-list purchase — solid data, less pre-qualification" },
+    { tier: "C", desc: "C-list purchase — thinner data" },
+    { tier: "D", desc: "Everything else — oldest or least-qualified lists" },
+  ],
+  dialer: [
+    { tier: "pos", desc: "Bought on a dialer call — a policy owner to service or rewrite" },
+    { tier: "A", desc: "Warm — booked an appointment, or reached bank/SSN and stopped" },
+    { tier: "B", desc: "Talked to an agent, never bought" },
+    { tier: "C", desc: "Never reached — dialed 3 times or fewer" },
+    { tier: "D", desc: "Never reached — dialed 4 or more times" },
+  ],
+  rewrite: [
+    { tier: "S", desc: "SSN and bank both collected — the application was nearly done" },
+    { tier: "A", desc: "SSN or bank collected — one step from finishing" },
+    { tier: "B", desc: "Interest shown, no SSN or bank collected yet" },
+  ],
+  winback: [
+    { tier: "A", desc: "Lapsed policy — they already bought once; payment stopped" },
+    { tier: "B", desc: "Cancelled, withdrawn, declined or not taken" },
+  ],
+};
+export const tierLegendFor = (pool: string | null | undefined) =>
+  TIER_LEGEND[pool ?? ""] ?? TIER_LEGEND.marketing;

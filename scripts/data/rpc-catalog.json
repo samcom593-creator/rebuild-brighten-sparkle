@@ -6588,6 +6588,14 @@
         "raw": "p_source text, p_filters jsonb DEFAULT '{}'::jsonb"
       }
     ],
+    "lead_pool_tiles": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "lead_resale_pool_counts": [
       {
         "all": [
@@ -6944,6 +6952,18 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "my_lead_detail": [
+      {
+        "all": [
+          "p_item"
+        ],
+        "required": [
+          "p_item"
+        ],
+        "unnamed": false,
+        "raw": "p_item uuid"
       }
     ],
     "my_new_hire_showup": [

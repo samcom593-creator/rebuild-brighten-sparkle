@@ -18,20 +18,25 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { contactLinkProps, formatPhoneDisplay, phoneHref } from "@/lib/phone";
 import { dispositionLabel } from "@/lib/readymodeDispositions";
-import { LEAD_STATUS_BUTTONS, canDial, formatLabel, isOpenLead, leadStatusLabel, tierLabel } from "@/lib/leadBundles";
+import { LEAD_STATUS_BUTTONS, TIER_STYLE, canDial, flagBadges, formatLabel, isOpenLead, leadStatusLabel, tierLabel } from "@/lib/leadBundles";
+import { cn } from "@/lib/utils";
 import { CallCenterVoiceRecorder } from "@/components/callcenter/CallCenterVoiceRecorder";
 
 interface MyLead {
   item_id: string;
   bundle_id: string;
   bundle_name: string;
+  bundle_note: string | null;
   format: string;
   phone10: string;
   first_name: string | null;
   last_name: string | null;
   email: string | null;
+  state: string | null;
+  age: number | null;
   quality_tier: string | null;
   quality_reason: string | null;
+  attrs: Record<string, unknown> | null;
   attempts: number | null;
   last_dialed_at: string | null;
   last_disposition: string | null;
@@ -87,11 +92,11 @@ export default function MyLeads() {
   const myWorked = rows.filter((r) => !isOpenLead(r.status)).length;
   const count = (s: Show) => rows.filter((r) => s === "all" || (s === "open" ? isOpenLead(r.status) : !isOpenLead(r.status))).length;
   const visible = rows.filter((r) => show === "all" || (show === "open" ? isOpenLead(r.status) : !isOpenLead(r.status)));
-  const groups: Array<{ id: string; name: string; format: string; leads: MyLead[] }> = [];
+  const groups: Array<{ id: string; name: string; note: string | null; format: string; leads: MyLead[] }> = [];
   for (const r of visible) {
     const g = groups.find((x) => x.id === r.bundle_id);
     if (g) g.leads.push(r);
-    else groups.push({ id: r.bundle_id, name: r.bundle_name, format: r.format, leads: [r] });
+    else groups.push({ id: r.bundle_id, name: r.bundle_name, note: r.bundle_note, format: r.format, leads: [r] });
   }
   return (
     <div className="space-y-6">
@@ -124,30 +129,53 @@ export default function MyLeads() {
           ) : (
             groups.map((g) => (
               <GlassCard key={g.id} className="p-0">
-                <p className="px-4 py-3 text-sm font-semibold">
-                  {g.name} <Badge variant="outline" className="ml-1 font-normal">{formatLabel(g.format)}</Badge>
-                  <span className="ml-2 text-xs font-normal text-muted-foreground">{g.leads.length} lead{g.leads.length === 1 ? "" : "s"}</span>
-                </p>
+                <div className="px-4 py-3">
+                  <p className="text-sm font-semibold">
+                    {g.name} <Badge variant="outline" className="ml-1 font-normal">{formatLabel(g.format)}</Badge>
+                    <span className="ml-2 text-xs font-normal text-muted-foreground">{g.leads.length} lead{g.leads.length === 1 ? "" : "s"}</span>
+                  </p>
+                  {g.note && <p className="mt-1 text-xs italic text-amber-300/90">“{g.note}”</p>}
+                </div>
                 <ul className="divide-y divide-border/60 border-t border-border/60 text-sm">
                   {g.leads.map((l) => {
                     const href = canDial(l.status) ? phoneHref(l.phone10) : null;
                     return (
                       <li key={l.item_id} className="space-y-2 px-4 py-3">
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                          <span className="font-medium">{[l.first_name, l.last_name].filter(Boolean).join(" ") || "Name not on file"}</span>
+                          <span className="font-medium">
+                            {[l.first_name, l.last_name].filter(Boolean).join(" ") || "Name not on file"}
+                            {(l.age || l.state) && (
+                              <span className="ml-1.5 font-normal text-muted-foreground">
+                                {[l.age ? `${l.age}` : null, l.state].filter(Boolean).join(" · ")}
+                              </span>
+                            )}
+                          </span>
                           {href ? (
                             <a href={href} {...contactLinkProps(href)} className="inline-flex items-center gap-1 font-medium text-primary hover:underline"><Phone className="h-3.5 w-3.5" />{formatPhoneDisplay(l.phone10)}</a>
                           ) : (
                             <span className="text-muted-foreground">{formatPhoneDisplay(l.phone10)} · do not call</span>
                           )}
-                          <Badge variant="outline" className="font-normal">{tierLabel(l.quality_tier)}</Badge>
+                          <Badge variant="outline" className={cn("font-normal", TIER_STYLE[l.quality_tier ?? ""] ?? "")}>{tierLabel(l.quality_tier)}</Badge>
                           <span className="text-muted-foreground">{leadStatusLabel(l.status)}{l.status_note ? `: ${l.status_note}` : ""}</span>
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          {l.quality_reason}
-                          {l.last_dialed_at ? ` · last dialed ${shortDate(l.last_dialed_at)}` : ""}
-                          {l.last_disposition ? ` (${dispositionLabel(l.last_disposition)})` : ""}
-                        </p>
+                        {(() => {
+                          const chips = flagBadges((l.attrs ?? {}) as Record<string, unknown>, l.attrs?.under_9mo === true);
+                          return chips.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {chips.slice(0, 6).map((b) => (
+                                <Badge key={b.key} variant="outline" className={cn("text-[10px]", b.cls)}>{b.label}</Badge>
+                              ))}
+                            </div>
+                          ) : l.quality_reason ? (
+                            <p className="text-xs text-muted-foreground">{l.quality_reason}</p>
+                          ) : null;
+                        })()}
+                        {(l.last_dialed_at || l.last_disposition) && (
+                          <p className="text-xs text-muted-foreground">
+                            {l.last_dialed_at ? `last dialed ${shortDate(l.last_dialed_at)}` : ""}
+                            {l.last_disposition ? ` (${dispositionLabel(l.last_disposition)})` : ""}
+                          </p>
+                        )}
                         <div className="space-y-2">
                           <div className="flex flex-wrap items-center gap-2">
                             {LEAD_STATUS_BUTTONS.map((b) => (

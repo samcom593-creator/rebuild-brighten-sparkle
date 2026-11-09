@@ -43,3 +43,42 @@ export const formatLabel = (format: string | null | undefined) => (format === "p
 
 /** A lead marked do not call never gets a Call link, here or anywhere. */
 export const canDial = (status: string | null | undefined) => status !== "do_not_call";
+
+// One tier/flag vocabulary for BOTH sides of a drop (MP-LEAD-MANAGER-11,
+// 2026-11-09). Lead Manager (Sam's pack preview) and My Leads (the agent
+// working the pack) must describe a lead identically — these moved here from
+// LeadManager.tsx the day agents gained full lead info.
+export const TIER_STYLE: Record<string, string> = {
+  S: "bg-primary/15 border-primary/40 text-primary",
+  A: "bg-emerald-500/15 border-emerald-500/40 text-emerald-300",
+  B: "bg-blue-500/15 border-blue-500/40 text-blue-300",
+  C: "bg-slate-500/15 border-slate-500/40 text-muted-foreground",
+  D: "bg-slate-500/10 border-slate-500/30 text-muted-foreground",
+  pos: "bg-violet-500/15 border-violet-500/40 text-violet-300",
+};
+
+export const FLAG_BADGE: Record<string, { label: string; cls: string }> = {
+  mortgage: { label: "Mortgage", cls: "bg-blue-500/15 border-blue-500/40 text-blue-300" },
+  veteran: { label: "Veteran", cls: "bg-emerald-500/15 border-emerald-500/40 text-emerald-300" },
+  homeowner: { label: "Homeowner", cls: "bg-cyan-500/15 border-cyan-500/40 text-cyan-300" },
+  policyholder: { label: "Policyholder", cls: "bg-violet-500/15 border-violet-500/40 text-violet-300" },
+  cc: { label: "Card on file", cls: "bg-emerald-500/15 border-emerald-500/40 text-emerald-300" },
+  direct_express: { label: "Direct Express", cls: "bg-cyan-500/15 border-cyan-500/40 text-cyan-300" },
+  bank_on_file: { label: "Bank on file", cls: "bg-emerald-500/15 border-emerald-500/40 text-emerald-300" },
+  no_bank: { label: "No bank", cls: "bg-rose-500/15 border-rose-500/40 text-rose-300" },
+  ssn_collected: { label: "SSN ✓", cls: "bg-slate-500/15 border-slate-500/40 text-muted-foreground" },
+  bank_collected: { label: "Bank ✓", cls: "bg-slate-500/15 border-slate-500/40 text-muted-foreground" },
+  hung_up: { label: "Data collected", cls: "bg-amber-500/15 border-amber-500/40 text-amber-300" },
+  spouse: { label: "Spouse opp", cls: "bg-violet-500/15 border-violet-500/40 text-violet-300" },
+  lapsed: { label: "Lapsed", cls: "bg-amber-500/15 border-amber-500/40 text-amber-300" },
+  vantage: { label: "Vantage", cls: "bg-primary/15 border-primary/40 text-primary" },
+};
+
+export function flagBadges(flags: Record<string, unknown>, under9: boolean) {
+  const out: { key: string; label: string; cls: string }[] = [];
+  if (under9) out.push({ key: "u9", label: "Under 9mo", cls: "bg-amber-500/15 border-amber-500/40 text-amber-300" });
+  for (const [k, v] of Object.entries(flags ?? {})) {
+    if (v === true && FLAG_BADGE[k]) out.push({ key: k, ...FLAG_BADGE[k] });
+  }
+  return out;
+}

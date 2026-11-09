@@ -13,6 +13,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const auth = vi.hoisted(() => ({ current: { user: { id: "sam" }, isAdmin: true } }));
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => auth.current }));
+// The gate is now DB-driven (can_view_sold_calls over call_access_grants, MP-CALL-ACCESS);
+// mirrored off the auth fixture so the closed test stays a test of the CLOSED page, not of
+// the access rpc — which would otherwise land in db.rpcCalls and fail its emptiness assert.
+vi.mock("@/hooks/useSoldCallKeys", () => ({ useCanViewSoldCalls: () => ({ canView: !!auth.current.isAdmin, ready: true }) }));
 
 const db = vi.hoisted(() => ({
   queue: [] as unknown[],
@@ -321,7 +325,7 @@ describe("Sold Calls", () => {
     expect(screen.getByRole("button", { name: /Try again/ })).toBeInTheDocument();
   });
 
-  it("stays closed to anyone who is not Sam or Aisha", () => {
+  it("stays closed to anyone without a call-access grant", () => {
     auth.current = { user: { id: "agent" }, isAdmin: false };
     renderPage();
     expect(screen.getByText("This page is restricted.")).toBeInTheDocument();

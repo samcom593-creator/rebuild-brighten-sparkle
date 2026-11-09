@@ -8,6 +8,9 @@ const useStore = create<{ commandPaletteOpen: boolean; setCommandPaletteOpen: (o
   commandPaletteOpen: true, setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
 }));
 vi.mock("@/shared/store/uiStore", () => ({ useUIStore: (selector: Parameters<typeof useStore>[0]) => useStore(selector) }));
+// useCanViewSoldCalls (via useNavGrants) runs a useQuery and this tree has no
+// QueryClientProvider; keyed to mocks.admin so grant-driven entries match the old behaviour.
+vi.mock("@/hooks/useSoldCallKeys", () => ({ useCanViewSoldCalls: () => ({ canView: !!mocks.admin, ready: true }) }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc: mocks.rpc } }));
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "viewer" }, isAdmin: mocks.admin, isLoading: false, effectiveMode: "admin" }) }));
 vi.mock("@/hooks/useRolePreview", () => ({ useRolePreview: () => ({ isPreviewing: false }) }));

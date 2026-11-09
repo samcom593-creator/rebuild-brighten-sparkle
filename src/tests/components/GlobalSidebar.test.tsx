@@ -24,6 +24,9 @@ const authState = {
 };
 
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ ...authState }) }));
+// useCanViewSoldCalls runs a useQuery against the live grant table (MP-CALL-ACCESS);
+// these renders have no QueryClientProvider, so mirror the pre-grant behaviour: admins see it.
+vi.mock("@/hooks/useSoldCallKeys", () => ({ useCanViewSoldCalls: () => ({ canView: !!authState.isAdmin, ready: true }) }));
 vi.mock("@/hooks/useBrand", () => ({
   useBrand: () => ({ legalName: "APEX Financial", shortName: "APEX" }),
 }));

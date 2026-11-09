@@ -26,7 +26,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { looseSupabase } from "@/lib/looseSupabase";
 import { useAuth } from "@/hooks/useAuth";
-import { SOLD_CALL_EXTRA_UID } from "@/hooks/useSoldCallKeys";
+import { useCanViewSoldCalls } from "@/hooks/useSoldCallKeys";
+import { CallAccessManager } from "@/components/soldcalls/CallAccessManager";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
@@ -176,8 +177,8 @@ function secretChecks(sec: Pick<Sensitive, "ssn" | "bank_routing" | "bank_accoun
 }
 
 export default function SoldCalls() {
-  const { isAdmin, user } = useAuth();
-  const canView = !!isAdmin || user?.id === SOLD_CALL_EXTRA_UID;
+  const { isAdmin } = useAuth();
+  const { canView } = useCanViewSoldCalls();
   usePageTitle("Sold Calls");
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["sold-calls-queue"], queryFn: fetchQueue, staleTime: 30_000, enabled: canView });
@@ -290,6 +291,8 @@ export default function SoldCalls() {
         subtitle="Every ReadyMode sale and every caller who balked at bank or SSN, with what they said that matters. Call, mark it, resell it."
         accent="amber"
       />
+
+      {isAdmin && <CallAccessManager />}
 
       <div className="mb-3 flex flex-wrap gap-2" role="tablist" aria-label="Which calls">
         <Button role="tab" aria-selected={view === "sold"} variant={view === "sold" ? "default" : "outline"} onClick={() => setView("sold")}>

@@ -2264,6 +2264,12 @@
       "started_at",
       "status"
     ],
+    "call_access_grants": [
+      "created_at",
+      "granted_by",
+      "note",
+      "user_id"
+    ],
     "call_activity": [
       "agent_id",
       "caller_name",

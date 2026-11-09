@@ -18,8 +18,7 @@ import { looseSupabase } from "@/lib/looseSupabase";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { externalHref } from "@/lib/externalHref";
-import { useAuth } from "@/hooks/useAuth";
-import { SOLD_CALL_EXTRA_UID } from "@/hooks/useSoldCallKeys";
+import { useCanViewSoldCalls } from "@/hooks/useSoldCallKeys";
 import { CallAudioPlayer } from "@/components/calls/CallAudioPlayer";
 import { contactLinkProps, formatPhoneDisplay, isDialablePhone, nationalDigits, phoneHref, smsHref } from "@/lib/phone";
 import { bookingGaps, checkNumber, clientAsks, draftDayLabel, formatDob, formatSsn, paymentLabel, withNumberAsks, type NumberCheck, type NumberField } from "@/lib/soldCallPacket";
@@ -60,8 +59,7 @@ export function SoldCallPanel({ phone, firstName, lastName, doNotCall = false, s
    */
   showContact?: boolean;
 }) {
-  const { isAdmin, user } = useAuth();
-  const canView = !!isAdmin || user?.id === SOLD_CALL_EXTRA_UID;
+  const { canView } = useCanViewSoldCalls();
   const ph = digits10(phone);
   const fn = (firstName ?? "").trim().toLowerCase();
   const ln = (lastName ?? "").trim().toLowerCase();

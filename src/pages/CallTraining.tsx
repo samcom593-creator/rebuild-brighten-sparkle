@@ -16,7 +16,7 @@ import { AlertTriangle, ChevronDown, Search, Star, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { looseSupabase } from "@/lib/looseSupabase";
 import { useAuth } from "@/hooks/useAuth";
-import { SOLD_CALL_EXTRA_UID } from "@/hooks/useSoldCallKeys";
+import { useCanViewSoldCalls } from "@/hooks/useSoldCallKeys";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -138,9 +138,9 @@ async function fetchAgents(): Promise<AgentRow[]> {
 }
 
 export default function CallTraining() {
-  const { isAdmin, isManager, user } = useAuth();
-  // Sam and Aisha see the agency; an upline sees their own team (RLS through my_downline_agent_ids); agents get the library.
-  const leadership = !!isAdmin || user?.id === SOLD_CALL_EXTRA_UID;
+  const { isManager } = useAuth();
+  // Admins + call_access_grants rows see the agency; an upline sees their own team (RLS through my_downline_agent_ids); agents get the library.
+  const { canView: leadership } = useCanViewSoldCalls();
   const canView = leadership || !!isManager;
   usePageTitle("Call Training");
   const q = useQuery({ queryKey: ["call-training"], queryFn: fetchGraded, staleTime: 60_000, enabled: canView });

@@ -19,10 +19,9 @@ import {
   PhoneCall, Radio, RefreshCw, RotateCcw, Search, ShieldAlert, UserRound, XCircle, Youtube, type LucideIcon,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { playSoundEffect } from "@/hooks/useSoundEffects";
-import { SOLD_CALL_EXTRA_UID } from "@/hooks/useSoldCallKeys";
+import { useCanViewSoldCalls } from "@/hooks/useSoldCallKeys";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
@@ -64,8 +63,7 @@ const CHIP_BUCKETS: Bucket[] = ["answered", "silent"];
 const PLATFORM_ICON: Record<string, LucideIcon> = { instagram: Instagram, tiktok: Music2, youtube: Youtube, snapchat: Ghost, bio_link: Link2 };
 
 export default function SocialCommandCenter() {
-  const { isAdmin, user } = useAuth();
-  const canView = !!isAdmin || user?.id === SOLD_CALL_EXTRA_UID;
+  const { canView } = useCanViewSoldCalls();
   usePageTitle("Social Command Center");
   const q = useQuery({ queryKey: [SOCIAL_COMMAND_KEY], queryFn: fetchCommandCenter, staleTime: 60_000, refetchInterval: 5 * 60_000, enabled: canView });
 

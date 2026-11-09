@@ -40,7 +40,7 @@ vi.mock("@/components/deals/SubmitDealDialog", () => ({
 }));
 const soldKeys = vi.hoisted(() => ({ names: new Set<string>() }));
 vi.mock("@/hooks/useSoldCallKeys", () => ({
-  SOLD_CALL_EXTRA_UID: "aisha",
+  useCanViewSoldCalls: () => ({ canView: false, ready: true }),
   useSoldCallKeys: () => ({
     ready: true,
     count: soldKeys.names.size,

@@ -36151,6 +36151,35 @@ export type Database = {
         }
         Relationships: []
       }
+      call_access_grants: {
+        Row: {
+          created_at: string
+          granted_by: string | null
+          note: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          granted_by?: string | null
+          note?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          granted_by?: string | null
+          note?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_access_grants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "v_departed_logins_to_revoke"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       call_activity: {
         Row: {
           agent_id: string | null

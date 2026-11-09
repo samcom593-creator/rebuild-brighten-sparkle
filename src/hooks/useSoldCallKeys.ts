@@ -1,17 +1,42 @@
-// useSoldCallKeys — admin-only lookup of which clients/deals have a ReadyMode
-// "Completed Sale" booking packet, so list dashboards can badge/filter the
-// matching records. Fetches the ~small set of match keys once and returns a
-// fast membership test by phone (preferred) or full name.
+// useSoldCallKeys — lookup of which clients/deals have a ReadyMode "Completed Sale"
+// booking packet, so list dashboards can badge/filter the matching records. Fetches
+// the ~small set of match keys once and returns a fast membership test by phone
+// (preferred) or full name.
+//
+// Access (MP-CALL-ACCESS, 2026-11-08): the DATABASE decides. can_view_sold_calls()
+// is admin OR a row in call_access_grants, which admins manage from the Sold Calls
+// page. The old front-end mirror hardcoded admin||Aisha, which made every grant a
+// code deploy and let the UI disagree with RLS; useCanViewSoldCalls() asks the
+// function itself. Sold-call data is sensitive (SSN/bank) — grants are deliberate.
 import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { looseSupabase } from "@/lib/looseSupabase";
 import { useAuth } from "@/hooks/useAuth";
 
-// Admins + Aisha Kebbeh only (Sam's directive) — sold-call data is sensitive (SSN/bank).
-export const SOLD_CALL_EXTRA_UID = "66bc4464-f10b-4ecf-8e8b-144486f18a44";
+export interface CallAccess {
+  /** True once the database says this user may see sold-call / agent-call data. */
+  canView: boolean;
+  /** False while the grant check is still in flight for a signed-in non-admin. */
+  ready: boolean;
+}
 
-/** The front-end mirror of can_view_sold_calls(): admins and Aisha. The database decides. */
-export function canViewSoldCalls(isAdmin: boolean, userId: string | null | undefined): boolean {
-  return isAdmin || userId === SOLD_CALL_EXTRA_UID;
+/** DB-truth gate for the agent-call family (sold calls, packets, call audio, coaching, training). */
+export function useCanViewSoldCalls(): CallAccess {
+  const { user, isAdmin } = useAuth();
+  const q = useQuery({
+    queryKey: ["can-view-sold-calls", user?.id ?? "anon"],
+    enabled: !!user && !isAdmin,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await (supabase.rpc("can_view_sold_calls" as never) as unknown as
+        Promise<{ data: boolean | null; error: { message: string } | null }>);
+      if (error) throw new Error(error.message);
+      return data === true;
+    },
+  });
+  if (isAdmin) return { canView: true, ready: true };
+  if (!user) return { canView: false, ready: true };
+  return { canView: q.data === true, ready: q.isSuccess || q.isError };
 }
 
 const digits10 = (s?: string | null) => (s ? s.replace(/[^0-9]/g, "").slice(-10) : "");
@@ -34,8 +59,7 @@ export interface SoldCallKeys {
 }
 
 export function useSoldCallKeys(): SoldCallKeys {
-  const { isAdmin, user } = useAuth();
-  const canView = canViewSoldCalls(!!isAdmin, user?.id);
+  const { canView } = useCanViewSoldCalls();
   const q = useQuery({
     queryKey: ["sold-call-keys"],
     enabled: canView,

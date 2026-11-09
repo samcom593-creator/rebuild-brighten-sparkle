@@ -25,7 +25,7 @@ vi.mock("@/components/deals/SubmitDealDialog", () => ({
   SubmitDealDialog: ({ trigger }: { trigger?: ReactNode }) => <>{trigger ?? <button type="button">Post a Deal (default)</button>}</>,
 }));
 vi.mock("@/hooks/useSoldCallKeys", () => ({
-  SOLD_CALL_EXTRA_UID: "aisha",
+  useCanViewSoldCalls: () => ({ canView: false, ready: true }),
   useSoldCallKeys: () => ({ ready: true, count: 0, has: () => false }),
 }));
 vi.mock("@/hooks/useSoundEffects", () => ({ playSoundEffect: vi.fn() }));

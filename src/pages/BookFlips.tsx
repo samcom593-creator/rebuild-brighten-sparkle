@@ -14,7 +14,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, Copy, Loader2, Phone, PhoneCall, PhoneOff, Search, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
@@ -29,7 +28,7 @@ import {
   type BookFilter, type BookPolicy, type FlipFilter, type FlipStatus, type SortKey,
 } from "@/lib/bookFlips";
 import { SoldCallPanel } from "@/components/clients/SoldCallPanel";
-import { canViewSoldCalls, useSoldCallKeys } from "@/hooks/useSoldCallKeys";
+import { useCanViewSoldCalls, useSoldCallKeys } from "@/hooks/useSoldCallKeys";
 import { useResellEvidence } from "@/hooks/useResellEvidence";
 import { ageFromDob, dobDisplay } from "@/lib/clientFacts";
 import { FlipActions, type FlipSetOptions } from "@/components/books/FlipActions";
@@ -111,8 +110,7 @@ const policies = (n: number) => `${n.toLocaleString()} ${n === 1 ? "policy" : "p
 
 export default function BookFlips() {
   const [params, setParams] = useSearchParams();
-  const { isAdmin, user } = useAuth();
-  const seesSoldCalls = canViewSoldCalls(!!isAdmin, user?.id);
+  const { canView: seesSoldCalls } = useCanViewSoldCalls();
   const carrier = params.get("carrier") || PRIORITY_CARRIERS[0].carrier;
   const stateFilter = params.get("state") || "all";
   // The writing agent lives in the URL too (?agent=Name), so a link opens on one agent's book.

@@ -13,8 +13,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { AlertTriangle, CheckCircle2, ClipboardPaste, Copy, ExternalLink, Loader2, Pencil, Phone, Search, ShieldAlert } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
-import { SOLD_CALL_EXTRA_UID } from "@/hooks/useSoldCallKeys";
+import { useCanViewSoldCalls } from "@/hooks/useSoldCallKeys";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,9 +51,9 @@ const CARRIER_TONES = [
 ];
 
 export default function AyroBook() {
-  // Sam + Aisha only (2026-10-25, Sam: "make sure it's just me and Aisha"); the database gate is can_view_sold_calls().
-  const { isAdmin, user } = useAuth();
-  const canView = !!isAdmin || user?.id === SOLD_CALL_EXTRA_UID;
+  // Admins + call_access_grants rows; the database gate is can_view_sold_calls()
+  // (was "just me and Aisha" 2026-10-25; Sam widened it to managed grants 2026-11-08).
+  const { canView } = useCanViewSoldCalls();
   usePageTitle("Ayro Financial Book");
   const q = useQuery({ queryKey: [AYRO_BOOK_KEY], queryFn: fetchAyroBook, staleTime: 60_000, refetchInterval: 5 * 60_000, enabled: canView });
 

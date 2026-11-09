@@ -195,6 +195,7 @@
     "public.brand_leads",
     "public.calendar_events",
     "public.calendly_reconciliation_runs",
+    "public.call_access_grants",
     "public.call_activity",
     "public.call_lab_events",
     "public.call_lab_scenarios",

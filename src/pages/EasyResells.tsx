@@ -16,9 +16,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2, MessageSquare, Phone, Search, ShieldAlert, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { SOLD_CALL_EXTRA_UID } from "@/hooks/useSoldCallKeys";
+import { useCanViewSoldCalls } from "@/hooks/useSoldCallKeys";
 import { useResellEvidence } from "@/hooks/useResellEvidence";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -76,8 +75,7 @@ const chipClass = (active: boolean) => cn(
 );
 
 export default function EasyResells() {
-  const { isAdmin, user } = useAuth();
-  const canView = !!isAdmin || user?.id === SOLD_CALL_EXTRA_UID;
+  const { canView } = useCanViewSoldCalls();
   usePageTitle("Easy Resells");
   const q = useQuery({ queryKey: [EASY_RESELLS_KEY], queryFn: fetchResells, staleTime: 30_000, enabled: canView });
   const [filter, setFilter] = useState<ResellFilter>("all");

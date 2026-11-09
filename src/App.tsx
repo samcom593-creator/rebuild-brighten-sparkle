@@ -568,7 +568,7 @@ const App = () => (
                     {/* Every authenticated agent can open Team. Server RPCs scope
                         the roster to self + recursive downline; staff keep their
                         agency-wide operating view. */}
-                    <Route path="/dashboard/team" element={<ProtectedRoute><DashboardCRM /></ProtectedRoute>} />
+                    <Route path="/dashboard/team" element={<ProtectedRoute requireAdmin allowManagers><DashboardCRM /></ProtectedRoute>} />
                   <Route path="/dashboard/recruiting-links" element={<ProtectedRoute requireAdmin><RecruitingLinks /></ProtectedRoute>} />
                   {/* §11: the Content page (approval queue + invite list) is the Launch Board's Queue tab now. Single hop. */}
                   <Route path="/dashboard/content" element={<LegacyWorkspaceRedirect to="/dashboard/launch-board?tab=queue" />} />
@@ -589,7 +589,7 @@ const App = () => (
                     <Route path="/dashboard/contracting/ethos" element={<LegacyWorkspaceRedirect to="/dashboard/team?view=contracting" />} />
                     <Route path="/dashboard/contracting/aflac" element={<LegacyWorkspaceRedirect to="/dashboard/contracting" />} />
                     <Route path="/dashboard/contracting/cases" element={<LegacyWorkspaceRedirect to="/dashboard/team?view=contracting" />} />
-                    <Route path="/dashboard/retention" element={<ProtectedRoute><BookOfBusiness /></ProtectedRoute>} />
+                    <Route path="/dashboard/retention" element={<ProtectedRoute requireAdmin allowManagers><BookOfBusiness /></ProtectedRoute>} />
                     <Route path="/dashboard/production" element={<ProtectedRoute><MyDeals /></ProtectedRoute>} />
                     {/* Agency-wide business analytics: carrier performance, agents needing
                       attention, inactive-agent rollups. Had NO admin gate and the page
@@ -757,7 +757,7 @@ const App = () => (
                      <Route path="/dashboard/team-hierarchy" element={<LegacyWorkspaceRedirect to="/dashboard/team" />} />
                        <Route path="/dashboard/inbox" element={<ProtectedRoute requireAdmin><InboxPage /></ProtectedRoute>} />
                        <Route path="/dashboard/automation" element={<ProtectedRoute requireAdmin><AutomationHub /></ProtectedRoute>} />
-                       <Route path="/dashboard/book-of-business" element={<ProtectedRoute><BookOfBusiness /></ProtectedRoute>} />
+                       <Route path="/dashboard/book-of-business" element={<ProtectedRoute requireAdmin allowManagers><BookOfBusiness /></ProtectedRoute>} />
                        <Route path="/dashboard/business-analytics" element={<LegacyWorkspaceRedirect to="/dashboard/analytics" />} />
                        <Route path="/dashboard/carriers" element={<LegacyWorkspaceRedirect to="/dashboard/book-of-business" />} />
                        <Route path="/dashboard/announcements" element={<LegacyWorkspaceRedirect to="/dashboard/community" />} />

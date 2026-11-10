@@ -102,13 +102,19 @@ export const PROGRESS_COLUMNS = [
 // ─── Scheduling Links ─────────────────────────────────────────────────────────
 // One canonical owner for applicant scheduling. Personnel-specific placeholders
 // are deliberately excluded so a departed team member cannot remain in routing.
+// Sam, 2026-11-10 — one call per lifecycle stage:
+//   unlicensed → buy the course + send a screenshot → book the LICENSING call
+//   licensed   → book the licensed-prospect call with Sam
+//   hired      → book the onboarding call (contracts set-up)
 export const SCHEDULING_LINKS = {
-  unlicensed: "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone",
-  licensed: "https://calendly.com/apexfinancialempire/1on1-call-clone",
+  /** Unlicensed: the dedicated licensing call (created 2026-11-10), booked after the course + screenshot. */
+  unlicensed: "https://calendly.com/apexfinancialempire/licensing-call",
+  /** Applied + licensed: the licensed-prospect call with Sam. */
+  licensed: "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone",
   /** Canonical post-hire contracting/onboarding call. Milver receives every booking. */
   onboarding: "https://calendly.com/apexfinancialempire/apex-onboarding-call",
-  samLicensed: "https://calendly.com/apexfinancialempire/1on1-call-clone",
-  samUnlicensed: "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone",
+  samLicensed: "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone",
+  samUnlicensed: "https://calendly.com/apexfinancialempire/licensing-call",
 } as const;
 
 export const ONBOARDING_CONTACT = {

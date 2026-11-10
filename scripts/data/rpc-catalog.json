@@ -5824,6 +5824,18 @@
         "raw": "_user_id uuid, _board_key text"
       }
     ],
+    "has_licensing_proof": [
+      {
+        "all": [
+          "p_application_id"
+        ],
+        "required": [
+          "p_application_id"
+        ],
+        "unnamed": false,
+        "raw": "p_application_id uuid"
+      }
+    ],
     "has_role": [
       {
         "all": [

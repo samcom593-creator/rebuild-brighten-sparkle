@@ -5,7 +5,7 @@ import { CheckCircle2, Crown, Calendar, Sparkles, AlertTriangle } from "lucide-r
 import { GradientButton } from "@/components/ui/gradient-button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { CalendlyEmbed } from "@/components/landing/CalendlyEmbed";
-import { SCHEDULING_LINKS, getCalendlyHostName } from "@/lib/apexConfig";
+import { SCHEDULING_LINKS, getCalendlyHostName, LICENSING_COURSE_URL } from "@/lib/apexConfig";
 import { useApplicationStatus } from "@/hooks/useApplicationStatus";
 import { supabase } from "@/integrations/supabase/client";
 import { CONTRACTING_PROFILE_PATH } from "@/lib/contractingLinks";
@@ -212,18 +212,117 @@ function UnlicensedBody({
         </GradientButton>
       )}
 
-      {/* Secondary: talk to a human. Replaces the Telegram CTA — see the file
-          header for why that went away. */}
-      <GradientButton asChild variant="outline" className="w-full" size="lg">
-        <a href={SCHEDULING_LINKS.unlicensed} target="_blank" rel="noopener noreferrer" className="block">
-          <Calendar className="h-4 w-4 mr-2" />
-          Book a call with your manager
-        </a>
-      </GradientButton>
+      {/* Buy the course → send a screenshot → unlock the licensing call.
+          Sam 2026-11-10: the screenshot (proof you bought the course) is what
+          books the licensing call. */}
+      <LicensingProofStep applicationId={applicationId} />
 
       <p className="text-xs text-center text-muted-foreground">
         We also sent the course link to your email. Check inbox + spam.
       </p>
+    </div>
+  );
+}
+
+// ---------- Licensing proof: buy course → screenshot → book the licensing call ----------
+
+function LicensingProofStep({ applicationId }: { applicationId: string | null }) {
+  const [state, setState] = useState<"checking" | "idle" | "uploading" | "submitted" | "error">(
+    applicationId ? "checking" : "idle",
+  );
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // On a /status revisit, don't make someone re-send a screenshot they already sent.
+  useEffect(() => {
+    let cancelled = false;
+    if (!applicationId) { setState("idle"); return; }
+    (async () => {
+      try {
+        const { data, error } = await supabase.rpc("has_licensing_proof" as never, { p_application_id: applicationId } as never);
+        if (cancelled) return;
+        if (!error && (data as { submitted?: boolean } | null)?.submitted) setState("submitted");
+        else setState("idle");
+      } catch { // empty-catch-allow:best-effort — fall back to the upload form
+        if (!cancelled) setState("idle");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [applicationId]);
+
+  const onFile = async (file: File | undefined) => {
+    if (!file || !applicationId) return;
+    if (file.size > 8 * 1024 * 1024) { setErrorMsg("That image is over 8 MB — try a smaller screenshot."); setState("error"); return; }
+    setState("uploading"); setErrorMsg(null);
+    try {
+      const dataUrl: string = await new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(String(r.result));
+        r.onerror = () => reject(new Error("read failed"));
+        r.readAsDataURL(file);
+      });
+      const { data, error } = await supabase.functions.invoke("submit-licensing-proof", {
+        body: { application_id: applicationId, data: dataUrl, content_type: file.type || "image/png" },
+      });
+      if (error || (data as { error?: unknown } | null)?.error) {
+        const msg = (data as { error?: { message?: string } } | null)?.error?.message ?? "Upload failed. Try again.";
+        setErrorMsg(msg); setState("error"); return;
+      }
+      setState("submitted");
+    } catch {
+      setErrorMsg("Upload failed. Check your connection and try again."); setState("error");
+    }
+  };
+
+  if (state === "submitted") {
+    return (
+      <div className="space-y-3 rounded-md border border-emerald-500/40 bg-emerald-500/10 p-4">
+        <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+          <CheckCircle2 className="h-5 w-5 text-emerald-500" /> Screenshot received — now book your licensing call.
+        </p>
+        <GradientButton asChild className="w-full h-14 text-base" size="lg">
+          <a href={SCHEDULING_LINKS.unlicensed} target="_blank" rel="noopener noreferrer" className="block">
+            <Calendar className="h-5 w-5 mr-2" /> Book your licensing call
+          </a>
+        </GradientButton>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3 rounded-md border border-border/40 bg-muted/20 p-4 sm:p-5">
+      <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Then book your licensing call</p>
+      <p className="text-sm text-muted-foreground">
+        Get the pre-licensing course, then send a screenshot of your purchase. That unlocks your licensing call.
+      </p>
+      <GradientButton asChild variant="outline" className="w-full" size="lg">
+        <a href={LICENSING_COURSE_URL} target="_blank" rel="noopener noreferrer" className="block">
+          <Sparkles className="h-4 w-4 mr-2" /> 1. Buy the pre-licensing course
+        </a>
+      </GradientButton>
+
+      <label className="block">
+        <span className="sr-only">Upload your course purchase screenshot</span>
+        <input
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/heic"
+          disabled={!applicationId || state === "uploading"}
+          onChange={(e) => void onFile(e.target.files?.[0])}
+          className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary/15 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-foreground hover:file:bg-primary/25 disabled:opacity-50"
+        />
+      </label>
+      {state === "uploading" ? <p className="text-sm text-muted-foreground">Uploading your screenshot…</p> : null}
+      {state === "error" ? (
+        <p role="alert" className="text-sm text-amber-700 dark:text-amber-400">{errorMsg ?? "Something went wrong."}</p>
+      ) : (
+        <p className="text-xs text-muted-foreground">2. Upload the screenshot here (PNG or JPG, under 8 MB).</p>
+      )}
+      {!applicationId ? (
+        <GradientButton asChild variant="outline" className="w-full" size="lg">
+          <a href={SCHEDULING_LINKS.unlicensed} target="_blank" rel="noopener noreferrer" className="block">
+            <Calendar className="h-4 w-4 mr-2" /> Book your licensing call
+          </a>
+        </GradientButton>
+      ) : null}
     </div>
   );
 }

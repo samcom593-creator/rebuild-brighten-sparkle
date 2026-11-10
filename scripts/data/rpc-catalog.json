@@ -7788,6 +7788,14 @@
         "raw": ""
       }
     ],
+    "refresh_lead_pool_snapshot": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "refresh_mat_production_unified_if_needed": [
       {
         "all": [],

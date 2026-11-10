@@ -75883,6 +75883,36 @@ export type Database = {
           },
         ]
       }
+      lead_pool_snapshot_meta: {
+        Row: {
+          duration_ms: number | null
+          error_at: string | null
+          id: boolean
+          last_error: string | null
+          refreshed_at: string | null
+          rows: number | null
+          started_at: string | null
+        }
+        Insert: {
+          duration_ms?: number | null
+          error_at?: string | null
+          id?: boolean
+          last_error?: string | null
+          refreshed_at?: string | null
+          rows?: number | null
+          started_at?: string | null
+        }
+        Update: {
+          duration_ms?: number | null
+          error_at?: string | null
+          id?: boolean
+          last_error?: string | null
+          refreshed_at?: string | null
+          rows?: number | null
+          started_at?: string | null
+        }
+        Relationships: []
+      }
       lead_purchase_requests: {
         Row: {
           agent_id: string
@@ -106629,6 +106659,26 @@ export type Database = {
           last_run: string | null
           success_count_24h: number | null
           total_24h: number | null
+        }
+        Relationships: []
+      }
+      mat_lead_pool: {
+        Row: {
+          age: number | null
+          dnc: boolean | null
+          email: string | null
+          first_name: string | null
+          flags: Json | null
+          last_name: string | null
+          lead_age_days: number | null
+          lead_id: string | null
+          phone10: string | null
+          rid: number | null
+          source: string | null
+          state: string | null
+          tags: string | null
+          tier: string | null
+          under_9mo: boolean | null
         }
         Relationships: []
       }
@@ -141320,6 +141370,39 @@ export type Database = {
         }
         Relationships: []
       }
+      v_lead_pool_freshness: {
+        Row: {
+          age_min: number | null
+          duration_ms: number | null
+          error_at: string | null
+          last_error: string | null
+          refreshed_at: string | null
+          rows: number | null
+          started_at: string | null
+          verdict: string | null
+        }
+        Insert: {
+          age_min?: never
+          duration_ms?: number | null
+          error_at?: string | null
+          last_error?: string | null
+          refreshed_at?: string | null
+          rows?: number | null
+          started_at?: string | null
+          verdict?: never
+        }
+        Update: {
+          age_min?: never
+          duration_ms?: number | null
+          error_at?: string | null
+          last_error?: string | null
+          refreshed_at?: string | null
+          rows?: number | null
+          started_at?: string | null
+          verdict?: never
+        }
+        Relationships: []
+      }
       v_lead_purchases_today: {
         Row: {
           agent_id: string | null
@@ -153313,6 +153396,19 @@ export type Database = {
           placeholder_rows_mtd: number | null
           placeholder_rows_since_anchor: number | null
           placeholder_rows_structural_since_anchor: number | null
+        }
+        Relationships: []
+      }
+      v_production_origin_freshness: {
+        Row: {
+          alp_30d: number | null
+          alp_prior_30d: number | null
+          days_dark: number | null
+          deals_30d: number | null
+          deals_prior_30d: number | null
+          last_posted: string | null
+          origin: string | null
+          verdict: string | null
         }
         Relationships: []
       }

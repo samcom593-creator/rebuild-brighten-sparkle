@@ -4747,6 +4747,15 @@
       "tier",
       "week_start"
     ],
+    "lead_pool_snapshot_meta": [
+      "duration_ms",
+      "error_at",
+      "id",
+      "last_error",
+      "refreshed_at",
+      "rows",
+      "started_at"
+    ],
     "lead_purchase_requests": [
       "agent_id",
       "amount_paid",
@@ -5055,6 +5064,23 @@
       "source_application_id",
       "source_request_id",
       "updated_at"
+    ],
+    "mat_lead_pool": [
+      "age",
+      "dnc",
+      "email",
+      "first_name",
+      "flags",
+      "last_name",
+      "lead_age_days",
+      "lead_id",
+      "phone10",
+      "rid",
+      "source",
+      "state",
+      "tags",
+      "tier",
+      "under_9mo"
     ],
     "mat_production_unified": [
       "agent_id",
@@ -10240,6 +10266,16 @@
       "sold",
       "untouched"
     ],
+    "v_lead_pool_freshness": [
+      "age_min",
+      "duration_ms",
+      "error_at",
+      "last_error",
+      "refreshed_at",
+      "rows",
+      "started_at",
+      "verdict"
+    ],
     "v_lead_purchases_today": [
       "agent_id",
       "amount_cents",
@@ -11640,6 +11676,16 @@
       "placeholder_rows_mtd",
       "placeholder_rows_since_anchor",
       "placeholder_rows_structural_since_anchor"
+    ],
+    "v_production_origin_freshness": [
+      "alp_30d",
+      "alp_prior_30d",
+      "days_dark",
+      "deals_30d",
+      "deals_prior_30d",
+      "last_posted",
+      "origin",
+      "verdict"
     ],
     "v_production_truth_freshness": [
       "age_seconds",

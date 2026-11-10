@@ -53,6 +53,24 @@ async function logClientError(scope: "query" | "mutation", key: string, error: u
   }
 }
 
+/**
+ * The sink's function_name is `client:query:<key>`. Array.join stringifies an
+ * object part as "[object Object]", which is what every lead-pool error row
+ * read as on 2026-11-09 (key = ["lead-pool", pool, filters]) — the exact
+ * filters that reproduced a statement timeout were unrecoverable from the
+ * row. Object parts are JSON now; the key is capped so a big filter object
+ * cannot blow out the column.
+ */
+export function serializeQueryKey(queryKey: unknown): string {
+  const part = (p: unknown): string => {
+    if (p === null || p === undefined) return String(p);
+    if (typeof p === "string" || typeof p === "number" || typeof p === "boolean") return String(p);
+    try { return JSON.stringify(p) ?? String(p); } catch { return String(p); }
+  };
+  const key = Array.isArray(queryKey) ? queryKey.map(part).join(":") : part(queryKey);
+  return key.slice(0, 200);
+}
+
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -71,7 +89,7 @@ export const queryClient = new QueryClient({
   },
   queryCache: new QueryCache({
     onError: (error, query) => {
-      const key = Array.isArray(query.queryKey) ? query.queryKey.join(":") : String(query.queryKey);
+      const key = serializeQueryKey(query.queryKey);
       // Only log if there's no UI handler registered (avoid duplicate noise)
       if (!query.meta?.silent) {
         void logClientError("query", key, error);
@@ -80,7 +98,7 @@ export const queryClient = new QueryClient({
   }),
   mutationCache: new MutationCache({
     onError: (error, _vars, _ctx, mutation) => {
-      const key = mutation.options.mutationKey?.join(":") ?? "anon";
+      const key = mutation.options.mutationKey ? serializeQueryKey(mutation.options.mutationKey) : "anon";
       void logClientError("mutation", key, error);
       // Global toast unless the mutation opts out via meta.silent
       if (!mutation.meta?.silent) {

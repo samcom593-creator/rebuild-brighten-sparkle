@@ -91,6 +91,8 @@ type PoolCounts = {
   dnc_excluded: number;
   resold_excluded: number;
   in_bundle_excluded: number;
+  /** When the pool snapshot the counts read from was last refreshed (MP-LEAD-MANAGER-15). */
+  as_of?: string | null;
   sample: Array<{
     first_name: string | null; last_name: string | null; phone_masked: string;
     state: string | null; age: number | null; tier: string; tags: string | null;
@@ -363,7 +365,8 @@ export default function LeadManager() {
   const debouncedFilters = useDebounced(filters, 350);
 
   // per-pool switch totals + tier mix (unfiltered). One RPC for all four pools
-  // (lead_pool_tiles, ~2.8s server-side) cached for 10 minutes — this is what
+  // (lead_pool_tiles: reads the 10-min mat_lead_pool snapshot since MP-15, ~1.2s,
+  // was ~2.8s live) cached for 10 minutes — this is what
   // made the page FEEL slow: it used to fire four counts calls (~5.7s of DB
   // work, marketing scanned twice) on every single visit.
   const { data: totals = {} } = useQuery<Record<string, { total: number; by_tier: Record<string, number> }>>({
@@ -385,8 +388,10 @@ export default function LeadManager() {
       return (data as PoolCounts) ?? { total: 0, by_tier: {}, under_9mo: 0, dnc_excluded: 0, resold_excluded: 0, in_bundle_excluded: 0, sample: [] };
     },
     staleTime: 60_000,
-    // A marketing count is a ~3s scan: keep the previous numbers on screen with
-    // the spinner while a filter tweak recomputes, instead of blanking to "—".
+    // A marketing count reads the 10-min snapshot (~0.5s; the live scan it
+    // replaced took ~3s and hit the 8s API timeout under load — 57014 rows in
+    // function_errors on 2026-11-09, MP-15). Keep the previous numbers on screen
+    // with the spinner while a filter tweak recomputes, instead of blanking to "—".
     placeholderData: (prev) => prev,
   });
 
@@ -653,6 +658,11 @@ export default function LeadManager() {
             <StatTile label="Held: Do-Not-Call" value={(counts?.dnc_excluded ?? 0).toLocaleString()} />
             <StatTile label="Held: already sold" value={(counts?.resold_excluded ?? 0).toLocaleString()} />
           </div>
+          {counts?.as_of && (
+            <p className="text-xs text-muted-foreground" data-testid="pool-snapshot-age">
+              Pool counts come from a snapshot refreshed {formatTimeAgo(counts.as_of)} (every 10 min). Leads already dropped or sold are excluded live.
+            </p>
+          )}
 
           {(counts?.sample?.length ?? 0) > 0 && (
             <div className="overflow-x-auto rounded-lg border border-border/60">

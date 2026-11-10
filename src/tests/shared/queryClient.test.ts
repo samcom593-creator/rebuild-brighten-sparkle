@@ -104,3 +104,37 @@ describe("QueryClient — logClientError", () => {
 
   it.todo("error_stack is null when error has no stack");
 });
+
+// ── serializeQueryKey (MP-LEAD-MANAGER-15) ─────────────────────────────────────
+// function_errors.function_name is `client:query:<key>`. Array.join wrote
+// "[object Object]" for object key parts, so every lead-pool error row on
+// 2026-11-09 lost the filters that reproduced the statement timeout.
+import { serializeQueryKey } from "@/shared/api/queryClient";
+
+describe("serializeQueryKey (what the error sink can read back)", () => {
+  it("joins scalar parts with ':' exactly as before", () => {
+    expect(serializeQueryKey(["lead-bundles-recent"])).toBe("lead-bundles-recent");
+    expect(serializeQueryKey(["region-peer-top5", "ce84cf2d", 5, true])).toBe("region-peer-top5:ce84cf2d:5:true");
+  });
+
+  it("serializes object parts as JSON instead of [object Object]", () => {
+    const key = serializeQueryKey(["lead-pool", "marketing", { states: ["TX"], tiers: ["A"] }]);
+    expect(key).toBe('lead-pool:marketing:{"states":["TX"],"tiers":["A"]}');
+    expect(key).not.toContain("[object Object]");
+  });
+
+  it("keeps null/undefined parts readable and never throws", () => {
+    expect(serializeQueryKey(["x", null, undefined])).toBe("x:null:undefined");
+    const circular: Record<string, unknown> = {}; circular.self = circular;
+    expect(() => serializeQueryKey(["x", circular])).not.toThrow();
+  });
+
+  it("caps the key so a huge filter object cannot blow out the column", () => {
+    const big = { ids: Array.from({ length: 500 }, (_, i) => `id-${i}`) };
+    expect(serializeQueryKey(["lead-pool", big]).length).toBeLessThanOrEqual(200);
+  });
+
+  it("accepts a non-array key", () => {
+    expect(serializeQueryKey("plain")).toBe("plain");
+  });
+});

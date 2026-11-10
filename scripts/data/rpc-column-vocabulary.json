@@ -10,8 +10,11 @@
   "acknowledge_strike": "agent_strikes",
   "admin_configure_integration": "jsonb",
   "admin_enqueue_onboarding_call": "jsonb",
+  "admin_link_xcel_student": "jsonb",
   "admin_reassign_application_owner": "void",
+  "admin_review_course_proof": "jsonb",
   "admin_verify_slack_identity": "jsonb",
+  "admin_xcel_unmatched_active": "SETOF v_xcel_unmatched_active",
   "advance_hire_stage": "jsonb",
   "advance_referral_status": "referrals",
   "aflac_checkoff_reminder": "jsonb",
@@ -241,6 +244,7 @@
   "fn_application_milestone_broadcast": "trigger",
   "fn_applications_derive_record_type": "trigger",
   "fn_apply_invite_target_role": "trigger",
+  "fn_apply_xcel_progress": "jsonb",
   "fn_auto_advance_licensed_to_contracting": "trigger",
   "fn_auto_license_from_licensed_booking": "trigger",
   "fn_auto_register_applicant_for_seminar": "trigger",
@@ -438,6 +442,7 @@
   "fn_xcel_auto_upgrade_all": "integer",
   "fn_xcel_events_auto_upgrade": "trigger",
   "fn_xcel_stage_rank": "integer",
+  "fn_xcel_students_apply_trigger": "trigger",
   "fn_y_agent_attribution_from_application": "trigger",
   "free_leads_qualification_rows": "SETOF v_free_leads_qualification",
   "free_leads_summary_rows": "SETOF v_free_leads_summary",
@@ -9028,6 +9033,164 @@
     "stall_action"
    ]
   },
+  "fn_preview_xcel_progress.agent_id": {
+   "candidates": [],
+   "body_literals": [
+    "Not permitted",
+    "backfill",
+    "fresh",
+    "licensed",
+    "manager",
+    "public",
+    "unlicensed"
+   ]
+  },
+  "fn_preview_xcel_progress.agent_would_advance": {
+   "candidates": [],
+   "body_literals": [
+    "Not permitted",
+    "backfill",
+    "fresh",
+    "licensed",
+    "manager",
+    "public",
+    "unlicensed"
+   ]
+  },
+  "fn_preview_xcel_progress.app_is_licensed": {
+   "candidates": [],
+   "body_literals": [
+    "Not permitted",
+    "backfill",
+    "fresh",
+    "licensed",
+    "manager",
+    "public",
+    "unlicensed"
+   ]
+  },
+  "fn_preview_xcel_progress.app_license_progress": {
+   "candidates": [],
+   "body_literals": [
+    "Not permitted",
+    "backfill",
+    "fresh",
+    "licensed",
+    "manager",
+    "public",
+    "unlicensed"
+   ]
+  },
+  "fn_preview_xcel_progress.application_id": {
+   "candidates": [],
+   "body_literals": [
+    "Not permitted",
+    "backfill",
+    "fresh",
+    "licensed",
+    "manager",
+    "public",
+    "unlicensed"
+   ]
+  },
+  "fn_preview_xcel_progress.first_name": {
+   "candidates": [
+    "applications.first_name"
+   ],
+   "body_literals": [
+    "Not permitted",
+    "backfill",
+    "fresh",
+    "licensed",
+    "manager",
+    "public",
+    "unlicensed"
+   ]
+  },
+  "fn_preview_xcel_progress.mode": {
+   "candidates": [],
+   "body_literals": [
+    "Not permitted",
+    "backfill",
+    "fresh",
+    "licensed",
+    "manager",
+    "public",
+    "unlicensed"
+   ]
+  },
+  "fn_preview_xcel_progress.target_on": {
+   "candidates": [],
+   "body_literals": [
+    "Not permitted",
+    "backfill",
+    "fresh",
+    "licensed",
+    "manager",
+    "public",
+    "unlicensed"
+   ]
+  },
+  "fn_preview_xcel_progress.target_progress": {
+   "candidates": [],
+   "body_literals": [
+    "Not permitted",
+    "backfill",
+    "fresh",
+    "licensed",
+    "manager",
+    "public",
+    "unlicensed"
+   ]
+  },
+  "fn_preview_xcel_progress.would_advance_progress": {
+   "candidates": [],
+   "body_literals": [
+    "Not permitted",
+    "backfill",
+    "fresh",
+    "licensed",
+    "manager",
+    "public",
+    "unlicensed"
+   ]
+  },
+  "fn_preview_xcel_progress.would_message": {
+   "candidates": [],
+   "body_literals": [
+    "Not permitted",
+    "backfill",
+    "fresh",
+    "licensed",
+    "manager",
+    "public",
+    "unlicensed"
+   ]
+  },
+  "fn_preview_xcel_progress.would_stamp_purchased": {
+   "candidates": [],
+   "body_literals": [
+    "Not permitted",
+    "backfill",
+    "fresh",
+    "licensed",
+    "manager",
+    "public",
+    "unlicensed"
+   ]
+  },
+  "fn_preview_xcel_progress.would_stamp_started": {
+   "candidates": [],
+   "body_literals": [
+    "Not permitted",
+    "backfill",
+    "fresh",
+    "licensed",
+    "manager",
+    "public",
+    "unlicensed"
+   ]
+  },
   "fn_reconcile_first_deal_at.agent_id": {
    "candidates": [
     "agentlink_book.agent_id",
@@ -9400,6 +9563,160 @@
     "success",
     "unlicensed_slack_digest",
     "unsettled"
+   ]
+  },
+  "fn_xcel_progress_plan.agent_id": {
+   "candidates": [],
+   "body_literals": [
+    "course_purchased",
+    "finished_course",
+    "public",
+    "xcel_writeback_messages_from"
+   ]
+  },
+  "fn_xcel_progress_plan.application_id": {
+   "candidates": [
+    "v_xcel_identity_rollup.application_id",
+    "xcel_pre_licensing_students.application_id"
+   ],
+   "body_literals": [
+    "course_purchased",
+    "finished_course",
+    "public",
+    "xcel_writeback_messages_from"
+   ]
+  },
+  "fn_xcel_progress_plan.completed_on": {
+   "candidates": [
+    "v_xcel_identity_rollup.completed_on"
+   ],
+   "body_literals": [
+    "course_purchased",
+    "finished_course",
+    "public",
+    "xcel_writeback_messages_from"
+   ]
+  },
+  "fn_xcel_progress_plan.cutoff_on": {
+   "candidates": [],
+   "body_literals": [
+    "course_purchased",
+    "finished_course",
+    "public",
+    "xcel_writeback_messages_from"
+   ]
+  },
+  "fn_xcel_progress_plan.email_key": {
+   "candidates": [
+    "v_xcel_identity_rollup.email_key"
+   ],
+   "body_literals": [
+    "course_purchased",
+    "finished_course",
+    "public",
+    "xcel_writeback_messages_from"
+   ]
+  },
+  "fn_xcel_progress_plan.enrolled_on": {
+   "candidates": [
+    "v_xcel_identity_rollup.enrolled_on"
+   ],
+   "body_literals": [
+    "course_purchased",
+    "finished_course",
+    "public",
+    "xcel_writeback_messages_from"
+   ]
+  },
+  "fn_xcel_progress_plan.first_name": {
+   "candidates": [
+    "applications.first_name",
+    "v_xcel_identity_rollup.first_name",
+    "xcel_pre_licensing_students.first_name"
+   ],
+   "body_literals": [
+    "course_purchased",
+    "finished_course",
+    "public",
+    "xcel_writeback_messages_from"
+   ]
+  },
+  "fn_xcel_progress_plan.latest_pct": {
+   "candidates": [
+    "v_xcel_identity_rollup.latest_pct"
+   ],
+   "body_literals": [
+    "course_purchased",
+    "finished_course",
+    "public",
+    "xcel_writeback_messages_from"
+   ]
+  },
+  "fn_xcel_progress_plan.purchased_fresh": {
+   "candidates": [],
+   "body_literals": [
+    "course_purchased",
+    "finished_course",
+    "public",
+    "xcel_writeback_messages_from"
+   ]
+  },
+  "fn_xcel_progress_plan.started_fresh": {
+   "candidates": [],
+   "body_literals": [
+    "course_purchased",
+    "finished_course",
+    "public",
+    "xcel_writeback_messages_from"
+   ]
+  },
+  "fn_xcel_progress_plan.started_on": {
+   "candidates": [
+    "v_xcel_identity_rollup.started_on"
+   ],
+   "body_literals": [
+    "course_purchased",
+    "finished_course",
+    "public",
+    "xcel_writeback_messages_from"
+   ]
+  },
+  "fn_xcel_progress_plan.student_id": {
+   "candidates": [
+    "v_xcel_identity_rollup.student_id"
+   ],
+   "body_literals": [
+    "course_purchased",
+    "finished_course",
+    "public",
+    "xcel_writeback_messages_from"
+   ]
+  },
+  "fn_xcel_progress_plan.target_fresh": {
+   "candidates": [],
+   "body_literals": [
+    "course_purchased",
+    "finished_course",
+    "public",
+    "xcel_writeback_messages_from"
+   ]
+  },
+  "fn_xcel_progress_plan.target_on": {
+   "candidates": [],
+   "body_literals": [
+    "course_purchased",
+    "finished_course",
+    "public",
+    "xcel_writeback_messages_from"
+   ]
+  },
+  "fn_xcel_progress_plan.target_progress": {
+   "candidates": [],
+   "body_literals": [
+    "course_purchased",
+    "finished_course",
+    "public",
+    "xcel_writeback_messages_from"
    ]
   },
   "get_agent_production_stats.agent_id": {

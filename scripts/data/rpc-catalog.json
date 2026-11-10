@@ -57,6 +57,20 @@
         "raw": "p_agent_id uuid"
       }
     ],
+    "admin_link_xcel_student": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_application_id",
+          "p_student_id"
+        ],
+        "required": [
+          "p_student_id"
+        ],
+        "unnamed": false,
+        "raw": "p_student_id uuid, p_application_id uuid DEFAULT NULL::uuid, p_agent_id uuid DEFAULT NULL::uuid"
+      }
+    ],
     "admin_reassign_application_owner": [
       {
         "all": [
@@ -77,6 +91,20 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "admin_review_course_proof": [
+      {
+        "all": [
+          "p_decision",
+          "p_proof_id"
+        ],
+        "required": [
+          "p_decision",
+          "p_proof_id"
+        ],
+        "unnamed": false,
+        "raw": "p_proof_id uuid, p_decision text"
       }
     ],
     "admin_team_engagement": [
@@ -101,6 +129,14 @@
         ],
         "unnamed": false,
         "raw": "p_agent_id uuid, p_slack_user_id text, p_slack_email text"
+      }
+    ],
+    "admin_xcel_unmatched_active": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
       }
     ],
     "advance_hire_stage": [
@@ -3068,6 +3104,16 @@
         "raw": ""
       }
     ],
+    "fn_apply_xcel_progress": [
+      {
+        "all": [
+          "p_report_id"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_report_id uuid DEFAULT NULL::uuid"
+      }
+    ],
     "fn_auto_advance_licensed_to_contracting": [
       {
         "all": [],
@@ -4771,6 +4817,16 @@
         "raw": ""
       }
     ],
+    "fn_preview_xcel_progress": [
+      {
+        "all": [
+          "p_report_id"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_report_id uuid DEFAULT NULL::uuid"
+      }
+    ],
     "fn_production_integrity_anchor": [
       {
         "all": [],
@@ -5415,6 +5471,14 @@
         "raw": ""
       }
     ],
+    "fn_xcel_progress_plan": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "fn_xcel_stage_rank": [
       {
         "all": [
@@ -5425,6 +5489,14 @@
         ],
         "unnamed": false,
         "raw": "p_stage text"
+      }
+    ],
+    "fn_xcel_students_apply_trigger": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
       }
     ],
     "fn_y_agent_attribution_from_application": [

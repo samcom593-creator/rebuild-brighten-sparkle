@@ -32,6 +32,8 @@ import {
 } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { XcelIngestDialog } from "@/components/admin/XcelIngestDialog";
+import { XcelUnmatchedPanel } from "@/components/prelicensing/XcelUnmatchedPanel";
+import { CourseProofReviewPanel } from "@/components/prelicensing/CourseProofReviewPanel";
 import { contactLinkProps, formatPhoneDisplay, phoneHref } from "@/lib/phone";
 import { TeamLookupError } from "@/components/shared/TeamLookupError";
 
@@ -287,8 +289,8 @@ export default function PreLicensing() {
             <div className="flex-1">
               <div className="font-semibold">Data lagging — last refresh {staleDays} days ago</div>
               <div className="text-xs text-amber-200/80">
-                XCEL Gmail pull awaiting OAuth seed (system_settings.gmail_xcel_oauth).
-                Numbers below are accurate as of last sync, not real-time.
+                The daily XCEL report is pulled by the launchd IMAP ingest (com.samjames.apex.xcel-ingest)
+                on Sam's Mac; it has not landed a newer report. Numbers below are as of the last report.
               </div>
             </div>
           </div>
@@ -303,6 +305,16 @@ export default function PreLicensing() {
         <SummaryTile icon={TrendingUp}    label="Active · last 10d"   value={report?.active_last_10d ?? 0}   color="text-amber-400"  loading={reportQ.isLoading} />
         <SummaryTile icon={CheckCircle2}  label="% Completed"         value={`${Math.round(pctCompleted)}%`} color="text-emerald-400" loading={reportQ.isLoading} />
       </div>
+
+      {/* WP1: staff work queues. Unlinked course-takers get an owner in one click;
+          course-purchase screenshots get a human verdict. Admin + the manager role
+          only (the RPCs enforce the same gate). */}
+      {(isAdmin || isManager) && (
+        <div className="grid gap-3 lg:grid-cols-2">
+          <XcelUnmatchedPanel showAutoMatches={isAdmin} />
+          <CourseProofReviewPanel />
+        </div>
+      )}
 
       {/* Health buckets bar */}
       <GlassCard className="p-4">

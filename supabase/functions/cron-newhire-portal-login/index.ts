@@ -6,50 +6,62 @@
 // email, and no magic-link email in the onboarding sequence — only Discord /
 // course / call links that all land behind auth. This job auto-mails the SAME
 // one-tap magic-login email the admin path sends, but only to the constrained
-// set in v_newhire_needs_portal_login (hired <=30d, has a login, NEVER signed
-// in, real email, not deactivated/terminated, and not already sent in 72h).
+// set in v_newhire_needs_portal_login (hired <=30d, or <=45d for hires after
+// the WP6 cutoff; has a login, NEVER signed in, real email, not
+// deactivated/terminated, fewer than 6 real sends, none in the last 72h).
 //
 // Safety properties, mirroring send-bulk-portal-logins' hard-won ones:
 //  - Recipient set comes ONLY from the view. A bare POST cannot mail the roster.
-//  - Service-key gated: only a caller holding SERVICE_ROLE_KEY (i.e. pg_cron)
+//  - Shared-secret gated: only a caller holding NEWHIRE_CRON_SECRET (pg_cron)
 //    can trigger a live send.
-//  - dry_run:true returns the recipient list, sends nothing, mints no tokens.
-//  - Resend's { data, error } tuple is CHECKED (v2 does not throw on API
-//    errors), so results.sent only counts a real message id — no fake success.
-//  - 72h self-limit in the view means an un-clicked hire is re-nudged at most
-//    once every 3 days, and stops the instant they sign in (view drops them).
+//  - dry_run:true returns the recipient count and masked addresses, sends
+//    nothing, mints no tokens.
+//  - WP6 receipts: both tokens are minted send_status='pending' and resolved
+//    from the provider reply ('sent' + send_message_id only on a real message
+//    id; 'failed' / 'refused' otherwise). The view's 72h dedupe counts only
+//    real sends, so a failed send no longer silences the hire for 3 days, and
+//    a failure backs off 24h instead of retrying every hour.
+//  - Sent through _shared/email.ts sendEmail (suppression + non-routable guard).
+//  - No CC. The old send copied Sam and the manager, which put a working
+//    one-tap login for the hire's account in two other inboxes. Sam/Aisha see
+//    non-sign-ins on v_newhire_never_signed_in_staged instead.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Resend } from "https://esm.sh/resend@2.0.0";
-import { gateResend } from "../_shared/resend-gate.ts";
+// 2.90.1 is the build proven to boot (2026-08-17 esm.sh boot-death incident).
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
+import { sendEmail } from "../_shared/email.ts";
+import { maskEmail, receiptFor } from "./receipt.ts";
 
 const BASE_URL = "https://apex-financial.org";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const CRON_SECRET = Deno.env.get("NEWHIRE_CRON_SECRET") ?? "";
-const ADMIN_EMAIL = "info@kingofsales.net";
-const resend = gateResend(new Resend(Deno.env.get("RESEND_API_KEY")));
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Mints a token row as send_status='pending'. Throws if the insert fails: the
+// old version ignored the insert result and could mail a link whose token was
+// never stored (a dead link, counted as sent).
 async function generateMagicToken(
   sb: any,
   agentId: string,
   email: string,
   destination: "portal" | "numbers",
-): Promise<string> {
+): Promise<{ url: string; id: string }> {
   const token = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
-  await sb.from("magic_login_tokens").insert({
+  const { data, error } = await sb.from("magic_login_tokens").insert({
     agent_id: agentId,
     email: email.toLowerCase().trim(),
     token,
     destination,
     expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-  });
-  return `${BASE_URL}/magic-login?token=${token}`;
+    send_status: "pending",
+  }).select("id").limit(1);
+  const id = Array.isArray(data) ? data[0]?.id : undefined;
+  if (error || !id) throw new Error(`token insert failed: ${error?.message ?? "no id returned"}`);
+  return { url: `${BASE_URL}/magic-login?token=${token}`, id };
 }
 
 function escapeHtml(s: string): string {
@@ -129,7 +141,7 @@ serve(async (req: Request): Promise<Response> => {
 
     const { data: recipients, error: viewErr } = await sb
       .from("v_newhire_needs_portal_login")
-      .select("agent_id, email, full_name, license_status, manager_email");
+      .select("agent_id, email, full_name, license_status, portal_sends_so_far");
     if (viewErr) {
       return new Response(JSON.stringify({ error: viewErr.message }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -140,11 +152,16 @@ serve(async (req: Request): Promise<Response> => {
     if (dryRun) {
       return new Response(JSON.stringify({
         success: true, dry_run: true, count: list.length,
-        recipients: list.map((r: any) => ({ name: r.full_name, email: r.email, license: r.license_status })),
+        recipients: list.map((r: any) => ({
+          first_name: String(r.full_name || "").trim().split(/\s+/)[0] || null,
+          email: maskEmail(r.email),
+          license: r.license_status,
+          sends_so_far: r.portal_sends_so_far ?? null,
+        })),
       }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const results = { total: 0, sent: 0, failed: 0, skipped: 0, details: [] as any[] };
+    const results = { total: 0, sent: 0, failed: 0, refused: 0, skipped: 0, details: [] as any[] };
     const mailed = new Set<string>();
     for (const r of list as any[]) {
       const email: string = r.email;
@@ -153,31 +170,36 @@ serve(async (req: Request): Promise<Response> => {
       results.total++;
       const firstName = (r.full_name || "Agent").split(" ")[0] || "Agent";
       const isLicensed = (r.license_status || "") === "licensed";
+      const tokenIds: string[] = [];
       try {
-        const portalLink = await generateMagicToken(sb, r.agent_id, email, "portal");
-        const numbersLink = await generateMagicToken(sb, r.agent_id, email, "numbers");
-        const ccList = [ADMIN_EMAIL, r.manager_email]
-          .filter(Boolean)
-          .filter((v: string, i: number, a: string[]) => a.indexOf(v) === i)
-          .filter((e: string) => e !== email) as string[];
-        const { data: sendData, error: sendError } = await resend.emails.send({
+        const portal = await generateMagicToken(sb, r.agent_id, email, "portal");
+        tokenIds.push(portal.id);
+        const numbers = await generateMagicToken(sb, r.agent_id, email, "numbers");
+        tokenIds.push(numbers.id);
+        const reply = await sendEmail({
           from: "Galaxy Financial <notifications@apex-financial.org>",
-          to: [email],
-          cc: ccList.length > 0 ? ccList : undefined,
+          to: email,
           subject: "🎯 Your Galaxy Portal Access - One-Tap Login Inside!",
-          html: buildEmail(firstName, email, portalLink, numbersLink, isLicensed),
+          html: buildEmail(firstName, email, portal.url, numbers.url, isLicensed),
+          tagName: "newhire-portal-login",
         });
-        if (sendError || !sendData?.id) {
-          const msg = sendError ? (typeof sendError === "string" ? sendError : JSON.stringify(sendError)) : "resend returned no message id";
-          results.failed++;
-          results.details.push({ name: r.full_name, email, status: "failed", error: msg.slice(0, 300) });
-          continue;
+        const receipt = receiptFor(reply);
+        const { error: stampErr } = await sb.from("magic_login_tokens").update(receipt).in("id", tokenIds);
+        if (stampErr) console.warn(`[cron-newhire-portal-login] receipt stamp failed for agent ${r.agent_id}: ${stampErr.message}`);
+        if (receipt.send_status === "sent") {
+          results.sent++;
+          results.details.push({ agent_id: r.agent_id, status: "sent", id: receipt.send_message_id });
+        } else {
+          if (receipt.send_status === "refused") results.refused++; else results.failed++;
+          results.details.push({ agent_id: r.agent_id, status: receipt.send_status, error: String(reply.error ?? "").slice(0, 300) });
         }
-        results.sent++;
-        results.details.push({ name: r.full_name, email, status: "sent", id: sendData.id });
       } catch (e) {
+        // A token minted before the throw must not read as in flight forever.
+        if (tokenIds.length > 0) {
+          await sb.from("magic_login_tokens").update({ send_status: "failed" }).in("id", tokenIds);
+        }
         results.failed++;
-        results.details.push({ name: r.full_name, email, status: "failed", error: e instanceof Error ? e.message : String(e) });
+        results.details.push({ agent_id: r.agent_id, status: "failed", error: e instanceof Error ? e.message : String(e) });
       }
     }
     return new Response(JSON.stringify({ success: true, results }), {

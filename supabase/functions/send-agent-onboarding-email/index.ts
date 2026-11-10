@@ -1,20 +1,35 @@
 // send-agent-onboarding-email
 import { SPAM_NOTE_HTML, SPAM_NOTE_TEXT } from "../_shared/spam-note.ts";
 //
-// Drains agent_onboarding_queue: sends licensed online-training, primary
-// team-community, and onboarding-call emails at 10:00 AM US/Central.
+// Drains agent_onboarding_queue: licensed online-training, team Slack,
+// get-licensed, scripts-packet, onboarding-call and onboarding-call reminder
+// emails.
 //
-// Triggered by pg_cron at:
-//   - 15:00 UTC daily (10:00 AM Central during CDT)
-//   - 16:00 UTC daily (10:00 AM Central during CST)
-// Plus on-demand POST during testing.
+// Triggered by pg_cron job 111 (apex-agent-onboarding-emails-hourly, :07).
+// WP6 (2026-11-10) unscheduled the old 15:00/16:00 UTC "10 AM Central" jobs:
+// fn_next_onboarding_window() returns now(), so they only overlapped job 111.
+// Also invoked by the admin "resend onboarding email" buttons.
+//
+// Rows are taken with claim_onboarding_queue_batch() (FOR UPDATE SKIP LOCKED +
+// a 10-minute lease), so two overlapping invocations never send the same row.
+// POST {"dry_run": true} previews decisions: no claim, no link minting, no
+// send, no writes.
 //
 // Per APEX Operating Contract: NO fake success. A Resend 200 with non-JSON
 // body or missing `data.id` is treated as FAILURE and we increment the
 // attempt counter instead of marking sent.
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// 2.90.1 is the build proven to boot (2026-08-17: an unpinned/older esm.sh
+// supabase-js died at boot on ws's optional native deps).
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
+import {
+  buildOnboardingCallReminderEmail,
+  FIELD_COURSE_URL,
+  isReminderKind,
+  reminderEligibleAtSend,
+  type ReminderKind,
+} from "./reminders.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -39,9 +54,10 @@ interface QueueRow {
   id: string;
   agent_id: string;
   // "discord" is a legacy kind name: it delivers the Slack team-access email (no Discord).
-  email_kind: "course" | "discord" | "hired_whatsapp" | "onboarding_call" | "get_licensed" | "scripts_packet";
+  email_kind: "course" | "discord" | "hired_whatsapp" | "onboarding_call" | "get_licensed" | "scripts_packet" | ReminderKind;
   attempt_count: number;
   meta: Record<string, unknown> | null;
+  created_at?: string | null;
 }
 
 interface Settings {
@@ -53,6 +69,8 @@ interface Settings {
   onboarding_call_event_type_uri: string | null;
   onboarding_call_scheduling_url: string | null;
   calendly_api_token: string | null;
+  // WP6: reminders only for hires created at/after this instant (forward-only).
+  reminder_cutoff_ms: number | null;
 }
 
 // This worker intentionally queries migrations newer than the checked-in
@@ -70,6 +88,7 @@ async function loadSettings(sb: any): Promise<Settings> {
       "onboarding_email_from_address",
       "onboarding_call_event_type_uri",
       "onboarding_call_scheduling_url",
+      "onboarding_wp6_cutoff_at",
     ]);
 
   const map = new Map<string, string | null>();
@@ -96,6 +115,8 @@ async function loadSettings(sb: any): Promise<Settings> {
   const eventTypeRaw = map.get("onboarding_call_event_type_uri");
   const schedulingRaw = map.get("onboarding_call_scheduling_url");
   const calendlyTok = (Deno.env.get("CALENDLY_API_TOKEN") ?? "").trim();
+  const cutoffRaw = (map.get("onboarding_wp6_cutoff_at") ?? "").trim();
+  const cutoffMs = cutoffRaw ? Date.parse(cutoffRaw) : NaN;
 
   return {
     resend_api_key: envResend && envResend.length > 8 ? envResend : (map.get("resend_api_key") ?? null),
@@ -105,6 +126,8 @@ async function loadSettings(sb: any): Promise<Settings> {
     onboarding_call_event_type_uri: eventTypeRaw && eventTypeRaw.trim().length > 0 ? eventTypeRaw.trim() : null,
     onboarding_call_scheduling_url: schedulingRaw && schedulingRaw.trim().length > 0 ? schedulingRaw.trim() : null,
     calendly_api_token: calendlyTok.length > 8 ? calendlyTok : null,
+    // Unset or unparseable = no reminder is eligible (never "everyone").
+    reminder_cutoff_ms: Number.isFinite(cutoffMs) ? cutoffMs : null,
   };
 }
 
@@ -207,7 +230,7 @@ function buildGetLicensedEmail(
 
 function buildCourseEmail(name: string): { subject: string; html: string; text: string } {
   const fn = escapeHtml(firstName(name));
-  const trainingUrl = "https://apex-financial.org/dashboard/training/library";
+  const trainingUrl = FIELD_COURSE_URL;
   const roadmapUrl = "https://apex-financial.org/agent-portal";
   const url = escapeHtml(trainingUrl);
   const roadmap = escapeHtml(roadmapUrl);
@@ -429,6 +452,7 @@ async function sendViaResend(
 }
 
 interface ProcessResult {
+  dry_run: boolean;
   processed: number;
   sent: number;
   failed: number;
@@ -436,40 +460,62 @@ interface ProcessResult {
   skipped_wrong_cohort: number;
   skipped_booking_exists: number;
   skipped_retired_channel: number;
+  skipped_superseded: number;
   errors: Array<{ queue_id: string; agent_id: string; kind: string; error: string }>;
+  // dry_run only: one line per row, ids and kinds, never contact details.
+  decisions: Array<{ queue_id: string; kind: string; decision: string }>;
 }
 
-async function drainQueue(sb: any, settings: Settings): Promise<ProcessResult> {
-  const result: ProcessResult = { processed: 0, sent: 0, failed: 0, skipped_no_email: 0, skipped_wrong_cohort: 0, skipped_booking_exists: 0, skipped_retired_channel: 0, errors: [] };
+// Outbox statuses (outbox_events_status_check) that mean the Slack invite is
+// delivered or on its way. dead_letter / manual_action_required / failed leave
+// this email as the fallback.
+const LIVE_OUTBOX_STATUSES = ["pending", "processing", "delivered"];
+const SLACK_DEDUPE_WINDOW_MS = 14 * 24 * 3600 * 1000;
 
-  if (!settings.resend_api_key) {
+async function drainQueue(sb: any, settings: Settings, dryRun: boolean): Promise<ProcessResult> {
+  const result: ProcessResult = {
+    dry_run: dryRun, processed: 0, sent: 0, failed: 0, skipped_no_email: 0, skipped_wrong_cohort: 0,
+    skipped_booking_exists: 0, skipped_retired_channel: 0, skipped_superseded: 0, errors: [], decisions: [],
+  };
+
+  if (!settings.resend_api_key && !dryRun) {
     throw new Error("Missing RESEND_API_KEY (env or system_settings.resend_api_key).");
   }
 
-  const { data: queueData, error: queueErr } = await sb
-    .from("agent_onboarding_queue")
-    .select("id, agent_id, email_kind, attempt_count, meta")
-    .is("sent_at", null)
-    .lt("attempt_count", 5)
-    .lte("target_send_at", new Date().toISOString())
-    .order("target_send_at", { ascending: true })
-    .limit(50);
-
-  if (queueErr) {
-    throw new Error(`queue fetch failed: ${queueErr.message}`);
+  // Live: atomic claim (SKIP LOCKED + 10-minute lease). Dry run: read-only preview.
+  let rows: QueueRow[] = [];
+  if (dryRun) {
+    const { data, error } = await sb
+      .from("agent_onboarding_queue")
+      .select("id, agent_id, email_kind, attempt_count, meta, created_at")
+      .is("sent_at", null)
+      .lt("attempt_count", 5)
+      .lte("target_send_at", new Date().toISOString())
+      .order("target_send_at", { ascending: true })
+      .limit(50);
+    if (error) throw new Error(`queue preview failed: ${error.message}`);
+    rows = (data ?? []) as QueueRow[];
+  } else {
+    const { data, error } = await sb.rpc("claim_onboarding_queue_batch", { p_limit: 50 });
+    if (error) throw new Error(`queue claim failed: ${error.message}`);
+    rows = (data ?? []) as QueueRow[];
   }
-
-  const rows = (queueData ?? []) as QueueRow[];
   result.processed = rows.length;
+
+  // Every write goes through here so a dry run cannot touch the queue.
+  const patch = async (row: QueueRow, values: Record<string, unknown>, decision: string) => {
+    if (dryRun) {
+      result.decisions.push({ queue_id: row.id, kind: row.email_kind, decision });
+      return;
+    }
+    await sb.from("agent_onboarding_queue").update(values).eq("id", row.id);
+  };
 
   for (const row of rows) {
     // Preserve old delivery receipts, but make the retired messaging-channel
     // kind terminal and unsendable. sent_at remains null: nothing is claimed.
     if (row.email_kind === "hired_whatsapp") {
-      await sb
-        .from("agent_onboarding_queue")
-        .update({ attempt_count: 5, last_error: "retired_channel: use Slack onboarding" })
-        .eq("id", row.id);
+      await patch(row, { attempt_count: 5, last_error: "retired_channel: use Slack onboarding" }, "skip:retired_channel");
       result.skipped_retired_channel += 1;
       continue;
     }
@@ -482,33 +528,50 @@ async function drainQueue(sb: any, settings: Settings): Promise<ProcessResult> {
     // Requiring user_id dropped valid new hires from onboarding.
     const { data: agentRow } = await sb
       .from("agents")
-      .select("id, user_id, profile_id, source_application_id, display_name, agent_code, license_status, status, is_deactivated, is_inactive")
+      .select("id, user_id, profile_id, source_application_id, display_name, agent_code, license_status, status, is_deactivated, is_inactive, created_at")
       .eq("id", row.agent_id)
       .maybeSingle();
 
     if (!agentRow) {
-      await sb
-        .from("agent_onboarding_queue")
-        .update({
-          attempt_count: row.attempt_count + 1,
-          last_error: "agent missing",
-        })
-        .eq("id", row.id);
+      await patch(row, { attempt_count: row.attempt_count + 1, last_error: "agent missing" }, "fail:agent_missing");
       result.failed += 1;
       result.errors.push({ queue_id: row.id, agent_id: row.agent_id, kind: row.email_kind, error: "agent missing" });
       continue;
     }
 
     if (agentRow.status !== "active" || agentRow.is_deactivated || agentRow.is_inactive) {
-      await sb
-        .from("agent_onboarding_queue")
-        .update({
-          attempt_count: 5,
-          last_error: `terminal_inactive_agent: status=${agentRow.status ?? "null"}`,
-        })
-        .eq("id", row.id);
+      await patch(row, { attempt_count: 5, last_error: `terminal_inactive_agent: status=${agentRow.status ?? "null"}` }, "skip:inactive_agent");
       result.skipped_wrong_cohort += 1;
       continue;
+    }
+
+    // SLACK-7 (WP6): two senders deliver the same Slack invite. The outbox
+    // event (recruiting.slack_invite_requested) re-checks eligibility at send
+    // time, so when it exists for this hire the legacy 'discord'-kind email is
+    // retired instead of sent. Scoped to rows enqueued in the last 14 days, so
+    // an admin "resend" on an older row still goes out.
+    if (row.email_kind === "discord") {
+      const enqueuedMs = row.created_at ? Date.parse(row.created_at) : NaN;
+      if (Number.isFinite(enqueuedMs) && Date.now() - enqueuedMs < SLACK_DEDUPE_WINDOW_MS) {
+        const { data: outbox, error: outboxErr } = await sb
+          .from("outbox_events")
+          .select("id, status")
+          .eq("aggregate_type", "agent")
+          .eq("aggregate_id", row.agent_id)
+          .eq("event_type", "recruiting.slack_invite_requested")
+          .in("status", LIVE_OUTBOX_STATUSES)
+          .limit(1);
+        // A failed lookup sends anyway: this dedupe removes noise, it must
+        // never be the reason a hire gets no Slack invite.
+        if (!outboxErr && Array.isArray(outbox) && outbox.length > 0) {
+          await patch(row, {
+            attempt_count: 5,
+            last_error: `superseded_by_outbox_slack_invite: outbox_events ${outbox[0].id} (${outbox[0].status})`,
+          }, "skip:superseded_by_outbox_slack_invite");
+          result.skipped_superseded += 1;
+          continue;
+        }
+      }
     }
 
     let profile: { email?: string | null; full_name?: string | null } | null = null;
@@ -539,13 +602,7 @@ async function drainQueue(sb: any, settings: Settings): Promise<ProcessResult> {
 
     const email = (profile?.email ?? application?.email ?? authEmail ?? "").trim();
     if (!email) {
-      await sb
-        .from("agent_onboarding_queue")
-        .update({
-          attempt_count: row.attempt_count + 1,
-          last_error: "profile email missing",
-        })
-        .eq("id", row.id);
+      await patch(row, { attempt_count: row.attempt_count + 1, last_error: "profile email missing" }, "skip:no_email");
       result.skipped_no_email += 1;
       continue;
     }
@@ -563,21 +620,19 @@ async function drainQueue(sb: any, settings: Settings): Promise<ProcessResult> {
 
     // MP-357: 'discord' left this list deliberately. Sam put the unlicensed
     // cohort IN Slack — "if they're unlicensed I want them in the Slack" — so
-    // the community invite is now correct for everyone. 'course' and
-    // 'onboarding_call' still require a licence: the sales course is the wrong
-    // material pre-licence, and the onboarding call is the licensed-hire call.
-    // 'get_licensed' is the inverse and is gated just below.
+    // the community invite is now correct for everyone. 'course',
+    // 'onboarding_call' and its reminders still require a licence: the sales
+    // course is the wrong material pre-licence, and the onboarding call is the
+    // licensed-hire call. 'get_licensed' is the inverse and is gated just below.
     if (
-      (row.email_kind === "course" || row.email_kind === "onboarding_call" || row.email_kind === "scripts_packet") &&
+      (row.email_kind === "course" || row.email_kind === "onboarding_call" || row.email_kind === "scripts_packet" ||
+        isReminderKind(row.email_kind)) &&
       !isLicensed
     ) {
-      await sb
-        .from("agent_onboarding_queue")
-        .update({
-          attempt_count: row.attempt_count + 1,
-          last_error: `skipped_wrong_cohort: license_status=${licenseStatus || "null"} but email_kind=${row.email_kind} requires licensed`,
-        })
-        .eq("id", row.id);
+      await patch(row, {
+        attempt_count: row.attempt_count + 1,
+        last_error: `skipped_wrong_cohort: license_status=${licenseStatus || "null"} but email_kind=${row.email_kind} requires licensed`,
+      }, "skip:wrong_cohort");
       result.skipped_wrong_cohort += 1;
       continue;
     }
@@ -585,12 +640,20 @@ async function drainQueue(sb: any, settings: Settings): Promise<ProcessResult> {
     if (row.email_kind === "get_licensed" && isLicensed) {
       // They got licensed between enqueue and drain. Not a failure — the email
       // is simply no longer true, so retire it rather than send stale advice.
-      await sb
-        .from("agent_onboarding_queue")
-        .update({ attempt_count: 5, last_error: "skipped_no_longer_needed: agent is now licensed" })
-        .eq("id", row.id);
+      await patch(row, { attempt_count: 5, last_error: "skipped_no_longer_needed: agent is now licensed" }, "skip:no_longer_needed");
       result.skipped_wrong_cohort += 1;
       continue;
+    }
+
+    // WP6 reminders are forward-only: re-check the cutoff and the 30-day
+    // window at send time, independent of the sweep that enqueued them.
+    if (isReminderKind(row.email_kind)) {
+      const verdict = reminderEligibleAtSend(agentRow.created_at, settings.reminder_cutoff_ms, Date.now());
+      if (!verdict.ok) {
+        await patch(row, { attempt_count: 5, last_error: `skipped_${verdict.reason}: WP6 reminders are forward-only and end at day 30` }, `skip:${verdict.reason}`);
+        result.skipped_wrong_cohort += 1;
+        continue;
+      }
     }
 
     let built: { subject: string; html: string; text: string };
@@ -602,42 +665,45 @@ async function drainQueue(sb: any, settings: Settings): Promise<ProcessResult> {
     } else if (row.email_kind === "scripts_packet") {
       built = buildScriptsPacketEmail(name ?? "");
       meta = { packet_version: (row.meta as Record<string, unknown> | null)?.packet_version ?? null };
-    } else if (row.email_kind === "onboarding_call") {
-      // Lane 3 (2026-08-26): ONE booking link per licensed hire. Re-check the
-      // calendar at send time — a hire who booked between enqueue and drain must
-      // not be asked to book again. A terminal skip is recorded as what it is.
+    } else if (row.email_kind === "onboarding_call" || isReminderKind(row.email_kind)) {
+      // Lane 3 (2026-08-26): ONE booking link per send. Re-check the calendar
+      // at send time — a hire who booked between enqueue and drain must not be
+      // asked to book again (this is also what stops the WP6 reminders).
       const { data: existingBooking, error: bookingErr } = await sb.rpc("fn_agent_onboarding_call_booking", { p_agent_id: row.agent_id });
       if (bookingErr) {
-        await sb
-          .from("agent_onboarding_queue")
-          .update({ attempt_count: row.attempt_count + 1, last_error: `booking lookup failed: ${bookingErr.message}` })
-          .eq("id", row.id);
+        await patch(row, { attempt_count: row.attempt_count + 1, last_error: `booking lookup failed: ${bookingErr.message}` }, "fail:booking_lookup");
         result.failed += 1;
         result.errors.push({ queue_id: row.id, agent_id: row.agent_id, kind: row.email_kind, error: `booking lookup failed: ${bookingErr.message}` });
         continue;
       }
       if (existingBooking) {
-        await sb
-          .from("agent_onboarding_queue")
-          .update({ attempt_count: 5, last_error: `skipped_booking_exists: interview_events ${String(existingBooking)}` })
-          .eq("id", row.id);
+        await patch(row, { attempt_count: 5, last_error: `skipped_booking_exists: interview_events ${String(existingBooking)}` }, "skip:booking_exists");
         result.skipped_booking_exists += 1;
+        continue;
+      }
+      if (dryRun) {
+        // Minting a Calendly link is an external write; a preview stops here.
+        result.decisions.push({ queue_id: row.id, kind: row.email_kind, decision: "would_send (link minted at send time)" });
         continue;
       }
       const link = await resolveOnboardingBookingLink(settings);
       if (!link) {
-        await sb
-          .from("agent_onboarding_queue")
-          .update({ attempt_count: row.attempt_count + 1, last_error: "no onboarding booking link: set system_settings.onboarding_call_scheduling_url" })
-          .eq("id", row.id);
+        await patch(row, { attempt_count: row.attempt_count + 1, last_error: "no onboarding booking link: set system_settings.onboarding_call_scheduling_url" }, "fail:no_link");
         result.failed += 1;
         result.errors.push({ queue_id: row.id, agent_id: row.agent_id, kind: row.email_kind, error: "no onboarding booking link configured" });
         continue;
       }
-      built = buildOnboardingCallEmail(name ?? "", link.url);
+      built = isReminderKind(row.email_kind)
+        ? buildOnboardingCallReminderEmail(name ?? "", link.url, row.email_kind)
+        : buildOnboardingCallEmail(name ?? "", link.url);
       meta = { booking_url: link.url, link_kind: link.kind, link_error: link.error };
     } else {
       built = buildCommunityEmail(name ?? "", settings.community_invite_url);
+    }
+
+    if (dryRun) {
+      result.decisions.push({ queue_id: row.id, kind: row.email_kind, decision: "would_send" });
+      continue;
     }
 
     // The legacy `discord` queue kind now delivers the primary Slack invite.
@@ -645,7 +711,7 @@ async function drainQueue(sb: any, settings: Settings): Promise<ProcessResult> {
     // reply for the link), so we still send. If we ever want to gate it,
     // flip this comment to an early skip.
     const sendResult = await sendViaResend(
-      settings.resend_api_key,
+      settings.resend_api_key as string,
       settings.from_address,
       email,
       built.subject,
@@ -718,10 +784,18 @@ serve(async (req: Request): Promise<Response> => {
     });
   }
 
+  let dryRun = false;
+  try {
+    const body = await req.json();
+    dryRun = body?.dry_run === true;
+  } catch (_e) {
+    dryRun = false; // empty body = live drain (what the cron sends)
+  }
+
   try {
     const sb = createClient(SUPABASE_URL, SERVICE_ROLE);
     const settings = await loadSettings(sb);
-    const result = await drainQueue(sb, settings);
+    const result = await drainQueue(sb, settings, dryRun);
 
     return new Response(
       JSON.stringify({
@@ -732,6 +806,7 @@ serve(async (req: Request): Promise<Response> => {
           community_invite_url_present: Boolean(settings.community_invite_url),
           discord_invite_url_present: Boolean(settings.discord_invite_url),
           from_address: settings.from_address,
+          reminder_cutoff_set: settings.reminder_cutoff_ms !== null,
         },
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },

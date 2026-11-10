@@ -205,6 +205,26 @@ export default function TrainingHub() {
     staleTime: 60 * 1000,
   });
 
+  // WP6: a licensed agent's "start training" lands on the REQUIRED course
+  // (TRAINING_ROUTES.fieldCourse, where onboarding_progress lives). The course
+  // email used to send them to the library instead, and the library hero had
+  // no way through to the required modules. Unlicensed agents are not sent to
+  // the sales course (MP-357: wrong material before the licence).
+  const { data: isLicensedAgent = false } = useQuery({
+    queryKey: ["training-hub-licensed", user?.id],
+    enabled: !!user?.id && !isLeader,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const client = supabase as unknown as {
+        rpc: (fn: string) => Promise<{ data: unknown; error: { message?: string } | null }>;
+      };
+      const { data: rows, error } = await client.rpc("my_activation_state");
+      if (error) return false;
+      const row = (Array.isArray(rows) ? rows[0] : rows) as { license_status?: string | null } | undefined;
+      return row?.license_status === "licensed";
+    },
+  });
+
   const courses = useMemo(
     () => (data?.resources ?? []).filter((r) => r.type === "course" && r.course),
     [data],
@@ -253,14 +273,21 @@ export default function TrainingHub() {
         subtitle="Continue your required course first, then use the library for extra practice, recordings, and field resources."
         accent="primary"
         actions={
-          (isAdmin || isManager) && (
+          (isAdmin || isManager) ? (
             <Button asChild variant="outline" size="sm" className="gap-2">
               <a href={`${HUB_ORIGIN}/admin/`} target="_blank" rel="noopener noreferrer">
                 <Settings className="h-4 w-4" />
                 Manage content
               </a>
             </Button>
-          )
+          ) : isLicensedAgent ? (
+            <Button asChild size="sm" className="gap-2">
+              <Link to={TRAINING_ROUTES.fieldCourse}>
+                <Play className="h-4 w-4" />
+                Continue required course
+              </Link>
+            </Button>
+          ) : null
         }
       />
 

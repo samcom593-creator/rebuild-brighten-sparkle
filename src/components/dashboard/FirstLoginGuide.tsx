@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { ArrowRight, BookOpenCheck, Check, Circle, Compass, Phone, ShieldCheck, UserRoundCheck, Building2 } from "lucide-react";
+import { ArrowRight, BookOpenCheck, CalendarCheck, Check, Circle, Compass, Phone, ShieldCheck, UserRoundCheck, Building2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -23,27 +23,42 @@ import { CONTRACTING_PROFILE_PATH } from "@/lib/contractingLinks";
  * still getting started:
  *
  *   1. A welcome dialog on their first visit (per browser, per agent), laying
- *      out the four phases and one primary button for the current phase.
+ *      out the phases and one primary button for the current phase.
  *   2. A compact "Start here" card pinned above the stepper: step N of M, one
  *      action, and a button that reopens the full guide.
  *
- * Both disappear once the agent is settled (live / producing / evaluated) or
- * has closed a deal. Training is deliberately step 2 for everyone, licensed or
- * not: the course is the job, and it can run alongside licensing.
+ * Both disappear once the agent is settled (live / evaluated) or has closed a
+ * deal. Training is deliberately an early step for everyone, licensed or not:
+ * the course is the job, and it can run alongside licensing.
+ *
+ * WP6 (2026-11-10): every step is computed from facts via the own-row RPC
+ * public.my_activation_state(). Licensed hires get a "Book your onboarding
+ * call" step: that call is where contracting gets set up, and only 2 of 20
+ * licensed hires since 09-10 booked it from the one email they got. Agents
+ * cannot read agent_onboarding_queue or interview_events under RLS, which is
+ * why the guide could never show it before. If the RPC is unavailable the
+ * guide falls back to the de45caab direct reads (profile, training rows,
+ * license, first deal) and simply omits the call step.
  */
 
 const BRAND = resolveBrand();
-const SETTLED_STAGES = new Set(["live", "producing", "evaluated"]);
+// 'producing' is not an onboarding_stage enum value; that branch was dead code.
+const SETTLED_STAGES = new Set(["live", "evaluated"]);
 
 type Phase = {
-  key: "setup" | "training" | "license" | "contracting" | "writing";
+  key: "setup" | "onboarding_call" | "training" | "license" | "contracting" | "writing";
   label: string;
   detail: string;
-  href: string;
+  /** null = nothing to click (for example no booking link configured). */
+  href: string | null;
+  /** Opens in a new tab (a Calendly booking page), not an in-app route. */
+  external?: boolean;
   cta: string;
   done: boolean;
   icon: typeof Compass;
 };
+
+type OnboardingCall = { booked: boolean; at: string | null; url: string | null };
 
 type GuideData = {
   isAgent: boolean;
@@ -51,15 +66,42 @@ type GuideData = {
   stage: string;
   licensed: boolean;
   contracted: boolean;
+  /** The agent's own contracting profile is in; staff confirm each carrier. */
+  contractingSubmitted: boolean;
   /** Facts the system already records. The getting_started_progress checkboxes
    *  stay as a manual override, but nothing writes them automatically: on
    *  2026-11-10 all 58 agents who could see this guide were stuck on "step 1 of 4"
    *  (43 had a complete profile, 7 had passed a training module, 5 had closed a deal). */
   profileComplete: boolean;
   trainingStarted: boolean;
+  requiredPassed: number | null;
+  requiredTotal: number | null;
   firstDeal: boolean;
+  /** null when the facts RPC was unavailable: the step is omitted, not guessed. */
+  onboardingCall: OnboardingCall | null;
   progress: Record<string, string | null> | null;
 };
+
+type ActivationStateRow = {
+  agent_id: string;
+  first_name: string | null;
+  onboarding_stage: string | null;
+  license_status: string | null;
+  profile_complete: boolean | null;
+  training_started: boolean | null;
+  required_passed: number | null;
+  required_total: number | null;
+  contracting_done: boolean | null;
+  contracting_profile_submitted: boolean | null;
+  onboarding_call_booked: boolean | null;
+  onboarding_call_at: string | null;
+  onboarding_booking_url: string | null;
+  first_deal_at: string | null;
+  manual_overrides: Record<string, string | null> | null;
+};
+
+const CONTRACT_OVERRIDES = ["contracted_with_carriers", "contracted_ahl_sent", "contracted_ethos_sent", "contracted_chubb_sent"] as const;
+const PHASE_COUNT_WORD: Record<number, string> = { 3: "Three", 4: "Four", 5: "Five", 6: "Six" };
 
 function storageKey(agentId: string) {
   return `apex.first-login-guide.v1.${agentId}`;
@@ -72,81 +114,183 @@ function markSeen(agentId: string) {
   catch (e) { console.warn("[first-login-guide] localStorage unavailable; the card still renders", e); }
 }
 
+/** Primary path: one own-row RPC. Returns null when it cannot answer. */
+async function readFacts(agentId: string): Promise<GuideData | null> {
+  const client = supabase as unknown as { rpc?: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message?: string } | null }> };
+  if (typeof client.rpc !== "function") return null;
+  const { data, error } = await client.rpc("my_activation_state", { p_agent_id: agentId });
+  if (error) {
+    console.warn("[first-login-guide] my_activation_state unavailable; using direct reads", error.message);
+    return null;
+  }
+  const row = (Array.isArray(data) ? data[0] : data) as ActivationStateRow | undefined;
+  if (!row) return null;
+  const overrides = row.manual_overrides ?? {};
+  return {
+    isAgent: true,
+    firstName: String(row.first_name ?? "").trim() || "there",
+    stage: String(row.onboarding_stage ?? ""),
+    licensed: row.license_status === "licensed",
+    contracted: Boolean(row.contracting_done || CONTRACT_OVERRIDES.some((k) => overrides[k])),
+    contractingSubmitted: Boolean(row.contracting_profile_submitted),
+    profileComplete: Boolean(row.profile_complete),
+    trainingStarted: Boolean(row.training_started),
+    requiredPassed: typeof row.required_passed === "number" ? row.required_passed : null,
+    requiredTotal: typeof row.required_total === "number" ? row.required_total : null,
+    firstDeal: Boolean(row.first_deal_at),
+    onboardingCall: {
+      booked: Boolean(row.onboarding_call_booked),
+      at: row.onboarding_call_at ?? null,
+      url: row.onboarding_booking_url && /^https:\/\//.test(row.onboarding_booking_url) ? row.onboarding_booking_url : null,
+    },
+    progress: overrides,
+  };
+}
+
+/** Fallback (de45caab): direct reads the agent can make under RLS. */
+async function readTables(agentId: string): Promise<GuideData> {
+  const [agentRes, progressRes, trainingRes] = await Promise.all([
+    (supabase as any).from("agents").select("display_name, onboarding_stage, license_status, contracted_at, first_deal_at, user_id").eq("id", agentId).limit(1),
+    (supabase as any).from("getting_started_progress").select("*").eq("agent_id", agentId).limit(1),
+    (supabase as any).from("onboarding_progress").select("module_id").eq("agent_id", agentId).limit(1),
+  ]);
+  const agent = (agentRes.data ?? [])[0] ?? null;
+  const progress = (progressRes.data ?? [])[0] ?? null;
+  let profileComplete = false;
+  if (agent?.user_id) {
+    const profileRes = await (supabase as any).from("profiles").select("full_name, phone").eq("user_id", agent.user_id).limit(1);
+    const profile = (profileRes.data ?? [])[0] ?? null;
+    profileComplete = Boolean(String(profile?.full_name ?? "").trim() && String(profile?.phone ?? "").trim());
+  }
+  return {
+    isAgent: Boolean(agent),
+    firstName: String(agent?.display_name ?? "").trim().split(" ")[0] || "there",
+    stage: String(agent?.onboarding_stage ?? ""),
+    licensed: agent?.license_status === "licensed",
+    contracted: Boolean(agent?.contracted_at || CONTRACT_OVERRIDES.some((k) => progress?.[k])),
+    contractingSubmitted: false,
+    profileComplete,
+    trainingStarted: (trainingRes.data ?? []).length > 0,
+    requiredPassed: null,
+    requiredTotal: null,
+    firstDeal: Boolean(agent?.first_deal_at),
+    onboardingCall: null,
+    progress,
+  };
+}
+
+function formatCallTime(iso: string | null): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+function buildPhases(data: GuideData): Phase[] {
+  const p = data.progress ?? {};
+  const list: Phase[] = [
+    {
+      key: "setup", icon: UserRoundCheck,
+      label: "Set up your account",
+      detail: "Name, phone, state and a photo so the team can reach you. Five minutes.",
+      href: "/dashboard/profile", cta: "Finish my profile",
+      done: data.profileComplete || Boolean(p.completed_profile || p.added_phone_number),
+    },
+  ];
+
+  if (data.licensed && data.onboardingCall) {
+    const call = data.onboardingCall;
+    const when = formatCallTime(call.at);
+    list.push({
+      key: "onboarding_call", icon: CalendarCheck,
+      label: "Book your onboarding call",
+      detail: call.booked
+        ? when ? `Booked for ${when}.` : "Booked."
+        : call.url
+          ? "30 minutes with the team: contracting, your systems and your first-week plan. Pick a time that works."
+          : "30 minutes with the team: contracting, your systems and your first-week plan. Reply to your welcome email to get a time.",
+      href: call.url, external: true, cta: "Book my call",
+      done: call.booked,
+    });
+  }
+
+  const required = data.requiredTotal && data.requiredTotal > 0
+    ? ` ${data.requiredPassed ?? 0} of ${data.requiredTotal} required modules passed.`
+    : "";
+  list.push({
+    key: "training", icon: BookOpenCheck,
+    label: "Start your training",
+    detail: `The course is the job. Open module 1 today; everything else runs alongside it.${required}`,
+    // Licensed hires go straight to the required course (where onboarding_progress
+    // lives); the root redirects to the extra-practice library.
+    href: data.licensed ? TRAINING_ROUTES.fieldCourse : TRAINING_ROUTES.root, cta: "Start training",
+    done: data.trainingStarted || Boolean(p.completed_first_training),
+  });
+
+  list.push(
+    data.licensed
+      ? {
+          key: "contracting", icon: Building2,
+          label: "Get contracted",
+          detail: data.contractingSubmitted && !data.contracted
+            ? "Your contracting profile is in. Your team confirms each carrier with you."
+            : "Add your NPN, name, email and resident state once. Your team then confirms each carrier with you.",
+          href: CONTRACTING_PROFILE_PATH, cta: "Complete contracting profile",
+          // The agent's part is the profile; carrier confirmations are staff work
+          // and must not hold the guide on this step (audit ACTIVATION-3 verifier).
+          done: data.contracted || data.contractingSubmitted,
+        }
+      : {
+          key: "license", icon: ShieldCheck,
+          label: "Get licensed",
+          detail: "Course, exam, fingerprints, state license. We walk you through every step.",
+          href: "/get-licensed", cta: "Open the licensing roadmap",
+          done: data.licensed || Boolean(p.received_license),
+        },
+  );
+
+  list.push({
+    key: "writing", icon: Phone,
+    label: "Start writing",
+    detail: "Dial, present, close. Your first deal is the finish line of onboarding.",
+    href: "/dashboard/call-center", cta: "Open the call center",
+    done: data.firstDeal || Boolean(p.closed_first_deal),
+  });
+  return list;
+}
+
+function PhaseAction({ phase, onClick, size }: { phase: Phase; onClick: () => void; size?: "sm" }) {
+  if (!phase.href) return null;
+  if (phase.external) {
+    return (
+      <Button asChild size={size} onClick={onClick}>
+        <a href={phase.href} target="_blank" rel="noopener noreferrer">{phase.cta} <ArrowRight className="ml-1.5 h-4 w-4" /></a>
+      </Button>
+    );
+  }
+  return (
+    <Button asChild size={size} onClick={onClick}>
+      <Link to={phase.href}>{phase.cta} <ArrowRight className="ml-1.5 h-4 w-4" /></Link>
+    </Button>
+  );
+}
+
 export function FirstLoginGuide({ agentId }: { agentId: string }) {
   const { data } = useQuery({
     queryKey: ["first-login-guide", agentId],
     staleTime: 60_000,
     queryFn: async (): Promise<GuideData> => {
-      const [agentRes, progressRes, trainingRes] = await Promise.all([
-        (supabase as any).from("agents").select("display_name, onboarding_stage, license_status, contracted_at, first_deal_at, user_id").eq("id", agentId).limit(1),
-        (supabase as any).from("getting_started_progress").select("*").eq("agent_id", agentId).limit(1),
-        (supabase as any).from("onboarding_progress").select("module_id").eq("agent_id", agentId).limit(1),
-      ]);
-      const agent = (agentRes.data ?? [])[0] ?? null;
-      const progress = (progressRes.data ?? [])[0] ?? null;
-      let profileComplete = false;
-      if (agent?.user_id) {
-        const profileRes = await (supabase as any).from("profiles").select("full_name, phone").eq("user_id", agent.user_id).limit(1);
-        const profile = (profileRes.data ?? [])[0] ?? null;
-        profileComplete = Boolean(String(profile?.full_name ?? "").trim() && String(profile?.phone ?? "").trim());
+      try {
+        const facts = await readFacts(agentId);
+        if (facts) return facts;
+      } catch (e) {
+        console.warn("[first-login-guide] facts RPC threw; using direct reads", e);
       }
-      return {
-        isAgent: Boolean(agent),
-        firstName: String(agent?.display_name ?? "").trim().split(" ")[0] || "there",
-        stage: String(agent?.onboarding_stage ?? ""),
-        licensed: agent?.license_status === "licensed",
-        contracted: Boolean(agent?.contracted_at || progress?.contracted_with_carriers || progress?.contracted_ahl_sent || progress?.contracted_ethos_sent || progress?.contracted_chubb_sent),
-        profileComplete,
-        trainingStarted: (trainingRes.data ?? []).length > 0,
-        firstDeal: Boolean(agent?.first_deal_at),
-        progress,
-      };
+      return readTables(agentId);
     },
   });
 
-  const phases = useMemo<Phase[]>(() => {
-    if (!data) return [];
-    const p = data.progress ?? {};
-    const list: Phase[] = [
-      {
-        key: "setup", icon: UserRoundCheck,
-        label: "Set up your account",
-        detail: "Name, phone, state and a photo so the team can reach you. Five minutes.",
-        href: "/dashboard/profile", cta: "Finish my profile",
-        done: data.profileComplete || Boolean(p.completed_profile || p.added_phone_number),
-      },
-      {
-        key: "training", icon: BookOpenCheck,
-        label: "Start your training",
-        detail: "The course is the job. Open module 1 today; everything else runs alongside it.",
-        href: TRAINING_ROUTES.root, cta: "Start training",
-        done: data.trainingStarted || Boolean(p.completed_first_training),
-      },
-      data.licensed
-        ? {
-            key: "contracting", icon: Building2,
-            label: "Get contracted",
-            detail: "Add your NPN, name, email and resident state once. Your team then confirms each carrier with you.",
-            href: CONTRACTING_PROFILE_PATH, cta: "Complete contracting profile",
-            done: data.contracted,
-          }
-        : {
-            key: "license", icon: ShieldCheck,
-            label: "Get licensed",
-            detail: "Course, exam, fingerprints, state license. We walk you through every step.",
-            href: "/get-licensed", cta: "Open the licensing roadmap",
-            done: data.licensed || Boolean(p.received_license),
-          },
-      {
-        key: "writing", icon: Phone,
-        label: "Start writing",
-        detail: "Dial, present, close. Your first deal is the finish line of onboarding.",
-        href: "/dashboard/call-center", cta: "Open the call center",
-        done: data.firstDeal || Boolean(p.closed_first_deal),
-      },
-    ];
-    return list;
-  }, [data]);
+  const phases = useMemo<Phase[]>(() => (data ? buildPhases(data) : []), [data]);
 
   const current = phases.find((ph) => !ph.done) ?? null;
   const settled = !data || !data.isAgent || SETTLED_STAGES.has(data.stage) || data.firstDeal || Boolean(data.progress?.closed_first_deal);
@@ -162,6 +306,7 @@ export function FirstLoginGuide({ agentId }: { agentId: string }) {
   const stepIndex = phases.findIndex((ph) => ph.key === current.key) + 1;
   const Icon = current.icon;
   const close = () => { markSeen(agentId); setOpen(false); };
+  const countWord = PHASE_COUNT_WORD[phases.length] ?? String(phases.length);
 
   return (
     <>
@@ -176,9 +321,7 @@ export function FirstLoginGuide({ agentId }: { agentId: string }) {
             <p className="text-xs text-muted-foreground">{current.detail}</p>
           </div>
           <div className="flex flex-wrap gap-2 sm:ml-auto">
-            <Button asChild size="sm" onClick={() => markSeen(agentId)}>
-              <Link to={current.href}>{current.cta} <ArrowRight className="ml-1.5 h-4 w-4" /></Link>
-            </Button>
+            <PhaseAction phase={current} size="sm" onClick={() => markSeen(agentId)} />
             <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
               <Compass className="mr-1.5 h-4 w-4" /> Full guide
             </Button>
@@ -191,7 +334,7 @@ export function FirstLoginGuide({ agentId }: { agentId: string }) {
           <DialogHeader>
             <DialogTitle>Welcome to {BRAND.shortName}, {data?.firstName}.</DialogTitle>
             <DialogDescription>
-              Four phases, in order. You are on step {stepIndex}. Do that one now; the rest unlock as you go.
+              {countWord} phases, in order. You are on step {stepIndex}. Do that one now; the rest unlock as you go.
             </DialogDescription>
           </DialogHeader>
           <ol className="space-y-2">
@@ -224,9 +367,7 @@ export function FirstLoginGuide({ agentId }: { agentId: string }) {
           </ol>
           <DialogFooter className="gap-2 sm:gap-2">
             <Button variant="outline" onClick={close}>I'll look around first</Button>
-            <Button asChild onClick={close}>
-              <Link to={current.href}>{current.cta} <ArrowRight className="ml-1.5 h-4 w-4" /></Link>
-            </Button>
+            <PhaseAction phase={current} onClick={close} />
           </DialogFooter>
         </DialogContent>
       </Dialog>

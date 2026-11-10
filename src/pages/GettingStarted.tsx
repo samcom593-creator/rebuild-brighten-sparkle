@@ -12,7 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  Rocket, Clock, AlertCircle, Search, Phone, MessageSquare, Mail,
+  Rocket, Clock, AlertCircle, Search, Phone, MessageSquare, Mail, CheckCircle2, Circle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -68,6 +68,35 @@ const CHECKLIST_STEPS = [
   { key: "ran_first_appointment", label: "Ran first appointment", stage: "field_training", href: "/dashboard/call-lab" },
   { key: "closed_first_deal", label: "Closed first deal", stage: "producing", href: "/dashboard/agent-pipeline" },
 ] as const;
+
+// WP6 (2026-11-10): the facts the system already records, from the own-row RPC
+// public.my_activation_state(). Nothing wrote these checkboxes automatically
+// (completed_profile 1 of 233 rows, received_license 1 while 180 were licensed),
+// so the self-view showed licensed agents with a complete profile as undone.
+// A fact ticks its step and cannot be unticked; the checkbox stays a manual
+// override for everything else.
+type ActivationFacts = {
+  license_status: string | null;
+  profile_complete: boolean | null;
+  has_phone: boolean | null;
+  required_passed: number | null;
+  required_total: number | null;
+  required_training_complete: boolean | null;
+  contracting_done: boolean | null;
+  contracting_profile_submitted: boolean | null;
+  onboarding_call_booked: boolean | null;
+  onboarding_call_at: string | null;
+  onboarding_booking_url: string | null;
+  first_deal_at: string | null;
+};
+
+const FACT_FOR_STEP: Partial<Record<string, (f: ActivationFacts) => boolean>> = {
+  completed_profile: (f) => Boolean(f.profile_complete),
+  added_phone_number: (f) => Boolean(f.has_phone),
+  received_license: (f) => f.license_status === "licensed",
+  completed_first_training: (f) => (f.required_passed ?? 0) > 0,
+  closed_first_deal: (f) => Boolean(f.first_deal_at),
+};
 
 interface ProgressRow {
   id: string;
@@ -131,6 +160,24 @@ export default function GettingStarted() {
     queryFn: async () => {
       const { data } = await supabase.rpc("api_my_ahl_exempt");
       return data === true;
+    },
+  });
+
+  const { data: facts = null } = useQuery({
+    queryKey: ["my-activation-state", user?.id],
+    enabled: !!user?.id && !canViewAll,
+    staleTime: 60_000,
+    queryFn: async (): Promise<ActivationFacts | null> => {
+      // Not in the generated types yet (WP6 RPC; types are regenerated at merge).
+      const client = supabase as unknown as {
+        rpc: (fn: string) => Promise<{ data: unknown; error: { message?: string } | null }>;
+      };
+      const { data, error } = await client.rpc("my_activation_state");
+      if (error) {
+        console.warn("[getting-started] my_activation_state unavailable; checklist shows manual ticks only", error.message);
+        return null;
+      }
+      return ((Array.isArray(data) ? data[0] : data) as ActivationFacts | undefined) ?? null;
     },
   });
 
@@ -255,7 +302,10 @@ export default function GettingStarted() {
   if (!canViewAll && progressRows.length === 1) {
     const p = progressRows[0];
     const mySteps = CHECKLIST_STEPS.filter((s) => !("ahlExemptible" in s && s.ahlExemptible) || !ahlExempt);
-    const completed = mySteps.filter((s) => p[s.key]).length;
+    const factDone = (key: string) => Boolean(facts && FACT_FOR_STEP[key]?.(facts));
+    const isDone = (key: string) => factDone(key) || Boolean(p[key]);
+    const completed = mySteps.filter((s) => isDone(s.key)).length;
+    const licensed = facts?.license_status === "licensed";
     return (
       <div className="max-w-3xl mx-auto p-4 md:p-6 space-y-4 page-enter">
         <div className="flex items-center gap-3">
@@ -269,6 +319,43 @@ export default function GettingStarted() {
             </p>
           </div>
         </div>
+
+        {facts && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">What your account already shows</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-2 sm:grid-cols-2">
+              <FactLine label="Profile (name + phone)" done={Boolean(facts.profile_complete)} />
+              <FactLine label={licensed ? "Licensed" : "License"} done={licensed} />
+              {licensed && (
+                <FactLine
+                  label="Onboarding call"
+                  done={Boolean(facts.onboarding_call_booked)}
+                  detail={facts.onboarding_call_booked
+                    ? (facts.onboarding_call_at ? `Booked ${formatDistanceToNow(new Date(facts.onboarding_call_at), { addSuffix: true })}` : "Booked")
+                    : undefined}
+                  action={!facts.onboarding_call_booked && facts.onboarding_booking_url
+                    ? { href: facts.onboarding_booking_url, label: "Book my call" }
+                    : undefined}
+                />
+              )}
+              <FactLine
+                label="Required training"
+                done={Boolean(facts.required_training_complete)}
+                detail={(facts.required_total ?? 0) > 0 ? `${facts.required_passed ?? 0} of ${facts.required_total} modules passed` : undefined}
+              />
+              {licensed && (
+                <FactLine
+                  label="Contracting"
+                  done={Boolean(facts.contracting_done)}
+                  detail={!facts.contracting_done && facts.contracting_profile_submitted ? "Profile in; carriers being confirmed" : undefined}
+                />
+              )}
+              <FactLine label="First deal" done={Boolean(facts.first_deal_at)} />
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>
@@ -284,17 +371,22 @@ export default function GettingStarted() {
             {mySteps.map((step) => (
               <div key={step.key} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/40">
                 <Checkbox
-                  checked={!!p[step.key]}
+                  checked={isDone(step.key)}
+                  // A recorded fact can't be unticked; the box is only a manual override.
+                  disabled={factDone(step.key)}
                   onCheckedChange={() => toggleStep(p.id, step.key, p[step.key])}
                 />
                 <div className="flex-1">
-                  <p className={`text-sm ${p[step.key] ? "text-muted-foreground line-through" : ""}`}>
+                  <p className={`text-sm ${isDone(step.key) ? "text-muted-foreground line-through" : ""}`}>
                     {step.label}
                   </p>
-                  {"href" in step && !p[step.key] && (
+                  {factDone(step.key) && !p[step.key] && (
+                    <p className="text-[11px] text-muted-foreground">Confirmed from your account</p>
+                  )}
+                  {"href" in step && !isDone(step.key) && (
                     <Link to={step.href} className="text-[12px] font-medium text-primary underline-offset-2 hover:underline">Do it →</Link>
                   )}
-                  {"settingKey" in step && !p[step.key] && (
+                  {"settingKey" in step && !isDone(step.key) && (
                     <div className="mt-1 flex flex-wrap gap-3">
                       {communityLinks.slack && (
                         <a className="text-[12px] font-medium text-primary underline-offset-2 hover:underline"
@@ -476,6 +568,42 @@ export default function GettingStarted() {
             </Card>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+function FactLine({
+  label,
+  done,
+  detail,
+  action,
+}: {
+  label: string;
+  done: boolean;
+  detail?: string;
+  action?: { href: string; label: string };
+}) {
+  return (
+    <div className="flex items-start gap-2 rounded-md border border-border/60 p-2">
+      {done ? (
+        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+      ) : (
+        <Circle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+      )}
+      <div className="min-w-0 flex-1">
+        <p className={`text-sm ${done ? "text-foreground" : "text-muted-foreground"}`}>{label}</p>
+        {detail && <p className="text-[11px] text-muted-foreground">{detail}</p>}
+        {action && (
+          <a
+            href={action.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[12px] font-medium text-primary underline-offset-2 hover:underline"
+          >
+            {action.label} →
+          </a>
+        )}
       </div>
     </div>
   );

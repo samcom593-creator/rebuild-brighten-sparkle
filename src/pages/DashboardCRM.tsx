@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, ClipboardCheck, Download, KeyRound, Link2, Mail, MoreHorizontal, Phone, RefreshCw, Send, ShieldCheck, UserPlus, Users } from "lucide-react";
+import { ChevronDown, ClipboardCheck, Clock, Download, KeyRound, Link2, Mail, MoreHorizontal, Phone, RefreshCw, Send, ShieldCheck, UserPlus, Users } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -28,6 +28,7 @@ import { TeamEngagementPanel } from "@/components/dashboard/TeamEngagementPanel"
 import { ContractingReviewWorkspace } from "@/components/contracting-review/ContractingReviewWorkspace";
 import { TeamAttendance } from "@/components/team/TeamAttendance";
 import { ContractingCallList } from "@/components/team/ContractingCallList";
+import { LicensedHireClockTab } from "@/components/team/LicensedHireClockTab";
 import { TeamList } from "@/components/team/TeamList";
 import { TeamPersonDrawer, type TeamPersonManage } from "@/components/team/TeamPersonDrawer";
 
@@ -53,12 +54,14 @@ interface RosterContact {
   phone: string | null;
 }
 
-type Mode = "team" | "attendance" | "work" | "link" | "logins";
-const VIEWS: Array<{ key: Mode; label: string; param: string; icon: typeof Users; adminOnly?: boolean }> = [
+type Mode = "team" | "attendance" | "work" | "link" | "clock" | "logins";
+const VIEWS: Array<{ key: Mode; label: string; param: string; icon: typeof Users; adminOnly?: boolean; adminOrManager?: boolean }> = [
   { key: "team", label: "Team", param: "team", icon: Users },
   { key: "attendance", label: "Attendance", param: "attendance", icon: ClipboardCheck },
   { key: "work", label: "Contracting", param: "contracting", icon: ShieldCheck },
   { key: "link", label: "Contracting calls", param: "link", icon: Phone },
+  // WP5: v_licensed_hire_clock is gated server-side to admin + the manager role (Aisha); the tab shows only to them.
+  { key: "clock", label: "Licensed hire clock", param: "hire-clock", icon: Clock, adminOrManager: true },
   { key: "logins", label: "Logins", param: "logins", icon: KeyRound, adminOnly: true },
 ];
 /** ?view=overview is the list's old name; a link that still carries it lands on the list. */
@@ -151,7 +154,7 @@ export default function DashboardCRM() {
 
   // Roles with no contracting access only ever see the list; the owner alone sees Logins.
   const requested = modeFromParam(searchParams.get("view")) ?? "team";
-  const views = VIEWS.filter((v) => !v.adminOnly || isAdmin);
+  const views = VIEWS.filter((v) => (!v.adminOnly || isAdmin) && (!v.adminOrManager || isAdmin || isManager));
   const mode: Mode = team.contractingEnabled && views.some((v) => v.key === requested) ? requested : "team";
   const showView = (m: Mode) => {
     const next = new URLSearchParams(searchParams);
@@ -358,6 +361,8 @@ export default function DashboardCRM() {
           <ContractingReviewWorkspace />
         ) : mode === "link" ? (
           <ContractingCallList />
+        ) : mode === "clock" ? (
+          <LicensedHireClockTab onOpenPerson={team.openPerson} />
         ) : (
           <TeamEngagementPanel defaultOpen />
         )}

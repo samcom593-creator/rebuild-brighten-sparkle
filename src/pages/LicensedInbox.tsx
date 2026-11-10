@@ -37,6 +37,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { WP5_RELATION } from "@/lib/wp5Relations";
 import { formatTimeAgo } from "@/lib/dateUtils";
 import { createCanonicalHire, promoteApplicationToAgent } from "@/lib/hireToOnboarding";
 import { startPhoneCall, startSmsThread } from "@/lib/phone";
@@ -503,6 +504,8 @@ export default function LicensedInbox() {
         </div>
       </GlassCard>
 
+      <LicensedUnresolvedCard />
+
       <GlassCard className="p-4">
         <div className="mb-1 flex items-baseline justify-between gap-2">
           <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
@@ -864,5 +867,89 @@ function DispBtn({
       )}
       <span className="truncate">{label}</span>
     </Button>
+  );
+}
+
+interface UnresolvedRow {
+  application_id: string;
+  first_name: string;
+  state: string | null;
+  kind: "never_hired_application" | "booking_only_no_outcome";
+  applied_at: string;
+  last_call_at: string | null;
+  has_npn: boolean;
+  suggested_next_step: string;
+}
+
+/**
+ * WP5 (2026-11-10): licensed leads nobody ever resolved — licensed applications from the last 180 days that never
+ * became agents, and booking-only licensed records whose call has no outcome — minus anyone already an agent (email
+ * or phone) or already logged. public.v_licensed_unresolved is gated to Sam and Aisha. STAGED: first name, state and
+ * dates only; nothing is sent from this card. Each decision goes through the queue above or an approved batch.
+ */
+function LicensedUnresolvedCard() {
+  const [showAll, setShowAll] = useState(false);
+  const list = useQuery({
+    queryKey: ["licensed-unresolved"],
+    staleTime: 300_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from(WP5_RELATION.licensedUnresolved as never)
+        .select("application_id, first_name, state, kind, applied_at, last_call_at, has_npn, suggested_next_step")
+        .order("has_npn", { ascending: false })
+        .order("applied_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as UnresolvedRow[];
+    },
+  });
+  const rows = list.data ?? [];
+  if (list.isLoading) return null;
+  if (list.isError) {
+    return (
+      <GlassCard className="p-4">
+        <p role="alert" className="text-sm text-muted-foreground">
+          The &ldquo;Needs a decision&rdquo; list did not load, so nothing is shown as resolved.
+        </p>
+      </GlassCard>
+    );
+  }
+  if (rows.length === 0) return null;
+  const visible = showAll ? rows : rows.slice(0, 8);
+  return (
+    <GlassCard className="p-4">
+      <div className="mb-1 flex items-baseline justify-between gap-2">
+        <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="truncate">Needs a decision</span>
+        </h3>
+        <span className="text-xs tabular-nums text-muted-foreground">{rows.length}</span>
+      </div>
+      <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+        Licensed people who applied or booked a call and were never hired or closed out. Staged for your decision:
+        nothing is sent from this list. Call the ones with an NPN first.
+      </p>
+      <ul className="divide-y divide-border/60">
+        {visible.map((r) => (
+          <li key={r.application_id} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 py-2 text-sm">
+            <span className="font-medium">
+              {r.first_name}
+              {r.state ? <span className="ml-1 text-muted-foreground">· {r.state}</span> : null}
+              {r.has_npn ? <span className="ml-2 rounded-full border border-success/30 px-1.5 text-[11px] text-success">NPN on file</span> : null}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {r.kind === "booking_only_no_outcome" ? "Booked, no outcome" : "Applied, never hired"}
+              {" · "}
+              {r.last_call_at ? `last call ${formatTimeAgo(r.last_call_at)}` : `applied ${formatTimeAgo(r.applied_at)}`}
+            </span>
+            <span className="w-full text-xs text-muted-foreground">{r.suggested_next_step}</span>
+          </li>
+        ))}
+      </ul>
+      {rows.length > visible.length || showAll ? (
+        <Button variant="ghost" size="sm" className="mt-2 h-10" onClick={() => setShowAll((v) => !v)}>
+          {showAll ? "Show fewer" : `Show all ${rows.length}`}
+        </Button>
+      ) : null}
+    </GlassCard>
   );
 }

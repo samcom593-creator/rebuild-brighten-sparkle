@@ -12,6 +12,7 @@ import {
   daysWaiting,
   deriveExceptions,
   laterOf,
+  mergeDialerState,
   phoenixToday,
   trackCounts,
   type OnboardingFacts,
@@ -297,5 +298,25 @@ describe("expected start migration contract", () => {
     const body = fnBody("onboarding_exception_facts");
     const sample = Object.keys(facts());
     for (const col of sample) expect(body).toMatch(new RegExp(`\\b${col}\\b`));
+  });
+});
+
+describe("WP5 derived dialer flag", () => {
+  const notYetProducing = { first_deal_at: null, carrier_active_count: 0 } as const;
+  it("a recruit who is dialing is not flagged even though agents.has_dialer_login is false", () => {
+    expect(keys(facts({ ...notYetProducing, has_dialer_login: false, dialer_active_derived: true }))).not.toContain("dialer_missing");
+  });
+  it("a recruit with no seat and no dials gets the derived wording", () => {
+    const list = deriveExceptions(facts({ ...notYetProducing, has_dialer_login: true, dialer_active_derived: false }), NOW);
+    expect(list.find((e) => e.key === "dialer_missing")?.label).toBe("No dialer seat or dials in 14 days");
+  });
+  it("without a merged derived flag the column decides, as before", () => {
+    expect(keys(facts({ ...notYetProducing, has_dialer_login: false }))).toContain("dialer_missing");
+  });
+  it("mergeDialerState attaches the flag by agent id and leaves unknown rows untouched", () => {
+    const rows = [facts(), facts({ agent_id: "00000000-0000-4000-8000-000000000002" })];
+    const merged = mergeDialerState(rows, [{ agent_id: rows[0].agent_id, dialer_active_derived: true }]);
+    expect(merged[0].dialer_active_derived).toBe(true);
+    expect(merged[1].dialer_active_derived).toBeUndefined();
   });
 });

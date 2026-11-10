@@ -16,6 +16,9 @@ interface CanonicalHireInput {
   instagramHandle?: string | null;
   managerId?: string | null;
   sourceApplicationId?: string | null;
+  /** WP5 (2026-11-10): the stated reason a licensed hire has no NPN yet. With it the hire goes through (add-agent records
+   *  it on the agent); without it a licensed hire still needs a 5-10 digit NPN. */
+  npnMissingReason?: string | null;
 }
 
 export interface HireReceipt {
@@ -63,8 +66,9 @@ async function resolveManagerId(preferred?: string | null): Promise<string> {
 export async function createCanonicalHire(input: CanonicalHireInput): Promise<HireReceipt> {
   const managerId = await resolveManagerId(input.managerId);
   const npn = normalizedNpn(input.npn);
-  if (input.licenseStatus === "licensed" && (npn.length < 5 || npn.length > 10)) {
-    throw new Error("Licensed hire needs a valid 5–10 digit NPN before contracting can start.");
+  const npnMissingReason = (input.npnMissingReason ?? "").trim();
+  if (input.licenseStatus === "licensed" && (npn.length < 5 || npn.length > 10) && npnMissingReason.length < 3) {
+    throw new Error("Licensed hire needs a valid 5–10 digit NPN before contracting can start (or a reason it is missing).");
   }
   if (!input.firstName.trim() || !input.lastName.trim() || !input.email.trim() || !input.phone.trim()) {
     throw new Error("First name, last name, email, and phone are required to create the agent account.");
@@ -87,6 +91,7 @@ export async function createCanonicalHire(input: CanonicalHireInput): Promise<Hi
       // hires enter the onboarding curriculum and contracting workflow.
       hasTrainingCourse: true,
       sourceApplicationId: input.sourceApplicationId || undefined,
+      npnMissingReason: npnMissingReason || undefined,
     },
   });
   if (error) throw new Error(await functionErrorMessage(error));

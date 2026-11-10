@@ -580,6 +580,7 @@ serve(async (req) => {
       );
     }
   } else {
+    // Fresh insert.
     // WP5: link an application only on a UNIQUE email match no other agent already holds. Never guess between two.
     let emailLinkedApplicationId: string | null = null;
     {
@@ -599,7 +600,6 @@ serve(async (req) => {
     if (emailLinkedApplicationId) provenance.source_application_match = "unique_email";
     else provenance.no_application_reason = "hire link (no application on file)";
     if (licensed && !npnValid) provenance.npn_missing_reason = npnMissingReason;
-    // Fresh insert.
     const { data: inserted, error: insErr } = await admin
       .from("agents")
       .insert({

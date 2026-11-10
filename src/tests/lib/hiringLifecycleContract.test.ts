@@ -22,7 +22,10 @@ describe("one-tap hiring lifecycle", () => {
     const edge = read("supabase/functions/add-agent/index.ts");
     expect(edge).toContain("manager_id: managerId");
     expect(edge).toContain("invited_by_manager_id: managerId");
-    expect(edge).toContain("source_application_id: sourceApplication?.id ?? null");
+    // WP5 (2026-11-10): the named application wins; otherwise a link is made only on a UNIQUE email match.
+    expect(edge).toContain("source_application_id: sourceApplication?.id ?? emailLinkedApplicationId");
+    expect(edge).toMatch(/appMatches \?\? \[\]\)\.length === 1/);
+    expect(edge).toContain('agentInsert.origin = sourceApplication ? "application"');
     expect(edge).toContain('status: "onboarding"');
     expect(edge).toContain('closed_at: new Date().toISOString()');
   });

@@ -287,18 +287,13 @@ export default function CourseProgress() {
         .update({ field_training_started_at: new Date().toISOString() })
         .eq("id", agentId);
       if (error) throw error;
-      const { error: flowError } = await supabase.functions.invoke("trigger-new-hire-flow", {
-        body: { agentId, triggerType: "course_complete" }
-      });
-      return { flowTriggered: !flowError };
+      // WP5 (2026-11-10): no direct invoke. The stage move above fires trg_fn_agent_new_hire_flow, the single caller of
+      // trigger-new-hire-flow, which stays off until Sam approves its copy (new_hire_live_flow_enabled).
+      return { moved: true };
     },
-    onSuccess: (result, agentId) => {
+    onSuccess: (_result, agentId) => {
       const agent = agentProgress?.find(a => a.agentId === agentId);
-      if (result.flowTriggered) {
-        toast.success(`${agent?.agentName || 'Agent'} is now LIVE — welcome automation started`);
-      } else {
-        toast.warning(`${agent?.agentName || 'Agent'} is now LIVE, but the welcome automation needs a retry`);
-      }
+      toast.success(`${agent?.agentName || 'Agent'} moved to field training`);
       queryClient.invalidateQueries({ queryKey: ["course-progress-full"] });
     },
     onError: (error) => {

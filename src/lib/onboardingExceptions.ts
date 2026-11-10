@@ -103,6 +103,13 @@ export interface OnboardingFacts {
   training_started: boolean | null;
   training_last_activity_at: string | null;
   has_dialer_login: boolean | null;
+  /**
+   * WP5 (2026-11-10): v_agent_dialer_state.dialer_active_derived = an open seat in agent_dialer_seats OR an
+   * alias-resolved ReadyMode dial in the last 14 days. agents.has_dialer_login is never written (false for every
+   * 2026 hire, including the ones dialing), so when the derived flag is present it is the truth; when a caller did
+   * not merge it (undefined) the column is the fallback, exactly as before.
+   */
+  dialer_active_derived?: boolean | null;
   onboarding_call_event_id: string | null;
   onboarding_call_at: string | null;
   onboarding_call_outcome: string | null;
@@ -485,14 +492,18 @@ export function deriveExceptions(f: OnboardingFacts, now: Date = new Date()): On
   }
 
   // ---- dialer (licensed, not yet producing) -------------------------------
-  if (licensed && !producing && f.has_dialer_login !== true) {
+  const dialerActive = f.dialer_active_derived ?? f.has_dialer_login;
+  if (licensed && !producing && dialerActive !== true) {
+    const derived = f.dialer_active_derived === false;
     out.push(mk(f, "dialer_missing", {
-      label: "No dialer login",
+      label: derived ? "No dialer seat or dials in 14 days" : "No dialer login",
       why: "No dialer seat means no calls and no appointments.",
       ownerKind: "admin",
       waitingSince: licensedSince,
       waitingBasis: "since licensed",
-      nextAction: "Assign a dialer seat and mark the login on their record.",
+      nextAction: derived
+        ? "Decide on a seat (Sam's call), then record it from the hire launch board."
+        : "Assign a dialer seat and mark the login on their record.",
       resolution: { kind: "open_profile" },
       blocking: false,
     }));
@@ -689,4 +700,15 @@ export function trackCounts(queue: RecruitExceptions[]): Record<Track, number> {
     for (const t of tracks) counts[t] += 1;
   }
   return counts;
+}
+
+/** WP5: merge v_agent_dialer_state.dialer_active_derived onto exception facts by agent id. Rows with no derived
+ *  state keep `undefined`, so deriveExceptions falls back to agents.has_dialer_login for them. */
+export function mergeDialerState(
+  rows: OnboardingFacts[],
+  states: ReadonlyArray<{ agent_id: string; dialer_active_derived: boolean | null }>,
+): OnboardingFacts[] {
+  if (!states.length) return rows;
+  const byId = new Map(states.map((s) => [s.agent_id, s.dialer_active_derived] as const));
+  return rows.map((r) => (byId.has(r.agent_id) ? { ...r, dialer_active_derived: byId.get(r.agent_id) ?? null } : r));
 }

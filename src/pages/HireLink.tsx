@@ -94,6 +94,9 @@ export default function HireLink() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [nipr, setNipr] = useState("");
+  // WP5 (2026-11-10): a licensed hire who cannot find their NPN right now says why instead of being turned away.
+  // consume-invite-token records the reason on the agent; the hire clock keeps showing "NPN missing" until one is on file.
+  const [npnMissingReason, setNpnMissingReason] = useState("");
   const [licensedHire, setLicensedHire] = useState<boolean | null>(null);
   const [lockedLicenseStatus, setLockedLicenseStatus] = useState<"licensed" | "unlicensed" | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -159,9 +162,9 @@ export default function HireLink() {
       // Licensed producers must give the same 5–10 digit NPN accepted by the
       // contracting intake. One validation contract prevents a hire from
       // activating successfully and then failing silently downstream.
-      (licensedHire !== true || /^\d{5,10}$/.test(nipr.replace(/\D+/g, "")))
+      (licensedHire !== true || /^\d{5,10}$/.test(nipr.replace(/\D+/g, "")) || npnMissingReason.trim().length >= 3)
     );
-  }, [fullName, phone, email, licensedHire, nipr]);
+  }, [fullName, phone, email, licensedHire, nipr, npnMissingReason]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -178,6 +181,7 @@ export default function HireLink() {
             phone: phone.replace(/\D+/g, ""),
             email: email.trim().toLowerCase(),
             nipr_number: nipr.trim() || undefined,
+            npn_missing_reason: npnMissingReason.trim() || undefined,
             licensed: licensedHire === true,
           },
         },
@@ -402,7 +406,7 @@ export default function HireLink() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setLicensedHire(false); setNipr(""); }}
+                  onClick={() => { setLicensedHire(false); setNipr(""); setNpnMissingReason(""); }}
                   aria-pressed={licensedHire === false}
                   data-testid="hire-unlicensed"
                   className={`rounded-lg border p-3 text-left transition-colors ${licensedHire === false ? "border-primary bg-primary/10" : "border-border hover:bg-muted/40"}`}
@@ -428,8 +432,23 @@ export default function HireLink() {
                   className="mt-1 h-11 text-base"
                 />
                 <p className="mt-1 text-[12px] text-muted-foreground">
-                  Required. Submission starts the contracting spreadsheet and private support desk automatically.
+                  Required. Look yours up free at nipr.com. Your contracting starts from your profile once you are signed in.
                 </p>
+                {!/^\d{5,10}$/.test(nipr.replace(/\D+/g, "")) && (
+                  <div className="mt-2">
+                    <Label htmlFor="hire-npn-missing" className="text-[12px] font-normal text-muted-foreground">
+                      Can&apos;t find it right now? Tell us why and you can still finish.
+                    </Label>
+                    <Input
+                      id="hire-npn-missing"
+                      value={npnMissingReason}
+                      onChange={(e) => setNpnMissingReason(e.target.value)}
+                      placeholder="e.g. will send it after the call"
+                      maxLength={300}
+                      className="mt-1 h-11 text-base"
+                    />
+                  </div>
+                )}
               </div>
             )}
 

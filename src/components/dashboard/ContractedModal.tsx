@@ -218,9 +218,9 @@ export function ContractedModal({
 
         if (emailError) {
           console.error("Email send error:", emailError);
-          toast.warning("Agent contracted but email notification failed");
+          toast.warning("Agent hired but the email notification failed");
         } else {
-          toast.success(`${application.first_name} contracted and added to CRM!`);
+          toast.success(`${application.first_name} hired and added to CRM.`);
         }
 
         // Notify all managers about the contract
@@ -265,7 +265,7 @@ export function ContractedModal({
       onSuccess?.();
     } catch (error) {
       console.error("Error contracting agent:", error);
-      toast.error("Failed to contract agent");
+      toast.error("Could not finish the hire");
     } finally {
       setIsSubmitting(false);
     }
@@ -286,10 +286,12 @@ export function ContractedModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CheckCircle className="h-5 w-5 text-emerald-500" />
-            Contract {application.first_name} {application.last_name}
+            Hire {application.first_name} {application.last_name}
           </DialogTitle>
           <DialogDescription>
-            This will mark the applicant as contracted and send them an email with CRM setup instructions.
+            {/* WP5: applications.status 'contracting' means HIRED onto the team. Carrier contracting is a separate fact,
+                tracked per carrier on My Team (contract_review_marks), so the wording never claims a carrier contract. */}
+            This marks the applicant as hired and sends them an email with CRM setup instructions. Carrier contracting is tracked separately on My Team.
           </DialogDescription>
         </DialogHeader>
 
@@ -303,7 +305,7 @@ export function ContractedModal({
             <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/50">
               <div className="space-y-0.5">
                 <Label htmlFor="already-contracted" className="text-sm font-medium cursor-pointer">
-                  Already contracted
+                  Already set up
                 </Label>
                 <p className="text-xs text-muted-foreground">
                   Skip agent creation — just enroll in coursework
@@ -404,12 +406,12 @@ export function ContractedModal({
             {isSubmitting ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Contracting...
+                Hiring...
               </>
             ) : (
               <>
                 <CheckCircle className="h-4 w-4 mr-2" />
-                Contract & Send Email
+                Hire & Send Email
               </>
             )}
           </Button>

@@ -11,12 +11,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/hooks/useConfirm";
+import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { HIRE_RUNGS, stageForRank, stageLabel, stageRank } from "@/lib/hireLadder";
 import { contactLinkProps, phoneHref, smsHref } from "@/lib/phone";
 
 export type HireRow = {
   agent_id: string;
+  user_id?: string | null;
   display_name: string;
   email: string | null;
   phone: string | null;
@@ -41,7 +43,19 @@ export type HireRow = {
   next_action_label: string;
   is_stalled: boolean;
   email_missing: boolean;
+  // WP5 (2026-11-10): v_hire_launch_board's seat / leads / coaching step before first_deal.
+  has_open_seat?: boolean | null;
+  has_lead_grant?: boolean | null;
+  dials_14d?: number | string | null;
 };
+
+/** The three activation steps v_hire_launch_board puts ahead of 'first_deal'. Seats and leads cost money (Sam's N8),
+ *  so each is a one-click ADMIN action that records a decision Sam makes; nothing is granted automatically. */
+const ACTIVATION_ACTION_KEYS = ["assign_dialer", "grant_leads", "coach_closing"] as const;
+export type ActivationActionKey = typeof ACTIVATION_ACTION_KEYS[number];
+function isActivationAction(key: string): key is ActivationActionKey {
+  return (ACTIVATION_ACTION_KEYS as readonly string[]).includes(key);
+}
 
 type Lens = "working" | "all" | "stalled" | "licensing" | "producing";
 
@@ -67,6 +81,7 @@ export function HireLaunchBoard({ searchTerm }: { searchTerm: string }) {
   // from the native blocking modal to a reader and to check:blocking-modal.
   const askConfirm = useConfirm();
   const queryClient = useQueryClient();
+  const { isAdmin } = useAuth();
   const [lens, setLens] = useState<Lens>("working");
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -280,6 +295,7 @@ export function HireLaunchBoard({ searchTerm }: { searchTerm: string }) {
             row={row}
             busy={busyId === row.agent_id}
             onMove={runMove}
+            isAdmin={isAdmin}
           />
         ))}
       </div>
@@ -288,11 +304,12 @@ export function HireLaunchBoard({ searchTerm }: { searchTerm: string }) {
 }
 
 function HireCard({
-  row, busy, onMove,
+  row, busy, onMove, isAdmin,
 }: {
   row: HireRow;
   busy: boolean;
   onMove: (row: HireRow, kind: "stage" | "license", value: string, expected: string | null) => void;
+  isAdmin: boolean;
 }) {
   const rank = row.stage_rank;
   const offLadder = rank === null;
@@ -418,6 +435,7 @@ function HireCard({
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Next action</p>
             <p className="text-sm font-bold leading-snug">{row.next_action_label}</p>
+            {isAdmin && isActivationAction(row.next_action_key) && <ActivationAction row={row} actionKey={row.next_action_key} />}
           </div>
           <div className="flex shrink-0 flex-wrap gap-2">
             {busy && <span className="inline-flex items-center px-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /></span>}
@@ -460,5 +478,91 @@ function HireCard({
         </div>
       </div>
     </article>
+  );
+}
+
+/** Admin-only, one click each. Recording a seat buys nothing and bills nothing (agents.has_dialer_login, which the
+ *  weekly dialer invoice reads, is untouched); granting a bundle uses the same lead_bundle_grant the Leads page uses. */
+function ActivationAction({ row, actionKey }: { row: HireRow; actionKey: ActivationActionKey }) {
+  const askConfirm = useConfirm();
+  const queryClient = useQueryClient();
+  const [bundleId, setBundleId] = useState("");
+  const bundles = useQuery({
+    queryKey: ["open-lead-bundles"],
+    enabled: actionKey === "grant_leads",
+    staleTime: 300_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("lead_bundles" as never)
+        .select("id, name")
+        .is("archived_at", null)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return (data ?? []) as unknown as Array<{ id: string; name: string }>;
+    },
+  });
+  const act = useMutation({
+    mutationFn: async () => {
+      if (actionKey === "assign_dialer") {
+        const { data, error } = await supabase.rpc("admin_assign_dialer_seat" as never, {
+          p_agent_id: row.agent_id, p_seat_label: null, p_note: "Recorded from the hire launch board",
+        } as never);
+        if (error) throw error;
+        return data as unknown as { ok: boolean; created: boolean };
+      }
+      if (!row.user_id) throw new Error(`${row.display_name} has no login yet, so leads cannot be granted.`);
+      if (!bundleId) throw new Error("Pick a lead bundle first.");
+      const { data, error } = await supabase.rpc("lead_bundle_grant" as never, {
+        p_bundle: bundleId, p_user: row.user_id, p_note: "Starter leads from the hire launch board",
+      } as never);
+      if (error) throw error;
+      return data as unknown as { grant_id: string };
+    },
+    onSuccess: () => {
+      toast.success(actionKey === "assign_dialer" ? `Dialer seat recorded for ${row.display_name}.` : `Leads granted to ${row.display_name}.`);
+      void queryClient.invalidateQueries({ queryKey: ["hire-launch-board"] });
+    },
+    onError: (error: unknown) => toast.error(error instanceof Error ? error.message : "That did not save."),
+  });
+
+  if (actionKey === "coach_closing") {
+    return (
+      <p className="mt-1 text-[12px] text-muted-foreground">
+        {Number(row.dials_14d ?? 0).toLocaleString()} dials in 14 days and no deal. Review recordings, script and lead source before more dials.
+      </p>
+    );
+  }
+
+  const run = async () => {
+    const ok = await askConfirm({
+      title: actionKey === "assign_dialer" ? `Record a dialer seat for ${row.display_name}?` : `Grant this lead bundle to ${row.display_name}?`,
+      description: actionKey === "assign_dialer"
+        ? "This records that you gave them a ReadyMode seat. It does not buy a seat or bill anyone. Nothing is sent."
+        : "They will see these leads on My Leads. Recorded against your name.",
+      confirmText: actionKey === "assign_dialer" ? "Record seat" : "Grant leads",
+      tone: "primary",
+    });
+    if (ok) act.mutate();
+  };
+
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2">
+      {actionKey === "grant_leads" && (
+        <select
+          aria-label={`Lead bundle for ${row.display_name}`}
+          value={bundleId}
+          onChange={(e) => setBundleId(e.target.value)}
+          className="h-10 max-w-[16rem] rounded-md border border-border bg-background px-2 text-sm"
+        >
+          <option value="">{bundles.isLoading ? "Loading bundles…" : "Pick a bundle"}</option>
+          {(bundles.data ?? []).map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+        </select>
+      )}
+      <Button size="sm" variant="outline" className="h-10" disabled={act.isPending || (actionKey === "grant_leads" && !bundleId)} onClick={() => { void run(); }}>
+        {act.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+        {actionKey === "assign_dialer" ? "Record dialer seat" : "Grant leads"}
+      </Button>
+    </div>
   );
 }

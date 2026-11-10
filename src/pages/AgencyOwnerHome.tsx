@@ -17,6 +17,7 @@ import { useBrand } from "@/hooks/useBrand";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useMyDownline } from "@/hooks/useMyDownline";
 import { supabase } from "@/integrations/supabase/client";
+import { WP5_RELATION } from "@/lib/wp5Relations";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -147,6 +148,29 @@ export default function AgencyOwnerHome() {
     refetchInterval: 300_000,
   });
 
+  // WP5 (2026-11-10): "still onboarding" reads the DERIVED stage (sign-in, training, onboarding call, dialer, first deal
+  // in any source) from public.v_agent_activation_state, not agents.onboarding_stage, a hand-moved label that lags
+  // reality (5 of the 10 agents who wrote deals in the last 30 days were labelled 'evaluated'). The view is read-only
+  // and scoped server-side to rows the owner can already read. If it cannot be read, the old label is the fallback.
+  const activation = useQuery({
+    queryKey: ["agency-owner-activation", [...downlineIds].sort()],
+    queryFn: async (): Promise<Map<string, string>> => {
+      const out = new Map<string, string>();
+      for (const ids of chunk(downlineIds)) {
+        const { data, error } = await supabase
+          .from(WP5_RELATION.activationState as never)
+          .select("agent_id, derived_stage")
+          .in("agent_id", ids);
+        if (error) throw error;
+        for (const r of (data ?? []) as unknown as Array<{ agent_id: string; derived_stage: string }>) out.set(r.agent_id, r.derived_stage);
+      }
+      return out;
+    },
+    enabled: downlineIds.length > 0,
+    staleTime: 60_000,
+    refetchInterval: 300_000,
+  });
+
   const recruits = useQuery({
     queryKey: ["agency-owner-recruits", [...downlineIds].sort()],
     queryFn: async (): Promise<RecruitRow[]> => {
@@ -174,7 +198,11 @@ export default function AgencyOwnerHome() {
     const nameById = new Map(rows.map((r) => [r.id, r.display_name ?? "—"]));
     const active = rows.filter((r) => r.status === "active");
     const licensed = active.filter((r) => r.license_status === "licensed");
-    const onboarding = active.filter((r) => r.onboarding_stage !== "live");
+    const derived = activation.data;
+    const onboarding = active.filter((r) => {
+      const stage = derived?.get(r.id);
+      return stage ? stage !== "producing" : r.onboarding_stage !== "live";
+    });
     const cutoff = daysAgoIso(30);
     const hires30 = rows
       .filter((r) => r.created_at >= cutoff)
@@ -184,7 +212,7 @@ export default function AgencyOwnerHome() {
         routed_to: nameById.get(r.invited_by_manager_id ?? r.manager_id ?? "") ?? (me.data?.display_name ?? "you"),
       }));
     return { total: rows.length, active: active.length, licensed: licensed.length, onboarding: onboarding.length, hires30 };
-  }, [roster.data, me.data?.display_name]);
+  }, [roster.data, me.data?.display_name, activation.data]);
 
   const funnel = useMemo(() => {
     const rows = recruits.data ?? [];
@@ -232,7 +260,7 @@ export default function AgencyOwnerHome() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Tile icon={Users} label="Active agents" value={stats.active} desc={`${stats.total} total in hierarchy`} href="/dashboard/team" />
           <Tile icon={UserCheck} label="Licensed" value={stats.licensed} desc="Active and licensed" href="/dashboard/team" tone="text-emerald-500" />
-          <Tile icon={GraduationCap} label="Still onboarding" value={stats.onboarding} desc="Active, not yet live" href="/dashboard/team" tone="text-amber-500" />
+          <Tile icon={GraduationCap} label="Still onboarding" value={stats.onboarding} desc="Active, no deal on record yet" href="/dashboard/team" tone="text-amber-500" />
           <Tile icon={UserPlus} label="Hired · 30 days" value={stats.hires30.length} desc="New agents in your agency" href="/dashboard/recruiting/hires" />
         </div>
       )}

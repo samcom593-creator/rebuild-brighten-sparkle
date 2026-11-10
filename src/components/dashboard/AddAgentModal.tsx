@@ -88,6 +88,9 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
   // "licensed" with no NPN is an unprovable self-claim, so the NPN is required
   // whenever the licensed option is picked.
   const [npn, setNpn] = useState("");
+  // WP5 (2026-11-10): the override that keeps the NPN rule from ever blocking a real hire. A stated reason is stored
+  // on the agent (metadata.npn_missing_reason) and the hire clock keeps showing "NPN missing" until one is on file.
+  const [npnMissingReason, setNpnMissingReason] = useState("");
   const [licenseNumber, setLicenseNumber] = useState("");
   const [licenseStates, setLicenseStates] = useState("");
   const [licenseExpiresAt, setLicenseExpiresAt] = useState("");
@@ -215,17 +218,15 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
       "1. Open your private OneLink and complete your profile, NPN, and contracting intake: " + pathLink,
       "2. Set up or enter your " + BRAND.shortName + " portal: https://apex-financial.org/login",
       "3. Join Slack: " + TEAM_COMMUNITY_LINKS.slack,
-      "4. Join Discord: " + TEAM_COMMUNITY_LINKS.discord,
-      "5. Book your onboarding call with " + ONBOARDING_CONTACT.name + ": " + SCHEDULING_LINKS.onboarding,
-      "6. Complete the onboarding training shown in your portal.",
+      "4. Book your onboarding call with " + ONBOARDING_CONTACT.name + ": " + SCHEDULING_LINKS.onboarding,
+      "5. Complete the onboarding training shown in your portal.",
     ];
     const unlicensedSteps = [
       "1. Open your private OneLink and create your " + BRAND.shortName + " profile: " + pathLink,
       "2. Set up or enter your " + BRAND.shortName + " portal: https://apex-financial.org/login",
       "3. Join Slack: " + TEAM_COMMUNITY_LINKS.slack,
-      "4. Join Discord: " + TEAM_COMMUNITY_LINKS.discord,
-      "5. Follow the live course → exam → fingerprints → license roadmap in your portal.",
-      "6. When your license posts, add your NPN and OneLink contracting will unlock.",
+      "4. Follow the live course → exam → fingerprints → license roadmap in your portal.",
+      "5. When your license posts, add your NPN and OneLink contracting will unlock.",
     ];
     const message = [
       "Subject: Welcome to " + BRAND.legalName + " — your next steps",
@@ -277,8 +278,8 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
     // Licensed => NPN required. Mirrors HireLink's >= 4-digit rule so the same
     // producer can't be added with proof on one surface and none on the other.
     const normalizedNpnLength = npn.replace(/\D+/g, "").length;
-    if (licenseStatus === "licensed" && (normalizedNpnLength < 5 || normalizedNpnLength > 10)) {
-      toast.error("NPN is required for a licensed agent — look it up free at nipr.com");
+    if (licenseStatus === "licensed" && (normalizedNpnLength < 5 || normalizedNpnLength > 10) && npnMissingReason.trim().length < 3) {
+      toast.error("NPN is required for a licensed agent — look it up free at nipr.com, or say why it is missing");
       return;
     }
     const normalizedComp = Number(compPercentage);
@@ -302,6 +303,7 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
           managerId,
           licenseStatus,
           niprNumber: npn.trim() || undefined,
+          npnMissingReason: npnMissingReason.trim() || undefined,
           licenseNumber: licenseNumber.trim() || undefined,
           // "TX, LA, MS" -> ["TX","LA","MS"] for the agents.license_states text[].
           licenseStates: licenseStates
@@ -408,6 +410,7 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
     setManagerId("");
     setLicenseStatus(null);
     setNpn("");
+    setNpnMissingReason("");
     setLicenseNumber("");
     setLicenseStates("");
     setLicenseExpiresAt("");
@@ -576,7 +579,7 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
                   </div>
                   {pathLink && (
                     <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
-                      Copy welcome email gives the assigned manager a ready-to-send message with the recruit’s private link, portal login, Slack, Discord, and exact next steps.
+                      Copy welcome email gives the assigned manager a ready-to-send message with the recruit’s private link, portal login, Slack, and exact next steps.
                     </p>
                   )}
                 </div>
@@ -659,6 +662,20 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
               <p className="text-[12px] text-muted-foreground">
                 Required — this is the proof of licensure. Free lookup at nipr.com.
               </p>
+              {npn.replace(/\D+/g, "").length < 5 ? (
+                <div className="space-y-1 pt-1">
+                  <Label htmlFor="agent-npn-missing" className="text-[12px] font-normal text-muted-foreground">
+                    No NPN yet? Say why, and the hire still goes through.
+                  </Label>
+                  <Input
+                    id="agent-npn-missing"
+                    value={npnMissingReason}
+                    onChange={(e) => setNpnMissingReason(e.target.value)}
+                    placeholder="e.g. looking it up with them on the call"
+                    maxLength={300}
+                  />
+                </div>
+              ) : null}
             </div>
 
             <div className="grid grid-cols-2 gap-3">

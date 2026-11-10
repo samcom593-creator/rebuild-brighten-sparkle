@@ -281,20 +281,10 @@ export function TeamHierarchyManager() {
 
       const agentName = agents.find(a => a.id === agentId)?.name || "Agent";
       
-      // Trigger new hire auto-flow when moving to in_field_training
-      if (newStage === "in_field_training") {
-        try {
-          await supabase.functions.invoke("trigger-new-hire-flow", {
-            body: { agentId, triggerType: "contracted" }
-          });
-          toast.success(`${agentName} is now LIVE — welcome email and SMS sent automatically`);
-        } catch (e) {
-          console.error("New hire flow trigger failed:", e);
-          toast.success(`${agentName}'s stage updated to ${newStage.replace(/_/g, " ")}`);
-        }
-      } else {
-        toast.success(`${agentName}'s stage updated to ${newStage.replace(/_/g, " ")}`);
-      }
+      // WP5 (2026-11-10): the move into in_field_training fires trg_fn_agent_new_hire_flow, the ONE caller of
+      // trigger-new-hire-flow (gated on new_hire_live_flow_enabled, idempotent per agent). Invoking it here too would
+      // send twice once the trigger works, and the old toast claimed an email and SMS nobody checked.
+      toast.success(`${agentName}'s stage updated to ${newStage.replace(/_/g, " ")}`);
       fetchHierarchy();
     } catch (error) {
       console.error("Error updating stage:", error);

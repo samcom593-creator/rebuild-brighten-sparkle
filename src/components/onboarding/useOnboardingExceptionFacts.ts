@@ -2,8 +2,9 @@ import { useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { supabase } from "@/integrations/supabase/client";
+import { WP5_RELATION } from "@/lib/wp5Relations";
 import { useRealtimeTable } from "@/shared/realtime/useRealtimeTable";
-import type { OnboardingFacts } from "@/lib/onboardingExceptions";
+import { mergeDialerState, type OnboardingFacts } from "@/lib/onboardingExceptions";
 
 export const ONBOARDING_FACTS_KEY = ["onboarding-exception-facts"] as const;
 
@@ -26,7 +27,20 @@ export function useOnboardingExceptionFacts(options: { enabled?: boolean; realti
     queryFn: async () => {
       const { data, error } = await supabase.rpc("onboarding_exception_facts" as never);
       if (error) throw error;
-      return (data ?? []) as unknown as OnboardingFacts[];
+      const rows = (data ?? []) as unknown as OnboardingFacts[];
+      // WP5: the derived dialer flag (open seat or a dial in 14 days). Gated to admin + manager server-side; for anyone
+      // else, or on a failed read, the rows keep agents.has_dialer_login as before.
+      const ids = rows.map((r) => r.agent_id).filter(Boolean);
+      const states: Array<{ agent_id: string; dialer_active_derived: boolean | null }> = [];
+      for (let i = 0; i < ids.length; i += 100) {
+        const part = await supabase
+          .from(WP5_RELATION.dialerState as never)
+          .select("agent_id, dialer_active_derived")
+          .in("agent_id", ids.slice(i, i + 100));
+        if (part.error) return rows;
+        states.push(...((part.data ?? []) as unknown as typeof states));
+      }
+      return mergeDialerState(rows, states);
     },
   });
 

@@ -1,6 +1,6 @@
 {
   "note": "WP4 ratchet: per-file count of literal sender lines in supabase/functions (see scripts/check-hardcoded-sender.mjs). Only lower these.",
-  "total": 149,
+  "total": 146,
   "files": {
     "supabase/functions/add-agent/index.ts": 1,
     "supabase/functions/apex-alert-dispatch/index.ts": 1,
@@ -83,7 +83,7 @@
     "supabase/functions/send-course-reminder/index.ts": 1,
     "supabase/functions/send-daily-checkin-prompt/index.ts": 2,
     "supabase/functions/send-daily-producer-spotlight/index.ts": 1,
-    "supabase/functions/send-followup-emails/index.ts": 6,
+    "supabase/functions/send-followup-emails/index.ts": 3,
     "supabase/functions/send-licensing-instructions/index.ts": 1,
     "supabase/functions/send-login-to-manager/index.ts": 1,
     "supabase/functions/send-notification/index.ts": 2,

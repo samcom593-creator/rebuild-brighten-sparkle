@@ -26,6 +26,7 @@ import {
   LICENSING_COURSE_URL,
   SCHEDULING_LINKS,
 } from "@/lib/apexConfig";
+import { formatPhoneDisplay } from "@/lib/phone";
 
 export interface OwnerContact {
   name: string;
@@ -42,11 +43,6 @@ const PROOF_TYPES = new Set(["image/png", "image/jpeg", "image/jpg", "image/webp
 const MAX_BYTES = 8 * 1024 * 1024;
 
 type ProofState = "checking" | "idle" | "uploading" | "submitted" | "error";
-
-function prettyPhone(e164: string): string {
-  const d = e164.replace(/\D/g, "").slice(-10);
-  return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : e164;
-}
 
 /** The human path. Always rendered: before purchase, after an upload error, after upload. */
 export function AskUsFirst({ owner }: { owner?: OwnerContact | null }) {
@@ -68,7 +64,7 @@ export function AskUsFirst({ owner }: { owner?: OwnerContact | null }) {
           <>
             {/* contact-scheme-allow: an applicant reaching their own recruiter or Galaxy's published line from their own status page, native handoff is correct */}
             <a className="font-semibold text-primary underline-offset-2 hover:underline" href={`sms:${phoneDigits}`}>
-              Text {contact.name} {prettyPhone(contact.phone ?? "")}
+              Text {contact.name} {formatPhoneDisplay(contact.phone)}
             </a>
             {/* contact-scheme-allow: an applicant reaching their own recruiter or Galaxy's published line from their own status page, native handoff is correct */}
             <a className="text-primary underline-offset-2 hover:underline" href={`tel:${phoneDigits}`}>

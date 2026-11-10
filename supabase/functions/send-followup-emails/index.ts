@@ -3,6 +3,7 @@ import { SPAM_NOTE_HTML } from "../_shared/spam-note.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
+import { BRAND_FROM } from "../_shared/email.ts";
 import { SCHEDULING_LINKS } from "../_shared/apex.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
 import { safeEqual } from "../_shared/send-floor.ts";
@@ -107,7 +108,7 @@ async function sendUnlicensedFollowup(app: {
     const ccList = [ADMIN_EMAIL, managerEmail].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i) as string[];
 
     const response = await resend.emails.send({
-       from: "Galaxy Financial <notifications@apex-financial.org>",
+       from: BRAND_FROM,
       to: [app.email],
       cc: ccList.length > 0 ? ccList : undefined,
       subject: "Need Help Getting Licensed? We're Here For You! 📋",
@@ -200,7 +201,7 @@ async function sendUnlicensedFollowup2(app: {
     const managerEmail2 = await getManagerEmailForApp(app.id);
     const ccList2 = [ADMIN_EMAIL, managerEmail2].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i) as string[];
     const response = await resend.emails.send({
-       from: "Galaxy Financial <notifications@apex-financial.org>",
+       from: BRAND_FROM,
       to: [app.email],
       cc: ccList2.length > 0 ? ccList2 : undefined,
       subject: "Are You Licensed Yet? 🎓",
@@ -297,7 +298,7 @@ async function sendLicensedFollowup(app: {
     const managerEmail3 = await getManagerEmailForApp(app.id);
     const ccList3 = [ADMIN_EMAIL, managerEmail3].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i) as string[];
     const response = await resend.emails.send({
-      from: "Galaxy Financial <notifications@apex-financial.org>",
+      from: BRAND_FROM,
       to: [app.email],
       cc: ccList3.length > 0 ? ccList3 : undefined,
       subject: "Did We Get to You Yet? Let's Connect! 🚀",
@@ -380,7 +381,7 @@ async function sendDay1Nudge(app: { id: string; first_name: string | null; email
   const nextStep = `https://apex-financial.org/get-licensed?applicationId=${encodeURIComponent(app.id)}`;
   try {
     const response = await resend.emails.send({
-      from: "Galaxy Financial <notifications@apex-financial.org>",
+      from: BRAND_FROM,
       to: [app.email],
       subject: `${first}, your next step with Galaxy`,
       html: `${SPAM_NOTE_HTML}

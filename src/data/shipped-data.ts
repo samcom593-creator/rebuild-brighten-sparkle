@@ -13,6 +13,60 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "The new-agent 'Start here' guide stopped telling all 58 new agents they were on step 1. It read checkboxes nobody ticks; it now reads their real profile, training, license and first deal.",
+    detail: "FirstLoginGuide reads profiles name+phone, onboarding_progress, license_status, agents.first_deal_at; checkboxes stay as a manual override. 5 tests, 3 fail on the old guide.",
+    commit: "onboard-guide-facts",
+  },
+  {
+    ts: "today",
+    label: "Xcel course progress now lands on the recruit's record. The daily Xcel report arrived fine but nothing wrote it back, so every licensing stage was frozen; 47 applications updated, 7 more students matched, and history was applied without messaging anyone.",
+    detail: "WP1: fn_match_xcel_students (email, agent email, phone, name window; labelled, never overwrites) + fn_apply_xcel_progress forward-only, backfill guard on 5 milestone reactions, staged unmatched/proof-review panels on Pre-Licensing, doctor #42.",
+    commit: "wp1-onboarding",
+  },
+  {
+    ts: "today",
+    label: "Unlicensed applicants get one clear path on every page and email: course, upload the receipt, book the licensing call, with a 'questions first' option. No more 'post your screenshot in Slack', no cost claims until Sam sets them, and receipts now alert staff.",
+    detail: "WP2: one scheduling source shared by site and emails, receipt upload accepts PDF and alerts, exam self-report, typo-email prompt, abandoned-application resume link, 72 stuck roadmap rows superseded (never sent), doctor #43.",
+    commit: "wp2-onboarding",
+  },
+  {
+    ts: "today",
+    label: "Every new applicant now has an owner and lands in one follow-up queue with deadlines; Sam's phone gets paged for untouched new recruits instead of 200 unread inbox reminders a day. The day-1/day-3 emails that failed but were marked sent now send for real, with receipts.",
+    detail: "WP3: owner auto-assignment, v_recruit_sla_queue on /dashboard/recruiting and /va-team, single human-contact writer, ntfy pager + daily digest (first name only), interview outcome ask fixed, cc_dispose_interview locked down, Calendly licensing track, doctor #44.",
+    commit: "wp3-onboarding",
+  },
+  {
+    ts: "today",
+    label: "Recruit emails now prove they arrived: bounced addresses are flagged and stop being emailed, texts only count as sent with a real receipt, consent is enforced, and every sender reads 'Sam at Galaxy Financial'.",
+    detail: "WP4: email_events ledger (hashed recipients), bounce flags on applications/agents, next-step SMS honesty + email fallback, BRAND_FROM ratchet, dead crons removed with snapshots, doctor #45.",
+    commit: "wp4-onboarding",
+  },
+  {
+    ts: "today",
+    label: "Licensed hires now run on a clock: contracting has one source of truth, a hire-clock tab shows who is stuck by day, and a staged queue shows who needs a dialer seat or leads (nothing is granted without Sam).",
+    detail: "WP5: contract_review_* as contracting truth, stalled alert repaired, v_licensed_hire_clock, ReadyMode alias table, v_activation_seat_queue staged, NPN override on hire paths, new-hire flow behind a flag (off), doctor #46.",
+    commit: "wp5-onboarding",
+  },
+  {
+    ts: "today",
+    label: "New hires get up to 3 onboarding-call reminders until they book, the first-login guide gained its contracting and onboarding-call steps, and portal-login emails now keep a delivery receipt.",
+    detail: "WP6: my_activation_state() own-row RPC, d2/d5/d10 reminders (new hires only), atomic onboarding-queue claim, duplicate crons removed, staged never-signed-in list, doctor #47.",
+    commit: "wp6-onboarding",
+  },
+  {
+    ts: "today",
+    label: "Discord is safely retired behind one switch, with every path that could post applicant details removed. Celebrations (first deals, milestones, weekly leaderboard) now go to Slack, and offboarding covers Slack.",
+    detail: "WP7: discord_notifications_paused, PII-capable triggers dropped, dead-webhook handling terminal, Slack celebration events (first name + $ only), #unlicensed digest fixed, Slack invite read from settings, doctor #48.",
+    commit: "wp7-onboarding",
+  },
+  {
+    ts: "today",
+    label: "One honest recruiting funnel: a cohort view from applied to first deal that refuses to print a rate it cannot prove, an alarm when applications fall below half their normal pace, and tagged links for every owned channel.",
+    detail: "WP8: mat_recruit_funnel_person + v_recruit_funnel_cohort (admin-only) at /admin/recruit-funnel, v_inflow_alert, owned_link_utms, deprecated wrong views, apex-doctor drop-in loader + #49.",
+    commit: "wp8-onboarding",
+  },
+  {
+    ts: "today",
     label: "The agent faces on the recruiting page no longer load off someone else's server. The three avatars under 'Real agents · real receipts' were pulled live from a third-party cartoon-avatar API on every page load — the day that service rate-limits, gets blocked on a corporate network, or goes down, a recruit deciding whether to join sees three broken images directly under the word 'Real'. They're now drawn in the browser from each agent's initials: zero network calls, identical look. The same sweep found and killed a setup query that stamped a stock-avatar URL onto every real agent's profile, and added a guard so no stock, generated, or placeholder image service can ship to the site again.",
     detail: "Testimonials.tsx fetched 3 avatars from api.dicebear.com (raw <img>, no onError fallback — so a DiceBear outage = permanent broken image on the highest-trust conversion surface). Replaced with an inline initials <div> (aria-hidden; the name is adjacent text) carrying each card's accent color; zero third-party HTTP. SWEEP (multiplier mandate) found a second instance the forbidden-language banlist couldn't see: admin IntegrationsSettings.tsx section 6 backfilled profiles.avatar_url from ui-avatars.com for every photo-less agent — a runtime dependency + generated monogram persisted into real records; deleted (AgentAvatar.tsx already renders inline initials for null avatar_url, so the backfill was pure liability). New scripts/check-landing-external-img.mjs bans 14 stock/generated/placeholder image CDNs across all of src/ (dicebear/gravatar/ui-avatars/pravatar/randomuser/unsplash/placehold/picsum/…); zero false positives because real photos live in Supabase storage and photo-less people get inline initials. Proven both directions (clean exit 0; injected dicebear exit 1). Wired into verify:core + pre-commit; check:guard-wiring green (120 guards reachable). hex-color-areas landing ratchet still passes 116/123.",
     commit: "pl-landing-avatar-inline",

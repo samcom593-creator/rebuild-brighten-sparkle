@@ -45,6 +45,9 @@ const NON_LITERAL_REVIEWED: Record<string, string> = {
 const DB_NON_LITERAL_REVIEWED = new Set([
   "log_contact_attempt::p_channel",
   "record_recruiting_outcome::p_channel", // raises invalid_channel before the insert
+  // WP3 (2026-11-10): the single human-contact writer. v_channel is coerced to an
+  // admitted word (else 'manual') before the insert.
+  "fn_log_human_contact::v_channel",
 ]);
 
 /** RPCs whose p_channel argument is written straight into application_contact_log.channel. */
@@ -184,7 +187,8 @@ describe("application_contact_log.channel writes use admitted words", () => {
 
   const db = migrationSites();
   it("the newest migration body of every DB writer uses an admitted channel", () => {
-    expect(db.some((s) => s.fn === "unified_mark_contacted")).toBe(true);
+    // WP3 made fn_log_human_contact the single DB writer; unified_mark_contacted calls it.
+    expect(db.some((s) => s.fn === "fn_log_human_contact")).toBe(true);
     const refused = db.filter((s) => s.literal && !ADMITTED.includes(s.value)).map((s) => `${s.fn}: '${s.value}'`);
     expect(refused).toEqual([]);
     const unreviewed = db.filter((s) => !s.literal && !DB_NON_LITERAL_REVIEWED.has(`${s.fn}::${s.value}`));

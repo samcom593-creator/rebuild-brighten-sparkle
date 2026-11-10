@@ -32,13 +32,20 @@ export function useOnboardingExceptionFacts(options: { enabled?: boolean; realti
       // else, or on a failed read, the rows keep agents.has_dialer_login as before.
       const ids = rows.map((r) => r.agent_id).filter(Boolean);
       const states: Array<{ agent_id: string; dialer_active_derived: boolean | null }> = [];
-      for (let i = 0; i < ids.length; i += 100) {
-        const part = await supabase
-          .from(WP5_RELATION.dialerState as never)
-          .select("agent_id, dialer_active_derived")
-          .in("agent_id", ids.slice(i, i + 100));
-        if (part.error) return rows;
-        states.push(...((part.data ?? []) as unknown as typeof states));
+      // The dialer enrichment is optional: a thrown or returned error keeps the base facts
+      // (agents.has_dialer_login) rather than blanking every surface that reads this hook.
+      try {
+        for (let i = 0; i < ids.length; i += 100) {
+          const part = await supabase
+            .from(WP5_RELATION.dialerState as never)
+            .select("agent_id, dialer_active_derived")
+            .in("agent_id", ids.slice(i, i + 100));
+          if (part.error) return rows;
+          states.push(...((part.data ?? []) as unknown as typeof states));
+        }
+      } catch (e) {
+        console.warn("[onboarding-facts] dialer state unavailable; using agents.has_dialer_login", e);
+        return rows;
       }
       return mergeDialerState(rows, states);
     },

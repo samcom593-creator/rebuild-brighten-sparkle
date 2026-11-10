@@ -75,7 +75,13 @@ function terminatesBeforeNextStatement(text, at) {
     if (c === '(') { depth++; i++; continue; }
     if (c === ')') { depth = Math.max(0, depth - 1); i++; continue; }
     if (c === ';') return { ok: true };               // terminated
-    if (depth === 0 && STATEMENT_START.test(text.slice(i, i + 12))) {
+    // A keyword only starts a statement at a word boundary ("undo" is not DO), and
+    // `ON CONFLICT ... DO NOTHING | DO UPDATE` is a clause of the INSERT, not a DO block
+    // (WP8 2026-11-10: an INSERT ... VALUES ($json$...$json$) ON CONFLICT DO NOTHING was
+    // reported as an unterminated body).
+    if (depth === 0 && !/[A-Za-z0-9_]/.test(text[i - 1] ?? '') && STATEMENT_START.test(text.slice(i, i + 12))) {
+      const clause = /^DO\s+(NOTHING|UPDATE)\b/i.exec(text.slice(i, i + 24));
+      if (clause) { i += clause[0].length; continue; }
       return { ok: false, token: text.slice(i, i + 40).split('\n')[0] };
     }
     i++;
@@ -155,6 +161,9 @@ const FIXTURES = [
   ['-- comment inside a body is body text', "CREATE FUNCTION f() RETURNS int AS $b$\n-- note\nSELECT 1 $b$ LANGUAGE sql;\nCREATE TABLE t(a int);\n", 0],
   ['unterminated body', "CREATE FUNCTION f() RETURNS int AS $function$ BEGIN RETURN 1; END $function$\nCREATE TABLE t(a int);\n", 1],
   ['unterminated after a commented tag', "-- see $h$\nCREATE FUNCTION f() RETURNS int AS $h$ SELECT 1 $h$\nCREATE TABLE t(a int);\n", 1],
+  ['ON CONFLICT DO NOTHING after a dollar-quoted value', "INSERT INTO s(k, v) VALUES ('a', $j${\"x\":1}$j$)\nON CONFLICT (k) DO NOTHING;\nCREATE TABLE t(a int);\n", 0],
+  ['ON CONFLICT DO UPDATE after a dollar-quoted value', "INSERT INTO s(k, v) VALUES ('a', $j$x$j$) ON CONFLICT (k) DO UPDATE SET v = excluded.v;\nCREATE TABLE t(a int);\n", 0],
+  ['DO block after an unterminated body is still caught', "CREATE FUNCTION f() RETURNS int AS $f$ SELECT 1 $f$ LANGUAGE sql\nDO $d$ BEGIN END $d$;\n", 1],
   ['never-closed body', "CREATE FUNCTION f() RETURNS int AS $x$ SELECT 1;\n", 1],
 ];
 

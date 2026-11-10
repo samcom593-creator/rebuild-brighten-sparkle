@@ -11,7 +11,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { HireClockRow } from "@/lib/hireClock";
 
-const db = vi.hoisted(() => ({ rows: [] as Array<Record<string, unknown>>, error: null as null | { message: string } }));
+const db = vi.hoisted(() => ({ rows: [] as unknown[], error: null as null | { message: string } }));
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {

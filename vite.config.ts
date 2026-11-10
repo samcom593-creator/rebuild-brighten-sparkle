@@ -178,8 +178,15 @@ export default defineConfig(({ mode }) => ({
       includeAssets: ["favicon.ico", "apple-touch-icon.png", "masked-icon.svg"],
       manifest: {
         id: "/",
-        name: "APEX Financial OS",
-        short_name: "APEX OS",
+        // Galaxy rebrand 2026-10-08 (PL-GALAXY-AFLAC): this is the manifest
+        // vite-plugin-pwa GENERATES into dist/manifest.webmanifest and serves.
+        // The Oct-8 rename only touched public/manifest.webmanifest, which the
+        // plugin overwrites at build time — so the served name stayed "APEX
+        // Financial OS" for a month while the HTML head said Galaxy. Keep these
+        // consistent with src/config/brand.ts; scripts/check-manifest-brand.mjs
+        // gates it so this surface can't drift from the brand again.
+        name: "Galaxy Financial OS",
+        short_name: "Galaxy OS",
         description: "Run recruiting, contracting, training, production, and agency operations from your phone.",
         theme_color: "#0a0f1a",
         background_color: "#0a0f1a",

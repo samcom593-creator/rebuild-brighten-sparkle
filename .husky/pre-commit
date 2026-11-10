@@ -32,6 +32,17 @@ if match '^(index\.html|src/components/landing/HeroSection\.tsx|scripts/check-vs
   node scripts/check-vsl-sync.mjs
 fi
 
+# ---------- check-manifest-brand (2026-11-10) ----------
+# Trigger: the real served-manifest source (vite.config.ts VitePWA block), its
+# decoy copy (public/manifest.webmanifest), the brand source of truth, or the
+# script itself. The PWA name read "APEX Financial OS" for a month post-Galaxy
+# because the rebrand edited public/manifest.webmanifest — a file vite-plugin-pwa
+# overwrites at build — and the src/-only brand ratchet never saw vite.config.ts.
+if match '^(vite\.config\.ts|public/manifest\.webmanifest|src/config/brand\.ts|scripts/check-manifest-brand\.mjs)$'; then
+  echo "[pre-commit] manifest/brand file staged — running check:manifest-brand…"
+  node scripts/check-manifest-brand.mjs
+fi
+
 # ---------- check-probe-timer-span (MP-521) ----------
 # Trigger: the health banner itself or the guard. probe() must load its own
 # supabase client BEFORE arming the 6s abort and sampling the latency clock, or

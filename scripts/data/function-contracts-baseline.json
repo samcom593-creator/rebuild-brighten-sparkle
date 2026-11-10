@@ -45,7 +45,6 @@
       "dedupe-aged-leads",
       "detect-duplicates",
       "detect-inactive-agents",
-      "discord-leaderboards",
       "gcal-sync",
       "generate-award-graphics",
       "generate-magic-link",

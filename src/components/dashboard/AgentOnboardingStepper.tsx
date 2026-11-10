@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -25,6 +25,9 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { resolveBrand } from "@/config/brand";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { looseSupabase } from "@/lib/looseSupabase";
+import { toast } from "sonner";
 import { SCHEDULING_LINKS, TEAM_COMMUNITY_LINKS } from "@/lib/apexConfig";
 import { TRAINING_ROUTES } from "@/lib/trainingRoutes";
 import { cn } from "@/lib/utils";
@@ -301,8 +304,38 @@ function StepAction({ step }: { step: OnboardingStep }) {
   );
 }
 
+// WP7: own-row "I've joined Slack". Joining happens in Slack, which this app
+// cannot see until Sam grants users:read.email, so the agent marks it. It is a
+// UX completion signal only, never an authorization input, and the RPC
+// (mark_slack_joined) can only touch the caller's own agent record.
+function MarkSlackJoinedButton({ onDone }: { onDone: () => void }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      className="mt-3 h-8 text-xs"
+      disabled={busy}
+      onClick={async () => {
+        setBusy(true);
+        const { error } = await looseSupabase.rpc("mark_slack_joined");
+        setBusy(false);
+        if (error) {
+          toast.error(`Could not save that: ${error.message}`);
+          return;
+        }
+        toast.success("Marked as joined. Welcome to the team Slack.");
+        onDone();
+      }}
+    >
+      <Check className="mr-1.5 h-3.5 w-3.5" /> I've joined Slack
+    </Button>
+  );
+}
+
 export function AgentOnboardingStepper({ agentId }: { agentId: string }) {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const queryKey = ["agent-onboarding-roadmap", agentId] as const;
   const detailsKey = ["agent-onboarding-launch-details", agentId] as const;
   const query = useQuery({
@@ -468,6 +501,8 @@ export function AgentOnboardingStepper({ agentId }: { agentId: string }) {
                     <p className="mt-2 text-[12px] font-medium text-muted-foreground">Unlocks after the earlier required milestones.</p>
                   )}
                   <StepAction step={step} />
+                  {step.key === "slack" && step.status !== "complete" && Boolean(user?.id)
+                    && detailsQuery.data?.agent?.user_id === user?.id && <MarkSlackJoinedButton onDone={refresh} />}
                 </div>
               </div>
             </li>

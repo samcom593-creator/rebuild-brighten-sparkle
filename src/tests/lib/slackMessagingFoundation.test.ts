@@ -217,6 +217,52 @@ describe("Slack delivery lease + interview no-show (20260826053000)", () => {
       .toContain('event_type: "free_leads.weekly_summary"');
   });
 
+  it("WP7 celebrations carry a first name and dollars only, never client data", () => {
+    for (const eventType of ["production.first_deal", "production.mtd_milestone", "leaderboard.weekly"]) {
+      expect(SLACK_TEMPLATED_EVENT_TYPES).toContain(eventType);
+      expect(renderSlackEventText(eventType, {})).not.toBeNull();
+      expect(SLACK_EDGE_EMITTERS[eventType]).toMatch(/^cron:apex-(production-celebrations|weekly-leaderboard)-slack$/);
+    }
+    const hostile = {
+      agentFirstName: "Edwin Ramirez-Long",
+      productCategory: "Final Expense",
+      annualPremium: 1234.5,
+      clientName: "LEAK-NAME",
+      clientPhone: "602-555-0147",
+      clientEmail: "leak@example.invalid",
+    };
+    const first = renderSlackEventText("production.first_deal", hostile)!;
+    expect(first).toContain("*Edwin*");
+    expect(first).not.toContain("Ramirez");
+    expect(first).toContain("$1,235");
+    expect(first).toContain("Final Expense");
+    for (const leak of ["LEAK", "602-555", "@example"]) expect(first).not.toContain(leak);
+
+    const tier = renderSlackEventText("production.mtd_milestone", { ...hostile, tier: 25000, monthLabel: "Nov 2026" })!;
+    expect(tier).toContain("$25K Club");
+    expect(tier).toContain("Nov 2026");
+    expect(tier).not.toContain("LEAK");
+
+    const board = renderSlackEventText("leaderboard.weekly", {
+      weekLabel: "Nov 9 – Nov 15",
+      entries: [
+        { firstName: "Edwin Ramirez", alp: 9000, clientName: "LEAK" },
+        { firstName: "Jontay", alp: 5000 },
+        { firstName: "Cari", alp: 4000 },
+        { firstName: "Meja", alp: 3000 },
+        { firstName: "Morgan", alp: 2000 },
+        { firstName: "Sixth", alp: 1000 },
+      ],
+    })!;
+    expect(board).toContain(":first_place_medal: Edwin — $9,000");
+    expect(board).toContain("5. Morgan — $2,000");
+    expect(board).not.toContain("Sixth");
+    expect(board).not.toContain("Ramirez");
+    expect(board).not.toContain("LEAK");
+    // A hostile URL never becomes a link.
+    expect(renderSlackEventText("production.first_deal", { openUrl: "https://evil.example/x" })).not.toContain("evil.example");
+  });
+
   it("health probe reports route coverage and receipt stats and never launders unknown into ok", () => {
     expect(health).toContain('rpc("slack_outbox_emitters")');
     expect(health).toContain('rpc("slack_delivery_receipt_stats"');

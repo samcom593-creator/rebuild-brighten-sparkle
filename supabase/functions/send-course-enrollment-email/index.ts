@@ -6,6 +6,7 @@ import { gateResend } from "../_shared/resend-gate.ts";
 import { APP_BASE_URL } from "../_shared/apex.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
 import { DEPARTED_AGENT_COLUMNS, isDepartedAgent } from "../_shared/departed.ts";
+import { readSlackInviteUrl } from "../_shared/slack-invite.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -17,7 +18,9 @@ const resend = gateResend(new Resend(Deno.env.get("RESEND_API_KEY")));
 const BASE_URL = APP_BASE_URL;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const ADMIN_EMAIL = "info@kingofsales.net";
-const SLACK_LINK = "https://join.slack.com/t/apex-financial-co/shared_invite/zt-47rdeq1fr-ETmj8yGBgRcoYVkwfc3DBQ";
+// WP7: read from system_settings.slack_community_invite_url (once per isolate
+// boot; never throws, falls back to the current invite).
+const SLACK_LINK = await readSlackInviteUrl();
 const ROADMAP_LINK = `${BASE_URL}/agent-portal`;
 
 async function generateMagicToken(

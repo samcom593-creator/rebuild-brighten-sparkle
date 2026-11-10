@@ -27,6 +27,10 @@ export const SLACK_TEMPLATED_EVENT_TYPES = [
   "recruiting.bounty_reversed",
   "agent.hired",
   "recruiting.milestone",
+  // WP7 (2026-11-10): the momentum moments that used to exist only on Discord.
+  "production.first_deal",
+  "production.mtd_milestone",
+  "leaderboard.weekly",
 ] as const;
 
 export type SlackTemplatedEventType = (typeof SLACK_TEMPLATED_EVENT_TYPES)[number];
@@ -41,6 +45,10 @@ export const SLACK_EDGE_EMITTERS: Readonly<Record<string, string>> = {
   "production.personal_record": "cron:apex-personal-records-15min",
   "recruiting.bounty_qualified": "cron:apex-recruiter-bounties-15min",
   "recruiting.bounty_reversed": "rpc:set_recruiter_bounty_status",
+  // WP7: queued by pg_cron SQL enqueuers (migration 20261111100610).
+  "production.first_deal": "cron:apex-production-celebrations-slack",
+  "production.mtd_milestone": "cron:apex-production-celebrations-slack",
+  "leaderboard.weekly": "cron:apex-weekly-leaderboard-slack",
 };
 
 export const SLACK_DEFAULT_URLS = {
@@ -77,6 +85,22 @@ function usd(value: unknown): string {
       .format(Math.max(0, amount))
     : "$0";
 }
+
+// First name only, even if a caller passes a full name: team channels carry a
+// producer's first name and dollars, never more (WP7 / 2026-09-26 rule).
+function firstNameOnly(value: unknown, fallback: string): string {
+  const first = (typeof value === "string" ? value.trim() : "").split(/\s+/)[0] ?? "";
+  return slackText(first, 40) || slackText(fallback, 40);
+}
+
+const MTD_TIER_LABEL: Readonly<Record<number, string>> = {
+  25_000: "$25K Club",
+  40_000: "$40K Club",
+  75_000: "$75K Elite",
+  100_000: "$100K Legend",
+};
+
+const LEADERBOARD_MEDALS = [":first_place_medal:", ":second_place_medal:", ":third_place_medal:"];
 
 export function isSlackTemplatedEventType(eventType: string): eventType is SlackTemplatedEventType {
   return (SLACK_TEMPLATED_EVENT_TYPES as readonly string[]).includes(eventType);
@@ -202,6 +226,41 @@ export function renderSlackEventText(
     const contracting = safeSlackUrl(p.contractingUrl, SLACK_DEFAULT_URLS.contractingOps);
     const bits = [code ? `code ${code}` : "", mgr ? `manager ${mgr}` : "", lic].filter(Boolean).join(" · ");
     return `:dart: NEW HIRE — *${agent}*${bits ? ` (${bits})` : ""}\nContracting: <${contracting}|start contracting> · <${url}|open profile>`;
+  }
+
+  if (eventType === "production.first_deal") {
+    // reads: agentFirstName, productCategory, annualPremium, openUrl. The
+    // policyholder is never read.
+    const agent = firstNameOnly(p.agentFirstName, "A new Galaxy producer");
+    const productText = slackText(p.productCategory, 60);
+    const product = productText ? ` · ${productText}` : "";
+    const url = safeSlackUrl(p.openUrl, SLACK_DEFAULT_URLS.productionDashboard);
+    return `:tada: *FIRST DEAL* — *${agent}* just opened their book: ${usd(p.annualPremium)} ALP${product}. Rally around them.\n<${url}|Open production dashboard>`;
+  }
+
+  if (eventType === "production.mtd_milestone") {
+    // reads: agentFirstName, tier, monthLabel, openUrl. Tier only, by design.
+    const agent = firstNameOnly(p.agentFirstName, "A Galaxy producer");
+    const tier = Number(p.tier ?? 0);
+    const label = MTD_TIER_LABEL[tier]
+      ?? (Number.isFinite(tier) && tier > 0 ? `${usd(tier)} month` : "a monthly milestone");
+    const month = slackText(p.monthLabel, 20);
+    const url = safeSlackUrl(p.openUrl, SLACK_DEFAULT_URLS.productionDashboard);
+    return `:gem: *${agent}* just joined the *${label}*${month ? ` for ${month}` : " this month"}.\n<${url}|Open production dashboard>`;
+  }
+
+  if (eventType === "leaderboard.weekly") {
+    // reads: weekLabel, entries[{ firstName, alp }] (top 5), openUrl.
+    const week = slackText(p.weekLabel, 40);
+    const entries = Array.isArray(p.entries) ? p.entries.slice(0, 5) : [];
+    const lines = entries.map((raw, i) => {
+      const e = (raw ?? {}) as Record<string, unknown>;
+      const medal = LEADERBOARD_MEDALS[i] ?? `${i + 1}.`;
+      return `${medal} ${firstNameOnly(e.firstName, "Galaxy producer")} — ${usd(e.alp)}`;
+    });
+    const body = lines.length ? lines.join("\n") : "No posted production this week.";
+    const url = safeSlackUrl(p.openUrl, SLACK_DEFAULT_URLS.productionDashboard);
+    return `:trophy: *Weekly leaderboard${week ? ` — ${week}` : ""}*\n${body}\n<${url}|Open production dashboard>`;
   }
 
   if (eventType === "free_leads.weekly_summary") {

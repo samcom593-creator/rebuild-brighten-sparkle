@@ -10,10 +10,13 @@ import { CONTRACTING_PROFILE_URL, NOT_CONTRACTED_YET } from "../_shared/contract
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
 import { escapeHtml } from "../_shared/notify-caller-policy.ts";
 import { isDepartedAgent } from "../_shared/departed.ts";
+import { readSlackInviteUrl } from "../_shared/slack-invite.ts";
 
 const resend = gateResend(new Resend(Deno.env.get("RESEND_API_KEY")));
 const ADMIN_EMAIL = "info@kingofsales.net";
-const SLACK_LINK = "https://join.slack.com/t/apex-financial-co/shared_invite/zt-47rdeq1fr-ETmj8yGBgRcoYVkwfc3DBQ";
+// WP7: read from system_settings.slack_community_invite_url (once per isolate
+// boot; never throws, falls back to the current invite).
+const SLACK_LINK = await readSlackInviteUrl();
 const PORTAL_LINK = "https://apex-financial.org/agent-portal";
 const CONTRACTING_LINK = CONTRACTING_PROFILE_URL;
 const TRAINING_LINK = "https://apex-financial.org/dashboard/training/library";

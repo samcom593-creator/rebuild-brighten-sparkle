@@ -16,7 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
  *
  * Backed by the admin-only RPC admin_team_engagement(): the one place that puts an
  * agent's LOGIN truth (auth.users.last_sign_in_at) next to which onboarding emails
- * were actually SENT (Discord / course / get-licensed), whether the one-tap portal
+ * were actually SENT (Slack invite / course / get-licensed), whether the one-tap portal
  * link was sent and used, and course-module progress. Non-admins get zero rows, so
  * this renders nothing for them rather than an empty table that looks like data.
  */
@@ -40,7 +40,10 @@ type Row = {
   discord_last_error: string | null;
   course_sent_at: string | null;
   get_licensed_sent_at: string | null;
-  has_discord_access: boolean;
+  // WP7: Discord retired 2026-10-05. The agent's own "I've joined Slack" mark
+  // or a verified identity link (admin_team_engagement returns it).
+  slack_joined_at: string | null;
+  slack_joined_source: string | null;
   has_training_course: boolean;
   modules_total: number | null;
   modules_completed: number | null;
@@ -61,7 +64,7 @@ const FILTERS: { key: FilterKey; label: string; hint: string; test: (r: Row) => 
   { key: "never_logged_in", label: "Never logged in", hint: "Has an account, has never signed in", test: (r) => r.has_login && !r.last_sign_in_at },
   { key: "no_login", label: "No account", hint: "No auth user attached — cannot log in at all", test: (r) => !r.has_login },
   { key: "silent_7d", label: "Silent 7d+", hint: "Logged in before, not in the last 7 days", test: (r) => !!r.last_sign_in_at && (r.days_since_login ?? 0) >= 7 },
-  { key: "licensed_no_discord", label: "Licensed, no Discord email", hint: "Licensed but the Discord invite was never sent", test: (r) => r.license_status === "licensed" && !r.discord_sent_at },
+  { key: "licensed_no_discord", label: "Licensed, no Slack invite", hint: "Licensed but the Slack invite email was never sent (its queue kind is still named 'discord')", test: (r) => r.license_status === "licensed" && !r.discord_sent_at },
   { key: "portal_unused", label: "Portal link unused", hint: "Got the one-tap login email, never used it, never signed in", test: (r) => !!r.portal_email_last_sent_at && !r.portal_link_used_at && !r.last_sign_in_at },
   { key: "no_course_progress", label: "Course, no progress", hint: "Enrolled in the course, zero modules completed", test: (r) => r.has_training_course && (r.modules_completed ?? 0) === 0 },
 ];
@@ -135,7 +138,7 @@ export function TeamEngagementPanel({ defaultOpen = false }: {
             <CardTitle className="text-base sm:text-lg">Team engagement {open ? "▾" : "▸"}</CardTitle>
             <p className="text-xs text-muted-foreground mt-1">
               {rows.length > 0
-                ? `${counts.never_logged_in} never logged in · ${counts.silent_7d} silent 7d+ · ${counts.licensed_no_discord} licensed w/o Discord · tap to ${open ? "collapse" : "open"}`
+                ? `${counts.never_logged_in} never logged in · ${counts.silent_7d} silent 7d+ · ${counts.licensed_no_discord} licensed w/o Slack invite · tap to ${open ? "collapse" : "open"}`
                 : "Who has logged in, which emails really went out, where each person is stuck."}
             </p>
           </button>
@@ -194,7 +197,7 @@ export function TeamEngagementPanel({ defaultOpen = false }: {
                     <TableHead>Hired</TableHead>
                     <TableHead>Last login</TableHead>
                     <TableHead>Portal link</TableHead>
-                    <TableHead>Discord</TableHead>
+                    <TableHead>Slack</TableHead>
                     <TableHead>Course</TableHead>
                     <TableHead>Manager</TableHead>
                   </TableRow>
@@ -241,7 +244,7 @@ export function TeamEngagementPanel({ defaultOpen = false }: {
                         ) : (
                           <span className="text-amber-500">not sent</span>
                         )}
-                        {r.has_discord_access && <div className="text-muted-foreground">access on</div>}
+                        {r.slack_joined_at && <div className="text-muted-foreground">joined{r.slack_joined_source === "verified_link" ? " (verified)" : ""}</div>}
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-xs">
                         {r.has_training_course ? (

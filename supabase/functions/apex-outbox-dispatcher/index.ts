@@ -88,6 +88,7 @@ async function authorize(req: Request, sb: any): Promise<DispatchAuthorization |
 async function callFunction(
   name: string,
   body: Record<string, unknown>,
+  options: { rawBody?: boolean } = {},
 ): Promise<Record<string, unknown> | null> {
   const response = await fetch(`${SUPABASE_URL}/functions/v1/${name}`, {
     method: "POST",
@@ -104,6 +105,9 @@ async function callFunction(
   if (text) {
     try {
       const parsed = JSON.parse(text);
+      // WP7: rawBody lets a caller read a structured refusal (Discord paused,
+      // webhook dead) instead of a flattened "reported failure" string.
+      if (options.rawBody) return parsed as Record<string, unknown>;
       if (parsed?.ok === false || parsed?.error) {
         throw new Error(`${name}: ${parsed.error ?? "reported failure"}`);
       }
@@ -314,9 +318,13 @@ async function deliverContact(
 }
 
 async function deliverApplicationSlackInvite(sb: any, event: any): Promise<DispatchResult> {
-  // Workspace access is a hired-agent benefit, never an applicant funnel step.
-  // The database trigger that used to enqueue application invitations is
-  // removed by 20260826150000; this guard makes old/manual rows fail closed.
+  // Policy (WP7, matching Sam's later directives 2026-09-07 and MP-357 "if
+  // they're unlicensed I want them in the Slack"): unlicensed APPLICANTS join
+  // through the shared invite in their day-0 email and live in #unlicensed.
+  // THIS destination is the separate hired-agent invite email, which re-checks
+  // v_slack_invite_eligibility at send time, so it stays agents-only. The
+  // trigger that queued application rows here was removed by 20260826150000;
+  // this guard makes old/manual rows fail closed.
   if (event.aggregate_type !== "agent") {
     return {
       state: "manual_action_required",
@@ -383,13 +391,42 @@ async function deliverApplicationSlackInvite(sb: any, event: any): Promise<Dispa
   };
 }
 
+// WP7: outcomes that are FINAL and must never be retried or dead-lettered as
+// if they were outages. The main loop records them with their own status.
+class TerminalDispatchError extends Error {
+  constructor(readonly status: "cancelled_retired" | "skipped_destination_dead", message: string) {
+    super(message);
+    this.name = "TerminalDispatchError";
+  }
+}
+
+async function callDiscordNotify(body: Record<string, unknown>, label: string): Promise<Record<string, unknown>> {
+  const response = await callFunction("discord-webhook-notify", body, { rawBody: true }) ?? {};
+  if (response.reason === "paused") {
+    throw new TerminalDispatchError(
+      "cancelled_retired",
+      `Discord retired (discord_notifications_paused=true); ${label} not delivered and will not be retried`,
+    );
+  }
+  if (response.terminal === "webhook_dead") {
+    throw new TerminalDispatchError(
+      "skipped_destination_dead",
+      `Discord webhook is dead (HTTP ${String(response.http_status ?? "?")}, code ${String(response.discord_code ?? "?")}); ${label} skipped`,
+    );
+  }
+  if (response.ok === false || response.error) {
+    throw new Error(`discord-webhook-notify: ${String(response.error ?? "reported failure")}`);
+  }
+  return response;
+}
+
 async function deliverDiscord(sb: any, event: any): Promise<string | undefined> {
   // MP-337: licensing milestones (XCEL course progress, exam, license) — the
   // Slack leg was live; this is the Discord half the directive asked for. The
   // payload is the milestone row (no candidate contact details), so no DB read.
   if (event.aggregate_type === "licensing_milestone") {
     const p = (event.payload ?? {}) as Record<string, unknown>;
-    const response = await callFunction("discord-webhook-notify", {
+    const response = await callDiscordNotify({
       event_type: "licensing_milestone",
       details: {
         candidate_name: p.candidateName ?? null,
@@ -397,7 +434,7 @@ async function deliverDiscord(sb: any, event: any): Promise<string | undefined> 
         state: p.state ?? null,
         exam_date: p.examDate ?? null,
       },
-    });
+    }, "licensing milestone");
     if (response?.suppressed === true) throw new Error("Discord licensing-milestone delivery was suppressed");
     if (response?.ok !== true) throw new Error("Discord did not confirm licensing-milestone delivery");
     return typeof response.provider_message_id === "string" ? response.provider_message_id : undefined;
@@ -408,7 +445,7 @@ async function deliverDiscord(sb: any, event: any): Promise<string | undefined> 
     // there is no DB read and no chance of pulling candidate names into a chat
     // channel — a milestone is about the recruiter, not the people hired.
     const p = (event.payload ?? {}) as Record<string, unknown>;
-    const response = await callFunction("discord-webhook-notify", {
+    const response = await callDiscordNotify({
       event_type: "recruiting_milestone",
       details: {
         agent_name: p.agentName ?? "An agent",
@@ -416,9 +453,12 @@ async function deliverDiscord(sb: any, event: any): Promise<string | undefined> 
         hires: p.hires ?? 0,
         period: p.period ?? "month",
       },
-    });
+    }, "recruiting milestone");
     if (response?.suppressed === true) throw new Error("Discord recruiting-milestone delivery was suppressed");
-    return undefined;
+    // WP7: this branch used to return undefined without checking ok, so 64
+    // rows read "delivered" with no proof. Same contract as every other branch.
+    if (response?.ok !== true) throw new Error("Discord did not confirm recruiting-milestone delivery");
+    return typeof response.provider_message_id === "string" ? response.provider_message_id : undefined;
   }
 
   if (event.aggregate_type === "agent" && event.event_type === "agent.hired") {
@@ -432,7 +472,7 @@ async function deliverDiscord(sb: any, event: any): Promise<string | undefined> 
     const { data: manager } = hired.manager_id
       ? await sb.from("agents").select("display_name").eq("id", hired.manager_id).maybeSingle()
       : { data: null };
-    const response = await callFunction("discord-webhook-notify", {
+    const response = await callDiscordNotify({
       event_type: "agent_activated",
       details: {
         agent_name: profile?.full_name ?? hired.display_name ?? "New Galaxy agent",
@@ -440,7 +480,7 @@ async function deliverDiscord(sb: any, event: any): Promise<string | undefined> 
         hired_by: manager?.display_name ?? "Galaxy Financial",
         start_date: hired.start_date ?? new Date().toISOString().slice(0, 10),
       },
-    });
+    }, "hire");
     if (response?.suppressed === true) throw new Error("Discord hire delivery was suppressed");
     if (response?.ok !== true) throw new Error("Discord did not confirm hire delivery");
     return typeof response.provider_message_id === "string" ? response.provider_message_id : undefined;
@@ -459,7 +499,7 @@ async function deliverDiscord(sb: any, event: any): Promise<string | undefined> 
       .eq("id", external.agent_id)
       .maybeSingle();
     const profile = Array.isArray(agent?.profile) ? agent.profile[0] : agent?.profile;
-    const response = await callFunction("discord-webhook-notify", {
+    const response = await callDiscordNotify({
       event_type: "deal_closed",
       delivery_scope: "primary",
       details: {
@@ -473,7 +513,7 @@ async function deliverDiscord(sb: any, event: any): Promise<string | undefined> 
         face_amount: external.face_amount,
         aop: external.annual_premium,
       },
-    });
+    }, "external deal");
     if (response?.suppressed === true) throw new Error("Discord external-deal delivery was suppressed");
     if (response?.ok !== true) throw new Error("Discord did not confirm external-deal delivery");
     return typeof response.provider_message_id === "string" ? response.provider_message_id : undefined;
@@ -525,7 +565,7 @@ async function deliverDiscord(sb: any, event: any): Promise<string | undefined> 
     : (agent as any)?.profile;
   const agentName = profile?.full_name ?? (agent as any)?.display_name ?? "Galaxy agent";
 
-  const response = await callFunction("discord-webhook-notify", {
+  const response = await callDiscordNotify({
     event_type: "deal_closed",
     delivery_scope: event.destination === "discord_subagency" ? "subagency" : "primary",
     details: {
@@ -540,7 +580,7 @@ async function deliverDiscord(sb: any, event: any): Promise<string | undefined> 
       aop: deal.annualized_commissionable_premium ?? deal.annual_premium,
       caption: deal.community_caption ?? null,
     },
-  });
+  }, "deal");
   if (response?.suppressed === true) {
     throw new Error("Discord delivery was suppressed; the durable outbox will retry it");
   }
@@ -1013,6 +1053,8 @@ Deno.serve(async (req) => {
     manual: 0,
     retried: 0,
     deadLettered: 0,
+    // WP7: final outcomes recorded as cancelled_retired / skipped_destination_dead.
+    terminal: 0,
     persistenceFailures: 0,
     // MP-314: a send that happened but could not be fully recorded. Counted
     // separately from persistenceFailures because the operator question is
@@ -1166,6 +1208,31 @@ Deno.serve(async (req) => {
             error: "The provider accepted this send; its delivery record could not be completed. It will NOT be retried.",
             deliveryConfirmed: false,
           });
+        }
+        continue;
+      }
+      if (error instanceof TerminalDispatchError) {
+        // WP7: final by construction (Discord paused, or webhook deleted).
+        // Recorded once, never retried, never a dead letter: a dead letter
+        // reads as an outage someone should fix, and there is nothing to fix.
+        const { error: terminalError } = await sb.from("outbox_events").update({
+          status: error.status,
+          processed_at: new Date().toISOString(),
+          locked_at: null,
+          last_error_redacted: redactError(error),
+        }).eq("id", event.id);
+        if (attempt?.id) {
+          await sb.from("delivery_attempts").update({
+            status: "permanent_failure",
+            error_redacted: redactError(error),
+            finished_at: new Date().toISOString(),
+          }).eq("id", attempt.id);
+        }
+        if (terminalError) {
+          summary.persistenceFailures += 1;
+          console.error("[apex-outbox-dispatcher] terminal state persistence failed", redactError(terminalError));
+        } else {
+          summary.terminal += 1;
         }
         continue;
       }

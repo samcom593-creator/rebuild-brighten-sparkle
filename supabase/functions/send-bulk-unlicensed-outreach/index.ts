@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { readSlackInviteUrl } from "../_shared/slack-invite.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,7 +9,9 @@ const corsHeaders = {
 };
 
 const ADMIN_EMAIL = "info@kingofsales.net";
-const SLACK_LINK = "https://join.slack.com/t/apex-financial-co/shared_invite/zt-47rdeq1fr-ETmj8yGBgRcoYVkwfc3DBQ";
+// WP7: read from system_settings.slack_community_invite_url (once per isolate
+// boot; never throws, falls back to the current invite).
+const SLACK_LINK = await readSlackInviteUrl();
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {

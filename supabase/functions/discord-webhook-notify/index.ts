@@ -3,7 +3,7 @@
  * Exactly 8 production-ready event types. No extras.
  *
  * Events:
- *  1. new_application   — first_name, last_name, state, @instagram?
+ *  1. new_application   — state only (anonymous since WP7; never a name)
  *  2. agent_activated   — agent_name, hired_by, referred_by?, @instagram?
  *  3. deal_closed       — agent_name, aop, product_type, @instagram? + milestone auto-check
  *  4. streak_7day       — agent_name, streak_days, @instagram?
@@ -21,6 +21,7 @@ import {
   VALID_DEAL_STATUSES,
   type DiscordAudience,
 } from "../_shared/apex.ts";
+import { sendToDiscord, WebhookDeadError } from "./send.ts";
 
 // ─── Discord embed colors ─────────────────────────────────────────────────────
 const CLR = {
@@ -70,8 +71,10 @@ function rankEmoji(i: number): string {
   return i < 3 ? RANK_MEDALS[i] : `${i + 1}.`;
 }
 
-// New applications are visible growth wins for the whole production/numbers
-// room. Pipeline operations remain in the private recruiting channel.
+// WP7 (2026-11-10): candidate information is Sam-only (2026-09-26 rule). The
+// new_application embed below is anonymous: no name, no Instagram handle. Its
+// only trigger (trg_application_discord) was dropped; the admin test ping in
+// IntegrationsSettings still uses it.
 const RECRUITING_EVENTS = new Set(["agent_activated", "pipeline_leaderboard", "licensing_milestone"]);
 
 function getDiscordAudience(eventType: string): DiscordAudience {
@@ -132,15 +135,15 @@ async function resolveValidTokens(sb: SupabaseClient<any, any, any>): Promise<st
 // ─── Embed builders ───────────────────────────────────────────────────────────
 
 function embedNewApplication(d: Record<string, unknown>) {
-  const name  = `${d.first_name ?? "?"} ${d.last_name ?? ""}`.trim();
-  const state = (d.state as string) || "—";
-  const insta = ig(d.instagram as string);
+  // Anonymous on purpose: the old embed printed "First Last @handle" under a
+  // footer claiming "No personal information shared".
+  const state = typeof d.state === "string" && /^[A-Z]{2}$/.test(d.state) ? d.state : null;
   return {
     embeds: [{
       title:       "🌱 New Growth — Application In",
-      description: `**${name}${insta}** just applied from **${state}**. The team is growing — invite someone who should build with us.`,
+      description: `A new application just came in${state ? ` from **${state}**` : ""}. The team is growing — invite someone who should build with us.`,
       color:       CLR.blue,
-      footer:      { text: "No personal information shared" },
+      footer:      { text: "Names and contact details are never posted here" },
       timestamp:   new Date().toISOString(),
     }],
   };
@@ -396,40 +399,8 @@ function buildPayload(event_type: string, details: Record<string, unknown>): Rec
 }
 
 // ─── Send to Discord with retry ───────────────────────────────────────────────
-async function sendToDiscord(
-  webhookUrl: string,
-  payload: Record<string, unknown>,
-): Promise<{ httpStatus: number; messageId: string | null }> {
-  const backoff = [0, 800, 2000, 5000];
-  for (let attempt = 0; attempt < 4; attempt++) {
-    if (attempt > 0) await new Promise(r => setTimeout(r, backoff[attempt]));
-    const target = new URL(webhookUrl);
-    target.searchParams.set("wait", "true");
-    const res = await fetch(target.toString(), {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify(payload),
-    });
-    if (res.status === 429) {
-      const body = await res.json().catch(() => ({}));
-      const wait = ((body as any).retry_after ?? 2) * 1000;
-      await new Promise(r => setTimeout(r, wait));
-      continue;
-    }
-    if (res.ok || res.status === 204) {
-      const body = await res.text();
-      let messageId: string | null = null;
-      try {
-        messageId = String(JSON.parse(body)?.id ?? "") || null;
-      } catch { // empty-catch-allow:discord-204-has-no-json-body
-        // Discord may return 204 without a response body.
-      }
-      return { httpStatus: res.status, messageId };
-    }
-    if (attempt === 3) throw new Error(`Discord ${res.status}: ${await res.text().catch(() => "")}`);
-  }
-  throw new Error("Discord retry loop exhausted");
-}
+// sendToDiscord lives in ./send.ts (WP7) so the dead-webhook path is testable:
+// 404/10015 and 401/50027 throw WebhookDeadError after ONE call.
 
 // ─── Resolve webhook URL ──────────────────────────────────────────────────────
 // ─── Milestone auto-check (fires after deal_closed) ──────────────────────────
@@ -558,6 +529,22 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // WP7: the kill switch is checked HERE first so a paused Discord is a
+    // distinct, terminal answer ({ok:false, reason:'paused'}) the outbox can
+    // record as cancelled_retired, instead of the generic "suppressed" that it
+    // retried into a dead letter. Rate-limit suppression keeps its old shape.
+    const { data: pausedRow } = await supabase
+      .from("system_settings")
+      .select("value")
+      .eq("key", "discord_notifications_paused")
+      .maybeSingle();
+    if (String((pausedRow as { value?: string } | null)?.value ?? "").trim().toLowerCase() === "true") {
+      return new Response(
+        JSON.stringify({ ok: false, suppressed: true, reason: "paused", error: "discord_paused", event_type }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     // v26 NO-SPAM RULE · resolveDiscordWebhook throws "DISCORD_SUPPRESSED"
     // when the kill switch is on or rate limit is exceeded. Catch + return
     // ok=false silently — no error to the caller.
@@ -573,13 +560,33 @@ Deno.serve(async (req: Request) => {
     } catch (err: any) {
       if (err?.message === "DISCORD_SUPPRESSED") {
         return new Response(
-          JSON.stringify({ ok: true, suppressed: true, event_type, delivery_scope: deliveryScope }),
+          JSON.stringify({ ok: true, suppressed: true, reason: "rate_limited", event_type, delivery_scope: deliveryScope }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
       throw err;
     }
-    providerMessageId = (await sendToDiscord(primaryWebhookUrl, payload)).messageId;
+    try {
+      providerMessageId = (await sendToDiscord(primaryWebhookUrl, payload)).messageId;
+    } catch (err) {
+      if (err instanceof WebhookDeadError) {
+        // 200 on purpose: the request was valid and the answer is final. The
+        // outbox records skipped_destination_dead and never retries it.
+        await logAnnounceFailure(supabase, `webhook dead for ${event_type}: ${err.message}`);
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            terminal: "webhook_dead",
+            error: "webhook_dead",
+            http_status: err.httpStatus,
+            discord_code: err.discordCode,
+            event_type,
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      throw err;
+    }
 
     // After deal_closed: auto-check monthly milestones
     if (primaryWebhookUrl && event_type === "deal_closed" && details.agent_id && details.aop) {

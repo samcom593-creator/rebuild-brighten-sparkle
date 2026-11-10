@@ -87,7 +87,18 @@ ${inner}
 </div>`;
 }
 
-async function postDiscord(alert: any): Promise<boolean> {
+async function postDiscord(alert: any): Promise<boolean | "paused"> {
+  // WP7 (2026-11-10): Discord is retired behind ONE switch,
+  // system_settings.discord_notifications_paused. This path read webhook keys
+  // directly and ignored it. Paused is not a failure: ntfy and email still
+  // carry every alert, so it is reported as "paused", never as "post failed".
+  const { data: pausedRow } = await supabase
+    .from("system_settings")
+    .select("value")
+    .eq("key", "discord_notifications_paused")
+    .maybeSingle();
+  if (String((pausedRow as any)?.value ?? "").trim().toLowerCase() === "true") return "paused";
+
   // License-returned alerts are contracting work, not production/numbers chat.
   // Keep all other Pulse alerts on the existing production route.
   // Team Discord channels carry TEAM-facing celebrations only. Everything else —
@@ -274,8 +285,9 @@ async function send(alert: any): Promise<{ email_id: string | null; sent_sms: bo
   }
   if (channels.has("discord")) {
     try {
-      sent_discord = await postDiscord(alert);
-      if (!sent_discord) errs.push("discord: post failed");
+      const discordResult = await postDiscord(alert);
+      sent_discord = discordResult === true;
+      if (discordResult === false) errs.push("discord: post failed");
     } catch (e: any) {
       errs.push(`discord: ${e?.message ?? String(e)}`);
     }

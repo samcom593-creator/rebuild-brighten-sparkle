@@ -10,6 +10,7 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
 import { nanpTenDigits } from "../_shared/nanp-phone.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { readSlackInviteUrl } from "../_shared/slack-invite.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -144,7 +145,8 @@ serve(async (req: Request) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const resendKey = Deno.env.get("RESEND_API_KEY")!;
-    const slackLink = "https://join.slack.com/t/apex-financial-co/shared_invite/zt-47rdeq1fr-ETmj8yGBgRcoYVkwfc3DBQ";
+    // WP7: one source for the invite (system_settings.slack_community_invite_url).
+    const slackLink = await readSlackInviteUrl();
 
     const sb = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
     const resend = gateResend(new Resend(resendKey));

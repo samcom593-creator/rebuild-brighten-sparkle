@@ -22,6 +22,7 @@ import { stripComments } from "./lib/strip-comments.mjs";
  *
  * A win post is agent + carrier + product + money. Never who bought it.
  */
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -196,6 +197,104 @@ for (const file of walk(FUNCTIONS)) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// SQL side (WP7, 2026-11-10). The edge scan above never looked at database
+// functions, and that is where the applicant leak lived: trg_fn_new_app_notify
+// built an embed from NEW.phone / NEW.email and net.http_post'ed it to the team
+// Discord webhook, and trg_fn_application_discord sent first+last name and the
+// Instagram handle. Neither touches a client_* column, so the edge rule above
+// was blind to both.
+//
+// Scope: ONLY migrations passed as arguments or staged in git. Never history:
+// supabase/migrations is not a model of the live database (functions are
+// redefined and dropped later), and a guard that went red on a definition that
+// no longer exists would be permanently red. The deployed state is apex-doctor
+// drop-in #48's job (public.v_channel_health reads pg_proc with this same rule).
+//
+// Rules, per function body:
+//   1. A chat sink (Discord/Slack webhook key or URL, discord-webhook-notify,
+//      slack-announce, or an outbox row bound for 'discord' / 'slack') together
+//      with contact data (NEW.phone, NEW.email, NEW.first_name||, NEW.last_name||,
+//      or a 'phone'/'email' payload key fed from a value).
+//   2. A trigger function that calls net.http_post without an EXCEPTION handler:
+//      a malformed URL makes pg_net THROW, which rolls back the parent write.
+// Email senders that carry the recipient's own address are deliberately NOT
+// flagged: an email has to be addressed to someone.
+// ---------------------------------------------------------------------------
+const SQL_CHAT_SINK =
+  /(discord_webhook|discord(?:app)?\.com\/api\/webhooks|hooks\.slack\.com|discord-webhook-notify|slack-announce|'(?:discord|discord_subagency|slack)'\s*,)/i;
+const SQL_CONTACT = [
+  /\bnew\.(?:phone|email)\b/i,
+  /\bnew\.(?:first_name|last_name)\s*\|\|/i,
+  /'(?:phone|email)'\s*,\s*(?:new\.|v_|p\.|a\.|ap\.|coalesce\s*\(|nullif\s*\()/i,
+];
+
+function stripSqlComments(sql) {
+  // Line comments first (this also removes commented-out preimages such as
+  // "-- | CREATE OR REPLACE FUNCTION ..."), then block comments.
+  return sql.replace(/--[^\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
+}
+
+function sqlFunctions(sql) {
+  const out = [];
+  const head = /create\s+(?:or\s+replace\s+)?function\s+([\w."]+)\s*\(/gi;
+  for (const m of sql.matchAll(head)) {
+    const rest = sql.slice(m.index);
+    const tag = rest.match(/\bas\s+(\$[A-Za-z_]*\$)/i);
+    if (!tag) continue;
+    const start = rest.indexOf(tag[1], tag.index) + tag[1].length;
+    const end = rest.indexOf(tag[1], start);
+    if (end === -1) continue;
+    out.push({
+      name: m[1].replace(/"/g, ""),
+      header: rest.slice(0, tag.index),
+      body: rest.slice(start, end),
+      offset: m.index,
+    });
+  }
+  return out;
+}
+
+function stagedMigrations() {
+  try {
+    return execFileSync("git", ["diff", "--cached", "--name-only", "--diff-filter=ACMR", "--", "supabase/migrations"], {
+      cwd: repoRoot,
+      encoding: "utf8",
+    })
+      .split("\n")
+      .filter((f) => f.endsWith(".sql"));
+  } catch { // empty-catch-allow:not-a-git-checkout
+    return [];
+  }
+}
+
+const argSql = process.argv.slice(2).filter((f) => f.endsWith(".sql"));
+const sqlFiles = argSql.length ? argSql : stagedMigrations();
+let sqlFunctionsScanned = 0;
+for (const rel of sqlFiles) {
+  const abs = path.isAbsolute(rel) ? rel : path.join(repoRoot, rel);
+  if (!fs.existsSync(abs)) continue;
+  const sql = stripSqlComments(fs.readFileSync(abs, "utf8"));
+  const shown = path.relative(repoRoot, abs);
+  for (const fn of sqlFunctions(sql)) {
+    sqlFunctionsScanned += 1;
+    const line = sql.slice(0, fn.offset).split("\n").length;
+    if (SQL_CHAT_SINK.test(fn.body)) {
+      const hit = SQL_CONTACT.find((rx) => rx.test(fn.body));
+      if (hit) {
+        violations.push(
+          `${shown}:${line} — function ${fn.name} sends contact data (${hit.source}) toward a chat sink. Team channels carry first names and dollars only; candidate details are Sam-only.`,
+        );
+      }
+    }
+    if (/returns\s+trigger/i.test(fn.header) && /net\.http_post/i.test(fn.body) && !/exception\s+when/i.test(fn.body)) {
+      violations.push(
+        `${shown}:${line} — trigger function ${fn.name} calls net.http_post with no EXCEPTION handler. A malformed URL makes pg_net throw and rolls back the parent write.`,
+      );
+    }
+  }
+}
+
 if (violations.length) {
   console.error(
     `\n✗ check:discord-pii — ${violations.length} client-identity leak(s) into outbound webhooks.\n`,
@@ -206,5 +305,6 @@ if (violations.length) {
 }
 
 console.log(
-  `✓ check:discord-pii — ${filesScanned} webhook-posting functions scanned, ${taintedVars} PII-derived local(s) tracked, 0 leaks.`,
+  `✓ check:discord-pii — ${filesScanned} webhook-posting functions scanned, ${taintedVars} PII-derived local(s) tracked, ` +
+    `${sqlFunctionsScanned} SQL function(s) in ${sqlFiles.length} staged/argument migration(s) checked, 0 leaks.`,
 );

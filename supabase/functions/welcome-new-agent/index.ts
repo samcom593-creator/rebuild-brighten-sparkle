@@ -5,6 +5,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { CONTRACTING_PROFILE_URL, NOT_CONTRACTED_YET } from "../_shared/contracting-profile.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { readSlackInviteUrl } from "../_shared/slack-invite.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -30,7 +31,9 @@ interface WelcomeEmailRequest {
 
 const defaultCourseLink = "https://partners.xcelsolutions.com/afe";
 const PORTAL_LINK = "https://apex-financial.org/agent-portal";
-const SLACK_LINK = "https://join.slack.com/t/apex-financial-co/shared_invite/zt-47rdeq1fr-ETmj8yGBgRcoYVkwfc3DBQ";
+// WP7: read from system_settings.slack_community_invite_url (once per isolate
+// boot; never throws, falls back to the current invite).
+const SLACK_LINK = await readSlackInviteUrl();
 const ONBOARDING_CALL_LINK = "https://calendly.com/apexfinancialempire/apex-onboarding-call";
 const APEX_TRAINING_LINK = "https://apex-financial.org/dashboard/training/library";
 

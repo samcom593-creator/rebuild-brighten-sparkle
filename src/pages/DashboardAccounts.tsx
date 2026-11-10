@@ -20,7 +20,6 @@ import {
   Link2,
   LockKeyhole,
   GraduationCap,
-  MessageCircle,
   BadgeDollarSign,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -77,6 +76,12 @@ type AccountRole = "admin" | "manager" | "agent" | "va_manager" | "va";
 
 const errorMessage = (error: unknown, fallback: string) => error instanceof Error ? error.message : fallback;
 
+interface SlackJoinRow {
+  id: string;
+  slack_joined_at: string | null;
+  slack_joined_source: string | null;
+}
+
 interface AccountInfo {
   id: string;
   hasAgentRecord: boolean;
@@ -92,7 +97,13 @@ interface AccountInfo {
   onboardingStage: string;
   contractPercentage: number | null;
   portalPasswordSet: boolean;
-  hasDiscordAccess: boolean;
+  // WP7: Slack is the team workspace (Discord retired 2026-10-05). This is the
+  // agent's own "I've joined Slack" mark or a verified identity link. It is
+  // shown as information and deliberately NOT a readiness check: a self-report
+  // is not verified, and has_discord_access (retired, set true for 4 of 76)
+  // used to inflate "Needs Setup" by about 66 people.
+  slackJoinedAt: string | null;
+  slackJoinedSource: string | null;
   hasTrainingCourse: boolean;
 }
 
@@ -131,16 +142,27 @@ export default function DashboardAccounts() {
     try {
       // Roles are the account authority. Starting from agents hid VA/admin
       // identities that intentionally have no producer row.
-      const [agentsResult, rolesResult] = await Promise.all([
+      const [agentsResult, rolesResult, slackResult] = await Promise.all([
         supabase
           .from("v_agents_full")
-          .select("id, user_id, status, is_deactivated, created_at, license_status, onboarding_stage, contract_percentage, portal_password_set, has_discord_access, has_training_course")
+          .select("id, user_id, status, is_deactivated, created_at, license_status, onboarding_stage, contract_percentage, portal_password_set, has_training_course")
           .order("created_at", { ascending: false }),
         supabase.from("user_roles").select("user_id, role"),
+        // agents.slack_joined_at is newer than the generated types and than
+        // v_agents_full's column list, so it is read from agents directly.
+        looseSupabase
+          .from<SlackJoinRow>("agents")
+          .select("id, slack_joined_at, slack_joined_source")
+          .limit(5000),
       ]);
 
       if (agentsResult.error) throw agentsResult.error;
       if (rolesResult.error) throw rolesResult.error;
+      // A failed Slack read only loses an informational label, never the page.
+      const slackMap = new Map<string, { at: string; source: string | null }>();
+      for (const row of slackResult.error ? [] : slackResult.data ?? []) {
+        if (row.slack_joined_at) slackMap.set(row.id, { at: row.slack_joined_at, source: row.slack_joined_source });
+      }
 
       const validAgents = (agentsResult.data || []).filter(a => a.user_id);
       const agentMap = new Map<string, (typeof validAgents)[number]>();
@@ -220,7 +242,7 @@ export default function DashboardAccounts() {
         if (role === "manager" || role === "va_manager") managersCount++;
         if (role === "agent" || role === "va") agentsCount++;
         if (agent?.status === "pending") pendingCount++;
-        if (agent && (!agent.portal_password_set || !agent.has_discord_access || agent.contract_percentage == null || (agent.license_status === "licensed" && !agent.has_training_course))) needsSetupCount++;
+        if (agent && (!agent.portal_password_set || agent.contract_percentage == null || (agent.license_status === "licensed" && !agent.has_training_course))) needsSetupCount++;
 
         return {
           id: agent?.id ?? userId,
@@ -236,7 +258,8 @@ export default function DashboardAccounts() {
           onboardingStage: agent?.onboarding_stage ?? "account only",
           contractPercentage: agent?.contract_percentage == null ? null : Number(agent.contract_percentage),
           portalPasswordSet: agent?.portal_password_set === true,
-          hasDiscordAccess: agent?.has_discord_access === true,
+          slackJoinedAt: agent ? slackMap.get(agent.id)?.at ?? null : null,
+          slackJoinedSource: agent ? slackMap.get(agent.id)?.source ?? null : null,
           hasTrainingCourse: agent?.has_training_course === true,
         };
       }).filter((account): account is AccountInfo => account !== null)
@@ -502,12 +525,17 @@ export default function DashboardAccounts() {
       { label: "Profile", done: account.hasProfile, icon: UserCheck },
       ...(account.hasAgentRecord ? [
       { label: "Password", done: account.portalPasswordSet, icon: LockKeyhole },
-      { label: "Discord", done: account.hasDiscordAccess, icon: MessageCircle },
       { label: "Training", done: account.licenseStatus !== "licensed" || account.hasTrainingCourse, icon: GraduationCap },
       { label: "Comp", done: account.contractPercentage != null, icon: BadgeDollarSign },
       ] : []),
     ];
-    return { checks, complete: checks.filter((check) => check.done).length };
+    const slackNote = !account.hasAgentRecord
+      ? ""
+      : account.slackJoinedAt
+        ? `Slack: joined${account.slackJoinedSource === "verified_link" ? " (verified)" : " (self-reported)"}`
+        : "Slack: not marked joined";
+    const missing = checks.filter((check) => !check.done).map((check) => check.label).join(", ") || "Complete";
+    return { checks, complete: checks.filter((check) => check.done).length, title: [missing, slackNote].filter(Boolean).join(" · ") };
   };
 
   const hasReachableEmail = (account: AccountInfo) => account.hasProfile && account.email.includes("@");
@@ -773,7 +801,7 @@ export default function DashboardAccounts() {
                       </div>
                     </div>
 
-                    <div className="mt-4 border-t border-border pt-3" title={readiness.checks.filter((check) => !check.done).map((check) => check.label).join(", ") || "Complete"}>
+                    <div className="mt-4 border-t border-border pt-3" title={readiness.title}>
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-muted-foreground">Setup readiness</span>
                         <span className={complete ? "text-emerald-400" : "text-amber-400"}>{readiness.complete}/{readiness.checks.length} · {complete ? "Ready" : "Needs setup"}</span>
@@ -831,7 +859,7 @@ export default function DashboardAccounts() {
                           const readiness = readinessFor(account);
                           if (readiness.checks.length === 0) return <span className="text-xs text-muted-foreground">Access account</span>;
                           return (
-                            <div className="space-y-1.5" title={readiness.checks.filter((check) => !check.done).map((check) => check.label).join(", ") || "Complete"}>
+                            <div className="space-y-1.5" title={readiness.title}>
                               <div className="flex items-center justify-between gap-3 text-xs">
                                 <span className={readiness.complete === readiness.checks.length ? "text-emerald-400" : "text-amber-400"}>{readiness.complete}/{readiness.checks.length}</span>
                                 <span className="text-muted-foreground">{readiness.complete === readiness.checks.length ? "Ready" : "Needs setup"}</span>

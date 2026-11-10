@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { looseSupabase } from "@/lib/looseSupabase";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,7 +29,6 @@ interface Props {
 }
 
 interface AgentAccess {
-  has_discord_access: boolean | null;
   portal_password_set: boolean | null;
   source_application_id: string | null;
   license_status: string | null;
@@ -65,7 +65,7 @@ export default function AgentHealthPanel({ agentId }: Props) {
       // agent — including the admin — and the panel never loaded.
       const { data, error } = await supabase
         .from("v_agents_full" as never)
-        .select("has_discord_access, portal_password_set, source_application_id, license_status, crm_setup_link")
+        .select("portal_password_set, source_application_id, license_status, crm_setup_link")
         .eq("id", agentId).maybeSingle();
       if (error) throw error;
       return (data ?? null) as unknown as AgentAccess | null;
@@ -77,7 +77,24 @@ export default function AgentHealthPanel({ agentId }: Props) {
     const link = CONTRACTING_LINK; // one generic link for everyone; staff type no name or email
     navigator.clipboard?.writeText(link).then(() => toast.success("Contracting link copied"), () => toast.error("Copy failed"));
   };
-  const hasDiscord = access.data?.has_discord_access;
+  // WP7: Slack replaced Discord (retired 2026-10-05). has_discord_access was
+  // true for 4 of 76 active agents and nothing ever set it, so the chip graded
+  // a dead requirement. slack_joined_at is newer than v_agents_full's column
+  // list, so it is read from agents directly (column granted to authenticated).
+  const slack = useQuery<{ slack_joined_at: string | null; slack_joined_source: string | null } | null>({
+    queryKey: ["agent-slack-joined", agentId],
+    queryFn: async () => {
+      const { data, error } = await looseSupabase
+        .from<{ slack_joined_at: string | null; slack_joined_source: string | null }>("agents")
+        .select("slack_joined_at, slack_joined_source")
+        .eq("id", agentId)
+        .maybeSingle();
+      if (error) throw error;
+      return data ?? null;
+    },
+  });
+  const slackJoined = Boolean(slack.data?.slack_joined_at);
+  const slackLabel = slack.data?.slack_joined_source === "verified_link" ? "Slack (verified)" : "Slack";
   const portalPasswordSet = access.data?.portal_password_set;
   const sourceApplicationId = access.data?.source_application_id;
   const licenseStatus = access.data?.license_status;
@@ -148,7 +165,7 @@ export default function AgentHealthPanel({ agentId }: Props) {
       <Card className="p-3">
         <div className="text-sm font-semibold mb-2">Team access</div>
         <div className="flex flex-wrap gap-2">
-          <Chip ok={!!hasDiscord} label="Discord" icon={Hash} />
+          <Chip ok={slackJoined} label={slackLabel} icon={Hash} />
           <Chip ok={!!portalPasswordSet} label="Portal login" icon={KeyRound} />
         </div>
       </Card>

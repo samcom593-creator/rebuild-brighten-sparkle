@@ -34,9 +34,12 @@ describe("invite-created account lifecycle", () => {
 
   it("surfaces account readiness and editable comp in the admin account screen", () => {
     const accounts = source("pages/DashboardAccounts.tsx");
-    for (const phrase of ["Setup readiness", "Needs Setup", "Comp Percentage", "portal_password_set", "has_discord_access", "has_training_course", "legacy record", "md:hidden"]) {
+    for (const phrase of ["Setup readiness", "Needs Setup", "Comp Percentage", "portal_password_set", "slack_joined_at", "has_training_course", "legacy record", "md:hidden"]) {
       expect(accounts).toContain(phrase);
     }
+    // WP7: Discord is retired; its flag no longer grades readiness or Needs Setup.
+    expect(accounts).not.toContain("!agent.has_discord_access");
+    expect(accounts).not.toContain('label: "Discord"');
     expect(accounts).toContain("parsedContractPercentage > 200");
     expect(accounts).toContain("max={200}");
     expect(accounts).toContain('"staff_existing_auth_user_ids"');

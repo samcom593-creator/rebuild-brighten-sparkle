@@ -7,7 +7,6 @@
     "bot-sql": "TS2345",
     "check-daily-awards": "TS18046,TS2339",
     "check-low-aop-friday": "TS2345",
-    "discord-leaderboards": "TS2345",
     "insuracloud-sync": "TS2345",
     "notify-test-scheduled": "TS18046",
     "send-candidate-confirmation": "TS2345",

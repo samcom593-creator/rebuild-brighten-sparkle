@@ -61,7 +61,9 @@ interface OnboardingSnapshot {
   license_status: string | null;
   contracted_at: string | null;
   has_training_course: boolean | null;
-  has_discord_access: boolean | null;
+  // WP7: Discord retired 2026-10-05; Slack is the team workspace.
+  slack_joined_at: string | null;
+  slack_joined_source: string | null;
   field_training_started_at: string | null;
   onboarding_completed_at: string | null;
   first_deal_at: string | null;
@@ -121,7 +123,7 @@ export function AgentOnboardingCommandCenter({
       // typed loose adapter for this narrow query.
       const { data, error } = await looseSupabase
         .from<OnboardingSnapshot>("agents")
-        .select("user_id,license_status,contracted_at,has_training_course,has_discord_access,field_training_started_at,onboarding_completed_at,first_deal_at")
+        .select("user_id,license_status,contracted_at,has_training_course,slack_joined_at,slack_joined_source,field_training_started_at,onboarding_completed_at,first_deal_at")
         .eq("id", agentId)
         .maybeSingle();
       if (error) throw error;
@@ -174,7 +176,11 @@ export function AgentOnboardingCommandCenter({
       { label: "Contracts sent", done: sentCount > 0 || !!row?.contracted_at, icon: FileSignature },
       { label: "Carrier active", done: activeCount > 0, icon: BadgeCheck },
       { label: "Training access", done: !!row?.has_training_course, icon: BookOpenCheck },
-      { label: "Discord access", done: !!row?.has_discord_access, icon: MessageCircle },
+      {
+        label: row?.slack_joined_source === "verified_link" ? "Slack (verified)" : "Slack joined",
+        done: !!row?.slack_joined_at,
+        icon: MessageCircle,
+      },
       { label: "Field training", done: !!row?.field_training_started_at, icon: Check },
       { label: "First deal", done: !!row?.first_deal_at, icon: Check },
     ];

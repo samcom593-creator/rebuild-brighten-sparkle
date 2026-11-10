@@ -30,7 +30,6 @@ const criticalRecruitingFiles = [
   "src/components/callcenter/CallCenterVoiceRecorder.tsx",
   "src/components/dashboard/QuickEmailMenu.tsx",
   "supabase/functions/discord-webhook-notify/index.ts",
-  "supabase/functions/discord-leaderboards/index.ts",
   "supabase/functions/send-course-enrollment-email/index.ts",
   "supabase/functions/send-unlicensed-process-update/index.ts",
   "supabase/functions/send-daily-checkin-prompt/index.ts",

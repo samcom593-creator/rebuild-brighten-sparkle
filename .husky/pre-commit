@@ -43,6 +43,17 @@ if match '^(vite\.config\.ts|public/manifest\.webmanifest|src/config/brand\.ts|s
   node scripts/check-manifest-brand.mjs
 fi
 
+# ---------- check-landing-external-img (2026-11-10, Website Integrity Bot) ----------
+# Trigger: any staged src/ file or the script itself. The landing Testimonials
+# section fetched its three agent avatars live from api.dicebear.com and the
+# admin integrations-SQL backfilled profiles.avatar_url from ui-avatars.com —
+# a third-party image CDN on the public conversion surface (runtime SPOF) and a
+# generated monogram shown as if it were a real photo under a real agent's name.
+if match '^(src/.*\.(tsx?|jsx?|html|css)$|scripts/check-landing-external-img\.mjs$)'; then
+  echo "[pre-commit] src file staged — running check:landing-external-img…"
+  node scripts/check-landing-external-img.mjs
+fi
+
 # ---------- check-probe-timer-span (MP-521) ----------
 # Trigger: the health banner itself or the guard. probe() must load its own
 # supabase client BEFORE arming the 6s abort and sampling the latency clock, or

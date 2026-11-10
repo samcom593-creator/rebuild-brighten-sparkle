@@ -72,13 +72,12 @@ CREATE POLICY "authenticated_upload_plaque_photos" ON storage.objects FOR INSERT
 DROP POLICY IF EXISTS "public_read_plaque_photos" ON storage.objects;
 CREATE POLICY "public_read_plaque_photos" ON storage.objects FOR SELECT TO public USING (bucket_id = 'public');
 
--- 6. Auto-avatars for every profile missing one
-UPDATE public.profiles p
-SET avatar_url = 'https://ui-avatars.com/api/?name=' || REPLACE(COALESCE(p.full_name, 'Agent'), ' ', '+') ||
-  '&background=' || CASE (ABS(HASHTEXT(p.id::text)) % 5) WHEN 0 THEN '0a0f1a' WHEN 1 THEN '0d1526' WHEN 2 THEN '1a1035' WHEN 3 THEN '0d2925' ELSE '1a1a2e' END ||
-  '&color=' || CASE (ABS(HASHTEXT(p.id::text)) % 4) WHEN 0 THEN '22d3a5' WHEN 1 THEN 'f59e0b' WHEN 2 THEN '8b5cf6' ELSE '06b6d4' END ||
-  '&size=512&bold=true&font-size=0.42&length=2&rounded=true'
-WHERE (p.avatar_url IS NULL OR p.avatar_url = '') AND p.full_name IS NOT NULL AND LENGTH(p.full_name) > 0;
+-- 6. Avatars: a profile with no photo intentionally renders an inline
+--    initials avatar client-side (src/components/ui/AgentAvatar.tsx). Do NOT
+--    backfill avatar_url with a third-party avatar CDN (ui-avatars/dicebear/
+--    gravatar): it bakes a runtime single-point-of-failure into every real
+--    agent's record and shows a generated monogram as if it were a photo.
+--    Leave avatar_url NULL and let the component draw the initials.
 
 -- 7. Comp grid
 CREATE TABLE IF NOT EXISTS public.agent_carrier_comp (

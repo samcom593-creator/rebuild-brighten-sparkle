@@ -7,7 +7,7 @@ const TESTIMONIALS = [
     carrier: "Guarantee Trust Life",
     quote: "Literally within two days I already did almost $4,000–$5,000 production. The systems are there.",
     metric: "$5K in 2 days",
-    photo: "https://api.dicebear.com/9.x/initials/svg?seed=Alex&backgroundColor=10b981",
+    accent: "#10b981",
   },
   {
     name: "Moody",
@@ -15,7 +15,7 @@ const TESTIMONIALS = [
     carrier: "American Home Life",
     quote: "Sam told me to do $5K a week. I did it in 2 days. Sitting on my ass reading the script.",
     metric: "$5K week 1",
-    photo: "https://api.dicebear.com/9.x/initials/svg?seed=Moody&backgroundColor=06b6d4",
+    accent: "#06b6d4",
   },
   {
     name: "Chukwudi",
@@ -23,7 +23,7 @@ const TESTIMONIALS = [
     carrier: "Mutual of Omaha",
     quote: "Just sticking to the script. Sam gave us a script and told us stick to it and you'll close.",
     metric: "$34K production",
-    photo: "https://api.dicebear.com/9.x/initials/svg?seed=Chukwudi&backgroundColor=f59e0b",
+    accent: "#f59e0b",
   },
 ];
 
@@ -54,7 +54,13 @@ export function Testimonials() {
                 "{t.quote}"
               </p>
               <div className="flex items-center gap-3 pt-4 border-t border-border/40">
-                <img src={t.photo} alt={t.name} width={48} height={48} loading="lazy" decoding="async" className="h-12 w-12 rounded-full ring-2 ring-primary/30" />
+                <div
+                  aria-hidden
+                  className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full ring-2 ring-primary/30 font-display text-base font-bold text-white tabular-nums"
+                  style={{ backgroundColor: t.accent }}
+                >
+                  {t.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
+                </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-foreground">{t.name} · {t.state}</p>
                   <p className="text-xs text-muted-foreground">Writing {t.carrier}</p>

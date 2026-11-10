@@ -7,6 +7,7 @@ import { SCHEDULING_LINKS } from "../_shared/apex.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
 import { safeEqual } from "../_shared/send-floor.ts";
 import { DEPARTED_AGENT_COLUMNS, isBannedUser, isDepartedAgent } from "../_shared/departed.ts";
+import { parseWp3Cutoff } from "../_shared/wp3-cutoff.ts";
 
 // PL-WIB-DIGEST-GATE (2026-10-25). verify_jwt is false and this handler read no
 // credential, so any POST ran the applicant drip. The followup_*_sent_at stamps
@@ -52,7 +53,7 @@ async function readNudgeCutoff(): Promise<string | null> {
   const { data, error } = await supabaseAdmin.from("system_settings")
     .select("value").eq("key", "wp3_recruit_sla_cutoff").maybeSingle();
   if (error || !data?.value) return null;
-  const ms = Date.parse(String(data.value).replace(" ", "T"));
+  const ms = parseWp3Cutoff(data.value);
   return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
 }
 

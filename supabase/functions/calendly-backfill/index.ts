@@ -25,6 +25,7 @@
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { classifyCalendlyEvent, inviteeIsNoShow, utmApplicationId } from "../_shared/calendly-classify.ts";
+import { parseWp3Cutoff } from "../_shared/wp3-cutoff.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -164,6 +165,12 @@ Deno.serve(async (req) => {
       `&count=100&sort=start_time:asc`;
 
     let seen = 0, upserted = 0, failed = 0, noShows = 0;
+    // Forward-only (WP3): a Calendly no-show becomes an outcome here only for calls
+    // scheduled after go-live. This reconcile walks 90 days, and every new no_show
+    // outcome enqueues a candidate.interview_noshow Slack post, so syncing history
+    // would burst one post per old no-show. Missing/garbled setting = sync none.
+    const { data: cutRow } = await sb.from("system_settings").select("value").eq("key", "wp3_recruit_sla_cutoff").maybeSingle();
+    const noShowCutoffMs = parseWp3Cutoff(cutRow?.value);
     const errors: string[] = [];
 
     while (next) {
@@ -226,7 +233,8 @@ Deno.serve(async (req) => {
             upserted++;
             // Calendly's own no-show mark becomes the outcome through the one disposition
             // writer, only while no person has recorded one.
-            if (inviteeIsNoShow(i) && ev.status !== "canceled") {
+            if (inviteeIsNoShow(i) && ev.status !== "canceled"
+                && Number.isFinite(noShowCutoffMs) && Date.parse(ev.start_time) >= noShowCutoffMs) {
               const { data: row } = await sb.from("interview_events")
                 .select("id, outcome").eq("calendly_event_uri", ev.uri).maybeSingle();
               if (row?.id && !row.outcome) {

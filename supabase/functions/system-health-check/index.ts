@@ -277,9 +277,14 @@ serve(async (req) => {
   // to auto_fixed is read back before firing, so a function that never logs a
   // run cannot make it fire every 15 minutes.
   try {
+    // WP4 (2026-11-10): "Licensing Sequences" is gone from this list. Its cron
+    // (apex-licensing-sequences) posted to send-bulk-unlicensed-outreach while
+    // this entry re-fired send-licensing-sequence, so the check named one
+    // endpoint and could fire another; the drip is off by Sam's 10-14 decision
+    // and WP4 deleted the cron. Recruit sequences are graded by
+    // public.v_recruit_sequence_health (apex-doctor #45) instead.
     const cronChecks = [
       { name: "Manager Daily Digest", endpoint: "manager-daily-digest", jobname: "apex-manager-daily-digest" },
-      { name: "Licensing Sequences", endpoint: "send-licensing-sequence", jobname: "apex-licensing-sequences" },
       { name: "Daily Churn Check", endpoint: "check-churn-risk", jobname: "apex-daily-churn-check" },
     ];
     const { data: cronRows, error: cronErr } = await supabase.rpc("fn_cron_jobs_schedule", {

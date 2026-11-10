@@ -25,8 +25,14 @@
 //      because the trigger posts with the anon key.
 //
 // Channels: telegram (via telegram_scheduled_messages → existing Telegram worker)
-//           sms (Twilio REST)
+//           sms (Twilio REST when configured, else carrier email-to-text gateway)
 //           email (Resend)
+//
+// WP4 (2026-11-10): what ends the ladder is decided in ladder.ts. Only a Twilio
+// SID is a delivered SMS; a "gateway:" receipt is best effort, so the email rung
+// runs for the same reminder (488 of 726 reminders in 90 days had gone out as
+// gateway SMS only). The parent row's metadata.email_rung records what the
+// email rung did; apex-doctor #45 alarms on a gateway SMS with no email rung.
 // Order is determined by per-person preferences and which contact details exist.
 //
 // Deploy: 2026-05-19 v1
@@ -36,6 +42,8 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
 import { escapeLikePattern } from "../_shared/like-escape.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { BRAND_FROM, BRAND_REPLY_TO } from "../_shared/email.ts";
+import { runLadder } from "./ladder.ts";
 
 // The trigger dispatches a row seconds after insert, and the nudge sweep never
 // evaluates a step older than 20h (20261016210500_next_step_quiet_hours.sql).
@@ -54,7 +62,10 @@ const TWILIO_SID = Deno.env.get("TWILIO_ACCOUNT_SID") ?? "";
 const TWILIO_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN") ?? "";
 const TWILIO_FROM = Deno.env.get("TWILIO_MESSAGING_SID") ?? Deno.env.get("TWILIO_FROM") ?? "";
 const RESEND_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
-const RESEND_FROM = Deno.env.get("RESEND_FROM") ?? "Galaxy Financial <hello@apex-financial.org>";
+// WP4: one recruit-facing sender identity (_shared/email.ts). This used to be
+// "Galaxy Financial <hello@...>" with no Reply-To, so a recruit's reply to a
+// stage reminder went to an address nobody was shown to read.
+const RESEND_FROM = Deno.env.get("RESEND_FROM") ?? BRAND_FROM;
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 const resend = gateResend(new Resend(RESEND_KEY));
@@ -276,7 +287,7 @@ async function sendSms(to: string, body: string, application_id: string | null):
 
 async function sendEmail(to: string, subject: string, html: string): Promise<string> {
   if (!RESEND_KEY) throw new Error("Resend not configured");
-  const r = await resend.emails.send({ from: RESEND_FROM, to, subject, html });
+  const r = await resend.emails.send({ from: RESEND_FROM, to, subject, html, reply_to: BRAND_REPLY_TO });
   if ((r as any).error) throw new Error((r as any).error.message);
   return (r as any).data?.id ?? "";
 }
@@ -364,38 +375,34 @@ async function dispatchOne(msg: any, dry: boolean) {
 
   // Mark the queued message as the parent
   const parent_id = msg.id;
-  let delivered = false;
-  let lastError: string | null = null;
+  const smsTo = smartPhone(person.phone);
 
-  // Channel 1: Telegram
-  if (!delivered && person.telegram_chat_id && !person.telegram_opt_out) {
-    try {
-      const tgId = await sendTelegram(person.telegram_chat_id, tgBody, stage.stage_key, msg.dedupe_key);
-      await supabase.from("next_step_messages").update({
-        sent_at: new Date().toISOString(),
-        body: tgBody,
-        recipient: String(person.telegram_chat_id),
-        external_id: tgId ? String(tgId) : null,
-        channel: "telegram",
-      }).eq("id", parent_id);
-      delivered = true;
-    } catch (e: any) {
-      lastError = `telegram: ${e?.message ?? e}`;
-    }
-  }
-
-  // Channel 2: SMS
-  if (!delivered) {
-    const to = smartPhone(person.phone);
-    if (to) {
-      try {
-        const sid = await sendSms(to, smsBody, msg.application_id);
+  // The rung order and what ends the ladder live in ladder.ts (tested there).
+  // WP4: a "gateway:" SMS receipt no longer ends it; the email rung still runs.
+  const ladder = await runLadder({
+    // Channel 1: Telegram
+    telegram: person.telegram_chat_id && !person.telegram_opt_out
+      ? async () => {
+        const tgId = await sendTelegram(person.telegram_chat_id as number, tgBody, stage.stage_key, msg.dedupe_key);
+        await supabase.from("next_step_messages").update({
+          sent_at: new Date().toISOString(),
+          body: tgBody,
+          recipient: String(person.telegram_chat_id),
+          external_id: tgId ? String(tgId) : null,
+          channel: "telegram",
+        }).eq("id", parent_id);
+      }
+      : null,
+    // Channel 2: SMS
+    sms: smsTo
+      ? async () => {
+        const sid = await sendSms(smsTo, smsBody, msg.application_id);
         if (msg.channel !== "telegram") {
           // upgrade the queued parent
           await supabase.from("next_step_messages").update({
             sent_at: new Date().toISOString(),
             body: smsBody,
-            recipient: to,
+            recipient: smsTo,
             external_id: sid,
             channel: "sms",
           }).eq("id", parent_id);
@@ -406,7 +413,7 @@ async function dispatchOne(msg: any, dry: boolean) {
             stage_key: stage.stage_key,
             channel: "sms",
             template_key: msg.template_key,
-            recipient: to,
+            recipient: smsTo,
             body: smsBody,
             sent_at: new Date().toISOString(),
             external_id: sid,
@@ -419,47 +426,57 @@ async function dispatchOne(msg: any, dry: boolean) {
             failed_at: null,
           }).eq("id", parent_id);
         }
-        delivered = true;
-      } catch (e: any) {
-        lastError = `sms: ${e?.message ?? e}`;
+        return sid;
       }
-    }
-  }
+      : null,
+    // Channel 3: Email
+    email: person.email
+      ? async () => {
+        const eid = await sendEmail(person.email as string, emailSubject, emailBody);
+        await logMessage({
+          application_id: msg.application_id,
+          agent_id: msg.agent_id,
+          stage_key: stage.stage_key,
+          channel: "email",
+          template_key: msg.template_key,
+          recipient: person.email,
+          body: emailBody,
+          subject: emailSubject,
+          sent_at: new Date().toISOString(),
+          external_id: eid,
+          fallback_of_id: parent_id,
+        });
+        // A best-effort gateway SMS may already have stamped the parent; keep
+        // that first send time.
+        await supabase.from("next_step_messages").update({
+          sent_at: new Date().toISOString(),
+          failed_at: null,
+        }).eq("id", parent_id).is("sent_at", null);
+        return eid;
+      }
+      : null,
+  });
 
-  // Channel 3: Email
-  if (!delivered && person.email) {
-    try {
-      const eid = await sendEmail(person.email, emailSubject, emailBody);
-      await logMessage({
-        application_id: msg.application_id,
-        agent_id: msg.agent_id,
-        stage_key: stage.stage_key,
-        channel: "email",
-        template_key: msg.template_key,
-        recipient: person.email,
-        body: emailBody,
-        subject: emailSubject,
-        sent_at: new Date().toISOString(),
-        external_id: eid,
-        fallback_of_id: parent_id,
-      });
-      await supabase.from("next_step_messages").update({
-        sent_at: new Date().toISOString(),
-        failed_at: null,
-      }).eq("id", parent_id);
-      delivered = true;
-    } catch (e: any) {
-      lastError = `email: ${e?.message ?? e}`;
-    }
-  }
-
-  if (!delivered) {
+  const lastError = ladder.errors.length ? ladder.errors.join("; ") : null;
+  if (!ladder.anySent) {
     await supabase.from("next_step_messages").update({
       failed_at: new Date().toISOString(),
       error: lastError ?? "no contact channel",
+      metadata: { ...(msg.metadata ?? {}), email_rung: ladder.emailRung },
     }).eq("id", parent_id);
     return { ok: false, error: lastError ?? "no contact channel" };
   }
+
+  // What the email rung did, on the parent: apex-doctor #45 reads an absent
+  // value next to a gateway SMS as "the email rung never ran" (a regression).
+  await supabase.from("next_step_messages").update({
+    metadata: {
+      ...(msg.metadata ?? {}),
+      email_rung: ladder.emailRung,
+      ...(ladder.smsBestEffort ? { sms_best_effort: true } : {}),
+      ...(ladder.emailRung === "failed" && lastError ? { email_error: lastError.slice(0, 300) } : {}),
+    },
+  }).eq("id", parent_id);
 
   // Log event
   await supabase.from("next_step_events").insert({
@@ -471,7 +488,13 @@ async function dispatchOne(msg: any, dry: boolean) {
     payload: { template_key: msg.template_key, parent_message_id: parent_id },
   });
 
-  return { ok: true, parent_id, channel: delivered ? (await supabase.from("next_step_messages").select("channel").eq("id", parent_id).single()).data?.channel : null };
+  return {
+    ok: true,
+    parent_id,
+    channel: ladder.terminal ?? (ladder.smsBestEffort ? "sms_best_effort" : null),
+    email_rung: ladder.emailRung,
+    ...(lastError ? { warnings: lastError } : {}),
+  };
 }
 
 Deno.serve(async (req) => {

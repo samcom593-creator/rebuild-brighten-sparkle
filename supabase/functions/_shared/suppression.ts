@@ -29,6 +29,8 @@ export interface ResendEmailRow {
   created_at?: string | null;
   last_event?: string | null;
   id?: string | null;
+  subject?: string | null;
+  from?: string | null;
 }
 
 export function recipientOf(r: ResendEmailRow): string {
@@ -104,4 +106,86 @@ export async function lookupSuppressed(
   } catch {
     return null;
   }
+}
+
+// ---------------------------------------------------------------------------
+// WP4 (2026-11-10): the email_events ledger.
+//
+// The rows resend-suppression-sync already pulls every hour are the ONLY
+// delivery truth this system has (no Resend webhook; delivered_at is never
+// written anywhere), and Resend's list forgets them after ~30 days. Each row is
+// persisted as a hash of the recipient, its domain, its latest event and a
+// family derived from the subject in SQL (fn_email_events_ingest). The raw
+// address never leaves this function except into email_suppressions, which
+// already holds raw addresses by design.
+// ---------------------------------------------------------------------------
+
+/** Plain address from "Name <a@b.c>" or "a@b.c"; lower-cased and trimmed. */
+export function plainAddress(raw: unknown): string {
+  const s = String(raw ?? "").trim();
+  const m = s.match(/<([^<>]+)>\s*$/);
+  return (m ? m[1] : s).trim().toLowerCase();
+}
+
+/**
+ * sha256 of the lower-cased, trimmed address, lowercase hex. Must equal the SQL
+ * side: encode(sha256(convert_to(lower(btrim(email)), 'UTF8')), 'hex').
+ */
+export async function recipientHash(address: string): Promise<string> {
+  const bytes = new TextEncoder().encode(plainAddress(address));
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+export interface EmailEventRow {
+  resend_id: string;
+  last_event: string;
+  recipient_hash: string;
+  recipient_domain: string | null;
+  subject: string | null;
+  sender: string | null;
+  created_at: string;
+}
+
+export interface EventBatch {
+  events: EmailEventRow[];
+  /** recipient_hash -> raw address, kept in memory only (for the suppression mirror) */
+  addressByHash: Map<string, string>;
+  /** raw address -> its latest send in this batch (created_at, resend id) */
+  latestByAddress: Map<string, { created_at: string; resend_id: string | null }>;
+}
+
+/** Resend list rows -> ingest rows. Rows without an id, a recipient or a send time are skipped. */
+export async function toEventRows(rows: ResendEmailRow[]): Promise<EventBatch> {
+  const events: EmailEventRow[] = [];
+  const addressByHash = new Map<string, string>();
+  const latestByAddress = new Map<string, { created_at: string; resend_id: string | null }>();
+  for (const r of rows) {
+    const id = String(r.id ?? "").trim();
+    const t = r.to;
+    const address = plainAddress(Array.isArray(t) ? (t[0] ?? "") : t);
+    const createdAt = String(r.created_at ?? "").trim();
+    if (!id || !address.includes("@") || !createdAt) continue;
+    const hash = await recipientHash(address);
+    addressByHash.set(hash, address);
+    const prev = latestByAddress.get(address);
+    if (!prev || createdAt > prev.created_at) latestByAddress.set(address, { created_at: createdAt, resend_id: id });
+    events.push({
+      resend_id: id,
+      last_event: String(r.last_event ?? "unknown").toLowerCase(),
+      recipient_hash: hash,
+      recipient_domain: address.split("@").pop() || null,
+      subject: r.subject ?? null,
+      sender: r.from ?? null,
+      created_at: createdAt,
+    });
+  }
+  return { events, addressByHash, latestByAddress };
+}
+
+/** Split into chunks of at most `size` (PostgREST body size stays small). */
+export function chunk<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
 }

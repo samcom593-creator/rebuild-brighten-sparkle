@@ -1,6 +1,17 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { isUnsubscribed, sendEmail } from "../_shared/email.ts";
+import { BRAND_FROM, isUnsubscribed, sendEmail } from "../_shared/email.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+
+// WP4 (2026-11-10). This drip is OFF by Sam's decision of 2026-10-14, after it
+// sent 767 "don't let the momentum slip" emails to ~100 people in 8 days
+// (contact_history holds 8,500 step-3 rows; 342 (application, step) pairs were
+// sent more than once). Two guards so an accidental re-enable cannot repeat it:
+//   1. Sweep mode (no applicationId: the cron path and AutomationHub "run")
+//      refuses unless system_settings.licensing_sequence_enabled = 'true'.
+//      Its cron (apex-licensing-sequences) was deleted by WP4.
+//   2. Every send first checks contact_history for the same
+//      (application_id, licensing_sequence_step_<n>); a hit, or a lookup that
+//      fails, sends nothing. A step goes to a person at most once, ever.
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,8 +21,33 @@ const corsHeaders = {
 // PL-WIB-HEALTH-NO-FIRE (2026-10-21): this file called Resend directly, so its
 // mail carried no unsubscribe link, no List-Unsubscribe header and no
 // email_unsubscribes check, and a placeholder domain went out to bounce. The
-// shared helper does all three; the From line is kept as it was.
-const FROM = "Sam · Galaxy Financial <notifications@apex-financial.org>";
+// shared helper does all three. WP4: the From line is the shared brand sender.
+const FROM = BRAND_FROM;
+
+// deno-lint-ignore no-explicit-any
+async function sweepEnabled(supabase: any): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("system_settings")
+    .select("value")
+    .eq("key", "licensing_sequence_enabled")
+    .limit(1);
+  if (error) return false; // cannot prove it is on: stay off
+  return String(data?.[0]?.value ?? "").trim().toLowerCase() === "true";
+}
+
+// A step already recorded for this application is never sent again. Returns
+// null when the lookup itself failed (the caller sends nothing then).
+// deno-lint-ignore no-explicit-any
+async function stepAlreadySent(supabase: any, applicationId: string, step: number): Promise<boolean | null> {
+  const { data, error } = await supabase
+    .from("contact_history")
+    .select("id")
+    .eq("application_id", applicationId)
+    .eq("email_template", `licensing_sequence_step_${step}`)
+    .limit(1);
+  if (error) return null;
+  return (data?.length ?? 0) > 0;
+}
 
 async function logRun(
   supabase: any,
@@ -64,6 +100,12 @@ Deno.serve(async (req) => {
 
     // CRON MODE: no applicationId → process all eligible unlicensed apps
     if (!applicationId) {
+      if (!(await sweepEnabled(supabase))) {
+        await logRun(supabase, "success", 0, Date.now() - startedAt, "disabled: system_settings.licensing_sequence_enabled is not 'true'");
+        return new Response(JSON.stringify({ ok: false, disabled: true, processed: 0 }), {
+          status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       let processed = 0;
       try {
         const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
@@ -162,6 +204,11 @@ Deno.serve(async (req) => {
 
 async function sendStep(supabase: any, resendKey: string, app: any, step: number): Promise<boolean> {
   if (await isUnsubscribed(supabase, app.email)) return false;
+  const already = await stepAlreadySent(supabase, app.id, step);
+  if (already !== false) {
+    console.warn(`licensing sequence: step ${step} not sent for ${app.id}: ${already === null ? "dedupe lookup failed" : "already sent"}`);
+    return false;
+  }
   const firstName = String(app.first_name ?? "").trim() || "there";
   const sequences: Record<number, { subject: string; html: string }> = {
     1: {

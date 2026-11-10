@@ -878,6 +878,14 @@ if match '^(supabase/functions/.*\.(ts|js)$|scripts/check-discarded-email-send\.
   npm run --silent check:discarded-email-send || exit 1
 fi
 
+# ---------- check-hardcoded-sender (WP4 2026-11-10) ----------
+# Recruits saw 12 sender names in 30 days. New senders import BRAND_FROM /
+# BRAND_REPLY_TO from _shared/email.ts; a new literal `from:` fails, per file.
+if match '^(supabase/functions/.*\.ts$|scripts/check-hardcoded-sender\.mjs$|scripts/data/hardcoded-sender-baseline\.json$)'; then
+  echo "[pre-commit] Edge function staged — running check:hardcoded-sender…"
+  npm run --silent check:hardcoded-sender || exit 1
+fi
+
 # ---------- check-discord-pii (wave-discord-client-pii) ----------
 # Trigger: any staged migration, or the checker itself.
 # The script reads the staged migrations directly (it never scans history), so

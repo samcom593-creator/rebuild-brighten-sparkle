@@ -31,6 +31,20 @@
         "raw": ""
       }
     ],
+    "admin_assign_dialer_seat": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_note",
+          "p_seat_label"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_seat_label text DEFAULT NULL::text, p_note text DEFAULT NULL::text"
+      }
+    ],
     "admin_configure_integration": [
       {
         "all": [
@@ -91,6 +105,18 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "admin_release_dialer_seat": [
+      {
+        "all": [
+          "p_seat_id"
+        ],
+        "required": [
+          "p_seat_id"
+        ],
+        "unnamed": false,
+        "raw": "p_seat_id uuid"
       }
     ],
     "admin_review_course_proof": [
@@ -975,22 +1001,6 @@
         "raw": ""
       }
     ],
-    "applications_trigger_new_applicant_discord": [
-      {
-        "all": [],
-        "required": [],
-        "unnamed": false,
-        "raw": ""
-      }
-    ],
-    "applications_trigger_stage_change_discord": [
-      {
-        "all": [],
-        "required": [],
-        "unnamed": false,
-        "raw": ""
-      }
-    ],
     "assign_va_to_application": [
       {
         "all": [
@@ -1742,14 +1752,6 @@
         "raw": "_bucket_key text, _max_requests integer, _window_seconds integer"
       }
     ],
-    "check_speed_to_lead": [
-      {
-        "all": [],
-        "required": [],
-        "unnamed": false,
-        "raw": ""
-      }
-    ],
     "churn_calc": [
       {
         "all": [],
@@ -1812,6 +1814,16 @@
         ],
         "unnamed": false,
         "raw": "p_outbox_event_id uuid, p_installation_id uuid, p_destination_id uuid, p_idempotency_key text, p_template_version integer, p_correlation_id uuid"
+      }
+    ],
+    "claim_onboarding_queue_batch": [
+      {
+        "all": [
+          "p_limit"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_limit integer DEFAULT 50"
       }
     ],
     "claim_unclaimed_lead": [
@@ -2887,6 +2899,14 @@
         "raw": "p_agent_id uuid"
       }
     ],
+    "fn_agent_provenance_anchor": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "fn_agent_strikes_updated_at": [
       {
         "all": [],
@@ -3040,14 +3060,6 @@
         "raw": ""
       }
     ],
-    "fn_alert_licensed_applicant": [
-      {
-        "all": [],
-        "required": [],
-        "unnamed": false,
-        "raw": ""
-      }
-    ],
     "fn_alert_sms_fix_anchor": [
       {
         "all": [],
@@ -3080,6 +3092,18 @@
         "raw": ""
       }
     ],
+    "fn_application_has_agent": [
+      {
+        "all": [
+          "p_application_id"
+        ],
+        "required": [
+          "p_application_id"
+        ],
+        "unnamed": false,
+        "raw": "p_application_id uuid"
+      }
+    ],
     "fn_application_milestone_broadcast": [
       {
         "all": [],
@@ -3104,6 +3128,14 @@
         "raw": ""
       }
     ],
+    "fn_apply_licensing_self_report": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "fn_apply_xcel_progress": [
       {
         "all": [
@@ -3112,6 +3144,14 @@
         "required": [],
         "unnamed": false,
         "raw": "p_report_id uuid DEFAULT NULL::uuid"
+      }
+    ],
+    "fn_assign_recruiting_owner": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
       }
     ],
     "fn_auto_advance_licensed_to_contracting": [
@@ -3203,6 +3243,14 @@
       }
     ],
     "fn_block_new_agent_identity_dup": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_block_paused_discord_outbox": [
       {
         "all": [],
         "required": [],
@@ -3626,6 +3674,34 @@
         "raw": "p_agent uuid"
       }
     ],
+    "fn_contracting_required_carriers": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_contracting_stalled_due": [
+      {
+        "all": [
+          "p_anchor"
+        ],
+        "required": [
+          "p_anchor"
+        ],
+        "unnamed": false,
+        "raw": "p_anchor timestamp with time zone"
+      }
+    ],
+    "fn_contracting_stalled_settle": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "fn_cron_jobs_active": [
       {
         "all": [
@@ -3702,12 +3778,50 @@
         "raw": ""
       }
     ],
-    "fn_dm_referral_manager_on_new_applicant": [
+    "fn_derive_agent_contracted_at": [
       {
         "all": [],
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "fn_discord_paused": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_edge_auth_header": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_email_bounce_react": [
+      {
+        "all": [
+          "p_hashes"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_hashes text[] DEFAULT NULL::text[]"
+      }
+    ],
+    "fn_email_events_ingest": [
+      {
+        "all": [
+          "p_rows"
+        ],
+        "required": [
+          "p_rows"
+        ],
+        "unnamed": false,
+        "raw": "p_rows jsonb"
       }
     ],
     "fn_email_failure_alarm": [
@@ -3783,14 +3897,6 @@
         "raw": ""
       }
     ],
-    "fn_enqueue_calendly_for_unlicensed": [
-      {
-        "all": [],
-        "required": [],
-        "unnamed": false,
-        "raw": ""
-      }
-    ],
     "fn_enqueue_hired_licensed_onboarding": [
       {
         "all": [],
@@ -3812,6 +3918,16 @@
         "raw": "p_agent_id uuid, p_source text DEFAULT 'trigger'::text"
       }
     ],
+    "fn_enqueue_production_celebrations": [
+      {
+        "all": [
+          "p_seed"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_seed boolean DEFAULT false"
+      }
+    ],
     "fn_enqueue_scripts_packet": [
       {
         "all": [
@@ -3830,6 +3946,16 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "fn_enqueue_weekly_leaderboard": [
+      {
+        "all": [
+          "p_week_start"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_week_start date DEFAULT NULL::date"
       }
     ],
     "fn_enrich_contracting_intake": [
@@ -3884,6 +4010,14 @@
       }
     ],
     "fn_exclude_external_placeholder": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_first_deal_unified_cutoff": [
       {
         "all": [],
         "required": [],
@@ -4060,6 +4194,16 @@
         "raw": "p_external_id text, p_within interval DEFAULT '14 days'::interval"
       }
     ],
+    "fn_inflow_alert_asof": [
+      {
+        "all": [
+          "p_asof"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_asof date DEFAULT NULL::date"
+      }
+    ],
     "fn_instagram_token_replay": [
       {
         "all": [],
@@ -4105,6 +4249,14 @@
       }
     ],
     "fn_interview_outcome_ask": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_interview_outcome_ask_settle": [
       {
         "all": [],
         "required": [],
@@ -4241,6 +4393,22 @@
         "raw": "p license_progress"
       }
     ],
+    "fn_licensed_activation_population": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_licensed_contracting_gaps": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "fn_licensing_readiness": [
       {
         "all": [
@@ -4263,6 +4431,41 @@
         ],
         "unnamed": false,
         "raw": "p text"
+      }
+    ],
+    "fn_link_slack_identity_email_lookup": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_slack_email",
+          "p_slack_user_id"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_slack_email",
+          "p_slack_user_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_slack_user_id text, p_slack_email text"
+      }
+    ],
+    "fn_log_human_contact": [
+      {
+        "all": [
+          "p_actor",
+          "p_application_id",
+          "p_channel",
+          "p_notes",
+          "p_outcome",
+          "p_surface"
+        ],
+        "required": [
+          "p_application_id",
+          "p_channel",
+          "p_outcome"
+        ],
+        "unnamed": false,
+        "raw": "p_application_id uuid, p_channel text, p_outcome text, p_actor uuid DEFAULT NULL::uuid, p_surface text DEFAULT NULL::text, p_notes text DEFAULT NULL::text"
       }
     ],
     "fn_log_interview_event_activity": [
@@ -4383,6 +4586,14 @@
         ],
         "unnamed": false,
         "raw": "p_applicable boolean, p_tracked boolean, p_policy_active boolean, p_start_ok boolean, p_elapsed integer, p_done boolean, p_amber integer, p_deadline integer"
+      }
+    ],
+    "fn_mirror_getting_started_contract_marks": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
       }
     ],
     "fn_mirror_licensing_tracker": [
@@ -4748,6 +4959,14 @@
         "raw": ""
       }
     ],
+    "fn_on_licensing_proof_submitted": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "fn_onboarding_contracting_stalled_alert": [
       {
         "all": [],
@@ -4764,12 +4983,47 @@
         "raw": ""
       }
     ],
+    "fn_onboarding_wp6_cutoff": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "fn_phoenix_today": [
       {
         "all": [],
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "fn_phx_business_minutes": [
+      {
+        "all": [
+          "p_from",
+          "p_to"
+        ],
+        "required": [
+          "p_from",
+          "p_to"
+        ],
+        "unnamed": false,
+        "raw": "p_from timestamp with time zone, p_to timestamp with time zone"
+      }
+    ],
+    "fn_pick_recruit_owner": [
+      {
+        "all": [
+          "p_exclude",
+          "p_license"
+        ],
+        "required": [
+          "p_license"
+        ],
+        "unnamed": false,
+        "raw": "p_license text, p_exclude uuid DEFAULT NULL::uuid"
       }
     ],
     "fn_policy_number_report_placeholder": [
@@ -4828,6 +5082,14 @@
       }
     ],
     "fn_production_integrity_anchor": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_project_contract_marks_to_getting_started": [
       {
         "all": [],
         "required": [],
@@ -4984,6 +5246,27 @@
         "raw": "p_user_id uuid, p_email text, p_step text, p_sqlstate text, p_message text"
       }
     ],
+    "fn_record_slack_placement": [
+      {
+        "all": [
+          "p_invite_errors",
+          "p_invited_channels",
+          "p_lookup_state",
+          "p_slack_user_id",
+          "p_subject_id",
+          "p_subject_kind",
+          "p_target"
+        ],
+        "required": [
+          "p_lookup_state",
+          "p_subject_id",
+          "p_subject_kind",
+          "p_target"
+        ],
+        "unnamed": false,
+        "raw": "p_subject_kind text, p_subject_id uuid, p_target text, p_lookup_state text, p_slack_user_id text DEFAULT NULL::text, p_invited_channels text[] DEFAULT '{}'::text[], p_invite_errors jsonb DEFAULT '{}'::jsonb"
+      }
+    ],
     "fn_recover_stale_applicant": [
       {
         "all": [
@@ -5000,6 +5283,14 @@
         "raw": "p_application_id uuid, p_action text, p_new_agent_id uuid DEFAULT NULL::uuid, p_note text DEFAULT NULL::text"
       }
     ],
+    "fn_recruit_sam_user_id": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "fn_recruit_scope_ok": [
       {
         "all": [
@@ -5012,6 +5303,54 @@
         ],
         "unnamed": false,
         "raw": "p_application_id uuid, p_agent_id uuid"
+      }
+    ],
+    "fn_recruit_sla_digest": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_recruit_sla_open_untouched": [
+      {
+        "all": [
+          "p_cutoff"
+        ],
+        "required": [
+          "p_cutoff"
+        ],
+        "unnamed": false,
+        "raw": "p_cutoff timestamp with time zone"
+      }
+    ],
+    "fn_recruit_sla_pager": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_recruit_sla_pager_settle": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_recruit_user_is_active": [
+      {
+        "all": [
+          "p_user_id"
+        ],
+        "required": [
+          "p_user_id"
+        ],
+        "unnamed": false,
+        "raw": "p_user_id uuid"
       }
     ],
     "fn_recruiting_billing_weekly": [
@@ -5083,6 +5422,14 @@
         "raw": ""
       }
     ],
+    "fn_rmd_resolve_agent_alias": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "fn_rpc_single_flight": [
       {
         "all": [
@@ -5143,6 +5490,29 @@
         "raw": "p_members jsonb"
       }
     ],
+    "fn_slack_placement_candidates": [
+      {
+        "all": [
+          "p_limit"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_limit integer DEFAULT 40"
+      }
+    ],
+    "fn_sms_consent_for_phone": [
+      {
+        "all": [
+          "p_application_id",
+          "p_phone"
+        ],
+        "required": [
+          "p_phone"
+        ],
+        "unnamed": false,
+        "raw": "p_phone text, p_application_id uuid DEFAULT NULL::uuid"
+      }
+    ],
     "fn_sms_receipt_fix_anchor": [
       {
         "all": [],
@@ -5165,6 +5535,18 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "fn_staff_first_name": [
+      {
+        "all": [
+          "p_user_id"
+        ],
+        "required": [
+          "p_user_id"
+        ],
+        "unnamed": false,
+        "raw": "p_user_id uuid"
       }
     ],
     "fn_stage_label": [
@@ -5455,6 +5837,42 @@
         "raw": "p_agent uuid, p_date date, p_status text, p_expected text, p_note text, p_uid uuid"
       }
     ],
+    "fn_wp3_cutoff": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_wp3_ntfy_id": [
+      {
+        "all": [
+          "p_content"
+        ],
+        "required": [
+          "p_content"
+        ],
+        "unnamed": false,
+        "raw": "p_content text"
+      }
+    ],
+    "fn_wp4_reset_email_bounced": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_wp5_staff_reader": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "fn_xcel_auto_upgrade_all": [
       {
         "all": [],
@@ -5500,6 +5918,14 @@
       }
     ],
     "fn_y_agent_attribution_from_application": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_yz_agent_origin_default": [
       {
         "all": [],
         "required": [],
@@ -5710,6 +6136,18 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "get_partial_application_resume": [
+      {
+        "all": [
+          "p_partial_id"
+        ],
+        "required": [
+          "p_partial_id"
+        ],
+        "unnamed": false,
+        "raw": "p_partial_id uuid"
       }
     ],
     "get_weekly_leaderboard": [
@@ -6986,6 +7424,14 @@
         "raw": "p_checkin_id uuid"
       }
     ],
+    "mark_slack_joined": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "merge_agent_into_canonical": [
       {
         "all": [
@@ -7026,6 +7472,16 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "my_activation_state": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_agent_id uuid DEFAULT NULL::uuid"
       }
     ],
     "my_agent_account_gaps": [
@@ -7380,47 +7836,7 @@
         "raw": "p_type text, p_badge text"
       }
     ],
-    "post_daily_top_producer": [
-      {
-        "all": [],
-        "required": [],
-        "unnamed": false,
-        "raw": ""
-      }
-    ],
-    "post_evening_recap": [
-      {
-        "all": [],
-        "required": [],
-        "unnamed": false,
-        "raw": ""
-      }
-    ],
     "post_hiring_bottleneck_alert": [
-      {
-        "all": [],
-        "required": [],
-        "unnamed": false,
-        "raw": ""
-      }
-    ],
-    "post_midday_snapshot": [
-      {
-        "all": [],
-        "required": [],
-        "unnamed": false,
-        "raw": ""
-      }
-    ],
-    "post_morning_huddle": [
-      {
-        "all": [],
-        "required": [],
-        "unnamed": false,
-        "raw": ""
-      }
-    ],
-    "post_weekly_recap": [
       {
         "all": [],
         "required": [],
@@ -7824,6 +8240,14 @@
         "raw": ""
       }
     ],
+    "recruit_funnel_stage_keys": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "recruit_pipeline_list": [
       {
         "all": [],
@@ -7922,6 +8346,14 @@
         "required": [],
         "unnamed": false,
         "raw": "p_force boolean DEFAULT false"
+      }
+    ],
+    "refresh_recruit_funnel_snapshot": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
       }
     ],
     "refresh_sync_health": [
@@ -9615,14 +10047,6 @@
         "raw": ""
       }
     ],
-    "trg_fn_application_discord": [
-      {
-        "all": [],
-        "required": [],
-        "unnamed": false,
-        "raw": ""
-      }
-    ],
     "trg_fn_contracting_delivery_route_guard": [
       {
         "all": [],
@@ -9736,14 +10160,6 @@
       }
     ],
     "trg_fn_match_xcel_progress": [
-      {
-        "all": [],
-        "required": [],
-        "unnamed": false,
-        "raw": ""
-      }
-    ],
-    "trg_fn_new_app_notify": [
       {
         "all": [],
         "required": [],

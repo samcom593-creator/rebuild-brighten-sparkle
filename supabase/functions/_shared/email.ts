@@ -40,8 +40,22 @@ export interface SendEmailResult {
   refused?: "non_routable" | "suppressed";
 }
 
-const DEFAULT_FROM     = Deno.env.get("EMAIL_FROM")     ?? "Sam at Galaxy Financial <sam@apex-financial.org>";
-const DEFAULT_REPLY_TO = Deno.env.get("EMAIL_REPLY_TO") ?? "info@kingofsales.net";
+// WP4 (2026-11-10): one sender identity for recruit-facing mail. Resend showed
+// 12 display names in 30 days ("Galaxy Financial", "Sam · Galaxy", "Galaxy
+// System", ...) for the same audience, which splits Gmail's sender grouping and
+// reads like different companies. Every sender imports these; a literal
+// `from: "..."` outside this file is counted by scripts/check-hardcoded-sender.mjs
+// and a NEW one fails the ratchet. The sending domain stays apex-financial.org
+// (verified in Resend; changing it would reset reputation).
+export const BRAND_FROM = "Sam at Galaxy Financial <sam@apex-financial.org>";
+// Reply-To is the inbox the pipeline owner actually works. EMAIL_REPLY_TO is
+// unset in edge secrets today (checked 2026-11-10), so replies keep going to
+// the current default until Sam names the monitored inbox (open question in
+// the 2026-11-10 onboarding audit). Set the secret; no code change needed.
+export const BRAND_REPLY_TO = Deno.env.get("EMAIL_REPLY_TO") ?? "info@kingofsales.net";
+
+const DEFAULT_FROM     = Deno.env.get("EMAIL_FROM")     ?? BRAND_FROM;
+const DEFAULT_REPLY_TO = BRAND_REPLY_TO;
 const DOMAIN           = Deno.env.get("APEX_DOMAIN")    ?? "apex-financial.org";
 
 export function htmlToText(html: string): string {

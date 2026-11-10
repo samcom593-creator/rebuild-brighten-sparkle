@@ -11,6 +11,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
 import { nanpRefusalReason, nanpTenDigits } from "../_shared/nanp-phone.ts";
+import { BRAND_FROM } from "../_shared/email.ts";
+import { consentDecision, SKIPPED_NO_CONSENT } from "./consent.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -54,6 +56,10 @@ const RETIRED_GATEWAYS: Record<string, string> = {
   verizon: "Verizon email-to-text does not deliver (Resend delivered 0 of 139 in 30d)",
   tmobile: "T-Mobile email-to-text does not deliver (Resend delivered 0 of 39 in 7d, 172 of 190 bounced in 30d)",
   boost: "Boost email-to-text does not deliver (Resend delivered 0 of 10 in 30d, all bounced)",
+  // WP4 2026-11-10: mymetropcs.com delivered 1 of 12 since 2026-10-28 (11 bounced),
+  // 2 of 30 over 30 days. It was the last big gateway still sending, and its 11
+  // bounces since 10-28 were most of the gateway bounces on the domain.
+  metro: "Metro email-to-text does not deliver (Resend delivered 1 of 12 since 2026-10-28, 11 bounced)",
 };
 
 
@@ -237,6 +243,52 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // WP4: consent is checked HERE, for every caller (see consent.ts). A refusal
+    // is logged and answered as outcome "skipped" + reason "skipped_no_consent",
+    // so every caller falls through to its next channel.
+    const { data: consentData, error: consentErr } = await supabase.rpc("fn_sms_consent_for_phone", {
+      p_phone: cleaned,
+      p_application_id: applicationId || null,
+    });
+    const consent = consentDecision(consentData, consentErr);
+    if (!consent.send) {
+      await logNotification(supabase, {
+        recipient_phone: phone,
+        channel: "sms-auto",
+        title: "SMS Auto-Detect",
+        message: String(message ?? "").substring(0, 160),
+        status: "skipped",
+        error_message: `${SKIPPED_NO_CONSENT}: SMS not attempted, use another channel — ${consent.detail}`,
+        metadata: {
+          trigger: "sms-auto-detect",
+          gatewaysAttempted: 0,
+          carrierResolved: null,
+          refusal: SKIPPED_NO_CONSENT,
+          consentSource: consent.source,
+          deliveryConfirmed: false,
+          applicationId: applicationId || null,
+          agedLeadId: agedLeadId || null,
+        },
+      });
+      return new Response(
+        JSON.stringify({
+          success: false,
+          outcome: "skipped",
+          reason: SKIPPED_NO_CONSENT,
+          error: consent.detail,
+          deliveryConfirmed: false,
+          phone,
+          attempts: [],
+          successCount: 0,
+          totalAttempts: 0,
+          carrierSelected: null,
+          carrierSuccesses: [],
+          carrierFailures: [],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } },
+      );
+    }
+
     const resendKey = Deno.env.get("RESEND_API_KEY");
     if (!resendKey) {
       return new Response(JSON.stringify({ success: false, error: "SMS provider is not configured" }), {
@@ -332,7 +384,7 @@ const handler = async (req: Request): Promise<Response> => {
       const smsEmail = `${cleaned}@${CARRIER_GATEWAYS[knownCarrier]}`;
       try {
         const { error: sendError } = await resend.emails.send({
-          from: "Galaxy Financial <notifications@apex-financial.org>",
+          from: BRAND_FROM,
           to: [smsEmail],
           subject: "",
           text: message.substring(0, 160),
@@ -436,7 +488,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (outcome === "sent" && Deno.env.get("SMS_ADMIN_COPY") === "on") {
       try {
         await resend.emails.send({
-          from: "Galaxy Financial <notifications@apex-financial.org>",
+          from: BRAND_FROM,
           to: [ADMIN_EMAIL],
           subject: `[SMS Copy] To: ${phone}`,
           html: `

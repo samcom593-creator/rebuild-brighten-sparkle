@@ -9,11 +9,21 @@
 // row (last_seen_at = that send), delivered/opened/clicked deletes it. Anything
 // else leaves the row alone.
 //
+// WP4 (2026-11-10): every row read is also persisted to public.email_events
+// (recipient hash + domain + latest event + subject family; no raw address),
+// which keeps delivery evidence past Resend's ~30-day list. After all rows land,
+// fn_email_bounce_react flags applications/agents whose latest email is dead
+// (email_bounced_at, first evidence only), raises at most one private alert per
+// person for bounces after system_settings.wp4_bounce_alert_cutoff, and names the
+// recruit/agent addresses whose hard bounce or complaint is mirrored into
+// email_suppressions here. That step runs in its own try and can never undo or
+// block the suppression mirror above.
+//
 // Callers: pg_cron with the apex_bot_token bearer, or the service role key.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { presentsServiceKey, safeEqual } from "../_shared/send-floor.ts";
-import { type ResendEmailRow, verdictFromRows } from "../_shared/suppression.ts";
+import { chunk, type ResendEmailRow, toEventRows, verdictFromRows } from "../_shared/suppression.ts";
 
 const MAX_HOURS = 720;
 const MAX_PAGES = 120;
@@ -99,5 +109,57 @@ Deno.serve(async (req) => {
     deleted = data?.length ?? 0;
   }
 
-  return json({ ok: true, hours, scanned: rows.length, suppressed: upserts.length, cleared: deleted });
+  // WP4: persist every row into email_events and react to dead recruit/agent
+  // addresses. Separate try: the suppression mirror above has already landed and
+  // must never be undone or blocked by a ledger failure. A failure is reported in
+  // the response (and apex-doctor #45 warns when email_events stops growing).
+  const events = await ingestEvents(sb, rows);
+  if (!events.ok) console.error("resend-suppression-sync: email_events ingest failed:", events.error);
+
+  return json({ ok: true, hours, scanned: rows.length, suppressed: upserts.length, cleared: deleted, events });
 });
+
+const INGEST_CHUNK = 400;
+
+// deno-lint-ignore no-explicit-any
+async function ingestEvents(sb: any, rows: ResendEmailRow[]): Promise<Record<string, unknown>> {
+  const totals = { ok: true as boolean, upserted: 0, changed: 0, applications_flagged: 0, agents_flagged: 0,
+    alerts: 0, alerts_overflow: 0, bounce_suppressions: 0, error: null as string | null };
+  try {
+    const { events, addressByHash, latestByAddress } = await toEventRows(rows);
+    // All chunks land before any reaction, so a backfill that splits an older
+    // bounce and a newer delivery across chunks is judged on the newest event.
+    for (const part of chunk(events, INGEST_CHUNK)) {
+      const { data, error } = await sb.rpc("fn_email_events_ingest", { p_rows: part });
+      if (error) throw new Error(`ingest: ${error.message}`);
+      totals.upserted += Number(data?.upserted ?? 0);
+      totals.changed += Number(data?.changed ?? 0);
+    }
+    const { data: react, error: reactErr } = await sb.rpc("fn_email_bounce_react", { p_hashes: [...addressByHash.keys()] });
+    if (reactErr) throw new Error(`react: ${reactErr.message}`);
+    totals.applications_flagged = Number(react?.applications_flagged ?? 0);
+    totals.agents_flagged = Number(react?.agents_flagged ?? 0);
+    totals.alerts = Number(react?.alerts ?? 0);
+    totals.alerts_overflow = Number(react?.alerts_overflow ?? 0);
+
+    // Hard bounce or complaint on a recruit/agent address: mirror it so
+    // sendEmail and gateResend stop mailing it (30-day recheck, see suppression.ts).
+    const mirror = ((react?.suppress ?? []) as { recipient_hash: string; last_event: string }[])
+      .map((s) => {
+        const email = addressByHash.get(s.recipient_hash);
+        const latest = email ? latestByAddress.get(email) : undefined;
+        if (!email || !latest || !["bounced", "complained"].includes(s.last_event)) return null;
+        return { email, last_event: s.last_event, resend_email_id: latest.resend_id, last_seen_at: latest.created_at, synced_at: new Date().toISOString() };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null);
+    if (mirror.length) {
+      const { error } = await sb.from("email_suppressions").upsert(mirror, { onConflict: "email" });
+      if (error) throw new Error(`bounce_suppression_upsert: ${error.message}`);
+      totals.bounce_suppressions = mirror.length;
+    }
+  } catch (e) {
+    totals.ok = false;
+    totals.error = String((e as Error)?.message ?? e).slice(0, 300);
+  }
+  return totals;
+}

@@ -33,20 +33,28 @@ export interface RecruitingBoard {
  * row-level access. A failed read throws, so the page says it could not load instead of showing
  * an empty board.
  */
-export function useRecruitingBoard(kind: RecruitingKind, window: BoardWindow, enabled: boolean) {
+export function useRecruitingBoard(
+  kind: RecruitingKind,
+  window: BoardWindow,
+  enabled: boolean,
+  customInstants?: { startIso: string; endIso: string } | null,
+) {
   const todayKey = useBusinessToday(BUSINESS_TIMEZONE);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- todayKey is the trigger: the window is "now", read again on a new day
-  const range = useMemo(() => boardWindowInstants(window), [window, todayKey]);
+  const range = useMemo(
+    () => (window === "custom" ? customInstants ?? null : boardWindowInstants(window)),
+    [window, customInstants?.startIso, customInstants?.endIso, todayKey],
+  );
   return useQuery({
-    queryKey: ["leaderboard", "recruiting", kind, range.startIso, range.endIso],
-    enabled,
+    queryKey: ["leaderboard", "recruiting", kind, range?.startIso ?? "pending", range?.endIso ?? "pending"],
+    enabled: enabled && range !== null,
     staleTime: 60_000,
     queryFn: async (): Promise<RecruitingBoard> => {
       let request = supabase
         .from("applications")
         .select("referral_recruiter_id, referral_manager_id, recruiter_id, assigned_agent_id, status, license_status, contracted_at, first_deal_at")
-        .gte("created_at", range.startIso)
-        .lt("created_at", range.endIso)
+        .gte("created_at", range!.startIso)
+        .lt("created_at", range!.endIso)
         .is("terminated_at", null);
       if (kind === "referrals") request = request.not("referral_manager_id", "is", null);
       const { data: apps, error } = await request;

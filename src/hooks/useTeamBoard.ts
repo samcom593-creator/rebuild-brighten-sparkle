@@ -22,16 +22,21 @@ export const TEAM_BOARD_KEY = ["leaderboard", "team-board"] as const;
  * the list under them are the same rows. Refetched every minute while the page is open, so
  * cheers from teammates show up without a reload.
  */
-export function useTeamBoard(window: BoardWindow) {
+export function useTeamBoard(window: BoardWindow, customRange?: { start: string; end: string } | null) {
   // Production windows are Chicago business days (src/lib/dateUtils.ts). Re-keyed when that day
-  // changes, so a page left open overnight moves to the new day.
+  // changes, so a page left open overnight moves to the new day. A "custom" window carries its
+  // own range (null until the picked dates are valid), so the query waits instead of guessing.
   const todayKey = useBusinessToday(BUSINESS_TIMEZONE);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- todayKey is the trigger: the range is "now", read again on a new day
-  const range = useMemo(() => boardWindowRange(window), [window, todayKey]);
+  const range = useMemo(
+    () => (window === "custom" ? customRange ?? null : boardWindowRange(window)),
+    [window, customRange?.start, customRange?.end, todayKey],
+  );
   const query = useQuery({
-    queryKey: [...TEAM_BOARD_KEY, range.start, range.end],
+    queryKey: [...TEAM_BOARD_KEY, range?.start ?? "pending", range?.end ?? "pending"],
+    enabled: range !== null,
     queryFn: async (): Promise<TeamBoard> => {
-      const { data, error } = await supabase.rpc("leaderboard_team_board" as never, { p_start: range.start, p_end: range.end } as never);
+      const { data, error } = await supabase.rpc("leaderboard_team_board" as never, { p_start: range!.start, p_end: range!.end } as never);
       if (error) throw error;
       return parseTeamBoard(data);
     },

@@ -50,10 +50,15 @@ import {
   boardTiles,
   canCheer,
   cheerLine,
+  customBoardInstants,
+  customBoardRange,
+  customRangeError,
+  customRangePhrase,
   emptyBoardText,
   formatMoney,
   formatTileMoney,
   isBoardWindow,
+  isValidCustomRange,
   monthName,
   plural,
   rankTone,
@@ -101,7 +106,7 @@ function WindowSwitch({ value, onChange }: { value: BoardWindow; onChange: (w: B
     }
   };
   return (
-    <div role="radiogroup" aria-label="Time window" className="grid w-full grid-cols-4 gap-1 rounded-xl border border-border bg-card p-1 md:inline-grid md:w-auto">
+    <div role="radiogroup" aria-label="Time window" className="grid w-full grid-cols-3 gap-1 rounded-xl border border-border bg-card p-1 md:inline-grid md:w-auto md:grid-cols-5">
       {BOARD_WINDOWS.map((w, index) => {
         const checked = w.key === value;
         return (
@@ -257,8 +262,8 @@ function SalesRow({
   );
 }
 
-function SalesBoard({ window }: { window: BoardWindow }) {
-  const query = useTeamBoard(window);
+function SalesBoard({ window, customRange, when }: { window: BoardWindow; customRange?: { start: string; end: string } | null; when: string }) {
+  const query = useTeamBoard(window, customRange);
   const setCheer = useSetCheer();
   const [pendingKey, setPendingKey] = useState<string | null>(null);
   const { todayKey } = query;
@@ -287,7 +292,7 @@ function SalesBoard({ window }: { window: BoardWindow }) {
 
   return (
     <QueryState {...describeQuery(query)} label="the leaderboard" onRetry={() => void query.refetch()} asOf={query.dataUpdatedAt}>
-      {board ? <SalesBoardBody board={board} window={window} todayKey={todayKey} pendingKey={pendingKey} onCheer={onCheer} /> : null}
+      {board ? <SalesBoardBody board={board} window={window} when={when} todayKey={todayKey} pendingKey={pendingKey} onCheer={onCheer} /> : null}
     </QueryState>
   );
 }
@@ -295,18 +300,19 @@ function SalesBoard({ window }: { window: BoardWindow }) {
 function SalesBoardBody({
   board,
   window,
+  when,
   todayKey,
   pendingKey,
   onCheer,
 }: {
   board: TeamBoard;
   window: BoardWindow;
+  when: string;
   todayKey: string;
   pendingKey: string | null;
   onCheer: (row: TeamBoardRow, cheer: boolean, from: HTMLElement) => void;
 }) {
   const month = monthName(board.monthStart, todayKey);
-  const when = windowPhrase(window, board.monthStart, todayKey);
 
   if (board.access === "none") {
     return (
@@ -387,8 +393,8 @@ function SalesBoardBody({
   );
 }
 
-function RecruitingBoardView({ kind, window, when }: { kind: RecruitingKind; window: BoardWindow; when: string }) {
-  const query = useRecruitingBoard(kind, window, true);
+function RecruitingBoardView({ kind, window, when, customInstants }: { kind: RecruitingKind; window: BoardWindow; when: string; customInstants?: { startIso: string; endIso: string } | null }) {
+  const query = useRecruitingBoard(kind, window, true, customInstants);
   const noun = kind === "referrals" ? "referral" : "application";
   return (
     <QueryState
@@ -439,9 +445,23 @@ export default function Leaderboard() {
   const boardParam = params.get("board");
   const board: BoardKind = leads && (boardParam === "recruiting" || boardParam === "referrals") ? boardParam : "sales";
   const todayKey = useBusinessToday(BUSINESS_TIMEZONE);
-  const when = windowPhrase(window, boardMonthStart(window, todayKey), todayKey);
 
-  const update = (key: "window" | "board", value: string, fallback: string) => {
+  // Custom range (inclusive day keys) lives in the URL, so a shared or reopened link lands on the
+  // same board. The range is only read once both dates are valid; until then the board waits.
+  const customStart = params.get("start");
+  const customEnd = params.get("end");
+  const customOk = window === "custom" && isValidCustomRange(customStart, customEnd);
+  const customRange = customOk ? customBoardRange(customStart!, customEnd!) : null;
+  const customInstants = customOk ? customBoardInstants(customStart!, customEnd!) : null;
+
+  const when =
+    window === "custom"
+      ? customOk
+        ? customRangePhrase(customStart!, customEnd!)
+        : "for the dates you pick"
+      : windowPhrase(window, boardMonthStart(window, todayKey), todayKey);
+
+  const update = (key: "board", value: string, fallback: string) => {
     setParams(
       (prev) => {
         const next = new URLSearchParams(prev);
@@ -453,10 +473,48 @@ export default function Leaderboard() {
     );
   };
 
+  // Switching window: Custom seeds a this-month-to-today default and keeps start/end; every named
+  // window clears them so a later board link is never read against stale custom dates.
+  const pickWindow = (next: BoardWindow) => {
+    setParams(
+      (prev) => {
+        const params = new URLSearchParams(prev);
+        if (next === "custom") {
+          params.set("window", "custom");
+          if (!params.get("start") || !params.get("end")) {
+            params.set("start", `${todayKey.slice(0, 7)}-01`);
+            params.set("end", todayKey);
+          }
+        } else {
+          params.delete("start");
+          params.delete("end");
+          if (next === DEFAULT_BOARD_WINDOW) params.delete("window");
+          else params.set("window", next);
+        }
+        return params;
+      },
+      { replace: true },
+    );
+  };
+
+  const setCustomDate = (key: "start" | "end", value: string) => {
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (value) next.set(key, value);
+        else next.delete(key);
+        return next;
+      },
+      { replace: true },
+    );
+  };
+
   const subtitle =
     board === "recruiting" ? `Who brought in the most applications ${when}.`
     : board === "referrals" ? `Whose referrals applied ${when}.`
     : `Top sellers ${when}. Cheer your team on.`;
+
+  const customError = window === "custom" && !customOk ? customRangeError(customStart, customEnd) : null;
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-5 pb-28">
@@ -465,23 +523,60 @@ export default function Leaderboard() {
         tone="gold"
         title="Leaderboard"
         subtitle={subtitle}
-        viewControls={<WindowSwitch value={window} onChange={(w) => update("window", w, DEFAULT_BOARD_WINDOW)} />}
+        viewControls={<WindowSwitch value={window} onChange={pickWindow} />}
       />
 
-      {leads ? (
+      {window === "custom" ? (
+        <CustomRangePicker start={customStart ?? ""} end={customEnd ?? ""} max={todayKey} error={customError} onChange={setCustomDate} />
+      ) : null}
+
+      {window === "custom" && !customOk ? null : leads ? (
         <Tabs value={board} onValueChange={(value) => update("board", value, "sales")}>
           <TabsList aria-label="Board">
             <TabsTrigger value="sales" className="gap-2"><DollarSign className="h-4 w-4" aria-hidden="true" />Sales</TabsTrigger>
             <TabsTrigger value="recruiting" className="gap-2"><UserPlus className="h-4 w-4" aria-hidden="true" />Recruiting</TabsTrigger>
             <TabsTrigger value="referrals" className="gap-2"><Users className="h-4 w-4" aria-hidden="true" />Referrals</TabsTrigger>
           </TabsList>
-          <TabsContent value="sales" className="mt-5">{board === "sales" ? <SalesBoard window={window} /> : null}</TabsContent>
-          <TabsContent value="recruiting" className="mt-5">{board === "recruiting" ? <RecruitingBoardView kind="recruiting" window={window} when={when} /> : null}</TabsContent>
-          <TabsContent value="referrals" className="mt-5">{board === "referrals" ? <RecruitingBoardView kind="referrals" window={window} when={when} /> : null}</TabsContent>
+          <TabsContent value="sales" className="mt-5">{board === "sales" ? <SalesBoard window={window} customRange={customRange} when={when} /> : null}</TabsContent>
+          <TabsContent value="recruiting" className="mt-5">{board === "recruiting" ? <RecruitingBoardView kind="recruiting" window={window} when={when} customInstants={customInstants} /> : null}</TabsContent>
+          <TabsContent value="referrals" className="mt-5">{board === "referrals" ? <RecruitingBoardView kind="referrals" window={window} when={when} customInstants={customInstants} /> : null}</TabsContent>
         </Tabs>
       ) : (
-        <SalesBoard window={window} />
+        <SalesBoard window={window} customRange={customRange} when={when} />
       )}
+    </div>
+  );
+}
+
+/** From/To native date inputs for the Custom window. The error line explains an out-of-range pick. */
+function CustomRangePicker({
+  start,
+  end,
+  max,
+  error,
+  onChange,
+}: {
+  start: string;
+  end: string;
+  max: string;
+  error: string | null;
+  onChange: (key: "start" | "end", value: string) => void;
+}) {
+  const inputClass =
+    "min-h-11 rounded-lg border border-border bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]";
+  return (
+    <div className="rounded-xl border border-border bg-card p-3">
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="flex flex-col gap-1">
+          <span className="text-sm font-medium text-muted-foreground">From</span>
+          <input type="date" value={start} max={end || max} onChange={(e) => onChange("start", e.target.value)} className={inputClass} aria-label="Range start date" />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-sm font-medium text-muted-foreground">To</span>
+          <input type="date" value={end} min={start || undefined} max={max} onChange={(e) => onChange("end", e.target.value)} className={inputClass} aria-label="Range end date" />
+        </label>
+      </div>
+      {error ? <p className="mt-2 text-sm text-destructive">{error}</p> : null}
     </div>
   );
 }

@@ -20,6 +20,9 @@ import {
   boardWindowRange,
   canCheer,
   cheerLine,
+  customBoardRange,
+  customRangeError,
+  customRangePhrase,
   emptyBoardText,
   formatMoney,
   formatTileMoney,
@@ -206,10 +209,35 @@ describe("windows", () => {
     expect(windowPhrase("last_month", "2026-09-01", TODAY)).toBe("in September");
   });
 
-  it("accept only the four windows from the URL", () => {
-    expect(["today", "week", "month", "last_month"].every(isBoardWindow)).toBe(true);
-    expect(isBoardWindow("custom")).toBe(false);
+  it("accepts the five windows from the URL, and nothing else", () => {
+    expect(["today", "week", "month", "last_month", "custom"].every(isBoardWindow)).toBe(true);
+    expect(isBoardWindow("year")).toBe(false);
     expect(isBoardWindow(null)).toBe(false);
+  });
+});
+
+describe("the custom date range", () => {
+  it("turns an inclusive [start, end] into the RPC's half-open range (end exclusive)", () => {
+    // The named windows pass tomorrow as 'today's end, and the RPC derives its month from p_end - 1.
+    expect(customBoardRange("2026-11-01", "2026-11-10")).toEqual({ start: "2026-11-01", end: "2026-11-11" });
+    expect(customBoardRange("2026-11-03", "2026-11-03")).toEqual({ start: "2026-11-03", end: "2026-11-04" });
+    // A month boundary rolls the day correctly, not just +1 to the number.
+    expect(customBoardRange("2026-10-20", "2026-10-31")).toEqual({ start: "2026-10-20", end: "2026-11-01" });
+  });
+
+  it("rejects an empty, backwards, or over-62-day range with a reason, and passes a good one", () => {
+    expect(customRangeError("2026-11-01", "2026-11-10")).toBeNull();
+    expect(customRangeError("2026-11-01", "2026-11-01")).toBeNull();
+    expect(customRangeError(null, "2026-11-10")).toContain("Pick a start");
+    expect(customRangeError("2026-11-10", "2026-11-01")).toContain("before the start");
+    // 62 inclusive days is the ceiling (Oct 1 → Dec 1 is 62 days); 63 is refused.
+    expect(customRangeError("2026-10-01", "2026-12-01")).toBeNull();
+    expect(customRangeError("2026-10-01", "2026-12-02")).toContain("62 days or fewer");
+  });
+
+  it("reads a range inside a sentence", () => {
+    expect(customRangePhrase("2026-11-01", "2026-11-10")).toBe("Nov 1 – Nov 10");
+    expect(customRangePhrase("2026-11-03", "2026-11-03")).toBe("on Nov 3");
   });
 });
 

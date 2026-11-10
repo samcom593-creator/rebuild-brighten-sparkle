@@ -18,25 +18,27 @@
  * number is null (a dash on screen), never zero; a payload this page does not understand is an
  * error, not an empty board.
  */
-import { getBusinessDayBounds, getBusinessDayKey, getBusinessLastMonthBounds, getBusinessMonthBounds, getBusinessWeekBounds } from "@/lib/dateUtils";
+import { BUSINESS_TIMEZONE, getBusinessDayBounds, getBusinessDayKey, getBusinessLastMonthBounds, getBusinessMonthBounds, getBusinessWeekBounds } from "@/lib/dateUtils";
+import { fromZonedTime } from "date-fns-tz";
 import type { Tone } from "@/lib/tones";
 
 /** $5,000 of annual premium in the board's month. Must equal v_minimum in leaderboard_team_board. */
 export const BOARD_MONTHLY_MINIMUM = 5000;
 
-export type BoardWindow = "today" | "week" | "month" | "last_month";
+export type BoardWindow = "today" | "week" | "month" | "last_month" | "custom";
 
 export const BOARD_WINDOWS: ReadonlyArray<{ key: BoardWindow; label: string }> = [
   { key: "today", label: "Today" },
   { key: "week", label: "This week" },
   { key: "month", label: "This month" },
   { key: "last_month", label: "Last month" },
+  { key: "custom", label: "Custom" },
 ];
 
 export const DEFAULT_BOARD_WINDOW: BoardWindow = "month";
 
 export function isBoardWindow(value: string | null | undefined): value is BoardWindow {
-  return value === "today" || value === "week" || value === "month" || value === "last_month";
+  return value === "today" || value === "week" || value === "month" || value === "last_month" || value === "custom";
 }
 
 export interface TeamBoardRow {
@@ -252,6 +254,60 @@ export function boardWindowRange(window: BoardWindow, now: Date = new Date()): {
     : window === "last_month" ? getBusinessLastMonthBounds(now)
     : getBusinessMonthBounds(now);
   return { start: getBusinessDayKey(bounds.start), end: getBusinessDayKey(bounds.end) };
+}
+
+// ── Custom date range ────────────────────────────────────────────────────────
+// leaderboard_team_board(p_start, p_end) already takes any range; the UI lost the
+// picker, not the backend. The named windows pass an EXCLUSIVE end (today's board is
+// { start: today, end: tomorrow }) and the RPC rejects p_end - p_start > 62, so these
+// helpers turn an inclusive [start, end] the person picks into exactly that shape.
+
+/** The RPC rejects a span over 62 days (end exclusive), so the picker caps the same way. */
+export const BOARD_MAX_SPAN_DAYS = 62;
+
+/** yyyy-MM-dd calendar math, timezone-free: the keys are dates, not instants. */
+function addDaysKey(key: string, days: number): string {
+  const d = new Date(`${key}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/** An inclusive [start, end] pair of day keys as the RPC's half-open range (end exclusive). */
+export function customBoardRange(startKey: string, endKey: string): { start: string; end: string } {
+  return { start: startKey, end: addDaysKey(endKey, 1) };
+}
+
+/** The same inclusive range as UTC instants, for applications.created_at reads (recruiting/referrals). */
+export function customBoardInstants(startKey: string, endKey: string): { startIso: string; endIso: string } {
+  return {
+    startIso: fromZonedTime(`${startKey}T00:00:00`, BUSINESS_TIMEZONE).toISOString(),
+    endIso: fromZonedTime(`${addDaysKey(endKey, 1)}T00:00:00`, BUSINESS_TIMEZONE).toISOString(),
+  };
+}
+
+/** Why a custom range can't be read yet, in the words the picker shows — or null when it's good. */
+export function customRangeError(startKey: string | null | undefined, endKey: string | null | undefined): string | null {
+  if (!startKey || !endKey) return "Pick a start date and an end date.";
+  const span = Math.round((Date.parse(`${endKey}T00:00:00Z`) - Date.parse(`${startKey}T00:00:00Z`)) / 86_400_000) + 1;
+  if (!Number.isFinite(span)) return "Those dates don't look right.";
+  if (span <= 0) return "The end date can't be before the start date.";
+  if (span > BOARD_MAX_SPAN_DAYS) return `Pick a range of ${BOARD_MAX_SPAN_DAYS} days or fewer.`;
+  return null;
+}
+
+export function isValidCustomRange(startKey: string | null | undefined, endKey: string | null | undefined): boolean {
+  return customRangeError(startKey, endKey) === null;
+}
+
+/** "Nov 1 – Nov 10", "on Nov 3", "Dec 20, 2025 – Jan 5": how a custom range reads inside a sentence. */
+export function customRangePhrase(startKey: string, endKey: string): string {
+  const thisYear = new Date().getFullYear();
+  const label = (key: string) => {
+    const [y, m, d] = key.split("-").map(Number);
+    const mon = (MONTHS[(m ?? 1) - 1] ?? "").slice(0, 3);
+    return y && y !== thisYear ? `${mon} ${d}, ${y}` : `${mon} ${d}`;
+  };
+  return startKey === endKey ? `on ${label(startKey)}` : `${label(startKey)} – ${label(endKey)}`;
 }
 
 /**

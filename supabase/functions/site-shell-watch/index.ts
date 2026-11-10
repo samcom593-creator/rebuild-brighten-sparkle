@@ -1,5 +1,16 @@
 // site-shell-watch (MP-304, 2026-08-19)
 //
+// MP-SITE-WATCH-EMAIL (2026-11-10): the second rung of the page ladder is now
+// EMAIL, not Discord. Measured that day: system_settings.discord_webhook_url
+// answered HTTP 404 (Sam's 2026-10-05 directive moved the team to Slack and the
+// Discord channels were deleted), so the fallback MP-307 built was dead and
+// apex-doctor #28d flagged it CRITICAL. Email was chosen on evidence, not taste:
+// apex-alert-dispatch carried 25 Resend receipts from this same runtime in the 7
+// days before the switch, the newest that noon, with zero quota errors. The
+// Resend SDK is loaded INSIDE the send, never at module load, so a bad esm.sh
+// resolution (MP-273's boot death) can only fail that one send and be recorded
+// on the row; it can never take the watcher down at boot.
+//
 // An OFF-LAPTOP watcher for apex-financial.org's shell + asset graph, fired by
 // pg_cron every 10 minutes.
 //
@@ -79,8 +90,9 @@
 // one rate-limited channel is not redundancy.
 //
 // So the ladder now crosses CHANNELS, not just attempts: ntfy first, and only
-// if ntfy refuses, the Discord webhook in system_settings.discord_webhook_url --
-// a different vendor, a different limiter, a different quota.
+// if ntfy refuses, a second vendor with a different limiter and quota. That was
+// the Discord webhook until 2026-11-10; it is email since MP-SITE-WATCH-EMAIL
+// (see the top of this file). Every rule below applies to the email rung as-is.
 //
 // THE TRAP THIS OPENS, and the reason Check #28d exists. A fallback that works
 // makes the primary's failure invisible: every page still lands, `paged` still
@@ -97,15 +109,50 @@
 // measured landing there 207 times in 42 days. Discord is a second exit, not a
 // second pocket.
 
+// Local, dependency-free (plain fetch inside): importing it cannot add a remote
+// resolution to this watcher's boot. The Resend SDK itself is loaded lazily in
+// sendPageEmail.
+import { gateResend } from "../_shared/resend-gate.ts";
+
 const BASE = Deno.env.get("SHELL_WATCH_BASE") ?? "https://apex-financial.org";
 const CONTROL = Deno.env.get("SHELL_WATCH_CONTROL") ?? "https://vercel.com";
 const NTFY = Deno.env.get("SHELL_WATCH_NTFY") ??
   "https://ntfy.sh/sams-agent-yrkv9kbqp9e987nb";
-// Read live from system_settings so a rotated webhook cannot leave a silently
-// dead fallback behind (2026-08-07: a token rotation that missed one consumer
-// would have made apex-doctor report a page of CRITICALs about a healthy DB).
-// Env override exists so the proof harness can point this at a throwaway sink.
-const DISCORD_ENV = Deno.env.get("SHELL_WATCH_DISCORD") ?? "";
+// NTFY_TOKEN pins the publish to Apex's own free-account quota instead of the
+// shared Supabase egress IP's anonymous allowance. Read here, at module scope,
+// so the channel helpers below stay pure: the proof harness slices them and
+// refuses any slice that reads its own environment (it went red the day this
+// read lived inside pushNtfy, and nothing noticed, because nothing runs it).
+let NTFY_TOKEN = "";
+try {
+  NTFY_TOKEN = Deno.env.get("NTFY_TOKEN") ?? "";
+} catch { /* empty-catch-allow:ntfy-token-env — no env permission = stay anonymous, the pre-token behaviour */ }
+
+// Second exit (MP-SITE-WATCH-EMAIL). Sam's two inboxes: the personal Gmail he
+// reads on his phone and the business inbox apex-alert-dispatch already uses.
+// Env override exists so the proof harness and a drill can redirect it.
+const PAGE_EMAIL_TO = (Deno.env.get("SHELL_WATCH_EMAIL_TO") ?? "sam.com593@gmail.com,info@kingofsales.net")
+  .split(",").map((s) => s.trim()).filter(Boolean);
+
+type EmailSendResult = { id: string | null; error: string | null };
+
+// The real sender. Lives OUTSIDE the sliced helpers on purpose (it reads the
+// environment and loads the SDK), and is handed to pushEmail by name, which is
+// how the harness swaps in a stub without touching the ladder it is proving.
+async function sendPageEmail(to: string[], subject: string, text: string): Promise<EmailSendResult> {
+  const key = Deno.env.get("RESEND_API_KEY") ?? "";
+  if (!key) return { id: null, error: "RESEND_API_KEY is not set in this runtime" };
+  const { Resend } = await import("https://esm.sh/resend@2.0.0");
+  const resend = gateResend(new Resend(key));
+  const { data, error } = await resend.emails.send({
+    from: "Galaxy Engine <sam@apex-financial.org>",
+    to,
+    subject,
+    text,
+  });
+  if (error) return { id: null, error: String(error?.message ?? error).slice(0, 200) };
+  return data?.id ? { id: data.id, error: null } : { id: null, error: "Resend answered without a message id" };
+}
 // No byte floor (2026-10-07). The 128B floor called utils-BsVvCH83.js, a
 // complete 102-byte module (shadcn cn()), a "TRUNCATED BUNDLE" and held this
 // watcher CRIT for 22h alongside the laptop probe. A floor tuned to today's
@@ -280,13 +327,8 @@ async function sql(path: string, init: RequestInit): Promise<Response> {
 type ChannelResult = { receipt: string | null; error: string | null };
 
 async function pushNtfy(body: string): Promise<ChannelResult> {
-  // NTFY_TOKEN pins this publish to Apex's own free-account quota instead of the
-  // shared Supabase egress IP's anonymous allowance (the 42908 both 2026-08-19
-  // refusals almost certainly hit). Env-gated: absent secret = old behaviour.
-  let ntfyToken = "";
-  try {
-    ntfyToken = Deno.env.get("NTFY_TOKEN") ?? "";
-  } catch { /* empty-catch-allow:ntfy-token-env — no env permission = stay anonymous, the pre-token behaviour */ }
+  // NTFY_TOKEN (module scope, see above). Absent secret = anonymous, old behaviour.
+  const ntfyToken = NTFY_TOKEN;
   const res = await fetch(NTFY, {
     method: "POST",
     signal: AbortSignal.timeout(10000),
@@ -317,43 +359,24 @@ async function pushNtfy(body: string): Promise<ChannelResult> {
   return { receipt: `ntfy:${id ?? "unparsed<" + raw.slice(0, 60) + ">"}`, error: null };
 }
 
-async function pushDiscord(body: string): Promise<ChannelResult> {
-  let url = DISCORD_ENV;
-  if (!url) {
-    const r = await sql("system_settings?select=value&key=eq.discord_webhook_url", { method: "GET" });
-    if (r.ok) {
-      let rows: { value?: string | { url?: string } }[] | null = null;
-      try { rows = await r.json(); } catch { rows = null; }
-      const v = rows?.[0]?.value;
-      url = typeof v === "string" ? v : (v?.url ?? "");
-    }
-  }
+async function pushEmail(body: string): Promise<ChannelResult> {
   // An unresolvable fallback is an ERROR on the record, never a silent skip.
   // A channel that is quietly absent looks identical to a channel that worked.
-  if (!url) return { receipt: null, error: "discord: no webhook (system_settings.discord_webhook_url empty/unreadable)" };
-
-  // ?wait=true makes Discord return the created message instead of a bare 204,
-  // so the receipt is the message's own id rather than our inference from a
-  // status code.
-  const res = await fetch(`${url}?wait=true`, {
-    method: "POST",
-    signal: AbortSignal.timeout(10000),
-    headers: { "Content-Type": "application/json", "User-Agent": "apex-site-shell-watch/1.0" },
-    body: JSON.stringify({
-      username: "Galaxy site watcher",
-      content:
-        "**Galaxy site DOWN (off-laptop watcher)**\n" +
-        "_Delivered here because ntfy refused the page. This is the FALLBACK channel._\n\n" +
-        body.slice(0, 1600),
-    }),
-  });
-  if (!res.ok) {
-    const detail = await res.text().catch(() => "");
-    return { receipt: null, error: `discord HTTP ${res.status}${detail ? " " + detail.slice(0, 200) : ""}` };
+  if (!PAGE_EMAIL_TO.length) return { receipt: null, error: "email: no recipient configured" };
+  let r: EmailSendResult;
+  try {
+    r = await sendPageEmail(
+      PAGE_EMAIL_TO,
+      "Galaxy site DOWN (off-laptop watcher)",
+      "Delivered by email because ntfy refused the page. This is the FALLBACK channel.\n\n" + body.slice(0, 4000),
+    );
+  } catch (e) {
+    return { receipt: null, error: `email: ${String(e).slice(0, 200)}` };
   }
-  let raw = "", id: string | null = null;
-  try { raw = await res.text(); id = JSON.parse(raw)?.id ?? null; } catch { id = null; }
-  return { receipt: `discord:${id ?? "unparsed<" + raw.slice(0, 60) + ">"}`, error: null };
+  // The receipt is Resend's own message id. A send that comes back without one
+  // is a failure on the record, never a guessed success (MP-273).
+  if (r.error || !r.id) return { receipt: null, error: `email: ${r.error ?? "no message id"}` };
+  return { receipt: `email:${r.id}`, error: null };
 }
 
 Deno.serve(async (req) => {
@@ -416,10 +439,10 @@ Deno.serve(async (req) => {
         `apex-financial.org shell/asset floor FAILED from Supabase pg_cron (off-laptop).\n\n${p.reason}\n\n` +
         `This watcher checks the shell + asset graph ONLY. The data layer and application write path are checked by the laptop probe and are NOT covered by this page.`;
 
-      // CHANNEL LADDER (MP-307). ntfy first and always: it is the channel
-      // MP-291 measured actually landing on Sam's phone. Discord runs ONLY
-      // after ntfy has exhausted its attempts, so a working fallback can never
-      // quietly become the primary.
+      // CHANNEL LADDER (MP-307, second rung email since MP-SITE-WATCH-EMAIL).
+      // ntfy first and always: it is the channel MP-291 measured actually
+      // landing on Sam's phone. Email runs ONLY after ntfy has exhausted its
+      // attempts, so a working fallback can never quietly become the primary.
       const errs: string[] = [];
       for (let attempt = 1; attempt <= 3 && !paged; attempt++) {
         try {
@@ -436,17 +459,17 @@ Deno.serve(async (req) => {
       if (!paged) {
         for (let attempt = 1; attempt <= 2 && !paged; attempt++) {
           try {
-            const r = await pushDiscord(body);
+            const r = await pushEmail(body);
             if (r.receipt) { paged = true; pagedVia = r.receipt; }
             else if (r.error) errs.push(`${r.error} (attempt ${attempt}/2)`);
           } catch (e) {
-            errs.push(`discord: ${String(e).slice(0, 200)} (attempt ${attempt}/2)`);
+            errs.push(`email: ${String(e).slice(0, 200)} (attempt ${attempt}/2)`);
           }
           if (!paged && attempt < 2) await new Promise((r) => setTimeout(r, 2000));
         }
       }
 
-      // The ntfy failures are kept on the row EVEN WHEN Discord saved the page.
+      // The ntfy failures are kept on the row EVEN WHEN email saved the page.
       // Dropping them on success is precisely how a dead primary channel hides:
       // delivery happened, so nothing looks wrong, and the one channel that
       // reaches a pocket is dark with no record of it. Check #28d reads these.

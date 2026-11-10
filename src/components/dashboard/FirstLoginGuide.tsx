@@ -51,6 +51,13 @@ type GuideData = {
   stage: string;
   licensed: boolean;
   contracted: boolean;
+  /** Facts the system already records. The getting_started_progress checkboxes
+   *  stay as a manual override, but nothing writes them automatically: on
+   *  2026-11-10 all 58 agents who could see this guide were stuck on "step 1 of 4"
+   *  (43 had a complete profile, 7 had passed a training module, 5 had closed a deal). */
+  profileComplete: boolean;
+  trainingStarted: boolean;
+  firstDeal: boolean;
   progress: Record<string, string | null> | null;
 };
 
@@ -70,18 +77,28 @@ export function FirstLoginGuide({ agentId }: { agentId: string }) {
     queryKey: ["first-login-guide", agentId],
     staleTime: 60_000,
     queryFn: async (): Promise<GuideData> => {
-      const [agentRes, progressRes] = await Promise.all([
-        (supabase as any).from("agents").select("display_name, onboarding_stage, license_status, contracted_at").eq("id", agentId).limit(1),
+      const [agentRes, progressRes, trainingRes] = await Promise.all([
+        (supabase as any).from("agents").select("display_name, onboarding_stage, license_status, contracted_at, first_deal_at, user_id").eq("id", agentId).limit(1),
         (supabase as any).from("getting_started_progress").select("*").eq("agent_id", agentId).limit(1),
+        (supabase as any).from("onboarding_progress").select("module_id").eq("agent_id", agentId).limit(1),
       ]);
       const agent = (agentRes.data ?? [])[0] ?? null;
       const progress = (progressRes.data ?? [])[0] ?? null;
+      let profileComplete = false;
+      if (agent?.user_id) {
+        const profileRes = await (supabase as any).from("profiles").select("full_name, phone").eq("user_id", agent.user_id).limit(1);
+        const profile = (profileRes.data ?? [])[0] ?? null;
+        profileComplete = Boolean(String(profile?.full_name ?? "").trim() && String(profile?.phone ?? "").trim());
+      }
       return {
         isAgent: Boolean(agent),
         firstName: String(agent?.display_name ?? "").trim().split(" ")[0] || "there",
         stage: String(agent?.onboarding_stage ?? ""),
         licensed: agent?.license_status === "licensed",
         contracted: Boolean(agent?.contracted_at || progress?.contracted_with_carriers || progress?.contracted_ahl_sent || progress?.contracted_ethos_sent || progress?.contracted_chubb_sent),
+        profileComplete,
+        trainingStarted: (trainingRes.data ?? []).length > 0,
+        firstDeal: Boolean(agent?.first_deal_at),
         progress,
       };
     },
@@ -96,14 +113,14 @@ export function FirstLoginGuide({ agentId }: { agentId: string }) {
         label: "Set up your account",
         detail: "Name, phone, state and a photo so the team can reach you. Five minutes.",
         href: "/dashboard/profile", cta: "Finish my profile",
-        done: Boolean(p.completed_profile || p.added_phone_number),
+        done: data.profileComplete || Boolean(p.completed_profile || p.added_phone_number),
       },
       {
         key: "training", icon: BookOpenCheck,
         label: "Start your training",
         detail: "The course is the job. Open module 1 today; everything else runs alongside it.",
         href: TRAINING_ROUTES.root, cta: "Start training",
-        done: Boolean(p.completed_first_training),
+        done: data.trainingStarted || Boolean(p.completed_first_training),
       },
       data.licensed
         ? {
@@ -118,21 +135,21 @@ export function FirstLoginGuide({ agentId }: { agentId: string }) {
             label: "Get licensed",
             detail: "Course, exam, fingerprints, state license. We walk you through every step.",
             href: "/get-licensed", cta: "Open the licensing roadmap",
-            done: Boolean(p.received_license),
+            done: data.licensed || Boolean(p.received_license),
           },
       {
         key: "writing", icon: Phone,
         label: "Start writing",
         detail: "Dial, present, close. Your first deal is the finish line of onboarding.",
         href: "/dashboard/call-center", cta: "Open the call center",
-        done: Boolean(p.closed_first_deal),
+        done: data.firstDeal || Boolean(p.closed_first_deal),
       },
     ];
     return list;
   }, [data]);
 
   const current = phases.find((ph) => !ph.done) ?? null;
-  const settled = !data || !data.isAgent || SETTLED_STAGES.has(data.stage) || Boolean(data.progress?.closed_first_deal);
+  const settled = !data || !data.isAgent || SETTLED_STAGES.has(data.stage) || data.firstDeal || Boolean(data.progress?.closed_first_deal);
   const visible = !settled && current !== null;
 
   const [open, setOpen] = useState(false);

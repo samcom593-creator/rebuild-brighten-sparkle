@@ -13,6 +13,18 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "If the site goes down and your phone push is blocked, the outage alert now arrives by email instead of vanishing. The backup channel was a Discord webhook, and it was deleted when the team moved to Slack, so a down-site page that ntfy refused had nowhere to go.",
+    detail: "supabase/functions/site-shell-watch/index.ts: second rung pushDiscord -> pushEmail (Resend via the shared suppression gate, SDK loaded inside the send so a bad esm.sh resolution can only fail that send, never boot). Recipients sam.com593@gmail.com + info@kingofsales.net. NTFY_TOKEN read moved to module scope so the channel helpers are pure again; scripts/prove-site-shell-watch-page.ts had been throwing 'slice can refetch its own operand' since that read landed, unnoticed. Proof rewritten: 31/31 incl. SDK-load failure, missing message id, 3 mutation proofs. Real sender drilled against Resend's test inbox (message id returned). apex-doctor Check #28d now grades the email rung on Resend receipts from the same runtime (25 in 7d) instead of GETting a 404 webhook: CRITICAL -> OK.",
+    commit: "mp-site-watch-email",
+  },
+  {
+    ts: "today",
+    label: "The 'hires stalled in contracting' alert now counts only people still on the team. It said 50; 25 of them had left months ago and one, Marquay Vaughns, had written 14 deals in 60 days. The real number is 24.",
+    detail: "fn_onboarding_contracting_stalled_alert gated on agents.status='active' (is_deactivated alone misses the 67 'inactive' rows) and no posted deal in v_production_unified in 60d. Applied live (schema_migrations 20261110193154), mirrored in d44853cc. Preview count 25 rows / 24 people matched the hand count exactly.",
+    commit: "mp-contracting-stalled-truth",
+  },
+  {
+    ts: "today",
     label: "New hires can't get locked out after activating anymore. A hire who activated their link but closed the onboarding video before it ended was never logged in, and reopening the link said 'This link has already been used, ask for a fresh link' while their account sat there with no way in (Danon Turner, 12:09 today). Now the hire is signed in the moment they activate, before the video plays, so leaving mid-video costs nothing; a video that fails to load moves them on instead of leaving a black screen; and a reopened hire link says 'You already activated this link' and signs them back in after they confirm the email they used.",
     detail: "supabase/migrations/20261110200000_invite_resume_login.sql (applied via bot-sql + recorded): invite_resume_login(token, email), anon-callable — accepted invite + typed email = accepted_email + account never signed in + accepted < 7 days + not deactivated/banned -> returns the activation's own unused magic_login_token (mints a 24h one only if none left); otherwise reason email_mismatch (with d***@ hint) / already_signed_in / not_activated / invite_invalid / no_account / resume_window_closed. 9/9 branches proven live; mint branch inside a self-rolled-back DO block. src/lib/magicLoginSession.ts signInWithLoginToken (verify-magic-link -> auth.verifyOtp, same as /magic-login) runs in HireLink right after consume-invite-token succeeds, before PostSubmitOnboardingVideo.start; on failure the old /magic-login redirect still applies. HireLink renders ActivatedLinkResume for invite_already_used (signed-in -> portal button; else email -> rpc -> /magic-login). PostSubmitOnboardingVideo onError finishes once started. 6 new tests + 27 existing invitation/onboarding tests green.",
     commit: "mp-hire-resume",

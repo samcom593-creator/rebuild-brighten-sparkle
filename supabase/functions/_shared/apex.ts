@@ -6,10 +6,10 @@ export const APP_BASE_URL =
 
 export const BUSINESS_TIMEZONE = "America/Chicago";
 
-export const SCHEDULING_LINKS = {
-  unlicensed: "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone",
-  licensed: "https://calendly.com/apexfinancialempire/1on1-call-clone",
-} as const;
+// WP2 (2026-11-10): one scheduling source. This used to send UNLICENSED recruits the
+// licensed-track event (a licensed-track booking auto-flips license_status) and licensed
+// recruits a different event than the page. Importers keep reading .unlicensed/.licensed.
+export { SCHEDULING_LINKS } from "./scheduling-links.ts";
 
 export const DISCORD_WEBHOOK_KEYS = {
   production: "discord_webhook_url",

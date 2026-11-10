@@ -321,6 +321,15 @@ const PUBLIC_ALLOWLIST = new Set([
   // interview-outcome (2026-10-28, MP-309): the one-tap outcome links; HMAC(id:outcome) under APEX_BOT_TOKEN verified
   //   in constant time (`verify` → 401) before the service-role client does anything.
   "interview-outcome",
+  // submit-licensing-proof + submit-licensing-milestone (WP2, 2026-11-10): the applicant's own /status/:id page,
+  //   usually ANON. The credential is the application_id in that URL (a v4 uuid emailed only to the applicant):
+  //   each handler rejects a malformed id (400 bad_application) and an id with no applications row (404
+  //   no_application) BEFORE the service-role client writes anything. The proof fn stores a file in a PRIVATE
+  //   bucket; the milestone fn inserts licensing_self_reports (forward-only stamps, never license_status) and is
+  //   rate-limited per application. apex-doctor drop-in 43 probes the proof fn with a nonexistent id and goes
+  //   CRITICAL on anything but 404 (a 401 means the gateway closed the only unlicensed booking path).
+  "submit-licensing-proof",
+  "submit-licensing-milestone",
   // MP-415 — the eight that turned this bucket red on 2026-09-30, each
   // classified in PUBLIC_CONTRACT below. Seven gate their caller in code and
   // the detector confirms it on every run; brand-collab is a public form. They
@@ -705,6 +714,8 @@ const PUBLIC_CONTRACT = {
   "content-share": "url_token",
   "ics-feed": "url_token",
   "consume-invite-token": "url_token",
+  "submit-licensing-proof": "url_token",
+  "submit-licensing-milestone": "url_token",
 
   // --- third-party webhook signature / shared secret ---------------------
   "stripe-webhook-lead-purchase": "provider_signature",

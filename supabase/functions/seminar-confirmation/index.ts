@@ -16,6 +16,7 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
 import { BRAND_NAME } from "../_shared/brand.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { SCHEDULING_LINKS } from "../_shared/scheduling-links.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,7 +26,10 @@ const corsHeaders = {
 const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { "Content-Type": "application/json", ...corsHeaders } });
 
-const INTERVIEW_URL = "https://calendly.com/apexfinancialempire/1on1-call-clone"; // live "Licensed Call" event
+// WP2: one scheduling source. submit-application no longer dispatches this function (a
+// licensed applicant got three booking asks for two different events); it stays deployed,
+// staff-gated, for manual resends.
+const INTERVIEW_URL = SCHEDULING_LINKS.licensed;
 const IG = "@sell4daddy";
 const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));

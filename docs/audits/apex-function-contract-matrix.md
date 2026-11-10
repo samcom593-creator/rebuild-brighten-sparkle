@@ -1,15 +1,15 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-10-29T03:18:04.145Z
-Repository: `/Users/samjames/projects/wt-trial-reels`
+Generated: 2026-11-10T21:08:52.756Z
+Repository: `/Users/samjames/projects/rebuild-brighten-sparkle/.claude/worktrees/wf_857aac4e-451-2`
 
 ## Inventory Summary
 
-- Total Local Edge Functions: **248**
-- Configured in `config.toml`: **249**
-- Invoked Edge Functions in Source: **97**
-- Invoked RPC Calls in Source: **223**
-- SQL Functions in Migrations: **743**
+- Total Local Edge Functions: **250**
+- Configured in `config.toml`: **252**
+- Invoked Edge Functions in Source: **98**
+- Invoked RPC Calls in Source: **258**
+- SQL Functions in Migrations: **802**
 
 ## Edge Function Auth & Verification Contracts
 
@@ -123,6 +123,7 @@ Repository: `/Users/samjames/projects/wt-trial-reels`
 | `metricool-sync` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `mirror-agents-backfill` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `monday-starter-reminders` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
+| `money-inbox-classify` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `morning-brief` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `myday-todoist` | Yes | Yes | `true` | Authenticated JWT | PASS |
 | `next-step-dispatch` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -243,6 +244,8 @@ Repository: `/Users/samjames/projects/wt-trial-reels`
 | `stripe-webhook-lead-purchase` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `submit-application` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `submit-contracting-intake` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
+| `submit-licensing-milestone` | NO | Yes | `false` | Public / Webhook In-Code Verified | DEBT: no local source |
+| `submit-licensing-proof` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `system-health-autopilot` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `system-health-check` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `telegram-drain` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -272,6 +275,6 @@ applied by hand through bot-sql and never round-tripped into
 `supabase/migrations`, so this directory does not model the deployed database.
 `apex-doctor` queries `pg_proc` and is the authority on deployed state.
 
-- Invoked RPCs: **223**
-- Also declared in this commit's migrations: **215**
+- Invoked RPCs: **258**
+- Also declared in this commit's migrations: **250**
 - Declared only in the database: **8**

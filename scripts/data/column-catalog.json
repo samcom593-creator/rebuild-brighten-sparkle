@@ -1676,6 +1676,7 @@
       "contacted_at",
       "contracted_at",
       "couldnt_reach_email_sent_at",
+      "course_proof_submitted_at",
       "course_purchased_at",
       "course_started_at",
       "created_at",
@@ -4916,6 +4917,16 @@
       "nudge_type",
       "sent_at"
     ],
+    "licensing_self_reports": [
+      "application_id",
+      "applied",
+      "created_at",
+      "exam_date",
+      "id",
+      "kind",
+      "npn",
+      "source"
+    ],
     "licensing_stage_backfill_20260807": [
       "application_id",
       "captured_at",
@@ -4923,6 +4934,19 @@
       "prior_progress",
       "prior_status",
       "prior_tracker_stage"
+    ],
+    "licensing_state_requirements": [
+      "course_price_usd",
+      "exam_fee_usd",
+      "exam_vendor",
+      "exam_vendor_url",
+      "fingerprint_fee_usd",
+      "fingerprint_vendor",
+      "is_active",
+      "license_fee_usd",
+      "notes",
+      "state",
+      "updated_at"
     ],
     "licensing_students": [
       "application_id",
@@ -7049,6 +7073,15 @@
       "id",
       "role",
       "user_id"
+    ],
+    "v_abandoned_partials_staged": [
+      "age_hours",
+      "first_name",
+      "license_status_claimed",
+      "partial_id",
+      "previously_nudged",
+      "resume_path",
+      "step_reached"
     ],
     "v_active_agents_skool": [
       "active_current_definition",
@@ -9232,6 +9265,18 @@
       "note",
       "npn_db"
     ],
+    "v_course_proof_funnel": [
+      "cutoff_at",
+      "licensing_call_bookings_14d",
+      "proof_alerts_undelivered_1h",
+      "proofs_14d",
+      "proofs_without_alert",
+      "roadmap_rows_pending",
+      "roadmap_triggers_live",
+      "self_reports_14d",
+      "unlicensed_apps_14d",
+      "unlicensed_apps_post_cutoff_14d"
+    ],
     "v_critical_losses_open": [
       "detected_at",
       "dollar_impact_usd",
@@ -10479,6 +10524,18 @@
       "last_name",
       "license_status",
       "scheduled_at"
+    ],
+    "v_licensing_cost_public": [
+      "course_price_usd",
+      "exam_fee_usd",
+      "exam_vendor",
+      "exam_vendor_url",
+      "fingerprint_fee_usd",
+      "fingerprint_vendor",
+      "license_fee_usd",
+      "state",
+      "total_usd",
+      "updated_at"
     ],
     "v_licensing_kanban": [
       "application_id",

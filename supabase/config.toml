@@ -815,4 +815,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.submit-licensing-proof]
-verify_jwt = true
+verify_jwt = false
+
+[functions.submit-licensing-milestone]
+verify_jwt = false

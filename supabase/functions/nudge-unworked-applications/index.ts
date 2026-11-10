@@ -20,6 +20,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { SCHEDULING_LINKS } from "../_shared/scheduling-links.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,7 +28,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-request-id, idempotency-key",
 };
 
-const CALENDLY_LICENSED = "https://calendly.com/apexfinancialempire/1on1-call-clone";
+// WP2: one scheduling source (_shared/scheduling-links.ts).
+const CALENDLY_LICENSED = SCHEDULING_LINKS.licensed;
 const GET_LICENSED_URL = "https://apex-financial.org/get-licensed";
 const APPLY_URL = "https://apex-financial.org/apply";
 
@@ -71,7 +73,7 @@ async function sendSMS(app: App): Promise<{ ok: boolean; error?: string }> {
   const first = app.first_name || "there";
   const body = app.license_status === "licensed"
     ? `${first} — Sam here. You're licensed, so you skip the course and go straight to contracting. Book 15 min: ${CALENDLY_LICENSED}`
-    : `${first} — Sam at Galaxy. We pay for your licensing course and you're producing in ~2 weeks. Next step: ${GET_LICENSED_URL}`;
+    : `${first} — Sam at Galaxy. Your licensing path takes about 2 weeks and we walk you through the costs first. Next step: ${GET_LICENSED_URL}`;
   const res = await supabase.functions.invoke("send-sms-auto-detect", {
     body: { phone: app.phone, message: body, applicationId: app.id },
   });

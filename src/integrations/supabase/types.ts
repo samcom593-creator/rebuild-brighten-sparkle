@@ -81216,6 +81216,39 @@ export type Database = {
         }
         Relationships: []
       }
+      licensing_self_reports: {
+        Row: {
+          application_id: string
+          applied: Json
+          created_at: string
+          exam_date: string | null
+          id: string
+          kind: string
+          npn: string | null
+          source: string
+        }
+        Insert: {
+          application_id: string
+          applied?: Json
+          created_at?: string
+          exam_date?: string | null
+          id?: string
+          kind: string
+          npn?: string | null
+          source?: string
+        }
+        Update: {
+          application_id?: string
+          applied?: Json
+          created_at?: string
+          exam_date?: string | null
+          id?: string
+          kind?: string
+          npn?: string | null
+          source?: string
+        }
+        Relationships: []
+      }
       licensing_stage_backfill_20260807: {
         Row: {
           application_id: string
@@ -81250,6 +81283,48 @@ export type Database = {
           prior_tracker_stage?:
             | Database["public"]["Enums"]["licensing_stage"]
             | null
+        }
+        Relationships: []
+      }
+      licensing_state_requirements: {
+        Row: {
+          course_price_usd: number | null
+          exam_fee_usd: number | null
+          exam_vendor: string | null
+          exam_vendor_url: string | null
+          fingerprint_fee_usd: number | null
+          fingerprint_vendor: string | null
+          is_active: boolean
+          license_fee_usd: number | null
+          notes: string | null
+          state: string
+          updated_at: string
+        }
+        Insert: {
+          course_price_usd?: number | null
+          exam_fee_usd?: number | null
+          exam_vendor?: string | null
+          exam_vendor_url?: string | null
+          fingerprint_fee_usd?: number | null
+          fingerprint_vendor?: string | null
+          is_active?: boolean
+          license_fee_usd?: number | null
+          notes?: string | null
+          state: string
+          updated_at?: string
+        }
+        Update: {
+          course_price_usd?: number | null
+          exam_fee_usd?: number | null
+          exam_vendor?: string | null
+          exam_vendor_url?: string | null
+          fingerprint_fee_usd?: number | null
+          fingerprint_vendor?: string | null
+          is_active?: boolean
+          license_fee_usd?: number | null
+          notes?: string | null
+          state?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -107061,6 +107136,18 @@ export type Database = {
         }
         Relationships: []
       }
+      v_abandoned_partials_staged: {
+        Row: {
+          age_hours: number | null
+          first_name: string | null
+          license_status_claimed: string | null
+          partial_id: string | null
+          previously_nudged: boolean | null
+          resume_path: string | null
+          step_reached: number | null
+        }
+        Relationships: []
+      }
       v_active_agents_skool: {
         Row: {
           active_current_definition: number | null
@@ -131988,6 +132075,21 @@ export type Database = {
         }
         Relationships: []
       }
+      v_course_proof_funnel: {
+        Row: {
+          cutoff_at: string | null
+          licensing_call_bookings_14d: number | null
+          proof_alerts_undelivered_1h: number | null
+          proofs_14d: number | null
+          proofs_without_alert: number | null
+          roadmap_rows_pending: number | null
+          roadmap_triggers_live: number | null
+          self_reports_14d: number | null
+          unlicensed_apps_14d: number | null
+          unlicensed_apps_post_cutoff_14d: number | null
+        }
+        Relationships: []
+      }
       v_critical_losses_open: {
         Row: {
           detected_at: string | null
@@ -142743,6 +142845,21 @@ export type Database = {
             referencedColumns: ["application_id"]
           },
         ]
+      }
+      v_licensing_cost_public: {
+        Row: {
+          course_price_usd: number | null
+          exam_fee_usd: number | null
+          exam_vendor: string | null
+          exam_vendor_url: string | null
+          fingerprint_fee_usd: number | null
+          fingerprint_vendor: string | null
+          license_fee_usd: number | null
+          state: string | null
+          total_usd: number | null
+          updated_at: string | null
+        }
+        Relationships: []
       }
       v_licensing_kanban: {
         Row: {

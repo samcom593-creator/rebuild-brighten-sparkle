@@ -30,6 +30,10 @@ PUBLIC_ALLOWLIST=(
   "consume-invite-token"
   "ics-feed"
   "submit-application"
+  # submit-licensing-proof / submit-licensing-milestone (WP2): application_id-gated
+  # anon writes from /status/:id; rationale in check-function-contracts.mjs.
+  "submit-licensing-proof"
+  "submit-licensing-milestone"
   "seminar-confirmation"
   "seminar-register"
   "update-application-referral"

@@ -3,6 +3,10 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
+import { SCHEDULING_LINKS, buildBookingUrl, statusPageUrl } from "../_shared/scheduling-links.ts";
+import { LICENSING_COST } from "../_shared/licensing-cost.ts";
+import { emailTypoSuggestion, licensedNpnIssue, shouldSendWelcomeSms } from "./policy.ts";
+import { emailPattern } from "../_shared/like-escape.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,7 +17,9 @@ const corsHeaders = {
 const supabaseUrl = Deno.env.get("SUPABASE_URL");
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const resendApiKey = Deno.env.get("RESEND_API_KEY");
-const SLACK_LINK = "https://join.slack.com/t/apex-financial-co/shared_invite/zt-47rdeq1fr-ETmj8yGBgRcoYVkwfc3DBQ";
+// WP2: the Slack invite is read from system_settings.slack_community_invite_url (one
+// source, rotatable without a deploy). The day-0 email carries at most a "questions + daily
+// meeting link" Slack line; course receipts go to /status/<id>, never into Slack.
 
 if (!supabaseUrl || !serviceRoleKey) {
   throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
@@ -288,6 +294,13 @@ const FullSubmitApplicationSchema = z.object({
   // change to /apply. Every field is optional so older clients (and any
   // cached bundle still in a user's browser) keep submitting successfully.
   ...FirstTouchAttributionShape,
+  // WP2: the applicant tapped "My email is correct" after a typo-domain 422.
+  emailTypoConfirmed: z.boolean().optional().nullable(),
+}).superRefine((data, ctx) => {
+  // WP2: a licensed applicant must give a 5-10 digit NPN (the client has required one since
+  // 2026-08-22; any other caller could claim "licensed" with none).
+  const issue = licensedNpnIssue(data.licenseStatus, data.niprNumber);
+  if (issue) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["niprNumber"], message: issue });
 });
 
 const QuickQualifySchema = z.object({
@@ -328,6 +341,20 @@ interface ManagerInfo {
   name: string;
   phone?: string;
   instagramHandle?: string;
+}
+
+// WP2: the Slack invite lives in system_settings so it can be rotated without a deploy.
+// null (no Slack line in the email) when the key is absent or unreadable.
+async function getSlackInviteUrl(): Promise<string | null> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("system_settings").select("value").eq("key", "slack_community_invite_url").maybeSingle();
+    if (error) return null;
+    const v = String((data as { value?: string } | null)?.value ?? "").trim().replace(/^"|"$/g, "");
+    return /^https:\/\/join\.slack\.com\//.test(v) ? v : null;
+  } catch {
+    return null;
+  }
 }
 
 async function getManagerInfo(agentId: string): Promise<ManagerInfo | null> {
@@ -763,7 +790,16 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
     const isLicensed = sanitized.licenseStatus === 'licensed';
     
     // Licensed applicants get call scheduling, unlicensed get licensing resources
-    const licensedCalendlyUrl = 'https://calendly.com/apexfinancialempire/1on1-call-clone';
+    // WP2: one scheduling source (_shared/scheduling-links.ts), prefilled + utm_content so the
+    // booking lands on this application.
+    const licensedCalendlyUrl = buildBookingUrl(SCHEDULING_LINKS.licensed, {
+      applicationId,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      email: data.email,
+    });
+    const statusUrl = statusPageUrl(applicationId);
+    const slackInviteUrl = await getSlackInviteUrl();
     // 2026-09-07: was youtu.be/YmlLSIwfGdE, an unlisted clip literally titled
     // "VSL   Test" that the landing page had already dropped as a placeholder.
     // /vsl is the real 5:46 self-hosted video with a poster.
@@ -910,81 +946,81 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
 
             <div style="background: #d1fae5; border-left: 4px solid #059669; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
               <p style="margin: 0; color: #047857; font-weight: 500;">
-                Your roadmap: Purchase pre-licensing course → Study & schedule exam → Pass and get contracted → Start closing deals
+                Your roadmap: 1. Watch the video → 2. Get the course → 3. Upload your receipt → 4. Book your licensing call
               </p>
             </div>
 
             ${recruiterContactSection}
 
-            <h3 style="color: #111827; margin-bottom: 15px;">Step 1: How to Get Your Life Insurance License</h3>
+            <h3 style="color: #111827; margin-bottom: 15px;">Step 1: Watch the 5-minute licensing video</h3>
             <p style="color: #4b5563; line-height: 1.6; margin-bottom: 20px;">
-              This video explains exactly how to get your life insurance license:
+              It puts every step from course to exam to license in the right order.
             </p>
-            
+
             <div style="text-align: center; margin-bottom: 30px;">
-              <a href="${unlicensedVideoUrl}" 
-                 style="display: inline-block; background: linear-gradient(135deg, #059669, #047857); color: white; 
+              <a href="${unlicensedVideoUrl}"
+                 style="display: inline-block; background: linear-gradient(135deg, #059669, #047857); color: white;
                         padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;
                         box-shadow: 0 4px 14px rgba(5, 150, 105, 0.4);">
-                ▶ How to Get Your Life Insurance License
+                ▶ Watch the licensing video
               </a>
             </div>
 
-            <h3 style="color: #111827; margin-bottom: 15px;">Step 2: Review the Licensing Steps</h3>
-            <p style="color: #4b5563; line-height: 1.6; margin-bottom: 20px;">
-              Here's a detailed breakdown of the licensing process:
+            <h3 style="color: #111827; margin-bottom: 15px;">Step 2: Get the pre-licensing course</h3>
+            <p style="color: #4b5563; line-height: 1.6; margin-bottom: 12px;">
+              Create your XCEL account with the legal name on your ID. It has to match your license application.
             </p>
-            
-            <div style="text-align: center; margin-bottom: 30px;">
-              <a href="${licensingDocUrl}" 
-                 style="display: inline-block; background: #111827; color: white; 
-                        padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;
-                        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);">
-                📄 View Licensing Steps
-              </a>
-            </div>
+            <p style="color: #4b5563; line-height: 1.6; margin-bottom: 20px;">
+              ${LICENSING_COST.short} ${LICENSING_COST.askFirst} Reply to this email${managerInfo ? " or reach your recruiter above" : ""}.
+            </p>
 
-            <h3 style="color: #111827; margin-bottom: 15px;">Step 3: Start Your Pre-Licensing Course</h3>
-            <p style="color: #4b5563; line-height: 1.6; margin-bottom: 20px;">
-              Access your pre-licensing course here:
-            </p>
-            
             <div style="text-align: center; margin-bottom: 30px;">
-              <a href="${preLicensingCourseUrl}" 
-                 style="display: inline-block; background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; 
+              <a href="${preLicensingCourseUrl}"
+                 style="display: inline-block; background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white;
                         padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;
                         box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);">
-                🎓 Start Pre-Licensing Course
+                🎓 Get the pre-licensing course
               </a>
             </div>
 
-            <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-top: 20px;">
-              <h3 style="color: #111827; margin-top: 0; margin-bottom: 15px;">What Happens Next?</h3>
-              <ol style="color: #4b5563; line-height: 1.8; margin: 0; padding-left: 20px;">
-                <li>Watch the licensing video above</li>
-                <li>Review the licensing steps document</li>
-                <li>Complete the pre-licensing course (we cover the costs!)</li>
-                <li>Pass your licensing exam</li>
-                <li>Start training and begin earning!</li>
-              </ol>
+            <h3 style="color: #111827; margin-bottom: 15px;">Step 3: Upload your course receipt</h3>
+            <p style="color: #4b5563; line-height: 1.6; margin-bottom: 20px;">
+              A screenshot or the PDF receipt both work. Upload it on your status page, not in Slack or a group chat: receipts carry personal info.
+            </p>
+
+            <div style="text-align: center; margin-bottom: 30px;">
+              <a href="${statusUrl}"
+                 style="display: inline-block; background: #111827; color: white;
+                        padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;
+                        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);">
+                📤 Upload your course receipt
+              </a>
             </div>
+
+            <h3 style="color: #111827; margin-bottom: 15px;">Step 4: Book your licensing call</h3>
+            <p style="color: #4b5563; line-height: 1.6; margin-bottom: 20px;">
+              The licensing call unlocks on your status page the moment your receipt is in. Save the link above: it is also where you tell us when you book your exam, when you pass, and your NPN once your license posts.
+            </p>
+
+            <p style="color: #6b7280; font-size: 13px; line-height: 1.6;">
+              Want the full breakdown first? <a href="${licensingDocUrl}" style="color: #2563eb;">View the licensing steps</a>.
+            </p>
 
             <p style="color: #4b5563; line-height: 1.6; margin-top: 25px;">
               You'll hear from a manager within 48 hours.
             </p>
 
+            ${slackInviteUrl ? `
             <div style="background: #f3e8ff; border: 1px solid #d8b4fe; padding: 20px; border-radius: 8px; margin: 25px 0; text-align: center;">
-              <h3 style="color: #4A154B; margin-top: 0; margin-bottom: 10px; font-size: 16px;">📱 Join the Galaxy Slack, then open #unlicensed</h3>
-              <p style="color: #6b216f; font-size: 13px; margin-bottom: 15px;">#unlicensed is your room until you're licensed. Once you've purchased the pre-licensing course, post a screenshot of the purchase confirmation there — that's how we verify it and move you to the next step.</p>
-              <a href="${SLACK_LINK}"
+              <h3 style="color: #4A154B; margin-top: 0; margin-bottom: 10px; font-size: 16px;">Questions? Join the Galaxy Slack</h3>
+              <p style="color: #6b216f; font-size: 13px; margin-bottom: 15px;">Open #unlicensed for questions and the daily meeting link.</p>
+              <a href="${slackInviteUrl}"
                  style="display: inline-block; background: #4A154B; color: white;
                         padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;">
                 Join Team Slack
               </a>
-              <p style="margin: 12px 0 0; font-size: 12px;">
-                <a href="https://apex-financial-co.slack.com/archives/C0BUTAKNB38" style="color: #4A154B; font-weight: bold;">Already in Slack? Open #unlicensed →</a>
-              </p>
             </div>
+            ` : ''}
 
             <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
               <h3 style="color: #1e40af; margin-top: 0; margin-bottom: 10px; font-size: 16px;">📋 Daily Check-In</h3>
@@ -1104,27 +1140,24 @@ function dispatchFullSubmissionSideEffects(data: SubmitApplicationRequest, appli
     console.error("Background email notification failed:", err);
   });
 
-  // PL-SEMINAR-FUNNEL: fire-and-forget the seminar confirmation email
-  // (Zoom + .ics + Telegram bot deep-link). Wrapped in try/catch so a
-  // failure here never fails the parent application submission.
+  // WP2 (2026-11-10): the separate seminar-confirmation "Book your interview" email is no
+  // longer dispatched. A licensed applicant already gets the booking ask on the page and in
+  // the welcome email above; the third ask pointed at a different event. The function
+  // stays deployed (staff-gated) but nothing here calls it.
+
+  // WP2: mark this person's open partial applications converted, server-side. The
+  // client-side mark misses about half (49 partials stayed open although that email had
+  // applied), which polluted the abandoned-applicant list.
   (async () => {
     try {
-      const resp = await fetch(`${supabaseUrl}/functions/v1/seminar-confirmation`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${serviceRoleKey}`,
-        },
-        body: JSON.stringify({ application_id: applicationId }),
-      });
-      if (!resp.ok) {
-        const txt = await resp.text();
-        console.error("[seminar-confirmation] non-ok response:", resp.status, txt.slice(0, 500));
-      } else {
-        console.log("[seminar-confirmation] dispatched for application:", applicationId);
-      }
+      const { error } = await supabaseAdmin
+        .from("partial_applications")
+        .update({ converted_at: new Date().toISOString() })
+        .ilike("email", emailPattern(data.email))
+        .is("converted_at", null);
+      if (error) console.error("[partial-convert] update failed:", error.message);
     } catch (e) {
-      console.error("[seminar-confirmation] dispatch threw:", e);
+      console.error("[partial-convert] threw:", e);
     }
   })();
 
@@ -1136,8 +1169,9 @@ function dispatchFullSubmissionSideEffects(data: SubmitApplicationRequest, appli
   // Auto opt-in: Send welcome notification via all channels (push + SMS + email)
   (async () => {
     try {
-      // SMS welcome via auto-detect (applicant likely doesn't have an account yet)
-      if (data.phone) {
+      // SMS welcome via auto-detect (applicant likely doesn't have an account yet).
+      // WP2: only with an explicit SMS opt-in on the form (consent is opt-in since 2026-05-24).
+      if (shouldSendWelcomeSms(data.phone, data.consent)) {
         await fetch(`${supabaseUrl}/functions/v1/send-sms-auto-detect`, {
           method: "POST",
           headers: {
@@ -1150,7 +1184,7 @@ function dispatchFullSubmissionSideEffects(data: SubmitApplicationRequest, appli
             applicationId,
           }),
         });
-        console.log("Welcome SMS sent to:", data.phone);
+        console.log("Welcome SMS dispatched for application:", applicationId);
       }
     } catch (err) {
       console.error("Welcome notification failed:", err);
@@ -1409,6 +1443,19 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const data: SubmitApplicationRequest = parsed.data;
+
+    // WP2: refuse a known typo domain with a suggestion (422) so the day-0 email does not
+    // bounce. Exact-match map only; unknown domains always pass. "My email is correct"
+    // resubmits with emailTypoConfirmed and is never refused twice.
+    if (!data.emailTypoConfirmed) {
+      const suggestion = emailTypoSuggestion(data.email);
+      if (suggestion) {
+        return new Response(
+          JSON.stringify({ error: `Did you mean ${suggestion}? Check your email address.`, code: "email_typo", suggestion }),
+          { status: 422, headers: { "Content-Type": "application/json", ...corsHeaders } },
+        );
+      }
+    }
     const activeReferral = await retainActiveReferralAgents(
       data.selectedReferralAgentId,
       data.recruiterId,

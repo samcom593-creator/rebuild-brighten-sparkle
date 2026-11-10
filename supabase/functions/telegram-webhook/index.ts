@@ -18,6 +18,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { type LicenseAnswer, parseLicenseAnswer } from "../_shared/license-answer.ts";
 import { raiseApexAlert } from "../_shared/alert-raise.ts";
 import { CONTRACTING_PROFILE_URL, NOT_CONTRACTED_YET } from "../_shared/contracting-profile.ts";
+import { SCHEDULING_LINKS } from "../_shared/scheduling-links.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -30,7 +31,8 @@ const ANTHROPIC_MODEL = Deno.env.get("ANTHROPIC_MODEL") ?? "claude-haiku-4-5-202
 const APPLY_URL = "https://apex-financial.org/apply?utm_source=telegram&utm_medium=bot";
 const PROFILE_URL = CONTRACTING_PROFILE_URL;
 const LICENSE_URL = "https://apex-financial.org/get-licensed";
-const LICENSED_CALL_URL = "https://calendly.com/apexfinancialempire/1on1-call-clone";
+// WP2: one scheduling source (_shared/scheduling-links.ts).
+const LICENSED_CALL_URL = SCHEDULING_LINKS.licensed;
 
 const LICENSE_PATH_TEXT =
   `Pre-license course (life insurance):\n\n1. Enroll: ${LICENSE_URL}\n2. Daily 30 min minimum. Cohort moves with or without you.\n3. Get stuck → reply with the question and I'll route or answer.\n\nState-specific quirks? Tell me your state.`;

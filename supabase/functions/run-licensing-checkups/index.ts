@@ -9,6 +9,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+// WP2: an unlicensed recruit is sent their own status page (course, receipt, licensing
+// call), never the licensed-track event, which auto-flips license_status on booking.
+import { statusPageUrl } from "../_shared/scheduling-links.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -48,13 +51,13 @@ const NUDGE_SCHEDULE: NudgeScheduleItem[] = [
     emailBody: (name) => `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
         <h2 style="color:#059669;">Hey ${name},</h2>
-        <p>Welcome to the Galaxy team! Your first step is to purchase and start the pre-licensing course.</p>
+        <p>Welcome to the Galaxy team! Your first step is the pre-licensing course.</p>
         <p>The course takes 2-4 weeks to complete. Agents who start in Week 1 get licensed <strong>3x faster</strong>.</p>
         <p style="margin:24px 0;"><a href="https://apex-financial.org/get-licensed" style="background:#059669;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">Start Your Course →</a></p>
         <p>Your first paycheck is closer than you think.</p>
         <p>— The Galaxy Team</p>
       </div>`,
-    smsBody: (name) => `Galaxy: ${name}, your license is the only thing between you and your first paycheck. Step 1: buy the course today → apex-financial.org`,
+    smsBody: (name) => `Galaxy: ${name}, your license is the only thing between you and your first paycheck. Step 1: start your pre-licensing course → apex-financial.org/get-licensed`,
   },
   {
     day: 2, type: "course_check", stages: ["unlicensed", "pre_course"],
@@ -382,7 +385,7 @@ serve(async (req: Request) => {
                 <h2>Hey ${firstName},</h2>
                 <p>It's been 60 days. I know there's something holding you back, and I want to help remove it.</p>
                 <p>Let's get on a quick call — no pressure, just a conversation about what's going on and how we can get you across the finish line.</p>
-                <p><a href="https://calendly.com/apexfinancialempire/1on1-call-clone" style="background:#059669;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">Book a Call with Sam →</a></p>
+                <p><a href="${statusPageUrl(app.id)}" style="background:#059669;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">See your next step →</a></p>
                 <p>— Sam James</p>
               </div>`,
             });

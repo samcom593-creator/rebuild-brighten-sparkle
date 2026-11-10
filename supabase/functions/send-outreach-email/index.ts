@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
 import { DEPARTED_AGENT_COLUMNS, isBannedUser, isDepartedAgent } from "../_shared/departed.ts";
+import { APP_ORIGIN, SCHEDULING_LINKS, buildBookingUrl, statusPageUrl } from "../_shared/scheduling-links.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -89,11 +90,51 @@ function ctaButton(href: string, text: string, bgColor: string = "#14b8a6"): str
       </table>`;
 }
 
+// WP2 (2026-11-10): every CTA used to be the LICENSED call (licensed-prospect-call-clone),
+// including cold_unlicensed, licensing_reminder, licensing_checkin and course_help. A
+// licensed-track booking auto-flips license_status, so an unlicensed recruit who clicked was
+// silently marked licensed. Now each template has an audience: licensed templates get the
+// licensed call from _shared/scheduling-links.ts (prefilled + utm_content), unlicensed ones
+// get the recruit's own status page (course, receipt upload, licensing call), and neutral
+// ones follow the lead's license_status.
+type TemplateAudience = "licensed" | "unlicensed" | "lead";
+const TEMPLATE_AUDIENCE: Record<string, TemplateAudience> = {
+  cold_licensed: "licensed",
+  followup1_licensed: "licensed",
+  followup2_licensed: "licensed",
+  cold_unlicensed: "unlicensed",
+  followup1_unlicensed: "unlicensed",
+  followup2_unlicensed: "unlicensed",
+  licensing_reminder: "unlicensed",
+  licensing_checkin: "unlicensed",
+  course_help: "unlicensed",
+  schedule_consultation: "lead",
+  couldnt_reach_you: "lead",
+};
+
+function outreachCtaUrl(
+  templateType: string,
+  lead: { id: string; first_name?: string | null; last_name?: string | null; email?: string | null; license_status?: string | null },
+  isApplication: boolean,
+): string {
+  const audience = TEMPLATE_AUDIENCE[templateType] ?? "lead";
+  const licensed = audience === "licensed" || (audience === "lead" && String(lead.license_status ?? "") === "licensed");
+  // An aged lead has no application, so it has no status page and no application id to
+  // carry in utm_content: unlicensed aged leads are sent to apply, licensed ones to the call.
+  if (!licensed) return isApplication ? statusPageUrl(lead.id) : `${APP_ORIGIN}/apply`;
+  return buildBookingUrl(SCHEDULING_LINKS.licensed, {
+    applicationId: isApplication ? lead.id : null,
+    firstName: lead.first_name,
+    lastName: lead.last_name,
+    email: lead.email,
+  });
+}
+
 // Email templates
 const emailTemplates = {
   cold_licensed: {
     subject: "Open to exploring a new opportunity?",
-    getHtml: (firstName: string, agentName: string) => `
+    getHtml: (firstName: string, agentName: string, ctaUrl: string) => `
 <!DOCTYPE html>
 <html>
 <head>
@@ -121,7 +162,7 @@ const emailTemplates = {
         <strong style="color:#ffffff;">Would you be open to a quick 15-minute call</strong> to explore if this might be a good fit? No pressure, just a conversation about where you're at and where you want to go.
       </p>
       
-      ${ctaButton("https://calendly.com/apexfinancialempire/licensed-prospect-call-clone", "Schedule a Call")}
+      ${ctaButton(ctaUrl, "Schedule a Call")}
       
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Looking forward to connecting,<br>
@@ -140,7 +181,7 @@ const emailTemplates = {
   },
   cold_unlicensed: {
     subject: "Let's chat about your progress!",
-    getHtml: (firstName: string, agentName: string) => `
+    getHtml: (firstName: string, agentName: string, ctaUrl: string) => `
 <!DOCTYPE html>
 <html>
 <head>
@@ -168,7 +209,7 @@ const emailTemplates = {
         <strong style="color:#ffffff;">No sales pitch—just a real conversation</strong> about what this industry looks like and how you can start building income from day one.
       </p>
       
-      ${ctaButton("https://calendly.com/apexfinancialempire/licensed-prospect-call-clone", "Let's Talk")}
+      ${ctaButton(ctaUrl, "Let's Talk")}
       
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Here whenever you're ready,<br>
@@ -187,7 +228,7 @@ const emailTemplates = {
   },
   followup1_licensed: {
     subject: "Great connecting—let's continue the conversation",
-    getHtml: (firstName: string, agentName: string) => `
+    getHtml: (firstName: string, agentName: string, ctaUrl: string) => `
 <!DOCTYPE html>
 <html>
 <head>
@@ -215,7 +256,7 @@ const emailTemplates = {
         <strong style="color:#ffffff;">When works best for a follow-up call?</strong> I want to walk you through our compensation structure and show you exactly what top producers are earning.
       </p>
       
-      ${ctaButton("https://calendly.com/apexfinancialempire/licensed-prospect-call-clone", "Book Follow-Up Call")}
+      ${ctaButton(ctaUrl, "Book Follow-Up Call")}
       
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Talk soon,<br>
@@ -234,7 +275,7 @@ const emailTemplates = {
   },
   followup2_licensed: {
     subject: "Still thinking about the opportunity?",
-    getHtml: (firstName: string, agentName: string) => `
+    getHtml: (firstName: string, agentName: string, ctaUrl: string) => `
 <!DOCTYPE html>
 <html>
 <head>
@@ -262,7 +303,7 @@ const emailTemplates = {
         <strong style="color:#ffffff;">If now isn't the right time, no worries.</strong> But if there's any part of you that's curious, let's revisit the conversation. Sometimes timing is everything.
       </p>
       
-      ${ctaButton("https://calendly.com/apexfinancialempire/licensed-prospect-call-clone", "Let's Reconnect")}
+      ${ctaButton(ctaUrl, "Let's Reconnect")}
       
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Here when you're ready,<br>
@@ -281,7 +322,7 @@ const emailTemplates = {
   },
   followup1_unlicensed: {
     subject: "How's your licensing journey going? 📚",
-    getHtml: (firstName: string, agentName: string) => `
+    getHtml: (firstName: string, agentName: string, ctaUrl: string) => `
 <!DOCTYPE html>
 <html>
 <head>
@@ -309,7 +350,7 @@ const emailTemplates = {
         <strong style="color:#ffffff;">Let me know where you're at</strong> and I can point you in the right direction. No pressure—just want to make sure you have the support you need.
       </p>
       
-      ${ctaButton("https://calendly.com/apexfinancialempire/licensed-prospect-call-clone", "Let's Chat About Your Progress")}
+      ${ctaButton(ctaUrl, "Let's Chat About Your Progress")}
       
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Rooting for you,<br>
@@ -328,7 +369,7 @@ const emailTemplates = {
   },
   followup2_unlicensed: {
     subject: "Don't let this opportunity slip away 🤔",
-    getHtml: (firstName: string, agentName: string) => `
+    getHtml: (firstName: string, agentName: string, ctaUrl: string) => `
 <!DOCTYPE html>
 <html>
 <head>
@@ -356,7 +397,7 @@ const emailTemplates = {
         <strong style="color:#ffffff;">If you're still interested, let's talk.</strong> I can walk you through exactly what you need to do to get started—step by step.
       </p>
       
-      ${ctaButton("https://calendly.com/apexfinancialempire/licensed-prospect-call-clone", "Get Licensed & Start Earning")}
+      ${ctaButton(ctaUrl, "Get Licensed & Start Earning")}
       
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Believe in you,<br>
@@ -375,7 +416,7 @@ const emailTemplates = {
   },
   licensing_reminder: {
     subject: "Quick reminder: Your license is the key 🔑",
-    getHtml: (firstName: string, agentName: string) => `
+    getHtml: (firstName: string, agentName: string, ctaUrl: string) => `
 <!DOCTYPE html>
 <html>
 <head>
@@ -410,7 +451,7 @@ const emailTemplates = {
         <strong style="color:#ffffff;">Need help getting started with your course?</strong> Let's hop on a quick call and I'll walk you through the fastest path to getting licensed.
       </p>
       
-      ${ctaButton("https://calendly.com/apexfinancialempire/licensed-prospect-call-clone", "Get Help With Licensing")}
+      ${ctaButton(ctaUrl, "Get Help With Licensing")}
       
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Here to help,<br>
@@ -429,7 +470,7 @@ const emailTemplates = {
   },
   licensing_checkin: {
     subject: "Checking in—need any help getting licensed? 🤝",
-    getHtml: (firstName: string, agentName: string) => `
+    getHtml: (firstName: string, agentName: string, ctaUrl: string) => `
 <!DOCTYPE html>
 <html>
 <head>
@@ -467,7 +508,7 @@ const emailTemplates = {
         <strong style="color:#ffffff;">No judgment, no pressure.</strong> I just want to make sure you're not stuck and have everything you need to move forward.
       </p>
       
-      ${ctaButton("https://calendly.com/apexfinancialempire/licensed-prospect-call-clone", "Let's Chat—I'm Here to Help")}
+      ${ctaButton(ctaUrl, "Let's Chat—I'm Here to Help")}
       
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         In your corner,<br>
@@ -486,7 +527,7 @@ const emailTemplates = {
   },
   course_help: {
     subject: "Need help with your licensing course? 📚",
-    getHtml: (firstName: string, agentName: string) => `
+    getHtml: (firstName: string, agentName: string, ctaUrl: string) => `
 <!DOCTYPE html>
 <html>
 <head>
@@ -524,7 +565,7 @@ const emailTemplates = {
         <strong style="color:#ffffff;">Let's hop on a quick call</strong> so I can answer your questions and make sure you're on the fastest path to getting licensed!
       </p>
       
-      ${ctaButton("https://calendly.com/apexfinancialempire/licensed-prospect-call-clone", "Get Course Help")}
+      ${ctaButton(ctaUrl, "Get Course Help")}
       
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Here to help you succeed,<br>
@@ -543,7 +584,7 @@ const emailTemplates = {
   },
   schedule_consultation: {
     subject: "Let's schedule a quick consultation call 📞",
-    getHtml: (firstName: string, agentName: string) => `
+    getHtml: (firstName: string, agentName: string, ctaUrl: string) => `
 <!DOCTYPE html>
 <html>
 <head>
@@ -581,7 +622,7 @@ const emailTemplates = {
         <strong style="color:#ffffff;">No pressure, no sales pitch</strong>—just a real conversation to see if this is the right fit for you.
       </p>
       
-      ${ctaButton("https://calendly.com/apexfinancialempire/licensed-prospect-call-clone", "Schedule Your Consultation")}
+      ${ctaButton(ctaUrl, "Schedule Your Consultation")}
       
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Looking forward to connecting,<br>
@@ -600,7 +641,7 @@ const emailTemplates = {
   },
   couldnt_reach_you: {
     subject: "We tried to call you! 📞",
-    getHtml: (firstName: string, agentName: string) => `
+    getHtml: (firstName: string, agentName: string, ctaUrl: string) => `
 <!DOCTYPE html>
 <html>
 <head>
@@ -635,7 +676,7 @@ const emailTemplates = {
         We're excited to chat with you about how you can start building a <strong style="color:#14b8a6;">high-income career</strong> in financial services.
       </p>
       
-      ${ctaButton("https://calendly.com/apexfinancialempire/licensed-prospect-call-clone", "Schedule a Call")}
+      ${ctaButton(ctaUrl, "Schedule a Call")}
       
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Talk soon,<br>
@@ -784,7 +825,7 @@ const handler = async (req: Request): Promise<Response> => {
     
     // Use custom content if provided, otherwise use template defaults
     const subject = customSubject || template.subject;
-    const html = customBody || template.getHtml(firstName, agentName);
+    const html = customBody || template.getHtml(firstName, agentName, outreachCtaUrl(templateType, lead, tableName === "applications"));
 
     // Resolve manager email for CC
     let managerEmail: string | null = null;

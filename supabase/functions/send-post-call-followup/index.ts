@@ -3,6 +3,8 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { Resend } from "npm:resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
 import { SCHEDULING_LINKS } from "../_shared/apex.ts";
+// WP2: no cost claim until Sam answers who pays (AUDIT N1).
+import { LICENSING_COST } from "../_shared/licensing-cost.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
 import { DEPARTED_AGENT_COLUMNS, isBannedUser, isDepartedAgent } from "../_shared/departed.ts";
 
@@ -249,7 +251,7 @@ const handler = async (req: Request): Promise<Response> => {
         </div>
 
         <div style="background: rgba(16, 185, 129, 0.05); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-          <div style="margin-bottom: 8px;"><span style="color: #10b981;">✅</span> <span style="color: #e5e7eb; font-size: 14px;"><strong>We Cover ALL Licensing Costs</strong></span></div>
+          <div style="margin-bottom: 8px;"><span style="color: #10b981;">✅</span> <span style="color: #e5e7eb; font-size: 14px;"><strong>${LICENSING_COST.title}</strong></span></div>
           <div style="margin-bottom: 8px;"><span style="color: #10b981;">✅</span> <span style="color: #e5e7eb; font-size: 14px;"><strong>Complete in ~7 Days</strong></span></div>
           <div><span style="color: #10b981;">✅</span> <span style="color: #e5e7eb; font-size: 14px;"><strong>Full Training & Support Provided</strong></span></div>
         </div>
@@ -385,7 +387,7 @@ const handler = async (req: Request): Promise<Response> => {
       </div>
 
       <div style="background: rgba(16, 185, 129, 0.05); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-        <div style="margin-bottom: 8px;"><span style="color: #10b981;">✅</span> <span style="color: #e5e7eb; font-size: 14px;"><strong>We Cover Licensing Costs</strong></span></div>
+        <div style="margin-bottom: 8px;"><span style="color: #10b981;">✅</span> <span style="color: #e5e7eb; font-size: 14px;"><strong>${LICENSING_COST.title}</strong></span></div>
         <div style="margin-bottom: 8px;"><span style="color: #10b981;">✅</span> <span style="color: #e5e7eb; font-size: 14px;"><strong>Takes About 7 Days</strong></span></div>
         <div><span style="color: #10b981;">✅</span> <span style="color: #e5e7eb; font-size: 14px;"><strong>Full Training Provided</strong></span></div>
       </div>

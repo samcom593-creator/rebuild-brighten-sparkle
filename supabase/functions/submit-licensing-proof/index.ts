@@ -6,6 +6,15 @@
 // application_id, never a direct table/storage grant. Stores the image in the private
 // licensing-proofs bucket and records one row in licensing_course_proofs.
 //
+// WP2 (2026-11-10): verify_jwt is FALSE in supabase/config.toml, matching the design above.
+// It briefly shipped as true (6a11ea17); the live SPA happens to send a legacy anon JWT so
+// uploads passed, but any key migration to an sb_publishable key would have 401'd every
+// upload at the gateway and closed the only unlicensed booking path. apex-doctor drop-in
+// 43 POSTs a nonexistent application_id here and goes CRITICAL on anything but 404.
+// PDFs are accepted (emailed receipts are PDFs). The insert fires
+// trg_licensing_proof_submitted (stamps applications.course_proof_submitted_at, raises one
+// private alert); it never stamps course_purchased_at.
+//
 // CORS is inlined (not imported from ../_shared/cors.ts) so this deploys as a single
 // self-contained file and the deployed source stays byte-identical to this repo file.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
@@ -24,6 +33,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const MAX_BYTES = 8 * 1024 * 1024; // 8 MB — a phone screenshot is well under this
 const EXT: Record<string, string> = {
   "image/png": "png", "image/jpeg": "jpg", "image/jpg": "jpg", "image/webp": "webp", "image/heic": "heic",
+  "application/pdf": "pdf",
 };
 
 Deno.serve(async (req) => {
@@ -37,15 +47,15 @@ Deno.serve(async (req) => {
   if (!UUID_RE.test(applicationId)) return err("A valid application is required.", 400, "bad_application");
 
   const contentType = (body.content_type ?? "").toLowerCase();
-  if (!EXT[contentType]) return err("Upload a PNG, JPG, WEBP or HEIC image.", 400, "bad_type");
+  if (!EXT[contentType]) return err("Upload a PNG, JPG, WEBP or HEIC image, or a PDF receipt.", 400, "bad_type");
 
   const b64 = (body.data ?? "").replace(/^data:[^,]+,/, "");
-  if (!b64) return err("No image received.", 400, "empty");
+  if (!b64) return err("No file received.", 400, "empty");
   let bytes: Uint8Array;
   try { bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)); }
-  catch { return err("Image could not be read.", 400, "decode"); }
-  if (bytes.length === 0) return err("No image received.", 400, "empty");
-  if (bytes.length > MAX_BYTES) return err("That image is too large (max 8 MB).", 400, "too_large");
+  catch { return err("File could not be read.", 400, "decode"); }
+  if (bytes.length === 0) return err("No file received.", 400, "empty");
+  if (bytes.length > MAX_BYTES) return err("That file is too large (max 8 MB).", 400, "too_large");
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,

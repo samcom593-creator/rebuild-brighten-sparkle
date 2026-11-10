@@ -161,3 +161,24 @@ begin
     end if;
   end loop;
 end $$;
+
+-- 1c) PROVEN LIVE: sellable_pool / sellable_leads_match returned full lead PII
+--     (names, phones, emails, DNC, policy face amounts) to the anon role with no
+--     internal gate. Revoke public+anon on these and the other no-gate helpers
+--     that have no business being callable logged-out; authenticated + service_role
+--     keep execute (the Lead Manager UI calls them signed in).
+do $$
+declare f record;
+begin
+  for f in
+    select p.oid
+    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname in ('sellable_leads_match','sellable_pool','fn_agent_contract_pct_live',
+        'get_downline_agent_ids','sam_agent_ids_to_exclude','fn_agent_subagency_live',
+        'apex_toolkit_can_work_application','apex_toolkit_is_staff')
+  loop
+    execute format('revoke execute on function %s(%s) from public, anon', f.oid::regproc, pg_get_function_identity_arguments(f.oid));
+    execute format('grant execute on function %s(%s) to authenticated, service_role', f.oid::regproc, pg_get_function_identity_arguments(f.oid));
+  end loop;
+end $$;

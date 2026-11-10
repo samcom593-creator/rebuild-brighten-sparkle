@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "The X/Twitter share card for the recruiting site stopped crediting the old brand. Its handle tag still read @APEXFinancial a month after the Galaxy rebrand, so every shared recruiting link named the retired brand on the card. Removed it, and a new check makes sure the page head can never carry stale brand again.",
+    detail: "index.html twitter:site @APEXFinancial removed (optional tag; the large-image card renders without it; Galaxy has no verified X account to point it at). New scripts/check-index-brand.mjs reads the live brand from src/config/brand.ts and checks only the user-facing title/meta values, so it leaves the apex-financial.org domain and the inline cache-bust/theme storage keys alone. Third surface of the src-only brand ratchet's blind spot after the PWA manifest and the Calendly event name. Wired verify:core + pre-commit; guard-wiring 125.",
+    commit: "index-brand-twitter-site",
+  },
+  {
+    ts: "today",
     label: "The new-agent 'Start here' guide stopped telling all 58 new agents they were on step 1. It read checkboxes nobody ticks; it now reads their real profile, training, license and first deal.",
     detail: "FirstLoginGuide reads profiles name+phone, onboarding_progress, license_status, agents.first_deal_at; checkboxes stay as a manual override. 5 tests, 3 fail on the old guide.",
     commit: "onboard-guide-facts",

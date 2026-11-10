@@ -813,3 +813,6 @@ verify_jwt = false
 
 [functions.ig-trial-reel-publish]
 verify_jwt = false
+
+[functions.submit-licensing-proof]
+verify_jwt = true

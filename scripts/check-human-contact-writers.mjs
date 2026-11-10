@@ -55,6 +55,14 @@ export function sqlWritesOutsideAllowed(sql) {
   while ((m = SQL_WRITE.exec(clean))) {
     const fn = owner(m.index);
     if (fn && ALLOWED_SQL_FUNCTIONS.has(fn)) continue;
+    // Only the applications columns are guarded. Attribute the write to the nearest
+    // preceding UPDATE target in the same statement (no ';' in between); interview_events
+    // also has a contacted_at, and cc_dispose_interview's callback stamp there is not an
+    // applicant-contact claim.
+    const before = clean.slice(0, m.index);
+    const stmtStart = before.lastIndexOf(";") + 1;
+    const upd = [...before.slice(stmtStart).matchAll(/\bupdate\s+(?:only\s+)?(?:public\.)?"?([a-z0-9_]+)"?/gi)].pop();
+    if (upd && upd[1].toLowerCase() !== "applications") continue;
     hits.push({ fn: fn ?? "(top level)", snippet: m[0].slice(0, 60) });
   }
   return hits;
@@ -110,6 +118,8 @@ function selftest() {
     ["allowed writer passes", sqlWritesOutsideAllowed(okSql).length === 0],
     ["new SQL writer fails", sqlWritesOutsideAllowed(badSql).length === 1],
     ["a comment is not a writer", sqlWritesOutsideAllowed(commentSql).length === 0],
+    ["another table's contacted_at is not an applicant write", sqlWritesOutsideAllowed("create or replace function f() returns void as $$ begin update public.interview_events set contacted_at = case when true then now() else contacted_at end where id = 1; end $$ language plpgsql;").length === 0],
+    ["applications contacted_at after an interview_events update still fails", sqlWritesOutsideAllowed("create or replace function f() returns void as $$ begin update public.interview_events set outcome = 'x' where id = 1; update public.applications set contacted_at = now() where id = 2; end $$ language plpgsql;").length === 1],
     ["TS type declaration is not a write", countTsWrites("interface A { contacted_at: string | null; last_contacted_at?: string }") === 0],
     ["TS update payload is a write", countTsWrites("await sb.from('applications').update({ last_contacted_at: new Date().toISOString() })") === 1],
     ["TS comment is not a write", countTsWrites("// update({ contacted_at: now })\nconst x = 1;") === 0],

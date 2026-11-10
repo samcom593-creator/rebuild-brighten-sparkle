@@ -100,7 +100,9 @@ export default function AdminFunnelHealth() {
         </div>
         <h1 className="text-3xl font-bold">Next-Step Funnel Health</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Conversion-to-next-stage + median time-in-stage for every cohort. The bigger the drop, the bigger the leak.
+          Who sits in each stage right now, and how long. These are today's populations, not cohorts, so the
+          last column compares two of them and is not a conversion rate. For conversion, month by month, use the{" "}
+          <Link to="/admin/recruit-funnel" className="underline">recruit funnel</Link>.
         </p>
       </div>
 
@@ -141,7 +143,7 @@ export default function AdminFunnelHealth() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Stage-by-stage cohort + conversion</CardTitle>
+          <CardTitle className="text-base">Stage by stage, right now</CardTitle>
         </CardHeader>
         <CardContent>
           {funnelLoading ? (
@@ -157,7 +159,7 @@ export default function AdminFunnelHealth() {
                     <th className="text-right py-2 px-2">Stalled</th>
                     <th className="text-right py-2 px-2">Median (d)</th>
                     <th className="text-right py-2 px-2">→ Next</th>
-                    <th className="text-right py-2 px-2">Conv. %</th>
+                    <th className="text-right py-2 px-2" title="Next stage's population divided by this one's, today. Not a conversion rate.">Next ÷ this</th>
                   </tr>
                 </thead>
                 <tbody>

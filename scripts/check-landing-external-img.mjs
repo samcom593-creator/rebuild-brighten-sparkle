@@ -34,6 +34,7 @@
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
+import { stripComments } from "./lib/strip-comments.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 const SRC = path.join(repoRoot, "src");
@@ -83,31 +84,11 @@ function walk(dir) {
   return out;
 }
 
-// Strip // line comments and /* */ block comments so a host named in a comment
-// (e.g. this very mechanism documented in another file) never self-triggers.
-// Line-based: good enough for our source and matches check-forbidden-language's
-// posture — a banned host in a string literal is what we are after.
-function stripComments(src) {
-  // remove block comments first (across lines), then line comments
-  const noBlock = src.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "));
-  return noBlock
-    .split("\n")
-    .map((line) => {
-      const i = line.indexOf("//");
-      // crude but safe: only strip when // is not obviously inside a URL scheme
-      // (https://). We look for "//" NOT immediately preceded by ":".
-      if (i === -1) return line;
-      if (i > 0 && line[i - 1] === ":") {
-        // could still have a trailing comment after the URL; find a later //
-        const j = line.indexOf("//", i + 2);
-        if (j === -1) return line;
-        if (line[j - 1] === ":") return line;
-        return line.slice(0, j);
-      }
-      return line.slice(0, i);
-    })
-    .join("\n");
-}
+// Comments are blanked (not deleted) by the repo's single ground-truth-tested
+// stripper so a host named in a comment or receipt never self-triggers, and
+// reported line numbers stay true. A hand-rolled copy is forbidden by
+// check:strip-comments-copies precisely because the naive versions mis-lex an
+// apostrophe in JSX prose and a `//` inside a string literal.
 
 const violations = [];
 for (const file of walk(SRC)) {

@@ -26,6 +26,11 @@ export const PostSubmitOnboardingVideo = forwardRef<
   const shellRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const nextUrlRef = useRef("/");
+  // MP-HIRE-RESUME: a video that fails to load used to leave the hire on a black
+  // fullscreen with no exit. Remember the failure; once start() has a
+  // destination, a failed video moves them on instead of trapping them.
+  const startedRef = useRef(false);
+  const failedRef = useRef(false);
   const [stage, setStage] = useState<PlayerStage>("idle");
   const [progress, setProgress] = useState(0);
 
@@ -72,9 +77,15 @@ export const PostSubmitOnboardingVideo = forwardRef<
     },
     async start(nextUrl: string) {
       nextUrlRef.current = nextUrl;
+      startedRef.current = true;
+      if (failedRef.current) {
+        await finish();
+        return;
+      }
       await playFromBeginning();
     },
     async cancel() {
+      startedRef.current = false;
       const video = videoRef.current;
       if (video) {
         video.pause();
@@ -87,6 +98,7 @@ export const PostSubmitOnboardingVideo = forwardRef<
   }));
 
   const finish = async () => {
+    startedRef.current = false;
     const nextUrl = nextUrlRef.current;
     setStage("idle");
     setProgress(0);
@@ -117,6 +129,10 @@ export const PostSubmitOnboardingVideo = forwardRef<
           if (video.duration > 0) setProgress(video.currentTime / video.duration);
         }}
         onEnded={() => void finish()}
+        onError={() => {
+          failedRef.current = true;
+          if (startedRef.current) void finish();
+        }}
         className="absolute inset-0 h-full w-full bg-black object-contain"
       >
         {ONBOARDING_VIDEO.ready ? (

@@ -37,6 +37,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { loginTokenFromRedirect, signInWithLoginToken } from "@/lib/magicLoginSession";
 import {
   PostSubmitOnboardingVideo,
   type PostSubmitOnboardingVideoHandle,
@@ -217,7 +218,15 @@ export default function HireLink() {
       // /agent-hub does not exist — a just-hired agent was landing on the
       // NotFound catch-all right after "You're in." Send them to the real
       // agent home (or /agent-login if the session isn't established yet).
-      const nextUrl = redirect || "/agent-portal?welcome=1";
+      let nextUrl = redirect || "/agent-portal?welcome=1";
+      // MP-HIRE-RESUME: sign in NOW, before the video. The login used to ride
+      // the URL we navigate to after the video ends, so closing the video lost
+      // it for good (Danon Turner, 2026-11-10). If this fails, nextUrl stays
+      // /magic-login?token=… and that page retries.
+      const loginToken = loginTokenFromRedirect(redirect);
+      if (loginToken && (await signInWithLoginToken(loginToken))) {
+        nextUrl = "/agent-portal?welcome=1";
+      }
       if (onboardingPrepared) {
         await onboardingPlayerRef.current?.start(nextUrl);
       } else {
@@ -239,6 +248,9 @@ export default function HireLink() {
   const offerExceptions = offeredTerms?.carrier_exceptions ?? [];
   const showOffer = offerComp != null || offerExceptions.length > 0 || !!offeredTerms?.upline_name;
 
+  if (invalid === "invite_already_used" && token) {
+    return <ActivatedLinkResume token={token} />;
+  }
   if (invalid) {
     return <InviteTokenInvalid reason={invalid} />;
   }
@@ -449,6 +461,119 @@ export default function HireLink() {
           </form>
         </GlassCard>
       </motion.div>
+    </div>
+  );
+}
+
+type ResumeReply = { ok?: boolean; login_token?: string; reason?: string; email_hint?: string | null };
+// invite_resume_login is newer than the generated types; .bind keeps `this`
+// (check:detached-supabase) and the reply is narrowed below.
+const resumeRpc = supabase.rpc.bind(supabase) as unknown as (
+  fn: "invite_resume_login",
+  args: { p_token: string; p_email: string },
+) => Promise<{ data: ResumeReply | null; error: { message?: string } | null }>;
+
+/**
+ * MP-HIRE-RESUME (2026-11-10): an ACCEPTED hire link is not a dead link for the
+ * person who accepted it. The old screen told an activated hire to "ask for a
+ * fresh link" while their account sat there with no way in (/agent-login wants
+ * a password a link hire never set). Confirming the email the link was accepted
+ * with hands back the activation's own login — server rules in
+ * invite_resume_login (never signed in, under 7 days, not banned).
+ */
+function ActivatedLinkResume({ token }: { token: string }) {
+  const nav = useNavigate();
+  const [hasSession, setHasSession] = useState<boolean | null>(null);
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<{ text: string; showLogin: boolean } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase.auth
+      .getSession()
+      .then(({ data }) => { if (!cancelled) setHasSession(!!data.session); })
+      .catch(() => { if (!cancelled) setHasSession(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  async function onResume(e: React.FormEvent) {
+    e.preventDefault();
+    if (busy || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return;
+    setBusy(true);
+    setProblem(null);
+    const { data, error } = await resumeRpc("invite_resume_login", { p_token: token, p_email: email.trim() });
+    if (!error && data?.ok && data.login_token) {
+      nav(`/magic-login?token=${encodeURIComponent(data.login_token)}`, { replace: true });
+      return;
+    }
+    setBusy(false);
+    const reason = data?.reason ?? "lookup_failed";
+    if (reason === "email_mismatch") {
+      setProblem({
+        text: `That isn't the email this link was activated with${data?.email_hint ? ` (${data.email_hint})` : ""}.`,
+        showLogin: false,
+      });
+    } else if (reason === "already_signed_in") {
+      setProblem({ text: "This account has already signed in before. Use the normal sign-in.", showLogin: true });
+    } else {
+      setProblem({
+        text: "We couldn't sign you in from this link. Ask whoever invited you to resend your login.",
+        showLogin: true,
+      });
+    }
+  }
+
+  if (hasSession === null) return <PageSkeleton fullScreen />;
+
+  return (
+    <div className="min-h-screen flex items-center justify-center px-4 bg-background">
+      <div className="w-full max-w-sm text-center" data-testid="hire-link-resume">
+        <Crown className="h-10 w-10 text-primary mx-auto mb-4" />
+        <h1 className="text-xl font-bold mb-2">You already activated this link.</h1>
+        {hasSession ? (
+          <>
+            <p className="text-sm text-muted-foreground mb-6">You're signed in on this phone.</p>
+            <GradientButton type="button" className="w-full" onClick={() => nav("/agent-portal?welcome=1")}>
+              Go to your portal <ArrowRight className="ml-2 h-4 w-4" />
+            </GradientButton>
+          </>
+        ) : (
+          <form onSubmit={onResume} className="text-left">
+            <p className="text-sm text-muted-foreground mb-6 text-center">
+              Enter the email you signed up with and we'll sign you in.
+            </p>
+            <Label htmlFor="resume-email">Email</Label>
+            <Input
+              id="resume-email"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              autoCapitalize="none"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="mt-1 mb-4"
+            />
+            {problem && (
+              <p className="text-sm text-destructive mb-4" role="alert">
+                {problem.text}
+              </p>
+            )}
+            <GradientButton type="submit" className="w-full" disabled={busy}>
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Sign me in <ArrowRight className="ml-2 h-4 w-4" /></>}
+            </GradientButton>
+            {problem?.showLogin && (
+              <button
+                type="button"
+                onClick={() => nav("/agent-login")}
+                className="mt-4 w-full text-sm text-primary underline underline-offset-4"
+              >
+                Go to sign-in
+              </button>
+            )}
+          </form>
+        )}
+      </div>
     </div>
   );
 }

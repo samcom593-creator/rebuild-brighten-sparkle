@@ -337,6 +337,9 @@ export default function LeadManager() {
   const [sort, setSort] = useState("tier");
   const [limit, setLimit] = useState(100);
   const [note, setNote] = useState("");
+  // Sam 2026-11-10: a button to hide the packs that ARE being worked, so the ones an
+  // agent is sitting on (dropped, still untouched) are all that's left on screen.
+  const [notWorkedOnly, setNotWorkedOnly] = useState(false);
 
   // reset tier/flag selections when switching pools (they differ per pool)
   useEffect(() => {
@@ -785,11 +788,31 @@ export default function LeadManager() {
 
       {/* RECENT DROPS */}
       <div className="space-y-3">
-        <h2 className="flex items-center gap-2 text-base font-semibold"><ClipboardList className="h-4 w-4" /> Recent drops</h2>
+        {(() => {
+          // Packs dropped to an agent and still untouched = the agent is sitting on
+          // their leads. Oldest first so the worst offenders are at the top.
+          const notWorked = recent.filter((b) => !b.archived_at && b.live_items > 0 && b.worked === 0 && b.dialed === 0);
+          const shown = notWorkedOnly
+            ? [...notWorked].sort((a, b) => (a.created_at ?? "").localeCompare(b.created_at ?? ""))
+            : recent;
+          return (
+        <>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="flex items-center gap-2 text-base font-semibold"><ClipboardList className="h-4 w-4" /> Recent drops</h2>
+          <Button
+            type="button" size="sm" variant={notWorkedOnly ? "default" : "outline"}
+            aria-pressed={notWorkedOnly}
+            onClick={() => setNotWorkedOnly((v) => !v)}
+          >
+            {notWorkedOnly ? "Show all drops" : `Not worked yet${notWorked.length ? ` (${notWorked.length})` : ""}`}
+          </Button>
+        </div>
         {recent.length === 0 ? (
           <Card><CardContent className="p-6 text-center text-sm text-muted-foreground">Nothing dropped yet. Build a pack above and it shows up here.</CardContent></Card>
+        ) : notWorkedOnly && shown.length === 0 ? (
+          <Card><CardContent className="p-6 text-center text-sm text-muted-foreground">Every dropped pack has been touched — nobody's sitting on their leads right now.</CardContent></Card>
         ) : (
-          recent.map((b) => (
+          shown.map((b) => (
             <Card key={b.bundle_id} className={cn(b.archived_at && "opacity-60")}>
               <CardContent className="space-y-3 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -839,6 +862,9 @@ export default function LeadManager() {
             </Card>
           ))
         )}
+        </>
+          );
+        })()}
       </div>
     </div>
   );

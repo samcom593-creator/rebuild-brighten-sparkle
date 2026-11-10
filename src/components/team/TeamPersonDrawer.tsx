@@ -13,6 +13,7 @@ import { StageSelect } from "@/components/team/StageBadge";
 import { WorkdaysEditor } from "@/components/team/WorkdaysEditor";
 import { TeamStageMark } from "@/components/team/TeamList";
 import { RecruitingSystemPanel } from "@/components/team/RecruitingSystemPanel";
+import { CarrierContractsPanel } from "@/components/team/CarrierContractsPanel";
 
 // The card opens in a portal, outside the page's type floor, so its small text is set at 13px here.
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -163,6 +164,7 @@ export function TeamPersonDrawer({ open, onOpenChange, row, onOpenContracting, m
             </>
           ) : null}
 
+          {agentId ? <CarrierContractsPanel agentId={agentId} /> : null}
           {agentId ? <RecruitingSystemPanel agentId={agentId} /> : null}
 
           {manage && (manage.onCheckIn || manage.onSendPortalLogin || manage.onEditLogin || manage.onViewApplication || manage.onHide || manage.onDeactivate) ? (

@@ -2727,6 +2727,18 @@
         "raw": ""
       }
     ],
+    "fn_agent_ahl_exempt": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
     "fn_agent_contract_pct": [
       {
         "all": [
@@ -8788,6 +8800,22 @@
         "raw": "p_agent_id uuid, p_pct numeric, p_expected numeric DEFAULT NULL::numeric, p_expect_unset boolean DEFAULT false, p_note text DEFAULT NULL::text"
       }
     ],
+    "set_team_carrier_contract": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_carrier",
+          "p_received"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_carrier",
+          "p_received"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_carrier text, p_received boolean"
+      }
+    ],
     "set_work_commitment": [
       {
         "all": [
@@ -9208,6 +9236,18 @@
         "required": [],
         "unnamed": false,
         "raw": "p_date date DEFAULT NULL::date"
+      }
+    ],
+    "team_carrier_contract_status": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
       }
     ],
     "team_contracting_status": [

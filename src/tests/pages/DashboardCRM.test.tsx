@@ -342,7 +342,10 @@ describe("My Team: the person card manages the training stage and work days", ()
   it("work days: five weekday checkboxes, a live preview, and a save that sends the chosen days effective today", async () => {
     renderPage("/dashboard/team?person=ann");
     await (await openCard()).findByRole("combobox", { name: "Stage for Ann Lee" });
-    const boxes = card().getAllByRole("checkbox");
+    // Scope to the workdays editor's boxes: the card legitimately carries other
+    // checkboxes (e.g. the recruiting-system enrollment toggle), and this test
+    // owns only the five weekday ones.
+    const boxes = card().getAllByRole("checkbox").filter((b) => /for Ann Lee$/.test(b.getAttribute("aria-label") ?? ""));
     expect(boxes.map((b) => b.getAttribute("aria-label"))).toEqual(["Monday for Ann Lee", "Tuesday for Ann Lee", "Wednesday for Ann Lee", "Thursday for Ann Lee", "Friday for Ann Lee"]);
     fireEvent.click(boxes[0]); fireEvent.click(boxes[2]); fireEvent.click(boxes[4]);
     expect(card().getByText("Preview: Mon, Wed, Fri · 3 days/week")).toBeInTheDocument();

@@ -57,6 +57,23 @@ export function RecruitingSystemPanel({ agentId }: { agentId: string }) {
   const [igUser, setIgUser] = useState("");
   const [igPass, setIgPass] = useState("");
   const [saving, setSaving] = useState(false);
+  const [recording, setRecording] = useState(false);
+
+  // Billing status comes from v_recruiting_billing_status (weeks due since enrolled_at
+  // vs payments recorded); only meaningful once the enrollment row is saved.
+  const billing = useQuery({
+    queryKey: ["recruiting-billing", agentId],
+    enabled: canSee && !!agentId && Boolean(row?.enrolled),
+    queryFn: async () => {
+      const [statusRes, paysRes] = await Promise.all([
+        supabase.from("v_recruiting_billing_status").select("weeks_due,weeks_paid,paid_total,balance_due,last_paid").eq("agent_id", agentId).limit(1),
+        supabase.from("agent_recruiting_payments").select("week_start,amount,paid_at").eq("agent_id", agentId).order("week_start", { ascending: false }).limit(4),
+      ]);
+      if (statusRes.error) throw statusRes.error;
+      if (paysRes.error) throw paysRes.error;
+      return { status: statusRes.data?.[0] ?? null, payments: paysRes.data ?? [] };
+    },
+  });
 
   useEffect(() => {
     setEnrolled(Boolean(row?.enrolled));
@@ -89,6 +106,24 @@ export function RecruitingSystemPanel({ agentId }: { agentId: string }) {
     }
     toast.success("Recruiting system saved");
     void qc.invalidateQueries({ queryKey: ["recruiting-system", agentId] });
+    void qc.invalidateQueries({ queryKey: ["recruiting-billing", agentId] });
+  };
+
+  const recordWeekPayment = async () => {
+    // Local-date Monday, not toISOString (UTC would shift the week at Phoenix evenings).
+    const now = new Date();
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+    const ymd = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, "0")}-${String(monday.getDate()).padStart(2, "0")}`;
+    setRecording(true);
+    const { error } = await supabase.from("agent_recruiting_payments").insert({ agent_id: agentId, week_start: ymd, amount: weekly });
+    setRecording(false);
+    if (error) {
+      toast.error(error.code === "23505" ? "This week's payment is already recorded." : `Payment not recorded: ${error.message}`);
+      return;
+    }
+    toast.success(`Recorded $${weekly.toFixed(2)} for the week of ${ymd}`);
+    void qc.invalidateQueries({ queryKey: ["recruiting-billing", agentId] });
   };
 
   return (
@@ -107,7 +142,7 @@ export function RecruitingSystemPanel({ agentId }: { agentId: string }) {
       ) : (
         <div className="space-y-3">
           <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
-            <Checkbox checked={enrolled} onCheckedChange={(v) => setEnrolled(v === true)} />
+            <Checkbox aria-label="Paying for recruiting systems" checked={enrolled} onCheckedChange={(v) => setEnrolled(v === true)} />
             Paying for recruiting systems
           </label>
           {enrolled ? (
@@ -139,6 +174,46 @@ export function RecruitingSystemPanel({ agentId }: { agentId: string }) {
                   <Input id={`ig-pass-${agentId}`} type="password" autoComplete="new-password" value={igPass} onChange={(e) => setIgPass(e.target.value)} placeholder="••••••••" />
                 </div>
               </div>
+              {row?.enrolled ? (
+                <div className="space-y-2 rounded-md border border-border bg-muted/20 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-[13px] font-semibold text-foreground">Weekly billing</p>
+                    <Button type="button" size="sm" variant="outline" className="h-9" onClick={() => void recordWeekPayment()} disabled={recording}>
+                      {recording ? "Recording…" : "Record this week's payment"}
+                    </Button>
+                  </div>
+                  {billing.isLoading ? (
+                    <p className="text-[13px] text-muted-foreground">Loading…</p>
+                  ) : billing.isError ? (
+                    <p className="text-[13px] text-amber-700 dark:text-amber-400">
+                      Billing status unavailable.{" "}
+                      <button type="button" aria-label="Retry billing status" className="font-semibold underline" onClick={() => void billing.refetch()}>Retry</button>
+                    </p>
+                  ) : billing.data?.status ? (
+                    <>
+                      <p className={`text-[13px] ${Number(billing.data.status.balance_due) > 0 ? "font-semibold text-amber-700 dark:text-amber-400" : "text-muted-foreground"}`}>
+                        {billing.data.status.weeks_paid} of {billing.data.status.weeks_due} weeks paid
+                        {Number(billing.data.status.balance_due) > 0
+                          ? ` — $${Number(billing.data.status.balance_due).toFixed(2)} behind`
+                          : " — current"}
+                      </p>
+                      {billing.data.payments.length > 0 ? (
+                        <ul className="space-y-0.5">
+                          {billing.data.payments.map((p) => (
+                            <li key={p.week_start} className="text-[12px] tabular-nums text-muted-foreground">
+                              Week of {p.week_start} — ${Number(p.amount).toFixed(2)}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-[12px] text-muted-foreground">No payments recorded yet.</p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-[13px] text-muted-foreground">Billing starts once the enrollment is saved.</p>
+                  )}
+                </div>
+              ) : null}
             </div>
           ) : null}
           <Button type="button" size="sm" className="h-10" onClick={() => void save()} disabled={saving}>

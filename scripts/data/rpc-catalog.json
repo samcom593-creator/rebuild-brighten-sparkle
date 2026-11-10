@@ -4690,6 +4690,14 @@
         "raw": ""
       }
     ],
+    "fn_onboarding_contracting_stalled_alert": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "fn_onboarding_email_backfill_sweep": [
       {
         "all": [],
@@ -4936,6 +4944,14 @@
         ],
         "unnamed": false,
         "raw": "p_application_id uuid, p_agent_id uuid"
+      }
+    ],
+    "fn_recruiting_billing_weekly": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
       }
     ],
     "fn_reissue_40d_html": [
@@ -9387,6 +9403,14 @@
         ],
         "unnamed": false,
         "raw": "p_deal_id uuid, p_to_status text, p_reason text, p_expected_version integer"
+      }
+    ],
+    "trg_ars_enrolled_at": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
       }
     ],
     "trg_auto_dispatch_slack_invite": [

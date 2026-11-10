@@ -425,10 +425,21 @@
       "rating",
       "updated_at"
     ],
+    "agent_recruiting_payments": [
+      "agent_id",
+      "amount",
+      "id",
+      "method",
+      "note",
+      "paid_at",
+      "recorded_by",
+      "week_start"
+    ],
     "agent_recruiting_systems": [
       "agent_id",
       "created_at",
       "enrolled",
+      "enrolled_at",
       "instagram_password",
       "instagram_username",
       "monthly_price",
@@ -4090,6 +4101,7 @@
       "contracted_chubb_sent",
       "contracted_ethos_sent",
       "contracted_with_carriers",
+      "contracting_stalled_alerted_at",
       "created_at",
       "current_stage",
       "id",
@@ -12024,6 +12036,19 @@
       "total_earnings",
       "total_policies",
       "total_premium"
+    ],
+    "v_recruiting_billing_status": [
+      "agent_id",
+      "balance_due",
+      "display_name",
+      "enrolled_at",
+      "last_paid",
+      "monthly_price",
+      "paid_total",
+      "plan",
+      "weekly_payment",
+      "weeks_due",
+      "weeks_paid"
     ],
     "v_recruiting_inbox": [
       "applicant_name",

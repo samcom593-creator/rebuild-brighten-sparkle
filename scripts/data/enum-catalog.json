@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-enum-catalog.sh (bot_sql -> pg_enum + pg_attribute.atttypid)",
- "_generated_at": "2026-11-10T16:36:08Z",
+ "_generated_at": "2026-11-10T21:25:39Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "A repo guard cannot query prod. This is a snapshot of every enum-typed column in the public schema and the exact member list Postgres will accept for it, so scripts/check-enum-filter-literals.mjs can decide whether a filter or write literal will survive PostgREST's coercion. Enum types are SCHEMA-QUALIFIED because this database has more than one type sharing a bare name. Views are included: a bad literal in a filter against a view column raises the same 22P02 as one against a table. apex-doctor Check #29 re-queries pg_enum weekly and goes red when this snapshot drifts from the live catalog.",
  "_ambiguous_bare_names": {
@@ -589,6 +589,7 @@
  },
  "_check_vocab_why": "Text columns whose CHECK constraint is a pure value list. Postgres refuses any other value with 23514 on INSERT/UPDATE, and a read filter carrying a non-member matches nothing at all \u2014 the silent-empty this guard exists for. Only single-column, VALIDATED, pure-vocabulary CHECKs are here; everything else is listed in _check_vocab_skipped and graded by nobody.",
  "_check_vocab_skipped": [
+  "contracting_stalled_checkpoints.checkpoint: column is smallint, not a string vocabulary",
   "license_renewal_alerts.days_out: column is integer, not a string vocabulary",
   "manual_interview_entries.called_outcome: CHECK is not a pure vocabulary (manual_interview_entries_called_outcome_chk)"
  ],
@@ -705,7 +706,8 @@
   "agent_contract_profile.source": {
    "members": [
     "staff",
-    "self"
+    "self",
+    "magic_hire_link"
    ],
    "constraint": "agent_contract_profile_source_check"
   },
@@ -794,7 +796,10 @@
     "hired_whatsapp",
     "onboarding_call",
     "get_licensed",
-    "scripts_packet"
+    "scripts_packet",
+    "onboarding_call_reminder_d2",
+    "onboarding_call_reminder_d5",
+    "onboarding_call_reminder_d10"
    ],
    "constraint": "agent_onboarding_queue_email_kind_check"
   },
@@ -890,6 +895,24 @@
     "denied"
    ],
    "constraint": "agents_comp_approval_status_check"
+  },
+  "agents.origin": {
+   "members": [
+    "application",
+    "direct_add",
+    "hire_link",
+    "import",
+    "headhunter",
+    "unattributed"
+   ],
+   "constraint": "agents_origin_check"
+  },
+  "agents.slack_joined_source": {
+   "members": [
+    "self_reported",
+    "verified_link"
+   ],
+   "constraint": "agents_slack_joined_source_check"
   },
   "agents_phantom_backup.builder_track": {
    "members": [
@@ -1744,6 +1767,24 @@
    ],
    "constraint": "discord_deal_ingestion_receipts_status_check"
   },
+  "email_suppressions.last_event": {
+   "members": [
+    "suppressed",
+    "bounced",
+    "complained"
+   ],
+   "constraint": "email_suppressions_last_event_check"
+  },
+  "email_template_families.audience": {
+   "members": [
+    "applicant",
+    "agent",
+    "both",
+    "internal",
+    "gateway"
+   ],
+   "constraint": "email_template_families_audience_check"
+  },
   "ethos_sheet_snapshots.status": {
    "members": [
     "pending",
@@ -1893,7 +1934,8 @@
     "seminar",
     "exam",
     "other",
-    "onboarding"
+    "onboarding",
+    "licensing"
    ],
    "constraint": "interview_events_call_track_check"
   },
@@ -1904,7 +1946,8 @@
     "phone",
     "manual",
     "none",
-    "booking_backfill"
+    "booking_backfill",
+    "utm"
    ],
    "constraint": "interview_events_match_method_check"
   },
@@ -2035,9 +2078,27 @@
     "application_progress",
     "agent_update",
     "admin",
-    "import"
+    "import",
+    "xcel"
    ],
    "constraint": "licensing_milestone_events_source_check"
+  },
+  "licensing_self_reports.kind": {
+   "members": [
+    "exam_scheduled",
+    "exam_passed",
+    "npn"
+   ],
+   "constraint": "licensing_self_reports_kind_check"
+  },
+  "magic_login_tokens.send_status": {
+   "members": [
+    "pending",
+    "sent",
+    "failed",
+    "refused"
+   ],
+   "constraint": "magic_login_tokens_send_status_check"
   },
   "manager_touches.channel": {
    "members": [
@@ -2072,7 +2133,8 @@
     "producing",
     "lapsed",
     "disqualified",
-    "quick_qualified"
+    "quick_qualified",
+    "bulk_unverified"
    ],
    "constraint": "manual_interview_entries_type_chk"
   },
@@ -2141,16 +2203,6 @@
     "personal"
    ],
    "constraint": "messaging_destinations_scope_type_check"
-  },
-  "messaging_identity_links.match_method": {
-   "members": [
-    "manual",
-    "oauth",
-    "email_claim",
-    "admin_verified",
-    "system"
-   ],
-   "constraint": "messaging_identity_links_match_method_check"
   },
   "messaging_identity_links.verification_status": {
    "members": [
@@ -2225,24 +2277,6 @@
     "long_form_posted"
    ],
    "constraint": "myday_counter_events_kind_check"
-  },
-  "next_step_events.event_type": {
-   "members": [
-    "advance",
-    "stall",
-    "unstall",
-    "reassign",
-    "nudge",
-    "message_sent",
-    "message_failed",
-    "manual_override",
-    "closed_lost",
-    "reopened",
-    "recompute",
-    "seed",
-    "auto_licensed_from_booking"
-   ],
-   "constraint": "next_step_events_event_type_check"
   },
   "next_step_events.source": {
    "members": [
@@ -2344,17 +2378,6 @@
     "lesson-notes"
    ],
    "constraint": "onboarding_modules_transcript_kind_check"
-  },
-  "outbox_events.status": {
-   "members": [
-    "pending",
-    "processing",
-    "delivered",
-    "manual_action_required",
-    "failed",
-    "dead_letter"
-   ],
-   "constraint": "outbox_events_status_check"
   },
   "outreach_queue.channel": {
    "members": [
@@ -2461,6 +2484,14 @@
    ],
    "constraint": "production_submission_notifications_status_check"
   },
+  "readymode_agent_aliases.person_type": {
+   "members": [
+    "agent",
+    "va",
+    "unknown"
+   ],
+   "constraint": "readymode_agent_aliases_person_type_check"
+  },
   "readymode_call_insights.approval_status": {
    "members": [
     "approved",
@@ -2477,6 +2508,59 @@
     "too_low"
    ],
    "constraint": "readymode_grade_feedback_verdict_check"
+  },
+  "recruit_sequences.audience": {
+   "members": [
+    "applicant",
+    "unlicensed",
+    "licensed",
+    "agent",
+    "both"
+   ],
+   "constraint": "recruit_sequences_audience_check"
+  },
+  "recruit_sequences.grade_mode": {
+   "members": [
+    "ledger",
+    "events_family",
+    "ungraded"
+   ],
+   "constraint": "recruit_sequences_grade_mode_check"
+  },
+  "recruit_sequences.status": {
+   "members": [
+    "active",
+    "paused",
+    "retired",
+    "manual"
+   ],
+   "constraint": "recruit_sequences_status_check"
+  },
+  "recruit_sequences.trigger_kind": {
+   "members": [
+    "cron",
+    "trigger",
+    "edge_inline",
+    "external",
+    "manual"
+   ],
+   "constraint": "recruit_sequences_trigger_kind_check"
+  },
+  "recruit_sla_push_log.channel": {
+   "members": [
+    "ntfy",
+    "inbox"
+   ],
+   "constraint": "recruit_sla_push_log_channel_check"
+  },
+  "recruit_sla_push_log.kind": {
+   "members": [
+    "page",
+    "batch_page",
+    "escalation",
+    "digest"
+   ],
+   "constraint": "recruit_sla_push_log_kind_check"
   },
   "recruiter_bounties.status": {
    "members": [
@@ -2503,6 +2587,28 @@
     "skipped"
    ],
    "constraint": "sam_daily_tasks_status_check"
+  },
+  "slack_placement_ledger.lookup_state": {
+   "members": [
+    "found",
+    "not_found",
+    "error"
+   ],
+   "constraint": "slack_placement_ledger_lookup_state_check"
+  },
+  "slack_placement_ledger.subject_kind": {
+   "members": [
+    "application",
+    "agent"
+   ],
+   "constraint": "slack_placement_ledger_subject_kind_check"
+  },
+  "slack_placement_ledger.target": {
+   "members": [
+    "unlicensed",
+    "licensed"
+   ],
+   "constraint": "slack_placement_ledger_target_check"
   },
   "social_snapshots.platform": {
    "members": [
@@ -2657,6 +2763,14 @@
     "completion"
    ],
    "constraint": "xcel_events_kind_check"
+  },
+  "xcel_writeback_log.mode": {
+   "members": [
+    "backfill",
+    "fresh",
+    "staff"
+   ],
+   "constraint": "xcel_writeback_log_mode_check"
   }
  }
 }

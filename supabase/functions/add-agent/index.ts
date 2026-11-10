@@ -39,6 +39,11 @@ interface AddAgentRequest {
   licenseStates?: string[];
   licenseExpiresAt?: string;
   sourceApplicationId?: string;
+  // WP5 (2026-11-10): the override that keeps the NPN rule from ever blocking a legitimate hire (e.g. an NPN still
+  // being looked up). Stored on agents.metadata.npn_missing_reason so the gap stays visible on the hire clock.
+  npnMissingReason?: string;
+  // WP5: why a hire has no application row (most licensed hires come through Add Agent, never /apply).
+  noApplicationReason?: string;
   compPercentage?: number;
   samApprovalRequested?: boolean;
 }
@@ -119,6 +124,8 @@ const handler = async (req: Request): Promise<Response> => {
       licenseStates,
       licenseExpiresAt,
       sourceApplicationId,
+      npnMissingReason,
+      noApplicationReason,
       compPercentage = 60,
       samApprovalRequested = false,
     } = body;
@@ -233,9 +240,16 @@ const handler = async (req: Request): Promise<Response> => {
     // Server-side mirror of the modal's rule. The modal can be bypassed (this
     // fn is callable directly), so the "licensed needs an NPN" invariant has to
     // hold here too or the untrusted-license problem just moves one layer down.
-    if (agentLicenseStatus === "licensed" && (normalizedNpn.length < 5 || normalizedNpn.length > 10)) {
+    // WP5: an explicit, recorded reason is the override, so a real hire whose NPN is still being looked up is never
+    // turned away. Without one, a licensed add still needs a 5-10 digit NPN.
+    const npnOverride = String(npnMissingReason ?? "").trim().slice(0, 300);
+    const npnValid = normalizedNpn.length >= 5 && normalizedNpn.length <= 10;
+    if (agentLicenseStatus === "licensed" && !npnValid && npnOverride.length < 3) {
       return new Response(
-        JSON.stringify({ error: "NPN is required for a licensed agent. Look it up free at nipr.com." }),
+        JSON.stringify({
+          error: "NPN is required for a licensed agent. Look it up free at nipr.com, or give a reason it is missing.",
+          code: "npn_required",
+        }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -303,6 +317,23 @@ const handler = async (req: Request): Promise<Response> => {
         }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } },
       );
+    }
+
+    // WP5: most licensed hires never came through /apply. When the caller names no application, link one only on a
+    // UNIQUE email match that no other agent already holds. Never guess between two.
+    let emailLinkedApplicationId: string | null = null;
+    if (!sourceApplication) {
+      const { data: appMatches, error: appMatchErr } = await supabaseAdmin
+        .from("applications")
+        .select("id")
+        .ilike("email", emailPattern(normalizedEmail))
+        .or("is_duplicate.is.null,is_duplicate.eq.false")
+        .limit(2);
+      if (!appMatchErr && (appMatches ?? []).length === 1) {
+        const candidate = (appMatches as Array<{ id: string }>)[0].id;
+        const { data: holder } = await supabaseAdmin.from("agents").select("id").eq("source_application_id", candidate).limit(1);
+        if ((holder ?? []).length === 0) emailLinkedApplicationId = candidate;
+      }
     }
 
     // Check if email already exists in profiles.
@@ -475,7 +506,7 @@ const handler = async (req: Request): Promise<Response> => {
       display_name: `${firstName} ${lastName}`.trim(),
       manager_id: managerId,
       invited_by_manager_id: managerId,
-      source_application_id: sourceApplication?.id ?? null,
+      source_application_id: sourceApplication?.id ?? emailLinkedApplicationId,
       status: "active",
       license_status: agentLicenseStatus,
       license_progress: agentLicenseProgress,
@@ -493,6 +524,18 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (crmSetupLink) {
       agentInsert.crm_setup_link = crmSetupLink;
+    }
+
+    // WP5 provenance. Only on a NEW row: a pre-created row being claimed keeps the origin it was born with.
+    if (!sourceAgent) {
+      agentInsert.origin = sourceApplication ? "application" : emailLinkedApplicationId ? "application" : "direct_add";
+      agentInsert.recruiter_agent_id = managerId;
+      const meta: Record<string, string> = { origin: String(agentInsert.origin), created_by_path: "add-agent" };
+      if (emailLinkedApplicationId) meta.source_application_match = "unique_email";
+      const noAppReason = String(noApplicationReason ?? "").trim().slice(0, 300);
+      if (!sourceApplication && !emailLinkedApplicationId) meta.no_application_reason = noAppReason || "direct add (no application on file)";
+      if (agentLicenseStatus === "licensed" && !npnValid) meta.npn_missing_reason = npnOverride;
+      agentInsert.metadata = meta;
     }
 
     // License detail. nipr_verified is deliberately left at its false default —

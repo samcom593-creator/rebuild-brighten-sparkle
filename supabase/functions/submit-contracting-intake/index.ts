@@ -35,6 +35,7 @@ import {
 } from "../_shared/intake-guard.ts";
 import { findAuthUserByEmail, type AuthUserLister } from "../_shared/find-auth-user.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { emailPattern } from "../_shared/like-escape.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -211,7 +212,30 @@ async function provisionOnboarding(
     const { error } = await sb.from("agents").update(agentPatch).eq("id", agentId);
     if (error) throw new Error(error.message);
   } else {
-    const { data: inserted, error } = await sb.from("agents").insert(agentPatch).select("id").single();
+    // WP5 provenance (new rows only). Link an application only on a UNIQUE email match no other agent holds.
+    let linkedApplicationId: string | null = null;
+    const { data: appMatches, error: appMatchErr } = await sb
+      .from("applications")
+      .select("id")
+      .ilike("email", emailPattern(email))
+      .or("is_duplicate.is.null,is_duplicate.eq.false")
+      .limit(2);
+    if (!appMatchErr && (appMatches ?? []).length === 1) {
+      const candidate = String((appMatches as Array<{ id: string }>)[0].id);
+      const { data: holder } = await sb.from("agents").select("id").eq("source_application_id", candidate).limit(1);
+      if ((holder ?? []).length === 0) linkedApplicationId = candidate;
+    }
+    const origin = linkedApplicationId ? "application" : "direct_add";
+    const provenance: Record<string, string> = { origin, created_by_path: "submit-contracting-intake" };
+    if (linkedApplicationId) provenance.source_application_match = "unique_email";
+    else provenance.no_application_reason = "contracting intake link (no application on file)";
+    const { data: inserted, error } = await sb.from("agents").insert({
+      ...agentPatch,
+      origin,
+      recruiter_agent_id: agentPatch.invited_by_manager_id,
+      source_application_id: linkedApplicationId,
+      metadata: provenance,
+    }).select("id").single();
     if (error || !inserted?.id) throw new Error(error?.message ?? "agent_create_failed");
     agentId = inserted.id;
   }

@@ -38,6 +38,7 @@ import { findAuthUserByEmail, type AuthUserLister } from "../_shared/find-auth-u
 import { nanpTenDigits, nanpRefusalReason } from "../_shared/nanp-phone.ts";
 import { postNtfyGraded } from "../_shared/ntfy-post.ts";
 import { isDepartedAgent } from "../_shared/departed.ts";
+import { emailPattern } from "../_shared/like-escape.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -60,6 +61,9 @@ interface ConsumeBody {
   state?: string;
   licensed?: boolean;
   nipr_number?: string;
+  // WP5 (2026-11-10): a licensed hire who cannot find their NPN right now says why instead of being turned away.
+  // Recorded on agents.metadata.npn_missing_reason; the hire clock keeps showing "no NPN" until one is on file.
+  npn_missing_reason?: string;
 }
 
 function json(body: unknown, status = 200) {
@@ -307,9 +311,12 @@ serve(async (req) => {
     : typeof body.licensed === "boolean"
       ? body.licensed
       : targetRole === "hired_licensed";
-  if (licensed && (!nipr_number || !/^\d{5,10}$/.test(nipr_number))) {
+  const npnMissingReason = String(body.npn_missing_reason ?? "").trim().slice(0, 300);
+  const npnValid = Boolean(nipr_number && /^\d{5,10}$/.test(nipr_number));
+  if (licensed && !npnValid && npnMissingReason.length < 3) {
     return json({ ok: false, error: "npn_required_for_licensed_hire" }, 422);
   }
+  if (!npnValid) nipr_number = null;
 
   // 2. Resolve identity before creating anything. A licensed hire may be the
   //    same person who joined while unlicensed; email, profile, auth user, and
@@ -573,10 +580,33 @@ serve(async (req) => {
       );
     }
   } else {
+    // WP5: link an application only on a UNIQUE email match no other agent already holds. Never guess between two.
+    let emailLinkedApplicationId: string | null = null;
+    {
+      const { data: appMatches, error: appMatchErr } = await admin
+        .from("applications")
+        .select("id")
+        .ilike("email", emailPattern(email))
+        .or("is_duplicate.is.null,is_duplicate.eq.false")
+        .limit(2);
+      if (!appMatchErr && (appMatches ?? []).length === 1) {
+        const candidate = (appMatches as Array<{ id: string }>)[0].id;
+        const { data: holder } = await admin.from("agents").select("id").eq("source_application_id", candidate).limit(1);
+        if ((holder ?? []).length === 0) emailLinkedApplicationId = candidate;
+      }
+    }
+    const provenance: Record<string, string> = { origin: "hire_link", created_by_path: "consume-invite-token" };
+    if (emailLinkedApplicationId) provenance.source_application_match = "unique_email";
+    else provenance.no_application_reason = "hire link (no application on file)";
+    if (licensed && !npnValid) provenance.npn_missing_reason = npnMissingReason;
     // Fresh insert.
     const { data: inserted, error: insErr } = await admin
       .from("agents")
       .insert({
+        origin: "hire_link",
+        recruiter_agent_id: targetManager?.id ?? null,
+        source_application_id: emailLinkedApplicationId,
+        metadata: provenance,
         user_id: authUserId,
         profile_id: profileRow.id,
         status: "active",
@@ -599,6 +629,23 @@ serve(async (req) => {
       );
     }
     agentId = inserted.id;
+  }
+
+  // WP5: a licensed hire gets a contracting-profile stub, so the hire clock and the contracting review start from a
+  // row instead of "no profile". Never overwrites a profile the agent or staff already saved; never fails the hire.
+  if (licensed) {
+    const parts = full_name.split(/\s+/).filter(Boolean);
+    const { error: stubErr } = await admin.from("agent_contract_profile").upsert(
+      {
+        agent_id: agentId,
+        first_name: parts[0]?.slice(0, 80) ?? null,
+        last_name: parts.length > 1 ? parts.slice(1).join(" ").slice(0, 80) : null,
+        email,
+        source: "magic_hire_link",
+      },
+      { onConflict: "agent_id", ignoreDuplicates: true },
+    );
+    if (stubErr) console.error("contract_profile_stub_failed", stubErr.message);
   }
 
   // Offered terms from the invitation row (never from the URL or the body).

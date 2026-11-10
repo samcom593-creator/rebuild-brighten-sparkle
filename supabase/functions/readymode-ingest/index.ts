@@ -143,7 +143,28 @@ Deno.serve(async (req) => {
     );
   }
 
-  return new Response(JSON.stringify(data ?? { ok: true }), {
+  // WP5 (2026-11-10): agent_id is resolved at write time by trg_rmd_resolve_agent_alias (readymode_agent_aliases),
+  // which also records a never-seen agent_raw as an 'unknown' alias for apex-doctor. Report the outcome here so an
+  // unattributed dial is visible in the function log instead of silently joining the 53% that had no agent.
+  const result = (data ?? { ok: true }) as Record<string, unknown>;
+  const callId = typeof result.call_id === "string" ? result.call_id : null;
+  if (callId) {
+    const { data: row, error: rowErr } = await supa
+      .from("readymode_dialer_calls")
+      .select("agent_id, agent_raw")
+      .eq("id", callId)
+      .maybeSingle();
+    if (rowErr) {
+      result.agent_resolved = null;
+    } else {
+      result.agent_resolved = Boolean((row as { agent_id?: string | null } | null)?.agent_id);
+      if (!result.agent_resolved) {
+        console.warn("readymode-ingest: unresolved agent_raw", String((row as { agent_raw?: string | null } | null)?.agent_raw ?? "").slice(0, 60));
+      }
+    }
+  }
+
+  return new Response(JSON.stringify(result), {
     headers: { "content-type": "application/json" },
   });
 });

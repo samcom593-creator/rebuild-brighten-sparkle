@@ -1,4 +1,4 @@
-export type ScoreboardPeriod = "day" | "week" | "past_week" | "month" | "last_month" | "year";
+export type ScoreboardPeriod = "day" | "yesterday" | "week" | "past_week" | "month" | "last_month" | "year";
 
 const fromIso = (value: string) => new Date(`${value}T12:00:00Z`);
 const addDays = (value: string, amount: number) => {
@@ -11,6 +11,18 @@ const addDays = (value: string, amount: number) => {
 export function scoreboardWindow(period: ScoreboardPeriod, throughDate: string) {
   const through = fromIso(throughDate);
   let start = throughDate;
+
+  // Since the Day window rolls over at midnight (PL-BOOK-ROW-WORK-REVIEW), the
+  // morning read of "what did we do yesterday" needs one tap, not the date picker:
+  // the single business day before the through-date.
+  if (period === "yesterday") {
+    const y = addDays(throughDate, -1);
+    return {
+      start: y,
+      end: throughDate,
+      label: fromIso(y).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }),
+    };
+  }
 
   if (period === "week") {
     const day = through.getUTCDay();

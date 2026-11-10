@@ -151,6 +151,7 @@ const isoDate = (date: Date) => date.toLocaleDateString("en-CA", { timeZone: PHO
 const phoenixToday = () => isoDate(new Date());
 const PERIODS: Array<{ key: ScoreboardPeriod; label: string }> = [
   { key: "day", label: "Day" },
+  { key: "yesterday", label: "Yesterday" },
   { key: "week", label: "Week to date" },
   { key: "past_week", label: "Past 7 days" },
   { key: "month", label: "Month to date" },

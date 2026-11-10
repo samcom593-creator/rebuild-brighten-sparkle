@@ -9,6 +9,10 @@ const source = (file: string) => fs.readFileSync(path.resolve(__dirname, `../../
 describe("scoped production scoreboard", () => {
   it("anchors every requested period to the chosen calendar date", () => {
     expect(scoreboardWindow("day", "2026-08-26")).toMatchObject({ start: "2026-08-26", end: "2026-08-27" });
+    // The one-tap morning read: the single business day before the through-date,
+    // including across a month boundary.
+    expect(scoreboardWindow("yesterday", "2026-08-26")).toMatchObject({ start: "2026-08-25", end: "2026-08-26", label: "August 25, 2026" });
+    expect(scoreboardWindow("yesterday", "2026-09-01")).toMatchObject({ start: "2026-08-31", end: "2026-09-01" });
     expect(scoreboardWindow("week", "2026-08-26")).toMatchObject({ start: "2026-08-24", end: "2026-08-27" });
     expect(scoreboardWindow("past_week", "2026-08-26")).toMatchObject({ start: "2026-08-20", end: "2026-08-27" });
     expect(scoreboardWindow("month", "2026-08-26")).toMatchObject({ start: "2026-08-01", end: "2026-08-27" });

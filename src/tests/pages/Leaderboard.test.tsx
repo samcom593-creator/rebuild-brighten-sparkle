@@ -290,7 +290,7 @@ describe("Leaderboard", () => {
     await screen.findByText("Jontay Taylor");
     expect(screen.queryByText(/Top Producing Leg/)).not.toBeInTheDocument();
     expect(screen.queryByText("Activity")).not.toBeInTheDocument();
-    expect(screen.queryByText("Custom")).not.toBeInTheDocument();
+    // "Custom" was retired, then deliberately restored by 4267d4ac (custom date range).
   });
 
   it("gives agents the sales board only, even when the URL asks for another", async () => {

@@ -35,7 +35,10 @@ const PAYLOAD = {
   ],
 };
 
-const rpc = vi.mocked(supabase.rpc);
+// Cast to a plain function type before vi.mocked: instantiating the mock over the
+// full generated Functions union (900+ RPCs) trips TS2589 (excessively deep).
+type RpcFn = (fn: string, args?: Record<string, unknown>) => Promise<unknown>;
+const rpc = vi.mocked(supabase.rpc as unknown as RpcFn);
 
 function renderWith(node: React.ReactNode) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, retryDelay: 0 } } });

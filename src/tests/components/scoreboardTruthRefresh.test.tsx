@@ -22,13 +22,15 @@ vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "sam" }, isAdm
 vi.mock("@/hooks/useBusinessToday", () => ({ useBusinessToday: () => "2026-10-16" }));
 
 import { ScopedProductionScoreboard } from "@/components/dashboard/ScopedProductionScoreboard";
+// Pre-cast for vi.mocked: the generated Functions union (900+ RPCs) trips TS2589 otherwise.
+type SbRpcFnForMock = (fn: string, args?: Record<string, unknown>) => Promise<unknown>;
 
-const boardCalls = () => vi.mocked(supabase.rpc).mock.calls.filter((c) => String(c[0]) === "scoped_production_scoreboard").length;
+const boardCalls = () => vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mock.calls.filter((c) => String(c[0]) === "scoped_production_scoreboard").length;
 
 beforeEach(() => {
   rt.subs.length = 0;
-  vi.mocked(supabase.rpc).mockReset();
-  vi.mocked(supabase.rpc).mockImplementation((() => Promise.resolve({ data: null, error: null })) as never);
+  vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mockReset();
+  vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mockImplementation((() => Promise.resolve({ data: null, error: null })) as never);
 });
 
 describe("scoreboard and the production snapshot", () => {

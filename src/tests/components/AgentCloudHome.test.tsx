@@ -88,7 +88,10 @@ const HOME: HomeData = {
 };
 
 type RpcArgs = { p_start: string; p_end: string };
-const rpc = vi.mocked(supabase.rpc);
+// Cast to a plain function type before vi.mocked: instantiating the mock over the
+// full generated Functions union (900+ RPCs) trips TS2589 (excessively deep).
+type RpcFn = (fn: string, args?: Record<string, unknown>) => Promise<unknown>;
+const rpc = vi.mocked(supabase.rpc as unknown as RpcFn);
 const rpcCalls = (): RpcArgs[] => rpc.mock.calls.map((call) => call[1] as unknown as RpcArgs);
 
 function renderHome() {

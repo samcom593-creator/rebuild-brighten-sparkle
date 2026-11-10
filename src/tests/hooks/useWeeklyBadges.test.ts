@@ -4,8 +4,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, waitFor, act } from "@testing-library/react";
 import { supabase } from "@/integrations/supabase/client";
 import { useWeeklyBadges } from "@/hooks/useWeeklyBadges";
+// Pre-cast for vi.mocked: the generated Functions union (900+ RPCs) trips TS2589 otherwise.
+type SbRpcFnForMock = (fn: string, args?: Record<string, unknown>) => Promise<unknown>;
 
-const rpc = vi.mocked(supabase.rpc);
+const rpc = vi.mocked(supabase.rpc as unknown as SbRpcFnForMock);
 
 const badgeRows = [
   { id: "alp-champion", name: "ALP Champion", description: "Top ALP", icon: "crown", color: "amber", week_start: "2026-08-24", value: "10000" },

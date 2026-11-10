@@ -16,6 +16,8 @@ import { celebrate } from "@/lib/celebrate";
 import { playSoundEffect } from "@/hooks/useSoundEffects";
 import type { CommandCenterPayload, DraftRow, InboxRow, LaneRow } from "@/lib/socialCommand";
 import SocialCommandCenter from "@/pages/SocialCommandCenter";
+// Pre-cast for vi.mocked: the generated Functions union (900+ RPCs) trips TS2589 otherwise.
+type SbRpcFnForMock = (fn: string, args?: Record<string, unknown>) => Promise<unknown>;
 
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ isAdmin: true, user: { id: "sam" } }) }));
 // CountUp reads prefersReducedMotion from the same module; true makes it paint the final number at once.
@@ -87,8 +89,8 @@ beforeEach(() => {
   vi.mocked(playSoundEffect).mockClear();
   vi.mocked(toast.success).mockClear();
   vi.mocked(toast.error).mockClear();
-  vi.mocked(supabase.rpc).mockReset();
-  vi.mocked(supabase.rpc).mockImplementation(((fn: string, args?: unknown) => {
+  vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mockReset();
+  vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mockImplementation(((fn: string, args?: unknown) => {
     db.calls.push({ fn, args });
     if (fn === "social_command_center") {
       if (db.pending) return new Promise(() => {});

@@ -27,6 +27,8 @@ import { supabase } from "@/integrations/supabase/client";
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "user-1" } }) }));
 
 import { MyReferralLinkCard } from "@/components/agent/MyReferralLinkCard";
+// Pre-cast for vi.mocked: the generated Functions union (900+ RPCs) trips TS2589 otherwise.
+type SbRpcFnForMock = (fn: string, args?: Record<string, unknown>) => Promise<unknown>;
 
 const root = path.resolve(__dirname, "../../..");
 const read = (relative: string) => fs.readFileSync(path.join(root, relative), "utf8");
@@ -145,7 +147,7 @@ function contrast(a: Rgb, b: Rgb): number {
 const ACTIVE_LINK = { active: true, ref_slug: "jontay-taylor-957597", link: "https://apex-financial.org/apply?ref=jontay-taylor-957597" };
 
 function renderCard(result: Promise<unknown>) {
-  vi.mocked(supabase.rpc).mockImplementation((() => result) as never);
+  vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mockImplementation((() => result) as never);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
@@ -171,7 +173,7 @@ function classesOf(el: Element | null): string[] {
 }
 
 afterEach(() => {
-  vi.mocked(supabase.rpc).mockReset();
+  vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mockReset();
 });
 
 describe("MyReferralLinkCard contrast (F39)", () => {

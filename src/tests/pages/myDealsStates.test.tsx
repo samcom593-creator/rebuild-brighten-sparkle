@@ -31,6 +31,8 @@ vi.mock("@/hooks/useSoldCallKeys", () => ({
 vi.mock("@/hooks/useSoundEffects", () => ({ playSoundEffect: vi.fn() }));
 
 import MyDeals from "@/pages/MyDeals";
+// Pre-cast for vi.mocked: the generated Functions union (900+ RPCs) trips TS2589 otherwise.
+type SbRpcFnForMock = (fn: string, args?: Record<string, unknown>) => Promise<unknown>;
 
 type Chain = {
   table: string;
@@ -148,7 +150,7 @@ const YIELD = [
 
 type RpcHandler = (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }> | undefined;
 let rpcOverride: RpcHandler = () => undefined;
-const rpcCalls = () => vi.mocked(supabase.rpc).mock.calls.map((c) => String(c[0]));
+const rpcCalls = () => vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mock.calls.map((c) => String(c[0]));
 
 const AGENT_ROW: AgentIdentityRow = {
   id: "agent-1", user_id: "user-1", agent_code: "AGT1", display_name: "Test Agent", status: "active",
@@ -187,9 +189,9 @@ beforeEach(() => {
   downline.current = { ids: undefined, isWaiting: false, isError: false, error: null, refetch: vi.fn(), source: "none" } satisfies ResolvedDownline;
   rpcOverride = () => undefined;
   vi.mocked(supabase.from).mockClear();
-  vi.mocked(supabase.rpc).mockClear();
+  vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mockClear();
   vi.mocked(supabase.from).mockImplementation(((table: string) => chainFor(table)) as never);
-  vi.mocked(supabase.rpc).mockImplementation(((fn: string, args: Record<string, unknown>) => {
+  vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mockImplementation(((fn: string, args: Record<string, unknown>) => {
     const custom = rpcOverride(fn, args);
     if (custom) return custom;
     if (fn === "book_of_business_counts") return Promise.resolve({ data: countsOf(book), error: null });

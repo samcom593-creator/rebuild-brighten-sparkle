@@ -33,6 +33,8 @@ import ReferralSubmit from "@/pages/ReferralSubmit";
 import { ConfirmProvider } from "@/hooks/useConfirm";
 import { celebrate } from "@/lib/celebrate";
 import { playSoundEffect } from "@/hooks/useSoundEffects";
+// Pre-cast for vi.mocked: the generated Functions union (900+ RPCs) trips TS2589 otherwise.
+type SbRpcFnForMock = (fn: string, args?: Record<string, unknown>) => Promise<unknown>;
 
 type RpcAnswer = { data: unknown; error: null | { message: string } };
 const SENT: RpcAnswer = {
@@ -65,7 +67,7 @@ function renderPage() {
   );
 }
 
-const rpcCalls = (fn: string) => vi.mocked(supabase.rpc).mock.calls.filter((c) => c[0] === fn);
+const rpcCalls = (fn: string) => vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mock.calls.filter((c) => c[0] === fn);
 const header = () => screen.getByRole("heading", { level: 1, name: "Refer a recruit" }).closest("header") as HTMLElement;
 const goldButtons = () => Array.from(document.querySelectorAll("button, a")).filter((el) => /\bbg-primary\b(?!\/)/.test(el.className));
 const sendButton = () => screen.getByRole("button", { name: "Send referral" });
@@ -94,8 +96,8 @@ beforeEach(() => {
   vi.mocked(playSoundEffect).mockClear();
   submitQueue.length = 0;
   linkList = NO_LINKS;
-  vi.mocked(supabase.rpc).mockReset();
-  vi.mocked(supabase.rpc).mockImplementation(((fn: string, args?: Record<string, unknown>) => {
+  vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mockReset();
+  vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mockImplementation(((fn: string, args?: Record<string, unknown>) => {
     switch (fn) {
       case "submit_referral": return Promise.resolve(submitQueue.shift() ?? SENT);
       case "my_recruiting_link": return Promise.resolve({ data: { active: true, agent_id: "agent-ana", ref_slug: "ana-agent-a1b2c3" }, error: null });

@@ -42,6 +42,8 @@ vi.mock("@/components/calendar/calendarApi", async (importOriginal) => ({
 }));
 
 import CalendarPage from "@/pages/CalendarPage";
+// Pre-cast for vi.mocked: the generated Functions union (900+ RPCs) trips TS2589 otherwise.
+type SbRpcFnForMock = (fn: string, args?: Record<string, unknown>) => Promise<unknown>;
 
 const ME = "user-1";
 const AT = "2026-10-15T22:00:00.000Z"; // 3:00 PM Phoenix, after the faked "now"
@@ -168,7 +170,7 @@ beforeEach(() => {
   localStorage.clear();
   appQueue.length = 0;
   countsResult = () => ({ data: SERVER_COUNTS, error: null });
-  vi.mocked(supabase.rpc).mockImplementation(((fn: string) => Promise.resolve(
+  vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mockImplementation(((fn: string) => Promise.resolve(
     fn === "calendar_window_counts" ? countsResult() : { data: null, error: { message: `no stub for ${fn}` } },
   )) as never);
   vi.mocked(supabase.from).mockImplementation(((table: string) => chainFor(table)) as never);

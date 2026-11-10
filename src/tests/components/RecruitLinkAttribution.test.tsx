@@ -31,6 +31,8 @@ import { MyLinkCard } from "@/components/invitations/MyLinkCard";
 import { RecruitingShortLink } from "@/components/RecruitingShortLink";
 import { ownLinkPath } from "@/lib/recruitLinks";
 import { refLinkOutcome } from "@/lib/refLinkNotice";
+// Pre-cast for vi.mocked: the generated Functions union (900+ RPCs) trips TS2589 otherwise.
+type SbRpcFnForMock = (fn: string, args?: Record<string, unknown>) => Promise<unknown>;
 
 const root = path.resolve(__dirname, "../../..");
 const read = (relative: string) => fs.readFileSync(path.join(root, relative), "utf8");
@@ -44,8 +46,8 @@ function ApplyEcho() {
 }
 
 beforeEach(() => {
-  vi.mocked(supabase.rpc).mockReset();
-  vi.mocked(supabase.rpc).mockImplementation(((fn: string) =>
+  vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mockReset();
+  vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mockImplementation(((fn: string) =>
     Promise.resolve(fn === "my_recruiting_link"
       ? { data: { active: true, agent_id: OWNER, ref_slug: SLUG, link: `https://apex-financial.org/apply?ref=${SLUG}` }, error: null }
       : { data: null, error: null })) as never);
@@ -64,11 +66,11 @@ describe("Your link keeps /r/<slug> attribution (MP-342)", () => {
     expect(await screen.findByTestId("my-link-url")).toHaveTextContent(`apex-financial.org/r/${SLUG}`);
     fireEvent.click(screen.getByRole("button", { name: "Copy link" }));
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(`https://apex-financial.org/r/${SLUG}`));
-    expect(vi.mocked(supabase.rpc).mock.calls.map((c) => c[0])).toEqual(["my_recruiting_link"]);
+    expect(vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mock.calls.map((c) => c[0])).toEqual(["my_recruiting_link"]);
   });
 
   it("an inactive or slug-less account gets no link at all, never one that credits nobody", async () => {
-    vi.mocked(supabase.rpc).mockImplementation((() => Promise.resolve({ data: { active: false }, error: null })) as never);
+    vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mockImplementation((() => Promise.resolve({ data: { active: false }, error: null })) as never);
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
       <QueryClientProvider client={qc}>

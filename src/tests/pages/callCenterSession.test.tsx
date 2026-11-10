@@ -99,6 +99,8 @@ vi.mock("@/components/callcenter", () => ({
 
 import CallCenter from "@/pages/CallCenter";
 import { promoteApplicationToAgent } from "@/lib/hireToOnboarding";
+// Pre-cast for vi.mocked: the generated Functions union (900+ RPCs) trips TS2589 otherwise.
+type SbRpcFnForMock = (fn: string, args?: Record<string, unknown>) => Promise<unknown>;
 
 const requests: Req[] = [];
 let respond: (req: Req) => Result | Promise<Result>;
@@ -254,7 +256,7 @@ beforeEach(() => {
   state.identity = { identity: { status: "resolved", agentId: "agent-1", row: ROW }, agentId: "agent-1", isLoading: false, isError: false, refetch: vi.fn(), userId: "user-1" };
   vi.mocked(supabase.from).mockImplementation(((table: string) => chainFor(table)) as never);
   vi.mocked(supabase.functions.invoke).mockResolvedValue({ data: { success: true, emailSent: true, emailId: "re_1" }, error: null } as never);
-  vi.mocked(supabase.rpc).mockResolvedValue({ data: null, error: null } as never);
+  vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mockResolvedValue({ data: null, error: null } as never);
   vi.mocked(promoteApplicationToAgent).mockResolvedValue({ agentId: "new-agent", partial: false, message: "ok" });
 });
 

@@ -35,6 +35,8 @@ vi.mock("@/hooks/useSoundEffects", () => ({ playSoundEffect: vi.fn(), useSoundEf
 import VaManagerPortal, { generateLoginPassword } from "@/pages/VaManagerPortal";
 import { celebrate } from "@/lib/celebrate";
 import { playSoundEffect } from "@/hooks/useSoundEffects";
+// Pre-cast for vi.mocked: the generated Functions union (900+ RPCs) trips TS2589 otherwise.
+type SbRpcFnForMock = (fn: string, args?: Record<string, unknown>) => Promise<unknown>;
 
 type VaRow = {
   user_id: string;
@@ -54,7 +56,7 @@ const ANA: VaRow = { user_id: "va-1", email: "ana@example.test", full_name: "Ana
 const BO: VaRow = { user_id: "va-2", email: "bo@example.test", full_name: "Bo Lee", created_at: daysAgo(20), last_sign_in_at: null, disabled: true };
 const TWO: RpcAnswer = { data: [ANA, BO], error: null };
 
-const rpc = () => vi.mocked(supabase.rpc);
+const rpc = () => vi.mocked(supabase.rpc as unknown as SbRpcFnForMock);
 const invoke = () => vi.mocked(supabase.functions.invoke);
 const clipboard = { writeText: vi.fn() };
 

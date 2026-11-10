@@ -14,6 +14,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { ConfirmProvider } from "@/hooks/useConfirm";
 import InstagramInbox from "@/pages/InstagramInbox";
 import type { IgDashboard, IgRow, IgStage, IgStageKey } from "@/components/instagram/igTypes";
+// Pre-cast for vi.mocked: the generated Functions union (900+ RPCs) trips TS2589 otherwise.
+type SbRpcFnForMock = (fn: string, args?: Record<string, unknown>) => Promise<unknown>;
 
 vi.mock("@/hooks/usePageTitle", () => ({ usePageTitle: vi.fn() }));
 
@@ -90,7 +92,7 @@ function renderPage(path = "/dashboard/inbox/instagram") {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(supabase.rpc).mockImplementation((async (fn: string) => {
+  vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mockImplementation((async (fn: string) => {
     if (fn === "fn_ig_dashboard") return { data: dashboard(), error: null };
     return { data: null, error: null };
   }) as never);
@@ -139,7 +141,7 @@ describe("Instagram desk", () => {
   });
 
   it("a failed load says so and offers a retry", async () => {
-    vi.mocked(supabase.rpc).mockImplementation((async () => ({ data: null, error: { message: "boom" } })) as never);
+    vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mockImplementation((async () => ({ data: null, error: { message: "boom" } })) as never);
     renderPage();
     expect(await screen.findByText("The Instagram desk didn't load")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();

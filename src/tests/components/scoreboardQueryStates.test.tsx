@@ -4,6 +4,8 @@ import { MemoryRouter } from "react-router-dom";
 import { beforeEach, expect, it, vi } from "vitest";
 import { supabase } from "@/integrations/supabase/client";
 import { ScopedProductionScoreboard, type ScoreboardData } from "@/components/dashboard/ScopedProductionScoreboard";
+// Pre-cast for vi.mocked: the generated Functions union (900+ RPCs) trips TS2589 otherwise.
+type SbRpcFnForMock = (fn: string, args?: Record<string, unknown>) => Promise<unknown>;
 
 vi.mock("@/shared/realtime/useRealtimeTable", () => ({ useRealtimeTable: () => undefined }));
 vi.mock("@/hooks/useProductionRealtime", () => ({ useProductionRealtime: () => undefined }));
@@ -22,8 +24,8 @@ const board = {
 } as ScoreboardData;
 
 beforeEach(() => {
-  vi.mocked(supabase.rpc).mockReset();
-  vi.mocked(supabase.rpc).mockImplementation((() => Promise.resolve({ data: null, error: null })) as never);
+  vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mockReset();
+  vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mockImplementation((() => Promise.resolve({ data: null, error: null })) as never);
 });
 
 function mount(cached?: ScoreboardData) {
@@ -37,14 +39,14 @@ it("keeps confirmed totals through a failed refresh, labels their age, and recov
   const client = mount(board);
   expect(screen.getAllByText("$12,345").length).toBeGreaterThan(0);
   // Drive an actual TanStack refresh through both attempts (the component retries once).
-  vi.mocked(supabase.rpc).mockImplementation(((name: string) => Promise.resolve(
+  vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mockImplementation(((name: string) => Promise.resolve(
     name === "scoped_production_scoreboard" ? { data: null, error: new Error("Network error") } : { data: null, error: null },
   )) as never);
   await act(async () => { await client.refetchQueries({ queryKey: key, exact: true }); });
   expect(screen.getByText(/Showing data as of/)).toHaveTextContent("The latest refresh failed");
   expect(screen.getAllByText("$12,345").length).toBeGreaterThan(0);
   expect(screen.queryByText(/login is not linked/)).not.toBeInTheDocument();
-  vi.mocked(supabase.rpc).mockImplementation(((name: string) => Promise.resolve({
+  vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mockImplementation(((name: string) => Promise.resolve({
     data: name === "scoped_production_scoreboard" ? board : null, error: null,
   })) as never);
   fireEvent.click(screen.getByRole("button", { name: "Retry" }));
@@ -53,7 +55,7 @@ it("keeps confirmed totals through a failed refresh, labels their age, and recov
 }, 10000);
 
 it("shows loading without zero totals or a missing-profile claim", () => {
-  vi.mocked(supabase.rpc).mockImplementation((() => new Promise(() => {})) as never);
+  vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mockImplementation((() => new Promise(() => {})) as never);
   const client = mount();
   expect(screen.getByText("Loading production totals")).toBeInTheDocument();
   expect(screen.queryByText("$0")).not.toBeInTheDocument();
@@ -70,7 +72,7 @@ it("does not claim a missing profile when the server returns no scoreboard", asy
 });
 
 it("shows a first-load error without invented totals", async () => {
-  vi.mocked(supabase.rpc).mockImplementation(((name: string) => Promise.resolve({
+  vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mockImplementation(((name: string) => Promise.resolve({
     data: null, error: name === "scoped_production_scoreboard" ? new Error("Network error") : null,
   })) as never);
   const client = mount();

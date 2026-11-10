@@ -11,6 +11,8 @@ import { supabase } from "@/integrations/supabase/client";
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 import JoinLink from "@/pages/JoinLink";
+// Pre-cast for vi.mocked: the generated Functions union (900+ RPCs) trips TS2589 otherwise.
+type SbRpcFnForMock = (fn: string, args?: Record<string, unknown>) => Promise<unknown>;
 
 function renderJoin() {
   return render(
@@ -35,7 +37,7 @@ const prefill = (over: Record<string, unknown>) => ({
 beforeEach(() => {
   // The recipient's own toggle is a Radix Switch, which measures itself with ResizeObserver.
   vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
-  vi.mocked(supabase.rpc).mockReset();
+  vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mockReset();
   vi.mocked(supabase.functions.invoke).mockReset();
   vi.mocked(supabase.functions.invoke).mockResolvedValue({ data: { ok: true, kind: "join", application_id: "app-1", licensed: false }, error: null } as never);
 });
@@ -44,7 +46,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("JoinLink", () => {
   it("shows the license path the link was made with, not a toggle, and sends it", async () => {
-    vi.mocked(supabase.rpc).mockResolvedValue(prefill({}) as never);
+    vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mockResolvedValue(prefill({}) as never);
     renderJoin();
     expect(await screen.findByTestId("join-license-locked")).toHaveTextContent("Not licensed yet");
     expect(screen.queryByTestId("join-licensed-toggle")).toBeNull();
@@ -58,7 +60,7 @@ describe("JoinLink", () => {
   });
 
   it("a link made as Licensed sends licensed", async () => {
-    vi.mocked(supabase.rpc).mockResolvedValue(prefill({ prefill: { full_name: "Lic Ensed", phone: "6025550198", email: "lic@example.test", license_status: "licensed", license_status_locked: true } }) as never);
+    vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mockResolvedValue(prefill({ prefill: { full_name: "Lic Ensed", phone: "6025550198", email: "lic@example.test", license_status: "licensed", license_status_locked: true } }) as never);
     renderJoin();
     expect(await screen.findByTestId("join-license-locked")).toHaveTextContent("Licensed agent");
     fireEvent.click(screen.getByTestId("join-submit"));
@@ -67,7 +69,7 @@ describe("JoinLink", () => {
   });
 
   it("an open link (no license picked) keeps the recipient's own toggle, and a temporary one names its date", async () => {
-    vi.mocked(supabase.rpc).mockResolvedValue(prefill({
+    vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mockResolvedValue(prefill({
       expires_at: "2026-11-04T15:00:00Z", permanent: false,
       prefill: { full_name: null, phone: null, email: null, license_status: null, license_status_locked: false },
     }) as never);

@@ -24,6 +24,7 @@
 
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { classifyCalendlyEvent, inviteeIsNoShow, utmApplicationId } from "../_shared/calendly-classify.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -117,17 +118,8 @@ const cleanEmail = (e: string | null | undefined) => {
   return !v || PLACEHOLDER_EMAILS.has(v) ? null : v;
 };
 
-function classify(name: string | null, slug: string | null): string {
-  const t = `${name ?? ""} ${slug ?? ""}`.toLowerCase().trim();
-  if (t.includes("seminar")) return "seminar";
-  if (t.includes("exam") || t.includes("test")) return "exam";
-  // "unlicensed" CONTAINS "licensed" — must check first (bug fixed 2026-08-01)
-  if (t.includes("unlicensed")) return "leader";
-  if (t.includes("licensed")) return "licensed";
-  if (t.includes("leader")) return "leader";
-  if (/interview|1on1|prospect|manager/.test(t)) return "leader";
-  return "other";
-}
+/** Shared with calendly-webhook so the 15-minute reconcile cannot overwrite the webhook's track. */
+const classify = classifyCalendlyEvent;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -171,7 +163,7 @@ Deno.serve(async (req) => {
       `&min_start_time=${since.toISOString()}&max_start_time=${until.toISOString()}` +
       `&count=100&sort=start_time:asc`;
 
-    let seen = 0, upserted = 0, failed = 0;
+    let seen = 0, upserted = 0, failed = 0, noShows = 0;
     const errors: string[] = [];
 
     while (next) {
@@ -189,11 +181,22 @@ Deno.serve(async (req) => {
           const phone =
             i?.text_reminder_number ?? ev?.location?.location ?? null;
 
-          const { data: match } = await sb.rpc("resolve_application_for_invitee", {
-            p_email: email, p_phone: phone, p_instagram: instagram,
-          });
-          const applicationId = Array.isArray(match) && match.length ? match[0]?.application_id ?? null : null;
-          const matchMethod = Array.isArray(match) && match.length ? match[0]?.match_method ?? "none" : "none";
+          // utm_content (our own link) first, the same order as calendly-webhook; this
+          // upsert runs every 15 minutes and would otherwise replace a utm match.
+          let applicationId: string | null = null;
+          let matchMethod = "none";
+          const utmApp = utmApplicationId(i?.tracking);
+          if (utmApp) {
+            const { data: utmRow } = await sb.from("applications").select("id").eq("id", utmApp).maybeSingle();
+            if (utmRow?.id) { applicationId = utmRow.id; matchMethod = "utm"; }
+          }
+          if (!applicationId) {
+            const { data: match } = await sb.rpc("resolve_application_for_invitee", {
+              p_email: email, p_phone: phone, p_instagram: instagram,
+            });
+            applicationId = Array.isArray(match) && match.length ? match[0]?.application_id ?? null : null;
+            matchMethod = Array.isArray(match) && match.length ? match[0]?.match_method ?? "none" : "none";
+          }
 
           const { error } = await sb.from("interview_events").upsert({
             source: "calendly",
@@ -219,7 +222,22 @@ Deno.serve(async (req) => {
           }, { onConflict: "calendly_event_uri" });
 
           if (error) { failed++; if (errors.length < 5) errors.push(error.message); }
-          else upserted++;
+          else {
+            upserted++;
+            // Calendly's own no-show mark becomes the outcome through the one disposition
+            // writer, only while no person has recorded one.
+            if (inviteeIsNoShow(i) && ev.status !== "canceled") {
+              const { data: row } = await sb.from("interview_events")
+                .select("id, outcome").eq("calendly_event_uri", ev.uri).maybeSingle();
+              if (row?.id && !row.outcome) {
+                const { error: dispErr } = await sb.rpc("cc_dispose_interview", {
+                  p_id: row.id, p_outcome: "no_show", p_notes: "Calendly no-show mark (reconcile)",
+                });
+                if (dispErr) { failed++; if (errors.length < 5) errors.push(`no_show: ${dispErr.message}`); }
+                else noShows++;
+              }
+            }
+          }
         } catch (e) {
           failed++;
           if (errors.length < 5) errors.push((e as Error).message);
@@ -234,7 +252,7 @@ Deno.serve(async (req) => {
     if (runLogError) {
       return json({ ok: false, seen, upserted, failed, errors, error: `reconciliation completed but health receipt failed: ${runLogError}` }, 500);
     }
-    return json({ ok, seen, upserted, failed, errors, since: since.toISOString() }, ok ? 200 : 500);
+    return json({ ok, seen, upserted, failed, no_shows_recorded: noShows, errors, since: since.toISOString() }, ok ? 200 : 500);
   } catch (e) {
     const error = (e as Error).message;
     await recordRun(startedAt, "failed", 0, 0, 1, error);

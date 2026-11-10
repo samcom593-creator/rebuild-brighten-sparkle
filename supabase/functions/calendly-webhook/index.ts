@@ -40,6 +40,7 @@
 
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { classifyCalendlyEvent, utmApplicationId } from "../_shared/calendly-classify.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -61,25 +62,8 @@ function ok(body: unknown, status = 200): Response {
   });
 }
 
-/**
- * Route classification. Returns a track for every event — "other" is a real,
- * storable track, never a reason to drop the booking.
- */
-function classifyEvent(name: string | null, slug: string | null): string {
-  const txt = `${name ?? ""} ${slug ?? ""}`.toLowerCase().trim();
-  if (txt.includes("seminar")) return "seminar";
-  if (txt.includes("exam") || txt.includes("test")) return "exam";
-  // "unlicensed" CONTAINS "licensed" — this check must run first. The substring
-  // bug misfiled 9 "Unlicensed Prospect Call " bookings as licensed-track
-  // (fixed + reclassified 2026-08-01).
-  if (txt.includes("unlicensed")) return "leader";
-  if (txt.includes("licensed")) return "licensed";
-  if (txt.includes("leader")) return "leader";
-  if (txt.includes("interview") || txt.includes("1on1") || txt.includes("prospect") || txt.includes("manager")) {
-    return "leader";
-  }
-  return "other";
-}
+/** Route classification lives in _shared/calendly-classify.ts (shared with calendly-backfill). */
+const classifyEvent = classifyCalendlyEvent;
 
 /** Emails the VA booking form injects as filler. These must never match. */
 const PLACEHOLDER_EMAILS = new Set([
@@ -226,10 +210,20 @@ Deno.serve(async (req) => {
   const startTs = new Date(startTimeIso);
   const startDate = startTs.toISOString().slice(0, 10);
 
-  // ---- resolve identity: instagram -> phone -> real email ----
+  // ---- resolve identity: utm_content (our own link) -> instagram -> phone -> real email ----
   let applicationId: string | null = null;
   let matchMethod = "none";
-  {
+  const utmApp = utmApplicationId(inv?.tracking);
+  if (utmApp) {
+    // Our booking links carry the application id as utm_content. Trust it only when the
+    // application exists; otherwise fall through to the fuzzy resolver.
+    const { data: utmRow } = await sb.from("applications").select("id").eq("id", utmApp).maybeSingle();
+    if (utmRow?.id) {
+      applicationId = utmRow.id;
+      matchMethod = "utm";
+    }
+  }
+  if (!applicationId) {
     const { data: match, error: matchErr } = await sb.rpc("resolve_application_for_invitee", {
       p_email: inviteeEmail,
       p_phone: inviteePhone,
@@ -367,6 +361,25 @@ Deno.serve(async (req) => {
       match_method: matchMethod,
       instagram,
     });
+  }
+
+  // -------------------------------------------------------------------------
+  // invitee_no_show.created: Calendly's own no-show mark becomes the outcome, through
+  // the one disposition writer (it logs the human touch and moves status). Never
+  // overwrites an outcome a person already recorded.
+  // -------------------------------------------------------------------------
+  if (eventKind === "invitee_no_show.created") {
+    const noShowInvitee: string | null = inv?.invitee ?? inv?.invitee_uri ?? null;
+    if (!noShowInvitee) return ok({ ok: false, error: "no invitee uri on no-show event" }, 422);
+    // single-row-allow:interview_events_invitee_uri_uniq-is-a-partial-unique-index-on-calendly_invitee_uri-where-not-is_backfill_duplicate-so-at-most-one-row
+    const { data: ev } = await sb.from("interview_events").select("id, outcome").eq("calendly_invitee_uri", noShowInvitee).eq("is_backfill_duplicate", false).maybeSingle();
+    if (!ev?.id) return ok({ ok: true, action: "no_show_unmatched" });
+    if (ev.outcome) return ok({ ok: true, action: "no_show_kept_existing_outcome" });
+    const { error: dispErr } = await sb.rpc("cc_dispose_interview", {
+      p_id: ev.id, p_outcome: "no_show", p_notes: "Calendly no-show mark",
+    });
+    if (dispErr) return ok({ ok: false, error: "no-show store failed", detail: dispErr.message }, 500);
+    return ok({ ok: true, action: "no_show_recorded" });
   }
 
   // Any other Calendly event kind: acknowledged, nothing to store.

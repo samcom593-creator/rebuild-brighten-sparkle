@@ -35,6 +35,27 @@ const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
 
 const resend = resendApiKey ? gateResend(new Resend(resendApiKey)) : null;
 
+// WP3 (2026-11-10): a send counts only with a Resend message id. The SDK and the
+// resend-gate RETURN {data: null, error} on a refusal (suppressed, non-routable,
+// API error) instead of throwing, so `await send()` succeeding proved nothing and
+// every drip below used to stamp 'sent' on refusals too.
+function messageIdOf(response: unknown): string | null {
+  const r = response as { data?: { id?: unknown } | null; error?: unknown } | null;
+  if (!r || r.error) return null;
+  const id = r.data?.id;
+  return typeof id === "string" && id.length > 0 ? id : null;
+}
+
+// WP3 forward-only gate: the day-1 and day-3 nudges reach only people who applied
+// after system_settings.wp3_recruit_sla_cutoff. Missing/garbled setting = send nothing.
+async function readNudgeCutoff(): Promise<string | null> {
+  const { data, error } = await supabaseAdmin.from("system_settings")
+    .select("value").eq("key", "wp3_recruit_sla_cutoff").maybeSingle();
+  if (error || !data?.value) return null;
+  const ms = Date.parse(String(data.value).replace(" ", "T"));
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
+}
+
 const ADMIN_EMAIL = "info@kingofsales.net";
 
 // Calendly URLs
@@ -73,10 +94,10 @@ async function sendUnlicensedFollowup(app: {
   id: string;
   first_name: string;
   email: string;
-}): Promise<boolean> {
+}): Promise<string | null> {
   if (!resend) {
-    console.log("Resend not configured, skipping unlicensed followup for:", app.email);
-    return false;
+    console.log("Resend not configured, skipping unlicensed followup for application:", app.id);
+    return null;
   }
 
   try {
@@ -105,7 +126,7 @@ async function sendUnlicensedFollowup(app: {
 
             <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
               <p style="margin: 0; color: #92400e; font-weight: 500;">
-                🎓 Remember: Galaxy covers most of your licensing costs. You're not alone in this process!
+                🎓 You're not alone in this process. We walk every new agent through licensing step by step.
               </p>
             </div>
 
@@ -154,11 +175,12 @@ async function sendUnlicensedFollowup(app: {
       `,
     });
 
-    console.log("Unlicensed followup sent to:", app.email, response);
-    return true;
+    const id = messageIdOf(response);
+    if (!id) console.error("Unlicensed followup refused for application:", app.id, (response as any)?.error?.name ?? "no message id");
+    return id;
   } catch (error) {
-    console.error("Failed to send unlicensed followup to:", app.email, error);
-    return false;
+    console.error("Failed to send unlicensed followup for application:", app.id, error);
+    return null;
   }
 }
 
@@ -167,10 +189,10 @@ async function sendUnlicensedFollowup2(app: {
   id: string;
   first_name: string;
   email: string;
-}): Promise<boolean> {
+}): Promise<string | null> {
   if (!resend) {
-    console.log("Resend not configured, skipping second unlicensed followup for:", app.email);
-    return false;
+    console.log("Resend not configured, skipping second unlicensed followup for application:", app.id);
+    return null;
   }
 
   try {
@@ -250,11 +272,12 @@ async function sendUnlicensedFollowup2(app: {
       `,
     });
 
-    console.log("Second unlicensed followup sent to:", app.email, response);
-    return true;
+    const id = messageIdOf(response);
+    if (!id) console.error("Second unlicensed followup refused for application:", app.id, (response as any)?.error?.name ?? "no message id");
+    return id;
   } catch (error) {
-    console.error("Failed to send second unlicensed followup to:", app.email, error);
-    return false;
+    console.error("Failed to send second unlicensed followup for application:", app.id, error);
+    return null;
   }
 }
 
@@ -263,10 +286,10 @@ async function sendLicensedFollowup(app: {
   id: string;
   first_name: string;
   email: string;
-}): Promise<boolean> {
+}): Promise<string | null> {
   if (!resend) {
-    console.log("Resend not configured, skipping licensed followup for:", app.email);
-    return false;
+    console.log("Resend not configured, skipping licensed followup for application:", app.id);
+    return null;
   }
 
   try {
@@ -334,11 +357,49 @@ async function sendLicensedFollowup(app: {
       `,
     });
 
-    console.log("Licensed followup sent to:", app.email, response);
-    return true;
+    const id = messageIdOf(response);
+    if (!id) console.error("Licensed followup refused for application:", app.id, (response as any)?.error?.name ?? "no message id");
+    return id;
   } catch (error) {
-    console.error("Failed to send licensed followup to:", app.email, error);
-    return false;
+    console.error("Failed to send licensed followup for application:", app.id, error);
+    return null;
+  }
+}
+
+// WP3 day-1 nudge (moved here from fn_run_applicant_nudges, which 401'd since
+// 2026-09-06 and stamped 'sent' anyway). No reply-to-this promise (nobody is
+// confirmed to read notifications@), no cost claim (Sam's N1), no manager-call
+// promise, and the link carries the application id, never the email address.
+async function sendDay1Nudge(app: { id: string; first_name: string | null; email: string }): Promise<string | null> {
+  if (!resend) {
+    console.log("Resend not configured, skipping day-1 nudge for application:", app.id);
+    return null;
+  }
+  const first = (app.first_name ?? "").trim().split(/\s+/)[0] || "there";
+  const nextStep = `https://apex-financial.org/get-licensed?applicationId=${encodeURIComponent(app.id)}`;
+  try {
+    const response = await resend.emails.send({
+      from: "Galaxy Financial <notifications@apex-financial.org>",
+      to: [app.email],
+      subject: `${first}, your next step with Galaxy`,
+      html: `${SPAM_NOTE_HTML}
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #111827;">
+          <p style="font-size: 16px; line-height: 1.6;">${first},</p>
+          <p style="font-size: 16px; line-height: 1.6;">You applied to Galaxy Financial yesterday. The next step is your license, and your page shows exactly where you are and what comes next.</p>
+          <p style="text-align: center; margin: 28px 0;">
+            <a href="${nextStep}" style="display:inline-block;background:#111827;color:#ffffff;padding:14px 28px;text-decoration:none;font-weight:bold;border-radius:8px;">Open my next step</a>
+          </p>
+          <p style="font-size: 16px; line-height: 1.6;">Questions before you start? Book a quick call: <a href="${UNLICENSED_CALENDLY}">pick a time</a>.</p>
+          <p style="font-size: 16px; line-height: 1.6;">Sam<br/>Galaxy Financial</p>
+        </div>
+      `,
+    });
+    const id = messageIdOf(response);
+    if (!id) console.error("Day-1 nudge refused for application:", app.id, (response as any)?.error?.name ?? "no message id");
+    return id;
+  } catch (error) {
+    console.error("Failed to send day-1 nudge for application:", app.id, error);
+    return null;
   }
 }
 
@@ -389,6 +450,34 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Checking for licensed apps from:", fourDaysAgoStart.toISOString(), "to", threeDaysAgoEnd.toISOString());
     console.log("Checking for second unlicensed followup from:", sevenDaysAgoStart.toISOString(), "to", sevenDaysAgoEnd.toISOString());
 
+    const nudgeCutoff = await readNudgeCutoff();
+    const nowMs = Date.now();
+    const day1From = new Date(nowMs - 48 * 3600_000).toISOString();
+    const day1To = new Date(nowMs - 24 * 3600_000).toISOString();
+
+    // WP3 day-1 nudge: unlicensed/pending, 24-48h after applying, not on the course yet,
+    // created after the forward-only cutoff. Same truth rules as every drip below.
+    const { data: day1Apps, error: day1Error } = nudgeCutoff
+      ? await supabaseAdmin
+        .from("applications")
+        .select("id, first_name, email")
+        .in("license_status", ["unlicensed", "pending"])
+        .is("day1_nudge_sent_at", null)
+        .is("course_purchased_at", null)
+        .is("closed_at", null)
+        .is("terminated_at", null)
+        .eq("record_type", "application")
+        .or("is_duplicate.is.null,is_duplicate.eq.false")
+        .is("do_not_contact_at", null)
+        .or("email_consent_given.is.null,email_consent_given.eq.true")
+        .not("email", "is", null)
+        .gte("created_at", nudgeCutoff)
+        .gte("created_at", day1From)
+        .lte("created_at", day1To)
+        .limit(50)
+      : { data: [] as Array<{ id: string; first_name: string | null; email: string }>, error: null };
+    if (day1Error) console.error("Error fetching day-1 apps:", day1Error);
+
     // Find unlicensed applicants from exactly 3 days ago who haven't received followup
     // 2026-10-28: every drip below follows the Call list's truth rules
     // (src/lib/recruitingQueues.ts): only live, non-duplicate applications; never anyone
@@ -408,7 +497,11 @@ const handler = async (req: Request): Promise<Response> => {
       .or("email_consent_given.is.null,email_consent_given.eq.true")
       // 2026-09-07: day 3-4 window (was exact-day) so one missed run cannot skip a cohort; followup_sent_at keeps it idempotent.
       .gte("created_at", fourDaysAgoStart.toISOString())
-      .lte("created_at", threeDaysAgoEnd.toISOString());
+      .lte("created_at", threeDaysAgoEnd.toISOString())
+      // WP3: this day-3 email is the day-3 nudge. It was structurally suppressed for
+      // months by fn_run_applicant_nudges' fake day-1 stamp; it now reaches only
+      // people who applied after the cutoff, never the old backlog.
+      .gte("created_at", nudgeCutoff ?? "9999-12-31T00:00:00Z");
 
     if (unlicensedError) {
       console.error("Error fetching unlicensed apps:", unlicensedError);
@@ -459,18 +552,34 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Found unlicensed apps for second followup:", unlicensedApps2?.length || 0);
     console.log("Found licensed apps for followup:", licensedApps?.length || 0);
 
+    let day1Sent = 0;
     let unlicensedSent = 0;
     let unlicensed2Sent = 0;
     let licensedSent = 0;
 
-    // Send unlicensed follow-ups (first - 3 days)
+    // WP3 day-1 nudges: stamp day1_nudge_sent_at only with a Resend message id.
+    for (const app of day1Apps || []) {
+      if (!app.email) continue;
+      const messageId = await sendDay1Nudge(app as { id: string; first_name: string | null; email: string });
+      if (messageId) {
+        const { error: stampErr } = await supabaseAdmin
+          .from("applications")
+          .update({ day1_nudge_sent_at: new Date().toISOString() })
+          .eq("id", app.id);
+        if (stampErr) console.error("day-1 stamp failed for application:", app.id, stampErr.message);
+        day1Sent++;
+      }
+    }
+
+    // Send unlicensed follow-ups (first - 3 days) = the day-3 nudge
     for (const app of unlicensedApps || []) {
-      const sent = await sendUnlicensedFollowup(app);
-      if (sent) {
-        // Mark as sent
+      const messageId = await sendUnlicensedFollowup(app);
+      if (messageId) {
+        // Mark as sent: followup_sent_at keeps the day-7 chain; day3_nudge_sent_at is the receipt column.
+        const stampAt = new Date().toISOString();
         await supabaseAdmin
           .from("applications")
-          .update({ followup_sent_at: new Date().toISOString() })
+          .update({ followup_sent_at: stampAt, day3_nudge_sent_at: stampAt })
           .eq("id", app.id);
         unlicensedSent++;
       }
@@ -478,8 +587,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send second unlicensed follow-ups (7 days - "Are you licensed yet?")
     for (const app of unlicensedApps2 || []) {
-      const sent = await sendUnlicensedFollowup2(app);
-      if (sent) {
+      const messageId = await sendUnlicensedFollowup2(app);
+      if (messageId) {
         // Mark as sent
         await supabaseAdmin
           .from("applications")
@@ -491,8 +600,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send licensed follow-ups
     for (const app of licensedApps || []) {
-      const sent = await sendLicensedFollowup(app);
-      if (sent) {
+      const messageId = await sendLicensedFollowup(app);
+      if (messageId) {
         // Mark as sent
         await supabaseAdmin
           .from("applications")
@@ -504,6 +613,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     const result = {
       success: true,
+      day1Checked: day1Apps?.length || 0,
+      day1Sent,
+      nudgeCutoff,
       unlicensedChecked: unlicensedApps?.length || 0,
       unlicensedSent,
       unlicensed2Checked: unlicensedApps2?.length || 0,

@@ -55,7 +55,14 @@ const CHECKLIST_STEPS = [
   { key: "submitted_fingerprints", label: "Submitted fingerprints", stage: "licensing", href: "/get-licensed#licensing-actions" },
   { key: "passed_license_test", label: "Passed license test", stage: "licensing", href: "/get-licensed#licensing-actions" },
   { key: "received_license", label: "Received state license", stage: "licensing", href: "/get-licensed#licensing-actions" },
-  { key: "contracted_with_carriers", label: "Contracted with carriers", stage: "contracting", href: CONTRACTING_PROFILE_PATH },
+  // Carrier-specific contracting bubbles (Sam, 2026-11-10). The AHL pair hides for
+  // agents whose upline chain roots in OB's or Chudi's hierarchy — those lineups
+  // don't carry American Home Life (carrier_hierarchy_exemptions + api_my_ahl_exempt()
+  // own that mapping). contracted_with_carriers stays in the DB for stored history.
+  { key: "completed_ahl_onboarding", label: "Completed American Home Life onboarding", stage: "contracting", href: CONTRACTING_PROFILE_PATH, ahlExemptible: true },
+  { key: "contracted_ahl_sent", label: "American Home Life contracting sent out", stage: "contracting", href: CONTRACTING_PROFILE_PATH, ahlExemptible: true },
+  { key: "contracted_ethos_sent", label: "Ethos contracting sent out", stage: "contracting", href: CONTRACTING_PROFILE_PATH },
+  { key: "contracted_chubb_sent", label: "Chubb contracting sent out", stage: "contracting", href: CONTRACTING_PROFILE_PATH },
   { key: "completed_first_training", label: "Completed first training", stage: "field_training", href: "/dashboard/training/sales-course" },
   { key: "made_first_prospect_call", label: "Made first prospect call", stage: "field_training", href: "/dashboard/call-center" },
   { key: "ran_first_appointment", label: "Ran first appointment", stage: "field_training", href: "/dashboard/call-lab" },
@@ -114,6 +121,17 @@ export default function GettingStarted() {
       return data?.id ?? null;
     },
     enabled: !!user?.id,
+  });
+
+  // Hierarchies that don't carry American Home Life (OB / Chudi) skip the AHL bubbles.
+  const { data: ahlExempt = false } = useQuery({
+    queryKey: ["ahl-exempt", user?.id],
+    enabled: !!user?.id && !canViewAll,
+    staleTime: 10 * 60_000,
+    queryFn: async () => {
+      const { data } = await supabase.rpc("api_my_ahl_exempt");
+      return data === true;
+    },
   });
 
   const { data: progressRows = [], isLoading } = useQuery({
@@ -236,7 +254,8 @@ export default function GettingStarted() {
   // Agent self-view
   if (!canViewAll && progressRows.length === 1) {
     const p = progressRows[0];
-    const completed = countChecklist(p);
+    const mySteps = CHECKLIST_STEPS.filter((s) => !("ahlExemptible" in s && s.ahlExemptible) || !ahlExempt);
+    const completed = mySteps.filter((s) => p[s.key]).length;
     return (
       <div className="max-w-3xl mx-auto p-4 md:p-6 space-y-4 page-enter">
         <div className="flex items-center gap-3">
@@ -256,13 +275,13 @@ export default function GettingStarted() {
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm">Your progress</CardTitle>
               <Badge variant="outline">
-                {completed} / {CHECKLIST_STEPS.length}
+                {completed} / {mySteps.length}
               </Badge>
             </div>
-            <Progress value={(completed / CHECKLIST_STEPS.length) * 100} className="h-2 mt-2" />
+            <Progress value={(completed / mySteps.length) * 100} className="h-2 mt-2" />
           </CardHeader>
           <CardContent className="space-y-2">
-            {CHECKLIST_STEPS.map((step) => (
+            {mySteps.map((step) => (
               <div key={step.key} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/40">
                 <Checkbox
                   checked={!!p[step.key]}

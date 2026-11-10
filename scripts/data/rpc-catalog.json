@@ -836,6 +836,14 @@
         "raw": ""
       }
     ],
+    "api_my_ahl_exempt": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "api_my_application_ids": [
       {
         "all": [],

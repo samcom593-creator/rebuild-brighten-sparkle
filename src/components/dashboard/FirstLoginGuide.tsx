@@ -81,7 +81,7 @@ export function FirstLoginGuide({ agentId }: { agentId: string }) {
         firstName: String(agent?.display_name ?? "").trim().split(" ")[0] || "there",
         stage: String(agent?.onboarding_stage ?? ""),
         licensed: agent?.license_status === "licensed",
-        contracted: Boolean(agent?.contracted_at || progress?.contracted_with_carriers),
+        contracted: Boolean(agent?.contracted_at || progress?.contracted_with_carriers || progress?.contracted_ahl_sent || progress?.contracted_ethos_sent || progress?.contracted_chubb_sent),
         progress,
       };
     },

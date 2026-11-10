@@ -12372,6 +12372,560 @@ export type Database = {
           },
         ]
       }
+      agent_recruiting_systems: {
+        Row: {
+          agent_id: string
+          created_at: string
+          enrolled: boolean
+          instagram_password: string | null
+          instagram_username: string | null
+          monthly_price: number
+          notes: string | null
+          plan: string
+          updated_at: string
+          updated_by: string | null
+          weekly_payment: number | null
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          enrolled?: boolean
+          instagram_password?: string | null
+          instagram_username?: string | null
+          monthly_price?: number
+          notes?: string | null
+          plan?: string
+          updated_at?: string
+          updated_by?: string | null
+          weekly_payment?: number | null
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          enrolled?: boolean
+          instagram_password?: string | null
+          instagram_username?: string | null
+          monthly_price?: number
+          notes?: string | null
+          plan?: string
+          updated_at?: string
+          updated_by?: string | null
+          weekly_payment?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "mv_agent_truth"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_admin_applicant_overview"
+            referencedColumns: ["became_agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_20k_target_leaderboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_account_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_canonical_map"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_command_center"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_crm_active"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_duplicate_candidates"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_duplicates"
+            referencedColumns: ["canonical_agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_duplicates"
+            referencedColumns: ["dup_agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_manager_conflicts"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_monthly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_owner_truth"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_quality_score"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_skool_membership"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_status_contradictions"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_training_stage"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_with_downline_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agents_full"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agents_missing_al_link"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agents_missing_al_user_id"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agents_missing_numbers_today"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agents_needs_attention"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agents_onboarding_status"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_apex_roster"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_builder_operating_dashboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_channel_deprovision_needed"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_contracting_audit"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_contracting_carrier_cases"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_contracting_reconciliation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_contracting_worklist"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_ethos_agent_updates"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_ethos_paste_rows"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_hire_activity"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_hire_launch_board"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_hire_notification_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_hired_licensed_missing_course"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_kj_seminar_control"
+            referencedColumns: ["converted_agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_manager_command_center"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_manager_command_center"
+            referencedColumns: ["manager_agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_manager_departure_orphan_risk"
+            referencedColumns: ["manager_agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_new_hire_showup"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_new_hires_activation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_newhire_needs_portal_login"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_offboarding_preservation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_onboarding_call_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_onboarding_integrity"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_onboarding_sequence"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_paid_applicants"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_producer_pulse"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_producer_reactivation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_producer_trend_alert"
+            referencedColumns: ["producer_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_producers_missing_license"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_queue_active_no_first_sale"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_queue_hired_no_onboarding"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_queue_licensed_inactive"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_recent_activations_alp"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_recent_hires"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_reclaimable_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_recruiter_bounty_candidates"
+            referencedColumns: ["recruited_agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_recruiter_pipeline"
+            referencedColumns: ["recruiter_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_sam_builders_dashboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_slack_invite_eligibility"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_strike_summary"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_top_legs_excl_sam"
+            referencedColumns: ["manager_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_training_required_completion"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_recruiting_systems_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_unsendable_contacts"
+            referencedColumns: ["agent_id"]
+          },
+        ]
+      }
       agent_removal_requests: {
         Row: {
           agent_id: string
@@ -39723,6 +40277,536 @@ export type Database = {
           },
         ]
       }
+      carrier_hierarchy_exemptions: {
+        Row: {
+          carrier: string
+          note: string | null
+          root_agent_id: string
+        }
+        Insert: {
+          carrier: string
+          note?: string | null
+          root_agent_id: string
+        }
+        Update: {
+          carrier?: string
+          note?: string | null
+          root_agent_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "mv_agent_truth"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_admin_applicant_overview"
+            referencedColumns: ["became_agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_20k_target_leaderboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_account_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_canonical_map"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_command_center"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_crm_active"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicate_candidates"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicates"
+            referencedColumns: ["canonical_agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicates"
+            referencedColumns: ["dup_agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_manager_conflicts"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_monthly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_owner_truth"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_quality_score"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_skool_membership"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_status_contradictions"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_training_stage"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_with_downline_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_full"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_al_link"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_al_user_id"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_numbers_today"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_needs_attention"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_onboarding_status"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_apex_roster"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_builder_operating_dashboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_channel_deprovision_needed"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_audit"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_carrier_cases"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_reconciliation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_worklist"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_ethos_agent_updates"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_ethos_paste_rows"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_activity"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_launch_board"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_notification_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hired_licensed_missing_course"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_kj_seminar_control"
+            referencedColumns: ["converted_agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_command_center"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_command_center"
+            referencedColumns: ["manager_agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_departure_orphan_risk"
+            referencedColumns: ["manager_agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_new_hire_showup"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_new_hires_activation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_newhire_needs_portal_login"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_offboarding_preservation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_call_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_integrity"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_sequence"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_paid_applicants"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_pulse"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_reactivation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_trend_alert"
+            referencedColumns: ["producer_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producers_missing_license"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_active_no_first_sale"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_hired_no_onboarding"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_licensed_inactive"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_activations_alp"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_hires"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_reclaimable_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recruiter_bounty_candidates"
+            referencedColumns: ["recruited_agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recruiter_pipeline"
+            referencedColumns: ["recruiter_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_sam_builders_dashboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_slack_invite_eligibility"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_strike_summary"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_top_legs_excl_sam"
+            referencedColumns: ["manager_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_training_required_completion"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "carrier_hierarchy_exemptions_root_agent_id_fkey"
+            columns: ["root_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_unsendable_contacts"
+            referencedColumns: ["agent_id"]
+          },
+        ]
+      }
       carrier_policies: {
         Row: {
           agent_id: string | null
@@ -62392,8 +63476,12 @@ export type Database = {
           added_phone_number: string | null
           agent_id: string
           closed_first_deal: string | null
+          completed_ahl_onboarding: string | null
           completed_first_training: string | null
           completed_profile: string | null
+          contracted_ahl_sent: string | null
+          contracted_chubb_sent: string | null
+          contracted_ethos_sent: string | null
           contracted_with_carriers: string | null
           created_at: string
           current_stage: string
@@ -62419,8 +63507,12 @@ export type Database = {
           added_phone_number?: string | null
           agent_id: string
           closed_first_deal?: string | null
+          completed_ahl_onboarding?: string | null
           completed_first_training?: string | null
           completed_profile?: string | null
+          contracted_ahl_sent?: string | null
+          contracted_chubb_sent?: string | null
+          contracted_ethos_sent?: string | null
           contracted_with_carriers?: string | null
           created_at?: string
           current_stage?: string
@@ -62446,8 +63538,12 @@ export type Database = {
           added_phone_number?: string | null
           agent_id?: string
           closed_first_deal?: string | null
+          completed_ahl_onboarding?: string | null
           completed_first_training?: string | null
           completed_profile?: string | null
+          contracted_ahl_sent?: string | null
+          contracted_chubb_sent?: string | null
+          contracted_ethos_sent?: string | null
           contracted_with_carriers?: string | null
           created_at?: string
           current_stage?: string
@@ -88655,6 +89751,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ops_preimage_snapshots: {
+        Row: {
+          id: number
+          payload: Json | null
+          reason: string | null
+          taken_at: string | null
+        }
+        Insert: {
+          id?: number
+          payload?: Json | null
+          reason?: string | null
+          taken_at?: string | null
+        }
+        Update: {
+          id?: number
+          payload?: Json | null
+          reason?: string | null
+          taken_at?: string | null
+        }
+        Relationships: []
       }
       outbox_events: {
         Row: {
@@ -165039,6 +166156,7 @@ export type Database = {
       }
     }
     Functions: {
+      _agent_credentials_key: { Args: never; Returns: string }
       acknowledge_strike: {
         Args: { p_strike_id: string }
         Returns: {
@@ -165067,6 +166185,13 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      active_manager_emails: {
+        Args: never
+        Returns: {
+          email: string
+          name: string
+        }[]
       }
       admin_configure_integration: {
         Args: { p_key: string; p_value: string }
@@ -165186,6 +166311,25 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      aflac_checkoff_reminder: { Args: { p_topic?: string }; Returns: Json }
+      aflac_daily_checkoff: { Args: never; Returns: Json }
+      aflac_gate_state: { Args: never; Returns: Json }
+      aflac_intake_missing: {
+        Args: {
+          p_email: string
+          p_first: string
+          p_last: string
+          p_license: string
+          p_npn: string
+          p_phone: string
+          p_status: string
+        }
+        Returns: string[]
+      }
+      aflac_mark_submitted: {
+        Args: { p_comp_level: string; p_intake_id: string }
+        Returns: Json
+      }
       agency_roster_production: {
         Args: { p_end: string; p_start: string }
         Returns: {
@@ -165211,6 +166355,14 @@ export type Database = {
           occurred_at: string
           outcome: string
           source: string
+        }[]
+      }
+      agent_claim_state: { Args: { p_agent_id: string }; Returns: string }
+      agent_credentials_coverage: {
+        Args: never
+        Returns: {
+          agents_count: number
+          service: string
         }[]
       }
       agent_credentials_list: {
@@ -165244,6 +166396,7 @@ export type Database = {
         }
         Returns: string
       }
+      agent_invitation_terms: { Args: { p_agent_id: string }; Returns: Json }
       agentlink_award_top_producers: {
         Args: never
         Returns: {
@@ -165253,6 +166406,28 @@ export type Database = {
       }
       agentlink_book_rebuild: { Args: { p_deals: Json }; Returns: number }
       agentlink_live_pull: {
+        Args: never
+        Returns: {
+          deals_inserted: number | null
+          deals_updated: number | null
+          error_message: string | null
+          finished_at: string | null
+          http_request_id: number | null
+          id: string
+          policies_seen: number | null
+          started_at: string
+          status: string
+          upstream_status: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "agentlink_sync_log"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      agentlink_mark_stale_deals_cancelled: { Args: never; Returns: number }
+      agentlink_pull_appointments: {
         Args: never
         Returns: {
           deals_inserted: number | null
@@ -165294,6 +166469,85 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      agentlink_pull_commissions: {
+        Args: never
+        Returns: {
+          deals_inserted: number | null
+          deals_updated: number | null
+          error_message: string | null
+          finished_at: string | null
+          http_request_id: number | null
+          id: string
+          policies_seen: number | null
+          started_at: string
+          status: string
+          upstream_status: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "agentlink_sync_log"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      agentlink_pull_leads: {
+        Args: never
+        Returns: {
+          deals_inserted: number | null
+          deals_updated: number | null
+          error_message: string | null
+          finished_at: string | null
+          http_request_id: number | null
+          id: string
+          policies_seen: number | null
+          started_at: string
+          status: string
+          upstream_status: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "agentlink_sync_log"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      agentlink_refresh_downline: {
+        Args: never
+        Returns: {
+          deals_inserted: number | null
+          deals_updated: number | null
+          error_message: string | null
+          finished_at: string | null
+          http_request_id: number | null
+          id: string
+          policies_seen: number | null
+          started_at: string
+          status: string
+          upstream_status: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "agentlink_sync_log"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      agentlink_sync_snapshot_from_book: { Args: never; Returns: number }
+      agentlink_upsert_from_payload: {
+        Args: { p_payload: Json }
+        Returns: {
+          inserted: number
+          updated: number
+        }[]
+      }
+      agentlink_watchdog: {
+        Args: never
+        Returns: {
+          message: string
+          status: string
+        }[]
+      }
+      alert_stuck_xcel_students: { Args: never; Returns: Json }
       apex_admin_home_dashboard: {
         Args: { p_end: string; p_start: string }
         Returns: Json
@@ -165303,6 +166557,7 @@ export type Database = {
         Returns: Json
       }
       apex_admin_operations_snapshot: { Args: never; Returns: Json }
+      apex_admin_operations_snapshot_uncached: { Args: never; Returns: Json }
       apex_agent_book: { Args: { _agent_id: string }; Returns: Json }
       apex_agent_contract_checklist: {
         Args: { p_agent_id: string }
@@ -165328,6 +166583,21 @@ export type Database = {
         Returns: Json
       }
       apex_can_read_agent: { Args: { p_agent_id: string }; Returns: boolean }
+      apex_can_read_candidate: {
+        Args: {
+          p_agent_id?: string
+          p_application_id?: string
+          p_profile_id?: string
+        }
+        Returns: boolean
+      }
+      apex_can_read_person: { Args: { p_person_id: string }; Returns: boolean }
+      apex_contract_scope_agents: {
+        Args: { p_scope: string }
+        Returns: {
+          agent_id: string
+        }[]
+      }
       apex_contracts_list: {
         Args: {
           p_limit?: number
@@ -165353,6 +166623,7 @@ export type Database = {
         Args: { p_scope?: string; p_search?: string }
         Returns: Json
       }
+      apex_daily_briefing: { Args: never; Returns: Json }
       apex_dashboard_summary: { Args: never; Returns: Json }
       apex_has_any_role: { Args: { p_roles: string[] }; Returns: boolean }
       apex_home_dashboard: {
@@ -165360,7 +166631,21 @@ export type Database = {
         Returns: Json
       }
       apex_is_admin: { Args: never; Returns: boolean }
+      apex_provision_licensed_applicant: {
+        Args: { p_application_id: string }
+        Returns: Json
+      }
       apex_records_and_bounties: { Args: { p_limit?: number }; Returns: Json }
+      apex_render_plaque: {
+        Args: {
+          p_amount: number
+          p_date: string
+          p_name: string
+          p_photo_url?: string
+          p_tier: string
+        }
+        Returns: string
+      }
       apex_set_agent_contract_status: {
         Args: {
           p_agent_id: string
@@ -165402,6 +166687,11 @@ export type Database = {
         Returns: string
       }
       apex_support_requests: { Args: { p_limit?: number }; Returns: Json }
+      apex_toolkit_can_work_application: {
+        Args: { p_application_id: string; p_user_id?: string }
+        Returns: boolean
+      }
+      apex_toolkit_is_staff: { Args: { p_user_id?: string }; Returns: boolean }
       apex_training_needs_nudge: {
         Args: { _limit?: number }
         Returns: {
@@ -165423,17 +166713,64 @@ export type Database = {
           scope: string
         }[]
       }
+      apex_try_jsonb: { Args: { p_value: string }; Returns: Json }
       apex_update_support_request: {
         Args: { p_id: string; p_resolution_note?: string; p_status: string }
         Returns: undefined
       }
+      api_is_admin_role: { Args: never; Returns: boolean }
       api_is_full_reader: { Args: never; Returns: boolean }
+      api_is_ops_staff: { Args: never; Returns: boolean }
+      api_is_presenter: { Args: never; Returns: boolean }
+      api_is_staff: { Args: never; Returns: boolean }
+      api_my_ahl_exempt: { Args: never; Returns: boolean }
+      api_my_application_ids: { Args: never; Returns: string[] }
       api_scope_agent_ids: { Args: never; Returns: string[] }
+      app_visible_to: {
+        Args: { p_application_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      applicant_contacted_recently: {
+        Args: { p_app_id: string; p_hours?: number }
+        Returns: boolean
+      }
+      applicant_login_drain: { Args: never; Returns: Json }
+      applicant_login_fire: { Args: { p_limit?: number }; Returns: Json }
+      applicant_login_send: { Args: { p_limit?: number }; Returns: Json }
+      applicant_login_tick: { Args: never; Returns: Json }
+      assign_va_to_application: {
+        Args: { p_application_id: string; p_va_user_id: string }
+        Returns: undefined
+      }
+      audit_phantom_assignments: {
+        Args: never
+        Returns: {
+          phantom_user_id: string
+          row_count: number
+          scope: string
+        }[]
+      }
+      auth_user_id_by_email: { Args: { p_email: string }; Returns: string }
+      auto_advance_stale_applications: {
+        Args: never
+        Returns: {
+          action: string
+          count: number
+        }[]
+      }
+      auto_assign_hiring_manager: { Args: never; Returns: Json }
+      autoposter_leak_watchdog: { Args: never; Returns: Json }
       ayro_book: { Args: never; Returns: Json }
+      ayro_carrier_name: { Args: { p: string }; Returns: string }
       ayro_set_client_names: {
         Args: { p_rows: Json; p_source?: string }
         Returns: Json
       }
+      backfill_monthly_awards: {
+        Args: { p_months_back?: number; p_threshold?: number }
+        Returns: Json
+      }
+      backfill_plaque_images: { Args: never; Returns: Json }
       book_client_details: {
         Args: { p_rows: Json }
         Returns: {
@@ -165588,6 +166925,7 @@ export type Database = {
           ssn: string
         }[]
       }
+      booking_packet_upsert: { Args: { p: Json }; Returns: string }
       booking_packets_sensitive_all: {
         Args: never
         Returns: {
@@ -165597,11 +166935,36 @@ export type Database = {
           ssn: string
         }[]
       }
+      bot_alert_insuracloud_err_throttled: {
+        Args: { p_action_link?: string; p_body: string; p_subject: string }
+        Returns: undefined
+      }
+      bridge_hh_hire: { Args: { p_hh_id: string }; Returns: Json }
+      broadcast_to_all_channels: {
+        Args: { p_body: string; p_priority?: string; p_title: string }
+        Returns: Json
+      }
+      build_plaque_svg: {
+        Args: {
+          p_agent_name: string
+          p_amount: number
+          p_avatar_url: string
+          p_color: string
+          p_milestone_type: string
+          p_sub_label?: string
+        }
+        Returns: string
+      }
       bump_manager_post: {
         Args: { p_agent_id?: string; p_delta?: number }
         Returns: number
       }
+      calendar_can_book_for_application: {
+        Args: { p_application_id: string }
+        Returns: boolean
+      }
       calendar_interview_reminders_enabled: { Args: never; Returns: boolean }
+      calendar_is_scheduling_staff: { Args: never; Returns: boolean }
       calendar_owner_conflicts: {
         Args: {
           p_ends_at: string
@@ -165637,6 +167000,7 @@ export type Database = {
           onboarding_invites_sent: number
         }[]
       }
+      calendar_valid_tz: { Args: { p_tz: string }; Returns: boolean }
       calendar_window: {
         Args: { p_from: string; p_kinds?: string[]; p_to: string }
         Returns: {
@@ -165707,8 +167071,13 @@ export type Database = {
           training_tags: string[]
         }[]
       }
+      can_play_call_audio: { Args: { p_path: string }; Returns: boolean }
       can_view_sold_calls: { Args: never; Returns: boolean }
       can_work_application: {
+        Args: { p_application_id: string }
+        Returns: boolean
+      }
+      can_work_recruiting_application: {
         Args: { p_application_id: string }
         Returns: boolean
       }
@@ -165833,6 +167202,71 @@ export type Database = {
           p_phone?: string
         }
         Returns: boolean
+      }
+      check_monday_reminder_secret: { Args: { p: string }; Returns: boolean }
+      check_rate_limit: {
+        Args: {
+          _bucket_key: string
+          _max_requests: number
+          _window_seconds: number
+        }
+        Returns: boolean
+      }
+      check_speed_to_lead: { Args: never; Returns: Json }
+      churn_calc: { Args: never; Returns: Json }
+      claim_apex_contact_action_event: {
+        Args: { p_action_id: string }
+        Returns: {
+          aggregate_id: string
+          aggregate_type: string
+          attempts: number
+          available_at: string
+          correlation_id: string
+          created_at: string
+          destination: string | null
+          event_type: string
+          id: string
+          idempotency_key: string
+          last_error_redacted: string | null
+          locked_at: string | null
+          payload: Json
+          processed_at: string | null
+          status: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "outbox_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      claim_apex_outbox_events: {
+        Args: { p_limit?: number }
+        Returns: {
+          aggregate_id: string
+          aggregate_type: string
+          attempts: number
+          available_at: string
+          correlation_id: string
+          created_at: string
+          destination: string | null
+          event_type: string
+          id: string
+          idempotency_key: string
+          last_error_redacted: string | null
+          locked_at: string | null
+          payload: Json
+          processed_at: string | null
+          status: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "outbox_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       claim_contracting_intake_events: {
         Args: { p_intake_id: string }
@@ -166067,6 +167501,8 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      cleanup_expired_idempotency_keys: { Args: never; Returns: undefined }
+      client_birthday_wisher: { Args: never; Returns: Json }
       closer_candidates: {
         Args: never
         Returns: {
@@ -166076,7 +167512,79 @@ export type Database = {
           user_id: string
         }[]
       }
+      commission_ledger_reconcile: { Args: never; Returns: Json }
       content_can_access: { Args: never; Returns: boolean }
+      content_clips_canon_tags: {
+        Args: {
+          p_desc: string
+          p_kind: string
+          p_name: string
+          p_tags: string[]
+        }
+        Returns: string[]
+      }
+      content_clips_find_label:
+        | {
+            Args: { p_modified: string; p_name: string; p_tags: string[] }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_id: string
+              p_modified: string
+              p_name: string
+              p_tags: string[]
+            }
+            Returns: string
+          }
+      content_clips_search: {
+        Args: { p_folder?: string; p_limit?: number; p_q: string }
+        Returns: {
+          banger_reason: string | null
+          banger_score: number | null
+          bangered_at: string | null
+          captioned_at: string | null
+          description: string | null
+          download_expires_at: string | null
+          download_url: string | null
+          duration_s: number | null
+          find_label: string | null
+          folder: string
+          height: number | null
+          hook_title: string | null
+          id: string
+          indexed_at: string
+          kind: string
+          media: string
+          missing_at: string | null
+          modified_at: string | null
+          name: string
+          path: string
+          phone_at: string | null
+          phone_bytes: number | null
+          phone_url: string | null
+          preview_url: string | null
+          size_bytes: number
+          tags: string[]
+          testimonial: boolean | null
+          testimonial_at: string | null
+          testimonial_kind: string | null
+          testimonial_reason: string | null
+          testimonial_source: string | null
+          thumb_url: string | null
+          thumbed_at: string | null
+          title: string | null
+          transcript: string | null
+          used_by_card: string | null
+          width: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "content_clips"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       content_clips_upsert: { Args: { p_rows: Json }; Returns: Json }
       content_publish_url_ok: { Args: { p_url: string }; Returns: boolean }
       contract_review_history: {
@@ -166084,11 +167592,263 @@ export type Database = {
         Returns: Json
       }
       contract_review_roster: { Args: never; Returns: Json }
+      contracting_audit_rows: {
+        Args: never
+        Returns: {
+          agent_id: string | null
+          al_active: number | null
+          al_approval: string | null
+          al_carriers_active: string | null
+          al_carriers_blocked: string | null
+          al_carriers_inflight: string | null
+          al_id: number | null
+          al_incomplete_profile_n: number | null
+          al_pending_upline_n: number | null
+          al_rejected_n: number | null
+          al_synced_at: string | null
+          al_total: number | null
+          comp_pct: number | null
+          contracted_at: string | null
+          display_name: string | null
+          dup_npn_with: string | null
+          eft_ready: boolean | null
+          email: string | null
+          ethos_level: string | null
+          ethos_level_expected: string | null
+          ethos_level_verdict: string | null
+          ethos_partner_id: string | null
+          ethos_status: string | null
+          ethos_subagency: string | null
+          ethos_synced_at: string | null
+          has_eo: boolean | null
+          is_inactive: boolean | null
+          license_status: Database["public"]["Enums"]["license_status"] | null
+          manager_name: string | null
+          next_action: string | null
+          nipr_verified: boolean | null
+          npn_al: string | null
+          npn_db: string | null
+          npn_ethos: string | null
+          npn_verdict: string | null
+          phone: string | null
+          recon_bucket: string | null
+          status: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "v_contracting_audit"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      contracting_audit_summary_rows: {
+        Args: never
+        Returns: {
+          agents: number | null
+          licensed: number | null
+          next_action: string | null
+          who: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "v_contracting_audit_summary"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       contracting_call_list: { Args: never; Returns: Json }
+      contracting_carrier_cases: {
+        Args: { p_agent_id?: string }
+        Returns: {
+          agency_approval: string | null
+          agent_id: string | null
+          agent_name: string | null
+          agent_user_id: string | null
+          al_lifecycle: string | null
+          al_status: string | null
+          al_synced_at: string | null
+          al_user_id: number | null
+          blocker: string | null
+          blocker_override: string | null
+          blocker_source: string | null
+          carrier_level: string | null
+          carrier_name: string | null
+          carrier_stage: string | null
+          carrier_stage_at: string | null
+          closed_at: string | null
+          closed_reason: string | null
+          days_in_state: number | null
+          evidence_ref: string | null
+          follow_up_on: string | null
+          license_status: string | null
+          lifecycle: string | null
+          manager_id: string | null
+          manager_name: string | null
+          manual_verification_conflict: boolean | null
+          match_basis: string | null
+          next_action: string | null
+          note: string | null
+          npn: string | null
+          owner_name: string | null
+          owner_source: string | null
+          owner_user_id: string | null
+          presubmit_missing: string[] | null
+          q_agent_action: boolean | null
+          q_carrier_review: boolean | null
+          q_follow_up_due: boolean | null
+          q_ready_to_submit: boolean | null
+          q_staff_action: boolean | null
+          q_support: boolean | null
+          q_verified: boolean | null
+          state_since: string | null
+          state_since_is_lower_bound: boolean | null
+          tracking_updated_at: string | null
+          upline_al_id: number | null
+          upline_name: string | null
+          verification_source: string | null
+          verified_at: string | null
+          verified_by: string | null
+          waiting_on: string | null
+          waiting_on_override: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "v_contracting_carrier_cases"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      contracting_case_history: {
+        Args: { p_agent_id: string; p_carrier: string }
+        Returns: {
+          action: string
+          actor_name: string
+          after: Json
+          before: Json
+          created_at: string
+          id: number
+          source: string
+        }[]
+      }
+      contracting_case_owner_options: {
+        Args: never
+        Returns: {
+          name: string
+          roles: string[]
+          user_id: string
+        }[]
+      }
+      contracting_checkin_list: {
+        Args: never
+        Returns: {
+          agent_id: string
+          agent_status: string
+          call_count: number
+          checkin_id: string
+          contracts_confirmed_at: string
+          contracts_sent_at: string
+          deals_30d: number
+          display_name: string
+          email: string
+          flagged: boolean
+          intake_received: boolean
+          is_agent: boolean
+          last_call_at: string
+          last_call_outcome: string
+          last_checkin_at: string
+          license_status: string
+          manager_name: string
+          note: string
+          npn: string
+          phone: string
+          producing: boolean
+          source: string
+          stage: string
+          training_ready_at: string
+        }[]
+      }
       contracting_exception_digest: { Args: never; Returns: Json }
       contracting_request_rows: { Args: never; Returns: Json }
+      contracting_save_ethos_review: {
+        Args: {
+          p_agent_id: string
+          p_approval?: Json
+          p_evidence?: Json
+          p_intake_id: string
+        }
+        Returns: {
+          agent_id: string | null
+          approved_advance_tier: string | null
+          approved_at: string | null
+          approved_by: string | null
+          approved_comp_level: string | null
+          approved_sub_agency: string | null
+          approved_sub_agent_head: boolean | null
+          approved_upline_npn: string | null
+          comp_grid_version: string | null
+          contact_confirmed_at: string | null
+          contact_confirmed_by: string | null
+          created_at: string
+          eo_evidence_ref: string | null
+          eo_expires_at: string | null
+          eo_verified_at: string | null
+          eo_verified_by: string | null
+          id: string
+          intake_id: string | null
+          legal_first_name: string | null
+          legal_last_name: string | null
+          license_evidence_ref: string | null
+          license_verified_at: string | null
+          license_verified_by: string | null
+          note: string | null
+          npn_verified_at: string | null
+          npn_verified_by: string | null
+          npn_verified_source: string | null
+          owner_name: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "contracting_ethos_approvals"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      contracting_sheet_csv: { Args: never; Returns: string }
+      contracting_update_case: {
+        Args: { p_agent_id: string; p_carrier: string; p_patch: Json }
+        Returns: Json
+      }
       contracting_worklist_ack: {
         Args: { p_agent_id: string; p_next_action: string; p_note?: string }
+        Returns: Json
+      }
+      contracting_worklist_rows: {
+        Args: never
+        Returns: {
+          acked_at: string | null
+          agent_id: string | null
+          al_id: number | null
+          display_name: string | null
+          email: string | null
+          ethos_status: string | null
+          handled: boolean | null
+          license_status: Database["public"]["Enums"]["license_status"] | null
+          manager_name: string | null
+          next_action: string | null
+          note: string | null
+          npn_db: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "v_contracting_worklist"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      contracting_worklist_unack: {
+        Args: { p_agent_id: string; p_next_action: string }
         Returns: Json
       }
       count_unscheduled_agents: {
@@ -166098,6 +167858,27 @@ export type Database = {
         }[]
       }
       course_max_attempts: { Args: never; Returns: number }
+      create_apex_toolkit_agent: {
+        Args: {
+          p_contract_version?: string
+          p_email: string
+          p_first_name: string
+          p_last_name: string
+          p_npn: string
+          p_phone: string
+        }
+        Returns: Json
+      }
+      create_apex_toolkit_agent_legacy: {
+        Args: {
+          p_email: string
+          p_first_name: string
+          p_last_name: string
+          p_pa_number: string
+          p_phone: string
+        }
+        Returns: Json
+      }
       create_invitation: {
         Args: {
           p_carrier_exceptions?: Json
@@ -166173,6 +167954,41 @@ export type Database = {
           training_stage: string
         }[]
       }
+      crm_agent_roster_unguarded: {
+        Args: { p_agent_id: string }
+        Returns: {
+          agent_code: string
+          agent_id: string
+          avatar_url: string
+          contracts_active: number
+          contracts_total: number
+          created_at: string
+          downline_count: number
+          email: string
+          first_posted_date: string
+          full_name: string
+          is_deactivated: boolean
+          is_inactive: boolean
+          is_sync_only: boolean
+          l30_alp: number
+          l30_deals: number
+          last_contacted_at: string
+          last_posted_date: string
+          license_progress: string
+          license_status: string
+          lifetime_alp: number
+          lifetime_deals: number
+          manager_id: string
+          manager_name: string
+          mtd_alp: number
+          mtd_deals: number
+          onboarding_stage: string
+          phone: string
+          status: string
+          tenure_days: number
+          training_stage: string
+        }[]
+      }
       crm_agent_sales_pulse: {
         Args: never
         Returns: {
@@ -166201,6 +168017,7 @@ export type Database = {
         Args: { p_agent_id: string }
         Returns: boolean
       }
+      crm_can_read_roster: { Args: never; Returns: boolean }
       crm_roster_segments: {
         Args: never
         Returns: {
@@ -166230,9 +168047,54 @@ export type Database = {
           today_policies: number
         }[]
       }
+      csv_cell: { Args: { t: string }; Returns: string }
       current_agent_id: { Args: never; Returns: string }
+      current_manager_agent_id: { Args: never; Returns: string }
       cw_dashboard_payload: { Args: never; Returns: Json }
+      cw_ingest_smb_backfill: { Args: never; Returns: number }
+      cw_ingest_smb_shipped: { Args: { p_draft_id: number }; Returns: string }
+      cw_record_kpi_snapshot: { Args: never; Returns: string }
+      cw_smb_platform_to_enum: {
+        Args: { p: string }
+        Returns: Database["public"]["Enums"]["cw_platform"]
+      }
+      dashboard_paid_today_summary: { Args: never; Returns: Json }
+      data_quality_audit: { Args: never; Returns: Json }
       day_plan_ensure_seeded: { Args: never; Returns: number }
+      deal_sync_queue_promote_dead: { Args: never; Returns: number }
+      dedupe_applications_by_email: { Args: never; Returns: Json }
+      detect_duplicate_applicants: {
+        Args: never
+        Returns: {
+          canonical_id: string
+          duplicate_id: string
+          match_reason: string
+          score: number
+        }[]
+      }
+      detect_milestone_verge: { Args: never; Returns: Json }
+      dialer_payment_summary: {
+        Args: { target_week?: string }
+        Returns: {
+          bounced: number
+          collected: number
+          outstanding: number
+          overdue: number
+          paid: number
+          pending: number
+          total_agents: number
+          week_start: string
+        }[]
+      }
+      discord_audit_ok: {
+        Args: {
+          p_claimed_value: number
+          p_metric: string
+          p_source: string
+          p_tolerance_pct?: number
+        }
+        Returns: boolean
+      }
       discord_deal_feed_health: {
         Args: never
         Returns: {
@@ -166247,6 +168109,41 @@ export type Database = {
           unresolved_24h: number
         }[]
       }
+      discord_deal_feed_health_uncached: {
+        Args: never
+        Returns: {
+          agency_name: string
+          detail: string
+          last_heartbeat_at: string
+          last_ingested_at: string
+          last_message_at: string
+          measured_at: string
+          source: string
+          status: string
+          unresolved_24h: number
+        }[]
+      }
+      discord_route: {
+        Args: {
+          p_body: Json
+          p_channel: string
+          p_entity_id: string
+          p_event_type: string
+        }
+        Returns: Json
+      }
+      disposition_interview: {
+        Args: {
+          p_field: string
+          p_id: string
+          p_source: string
+          p_value: string
+        }
+        Returns: undefined
+      }
+      dm_overnight_digest: { Args: never; Returns: Json }
+      dm_send_retry: { Args: never; Returns: Json }
+      drain_sms_fallback_queue: { Args: never; Returns: Json }
       easy_resells: {
         Args: never
         Returns: {
@@ -166278,6 +168175,63 @@ export type Database = {
           work_status: string
         }[]
       }
+      ensure_next_month_partitions: { Args: never; Returns: Json }
+      ethos_agent_update_rows: {
+        Args: never
+        Returns: {
+          "Advanced Payments": string | null
+          "Agent First Name": string | null
+          "Agent Last Name": string | null
+          "Agent NPN": string | null
+          agent_id: string | null
+          approved_at: string | null
+          approved_by: string | null
+          "Comp Level": string | null
+          current_sheet_level: string | null
+          "Direct Upline's NPN": string | null
+          display_name: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "v_ethos_agent_updates"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      ethos_paste_rows_approved: {
+        Args: never
+        Returns: {
+          "$1M in E&O coverage?": string | null
+          "Advance Pay Tier": string | null
+          "Agent Email": string | null
+          "Agent First Name": string | null
+          "Agent Last Name": string | null
+          "Agent Mobile Number": string | null
+          "Agent NPN": string | null
+          agent_id: string | null
+          "Comp Level": string | null
+          "Direct Upline NPN": string | null
+          display_name: string | null
+          "Life Licensed?": string | null
+          "Sub-Agency Name": string | null
+          "Sub-Agent Head?": string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "v_ethos_paste_rows"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      execute_sql: { Args: { q: string }; Returns: Json }
+      finance_snapshot: {
+        Args: never
+        Returns: {
+          label: string
+          note: string
+          usd: number
+        }[]
+      }
       finances_overview: {
         Args: { p_month?: string; p_scope?: string }
         Returns: Json
@@ -166286,6 +168240,8 @@ export type Database = {
         Args: { p_month?: string; p_scope?: string }
         Returns: Json
       }
+      flex_hire: { Args: { p_agent_id: string }; Returns: Json }
+      fn_access_violation_alert: { Args: never; Returns: number }
       fn_agent_contract_pct: {
         Args: { p_agent_id: string }
         Returns: {
@@ -166293,11 +168249,80 @@ export type Database = {
           provenance: string
         }[]
       }
+      fn_agent_contract_pct_live: {
+        Args: { p_agent_id: string }
+        Returns: {
+          pct: number
+          provenance: string
+        }[]
+      }
+      fn_agent_contracting_matched_by_npn: {
+        Args: { p_agent_id: string }
+        Returns: boolean
+      }
+      fn_agent_is_placeholder: {
+        Args: { p_agent_id: string }
+        Returns: boolean
+      }
+      fn_agent_is_roster_excluded: {
+        Args: { p_agent_id: string }
+        Returns: boolean
+      }
+      fn_agent_is_roster_excluded_live: {
+        Args: { p_agent_id: string }
+        Returns: boolean
+      }
+      fn_agent_licensing_ready: {
+        Args: { p_agent_id: string }
+        Returns: boolean
+      }
       fn_agent_onboarding_call_booking: {
         Args: { p_agent_id: string }
         Returns: string
       }
       fn_agent_subagency: { Args: { p_agent_id: string }; Returns: string }
+      fn_agent_subagency_live: { Args: { p_agent_id: string }; Returns: string }
+      fn_agentlink_alert_page: {
+        Args: {
+          p_alert_id: string
+          p_body: string
+          p_priority?: string
+          p_title: string
+        }
+        Returns: boolean
+      }
+      fn_agentlink_book_verdict: {
+        Args: {
+          p_book_rows: number
+          p_deals_24h: number
+          p_errors_24h: number
+          p_last_ok: string
+          p_newest_posted: string
+          p_no_cookie_7d: number
+          p_ok_24h: number
+          p_policies_seen: number
+          p_stuck: number
+        }
+        Returns: string
+      }
+      fn_agentlink_outbox_uuid: {
+        Args: { p_deal_key: string }
+        Returns: string
+      }
+      fn_agentlink_policy_fingerprint: {
+        Args: {
+          p_agent_name: string
+          p_annual_premium: number
+          p_carrier: string
+          p_client_name: string
+          p_effective_date: string
+        }
+        Returns: string
+      }
+      fn_agentlink_policy_outbox_uuid: {
+        Args: { p_fingerprint: string }
+        Returns: string
+      }
       fn_agentlink_reap_stuck: {
         Args: never
         Returns: {
@@ -166305,8 +168330,70 @@ export type Database = {
           reaped_count: number
         }[]
       }
+      fn_alert_sms_fix_anchor: { Args: never; Returns: string }
+      fn_auto_merge_clear_duplicates: {
+        Args: never
+        Returns: {
+          canonical_id: string
+          merged_id: string
+          name: string
+        }[]
+      }
+      fn_automation_liveness_check: { Args: never; Returns: Json }
+      fn_backfill_orphan_agent_id: {
+        Args: never
+        Returns: {
+          distinct_customers: number
+          updated_count: number
+        }[]
+      }
+      fn_backfill_orphan_failed_payments: {
+        Args: never
+        Returns: {
+          distinct_customers: number
+          rows_updated: number
+        }[]
+      }
+      fn_backfill_orphan_lead_purchases: {
+        Args: never
+        Returns: {
+          distinct_customers: number
+          updated_count: number
+        }[]
+      }
+      fn_backfill_refund_sync: {
+        Args: never
+        Returns: {
+          recovered_refund_cents: number
+          updated_rows: number
+        }[]
+      }
+      fn_book_agent_name_known: { Args: { p_name: string }; Returns: boolean }
       fn_book_audit_run: { Args: never; Returns: Json }
+      fn_book_parity_anchor: { Args: never; Returns: string }
+      fn_book_policy_identity_ok: { Args: { p: string }; Returns: boolean }
+      fn_book_policy_key: { Args: { p: string }; Returns: string }
+      fn_broadcast_to_telegram_chat: {
+        Args: { p_chat_type: string; p_message: string }
+        Returns: undefined
+      }
+      fn_business_day_ordinal: { Args: { p_date: string }; Returns: number }
+      fn_calls_today_summary: {
+        Args: never
+        Returns: {
+          booked: number
+          calls_today: number
+          connected: number
+          no_shows_last_10: number
+        }[]
+      }
+      fn_can_access_pipeline_client: {
+        Args: { p_client_id: string }
+        Returns: boolean
+      }
       fn_can_move_hire: { Args: { p_agent_id: string }; Returns: boolean }
+      fn_canonical_agent_id: { Args: { p_agent_id: string }; Returns: string }
+      fn_capture_pg_cron_timeout_state: { Args: never; Returns: undefined }
       fn_client_pipeline_action: {
         Args: {
           p_activity_body?: string
@@ -166352,6 +168439,8 @@ export type Database = {
         Args: { p_client_id: string; p_patch: Json }
         Returns: Json
       }
+      fn_close_communication_gaps: { Args: { p_limit?: number }; Returns: Json }
+      fn_commission_advance_factor: { Args: never; Returns: number }
       fn_commission_rate: {
         Args: { p_agent_id: string; p_carrier_id: string }
         Returns: {
@@ -166371,6 +168460,86 @@ export type Database = {
           policy_id: string
         }[]
       }
+      fn_contract_review_my_agent: { Args: never; Returns: string }
+      fn_contract_review_population: {
+        Args: never
+        Returns: {
+          agent_id: string
+        }[]
+      }
+      fn_contract_review_save_profile: {
+        Args: {
+          p_agent_id: string
+          p_email: string
+          p_first: string
+          p_last: string
+          p_npn: string
+          p_require_all: boolean
+          p_source: string
+          p_state: string
+        }
+        Returns: Json
+      }
+      fn_contracting_checkin_scope: {
+        Args: never
+        Returns: {
+          agent_id: string
+        }[]
+      }
+      fn_contracting_is_staff: { Args: never; Returns: boolean }
+      fn_contracting_request_eval: { Args: { p_agent: string }; Returns: Json }
+      fn_contracting_request_row: { Args: { p_agent: string }; Returns: Json }
+      fn_cron_jobs_active: {
+        Args: { p_jobnames: string[] }
+        Returns: {
+          active: boolean
+          jobname: string
+        }[]
+      }
+      fn_cron_jobs_schedule: {
+        Args: { p_jobnames: string[] }
+        Returns: {
+          active: boolean
+          jobname: string
+          schedule: string
+          timezone: string
+        }[]
+      }
+      fn_csv_cell: { Args: { x: string }; Returns: string }
+      fn_dedupe_phantom_lead_purchases: {
+        Args: never
+        Returns: {
+          archived_count: number
+          recovered_phantom_cents: number
+        }[]
+      }
+      fn_email_failure_alarm: { Args: never; Returns: Json }
+      fn_email_is_sendable: { Args: { p_email: string }; Returns: boolean }
+      fn_emit_inbox_notification: {
+        Args: {
+          p_body: string
+          p_link?: string
+          p_metadata?: Json
+          p_priority?: string
+          p_title: string
+          p_type: string
+          p_user_id: string
+        }
+        Returns: string
+      }
+      fn_enqueue_40d_reissue: {
+        Args: never
+        Returns: {
+          enqueued: number
+          first_send: string
+          last_send: string
+          skipped_dedup: number
+        }[]
+      }
+      fn_enqueue_onboarding_call_booking: {
+        Args: { p_agent_id: string; p_source?: string }
+        Returns: Json
+      }
       fn_enqueue_scripts_packet: {
         Args: { p_agent_id: string }
         Returns: boolean
@@ -166379,6 +168548,12 @@ export type Database = {
         Args: { p_intake_id: string }
         Returns: number
       }
+      fn_ethos_level_for_pct: { Args: { pct: number }; Returns: string }
+      fn_evaluate_personal_records: {
+        Args: { p_emit?: boolean; p_since?: string }
+        Returns: number
+      }
+      fn_evaluate_recruiter_bounties: { Args: never; Returns: number }
       fn_hierarchy_first_hops: {
         Args: { p_roots: string[] }
         Returns: {
@@ -166388,9 +168563,61 @@ export type Database = {
           parent_candidates: number
         }[]
       }
+      fn_hierarchy_first_hops_live: {
+        Args: { p_roots: string[] }
+        Returns: {
+          depth: number
+          first_hop: string
+          member: string
+          parent_candidates: number
+        }[]
+      }
+      fn_hire_stage_for_rank: { Args: { p_rank: number }; Returns: string }
       fn_hire_stage_rank: { Args: { p_stage: string }; Returns: number }
+      fn_identity_collision_anchor: { Args: never; Returns: string }
+      fn_identity_collision_observe: { Args: never; Returns: number }
+      fn_ig_abandoned_partials: {
+        Args: never
+        Returns: {
+          email: string
+          first_name: string
+          id: string
+          step: string
+        }[]
+      }
       fn_ig_automation_pause_status: { Args: never; Returns: Json }
       fn_ig_dashboard: { Args: { p_window?: string }; Returns: Json }
+      fn_ig_nudge_candidates: {
+        Args: never
+        Returns: {
+          business: boolean
+          external_id: string
+          last_in: string
+          last_out: string
+          last_out_body: string
+          nudges: number
+          sender_handle: string
+          stage: number
+        }[]
+      }
+      fn_ig_phone10: { Args: { p_text: string }; Returns: string }
+      fn_ig_reengage_candidates: {
+        Args: never
+        Returns: {
+          days_quiet: number
+          email: string
+          external_id: string
+          first_name: string
+          lane: string
+          last_in: string
+          last_in_body: string
+          last_out_attempt: string
+          last_out_delivered: string
+          phone: string
+          reason: string
+          sender_handle: string
+        }[]
+      }
       fn_ig_thread: { Args: { p_external_id: string }; Returns: Json }
       fn_ig_thread_action: {
         Args: {
@@ -166403,6 +168630,21 @@ export type Database = {
         }
         Returns: Json
       }
+      fn_ig_thread_action_latest: {
+        Args: { p_external_id: string; p_within?: string }
+        Returns: string
+      }
+      fn_insuracloud_lane_verdict: {
+        Args: {
+          p_fires_7d: number
+          p_has_any_snapshot: boolean
+          p_has_clean_snapshot: boolean
+          p_last_success: string
+          p_repl_ok_24h: number
+        }
+        Returns: string
+      }
+      fn_insuracloud_refusal_anchor: { Args: never; Returns: string }
       fn_interview_outcome_ask: { Args: never; Returns: Json }
       fn_invitation_status: {
         Args: {
@@ -166425,6 +168667,17 @@ export type Database = {
         }
         Returns: Json
       }
+      fn_invite_caller: {
+        Args: never
+        Returns: {
+          agent_id: string
+          cap_pct: number
+          is_admin: boolean
+          is_manager: boolean
+          user_id: string
+        }[]
+      }
+      fn_invite_can_manage: { Args: { p_id: string }; Returns: boolean }
       fn_invite_comp_levels: { Args: never; Returns: number[] }
       fn_invite_insert: {
         Args: {
@@ -166475,13 +168728,119 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      fn_is_first_slack_deal_today: { Args: never; Returns: boolean }
+      fn_license_renewal_sweep: {
+        Args: never
+        Returns: {
+          agent_code: string
+          agent_id: string
+          days_out: number
+          email: string
+          full_name: string
+          license_expires_at: string
+        }[]
+      }
       fn_license_stage_rank: {
         Args: { p: Database["public"]["Enums"]["license_progress"] }
         Returns: number
       }
+      fn_licensing_readiness: { Args: { p_student_id: string }; Returns: Json }
+      fn_like_escape: { Args: { p: string }; Returns: string }
+      fn_log_interview_event_activity: {
+        Args: {
+          p_action: string
+          p_event: Database["public"]["Tables"]["interview_events"]["Row"]
+          p_from_at: string
+          p_outcome: string
+          p_reason: string
+          p_superseded: number
+        }
+        Returns: undefined
+      }
+      fn_logged_backfill_orphan_agent_id: { Args: never; Returns: number }
+      fn_logged_backfill_orphan_failed_payments: {
+        Args: never
+        Returns: number
+      }
+      fn_logged_backfill_orphan_lead_purchases: { Args: never; Returns: number }
+      fn_logged_backfill_refund_sync: { Args: never; Returns: number }
+      fn_logged_dedupe_phantom_lead_purchases: { Args: never; Returns: number }
       fn_match_carrier_policy_agents: { Args: never; Returns: number }
+      fn_match_readymode_calls: { Args: never; Returns: Json }
       fn_match_xcel_students: { Args: never; Returns: number }
+      fn_milestone_state: {
+        Args: {
+          p_amber: number
+          p_applicable: boolean
+          p_deadline: number
+          p_done: boolean
+          p_elapsed: number
+          p_policy_active: boolean
+          p_start_ok: boolean
+          p_tracked: boolean
+        }
+        Returns: Json
+      }
+      fn_missed_opportunity_digest: { Args: never; Returns: Json }
+      fn_next_onboarding_window: { Args: never; Returns: string }
+      fn_next_seminar_date: { Args: { p_from?: string }; Returns: string }
       fn_next_seminar_slot: { Args: { p_from?: string }; Returns: string }
+      fn_next_step_cadence_due: {
+        Args: { p_cadence: string; p_elapsed: string }
+        Returns: string
+      }
+      fn_next_step_cadence_due_local: {
+        Args: {
+          p_cadence: string
+          p_entered: string
+          p_now: string
+          p_zones: string[]
+        }
+        Returns: string
+      }
+      fn_next_step_manual_advance: {
+        Args: {
+          p_actor?: string
+          p_agent_id?: string
+          p_application_id?: string
+          p_reason?: string
+          p_to_stage?: string
+        }
+        Returns: Json
+      }
+      fn_next_step_nudge_sweep: {
+        Args: never
+        Returns: {
+          queued: number
+        }[]
+      }
+      fn_next_step_rank: { Args: { p_stage: string }; Returns: number }
+      fn_next_step_recompute_all: {
+        Args: never
+        Returns: {
+          advanced: number
+          processed: number
+        }[]
+      }
+      fn_next_step_recompute_one: {
+        Args: { p_agent_id?: string; p_application_id?: string }
+        Returns: undefined
+      }
+      fn_next_step_send_ok: {
+        Args: { p_at: string; p_zones: string[] }
+        Returns: boolean
+      }
+      fn_next_step_send_zones: {
+        Args: { p_agent_id: string; p_application_id: string }
+        Returns: string[]
+      }
+      fn_next_step_stall_sweep: {
+        Args: never
+        Returns: {
+          flagged: number
+          notified: number
+        }[]
+      }
       fn_normalize_contracting_email: {
         Args: { p_raw: string }
         Returns: string
@@ -166491,7 +168850,69 @@ export type Database = {
         Args: { p_raw: string }
         Returns: string
       }
+      fn_normalize_instagram_handle: { Args: { p: string }; Returns: string }
       fn_normalize_policy_number: { Args: { p_raw: string }; Returns: string }
+      fn_normalize_us_state: { Args: { p: string }; Returns: string }
+      fn_npn_plausible: {
+        Args: { npn: string; phone?: string }
+        Returns: boolean
+      }
+      fn_ntfy_relay: {
+        Args: {
+          p_body: string
+          p_priority?: string
+          p_tags?: string
+          p_title: string
+          p_topic?: string
+        }
+        Returns: number
+      }
+      fn_ntfy_relay_receipt: { Args: { p_request_id: number }; Returns: Json }
+      fn_ntfy_relay_result: { Args: { p_request_id: number }; Returns: string }
+      fn_onboarding_email_backfill_sweep: { Args: never; Returns: Json }
+      fn_phoenix_today: { Args: never; Returns: string }
+      fn_policy_number_report_placeholder: {
+        Args: { p: string }
+        Returns: boolean
+      }
+      fn_post_deal_celebration: {
+        Args: {
+          p_agent_id: string
+          p_annual_premium: number
+          p_note?: string
+          p_product_sold: string
+        }
+        Returns: number
+      }
+      fn_post_unlicensed_digest: { Args: never; Returns: undefined }
+      fn_production_integrity_anchor: { Args: never; Returns: string }
+      fn_prune_agentlink_alerts: { Args: never; Returns: number }
+      fn_prune_cron_run_details: {
+        Args: { p_batch?: number; p_keep?: string }
+        Returns: number
+      }
+      fn_readymode_ingest: { Args: { p_payload: Json }; Returns: Json }
+      fn_reconcile_first_deal_at: {
+        Args: { p_apply?: boolean }
+        Returns: {
+          agent_id: string
+          applied: boolean
+          display_name: string
+          error: string
+          now_is: string
+          was: string
+        }[]
+      }
+      fn_record_auth_provision_failure: {
+        Args: {
+          p_email: string
+          p_message: string
+          p_sqlstate: string
+          p_step: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       fn_recover_stale_applicant: {
         Args: {
           p_action: string
@@ -166505,8 +168926,159 @@ export type Database = {
         Args: { p_agent_id: string; p_application_id: string }
         Returns: boolean
       }
+      fn_reissue_40d_html: {
+        Args: { p_cohort: string; p_first_name: string }
+        Returns: string
+      }
+      fn_reissue_40d_template_for: {
+        Args: { p_license_progress: string }
+        Returns: {
+          cohort: string
+          priority: number
+          subject: string
+          template_key: string
+        }[]
+      }
+      fn_reissue_40d_text: {
+        Args: { p_cohort: string; p_first_name: string }
+        Returns: string
+      }
+      fn_require_caller_role: {
+        Args: {
+          p_allow_presenter?: boolean
+          p_roles: Database["public"]["Enums"]["app_role"][]
+        }
+        Returns: undefined
+      }
+      fn_rpc_single_flight: {
+        Args: { p_key: string; p_sql: string; p_ttl_seconds: number }
+        Returns: Json
+      }
       fn_run_applicant_nudges: { Args: never; Returns: Json }
+      fn_settle_unlicensed_digest: { Args: never; Returns: number }
+      fn_site_page_ladder_anchor: { Args: never; Returns: string }
+      fn_skool_members_replace: { Args: { p_members: Json }; Returns: number }
+      fn_sms_receipt_fix_anchor: { Args: never; Returns: string }
+      fn_social_drafts_archive_stale: { Args: never; Returns: number }
       fn_social_lane_alert: { Args: never; Returns: Json }
+      fn_stage_label: { Args: { p_stage: string }; Returns: string }
+      fn_status_answer_indicates_licensed: {
+        Args: { p_status: string }
+        Returns: boolean
+      }
+      fn_supersede_interview_reminders: {
+        Args: { p_event_id: string; p_reason: string }
+        Returns: number
+      }
+      fn_sweep_interview_reminders: {
+        Args: never
+        Returns: {
+          missed_emitted: number
+          upcoming_emitted: number
+        }[]
+      }
+      fn_sweep_manager_followup_reminders: { Args: never; Returns: number }
+      fn_sweep_onboarding_call_gaps: { Args: never; Returns: number }
+      fn_sweep_recruiting_milestones: {
+        Args: { p_period?: string }
+        Returns: number
+      }
+      fn_team_population: {
+        Args: never
+        Returns: {
+          agent_id: string
+        }[]
+      }
+      fn_team_reader: { Args: never; Returns: boolean }
+      fn_telegram_queue_inactivity_nudges: { Args: never; Returns: number }
+      fn_text_json_quoted_adjudicate: {
+        Args: never
+        Returns: {
+          acquitted: number
+          col: string
+          hits: number
+          rel: string
+          verdict: string
+        }[]
+      }
+      fn_text_json_quoted_sweep: {
+        Args: never
+        Returns: {
+          col: string
+          hits: number
+          rel: string
+        }[]
+      }
+      fn_text_json_safe: { Args: { p: string }; Returns: string }
+      fn_unlicensed_digest_health: {
+        Args: never
+        Returns: {
+          detail: string
+          http_status: number
+          last_attempt: string
+          verdict: string
+        }[]
+      }
+      fn_unlicensed_slack_digest: { Args: never; Returns: string }
+      fn_us_state_send_zones: { Args: { p_state: string }; Returns: string[] }
+      fn_weekdays_valid: { Args: { p: number[] }; Returns: boolean }
+      fn_work_weekdays_on: {
+        Args: { p_agent_id: string; p_date: string }
+        Returns: number[]
+      }
+      fn_workday_apply: {
+        Args: {
+          p_agent: string
+          p_date: string
+          p_expected: string
+          p_note: string
+          p_status: string
+          p_uid: string
+        }
+        Returns: Json
+      }
+      fn_xcel_auto_upgrade_all: { Args: never; Returns: number }
+      fn_xcel_stage_rank: { Args: { p_stage: string }; Returns: number }
+      free_leads_qualification_rows: {
+        Args: never
+        Returns: {
+          agent_id: string | null
+          agent_name: string | null
+          deals_30d: number | null
+          ipd_gap: number | null
+          ipd_threshold: number | null
+          ipd_verified_30d: number | null
+          last_deal_date: string | null
+          production_30d: number | null
+          production_gap: number | null
+          production_threshold: number | null
+          qualifies_free_leads: boolean | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "v_free_leads_qualification"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      free_leads_summary_rows: {
+        Args: never
+        Returns: {
+          ipd_threshold: number | null
+          not_yet_qualifying: number | null
+          producing_agents_30d: number | null
+          production_threshold: number | null
+          qualifying_agents: number | null
+          rule: string | null
+          window_days: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "v_free_leads_summary"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       generate_invite_token: {
         Args: {
           p_expires_hours?: number
@@ -166518,10 +169090,15 @@ export type Database = {
         }
         Returns: Json
       }
+      generate_weekly_dialer_invoices: {
+        Args: { target_week?: string }
+        Returns: number
+      }
       get_agent_free_leads_status: {
         Args: { p_agent_id: string }
         Returns: Json
       }
+      get_agent_id: { Args: { _user_id: string }; Returns: string }
       get_agent_production_stats: {
         Args: { end_date: string; start_date: string }
         Returns: {
@@ -166567,6 +169144,14 @@ export type Database = {
           schedule: string
         }[]
       }
+      get_daily_leaderboard: {
+        Args: { p_date: string }
+        Returns: {
+          aop: number
+          full_name: string
+          instagram_handle: string
+        }[]
+      }
       get_downline_agent_ids: {
         Args: { p_root_agent_id: string }
         Returns: {
@@ -166596,6 +169181,14 @@ export type Database = {
       get_my_contracting_profile: { Args: never; Returns: Json }
       get_my_insuracloud_token: { Args: never; Returns: string }
       get_or_create_ics_token: { Args: never; Returns: string }
+      get_weekly_leaderboard: {
+        Args: { p_end: string; p_start: string }
+        Returns: {
+          full_name: string
+          instagram_handle: string
+          weekly_aop: number
+        }[]
+      }
       grade_feedback_set: {
         Args: {
           p_call_id: string
@@ -166620,7 +169213,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      hh_rate_limit: {
+        Args: { p_bucket: string; p_max: number; p_window_seconds: number }
+        Returns: boolean
+      }
       home_conversion_people: { Args: { p_today?: string }; Returns: Json }
+      ig_bucket: {
+        Args: { last_msg_at: string; last_sender: string }
+        Returns: string
+      }
       imo_by_agency_period: {
         Args: { p_end: string; p_start: string }
         Returns: {
@@ -166631,6 +169232,35 @@ export type Database = {
           owner_override_pct: number
           policies: number
         }[]
+      }
+      imo_by_agency_period_uncached: {
+        Args: { p_end: string; p_start: string }
+        Returns: {
+          agency: string
+          alp: number
+          est_owner_override_alp: number
+          is_primary: boolean
+          owner_override_pct: number
+          policies: number
+        }[]
+      }
+      in_course_peer_pressure: { Args: never; Returns: Json }
+      ingest_ayro_sales_deal: {
+        Args: {
+          p_agent_name: string
+          p_annual_premium: number
+          p_carrier: string
+          p_external_ref?: string
+          p_face_amount?: number
+          p_metadata?: Json
+          p_monthly_premium?: number
+          p_occurred_at?: string
+          p_policy_number: string
+          p_posted_date?: string
+          p_product?: string
+          p_status?: string
+        }
+        Returns: Json
       }
       ingest_discord_production_deal: {
         Args: {
@@ -166672,6 +169302,15 @@ export type Database = {
         }
         Returns: Json
       }
+      interview_conflicts: {
+        Args: { p_at: string }
+        Returns: {
+          block_id: string
+          is_hard_block: boolean
+          kind: string
+          label: string
+        }[]
+      }
       invitation_apply_terms: {
         Args: {
           p_agent_id: string
@@ -166702,8 +169341,23 @@ export type Database = {
         Args: { p_claim_id: string; p_invitation_id: string }
         Returns: boolean
       }
+      is_active_agent_login: { Args: never; Returns: boolean }
       is_agency_staff: { Args: never; Returns: boolean }
+      is_first_monday_of_month: { Args: never; Returns: boolean }
+      is_fresh_deal_close: {
+        Args: { p_created: string; p_eff_date: string; p_posted: string }
+        Returns: boolean
+      }
       is_owner: { Args: never; Returns: boolean }
+      is_placeholder_agent: {
+        Args: { p_agent_code: string; p_user_id: string }
+        Returns: boolean
+      }
+      is_recruiting_owner_eligible: {
+        Args: { p_user_id: string }
+        Returns: boolean
+      }
+      is_recruiting_staff: { Args: never; Returns: boolean }
       is_vantage_agent: { Args: { p_agent_id: string }; Returns: boolean }
       issue_strike: {
         Args: {
@@ -166743,8 +169397,20 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      job_run_finish: {
+        Args: {
+          p_error?: string
+          p_id: string
+          p_metadata?: Json
+          p_rows?: number
+          p_status: string
+        }
+        Returns: undefined
+      }
+      job_run_start: { Args: { p_job_name: string }; Returns: string }
       kj_seminar_metrics: { Args: never; Returns: Json }
       landing_deal_highlights: { Args: never; Returns: Json }
+      landing_hire_meter: { Args: never; Returns: Json }
       landing_live_stats: { Args: never; Returns: Json }
       landing_next_step_for: {
         Args: { p_application_id: string }
@@ -166777,6 +169443,7 @@ export type Database = {
         Returns: {
           agent_id: string
           display_name: string
+          is_live: boolean
           subagency: string
           user_id: string
         }[]
@@ -166798,6 +169465,17 @@ export type Database = {
           p_limit?: number
           p_name: string
           p_note?: string
+        }
+        Returns: Json
+      }
+      lead_bundle_create: {
+        Args: {
+          p_format: string
+          p_limit?: number
+          p_min_days_since_dialed?: number
+          p_name: string
+          p_note?: string
+          p_tiers: string[]
         }
         Returns: Json
       }
@@ -166846,6 +169524,15 @@ export type Database = {
         }
         Returns: Json
       }
+      lead_bundle_pool: {
+        Args: { p_min_days_since_dialed?: number }
+        Returns: {
+          available: number
+          in_live_bundles: number
+          quality_reason: string
+          quality_tier: string
+        }[]
+      }
       lead_bundle_recent: { Args: { p_limit?: number }; Returns: Json }
       lead_bundle_remove_item: { Args: { p_item: string }; Returns: Json }
       lead_bundle_revoke: {
@@ -166868,6 +169555,7 @@ export type Database = {
         Args: { p_filters?: Json; p_source: string }
         Returns: Json
       }
+      lead_pool_tiles: { Args: never; Returns: Json }
       lead_resale_pool_counts: { Args: { p_filters?: Json }; Returns: Json }
       lead_state_yield: {
         Args: never
@@ -166924,6 +169612,21 @@ export type Database = {
           total_ap: number
         }[]
       }
+      leaderboard_book_tenure: {
+        Args: { p_end: string; p_start: string }
+        Returns: {
+          agent_id: string
+          agent_key: string
+          agent_name: string
+          ap: number
+          avatar_url: string
+          days_with_agency: number
+          deals: number
+          first_policy_date: string
+          tenure_label: string
+          weeks_with_agency: number
+        }[]
+      }
       leaderboard_set_cheer: {
         Args: { p_agent_key: string; p_cheer: boolean; p_month: string }
         Returns: Json
@@ -166932,6 +169635,7 @@ export type Database = {
         Args: { p_end: string; p_start: string }
         Returns: Json
       }
+      leaderboard_viewer_is_teammate: { Args: never; Returns: boolean }
       list_abandoned_partial_applications: {
         Args: never
         Returns: {
@@ -167003,6 +169707,22 @@ export type Database = {
         }
         Returns: Json
       }
+      manager_daily_accountability: { Args: never; Returns: Json }
+      map_al_status: { Args: { p_al_status: string }; Returns: string }
+      mark_application_paid: {
+        Args: {
+          p_amount_cents?: number
+          p_application_id?: string
+          p_email?: string
+          p_paid_at?: string
+          p_stripe_checkout_session_id?: string
+          p_stripe_customer_id?: string
+        }
+        Returns: {
+          application_id: string
+          was_already_paid: boolean
+        }[]
+      }
       mark_no_longer_with_us: {
         Args: { p_agent_id: string; p_checkin_id: string; p_reason?: string }
         Returns: Json
@@ -167032,7 +169752,49 @@ export type Database = {
         }[]
       }
       messaging_receipt_lease_interval: { Args: never; Returns: string }
+      monday_starters: {
+        Args: { p_monday: string }
+        Returns: {
+          application_id: string
+          email: string
+          manager: string
+          name: string
+          phone: string
+          source: string
+        }[]
+      }
+      mp264_capture_stall_check: { Args: never; Returns: Json }
+      my_agent_account_gaps: {
+        Args: never
+        Returns: {
+          agent_id: string | null
+          display_name: string | null
+          gap_kind: string | null
+          hired_at: string | null
+          recruited_by: string | null
+          resolvable_email: string | null
+          status: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "v_agent_account_gaps"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       my_agent_profile: { Args: { p_agent_id?: string }; Returns: Json }
+      my_agents_missing_comp_level: {
+        Args: never
+        Returns: {
+          agent_id: string
+          display_name: string
+          hired_at: string
+          my_cap: number
+          provenance: string
+          resolved_pct: number
+          status: string
+        }[]
+      }
       my_course_progress: { Args: never; Returns: Json }
       my_downline_agent_ids: {
         Args: never
@@ -167040,12 +169802,34 @@ export type Database = {
           agent_id: string
         }[]
       }
+      my_hire_activity: {
+        Args: { p_days?: number }
+        Returns: {
+          activity_state: string
+          agent_id: string
+          calls_30d: number
+          calls_7d: number
+          conversations_30d: number
+          days_since_hire: number
+          deals_30d: number
+          display_name: string
+          hired_on: string
+          last_call_at: string
+          last_deal_on: string
+          license_status: string
+          manager_name: string
+          onboarding_stage: string
+        }[]
+      }
       my_lead_bundles: {
         Args: never
         Returns: {
+          age: number
           attempts: number
+          attrs: Json
           bundle_id: string
           bundle_name: string
+          bundle_note: string
           email: string
           first_name: string
           format: string
@@ -167057,14 +169841,101 @@ export type Database = {
           phone10: string
           quality_reason: string
           quality_tier: string
+          state: string
           status: string
           status_at: string
           status_note: string
         }[]
       }
+      my_lead_detail: { Args: { p_item: string }; Returns: Json }
+      my_new_hire_showup: {
+        Args: { p_days?: number }
+        Returns: {
+          agent_id: string | null
+          booked_appointment: boolean | null
+          display_name: string | null
+          has_login: boolean | null
+          hired_at: string | null
+          hired_on: string | null
+          last_sign_in_at: string | null
+          opened_training: boolean | null
+          posted_deal: boolean | null
+          recruited_by: string | null
+          showup_state: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "v_new_hire_showup"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      my_onboarding_integrity: {
+        Args: never
+        Returns: {
+          added_on: string
+          agent_id: string
+          cannot_sign_in: boolean
+          display_name: string
+          manager_name: string
+          never_onboarded: boolean
+          no_production_credit: boolean
+          no_start_date: boolean
+          open_gaps: number
+          status: string
+          unreachable: boolean
+        }[]
+      }
+      my_onboarding_roll_call: {
+        Args: { p_days?: number }
+        Returns: {
+          agent_id: string
+          blocker: string
+          days_since_hire: number
+          display_name: string
+          email: string
+          email_deliverable: boolean
+          has_login: boolean
+          hired_on: string
+          invite_email_sent_on: string
+          license_status: string
+          manager_name: string
+          onboarding_stage: string
+          phone: string
+          reachable: boolean
+        }[]
+      }
       my_recruiting_link: { Args: never; Returns: Json }
+      my_recruiting_standing: { Args: never; Returns: Json }
       my_referral_status: { Args: never; Returns: Json }
+      my_touched_subject_ids: {
+        Args: never
+        Returns: {
+          subject_id: string
+        }[]
+      }
       my_training_next_step: { Args: never; Returns: Json }
+      my_unlinked_agents: {
+        Args: { p_days?: number }
+        Returns: {
+          agent_id: string
+          al_user_id: string
+          blocker: string
+          book_rows: number
+          days_since_hire: number
+          display_name: string
+          hired_on: string
+          license_status: string
+          manager_name: string
+          status: string
+        }[]
+      }
+      my_visible_applications: {
+        Args: never
+        Returns: {
+          application_id: string
+        }[]
+      }
       my_weekly_badges: {
         Args: never
         Returns: {
@@ -167077,6 +169948,7 @@ export type Database = {
           week_start: string
         }[]
       }
+      myday_alert_tick: { Args: { p_topic?: string }; Returns: Json }
       myday_counter_add: { Args: { p_kind: string }; Returns: Json }
       myday_counter_undo: { Args: { p_kind: string }; Returns: Json }
       myday_counters: { Args: never; Returns: Json }
@@ -167088,6 +169960,11 @@ export type Database = {
           sent: number
         }[]
       }
+      nudge_day2_not_enrolled: { Args: never; Returns: Json }
+      nudge_day4_not_enrolled: { Args: never; Returns: Json }
+      nudge_unlicensed_applicants: { Args: never; Returns: Json }
+      nudge_xcel_completions_to_contract: { Args: never; Returns: Json }
+      onboarding_drip: { Args: never; Returns: Json }
       onboarding_exception_facts: {
         Args: never
         Returns: {
@@ -167134,6 +170011,42 @@ export type Database = {
           training_started: boolean
         }[]
       }
+      onboarding_funnel_rows: {
+        Args: never
+        Returns: {
+          agents: number | null
+          label: string | null
+          licensed: number | null
+          owner: string | null
+          pct_complete_at_stage: number | null
+          pct_of_agents: number | null
+          stage_key: string | null
+          stage_order: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "v_onboarding_funnel"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      onboarding_funnel_summary_rows: {
+        Args: never
+        Returns: {
+          fully_contracted: number | null
+          live_agents: number | null
+          waiting_external: number | null
+          waiting_on_agent: number | null
+          waiting_on_sam: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "v_onboarding_funnel_summary"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      orphan_deal_audit: { Args: never; Returns: Json }
       phc_admin_lead_stats: {
         Args: never
         Returns: {
@@ -167160,6 +170073,20 @@ export type Database = {
           utm_source: string
         }[]
       }
+      plaque_color: {
+        Args: { p_color: string; p_type: string }
+        Returns: string
+      }
+      plaque_label: {
+        Args: { p_badge: string; p_type: string }
+        Returns: string
+      }
+      post_daily_top_producer: { Args: never; Returns: Json }
+      post_evening_recap: { Args: never; Returns: Json }
+      post_hiring_bottleneck_alert: { Args: never; Returns: Json }
+      post_midday_snapshot: { Args: never; Returns: Json }
+      post_morning_huddle: { Args: never; Returns: Json }
+      post_weekly_recap: { Args: never; Returns: Json }
       prelicensing_check_list: { Args: never; Returns: Json }
       prelicensing_set: {
         Args: {
@@ -167170,6 +170097,7 @@ export type Database = {
         }
         Returns: Json
       }
+      producer_deep_dive: { Args: { p_user_id: number }; Returns: Json }
       producer_profile_detail: { Args: { p_agent_id: string }; Returns: Json }
       production_attribution_exceptions: {
         Args: { p_end: string; p_start: string }
@@ -167191,6 +170119,10 @@ export type Database = {
           live_policies: number
         }[]
       }
+      production_can_read_agent: {
+        Args: { p_agent_id: string }
+        Returns: boolean
+      }
       production_period_totals: {
         Args: never
         Returns: {
@@ -167202,6 +170134,10 @@ export type Database = {
           year_deals: number
         }[]
       }
+      production_reconciliation_receipt: {
+        Args: { p_business_date: string }
+        Returns: Json
+      }
       promote_aged_lead_to_application: {
         Args: { p_aged_id: string }
         Returns: string
@@ -167209,6 +170145,13 @@ export type Database = {
       promote_applicant_to_agent: {
         Args: { p_application_id: string; p_manager_id?: string }
         Returns: string
+      }
+      public_seminar_meeting: {
+        Args: never
+        Returns: {
+          label: string
+          url: string
+        }[]
       }
       queue_active_hired_slack_invites: {
         Args: never
@@ -167229,6 +170172,16 @@ export type Database = {
         }
         Returns: Json
       }
+      queue_sms: {
+        Args: { p_body: string; p_carrier?: string; p_phone: string }
+        Returns: string
+      }
+      reactivate_nopickup_day3: { Args: never; Returns: Json }
+      reactivate_nopickup_day7: { Args: never; Returns: Json }
+      recompute_agent_metrics_for_period: {
+        Args: { p_end: string; p_start: string }
+        Returns: number
+      }
       record_apex_licensed_disposition: {
         Args: {
           p_outcome: string
@@ -167237,7 +170190,56 @@ export type Database = {
         }
         Returns: Json
       }
+      record_charge_action: {
+        Args: {
+          p_action: Database["public"]["Enums"]["charge_action_type"]
+          p_lead_purchase_id: string
+          p_notes?: string
+          p_refund_amount_cents?: number
+        }
+        Returns: {
+          action: Database["public"]["Enums"]["charge_action_type"]
+          id: string
+          lead_purchase_id: string
+          metadata: Json
+          notes: string | null
+          performed_at: string
+          performed_by: string | null
+          refund_amount_cents: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "charge_review_actions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       record_contracting_link_open: { Args: never; Returns: Json }
+      record_discord_deal_ingestion_exception: {
+        Args: {
+          p_channel_id: string
+          p_content_sha256: string
+          p_deal_ordinal: number
+          p_guild_id: string
+          p_issue_code: string
+          p_issue_detail: string
+          p_message_created_at: string
+          p_message_id: string
+          p_parsed_payload?: Json
+          p_source: string
+        }
+        Returns: Json
+      }
+      record_discord_deal_ingestion_heartbeat: {
+        Args: {
+          p_detail?: string
+          p_last_ingested_at?: string
+          p_last_message_at?: string
+          p_source: string
+          p_status: string
+        }
+        Returns: undefined
+      }
       record_invitation_share: {
         Args: { p_channel?: string; p_id: string }
         Returns: Json
@@ -167260,6 +170262,16 @@ export type Database = {
           p_owner_user_id?: string
           p_source_surface?: string
           p_waiting_reason?: string
+        }
+        Returns: Json
+      }
+      record_snap_stats_public: {
+        Args: {
+          p_note?: string
+          p_secret: string
+          p_spotlight_views?: number
+          p_story_views?: number
+          p_subscribers?: number
         }
         Returns: Json
       }
@@ -167327,6 +170339,15 @@ export type Database = {
         Args: { p_end: string; p_recruiter_id: string; p_start: string }
         Returns: Json
       }
+      recruiting_pipeline_rollup: {
+        Args: never
+        Returns: {
+          count: number
+          lane: string
+          last_touch_at: string
+          stage_label: string
+        }[]
+      }
       recruiting_staff_directory: {
         Args: never
         Returns: {
@@ -167335,9 +170356,41 @@ export type Database = {
           user_id: string
         }[]
       }
+      recruiting_tier: {
+        Args: { p_count: number; p_period: string }
+        Returns: Json
+      }
+      recruiting_worklist_row: {
+        Args: { p_application_id: string }
+        Returns: Json
+      }
+      refresh_call_audio_team_visible: { Args: never; Returns: number }
+      refresh_mat_production_unified_if_needed: { Args: never; Returns: Json }
+      refresh_production_truth: { Args: { p_force?: boolean }; Returns: Json }
+      refresh_sync_health: { Args: never; Returns: undefined }
       regenerate_invitation: {
         Args: { p_expires_hours?: number; p_id: string }
         Returns: Json
+      }
+      register_for_seminar: {
+        Args: {
+          p_email: string
+          p_first_name: string
+          p_last_name: string
+          p_license_status?: string
+          p_phone: string
+          p_reminder_opt_in?: boolean
+          p_seminar_date: string
+          p_source?: string
+          p_utm_campaign?: string
+          p_utm_medium?: string
+          p_utm_source?: string
+        }
+        Returns: {
+          application_id: string
+          is_new_application: boolean
+          registration_id: string
+        }[]
       }
       request_onboarding_call_booking: {
         Args: { p_agent_id: string }
@@ -167398,6 +170451,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      rescue_stale_applications: { Args: never; Returns: Json }
       resell_evidence: {
         Args: { p_names?: string[]; p_phones: string[] }
         Returns: {
@@ -167430,6 +170484,10 @@ export type Database = {
               match_method: string
             }[]
           }
+      resolve_hiring_manager_for_scope: {
+        Args: { p_scope: Database["public"]["Enums"]["hiring_scope"] }
+        Returns: string
+      }
       resolve_strike: {
         Args: { p_resolution_note: string; p_strike_id: string }
         Returns: {
@@ -167459,15 +170517,30 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      revive_dead_leads: { Args: never; Returns: Json }
       revoke_invitation: { Args: { p_id: string }; Returns: Json }
       rp_pipeline_action: {
         Args: { p_action: string; p_person_key: string; p_value?: string }
         Returns: string
       }
+      rp_update_agent_comp: {
+        Args: { p_agent_id: string; p_comp?: number; p_contract?: number }
+        Returns: string
+      }
+      run_apex_outbox_dispatch_if_pending: { Args: never; Returns: string }
       run_automation_job: {
         Args: { p_body?: Json; p_function_name: string; p_job_name: string }
         Returns: string
       }
+      run_policy_quality_check: {
+        Args: never
+        Returns: {
+          duplicates: number
+          fell_off: number
+        }[]
+      }
+      run_readymode_sync_if_due: { Args: never; Returns: number }
+      sam_agent_ids_to_exclude: { Args: never; Returns: string[] }
       sam_todo_dismiss: {
         Args: { p_source: string; p_source_id: string }
         Returns: undefined
@@ -167550,8 +170623,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      schedule_auto_populate_tick: { Args: never; Returns: undefined }
       scoped_production_projection: { Args: never; Returns: Json }
+      scoped_production_projection_uncached: { Args: never; Returns: Json }
       scoped_production_scoreboard: {
+        Args: { p_end: string; p_start: string }
+        Returns: Json
+      }
+      scoped_production_scoreboard_uncached: {
         Args: { p_end: string; p_start: string }
         Returns: Json
       }
@@ -167599,9 +170678,20 @@ export type Database = {
           under_9mo: boolean
         }[]
       }
+      send_completion_contracting_handoff: { Args: never; Returns: Json }
+      send_reapply_blast: {
+        Args: { p_dry_run?: boolean; p_limit?: number }
+        Returns: Json
+      }
+      send_reapply_email_blast: { Args: { p_dry?: boolean }; Returns: Json }
+      send_reapply_sms_blast: { Args: { p_dry?: boolean }; Returns: Json }
       set_account_mode: {
         Args: { p_agent_id: string; p_mode: string }
         Returns: Json
+      }
+      set_agent_active: {
+        Args: { p_active: boolean; p_agent_ids: string[] }
+        Returns: number
       }
       set_agent_al_link: {
         Args: { p_agent_id: string; p_al_id: number }
@@ -167624,6 +170714,10 @@ export type Database = {
         }
         Returns: Json
       }
+      set_agent_status: {
+        Args: { p_agent_id: string; p_reason?: string; p_status: string }
+        Returns: Json
+      }
       set_agent_training_stage: {
         Args: {
           p_agent_id: string
@@ -167644,6 +170738,15 @@ export type Database = {
         Args: { p_application_id: string; p_note?: string; p_stage: string }
         Returns: Json
       }
+      set_contract_checkoff: {
+        Args: {
+          p_agent_id: string
+          p_checked: boolean
+          p_contract_key: string
+          p_expected?: boolean
+        }
+        Returns: Json
+      }
       set_contract_review_mark: {
         Args: {
           p_agent_id: string
@@ -167653,8 +170756,26 @@ export type Database = {
         }
         Returns: Json
       }
+      set_contracting_checkin: {
+        Args: {
+          p_agent_id: string
+          p_checkin_id: string
+          p_done?: boolean
+          p_note?: string
+          p_step: string
+        }
+        Returns: Json
+      }
       set_contracting_default_advance: {
         Args: { p_value: string }
+        Returns: Json
+      }
+      set_contracting_followup: {
+        Args: { p_agent_id: string; p_patch: Json }
+        Returns: Json
+      }
+      set_contracting_followup_config: {
+        Args: { p_basis: string; p_window_days?: number }
         Returns: Json
       }
       set_contracting_request_status: {
@@ -167678,6 +170799,10 @@ export type Database = {
           p_to_status: string
         }
         Returns: Json
+      }
+      set_my_insuracloud_token: {
+        Args: { p_token: string }
+        Returns: undefined
       }
       set_recruit_instagram: {
         Args: { p_agent_id: string; p_application_id: string; p_handle: string }
@@ -167780,6 +170905,12 @@ export type Database = {
         Args: { p_agent_ids: string[]; p_date: string; p_status: string }
         Returns: Json
       }
+      should_post_to_discord: {
+        Args: { p_category?: string; p_max_per_hour?: number }
+        Returns: boolean
+      }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
       slack_delivery_receipt_stats: {
         Args: { p_window?: string }
         Returns: Json
@@ -167794,10 +170925,20 @@ export type Database = {
           trigger_name: string
         }[]
       }
+      sms_allowed: {
+        Args: { p_phone: string; p_window_minutes?: number }
+        Returns: boolean
+      }
+      snapshot_aged_leads_daily: { Args: never; Returns: undefined }
       social_command_center: { Args: never; Returns: Json }
       social_draft_set_status: {
         Args: { p_id: number; p_note?: string; p_status: string }
         Returns: Json
+      }
+      social_lead_csv: { Args: { p_list: string }; Returns: string }
+      social_source_of: {
+        Args: { landing: string; referrer: string; utm: string }
+        Returns: string
       }
       sold_call_set_status: {
         Args: { p_call_id: string; p_note?: string; p_status?: string }
@@ -167825,6 +170966,8 @@ export type Database = {
           user_id: string
         }[]
       }
+      stale_submitted_alert: { Args: never; Returns: Json }
+      stuck_applicants_daily_digest: { Args: never; Returns: Json }
       submit_apex_deal: {
         Args: {
           p_agent_id?: string
@@ -167882,9 +171025,58 @@ export type Database = {
           total: number
         }[]
       }
+      supabase_usage_drain_health: { Args: never; Returns: Json }
+      svg_url_encode: { Args: { p_svg: string }; Returns: string }
+      sync_automation_status: { Args: never; Returns: Json }
       sync_health_summary: { Args: never; Returns: Json }
       team_attendance_day: { Args: { p_date?: string }; Returns: Json }
+      team_contracting_status: { Args: never; Returns: Json }
       team_people_facts: { Args: never; Returns: Json }
+      telegram_due_nudges: {
+        Args: { limit_n?: number; now_ts?: string }
+        Returns: {
+          chat_id: number
+          context: Json
+          id: number
+          reason: string
+          template_key: string
+        }[]
+      }
+      telegram_link_application: {
+        Args: { p_chat_id: number; p_email?: string; p_phone?: string }
+        Returns: {
+          applicant_id: string
+          ica_paid_at: string
+          new_stage: string
+        }[]
+      }
+      telegram_sync_stages: {
+        Args: never
+        Returns: {
+          chat_id: number
+          new_stage: string
+          nudge_template: string
+          old_stage: string
+        }[]
+      }
+      toggle_agent_contract_checkoff: {
+        Args: { p_agent_id: string; p_checked: boolean; p_contract_key: string }
+        Returns: undefined
+      }
+      transition_apex_deal_status: {
+        Args: {
+          p_deal_id: string
+          p_expected_version: number
+          p_reason: string
+          p_to_status: string
+        }
+        Returns: Json
+      }
+      trigger_interview_noshow_recovery: {
+        Args: { p_interview_id: string }
+        Returns: Json
+      }
+      trigger_stripe_sync: { Args: never; Returns: Json }
       unified_assign_va: {
         Args: { p_id: string; p_source: string; p_va_user_id: string }
         Returns: undefined
@@ -167905,7 +171097,9 @@ export type Database = {
         Args: { p_agent_id?: string; p_patch: Json }
         Returns: Json
       }
+      upsert_readymode_dialer_calls: { Args: { p_rows: Json }; Returns: number }
       us_state_code: { Args: { p_value: string }; Returns: string }
+      uuid_from_text: { Args: { p_value: string }; Returns: string }
       void_strike: {
         Args: { p_strike_id: string; p_void_reason: string }
         Returns: {
@@ -167935,7 +171129,35 @@ export type Database = {
           isSetofReturn: false
         }
       }
-
+      webhook_health_check: { Args: never; Returns: Json }
+      weekly_dialer_status: {
+        Args: { target_week?: string }
+        Returns: {
+          agent_code: string
+          agent_id: string
+          agent_name: string
+          amount_due: number
+          amount_paid: number
+          bounce_reason: string
+          days_overdue: number
+          id: string
+          manager_id: string
+          notes: string
+          paid_status: string
+          payment_method: string
+          reference: string
+          week_start: string
+        }[]
+      }
+      weekly_xcel_progress_emails: { Args: never; Returns: Json }
+      zz_money: { Args: { p_view: string }; Returns: number }
+      zz_probe: {
+        Args: { p_view: string }
+        Returns: {
+          err: string
+          n: number
+        }[]
+      }
     }
     Enums: {
       agent_status: "active" | "inactive" | "pending" | "terminated"

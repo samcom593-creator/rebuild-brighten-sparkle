@@ -425,6 +425,19 @@
       "rating",
       "updated_at"
     ],
+    "agent_recruiting_systems": [
+      "agent_id",
+      "created_at",
+      "enrolled",
+      "instagram_password",
+      "instagram_username",
+      "monthly_price",
+      "notes",
+      "plan",
+      "updated_at",
+      "updated_by",
+      "weekly_payment"
+    ],
     "agent_removal_requests": [
       "agent_id",
       "created_at",
@@ -2408,6 +2421,11 @@
       "weekly_presentation_target",
       "why_statement"
     ],
+    "carrier_hierarchy_exemptions": [
+      "carrier",
+      "note",
+      "root_agent_id"
+    ],
     "carrier_policies": [
       "agent_id",
       "agent_match_method",
@@ -4065,8 +4083,12 @@
       "added_phone_number",
       "agent_id",
       "closed_first_deal",
+      "completed_ahl_onboarding",
       "completed_first_training",
       "completed_profile",
+      "contracted_ahl_sent",
+      "contracted_chubb_sent",
+      "contracted_ethos_sent",
       "contracted_with_carriers",
       "created_at",
       "current_stage",
@@ -5530,6 +5552,12 @@
       "options",
       "order_index",
       "question"
+    ],
+    "ops_preimage_snapshots": [
+      "id",
+      "payload",
+      "reason",
+      "taken_at"
     ],
     "outbox_events": [
       "aggregate_id",

@@ -252,6 +252,7 @@ const Join = lazy(() => import("./pages/Join"));
 const HireLink = lazy(() => import("./pages/HireLink"));
 const JoinLink = lazy(() => import("./pages/JoinLink"));
 const InviteLinksAdmin = lazy(() => import("./pages/admin/InviteLinks"));
+const RecruitFunnel = lazy(() => import("./pages/admin/RecruitFunnel"));
 const RecoveryQueue = lazy(() => import("./pages/admin/RecoveryQueue"));
 const UnlicensedAll = lazy(() => import("./pages/admin/UnlicensedAll"));
 const XcelImport = lazy(() => import("./pages/admin/XcelImport"));
@@ -657,6 +658,8 @@ const App = () => (
                     <Route path="/dashboard/recruits" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><RecruitPipeline /></ProtectedRoute>} />
                     <Route path="/admin/next-step/stuck" element={<ProtectedRoute requireAdmin><AdminStuckPool /></ProtectedRoute>} />
                     <Route path="/admin/next-step/funnel-health" element={<ProtectedRoute requireAdmin><AdminFunnelHealth /></ProtectedRoute>} />
+                    {/* WP8 2026-11-10: the cohort funnel (v_recruit_funnel_cohort, admin-gated in the DB too) */}
+                    <Route path="/admin/recruit-funnel" element={<ProtectedRoute requireAdmin><RecruitFunnel /></ProtectedRoute>} />
                     {/* 2026-06-17 Sam: surface every licensed agent missing course email + bulk send */}
                     <Route path="/admin/email-gaps" element={<ProtectedRoute requireAdmin><AdminEmailGaps /></ProtectedRoute>} />
                     <Route path="/admin/policy-leads" element={<ProtectedRoute requireAdmin><AdminPolicyLeads /></ProtectedRoute>} />

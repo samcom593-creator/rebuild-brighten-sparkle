@@ -6,8 +6,12 @@
  * its three honesty rules (email or phone is bought, a name alone is only possible, and "has not
  * bought" waits for a fresh report).
  */
+import * as fs from "node:fs";
+import * as path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  FUNNEL_STAGE_COLUMNS,
+  INTERVIEW_CALL_TRACKS,
   RECRUIT_STEPS,
   STEP_COUNT,
   appliedWords,
@@ -258,5 +262,90 @@ describe("Xcel", () => {
     expect(formatCalendarDay("2025-12-31", NOW)).toBe("Dec 31, 2025");
     expect(formatCalendarDay("31/12/2025", NOW)).toBeNull();
     expect(formatCalendarDay(null, NOW)).toBeNull();
+  });
+});
+
+// ── Parity with the cohort funnel's SQL (WP8, 2026-11-10) ───────────────────────────────────────
+// /admin/recruit-funnel counts on the same seven steps as the bar above, but in SQL, where no
+// TypeScript type can follow it. These tests read the newest migration that defines the funnel and
+// fail the moment the two vocabularies drift: a step renamed, reordered, added in one place only,
+// or an interview counted on a different set of Calendly tracks.
+const MIGRATIONS = path.resolve(__dirname, "../../../supabase/migrations");
+
+/** Newest migration whose source matches `marker`, as text with `--` comments removed. */
+function newestMigrationWith(marker: RegExp): { file: string; sql: string } {
+  const files = fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql")).sort();
+  for (let i = files.length - 1; i >= 0; i--) {
+    const raw = fs.readFileSync(path.join(MIGRATIONS, files[i]), "utf8");
+    const sql = raw.replace(/--[^\n]*/g, "");
+    if (marker.test(sql)) return { file: files[i], sql };
+  }
+  throw new Error(`no migration matches ${marker}`);
+}
+
+/** The ordered keys inside recruit_funnel_stage_keys()'s array[...] literal, or null when unparseable. */
+function sqlStageKeys(sql: string): string[] | null {
+  const fn = /function\s+public\.recruit_funnel_stage_keys\(\)[\s\S]*?\$function\$([\s\S]*?)\$function\$/i.exec(sql);
+  const arr = fn && /array\s*\[([^\]]*)\]/i.exec(fn[1]);
+  if (!arr) return null;
+  return [...arr[1].matchAll(/'([^']*)'/g)].map((m) => m[1]);
+}
+
+/** The materialized view's definition text, from CREATE to WITH DATA. */
+function matViewSql(sql: string): string | null {
+  const m = /create\s+materialized\s+view\s+public\.mat_recruit_funnel_person\s+as([\s\S]*?)\bwith\s+data\s*;/i.exec(sql);
+  return m ? m[1] : null;
+}
+
+/** Output columns of the view's final SELECT (everything after "select st.application_id"). */
+function outputColumns(viewSql: string): Set<string> {
+  const at = viewSql.search(/\bselect\s+st\.application_id/i);
+  if (at < 0) return new Set();
+  return new Set([...viewSql.slice(at).matchAll(/\bas\s+([a-z_][a-z0-9_]*)/gi)].map((m) => m[1].toLowerCase()));
+}
+
+function bookingTracks(viewSql: string): string[] | null {
+  const m = /ie\.call_track\s+in\s*\(([^)]*)\)/i.exec(viewSql);
+  return m ? [...m[1].matchAll(/'([^']*)'/g)].map((x) => x[1]) : null;
+}
+
+describe("cohort funnel SQL parity (WP8)", () => {
+  const stageMigration = newestMigrationWith(/function\s+public\.recruit_funnel_stage_keys\(\)/i);
+  const viewMigration = newestMigrationWith(/create\s+materialized\s+view\s+public\.mat_recruit_funnel_person/i);
+  const stepKeys = RECRUIT_STEPS.map((s) => s.key);
+
+  it("recruit_funnel_stage_keys() lists exactly the seven steps, in the same order", () => {
+    expect(sqlStageKeys(stageMigration.sql)).toEqual(stepKeys);
+  });
+
+  it("the snapshot carries one <key>_at column per step, named as FUNNEL_STAGE_COLUMNS says", () => {
+    const view = matViewSql(viewMigration.sql);
+    expect(view, `${viewMigration.file} has no parseable mat_recruit_funnel_person`).not.toBeNull();
+    const cols = outputColumns(view as string);
+    expect(Object.keys(FUNNEL_STAGE_COLUMNS)).toEqual(stepKeys);
+    for (const key of stepKeys) {
+      expect(FUNNEL_STAGE_COLUMNS[key]).toBe(`${key}_at`);
+      expect(cols.has(FUNNEL_STAGE_COLUMNS[key]), `${FUNNEL_STAGE_COLUMNS[key]} missing from ${viewMigration.file}`).toBe(true);
+    }
+  });
+
+  it("an interview is a booking on the same Calendly tracks in both places", () => {
+    expect(bookingTracks(matViewSql(viewMigration.sql) as string)).toEqual([...INTERVIEW_CALL_TRACKS]);
+  });
+
+  it("the parity checks can fail: a drifted copy of the SQL is caught on every axis", () => {
+    const dropped = stageMigration.sql.replace(/'licensing',\s*/, "");
+    expect(dropped).not.toBe(stageMigration.sql);
+    expect(sqlStageKeys(dropped)).not.toEqual(stepKeys);
+    const reordered = stageMigration.sql.replace("'licensing','licensed'", "'licensed','licensing'");
+    expect(reordered).not.toBe(stageMigration.sql);
+    expect(sqlStageKeys(reordered)).not.toEqual(stepKeys);
+    const view = matViewSql(viewMigration.sql) as string;
+    const renamed = view.replace(/\bas\s+interview_at\b/i, "as booked_at_x");
+    expect(renamed).not.toBe(view);
+    expect(outputColumns(renamed).has("interview_at")).toBe(false);
+    const widened = view.replace("('licensed', 'leader')", "('licensed', 'leader', 'onboarding')");
+    expect(widened).not.toBe(view);
+    expect(bookingTracks(widened)).not.toEqual([...INTERVIEW_CALL_TRACKS]);
   });
 });

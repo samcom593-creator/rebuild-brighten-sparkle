@@ -43,6 +43,31 @@ export const RECRUIT_STEPS: readonly RecruitStepDef[] = [
 export const STEP_COUNT = RECRUIT_STEPS.length;
 
 /**
+ * The cohort funnel (WP8, 2026-11-10: public.mat_recruit_funnel_person read through
+ * v_recruit_funnel_cohort on /admin/recruit-funnel) counts on these same seven steps. Its SQL
+ * names them in public.recruit_funnel_stage_keys() and stores one `<key>_at` column per step, so
+ * the bar on the New hires page and the funnel can never mean two different things by
+ * "Interview" or "Licensed". src/tests/lib/recruitJourney.test.ts reads the migration and fails
+ * if either list moves without the other.
+ */
+export const FUNNEL_STAGE_COLUMNS: Readonly<Record<RecruitStepKey, string>> = {
+  applied: "applied_at",
+  contacted: "contacted_at",
+  interview: "interview_at",
+  licensing: "licensing_at",
+  licensed: "licensed_at",
+  contracted: "contracted_at",
+  first_deal: "first_deal_at",
+};
+
+/**
+ * The Calendly tracks that count as an interview booking, here (recruit_pipeline_list.interview_at)
+ * and in the cohort funnel. Onboarding calls and anything the classifier files as "other" are not
+ * interviews.
+ */
+export const INTERVIEW_CALL_TRACKS = ["licensed", "leader"] as const;
+
+/**
  * The engine's stages placed on the seven steps. The order is next_step_stages.order_index: the
  * licensing stages, then contracting (licensed, signing contracts), then the hired-agent stages.
  * hired_unlicensed is a hire who still needs the license, so it is Licensing. A stage missing

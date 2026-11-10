@@ -251,8 +251,8 @@ export default function TrainingIndex() {
             <div className="flex-1">
               <h2 className="text-xl font-bold mb-1">Not licensed yet?</h2>
               <p className="text-sm text-muted-foreground mb-4">
-                Start with the licensing track. We cover course costs and walk
-                you through every step.
+                Start with the licensing track. We walk you through the costs
+                before you buy, and through every step after.
               </p>
               <GradientButton asChild>
                 <Link to="/get-licensed">

@@ -19,7 +19,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { APEX_BRAND } from "@/config/brand";
-import { LICENSING_COURSE_URL, SCHEDULING_LINKS, TEAM_COMMUNITY_LINKS } from "@/lib/apexConfig";
+import { SCHEDULING_LINKS, TEAM_COMMUNITY_LINKS } from "@/lib/apexConfig";
+import { LicensingProofStep } from "@/components/landing/LicensingProofStep";
 import { PageHeader } from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -125,29 +126,19 @@ function stepsFor(app: MyApplication, licensed: boolean): Step[] {
       status,
     ];
   }
+  // WP2 (2026-11-10): the licensing path itself (video, course, receipt upload, licensing
+  // call) renders above this list as <LicensingProofStep>, the same component and the same
+  // gate as /status/:id. "Book my call" used to link the licensing call straight from here
+  // with no receipt, and this page told people to post receipts in Slack, where nothing
+  // reads them. Receipts carry personal info; they go to the upload only.
   return [
-    {
-      key: "license",
-      icon: GraduationCap,
-      title: "Get your life insurance license",
-      body: "Start the pre-licensing course, then watch the five-minute walkthrough that shows the whole path from course to exam to license. Once you've purchased the course, post a screenshot of the confirmation in #unlicensed on Slack — that's how we verify it and move you forward.",
-      primary: { label: "Start the licensing course", href: LICENSING_COURSE_URL, external: true },
-      secondary: { label: "Watch the walkthrough", href: "/get-licensed#licensing-video" },
-    },
     {
       key: "community",
       icon: MessageSquare,
       title: "Join Slack, then open #unlicensed",
-      body: "Accept the Slack invite, then open the #unlicensed channel — that's your room until you're licensed. Post your course-purchase screenshot there, ask anything, and catch the daily meeting link.",
+      body: "Accept the Slack invite, then open #unlicensed. Ask anything and catch the daily meeting link there. Don't post receipts in Slack; upload them above.",
       primary: { label: "Join Slack", href: TEAM_COMMUNITY_LINKS.slack, external: true },
       secondary: { label: "Open #unlicensed", href: TEAM_COMMUNITY_LINKS.slackUnlicensedChannel, external: true },
-    },
-    {
-      key: "call",
-      icon: CalendarCheck,
-      title: "Book your call",
-      body: "Fifteen minutes with the team to answer your questions and map your first 30 days.",
-      primary: { label: "Book my call", href: SCHEDULING_LINKS.unlicensed, external: true },
     },
     status,
   ];
@@ -247,7 +238,7 @@ export function ApplicantHome() {
         title={`Welcome, ${firstName} — here's exactly what's next`}
         subtitle={licensed
           ? "You're licensed. Contracting, Slack, and your onboarding call are the three things that get you in the field this week."
-          : "Get licensed, get into Slack, book your call. Do them in order and you'll be in the field in a few weeks."}
+          : "Watch the video, get the course, upload your receipt, book your licensing call. Do them in order and you'll be in the field in a few weeks."}
         accent="primary"
       />
 
@@ -260,6 +251,12 @@ export function ApplicantHome() {
       <div className="mb-6">
         <NextStepCard application_id={app.id} />
       </div>
+
+      {!licensed ? (
+        <div className="mb-6">
+          <LicensingProofStep applicationId={app.id} firstName={app.first_name} />
+        </div>
+      ) : null}
 
       <ol className="grid gap-3">
         {steps.map((step, index) => {

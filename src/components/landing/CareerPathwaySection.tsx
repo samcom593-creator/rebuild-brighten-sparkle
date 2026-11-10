@@ -79,8 +79,8 @@ const buildPhases = (carriers: number): Phase[] => [
       {
         icon: BookOpen,
         title: "Enroll in Pre-Licensing Course",
-        description: "We cover the course. You get the study guides, practice exams, and the prep playbook agents actually pass with.",
-        benefit: "✓ Course on us",
+        description: "The course comes with study guides, practice exams, and the prep playbook agents actually pass with. We walk you through the costs before you buy.",
+        benefit: "✓ Costs explained up front",
       },
       {
         icon: ClipboardCheck,

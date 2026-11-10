@@ -16,7 +16,7 @@ const licensedSteps = [
 const unlicensedSteps = [
   { icon: FileCheck, title: "Application Submitted", desc: "Apply through our portal", color: "text-info" },
   { icon: Phone, title: "Phone Interview", desc: "15-min screening call", color: "text-violet-400" },
-  { icon: GraduationCap, title: "Purchase Pre-Licensing Course", desc: "ExamFX or Kaplan recommended", color: "text-amber-400" },
+  { icon: GraduationCap, title: "Pre-Licensing Course", desc: "XCEL AFE course (our partner course)", color: "text-amber-400" },
   { icon: BookOpen, title: "Study & Pass Exam", desc: "2-4 weeks average timeline", color: "text-orange-400" },
   { icon: Shield, title: "Get Licensed (NPN)", desc: "Apply for your state license", color: "text-emerald-400" },
   { icon: CheckCircle, title: "Contracted with Carriers", desc: "We handle all paperwork", color: "text-primary" },

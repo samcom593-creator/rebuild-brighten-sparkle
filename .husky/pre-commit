@@ -845,6 +845,15 @@ if match '^(src/.*\.tsx|src/lib/phone\.ts|scripts/check-recruiting-contact-actio
   npm run --silent check:recruiting-contact-actions || exit 1
 fi
 
+# ---------- check-scheduling-links (WP2 onboarding, 2026-11-10) ----------
+# One scheduling source and one cost policy. A calendly.com/apexfinancialempire/ literal
+# outside src/lib/apexConfig.ts + supabase/functions/_shared/scheduling-links.ts, or a new
+# "we cover / we pay / Galaxy pays / no upfront cost" claim, fails. Baselines only fall. <1s.
+if match '^(src/.*\.(tsx?|jsx?)$|supabase/functions/.*\.(ts|js)$|api/.*\.(tsx?|jsx?|mjs)$|scripts/check-scheduling-links\.mjs$)'; then
+  echo "[pre-commit] scheduling/cost surface staged — running check:scheduling-links…"
+  node scripts/check-scheduling-links.mjs || exit 1
+fi
+
 # ---------- check-guard-wiring (MP-351) ----------
 # A guard that nothing RUNS cannot fail, so it reports protection the repo does
 # not have. Fires whenever a guard file or its wiring is staged.

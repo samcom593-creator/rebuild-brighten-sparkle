@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { US_STATES, AVAILABILITY_OPTIONS, REFERRAL_SOURCES } from "@/lib/constants";
 import { CARRIER_OPTIONS } from "@/lib/carrierOptions";
+import { LICENSING_COST } from "@/lib/apexConfig";
 import { track } from "@/lib/analytics";
 import { createFieldProgressTracker } from "@/shared/telemetry/applyFieldProgress";
 import { createDebouncedWriter, type DebouncedWriter } from "@/shared/lib/debouncedWriter";
@@ -172,11 +173,21 @@ const applicationBaseSchema = z.object({
 // no NPN), which made the whole applicant list untrustworthy for calling. The NPN
 // is public and every licensed producer has it, so this is low-friction proof.
 const applicationSchema = applicationBaseSchema.superRefine((data, ctx) => {
-  if (data.licenseStatus === "licensed" && !data.niprNumber?.trim()) {
+  if (data.licenseStatus !== "licensed") return;
+  // WP2: same rule as submit-application's server refine (5-10 digits), so the applicant
+  // sees it inline instead of a generic server error.
+  const digits = (data.niprNumber ?? "").replace(/\D/g, "");
+  if (!digits) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["niprNumber"],
       message: "Your NPN (National Producer Number) is required to confirm your license",
+    });
+  } else if (!/^\d{5,10}$/.test(digits)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["niprNumber"],
+      message: "Your NPN is 5 to 10 digits",
     });
   }
 });
@@ -261,6 +272,12 @@ export default function Apply() {
   const [customReferrer, setCustomReferrer] = useState("");
   
   const [smsConsentError, setSmsConsentError] = useState(false);
+  // WP2: submit-application refuses a known typo domain (gmail.fom, icloud.con, ...) with a
+  // 422 + suggestion so the day-0 email cannot bounce. The prompt BLOCKS until the applicant
+  // picks the suggestion or says their address is right; "My email is correct" resubmits
+  // with emailTypoConfirmed and is never refused twice.
+  const [emailTypoSuggestion, setEmailTypoSuggestion] = useState<string | null>(null);
+  const emailTypoConfirmedRef = useRef(false);
   const smsConsentRef = useRef<HTMLDivElement>(null);
   const isSubmittedRef = useRef(false);
   const STORAGE_KEY_FORM = "apex_apply_form";
@@ -327,6 +344,50 @@ export default function Apply() {
       console.error("Error restoring form data:", e);
     }
   }, [STORAGE_KEY_STEP, activeSteps.length, setValue]);
+
+  // WP2: /apply?resume=<partial_id> (the link in a Sam-approved recovery email) hydrates the
+  // form from that partial's own saved answers via get_partial_application_resume, which
+  // returns only that row's form fields and only while it is open and under 30 days old.
+  useEffect(() => {
+    const resumeId = searchParams.get("resume") ?? "";
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resumeId)) return;
+    let cancelled = false;
+    const rpc = supabase.rpc.bind(supabase) as unknown as (
+      fn: string,
+      args: Record<string, unknown>,
+    ) => Promise<{ data: unknown; error: unknown }>;
+    (async () => {
+      try {
+        const { data, error } = await rpc("get_partial_application_resume", { p_partial_id: resumeId });
+        if (cancelled || error || !data || typeof data !== "object") return;
+        const d = data as Record<string, unknown>;
+        const fields: Array<[keyof ApplicationFormData, unknown]> = [
+          ["firstName", d.firstName], ["lastName", d.lastName], ["email", d.email], ["phone", d.phone],
+          ["city", d.city], ["state", d.state], ["instagramHandle", d.instagramHandle],
+          ["hasInsuranceExperience", d.hasInsuranceExperience], ["yearsExperience", d.yearsExperience],
+          ["previousCompany", d.previousCompany], ["licenseStatus", d.licenseStatus], ["availability", d.availability],
+        ];
+        for (const [key, value] of fields) {
+          if (value !== null && value !== undefined && value !== "") {
+            setValue(key, value as never, { shouldDirty: true });
+          }
+        }
+        const reached = Number(d.stepCompleted);
+        if (Number.isFinite(reached) && reached >= 1) {
+          const formStep = Math.min(reached + 1, steps.length);
+          setCurrentStep(isQuickQualifyTraffic ? formStep + 1 : formStep);
+        }
+        track("apply_resume_hydrated", { step: Number.isFinite(reached) ? reached : undefined });
+      } catch { // empty-catch-allow:best-effort — a failed resume falls back to the empty form
+        /* the applicant can still fill the form from scratch */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // Runs once on mount: the resume id is read from the landing URL only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // MP-539: the step the user is on when a field is first touched. Read through
   // a ref because the watch subscription below is created once (deps [watch])
@@ -881,6 +942,7 @@ export default function Apply() {
             licenseStatus: data.licenseStatus,
             niprNumber: data.niprNumber,
             licensedStates: selectedStates,
+            emailTypoConfirmed: emailTypoConfirmedRef.current || undefined,
 
             availability: data.availability,
             referralSource: data.referralSource,
@@ -958,6 +1020,11 @@ export default function Apply() {
         const status = error.context.status;
         try {
           const body = await error.context.json();
+          if (status === 422 && body?.code === "email_typo" && typeof body?.suggestion === "string") {
+            track("apply_submit_blocked", { step: currentStep, stage: "email_typo" });
+            setEmailTypoSuggestion(body.suggestion);
+            return;
+          }
           if (body?.details && Array.isArray(body.details)) {
             const fields = body.details.map((d: any) => d.path?.join?.(".") || d.message).filter(Boolean);
             toast.error(`Please fix these fields: ${fields.join(", ")}`, { duration: 6000 });
@@ -1084,6 +1151,45 @@ export default function Apply() {
             <Alert role="status" className="mb-4 border-border bg-card text-card-foreground">
               <Info className="h-4 w-4" aria-hidden />
               <AlertDescription>{refLinkNotice}</AlertDescription>
+            </Alert>
+          )}
+
+          {emailTypoSuggestion && (
+            <Alert className="mb-4 border-amber-500/50" role="alert" data-testid="email-typo-prompt">
+              <Info className="h-4 w-4" aria-hidden />
+              <AlertDescription>
+                <p className="font-semibold text-foreground">Did you mean {emailTypoSuggestion}?</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Your next steps arrive by email, so the address has to be right.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <GradientButton
+                    type="button"
+                    size="sm"
+                    disabled={isSubmitting}
+                    onClick={() => {
+                      setValue("email", emailTypoSuggestion, { shouldValidate: true, shouldDirty: true });
+                      setEmailTypoSuggestion(null);
+                      void handleSubmit(onSubmit)();
+                    }}
+                  >
+                    Use {emailTypoSuggestion} and submit
+                  </GradientButton>
+                  <GradientButton
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={isSubmitting}
+                    onClick={() => {
+                      emailTypoConfirmedRef.current = true;
+                      setEmailTypoSuggestion(null);
+                      void handleSubmit(onSubmit)();
+                    }}
+                  >
+                    My email is correct
+                  </GradientButton>
+                </div>
+              </AlertDescription>
             </Alert>
           )}
 
@@ -1376,8 +1482,7 @@ export default function Apply() {
                         <div className="p-6 rounded-lg bg-primary/10 border border-primary/20">
                           <h3 className="font-semibold text-primary mb-2">Not licensed yet? Doesn't matter.</h3>
                           <p className="text-sm text-muted-foreground">
-                            Galaxy pays for your study materials and exam prep. We reimburse your licensing fees
-                            once you're contracted. Most candidates are licensed inside 2–3 weeks.
+                            {LICENSING_COST.short} Most candidates are licensed inside 2–3 weeks.
                           </p>
                         </div>
                       )}

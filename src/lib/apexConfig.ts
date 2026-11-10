@@ -103,18 +103,75 @@ export const PROGRESS_COLUMNS = [
 // One canonical owner for applicant scheduling. Personnel-specific placeholders
 // are deliberately excluded so a departed team member cannot remain in routing.
 // Sam, 2026-11-10 — one call per lifecycle stage:
-//   unlicensed → buy the course + send a screenshot → book the LICENSING call
+//   unlicensed → get the course + upload the receipt → book the LICENSING call
 //   licensed   → book the licensed-prospect call with Sam
 //   hired      → book the onboarding call (contracts set-up)
+//
+// WP2 (2026-11-10): edge functions read the SAME values from
+// supabase/functions/_shared/scheduling-links.ts. src/tests/config/schedulingLinksParity.test.ts
+// holds the two equal, and scripts/check-scheduling-links.mjs refuses a new
+// 'calendly.com/apexfinancialempire/' literal anywhere else. Change both files together.
 export const SCHEDULING_LINKS = {
-  /** Unlicensed: the dedicated licensing call (created 2026-11-10), booked after the course + screenshot. */
+  /** Unlicensed: the licensing call, booked after the course receipt is uploaded. */
+  licensing: "https://calendly.com/apexfinancialempire/licensing-call",
+  /** Legacy alias of `licensing`. */
   unlicensed: "https://calendly.com/apexfinancialempire/licensing-call",
-  /** Applied + licensed: the licensed-prospect call with Sam. */
+  /** Applied + licensed: the licensed-prospect call with Sam (Sam's 2026-11-10 choice; N2 may change it). */
   licensed: "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone",
   /** Canonical post-hire contracting/onboarding call. Milver receives every booking. */
   onboarding: "https://calendly.com/apexfinancialempire/apex-onboarding-call",
+  /**
+   * "Not ready to buy? Ask us first" — a short questions call. null until Sam says yes to
+   * N2 and the event exists; surfaces fall back to the owner's direct contact.
+   */
+  questions: null as string | null,
   samLicensed: "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone",
   samUnlicensed: "https://calendly.com/apexfinancialempire/licensing-call",
+} as const;
+
+export interface BookingPrefill {
+  applicationId?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  email?: string | null;
+}
+
+/**
+ * Calendly link with name/email prefill and utm_source=apply&utm_content=<application_id>
+ * (the calendly-webhook matches utm_content first). Mirrors buildBookingUrl in
+ * supabase/functions/_shared/scheduling-links.ts; the parity test compares outputs.
+ */
+export function buildBookingUrl(base: string, prefill: BookingPrefill = {}): string {
+  let url: URL;
+  try {
+    url = new URL(base);
+  } catch {
+    return base;
+  }
+  const name = [prefill.firstName, prefill.lastName].map((s) => (s ?? "").trim()).filter(Boolean).join(" ");
+  if (name) url.searchParams.set("name", name);
+  const email = (prefill.email ?? "").trim();
+  if (email) url.searchParams.set("email", email);
+  const appId = (prefill.applicationId ?? "").trim();
+  if (appId) {
+    url.searchParams.set("utm_source", "apply");
+    url.searchParams.set("utm_content", appId);
+  }
+  return url.toString();
+}
+
+// ─── Licensing cost policy ────────────────────────────────────────────────────
+// WP2 (2026-11-10): six surfaces disagreed about who pays for the course ("Galaxy pays it",
+// "we reimburse", "buy the course"). Sam has not answered (AUDIT N1), so every surface renders
+// this NEUTRAL copy and makes no claim about who pays. Mirrors
+// supabase/functions/_shared/licensing-cost.ts (parity test). When Sam answers: set whoPays and
+// seed public.licensing_state_requirements; the numbers render from v_licensing_cost_public.
+export type LicensingCostPayer = "applicant" | "agency" | "reimbursed_after_contracting";
+export const LICENSING_COST = {
+  whoPays: null as LicensingCostPayer | null,
+  title: "Costs explained up front",
+  short: "We walk you through course and exam costs before you buy anything.",
+  askFirst: "Questions about cost before you buy? Ask us first.",
 } as const;
 
 export const ONBOARDING_CONTACT = {

@@ -178,7 +178,7 @@ export default function LeadsLanding() {
             Ready to Build Your First $10K Month?
           </h2>
           <p className="text-xl text-slate-600 dark:text-slate-300 mb-8">
-            Apply now to join the team and start receiving daily warm leads. Get licensed first if you aren't yet — Galaxy covers the cost when you finish the course.
+            Apply now to join the team and start receiving daily warm leads. Get licensed first if you aren't yet. We walk you through the costs before you buy anything.
           </p>
           <Button asChild size="lg" className="bg-white dark:bg-card hover:from-teal-600 hover:to-teal-700 text-white border-0">
             <Link to="/apply" className="gap-2">

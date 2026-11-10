@@ -70,8 +70,8 @@ const getEmailContent = (
       html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;"><h2>Hi ${firstName},</h2><p>Saw you're already licensed. Quick pitch: Galaxy gives warm leads at no cost, pays weekly, and won't lock you out of your book.</p><p>If that's interesting, hit reply with a time this week or grab one here: <a href="${callbackLink}">${callbackLink}</a></p><p>If not, ignore this — no follow-up spam.</p><p>— Sam<br/>Galaxy Financial</p></body></html>`,
     },
     cold_unlicensed: {
-      subject: `${firstName} — Galaxy pays your licensing if you're serious`,
-      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;"><h2>Hi ${firstName},</h2><p>You applied to Galaxy but you're not licensed yet. That's fine — most of our top producers started there.</p><p>What Galaxy covers: pre-licensing course, study path, exam timeline. What you do: pass the test, then we plug you into warm leads and weekly pay.</p><p>Reply with where you are in the process, or book a 15-min call: <a href="${callbackLink}">${callbackLink}</a></p><p>— Sam<br/>Galaxy Financial</p></body></html>`,
+      subject: `${firstName} — your licensing path with Galaxy`,
+      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;"><h2>Hi ${firstName},</h2><p>You applied to Galaxy but you're not licensed yet. That's fine — most of our top producers started there.</p><p>We give you the pre-licensing course, the study path and the exam timeline, and we walk you through the costs before you buy anything. What you do: pass the test, then we plug you into warm leads and weekly pay.</p><p>Reply with where you are in the process, or book a 15-min call: <a href="${callbackLink}">${callbackLink}</a></p><p>— Sam<br/>Galaxy Financial</p></body></html>`,
     },
     followup1_licensed: {
       subject: `Quick follow-up, ${firstName}`,

@@ -36,21 +36,22 @@ describe("ApplicationConfirmationV2 reads the status snapshot from the query res
     renderPage();
     expect(screen.getByRole("heading", { level: 1 }).textContent).toContain("Jordan, your application is");
     expect(screen.getAllByText("Book your hire call").length).toBeGreaterThan(0);
-    expect(screen.queryByText(/Watch licensing video/)).toBeNull();
+    expect(screen.queryByText(/Watch the 5-min licensing video/)).toBeNull();
   });
 
   it("does not guess unlicensed while the snapshot is still loading", () => {
     status.isLoading = true;
     renderPage();
     expect(screen.getByRole("status").textContent).toContain("Loading your next step");
-    expect(screen.queryByText(/Watch licensing video/)).toBeNull();
+    expect(screen.queryByText(/Watch the 5-min licensing video/)).toBeNull();
   });
 
-  it("the unlicensed fallback CTA identifies the applicant by application id", () => {
+  it("the unlicensed video step identifies the applicant by application id and opens in a new tab", () => {
     status.data = { first_name: "Jordan", license_status: "unlicensed" };
     renderPage();
-    const cta = screen.getByText(/Watch licensing video/).closest("a");
-    expect(cta?.getAttribute("href")).toBe("/get-licensed?applicationId=app-test-1#licensing-video");
+    const cta = screen.getByRole("link", { name: /Watch the 5-min licensing video/ });
+    expect(cta.getAttribute("target")).toBe("_blank");
+    expect(cta.getAttribute("href")).toBe("/get-licensed?applicationId=app-test-1#licensing-video");
   });
 
   it("a forced branch renders immediately, without waiting on the snapshot", () => {

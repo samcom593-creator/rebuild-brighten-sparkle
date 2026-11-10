@@ -23,7 +23,7 @@ import {
 import { GradientButton } from "@/components/ui/gradient-button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
-import { SCHEDULING_LINKS } from "@/lib/apexConfig";
+import { LICENSING_COST, SCHEDULING_LINKS } from "@/lib/apexConfig";
 import { LICENSING_VIDEO } from "@/lib/licensingMedia";
 import { ONBOARDING_VIDEO } from "@/lib/onboardingMedia";
 import { supabase } from "@/integrations/supabase/client";
@@ -134,8 +134,9 @@ const TRUST_CARDS: Array<{
 }> = [
   {
     icon: DollarSign,
-    title: "We Cover Licensing Costs",
-    detail: "No upfront course fee. Galaxy pays it.",
+    // WP2: no claim about who pays until Sam answers N1 (LICENSING_COST is the one source).
+    title: LICENSING_COST.title,
+    detail: LICENSING_COST.short,
     tint: "border-amber-500/25 bg-amber-500/[0.03]",
     iconClass: "text-amber-400",
   },
@@ -155,8 +156,8 @@ const TRUST_CARDS: Array<{
   },
   {
     icon: ShieldCheck,
-    title: "No Upfront Cost",
-    detail: "Nothing on your card to start.",
+    title: "Ask Before You Buy",
+    detail: "Talk to us before you spend anything.",
     tint: "border-emerald-500/25 bg-emerald-500/[0.03]",
     iconClass: "text-emerald-400",
   },
@@ -489,7 +490,7 @@ export default function GetLicensed() {
             </h2>
             <p className="text-sm text-muted-foreground mb-4">
               The state requires a pre-licensing course before you can take the
-              exam. Galaxy covers this cost — no upfront payment from you.
+              exam. {LICENSING_COST.short}
             </p>
             <p className="mb-4 rounded-md border border-primary/40 bg-primary/5 px-3 py-2 text-sm text-foreground" role="note">
               XCEL emails your course login within minutes of enrolling. Not there? Check Spam, Junk and Promotions and search

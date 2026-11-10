@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { CheckCircle2, Crown, Calendar, Sparkles, AlertTriangle } from "lucide-react";
+import { CheckCircle2, Crown, Calendar, Sparkles } from "lucide-react";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { CalendlyEmbed } from "@/components/landing/CalendlyEmbed";
-import { SCHEDULING_LINKS, getCalendlyHostName, LICENSING_COURSE_URL } from "@/lib/apexConfig";
-import { useApplicationStatus } from "@/hooks/useApplicationStatus";
+import { SCHEDULING_LINKS, buildBookingUrl, getCalendlyHostName } from "@/lib/apexConfig";
+import { useApplicationStatus, type ApplicationManager } from "@/hooks/useApplicationStatus";
+import { LicensingProofStep, type OwnerContact } from "@/components/landing/LicensingProofStep";
 import { supabase } from "@/integrations/supabase/client";
 import { CONTRACTING_PROFILE_PATH } from "@/lib/contractingLinks";
 import { resolveBrand } from "@/config/brand";
@@ -146,9 +146,9 @@ export function ApplicationConfirmationV2({
             </p>
           ) : (
             <>
-              {license === "licensed" ? <LicensedBody applicationId={applicationId} showCalendly={showCalendly} autoLoginUrl={autoLoginUrl} /> : null}
-              {license === "unlicensed" ? <UnlicensedBody applicationId={applicationId} autoLoginUrl={autoLoginUrl} /> : null}
-              {license === "pending" ? <PendingBody /> : null}
+              {license === "licensed" ? <LicensedBody applicationId={applicationId} showCalendly={showCalendly} autoLoginUrl={autoLoginUrl} firstName={snap?.first_name} lastName={snap?.last_name} /> : null}
+              {license === "unlicensed" ? <UnlicensedBody applicationId={applicationId} autoLoginUrl={autoLoginUrl} firstName={snap?.first_name} lastName={snap?.last_name} manager={snap?.manager ?? null} /> : null}
+              {license === "pending" ? <PendingBody applicationId={applicationId} firstName={snap?.first_name} lastName={snap?.last_name} manager={snap?.manager ?? null} /> : null}
             </>
           )}
 
@@ -164,12 +164,29 @@ export function ApplicationConfirmationV2({
 
 // ---------- Unlicensed ----------
 
+/** The recruiter the snapshot already exposes to this applicant (same data as the welcome email). */
+function ownerFrom(manager: ApplicationManager | null | undefined): OwnerContact | null {
+  if (!manager || (!manager.phone && !manager.email)) return null;
+  return { name: (manager.display_name || "your recruiter").split(" ")[0], phone: manager.phone, email: manager.email };
+}
+
+// Slack policy (Sam 2026-09-07, MP-357): unlicensed applicants belong in #unlicensed for
+// questions and the daily meeting link. The invite stays OFF this public page and arrives by
+// email; receipts never go to Slack.
+const SLACK_LINE = "Your Slack invite is in your welcome email. Join #unlicensed for questions and the daily meeting link.";
+
 function UnlicensedBody({
   applicationId,
   autoLoginUrl,
+  firstName,
+  lastName,
+  manager,
 }: {
   applicationId: string | null;
   autoLoginUrl: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  manager: ApplicationManager | null;
 }) {
   // Identify the applicant on /get-licensed by application id, the param
   // GetLicensed reads (and the one JoinLink already passes). The status
@@ -178,151 +195,27 @@ function UnlicensedBody({
     ? `/get-licensed?applicationId=${encodeURIComponent(applicationId)}#licensing-video`
     : "/get-licensed#licensing-video";
 
-  // Primary CTA: when the magic-link mint succeeded, clicking the button
-  // auto-logs the applicant in and drops them straight onto
-  // the licensing roadmap. When it failed (or hasn't returned yet) we fall
-  // back to the legacy /get-licensed link so the page never blocks.
-  const primaryHref = autoLoginUrl ?? courseUrl;
-  const primaryIsExternal = !!autoLoginUrl;
+  // Step 1 opens in a NEW TAB: when the magic-link mint succeeded it auto-logs the
+  // applicant in and lands on the licensing video; otherwise the plain /get-licensed link.
+  // Either way this page (upload + booking) stays open behind it.
+  const videoHref = autoLoginUrl ?? courseUrl;
 
   return (
-    <div className="space-y-6">
-      {/* The three-step path */}
-      <div className="rounded-md border border-border/40 bg-muted/20 p-4 sm:p-5 space-y-3">
-        <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Your 3-step path</p>
-        <Step done label="Application received" />
-        <Step current label="Watch: How to Get Your Life Insurance License" detail="A five-minute walkthrough puts every step in the right order." />
-        <Step label="Start course → exam → fingerprints → license" />
-      </div>
+    <div className="space-y-5">
+      {/* WP2: ONE ordered list (video, course, receipt, licensing call) plus an always-visible
+          human path. Sam 2026-11-10: the receipt is what unlocks the licensing call. */}
+      <LicensingProofStep
+        applicationId={applicationId}
+        firstName={firstName}
+        lastName={lastName}
+        videoHref={videoHref}
+        owner={ownerFrom(manager)}
+      />
 
-      {/* Primary CTA — auto-login + course when the magic link is ready */}
-      {primaryIsExternal ? (
-        <GradientButton asChild className="w-full text-base h-14" size="lg">
-          <a href={primaryHref} className="block">
-            <Sparkles className="h-5 w-5 mr-2" />
-            Watch licensing video &amp; open roadmap
-          </a>
-        </GradientButton>
-      ) : (
-        <GradientButton asChild className="w-full text-base h-14" size="lg">
-          <Link to={primaryHref} className="block">
-            <Sparkles className="h-5 w-5 mr-2" />
-            Watch licensing video &amp; open roadmap
-          </Link>
-        </GradientButton>
-      )}
-
-      {/* Buy the course → send a screenshot → unlock the licensing call.
-          Sam 2026-11-10: the screenshot (proof you bought the course) is what
-          books the licensing call. */}
-      <LicensingProofStep applicationId={applicationId} />
-
+      <p className="text-xs text-center text-muted-foreground">{SLACK_LINE}</p>
       <p className="text-xs text-center text-muted-foreground">
-        We also sent the course link to your email. Check inbox + spam.
+        We also sent these steps to your email. Check inbox + spam.
       </p>
-    </div>
-  );
-}
-
-// ---------- Licensing proof: buy course → screenshot → book the licensing call ----------
-
-function LicensingProofStep({ applicationId }: { applicationId: string | null }) {
-  const [state, setState] = useState<"checking" | "idle" | "uploading" | "submitted" | "error">(
-    applicationId ? "checking" : "idle",
-  );
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-  // On a /status revisit, don't make someone re-send a screenshot they already sent.
-  useEffect(() => {
-    let cancelled = false;
-    if (!applicationId) { setState("idle"); return; }
-    (async () => {
-      try {
-        const { data, error } = await supabase.rpc("has_licensing_proof" as never, { p_application_id: applicationId } as never);
-        if (cancelled) return;
-        if (!error && (data as { submitted?: boolean } | null)?.submitted) setState("submitted");
-        else setState("idle");
-      } catch { // empty-catch-allow:best-effort — fall back to the upload form
-        if (!cancelled) setState("idle");
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [applicationId]);
-
-  const onFile = async (file: File | undefined) => {
-    if (!file || !applicationId) return;
-    if (file.size > 8 * 1024 * 1024) { setErrorMsg("That image is over 8 MB — try a smaller screenshot."); setState("error"); return; }
-    setState("uploading"); setErrorMsg(null);
-    try {
-      const dataUrl: string = await new Promise((resolve, reject) => {
-        const r = new FileReader();
-        r.onload = () => resolve(String(r.result));
-        r.onerror = () => reject(new Error("read failed"));
-        r.readAsDataURL(file);
-      });
-      const { data, error } = await supabase.functions.invoke("submit-licensing-proof", {
-        body: { application_id: applicationId, data: dataUrl, content_type: file.type || "image/png" },
-      });
-      if (error || (data as { error?: unknown } | null)?.error) {
-        const msg = (data as { error?: { message?: string } } | null)?.error?.message ?? "Upload failed. Try again.";
-        setErrorMsg(msg); setState("error"); return;
-      }
-      setState("submitted");
-    } catch {
-      setErrorMsg("Upload failed. Check your connection and try again."); setState("error");
-    }
-  };
-
-  if (state === "submitted") {
-    return (
-      <div className="space-y-3 rounded-md border border-emerald-500/40 bg-emerald-500/10 p-4">
-        <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
-          <CheckCircle2 className="h-5 w-5 text-emerald-500" /> Screenshot received — now book your licensing call.
-        </p>
-        <GradientButton asChild className="w-full h-14 text-base" size="lg">
-          <a href={SCHEDULING_LINKS.unlicensed} target="_blank" rel="noopener noreferrer" className="block">
-            <Calendar className="h-5 w-5 mr-2" /> Book your licensing call
-          </a>
-        </GradientButton>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-3 rounded-md border border-border/40 bg-muted/20 p-4 sm:p-5">
-      <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Then book your licensing call</p>
-      <p className="text-sm text-muted-foreground">
-        Get the pre-licensing course, then send a screenshot of your purchase. That unlocks your licensing call.
-      </p>
-      <GradientButton asChild variant="outline" className="w-full" size="lg">
-        <a href={LICENSING_COURSE_URL} target="_blank" rel="noopener noreferrer" className="block">
-          <Sparkles className="h-4 w-4 mr-2" /> 1. Buy the pre-licensing course
-        </a>
-      </GradientButton>
-
-      <label className="block">
-        <span className="sr-only">Upload your course purchase screenshot</span>
-        <input
-          type="file"
-          accept="image/png,image/jpeg,image/webp,image/heic"
-          disabled={!applicationId || state === "uploading"}
-          onChange={(e) => void onFile(e.target.files?.[0])}
-          className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary/15 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-foreground hover:file:bg-primary/25 disabled:opacity-50"
-        />
-      </label>
-      {state === "uploading" ? <p className="text-sm text-muted-foreground">Uploading your screenshot…</p> : null}
-      {state === "error" ? (
-        <p role="alert" className="text-sm text-amber-700 dark:text-amber-400">{errorMsg ?? "Something went wrong."}</p>
-      ) : (
-        <p className="text-xs text-muted-foreground">2. Upload the screenshot here (PNG or JPG, under 8 MB).</p>
-      )}
-      {!applicationId ? (
-        <GradientButton asChild variant="outline" className="w-full" size="lg">
-          <a href={SCHEDULING_LINKS.unlicensed} target="_blank" rel="noopener noreferrer" className="block">
-            <Calendar className="h-4 w-4 mr-2" /> Book your licensing call
-          </a>
-        </GradientButton>
-      ) : null}
     </div>
   );
 }
@@ -333,14 +226,21 @@ function LicensedBody({
   applicationId,
   showCalendly,
   autoLoginUrl,
+  firstName,
+  lastName,
 }: {
   applicationId: string | null;
   showCalendly: boolean;
   autoLoginUrl: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
 }) {
   // v9 wave-C complaint #6: applicants land on a Calendly with no idea who
   // they're booking with. Derive host name from the URL slug.
   const calendlyHost = getCalendlyHostName(SCHEDULING_LINKS.licensed);
+  // WP2: prefill + utm_content=<application id> so the booking lands on this application.
+  // A licensed applicant is NEVER gated: the call is always bookable here.
+  const licensedUrl = buildBookingUrl(SCHEDULING_LINKS.licensed, { applicationId, firstName, lastName });
   return (
     <div className="space-y-6">
       {/* The path */}
@@ -360,11 +260,11 @@ function LicensedBody({
       {/* Primary CTA: Calendly */}
       {showCalendly ? (
         <section className="rounded-md overflow-hidden border border-border/50 bg-background/50">
-          <CalendlyEmbed url={SCHEDULING_LINKS.licensed} />
+          <CalendlyEmbed url={licensedUrl} />
         </section>
       ) : (
         <GradientButton asChild className="w-full text-base h-14" size="lg">
-          <a href={SCHEDULING_LINKS.licensed} target="_blank" rel="noopener noreferrer" className="block">
+          <a href={licensedUrl} target="_blank" rel="noopener noreferrer" className="block">
             <Calendar className="h-5 w-5 mr-2" />
             Book your hire call
           </a>
@@ -394,21 +294,32 @@ function LicensedBody({
 
 // ---------- Pending (license status unknown) ----------
 
-function PendingBody() {
-  // This branch previously had the Telegram link as its ONLY call to action, so
-  // removing it would have left an applicant with nowhere to go. Booking a call
-  // is the step that actually resolves an unknown license status.
+function PendingBody({
+  applicationId,
+  firstName,
+  lastName,
+  manager,
+}: {
+  applicationId: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  manager: ApplicationManager | null;
+}) {
+  // WP2: the same gate as the unlicensed branch, so "pending" is not a side door around the
+  // receipt step, and the same always-visible human path for someone mid-way through.
   return (
     <div className="space-y-4">
       <p className="text-sm text-center text-muted-foreground">
-        Your manager will reach out shortly to verify license status and route you to the right next step.
+        Your manager will reach out to verify your license status and route you to the right next step.
       </p>
-      <GradientButton asChild variant="outline" className="w-full" size="lg">
-        <a href={SCHEDULING_LINKS.unlicensed} target="_blank" rel="noopener noreferrer" className="block">
-          <Calendar className="h-4 w-4 mr-2" />
-          Book a call now
-        </a>
-      </GradientButton>
+      <LicensingProofStep
+        applicationId={applicationId}
+        firstName={firstName}
+        lastName={lastName}
+        owner={ownerFrom(manager)}
+        intro="Already bought or finished the course? Upload the receipt or completion certificate to unlock the licensing call. Still deciding? Ask us below."
+      />
+      <p className="text-xs text-center text-muted-foreground">{SLACK_LINE}</p>
     </div>
   );
 }

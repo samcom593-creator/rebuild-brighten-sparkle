@@ -969,3 +969,19 @@ if match '^(src/.*\.(tsx?)$|vite\.config\.ts$|scripts/check-parse-health\.mjs$|s
   echo "[pre-commit] type-check-graph file staged — running check:parse-health…"
   node scripts/check-parse-health.mjs || exit 1
 fi
+
+# ---------- WP3 recruit-contact + anon-definer ratchets (2026-11-10) ----------
+# check-human-contact-writers: no NEW writes to contacted_at / last_contacted_at (human
+# contact goes through fn_log_human_contact -> application_contact_log). Repo-only, <1s.
+if match '^(src/.*\.tsx?$|supabase/functions/.*\.ts$|supabase/migrations/.*\.sql$|scripts/check-human-contact-writers\.mjs$|scripts/data/human-contact-writers-baseline\.json$)'; then
+  echo "[pre-commit] contact-column writer check…"
+  node scripts/check-human-contact-writers.mjs || exit 1
+fi
+# check-anon-definer-rpcs reads the LIVE catalog: a migration that adds an anon-executable
+# SECURITY DEFINER function with no role check fails here. Unreadable catalog (offline,
+# no creds) = exit 2 = skipped with a note; apex-doctor #44 runs it weekly regardless.
+if match '^(supabase/migrations/.*\.sql$|scripts/check-anon-definer-rpcs\.mjs$|scripts/data/anon-definer-rpcs-allowlist\.json$)'; then
+  echo "[pre-commit] anon SECURITY DEFINER ratchet (live catalog)…"
+  rc=0; node scripts/check-anon-definer-rpcs.mjs || rc=$?
+  if [ "$rc" -eq 2 ]; then echo "[pre-commit] anon-definer: catalog unreadable, skipped (doctor #44 covers it)"; elif [ "$rc" -ne 0 ]; then exit 1; fi
+fi

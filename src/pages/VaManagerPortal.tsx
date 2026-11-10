@@ -21,6 +21,7 @@ import { CountUp } from "@/components/ui/delight/CountUp";
 import { RevealList } from "@/components/ui/delight/Reveal";
 import { ToneBubble, TonePill } from "@/components/ui/delight/ToneBubble";
 import { formatAgo, formatDay, formatSince } from "@/components/pipeline/worklist/worklistFormat";
+import { RecruitSlaQueue } from "@/components/pipeline/worklist/RecruitSlaQueue";
 import {
   Dialog,
   DialogContent,
@@ -344,6 +345,10 @@ export default function VaManagerPortal() {
           </Button>
         }
       />
+
+      {/* WP3: the recruits assigned to whoever is signed in. Owners are assigned only to
+          staff who signed in within 7 days, so an empty list here is real, not stale. */}
+      <RecruitSlaQueue mineOnly title="My queue" />
 
       {/* The counts exist only once the list is in hand. A read that is still running or has
           failed shows no number at all: a 0 here would claim there are no accounts. */}

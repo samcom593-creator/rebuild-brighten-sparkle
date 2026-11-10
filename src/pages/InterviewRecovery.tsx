@@ -77,7 +77,7 @@ interface PipelineRow {
   invitee_status: string | null;
   prep_notes: string | null;
   reschedule_url: string | null;
-  call_track: "licensed" | "leader" | "seminar" | "exam" | "other" | null;
+  call_track: "licensed" | "leader" | "licensing" | "onboarding" | "seminar" | "exam" | "other" | null;
   event_type_name: string | null;
   scheduled_at: string;
   scheduled_at_chicago: string;
@@ -113,7 +113,7 @@ interface ProspectRow {
   invitee_phone: string | null;
   instagram_handle: string | null;
   event_type_name: string | null;
-  call_track: "licensed" | "leader" | "other" | null;
+  call_track: "licensed" | "leader" | "licensing" | "onboarding" | "other" | null;
   scheduled_at: string;
   owner: string | null;
   last_action_at: string | null;
@@ -633,7 +633,7 @@ export default function InterviewRecovery() {
                 <span className="truncate">Who you are calling</span>
               </h3>
               <Badge variant="outline" className={cn("shrink-0", CATEGORY_CHIP)}>
-                {current.call_track === "licensed" ? "Licensed Call" : "Leader Call"}
+                {current.call_track === "licensed" ? "Licensed Call" : current.call_track === "licensing" ? "Licensing Call" : "Leader Call"}
               </Badge>
             </div>
             <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
@@ -720,6 +720,8 @@ export default function InterviewRecovery() {
               <ul className="space-y-2">
                 {(current.call_track === "licensed"
                   ? ["Confirm license + states", "Current production", "Why leaving", "Galaxy comp", "Close to contracting"]
+                  : current.call_track === "licensing"
+                  ? ["Where they are in the course", "Exam date booked?", "What is blocking them", "Answer their licensing questions", "Book the exam or the next call"]
                   : ["Team size today", "Income goal", "Leadership history", "Galaxy override structure", "Close to next step"]
                 ).map((line) => (
                   <li key={line} className="flex items-start gap-2">

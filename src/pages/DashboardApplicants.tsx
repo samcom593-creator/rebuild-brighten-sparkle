@@ -87,6 +87,7 @@ import { RecruitingWorkspaceNav } from "@/components/recruiting/RecruitingWorksp
 import { RecruitingCommandHero } from "@/components/recruiting/RecruitingCommandHero";
 import { NoHireLeftBehindPanel } from "@/components/recruiting/NoHireLeftBehindPanel";
 import { RecruitingWorklist } from "@/components/pipeline/worklist/RecruitingWorklist";
+import { RecruitSlaQueue } from "@/components/pipeline/worklist/RecruitSlaQueue";
 import { RecruitingIncomeEstimateCard } from "@/components/dashboard/RecruitingIncomeEstimateCard";
 
 interface Application {
@@ -266,6 +267,8 @@ export default function DashboardApplicants() {
   return (
     <div className="page-enter w-full space-y-5 pb-24">
       <RecruitingWorkspaceNav />
+      {/* WP3: the SLA queue is the first thing staff see; rows open the person below. */}
+      {(isAdmin || isManager || isVaManager || isVa) && <RecruitSlaQueue />}
       <RecruitingWorklist />
       {(isAdmin || isManager || isVaManager || isVa) && <NoHireLeftBehindPanel />}
     </div>

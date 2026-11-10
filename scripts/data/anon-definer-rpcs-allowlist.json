@@ -1,0 +1,30 @@
+{
+  "frozen_at": "2026-11-10T21:30:14.303Z",
+  "count": 24,
+  "functions": [
+    "apex_is_admin()",
+    "check_banned_prospect(p_email text, p_phone text, p_first_name text, p_last_name text)",
+    "fn_agent_is_placeholder(p_agent_id uuid)",
+    "fn_agent_is_roster_excluded(p_agent_id uuid)",
+    "fn_agent_is_roster_excluded_live(p_agent_id uuid)",
+    "fn_book_agent_name_known(p_name text)",
+    "get_agent_id(_user_id uuid)",
+    "get_application_status(p_application_id uuid)",
+    "get_invite_token_prefill(p_token text)",
+    "get_partial_application_resume(p_partial_id uuid)",
+    "has_board_access(_user_id uuid, _board_key text)",
+    "has_licensing_proof(p_application_id uuid)",
+    "has_role(_user_id uuid, _role app_role)",
+    "invite_resume_login(p_token text, p_email text)",
+    "landing_deal_highlights()",
+    "landing_live_stats()",
+    "landing_next_step_for(p_application_id uuid)",
+    "landing_recent_applicants(p_limit integer)",
+    "landing_recent_hires(p_limit integer)",
+    "mark_partial_application_converted(p_session_id text)",
+    "public_seminar_meeting()",
+    "resolve_application_for_invitee(p_email text, p_phone text)",
+    "resolve_application_for_invitee(p_email text, p_phone text, p_instagram text)",
+    "save_partial_application(p_session_id text, p_email text, p_phone text, p_first_name text, p_last_name text, p_city text, p_state text, p_step_completed integer, p_form_data jsonb, p_user_agent text)"
+  ]
+}

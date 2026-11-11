@@ -6,14 +6,20 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { getMetricBounds, sumAnnualPremium } from "@/lib/metricTruth";
-import { DEAL_TRUTH_STATUS_FILTER } from "@/lib/dealTruth";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 
 interface Props {
   agentId: string;
-  /** MTD ALP threshold to unlock the elite link (default $10K). */
-  threshold?: number;
+}
+
+/** my_referral_status(): the referral-link gate for the signed-in agent. */
+export interface ReferralStatus {
+  has_agent: boolean;
+  ref_slug: string | null;
+  production_total: number;
+  threshold: number;
+  unlocked: boolean;
+  remaining: number;
 }
 
 const APEX_HOST = "https://apex-financial.org";
@@ -22,43 +28,51 @@ function fmt$(n: number): string {
   return `$${Math.round(n).toLocaleString()}`;
 }
 
-export function EliteReferralUnlock({ agentId, threshold = 10_000 }: Props) {
-  const [mtd, setMtd] = useState(0);
+// MP-ONBOARD-ANCHOR-PKG2 (2026-11-12): one gate, one source. The card used to apply its own hard-coded $10,000
+// month-to-date sum over native deals while my_referral_status applied Sam's $20,000 policy (08-01) to the frozen
+// AgentLink book, so the two disagreed and neither read live production. Both now read my_referral_status(), which
+// keeps the policy threshold (system_settings.referral_unlock_threshold) and sums live production
+// (mat_production_unified, every agent row of the person).
+export function EliteReferralUnlock({ agentId }: Props) {
+  const [status, setStatus] = useState<ReferralStatus | null>(null);
   const [refSlug, setRefSlug] = useState<string | null>(null);
-  const [displayName, setDisplayName] = useState<string>("agent");
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     if (!agentId) return;
     setLoading(true);
     try {
-      const monthBounds = getMetricBounds("month");
-      const { data: deals } = await supabase
-        .from("deals")
-        .select("annual_premium")
-        .eq("agent_id", agentId)
-        .gte("posted_at", monthBounds.startIso)
-        .lt("posted_at", monthBounds.endIso)
-        .in("status", DEAL_TRUTH_STATUS_FILTER);
-      const sum = sumAnnualPremium((deals ?? []) as Array<{ annual_premium?: number | null }>);
-
-      const { data: agent } = await supabase
-        .from("agents")
-        .select("ref_slug, display_name")
-        .eq("id", agentId)
-        .maybeSingle();
-
-      let slug = (agent as { ref_slug?: string })?.ref_slug ?? null;
-      const name = (agent as { display_name?: string })?.display_name || "agent";
-      if (!slug) {
-        const base = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "agent";
-        slug = `${base}-${agentId.slice(0, 6)}`;
-        await supabase.from("agents").update({ ref_slug: slug }).eq("id", agentId);
+      const { data, error } = await supabase.rpc("my_referral_status" as never);
+      if (error) {
+        // An unreadable gate shows nothing, never a made-up "$0, locked".
+        console.warn(`[referral] my_referral_status failed: ${error.message}`);
+        setStatus(null);
+        return;
+      }
+      const s = data as unknown as ReferralStatus | null;
+      if (!s?.has_agent) {
+        setStatus(null);
+        return;
       }
 
-      setMtd(sum);
+      let slug = s.ref_slug ?? null;
+      if (!slug) {
+        const { data: agent } = await supabase
+          .from("agents")
+          .select("ref_slug, display_name")
+          .eq("id", agentId)
+          .maybeSingle();
+        slug = (agent as { ref_slug?: string })?.ref_slug ?? null;
+        const name = (agent as { display_name?: string })?.display_name || "agent";
+        if (!slug) {
+          const base = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "agent";
+          slug = `${base}-${agentId.slice(0, 6)}`;
+          await supabase.from("agents").update({ ref_slug: slug }).eq("id", agentId);
+        }
+      }
+
+      setStatus({ ...s, production_total: Number(s.production_total) || 0, threshold: Number(s.threshold) || 0 });
       setRefSlug(slug);
-      setDisplayName(name);
     } finally {
       setLoading(false);
     }
@@ -70,11 +84,13 @@ export function EliteReferralUnlock({ agentId, threshold = 10_000 }: Props) {
 
   useProductionRealtime(load, 200);
 
-  if (loading) return null;
+  if (loading || !status || status.threshold <= 0) return null;
 
-  const unlocked = mtd >= threshold;
-  const link     = refSlug ? `${APEX_HOST}/apply?ref=${refSlug}&elite=1` : "";
-  const pct      = Math.min(100, Math.round((mtd / threshold) * 100));
+  const total     = status.production_total;
+  const threshold = status.threshold;
+  const unlocked  = status.unlocked === true;
+  const link      = refSlug ? `${APEX_HOST}/apply?ref=${refSlug}&elite=1` : "";
+  const pct       = Math.min(100, Math.round((total / threshold) * 100));
 
   const copy = async () => {
     if (!link) return;
@@ -106,7 +122,7 @@ export function EliteReferralUnlock({ agentId, threshold = 10_000 }: Props) {
     window.open("https://instagram.com/accounts/edit/", "_blank", "noopener");
   };
 
-  // Locked state — show progress toward $10K
+  // Locked state: progress toward the policy threshold (server-provided)
   if (!unlocked) {
     return (
       <GlassCard className="p-4 relative overflow-hidden border border-dashed border-muted/50">
@@ -119,8 +135,8 @@ export function EliteReferralUnlock({ agentId, threshold = 10_000 }: Props) {
               <h3 className="font-semibold text-sm">Elite Referral Link</h3>
               <span className="text-[11px] uppercase tracking-wider bg-muted px-1.5 py-0.5 rounded text-muted-foreground">Locked</span>
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Hit <span className="font-semibold text-foreground">$10K MTD</span> to unlock your premium referral link & share kit.
+            <p className="text-xs text-muted-foreground mt-0.5" data-testid="elite-referral-locked">
+              Reach <span className="font-semibold text-foreground">{fmt$(threshold)} in production</span> to unlock your premium referral link & share kit.
             </p>
             <div className="mt-3">
               <div className="h-1.5 w-full bg-muted/50 rounded-full overflow-hidden">
@@ -130,8 +146,8 @@ export function EliteReferralUnlock({ agentId, threshold = 10_000 }: Props) {
                 />
               </div>
               <div className="flex justify-between text-[12px] text-muted-foreground mt-1">
-                <span>{fmt$(mtd)} MTD</span>
-                <span>{fmt$(Math.max(0, threshold - mtd))} to unlock</span>
+                <span>{fmt$(total)} in production</span>
+                <span>{fmt$(Math.max(0, status.remaining ?? threshold - total))} to unlock</span>
               </div>
             </div>
           </div>
@@ -161,7 +177,7 @@ export function EliteReferralUnlock({ agentId, threshold = 10_000 }: Props) {
             </span>
           </div>
           <p className="text-xs text-muted-foreground mb-3">
-            You're a top producer ({fmt$(mtd)} MTD). Any applicant who joins with this link is credited to you and flagged for priority onboarding.
+            You're a top producer ({fmt$(total)} in production). Any applicant who joins with this link is credited to you and flagged for priority onboarding.
           </p>
           <div className="flex items-center gap-2 mb-3">
             <code className="flex-1 text-xs bg-background/60 border border-amber-500/20 p-2 rounded-md truncate font-mono">

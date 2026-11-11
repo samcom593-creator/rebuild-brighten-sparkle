@@ -741,7 +741,7 @@ export default function AgentPortal() {
         {/* Referral & Sharing Section */}
         <HideableCard cardKey="agent.referral-section" label={HIDEABLE_CARDS["agent.referral-section"]}>
           <section className="grid gap-4">
-            {/* Elite Referral Link — unlocked at $10K MTD */}
+            {/* Elite Referral Link: unlocked by my_referral_status() (policy threshold, live production) */}
             {agentId && <EliteReferralUnlock agentId={agentId} />}
 
             {/* Agent Referral Link */}

@@ -30,6 +30,7 @@ import {
   reminderEligibleAtSend,
   type ReminderKind,
 } from "./reminders.ts";
+import { refusalFor } from "./refusal.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -353,7 +354,7 @@ function buildOnboardingCallEmail(name: string, bookingUrl: string): { subject: 
   const text = [
     `Hey ${fn},`,
     ``,
-    `You're licensed and you're in. Next step is your 30-minute onboarding call with Milver, your Onboarding Manager, and me.`,
+    `You're licensed and you're in. Next step is your 30-minute onboarding call with Aisha and me.`,
     ``,
     `Pick a time here: ${bookingUrl}`,
     ``,
@@ -367,7 +368,7 @@ function buildOnboardingCallEmail(name: string, bookingUrl: string): { subject: 
 <!doctype html>
 <html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111;line-height:1.55;">
   <p>Hey ${fn},</p>
-  <p>You're licensed and you're in. Next step is your <strong>30-minute onboarding call</strong> with Milver, your Onboarding Manager, and me.</p>
+  <p>You're licensed and you're in. Next step is your <strong>30-minute onboarding call</strong> with Aisha and me.</p>
   <p><a href="${url}" style="display:inline-block;padding:12px 20px;background:#0a0a0a;color:#EDB81D;text-decoration:none;border-radius:6px;font-weight:600;">Book your onboarding call</a></p>
   <p>Come with your NPN and your contracting login. We set up your systems, walk your first-week plan, and get you into the 10:00 AM Central huddle.</p>
   <p style="margin-top:24px;">— Sam<br/>Galaxy Financial</p>
@@ -461,6 +462,7 @@ interface ProcessResult {
   skipped_booking_exists: number;
   skipped_retired_channel: number;
   skipped_superseded: number;
+  skipped_refused: number;
   errors: Array<{ queue_id: string; agent_id: string; kind: string; error: string }>;
   // dry_run only: one line per row, ids and kinds, never contact details.
   decisions: Array<{ queue_id: string; kind: string; decision: string }>;
@@ -475,7 +477,7 @@ const SLACK_DEDUPE_WINDOW_MS = 14 * 24 * 3600 * 1000;
 async function drainQueue(sb: any, settings: Settings, dryRun: boolean): Promise<ProcessResult> {
   const result: ProcessResult = {
     dry_run: dryRun, processed: 0, sent: 0, failed: 0, skipped_no_email: 0, skipped_wrong_cohort: 0,
-    skipped_booking_exists: 0, skipped_retired_channel: 0, skipped_superseded: 0, errors: [], decisions: [],
+    skipped_booking_exists: 0, skipped_retired_channel: 0, skipped_superseded: 0, skipped_refused: 0, errors: [], decisions: [],
   };
 
   if (!settings.resend_api_key && !dryRun) {
@@ -654,6 +656,16 @@ async function drainQueue(sb: any, settings: Settings, dryRun: boolean): Promise
         result.skipped_wrong_cohort += 1;
         continue;
       }
+    }
+
+    // Suppressed or non-routable address: refuse before anything external happens (including
+    // minting a Calendly link below) and record why. Terminal: a hard bounce does not clear by
+    // retrying hourly; the fix is a corrected address. See refusal.ts.
+    const refusal = await refusalFor(email);
+    if (refusal) {
+      await patch(row, { attempt_count: 5, last_error: `refused_${refusal.name}: ${refusal.message}` }, `skip:refused_${refusal.name}`);
+      result.skipped_refused += 1;
+      continue;
     }
 
     let built: { subject: string; html: string; text: string };

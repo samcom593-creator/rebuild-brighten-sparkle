@@ -39,6 +39,8 @@ const STAGE_META: Record<Stage, { label: string; color: string; order: number }>
   inactive: { label: "Inactive", color: "bg-red-500/20 text-red-400 border-red-500/30", order: 99 },
 };
 
+const TEAM_CONFIRMED_STEPS = new Set(["contracted_ahl_sent", "contracted_ethos_sent", "contracted_chubb_sent"]);
+
 const CHECKLIST_STEPS = [
   { key: "watched_welcome_video", label: "Watched welcome video", stage: "signed_up", href: "/vsl" },
   { key: "completed_profile", label: "Completed profile", stage: "signed_up", href: "/dashboard/profile" },
@@ -304,6 +306,9 @@ export default function GettingStarted() {
     const mySteps = CHECKLIST_STEPS.filter((s) => !("ahlExemptible" in s && s.ahlExemptible) || !ahlExempt);
     const factDone = (key: string) => Boolean(facts && FACT_FOR_STEP[key]?.(facts));
     const isDone = (key: string) => factDone(key) || Boolean(p[key]);
+    // Carrier contracts are confirmed by the team (contract_review_marks). The database reverts an
+    // agent's own tick on these, so the box was un-ticking itself with no explanation; it is read-only here.
+    const teamConfirmed = (key: string) => TEAM_CONFIRMED_STEPS.has(key);
     const completed = mySteps.filter((s) => isDone(s.key)).length;
     const licensed = facts?.license_status === "licensed";
     return (
@@ -373,7 +378,7 @@ export default function GettingStarted() {
                 <Checkbox
                   checked={isDone(step.key)}
                   // A recorded fact can't be unticked; the box is only a manual override.
-                  disabled={factDone(step.key)}
+                  disabled={factDone(step.key) || teamConfirmed(step.key)}
                   onCheckedChange={() => toggleStep(p.id, step.key, p[step.key])}
                 />
                 <div className="flex-1">
@@ -382,6 +387,9 @@ export default function GettingStarted() {
                   </p>
                   {factDone(step.key) && !p[step.key] && (
                     <p className="text-[11px] text-muted-foreground">Confirmed from your account</p>
+                  )}
+                  {teamConfirmed(step.key) && !isDone(step.key) && (
+                    <p className="text-[11px] text-muted-foreground">Your team marks this when the carrier confirms your contract</p>
                   )}
                   {"href" in step && !isDone(step.key) && (
                     <Link to={step.href} className="text-[12px] font-medium text-primary underline-offset-2 hover:underline">Do it →</Link>

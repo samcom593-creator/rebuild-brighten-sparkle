@@ -494,6 +494,7 @@
   "get_application_seminar_invite": "jsonb",
   "get_application_status": "jsonb",
   "get_invite_token_prefill": "jsonb",
+  "get_licensing_requirements_for_application": "jsonb",
   "get_my_agency_branding": "jsonb",
   "get_my_contracting_profile": "jsonb",
   "get_my_insuracloud_token": "text",

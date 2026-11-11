@@ -12,6 +12,9 @@
 // gave someone who had not decided to buy no way to reach a person.
 //
 // Cost: no claim about who pays (Sam has not answered AUDIT N1). LICENSING_COST.short only.
+// PKG3 2026-11-12 (N1 decided: the applicant buys the course at the partner price): below the steps,
+// StateLicensingCosts shows the applicant's own state fees with an as-of date, and nothing when the
+// state is unknown. Still no reimbursement promise and no claim that anyone else pays.
 // After the receipt is in, the applicant can self-report exam booked / passed / NPN
 // (submit-licensing-milestone). Those are labelled self-reported server-side and never set
 // license_status.
@@ -27,6 +30,7 @@ import {
   SCHEDULING_LINKS,
 } from "@/lib/apexConfig";
 import { formatPhoneDisplay } from "@/lib/phone";
+import { StateLicensingCosts } from "@/components/landing/StateLicensingCosts";
 
 export interface OwnerContact {
   name: string;
@@ -279,6 +283,10 @@ export function LicensingProofStep({
           )}
         </StepRow>
       </ol>
+
+      {/* PKG3 (N1): the applicant's own state fees, from official sources with an as-of date. Renders
+          nothing when the state is unknown or not in licensing_state_requirements. */}
+      {applicationId ? <StateLicensingCosts applicationId={applicationId} /> : null}
 
       <AskUsFirst owner={owner} applicationId={applicationId} firstName={firstName} lastName={lastName} />
 

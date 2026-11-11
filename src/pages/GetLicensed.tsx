@@ -27,6 +27,7 @@ import { LICENSING_COST, SCHEDULING_LINKS } from "@/lib/apexConfig";
 import { LICENSING_VIDEO } from "@/lib/licensingMedia";
 import { ONBOARDING_VIDEO } from "@/lib/onboardingMedia";
 import { supabase } from "@/integrations/supabase/client";
+import { StateLicensingCosts } from "@/components/landing/StateLicensingCosts";
 
 // Existing partner/course/document URLs (previously hard-coded in this page).
 // Kept identical so no live behavior regresses for applicants clicking through.
@@ -497,6 +498,13 @@ export default function GetLicensed() {
               for XCEL. Still nothing after 10 minutes, text or email your manager and we will resend it.
             </p>
 
+            {/* PKG3 (N1): the applicant's state fees with an as-of date; nothing without an application id. */}
+            {applicationId ? (
+              <div className="mb-4">
+                <StateLicensingCosts applicationId={applicationId} />
+              </div>
+            ) : null}
+
             <div className="mt-auto space-y-3">
               <GradientButton asChild className="w-full h-12 text-sm">
                 <a href={courseUrl} target="_blank" rel="noopener noreferrer">
@@ -512,7 +520,7 @@ export default function GetLicensed() {
                 <ul className="text-xs text-muted-foreground space-y-1">
                   <li className="flex items-center gap-1.5">
                     <CheckCircle2 className="h-3 w-3 text-emerald-400" />
-                    Course cost covered
+                    Partner price on the course
                   </li>
                   <li className="flex items-center gap-1.5">
                     <CheckCircle2 className="h-3 w-3 text-emerald-400" />

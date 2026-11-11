@@ -1,6 +1,6 @@
 {
   "frozen_at": "2026-11-10T21:30:14.303Z",
-  "count": 24,
+  "count": 25,
   "functions": [
     "apex_is_admin()",
     "check_banned_prospect(p_email text, p_phone text, p_first_name text, p_last_name text)",
@@ -11,6 +11,7 @@
     "get_agent_id(_user_id uuid)",
     "get_application_status(p_application_id uuid)",
     "get_invite_token_prefill(p_token text)",
+    "get_licensing_requirements_for_application(p_application_id uuid)",
     "get_partial_application_resume(p_partial_id uuid)",
     "has_board_access(_user_id uuid, _board_key text)",
     "has_licensing_proof(p_application_id uuid)",

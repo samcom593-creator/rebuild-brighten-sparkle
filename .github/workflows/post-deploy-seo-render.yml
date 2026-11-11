@@ -95,7 +95,30 @@ jobs:
         env:
           BASE: https://apex-financial.org
 
+      # Follow the links OFF the funnel. The money pages hand every recruit to
+      # external partners — Xcel pre-licensing enrollment, the onboarding-call
+      # Calendly event, the "how to get licensed" study-guide Google Doc. Those
+      # rot on the PARTNER's clock and every other guard asserts only that OUR
+      # page is healthy. A bare status check lies here (Xcel 200s with "404" in
+      # its JS while rendering a healthy enrollment page), so the probe reads the
+      # VISIBLE render. DEFECT (exit 1) fires only on a positively-rendered dead
+      # signature with the control up; a transient partner hiccup is UNRESOLVED
+      # (exit 3) and is a warning, never a red — a flaky third party must not
+      # red Sam's deploy (the false-page lesson). Control-gated so a runner
+      # egress blip reads UNKNOWN, not a dead partner.
+      - name: Run funnel external-CTA liveness check
+        if: steps.promote.outputs.matched == 'true'
+        env:
+          BASE: https://apex-financial.org
+        run: |
+          node scripts/check-funnel-external-cta.mjs; code=$?
+          if [ "$code" = "3" ]; then
+            echo "::warning::funnel external-CTA UNRESOLVED on ${{ github.sha }} — a partner link neither proved alive nor dead (transient status/empty render). Not failing the deploy; re-run to confirm."
+            exit 0
+          fi
+          exit "$code"
+
       - name: Post failure summary
         if: failure()
         run: |
-          echo "::warning::Post-deploy SEO render FAILED on ${{ github.sha }} — a /careers/* page did not render its Google-for-Jobs payload (per-route title / self-canonical / JobPosting JSON-LD), OR a sitemap URL did not render public to an anonymous crawler (login wall / redirect / wrong canonical). The Vercel deploy is live; a recruiting rich result or funnel URL regressed. See the route output above."
+          echo "::warning::Post-deploy SEO render FAILED on ${{ github.sha }} — a /careers/* page did not render its Google-for-Jobs payload (per-route title / self-canonical / JobPosting JSON-LD), OR a sitemap URL did not render public to an anonymous crawler (login wall / redirect / wrong canonical), OR the funnel serves a DEAD external onboarding CTA (Xcel enrollment / Calendly / study-guide Doc rendered a page-not-found/access-wall). The Vercel deploy is live; a recruiting rich result, funnel URL, or partner handoff regressed. See the route output above."

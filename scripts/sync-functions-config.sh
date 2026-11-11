@@ -268,6 +268,8 @@ PUBLIC_ALLOWLIST=(
   # ig-trial-reel-publish (MP-311): reviewed in_handler_gate by the security guard; listed here so
   # the writer and the guard agree.
   "ig-trial-reel-publish"
+  # reactivation-send (2026-11-12): pg_cron caller, x-reactivation-key compared in constant time in-handler.
+  "reactivation-send"
 )
 
 is_public() {

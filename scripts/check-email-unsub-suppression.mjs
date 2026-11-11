@@ -49,6 +49,8 @@ export const SENDERS = [
   { name: "system-health-check", send: /functions\/v1\/send-notification/, directResend: true },
   // Admin Bulk Compose (BulkComposeDrawer): recipients come off the request body.
   { name: "send-bulk-email", send: /\bsendEmail\s*\(/, directResend: false },
+  // reactivation v2 (2026-11-12): one email per pg_cron call; reads the opt-out list and stops on a read error.
+  { name: "reactivation-send", send: /\bresend\s*\.\s*emails\s*\.\s*send\s*\(/, directResend: true },
 ];
 
 const READ = /\.from\(\s*["'`]email_unsubscribes["'`]\s*\)|\bisUnsubscribed\s*\(/;

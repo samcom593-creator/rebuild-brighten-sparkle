@@ -522,6 +522,10 @@ const PUBLIC_ALLOWLIST = new Set([
   // applicant (836), no dedupe, so each POST repeats the send. requireSendAuth
   // (admin_or_manager) now. Only caller is NotificationHub (requireAdmin).
   "send-push-optin-email",
+  // reactivation-send (2026-11-12): sole caller is pg_cron through pg_net, which presents no JWT.
+  // The handler refuses any request whose x-reactivation-key does not match REACTIVATION_SEND_KEY
+  // (constant-time verifySendKey, 401) before it reads or sends anything.
+  "reactivation-send",
 ]);
 
 // ---------------------------------------------------------------------------
@@ -709,6 +713,7 @@ const PUBLIC_CONTRACT = {
   "notify-no-deal-today": "in_handler_gate",
   "send-proactive-coaching": "in_handler_gate",
   "send-sam-morning-report": "in_handler_gate",
+  "reactivation-send": "in_handler_gate",
 
   // --- the credential is the token in the URL ----------------------------
   "content-share": "url_token",

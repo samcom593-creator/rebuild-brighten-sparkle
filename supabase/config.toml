@@ -816,3 +816,8 @@ verify_jwt = false
 
 [functions.submit-licensing-milestone]
 verify_jwt = false
+
+# reactivation-send (2026-11-12): pg_cron -> pg_net caller presents no JWT; the handler compares
+# x-reactivation-key against REACTIVATION_SEND_KEY in constant time before any read or send.
+[functions.reactivation-send]
+verify_jwt = false

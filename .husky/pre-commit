@@ -90,6 +90,20 @@ if match '^(src/.*\.(tsx?|jsx?|html|css)$|scripts/check-landing-external-img\.mj
   node scripts/check-landing-external-img.mjs
 fi
 
+# ---------- check-robots-indexable (2026-11-11, Website Integrity Bot) ----------
+# Trigger: the robots/sitemap sources, the shell, the edge header config, any
+# src file, or the script itself. One line (Disallow: / in robots.txt, a
+# noindex robots meta in index.html, an X-Robots-Tag: noindex header in
+# vercel.json, or a noindex injected from a page component) silently deindexes
+# the recruiting funnel — HTTP 200 the whole time, the same class as the
+# canonical self-sabotage but worse (noindex drops the page, not dedupes it).
+# Ties the sitemap (URLs we ask Google to index) to robots/noindex (whether it
+# can). Baseline is clean; this is a pure ratchet.
+if match '^(public/robots\.txt|public/sitemap\.xml|index\.html|vercel\.json|src/.*\.(tsx?|jsx?|html)$|scripts/check-robots-indexable\.mjs|scripts/lib/strip-comments\.mjs)$'; then
+  echo "[pre-commit] robots/sitemap/shell/header file staged — running check:robots-indexable…"
+  node scripts/check-robots-indexable.mjs
+fi
+
 # ---------- check-probe-timer-span (MP-521) ----------
 # Trigger: the health banner itself or the guard. probe() must load its own
 # supabase client BEFORE arming the 6s abort and sampling the latency clock, or

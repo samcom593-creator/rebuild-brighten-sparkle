@@ -59,6 +59,20 @@ const FUNNEL_ROUTES = [
   "/contact",
 ];
 
+// The /careers/* state pages are a live recruiting acquisition channel: they
+// sit in the sitemap and are what a recruit lands on from a Google-for-Jobs
+// listing — on a phone. All 10 share one render template (per-state data is
+// just name/slug/abbr), so a representative sample catches a template-wide
+// sideways-scroll regression without doubling the post-deploy runtime. Same two
+// states careers-jobposting-render.mjs samples, for the same shared-mechanism
+// reason. The JSON-LD guard owns their payload; this guard owns their width.
+const CAREERS_ROUTES = [
+  "/careers/florida",
+  "/careers/texas",
+];
+
+const ROUTES = [...FUNNEL_ROUTES, ...CAREERS_ROUTES];
+
 const IPHONE = devices["iPhone 14"];
 
 function launchOpts() {
@@ -152,7 +166,7 @@ async function run() {
   let failed = 0;
   const rows = [];
 
-  for (const route of FUNNEL_ROUTES) {
+  for (const route of ROUTES) {
     const url = BASE + route;
     const page = await ctx.newPage();
     const row = { route, status: null, overflow: null, worst: null, err: null };
@@ -198,10 +212,10 @@ async function run() {
   console.log("");
 
   if (failed > 0) {
-    console.error(`FAIL: ${failed} funnel route(s) with horizontal overflow or load error on ${BASE}.`);
+    console.error(`FAIL: ${failed} funnel/careers route(s) with horizontal overflow or load error on ${BASE}.`);
     process.exit(1);
   }
-  console.log(`OK: ${rows.length} funnel routes, no horizontal overflow on iPhone 14.`);
+  console.log(`OK: ${rows.length} funnel/careers routes (${FUNNEL_ROUTES.length} funnel + ${CAREERS_ROUTES.length} careers), no horizontal overflow on iPhone 14.`);
 }
 
 if (process.argv.includes("--selftest")) {

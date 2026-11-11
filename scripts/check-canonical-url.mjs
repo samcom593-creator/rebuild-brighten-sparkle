@@ -19,7 +19,7 @@
  * rendered canonical. This guard stops that fix from silently rotting and stops
  * the sitemap from pointing at pages that do not exist.
  *
- * THREE RULES (all static, no build; prove both directions with --selftest):
+ * FOUR RULES (all static, no build; prove both directions with --selftest):
  *
  *   A  index.html carries EXACTLY ONE <link rel="canonical">, and its host
  *      equals RouteCanonical's PROD_ORIGIN. Zero canonicals, two canonicals, or
@@ -33,10 +33,27 @@
  *      preview-host canonical into the production index).
  *
  *   C  sitemap <-> route parity: every <loc> in sitemap.xml is on PROD_ORIGIN's
- *      host AND its path is a declared <Route path> in App.tsx. The SPA fallback
+ *      host AND its path matches a declared <Route path> in App.tsx — a literal
+ *      ("/apply") or a parameterized pattern ("/careers/:state" matches
+ *      "/careers/florida", each ":param" eating one non-empty segment; the "*"
+ *      catch-all never matches, so it can't launder a soft-404). The SPA fallback
  *      returns HTTP 200 for any URL, so a bogus sitemap entry is a soft-404 that
  *      wastes crawl budget and reads as broken — invisible to a status-code
  *      probe, caught here.
+ *
+ *   D  /careers/<slug> <-> STATE_CAREER_SLUGS parity (2026-11-11, Check #3/SEO,
+ *      GOOGLE FOR JOBS). StateCareerLanding.tsx renders 10 per-state recruiting
+ *      landing pages that each emit Google-for-Jobs JobPosting JSON-LD — the free
+ *      SERP slot for "life insurance agent <state>", the highest-intent recruiting
+ *      query there is. They were built to be crawled (self-canonical, JobPosting,
+ *      the file even exports STATE_CAREER_SLUGS "so a sitemap generator can
+ *      iterate") but shipped ORPHANED: zero internal inbound links + absent from
+ *      sitemap.xml = undiscoverable by Google, the whole subtree dark. Rule D makes
+ *      the sitemap the single source: (1) every /careers/<slug> <loc> must be a
+ *      REAL slug in STATE_CAREER_SLUGS (an invalid slug renders <Navigate to="/">,
+ *      a redirect soft-404 the param matcher in Rule C can't catch); (2) every slug
+ *      in STATE_CAREER_SLUGS must have a <loc> — so adding an 11th state to the page
+ *      without a sitemap entry turns CI red instead of silently orphaning it again.
  *
  * FAIL-LOUD: any operand file missing/unparseable, or an anchor (the canonical
  * tag, PROD_ORIGIN, the <Route> table, any <loc>) not found, exits non-zero. A
@@ -52,6 +69,7 @@ const INDEX = join(ROOT, "index.html");
 const APP = join(ROOT, "src/App.tsx");
 const RC = join(ROOT, "src/components/seo/RouteCanonical.tsx");
 const SITEMAP = join(ROOT, "public/sitemap.xml");
+const STATE_LANDING = join(ROOT, "src/pages/StateCareerLanding.tsx");
 
 // ── pure extractors ─────────────────────────────────────────────────────────
 
@@ -88,6 +106,37 @@ export function routePaths(appSrc) {
   return out;
 }
 
+/**
+ * The slug literals from StateCareerLanding's STATES array
+ * (`slug: "florida"`, ...). This is the single source of truth for which
+ * /careers/<slug> pages actually render content; anything else <Navigate>s away.
+ */
+export function stateCareerSlugs(src) {
+  return (src.match(/\bslug:\s*["']([a-z0-9-]+)["']/gi) || []).map(
+    (t) => t.replace(/\bslug:\s*["']/i, "").replace(/["']$/, ""),
+  );
+}
+
+/**
+ * Does a declared route pattern match a concrete path? A ":param" segment eats
+ * exactly one non-empty segment; the "*" catch-all (and any wildcard pattern)
+ * never matches, so it can't launder a soft-404 past the parity check.
+ */
+export function routePatternMatches(pattern, path) {
+  if (pattern.includes("*")) return false;
+  const ps = pattern.split("/");
+  const qs = path.split("/");
+  if (ps.length !== qs.length) return false;
+  for (let i = 0; i < ps.length; i++) {
+    if (ps[i].startsWith(":")) {
+      if (qs[i] === "") return false; // a param must consume a real segment
+      continue;
+    }
+    if (ps[i] !== qs[i]) return false;
+  }
+  return true;
+}
+
 function host(url) {
   try {
     return new URL(url).host;
@@ -108,7 +157,7 @@ const noSlash = (p) => (p && p.length > 1 && p.endsWith("/") ? p.slice(0, -1) : 
 
 // ── the audit (pure: strings in, failures out) ──────────────────────────────
 
-export function audit({ indexHtml, appTsx, rcTsx, sitemapXml }) {
+export function audit({ indexHtml, appTsx, rcTsx, sitemapXml, stateLandingTsx }) {
   const fail = [];
 
   // Scan CODE, not prose: a "must-not-contain" check (window.location.origin)
@@ -164,12 +213,13 @@ export function audit({ indexHtml, appTsx, rcTsx, sitemapXml }) {
 
   // ── Rule C: sitemap <-> route parity ──
   const locs = sitemapLocs(sitemapXml);
+  const locPaths = []; // normalized paths that parsed, for Rule D's reverse check
   if (locs.length === 0) {
     fail.push("sitemap.xml: no <loc> entries found — cannot verify parity (empty or unparseable sitemap).");
   } else {
     const routes = routePaths(appCode);
     if (routes.size === 0) fail.push("App.tsx: no <Route path=...> declarations found — cannot verify sitemap parity.");
-    const normRoutes = new Set([...routes].map(noSlash));
+    const normRoutes = [...routes].map(noSlash);
     for (const loc of locs) {
       const h = host(loc);
       if (originHost && h && h !== originHost) {
@@ -178,8 +228,39 @@ export function audit({ indexHtml, appTsx, rcTsx, sitemapXml }) {
       const p = noSlash(pathOf(loc));
       if (p == null) {
         fail.push(`sitemap.xml: <loc>${loc}</loc> is not a valid URL.`);
-      } else if (routes.size > 0 && !normRoutes.has(p)) {
-        fail.push(`sitemap.xml: <loc>${loc}</loc> path "${p}" is not a declared <Route> — the SPA fallback returns 200 for it, so a crawler indexes a soft-404.`);
+      } else {
+        locPaths.push(p);
+        if (routes.size > 0 && !normRoutes.some((r) => routePatternMatches(r, p))) {
+          fail.push(`sitemap.xml: <loc>${loc}</loc> path "${p}" matches no declared <Route> — the SPA fallback returns 200 for it, so a crawler indexes a soft-404.`);
+        }
+      }
+    }
+  }
+
+  // ── Rule D: /careers/<slug> <-> STATE_CAREER_SLUGS parity ──
+  // Fail-loud: the operand must be present and parseable, or the guard is blind
+  // to the exact class it was added for (the 465 fake-success rows).
+  if (stateLandingTsx == null) {
+    fail.push("StateCareerLanding.tsx: operand not provided — cannot verify /careers sitemap parity.");
+  } else {
+    const slugs = stateCareerSlugs(stateLandingTsx);
+    if (slugs.length === 0) {
+      fail.push("StateCareerLanding.tsx: no STATE slug literals found — cannot verify /careers sitemap parity (moved/renamed STATES array?).");
+    } else {
+      const validSlugs = new Set(slugs);
+      // (1) every /careers/<slug> loc must be a real slug (invalid => <Navigate to='/'> soft-404)
+      for (const p of locPaths) {
+        const m = p.match(/^\/careers\/([^/]+)$/);
+        if (m && !validSlugs.has(m[1])) {
+          fail.push(`sitemap.xml: <loc>.../careers/${m[1]}</loc> is not a real state in STATE_CAREER_SLUGS — StateCareerLanding redirects it to "/", so the crawler indexes a soft-404.`);
+        }
+      }
+      // (2) every real state must be in the sitemap (else the Google-for-Jobs page is orphaned from discovery)
+      const haveCareer = new Set(locPaths.filter((p) => /^\/careers\/[^/]+$/.test(p)));
+      for (const slug of validSlugs) {
+        if (!haveCareer.has(`/careers/${slug}`)) {
+          fail.push(`sitemap.xml: /careers/${slug} is a live Google-for-Jobs page but has no <loc> — it is orphaned from crawler discovery (no inbound links either). Add it to public/sitemap.xml.`);
+        }
       }
     }
   }
@@ -196,11 +277,15 @@ function selftest() {
       'import { RouteCanonical } from "@/components/seo/RouteCanonical";\n' +
       "<BrowserRouter>\n  <RouteCanonical />\n" +
       '  <Route path="/" />\n  <Route path="/apply" />\n  <Route path="/vsl" />\n' +
+      '  <Route path="/careers/:state" />\n  <Route path="*" />\n' +
       "</BrowserRouter>",
     rcTsx:
       'export const PROD_ORIGIN = "https://apex-financial.org";\n' +
       'useLocation(); link.setAttribute("rel", "canonical");',
-    sitemapXml: "<loc>https://apex-financial.org/</loc><loc>https://apex-financial.org/apply</loc>",
+    sitemapXml:
+      "<loc>https://apex-financial.org/</loc><loc>https://apex-financial.org/apply</loc>" +
+      "<loc>https://apex-financial.org/careers/florida</loc><loc>https://apex-financial.org/careers/texas</loc>",
+    stateLandingTsx: 'const STATES = [{ slug: "florida" }, { slug: "texas" }];',
   };
 
   const cases = [
@@ -217,7 +302,7 @@ function selftest() {
     ["RouteCanonical not mounted", { ...GOOD, appTsx: GOOD.appTsx.replace("<RouteCanonical />", "") }, 1],
     ["RouteCanonical outside router", {
       ...GOOD,
-      appTsx: "<RouteCanonical />\n<BrowserRouter>\n<Route path=\"/\" />\n<Route path=\"/apply\" />\n<Route path=\"/vsl\" />\n</BrowserRouter>",
+      appTsx: "<RouteCanonical />\n<BrowserRouter>\n<Route path=\"/\" />\n<Route path=\"/apply\" />\n<Route path=\"/careers/:state\" />\n</BrowserRouter>",
     }, 1],
     ["origin from window.location", {
       ...GOOD,
@@ -231,6 +316,24 @@ function selftest() {
       ...GOOD,
       sitemapXml: "<loc>https://evil.example.com/apply</loc>",
     }, 1],
+    // Rule C: the "*" catch-all must NOT launder a soft-404 past parity.
+    ["catch-all does not match a bogus path", {
+      ...GOOD,
+      sitemapXml: GOOD.sitemapXml + "<loc>https://apex-financial.org/totally-made-up</loc>",
+    }, 1],
+    // Rule D(1): a /careers loc that isn't a real slug is a redirect soft-404.
+    ["careers loc with an invalid slug", {
+      ...GOOD,
+      sitemapXml: GOOD.sitemapXml + "<loc>https://apex-financial.org/careers/atlantis</loc>",
+    }, 1],
+    // Rule D(2): a live state page absent from the sitemap is orphaned — the bug.
+    ["state page orphaned from sitemap", {
+      ...GOOD,
+      stateLandingTsx: GOOD.stateLandingTsx.replace("]", ', { slug: "ohio" }]'),
+    }, 1],
+    // Rule D fail-loud: the slug source cannot be found.
+    ["state slug source unparseable", { ...GOOD, stateLandingTsx: "// STATES moved away" }, 1],
+    ["state slug operand missing", { ...GOOD, stateLandingTsx: undefined }, 1],
   ];
 
   let ok = true;
@@ -270,11 +373,12 @@ if (process.argv.includes("--selftest")) {
     appTsx: read(APP, "src/App.tsx"),
     rcTsx: read(RC, "src/components/seo/RouteCanonical.tsx"),
     sitemapXml: read(SITEMAP, "public/sitemap.xml"),
+    stateLandingTsx: read(STATE_LANDING, "src/pages/StateCareerLanding.tsx"),
   });
   if (failures.length) {
     console.error(`❌ check:canonical-url FAIL (${failures.length})`);
     for (const f of failures) console.error(`   • ${f}`);
     process.exit(1);
   }
-  console.log("✅ check:canonical-url OK — index.html has one canonical on the prod origin; RouteCanonical is mounted inside the router and self-referencing; every sitemap <loc> is a real route on the canonical domain.");
+  console.log("✅ check:canonical-url OK — index.html has one canonical on the prod origin; RouteCanonical is mounted inside the router and self-referencing; every sitemap <loc> matches a real route (literal or :param) on the canonical domain; every /careers/<slug> is a real state and every state page is in the sitemap.");
 }

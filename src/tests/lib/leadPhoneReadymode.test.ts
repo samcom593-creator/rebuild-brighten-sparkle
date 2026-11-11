@@ -47,3 +47,15 @@ describe("ReadyMode number on dropped leads", () => {
     expect(sql).toContain("refresh materialized view concurrently public.mat_lead_phone_fix;\n  refresh materialized view concurrently public.mat_lead_pool;");
   });
 });
+
+describe("packs already handed out keep up with new ReadyMode evidence (MP-LEAD-PHONE-READYMODE-b)", () => {
+  const sql = read("supabase/migrations/20261111020000_pack_phone_autorepair.sql");
+  it("every snapshot refresh repairs live pack items after rebuilding the evidence", () => {
+    expect(sql).toContain("refresh materialized view concurrently public.mat_lead_pool;\n  -- MP-LEAD-PHONE-READYMODE-b");
+    expect(sql).toContain("perform public.fn_repair_pack_phones();");
+  });
+  it("never overwrites an item another live pack already holds, and requeues no-answers", () => {
+    expect(sql).toContain("where i.id = fix.id and not fix.collides");
+    expect(sql).toContain("when i.status in ('no_answer', 'wrong_number') then 'new'");
+  });
+});

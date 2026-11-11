@@ -45,7 +45,22 @@ const MAX_BYTES = 8 * 1024 * 1024;
 type ProofState = "checking" | "idle" | "uploading" | "submitted" | "error";
 
 /** The human path. Always rendered: before purchase, after an upload error, after upload. */
-export function AskUsFirst({ owner }: { owner?: OwnerContact | null }) {
+export function AskUsFirst({
+  owner,
+  applicationId,
+  firstName,
+  lastName,
+}: {
+  owner?: OwnerContact | null;
+  applicationId?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+}) {
+  // utm_content=<application id> lets calendly-webhook attach the booking to this exact
+  // application, which is what moves the person to "Call Booked" on the ladder.
+  const questionsUrl = SCHEDULING_LINKS.questions
+    ? buildBookingUrl(SCHEDULING_LINKS.questions, { applicationId, firstName, lastName })
+    : null;
   const contact = owner && (owner.phone || owner.email) ? owner : GALAXY_LINE;
   const phoneDigits = contact.phone ? contact.phone.replace(/[^\d+]/g, "") : "";
   return (
@@ -55,8 +70,8 @@ export function AskUsFirst({ owner }: { owner?: OwnerContact | null }) {
       </p>
       <p className="mt-1 text-muted-foreground">{LICENSING_COST.short}</p>
       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
-        {SCHEDULING_LINKS.questions ? (
-          <a className="font-semibold text-primary underline-offset-2 hover:underline" href={SCHEDULING_LINKS.questions} target="_blank" rel="noopener noreferrer">
+        {questionsUrl ? (
+          <a className="font-semibold text-primary underline-offset-2 hover:underline" href={questionsUrl} target="_blank" rel="noopener noreferrer" data-testid="questions-call-link">
             Book a 10-minute questions call
           </a>
         ) : null}
@@ -265,7 +280,7 @@ export function LicensingProofStep({
         </StepRow>
       </ol>
 
-      <AskUsFirst owner={owner} />
+      <AskUsFirst owner={owner} applicationId={applicationId} firstName={firstName} lastName={lastName} />
 
       {state === "submitted" && applicationId ? <LicensingSelfReport applicationId={applicationId} /> : null}
     </section>

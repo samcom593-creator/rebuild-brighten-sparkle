@@ -121,10 +121,12 @@ export const SCHEDULING_LINKS = {
   /** Canonical post-hire contracting/onboarding call. Milver receives every booking. */
   onboarding: "https://calendly.com/apexfinancialempire/apex-onboarding-call",
   /**
-   * "Not ready to buy? Ask us first" — a short questions call. null until Sam says yes to
-   * N2 and the event exists; surfaces fall back to the owner's direct contact.
+   * "Not ready to buy? Ask us first" — a 10-minute questions call any unlicensed applicant can
+   * book BEFORE buying the course (live 2026-11-11: 72 unlicensed applicants in 90 days, 4 bought
+   * the course while the only call was locked behind a receipt). null hides the link and
+   * surfaces fall back to the owner's direct contact.
    */
-  questions: null as string | null,
+  questions: "https://calendly.com/apexfinancialempire/licensing-questions" as string | null,
   samLicensed: "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone",
   samUnlicensed: "https://calendly.com/apexfinancialempire/licensing-call",
 } as const;

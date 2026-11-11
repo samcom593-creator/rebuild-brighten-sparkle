@@ -40,6 +40,21 @@ describe("LicensingProofStep", () => {
     expect(screen.getByTestId("ask-us-first").textContent).toMatch(/Not ready to buy\? Ask us first/);
   });
 
+  it("offers the questions call before any purchase, tagged with the application id", async () => {
+    render(<LicensingProofStep applicationId={APP} firstName="Jordan" lastName="Lee" />);
+    await waitFor(() => expect(rpc).toHaveBeenCalled());
+    const link = screen.getByTestId("questions-call-link") as HTMLAnchorElement;
+    expect(link.textContent).toMatch(/Book a 10-minute questions call/);
+    const url = new URL(link.href);
+    expect(url.pathname).toBe("/apexfinancialempire/licensing-questions");
+    // utm_content is what calendly-webhook matches first; without it the booking
+    // attaches by fuzzy email/phone and the ladder may not move the person.
+    expect(url.searchParams.get("utm_content")).toBe(APP);
+    expect(url.searchParams.get("name")).toBe("Jordan Lee");
+    // the licensing call itself stays locked until a receipt is in
+    expect(bookingLink()).toBeNull();
+  });
+
   it("opens the video in a new tab so the upload stays on screen", async () => {
     render(<LicensingProofStep applicationId={APP} videoHref="/get-licensed#licensing-video" />);
     await waitFor(() => expect(rpc).toHaveBeenCalled());

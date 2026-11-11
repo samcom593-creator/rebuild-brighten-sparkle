@@ -799,6 +799,16 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
       email: data.email,
     });
     const statusUrl = statusPageUrl(applicationId);
+    // 2026-11-11: the questions call is bookable BEFORE the course purchase (the licensing
+    // call stays behind the receipt). Same prefill + utm_content as the licensed link.
+    const questionsCallUrl = SCHEDULING_LINKS.questions
+      ? buildBookingUrl(SCHEDULING_LINKS.questions, {
+          applicationId,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          email: data.email,
+        })
+      : null;
     const slackInviteUrl = await getSlackInviteUrl();
     // 2026-09-07: was youtu.be/YmlLSIwfGdE, an unlisted clip literally titled
     // "VSL   Test" that the landing page had already dropped as a placeholder.
@@ -973,6 +983,9 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
             <p style="color: #4b5563; line-height: 1.6; margin-bottom: 20px;">
               ${LICENSING_COST.short} ${LICENSING_COST.askFirst} Reply to this email${managerInfo ? " or reach your recruiter above" : ""}.
             </p>
+            ${questionsCallUrl ? `<p style="color: #4b5563; line-height: 1.6; margin-bottom: 20px;">
+              Want to talk it through before you buy anything? <a href="${questionsCallUrl}" style="color: #2563eb; font-weight: 600;">Book a 10-minute questions call</a>.
+            </p>` : ""}
 
             <div style="text-align: center; margin-bottom: 30px;">
               <a href="${preLicensingCourseUrl}"

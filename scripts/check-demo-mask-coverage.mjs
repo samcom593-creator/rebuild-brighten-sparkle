@@ -43,6 +43,7 @@ const EXEMPT = new Map([
   ["src/components/dashboard/ProfileSettings.tsx", "write: update-user-email, returns a status not a row"],
   ["src/pages/DashboardAccounts.tsx", "write: update-user-email, returns a status not a row"],
   ["src/pages/AssistantInterviewForm.tsx", "write: submits an interview, returns a status"],
+  ["src/pages/Unsubscribe.tsx", "write: one-click opt-out POST, reads only {ok}; the only address shown is URL-derived and maskEmail-masked, never a row"],
   ["src/pages/admin/IntegrationsSettings.tsx", "operator SQL console; showing real rows IS the feature"],
   ["src/pages/SharePage.tsx", "public share token page; content library, not the book"],
   ["src/pages/InstagramInbox.tsx", "builds the instagram-auth reconnect link (an OAuth redirect); never reads a body"],

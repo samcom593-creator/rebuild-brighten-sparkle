@@ -51,6 +51,25 @@ const FORBIDDEN = [
   ["unlock personalized", "AI-tell — say what actually shows up on the dashboard, not 'personalized X'"],
   ["accurate projections", "AI-tell — either name the metric that gets projected or drop the promise"],
   ["coaching insights", "AI-tell — say the actual coaching advice, not 'insights'"],
+  // wave-ai-tell-copy (2026-11-11, Website Integrity Bot Check #1): the static
+  // ban-list never covered these high-confidence AI-tells. Proven-zero in live
+  // rendered funnel copy (/, /apply, /vsl) AND in src/ + supabase/functions
+  // (only non-copy hit is _shared/humanize.ts, now in SKIP_FILES — it is the
+  // de-AI utility that names the tells it strips). Wikipedia "Signs of AI
+  // writing" members with no legitimate use in Apex recruiting copy.
+  ["supercharge", "AI-tell — say the concrete capability, not 'supercharge your X'"],
+  ["a testament to", "AI-tell filler — state the fact, not that it is 'a testament to' something"],
+  ["navigate the complex", "AI-tell — name the actual thing the agent does, not 'navigate the complex X'"],
+  ["navigate the ever-changing", "AI-tell — name the actual thing, not 'navigate the ever-changing X'"],
+  ["in today's fast-paced", "AI-tell opener — 'in today's fast-paced world/market' is filler; cut it"],
+  ["in the realm of", "AI-tell — 'in the realm of X' is filler; say 'in X'"],
+  ["tapestry", "AI-tell metaphor spam — zero legitimate use in recruiting copy"],
+  ["state-of-the-art", "AI-tell vague — name what is actually new or capable about it"],
+  ["unparalleled", "AI-tell vague superlative — give the number or comparison instead"],
+  ["paradigm shift", "AI-tell corporate larp — say what concretely changed"],
+  ["look no further", "AI-tell CTA cliche — say the actual next step"],
+  ["a myriad of", "AI-tell — say 'many' or the actual count"],
+  ["a plethora of", "AI-tell — say 'a lot of' or the actual count (humanize.ts already strips this at send time)"],
   // wave-placeholder-guard (2026-08-05, Website Integrity Bot Check 5):
   // extra substring markers for placeholder content that must never ship.
   // These 3 are proven-zero false-positive outside SKIP_FILES/SKIP_LINE_REGEX
@@ -81,6 +100,17 @@ const SKIP_DIRS = new Set([
 const SKIP_FILES = new Set([
   "src/data/shipped-data.ts",
   "src/components/dashboard/WhatShippedTodayBanner.tsx",
+  // The outbound de-AI-ify utility: it enumerates the tells it strips, in
+  // comments AND in non-comment regex literals (e.g. /\ba plethora of\b/).
+  // Exempt for the same reason as the receipt files above — it names the
+  // banned terms by design, not as copy that ships to a user.
+  "supabase/functions/_shared/humanize.ts",
+  // The voice rulebook (1:1 regenerated mirror of master-prompts/125). It
+  // LISTS the banned AI-tells as the spec of what not to ship ("BANNED:
+  // 'delve' · 'tapestry' · 'in the realm of'"). Internal doc, never rendered
+  // to a site visitor. SKIP_FILES (not an inline marker) so the exemption
+  // survives the next regen. See memory: prompt_125_regen_ai_tell_pattern.
+  "docs/operating-spec.md",
 ]);
 
 // Lines matching any of these get skipped (legitimate use of a flagged term).

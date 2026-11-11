@@ -80,9 +80,8 @@ function parts(input: WelcomeInput, variant: WelcomeVariant, name: string): Part
     email: input.email ?? null,
   };
   const statusUrl = statusPageUrl(input.applicationId);
-  const questions = SCHEDULING_LINKS.questions
-    ? { lead: QUESTIONS_CALL_LINE, label: QUESTIONS_CALL_LABEL, url: buildBookingUrl(SCHEDULING_LINKS.questions, prefill) }
-    : null;
+  const questionsUrl = SCHEDULING_LINKS.questions ? buildBookingUrl(SCHEDULING_LINKS.questions, prefill) : null;
+  const questions = questionsUrl ? { lead: QUESTIONS_CALL_LINE, label: QUESTIONS_CALL_LABEL, url: questionsUrl } : null;
 
   if (variant === "licensed") {
     return {
@@ -92,7 +91,7 @@ function parts(input: WelcomeInput, variant: WelcomeVariant, name: string): Part
         "The next step is a 15-minute call with me. Have your NPN and your resident state ready.",
       ],
       primary: { label: "Pick a time", url: buildBookingUrl(SCHEDULING_LINKS.licensed, prefill) },
-      secondary: { lead: "Your application page is here if you need it:", label: "open my page", url: statusUrl },
+      secondary: { lead: "Your application page stays open any time.", label: "Open my page", url: statusUrl },
     };
   }
   if (variant === "pending") {
@@ -103,7 +102,9 @@ function parts(input: WelcomeInput, variant: WelcomeVariant, name: string): Part
         "Your page shows what's left while your license is pending, and it's where you add your NPN the day it posts.",
       ],
       primary: { label: "Open my page", url: statusUrl },
-      secondary: questions,
+      secondary: questionsUrl
+        ? { lead: "Questions while you wait on the state?", label: "Book a 10-minute call", url: questionsUrl }
+        : null,
     };
   }
   return {

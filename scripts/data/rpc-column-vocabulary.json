@@ -593,6 +593,7 @@
   "my_agent_profile": "jsonb",
   "my_course_progress": "jsonb",
   "my_lead_detail": "jsonb",
+  "my_lead_dial_tap": "jsonb",
   "my_new_hire_showup": "SETOF v_new_hire_showup",
   "my_recruiting_link": "jsonb",
   "my_recruiting_standing": "jsonb",

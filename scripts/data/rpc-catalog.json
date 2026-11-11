@@ -2867,6 +2867,18 @@
         "raw": "p_agent_id uuid"
       }
     ],
+    "fn_agent_is_suspended": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
     "fn_agent_license_returned_alert": [
       {
         "all": [],
@@ -3208,6 +3220,16 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "fn_backfill_contracted_at": [
+      {
+        "all": [
+          "p_dry_run"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_dry_run boolean DEFAULT true"
       }
     ],
     "fn_backfill_orphan_agent_id": [
@@ -3642,12 +3664,64 @@
         "raw": ""
       }
     ],
+    "fn_contracting_intake_draft": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
     "fn_contracting_is_staff": [
       {
         "all": [],
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "fn_contracting_owner_user_id": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_contracting_request_backfill": [
+      {
+        "all": [
+          "p_dry_run",
+          "p_since"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_dry_run boolean DEFAULT true, p_since timestamp with time zone DEFAULT '2026-10-09 07:00:00+00'::timestamp with time zone"
+      }
+    ],
+    "fn_contracting_request_cutoff": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_contracting_request_due": [
+      {
+        "all": [
+          "p_from",
+          "p_to"
+        ],
+        "required": [
+          "p_from"
+        ],
+        "unnamed": false,
+        "raw": "p_from timestamp with time zone, p_to timestamp with time zone DEFAULT 'infinity'::timestamp with time zone"
       }
     ],
     "fn_contracting_request_eval": [
@@ -3662,6 +3736,20 @@
         "raw": "p_agent uuid"
       }
     ],
+    "fn_contracting_request_open": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_dry_run",
+          "p_page_owner"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_dry_run boolean DEFAULT true, p_page_owner boolean DEFAULT true"
+      }
+    ],
     "fn_contracting_request_row": [
       {
         "all": [
@@ -3672,6 +3760,16 @@
         ],
         "unnamed": false,
         "raw": "p_agent uuid"
+      }
+    ],
+    "fn_contracting_request_sweep": [
+      {
+        "all": [
+          "p_dry_run"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_dry_run boolean DEFAULT true"
       }
     ],
     "fn_contracting_required_carriers": [
@@ -3779,6 +3877,14 @@
       }
     ],
     "fn_derive_agent_contracted_at": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_dialer_invoice_guard": [
       {
         "all": [],
         "required": [],
@@ -4025,6 +4131,17 @@
         "raw": ""
       }
     ],
+    "fn_grant_starter_packs": [
+      {
+        "all": [
+          "p_dry_run",
+          "p_limit"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_dry_run boolean DEFAULT true, p_limit integer DEFAULT 10"
+      }
+    ],
     "fn_guard_daily_production_date": [
       {
         "all": [],
@@ -4063,6 +4180,62 @@
         ],
         "unnamed": false,
         "raw": "p_roots uuid[]"
+      }
+    ],
+    "fn_hire_lane_email_dispatch": [
+      {
+        "all": [
+          "p_dry_run",
+          "p_limit"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_limit integer DEFAULT 5, p_dry_run boolean DEFAULT true"
+      }
+    ],
+    "fn_hire_lane_email_enqueue": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_body_html",
+          "p_body_text",
+          "p_dedupe_key",
+          "p_kind",
+          "p_magic_destination",
+          "p_meta",
+          "p_recipient_user_id",
+          "p_subject",
+          "p_to_email"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_body_html",
+          "p_body_text",
+          "p_dedupe_key",
+          "p_kind",
+          "p_recipient_user_id",
+          "p_subject"
+        ],
+        "unnamed": false,
+        "raw": "p_kind text, p_dedupe_key text, p_recipient_user_id uuid, p_agent_id uuid, p_subject text, p_body_text text, p_body_html text, p_to_email text DEFAULT NULL::text, p_magic_destination text DEFAULT NULL::text, p_meta jsonb DEFAULT '{}'::jsonb"
+      }
+    ],
+    "fn_hire_lane_email_settle": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_hire_lane_email_tick": [
+      {
+        "all": [
+          "p_dry_run"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_dry_run boolean DEFAULT true"
       }
     ],
     "fn_hire_stage_for_rank": [
@@ -4656,6 +4829,43 @@
         "raw": ""
       }
     ],
+    "fn_new_hire_flow_claim": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
+    "fn_new_hire_flow_finish": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_done",
+          "p_error",
+          "p_legs"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_done",
+          "p_legs"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_legs jsonb, p_done boolean, p_error text DEFAULT NULL::text"
+      }
+    ],
+    "fn_new_hire_flow_retry_sweep": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "fn_next_onboarding_window": [
       {
         "all": [],
@@ -4987,6 +5197,14 @@
         "raw": "p_request_id bigint"
       }
     ],
+    "fn_numbers_reminder_audience": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "fn_observe_agentlink_carrier_statuses": [
       {
         "all": [],
@@ -5060,6 +5278,18 @@
         ],
         "unnamed": false,
         "raw": "p_license text, p_exclude uuid DEFAULT NULL::uuid"
+      }
+    ],
+    "fn_pkg2_html_escape": [
+      {
+        "all": [
+          "p_text"
+        ],
+        "required": [
+          "p_text"
+        ],
+        "unnamed": false,
+        "raw": "p_text text"
       }
     ],
     "fn_policy_number_report_placeholder": [
@@ -5629,6 +5859,43 @@
         "raw": ""
       }
     ],
+    "fn_stamp_contracted_at_from_deal": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_starter_pack_candidates": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_starter_pack_cron": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_starter_pack_inventory": [
+      {
+        "all": [
+          "p_limit",
+          "p_states"
+        ],
+        "required": [
+          "p_states"
+        ],
+        "unnamed": false,
+        "raw": "p_states text[], p_limit integer DEFAULT 25"
+      }
+    ],
     "fn_status_answer_indicates_licensed": [
       {
         "all": [
@@ -5831,6 +6098,30 @@
         ],
         "unnamed": false,
         "raw": "p_state text"
+      }
+    ],
+    "fn_user_is_suspended": [
+      {
+        "all": [
+          "p_user_id"
+        ],
+        "required": [
+          "p_user_id"
+        ],
+        "unnamed": false,
+        "raw": "p_user_id uuid"
+      }
+    ],
+    "fn_user_login_blocked": [
+      {
+        "all": [
+          "p_user_id"
+        ],
+        "required": [
+          "p_user_id"
+        ],
+        "unnamed": false,
+        "raw": "p_user_id uuid"
       }
     ],
     "fn_weekdays_valid": [
@@ -7613,6 +7904,18 @@
         ],
         "unnamed": false,
         "raw": "p_item uuid"
+      }
+    ],
+    "my_lead_dial_tap": [
+      {
+        "all": [
+          "p_item_id"
+        ],
+        "required": [
+          "p_item_id"
+        ],
+        "unnamed": false,
+        "raw": "p_item_id uuid"
       }
     ],
     "my_new_hire_showup": [

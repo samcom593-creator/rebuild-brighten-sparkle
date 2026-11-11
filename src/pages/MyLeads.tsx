@@ -20,6 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { contactLinkProps, formatPhoneDisplay, phoneHref } from "@/lib/phone";
 import { dispositionLabel } from "@/lib/readymodeDispositions";
 import { LEAD_STATUS_BUTTONS, TIER_STYLE, canDial, flagBadges, formatLabel, isOpenLead, leadStatusLabel, tierLabel, tierLegendFor } from "@/lib/leadBundles";
+import { dialTapHandler } from "@/lib/leadDialTap";
 import { cn } from "@/lib/utils";
 import { CallCenterVoiceRecorder } from "@/components/callcenter/CallCenterVoiceRecorder";
 
@@ -301,7 +302,8 @@ export default function MyLeads() {
                             )}
                           </span>
                           {href ? (
-                            <a href={href} {...contactLinkProps(href)} className="inline-flex items-center gap-1 font-medium text-primary hover:underline"><Phone className="h-3.5 w-3.5" />{formatPhoneDisplay(l.phone10)}</a>
+                            // PKG2: the tap is the dial record now that the dialer is canceled; never blocks the call
+                            <a href={href} {...contactLinkProps(href)} onClick={dialTapHandler(l.item_id)} data-testid="lead-call-link" className="inline-flex items-center gap-1 font-medium text-primary hover:underline"><Phone className="h-3.5 w-3.5" />{formatPhoneDisplay(l.phone10)}</a>
                           ) : (
                             <span className="text-muted-foreground">
                               {formatPhoneDisplay(l.phone10)} · {canDial(l.status) && !hoursOpen ? `calling hours closed, opens ${opensLabel(l.callable_at)}` : "do not call"}
@@ -409,7 +411,7 @@ export default function MyLeads() {
                     </div>
                     {href ? (
                       <Button asChild size="lg" className="h-12 w-full text-base">
-                        <a href={href} {...contactLinkProps(href)}><Phone className="mr-2 h-5 w-5" />Call {formatPhoneDisplay(cur.phone10)}</a>
+                        <a href={href} {...contactLinkProps(href)} onClick={dialTapHandler(cur.item_id)} data-testid="work-mode-call-link"><Phone className="mr-2 h-5 w-5" />Call {formatPhoneDisplay(cur.phone10)}</a>
                       </Button>
                     ) : (
                       <p className="text-sm text-muted-foreground">{formatPhoneDisplay(cur.phone10)} · do not call</p>

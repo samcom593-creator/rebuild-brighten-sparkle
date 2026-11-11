@@ -2,7 +2,9 @@
 //
 // Fires once at 6pm America/Chicago every day (two pg_cron jobs cover CDT/CST;
 // this function gates on the Chicago-local hour so a double fire is a no-op).
-// Finds present licensed agents who have not logged progress or posted
+// Finds agents who can produce (public.v_numbers_reminder_audience: a live
+// My Leads pack, a deal in 60 days, or a licensed hire inside 21 days; never a
+// suspended login, PKG2 2026-11-12) who have not logged progress or posted
 // production and reminds each of them ONCE, on every channel that can reach
 // them:
 //   email    — Resend (existing path, unchanged)
@@ -28,7 +30,7 @@
 // Optional env: SLACK_BOT_TOKEN (or the installation's bot_token_secret_ref)
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
-import { sendEmail, isUnsubscribed } from "../_shared/email.ts";
+import { BRAND_REPLY_TO, sendEmail, isUnsubscribed } from "../_shared/email.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -112,16 +114,17 @@ Deno.serve(async (req) => {
       if (d.agent_id) loggedIds.add(d.agent_id);
     }
 
-    // ── 2. Active licensed agents (not deactivated/inactive) ────────────
-    const { data: agents, error: agentsErr } = await sb
-      .from("agents")
-      .select("id, user_id, display_name")
-      .eq("status", "active")
-      .eq("is_deactivated", false)
-      .eq("is_inactive", false)
-      .eq("license_status", "licensed")
-      .limit(500);
+    // ── 2. Agents who can produce today (PKG2, 2026-11-12) ──────────────
+    // public.v_numbers_reminder_audience (read through fn_numbers_reminder_audience) is the one definition of the
+    // audience: active licensed agents with a live
+    // My Leads pack, a deal in the last 60 days, or hired within 21 days, and NO open agent_access_suspensions row
+    // on any login of the person. It replaced "every active licensed agent": 64% of 1,214 reminders in 30 days went
+    // to agents who had never had a deal, and a suspended agent (Luiza) got 10 since 11-01. If the view cannot be
+    // read, nothing is sent (throw), never the old wide audience.
+    const { data: audience, error: agentsErr } = await sb.rpc("fn_numbers_reminder_audience");
     if (agentsErr) throw agentsErr;
+    const agents = ((audience ?? []) as Array<{ agent_id: string; user_id: string | null; display_name: string | null; reason: string }>)
+      .map((r) => ({ id: r.agent_id, user_id: r.user_id, display_name: r.display_name, reason: r.reason }));
 
     const userIds = (agents ?? []).map((a: { user_id: string | null }) => a.user_id).filter(Boolean) as string[];
     const { data: profiles } = await sb
@@ -184,6 +187,10 @@ Deno.serve(async (req) => {
         already_reminded: alreadyReminded.size,
         reminded: recipients.length,
         excluded: excludedIds.size,
+        audience_by_reason: agents.reduce((acc: Record<string, number>, a) => {
+          acc[a.reason] = (acc[a.reason] ?? 0) + 1;
+          return acc;
+        }, {}),
         slack_token_present: Boolean(slackToken),
         channel_availability: {
           email: recipients.filter((r) => Boolean(r.email)).length,
@@ -218,6 +225,8 @@ Deno.serve(async (req) => {
             subject,
             html: html.replace("{{first_name}}", first),
             text: messageBody,
+            // the only inbox that exists; the apex-financial.org senders return 550
+            reply_to: BRAND_REPLY_TO,
             unsubscribe_token: r.agent_id,
             tagName: "numbers-reminder",
           });

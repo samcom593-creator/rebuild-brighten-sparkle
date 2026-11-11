@@ -354,7 +354,7 @@ function buildOnboardingCallEmail(name: string, bookingUrl: string): { subject: 
   const text = [
     `Hey ${fn},`,
     ``,
-    `You're licensed and you're in. Next step is your 30-minute onboarding call with Aisha and me.`,
+    `You're licensed and you're in. Next step is your 30-minute onboarding call.`,
     ``,
     `Pick a time here: ${bookingUrl}`,
     ``,
@@ -368,7 +368,7 @@ function buildOnboardingCallEmail(name: string, bookingUrl: string): { subject: 
 <!doctype html>
 <html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111;line-height:1.55;">
   <p>Hey ${fn},</p>
-  <p>You're licensed and you're in. Next step is your <strong>30-minute onboarding call</strong> with Aisha and me.</p>
+  <p>You're licensed and you're in. Next step is your <strong>30-minute onboarding call</strong>.</p>
   <p><a href="${url}" style="display:inline-block;padding:12px 20px;background:#0a0a0a;color:#EDB81D;text-decoration:none;border-radius:6px;font-weight:600;">Book your onboarding call</a></p>
   <p>Come with your NPN and your contracting login. We set up your systems, walk your first-week plan, and get you into the 10:00 AM Central huddle.</p>
   <p style="margin-top:24px;">— Sam<br/>Galaxy Financial</p>

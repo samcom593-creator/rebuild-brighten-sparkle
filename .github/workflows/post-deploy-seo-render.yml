@@ -73,9 +73,28 @@ jobs:
         if: steps.promote.outputs.matched == 'true'
         run: npm ci --no-audit --no-fund
 
+      # Browser binary FIRST, from Playwright's own CDN — no apt, so it is immune
+      # to the apt-mirror DNS outage that took BOTH post-deploy browser guards
+      # (this + post-deploy-mobile) dark 2026-11-11 14:03→16:35: `--with-deps`
+      # apt-get'd CJK/Thai fonts these checks never render (fonts-ipafont-gothic,
+      # fonts-tlwg-loma, fonts-unifont) and died on `security.ubuntu.com`
+      # unreachable with exit 100 — reddening the deploy about GitHub's infra, not
+      # the site, while the render checks never even ran. The system libs chromium
+      # needs to launch are PRE-INSTALLED on ubuntu-latest; refresh them
+      # best-effort with retries so a flaky apt mirror can never red a deploy. The
+      # verdict lives at the render check below: if a lib is truly missing,
+      # chromium fails to launch there and the check reds loudly — not here.
       - name: Install Playwright Chromium
         if: steps.promote.outputs.matched == 'true'
-        run: npx playwright install --with-deps chromium
+        run: |
+          npx playwright install chromium
+          deps_ok=""
+          for i in 1 2 3; do
+            if npx playwright install-deps chromium; then deps_ok=1; break; fi
+            echo "::warning::playwright install-deps attempt $i failed (apt/DNS); retrying"
+            sleep $((i * 10))
+          done
+          [ -n "$deps_ok" ] || echo "::warning::apt system deps not refreshed (GitHub mirror outage); relying on runner's pre-installed Playwright libs — the render check is the judge."
 
       # Prove the funnel external-CTA detector still classifies alive/dead/
       # unresolved correctly BEFORE trusting its live verdict below. It launches

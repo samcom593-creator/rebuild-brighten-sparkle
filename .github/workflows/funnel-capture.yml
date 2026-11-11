@@ -1,0 +1,40 @@
+# Does the recruit-capture POST handler RUN? (MP-WIB-FUNNEL-CAPTURE-HANDLER)
+#
+# Every recruit lead flows through submit-application. check-edge-boot already
+# probes its MODULE load (OPTIONS), but OPTIONS is answered by the CORS branch
+# before any handler logic — a function that boots fine but whose POST handler
+# throws before validation passes edge-boot GREEN while every real submission
+# 500s. This guard sends an empty-body POST (side-effect-safe: `{}` fails the
+# full schema and returns the validator's 400 before any write) and proves the
+# handler actually executed.
+#
+# Deliberately a SCHEDULE, not a commit gate. It grades PRODUCTION, so wiring the
+# LIVE probe into verify:core would block every commit on a condition only a
+# deploy can clear — the permanently-red guard this repo keeps paying for. The
+# pure classifier IS gated every commit via check:funnel-capture-handler-selftest
+# in verify:core; only the over-the-wire probe is scheduled.
+#
+# Needs no secrets: the publishable anon key is public and fetched from the
+# deployed bundle at runtime (keyless fallback still works for verify_jwt=false).
+name: funnel-capture
+
+on:
+  schedule:
+    - cron: "37 13 * * *" # daily ~06:37 Phoenix, 20min after edge-boot; GH schedules drift (p90 ~40min, MP-304)
+  workflow_dispatch:
+  push:
+    paths:
+      - "scripts/check-funnel-capture-handler.mjs"
+      - ".github/workflows/funnel-capture.yml"
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      # No continue-on-error: a failed step here must read as failed (MP-342 era
+      # deploy pipeline reported success for 8 days on exactly that flag).
+      - run: npm run check:funnel-capture-handler

@@ -1,0 +1,89 @@
+name: Post-deploy SEO render
+
+# Fires after Vercel ships. Loads two /careers/<state> recruiting pages in a real
+# browser and fails if the Google-for-Jobs payload — per-route <title>, self
+# <link rel=canonical>, and the JobPosting JSON-LD with its 5 Google-required
+# fields — did not render once the JS ran.
+#
+# WHY A RENDER CHECK AND NOT A FETCH CHECK. The 10 /careers/* pages exist to claim
+# the free Google-for-Jobs SERP slot for "life insurance agent jobs in <state>",
+# the highest-intent recruiting query. Their entire SEO payload is injected
+# CLIENT-SIDE (useEffect + <JsonLd> on mount); the served HTML is the identical
+# SPA shell as the homepage — same bytes, same title, zero JobPosting. Every
+# other gate is blind to it: route-smoke (pure fetch, no JS), check-canonical-url
+# (static analysis + sitemap parity, not a live render), mobile-overflow (layout
+# width), lighthouse (perf score). A refactor that breaks the JsonLd mount or the
+# head-injection effect silently kills the rich result AND the per-route canonical
+# dedup, and nothing goes red.
+#
+# Same promotion gate as post-deploy-mobile.yml / post-deploy-smoke.yml: it waits
+# for THIS commit to be the live build before probing, so it never tests the
+# previous deploy. If prod never serves this commit it does not run and does not
+# go red (the deploy failed, or a newer commit promoted ahead and runs its own).
+#
+# Alerts on the GitHub run page like the sibling post-deploy workflows. It is
+# intentionally NOT a timer-fired paging daemon — a deterministic render asserted
+# on the exact shipped commit is the right tool; a live prober on a schedule is
+# the class with a long false-page history in this system.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: post-deploy-seo-render-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  seo-render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      # /version.json ({"id": VERCEL_GIT_COMMIT_SHA[0:8]}, written by vite.config.ts)
+      # says which build is live. Wait for THIS commit before probing so we never
+      # measure the previous deploy. Verbatim from post-deploy-mobile.yml.
+      - name: Wait for production to serve this commit
+        id: promote
+        run: |
+          SHORT="$(echo "${{ github.sha }}" | cut -c1-8)"
+          DEADLINE=$(( SECONDS + 600 ))
+          SERVED=""
+          echo "waiting for apex-financial.org to serve ${SHORT}"
+          while [ "$SECONDS" -lt "$DEADLINE" ]; do
+            SERVED="$(curl -fsS "https://apex-financial.org/version.json?ci=${GITHUB_RUN_ID}&t=${SECONDS}" \
+                      | sed -n 's/.*"id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' || true)"
+            if [ "$SERVED" = "$SHORT" ]; then
+              echo "matched=true" >> "$GITHUB_OUTPUT"
+              echo "::notice::SEO render is testing build ${SERVED} (= ${{ github.sha }}), live after ${SECONDS}s."
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "matched=false" >> "$GITHUB_OUTPUT"
+          echo "::warning::SEO render did NOT run: production never served ${SHORT} within 600s (last seen '${SERVED:-unreadable}'). Either the deploy did not promote, or a newer commit promoted ahead of this run. This is not a statement about the pages."
+
+      - name: Install deps
+        if: steps.promote.outputs.matched == 'true'
+        run: npm ci --no-audit --no-fund
+
+      - name: Install Playwright Chromium
+        if: steps.promote.outputs.matched == 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Run careers JobPosting render check
+        if: steps.promote.outputs.matched == 'true'
+        run: node scripts/careers-jobposting-render.mjs
+        env:
+          BASE: https://apex-financial.org
+
+      - name: Post failure summary
+        if: failure()
+        run: |
+          echo "::warning::Post-deploy SEO render FAILED on ${{ github.sha }} — a /careers/* page did not render its Google-for-Jobs payload (per-route title / self-canonical / JobPosting JSON-LD). The Vercel deploy is live; the recruiting rich result regressed. See the route output above."

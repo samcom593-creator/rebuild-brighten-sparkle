@@ -104,6 +104,7 @@
     "audit:links": "node scripts/link-audit.mjs",
     "lighthouse:prod": "node scripts/lighthouse-prod.mjs",
     "mobile:overflow": "BASE=https://apex-financial.org node scripts/mobile-overflow.mjs",
+    "seo:render": "BASE=https://apex-financial.org node scripts/careers-jobposting-render.mjs",
     "test": "node scripts/test-verdict.mjs",
     "test:raw": "vitest run",
     "test:verdict": "node scripts/test-verdict.mjs",

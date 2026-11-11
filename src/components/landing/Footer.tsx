@@ -23,8 +23,8 @@ export const Footer = forwardRef<HTMLElement>((_, ref) => {
               production, and agency growth.
             </p>
             <div className="flex flex-col gap-2 text-sm text-[#94a3b8]">
-              <a href="mailto:info@apex-financial.org" className="flex min-h-6 items-center gap-2 hover:text-[#e8bb2b] transition-colors">
-                <Mail className="h-4 w-4" /> info@apex-financial.org
+              <a href="mailto:info@kingofsales.net" className="flex min-h-6 items-center gap-2 hover:text-[#e8bb2b] transition-colors">
+                <Mail className="h-4 w-4" /> info@kingofsales.net
               </a>
               <a href="tel:+14697676068" className="flex min-h-6 items-center gap-2 hover:text-[#e8bb2b] transition-colors">
                 <Phone className="h-4 w-4" /> (469) 767-6068

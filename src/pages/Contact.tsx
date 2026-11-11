@@ -42,10 +42,10 @@ export default function Contact() {
               For documents, support requests, and anything that needs a written follow-up.
             </p>
             <a
-              href="mailto:info@apex-financial.org"
+              href="mailto:info@kingofsales.net"
               className="mt-5 inline-flex w-full items-center justify-center rounded-md border border-slate-200 dark:border-border bg-slate-50 dark:bg-muted px-4 py-2.5 text-sm font-medium text-white transition hover:border-teal-400 hover:text-teal-300"
             >
-              info@apex-financial.org
+              info@kingofsales.net
             </a>
           </GlassCard>
 

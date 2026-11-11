@@ -91,6 +91,12 @@ const ALLOW = [
   /#APEXFinancial\w*/gi,
   /#ApexFinancial\w*/gi,
   /Apex\/XCEL\w*/g,
+  // The registered LEGAL entity in the CAN-SPAM postal address (_shared/email.ts
+  // COMPANY_POSTAL_ADDRESS, "Galaxy Financial, a brand of Apex Financial Empire LLC,
+  // 30 North Gould Street..."). Mail to the registered agent is accepted for the
+  // LLC's legal name, so it must appear verbatim; the brand around it stays Galaxy.
+  // Exact string only: "Apex Financial" anywhere else still fails.
+  /Apex Financial Empire LLC/g,
 ];
 
 function scan(src) {

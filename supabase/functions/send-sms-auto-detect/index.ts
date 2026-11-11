@@ -11,7 +11,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
 import { nanpRefusalReason, nanpTenDigits } from "../_shared/nanp-phone.ts";
-import { BRAND_FROM } from "../_shared/email.ts";
+import { BRAND_FROM, BRAND_REPLY_TO } from "../_shared/email.ts";
 import { consentDecision, SKIPPED_NO_CONSENT } from "./consent.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -385,6 +385,8 @@ const handler = async (req: Request): Promise<Response> => {
       try {
         const { error: sendError } = await resend.emails.send({
           from: BRAND_FROM,
+          // A STOP reply to sam@apex-financial.org bounces (550); replies go to the live inbox.
+          reply_to: BRAND_REPLY_TO,
           to: [smsEmail],
           subject: "",
           text: message.substring(0, 160),
@@ -489,6 +491,8 @@ const handler = async (req: Request): Promise<Response> => {
       try {
         await resend.emails.send({
           from: BRAND_FROM,
+          // A STOP reply to sam@apex-financial.org bounces (550); replies go to the live inbox.
+          reply_to: BRAND_REPLY_TO,
           to: [ADMIN_EMAIL],
           subject: `[SMS Copy] To: ${phone}`,
           html: `

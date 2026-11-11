@@ -28,7 +28,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { looseSupabase } from "@/lib/looseSupabase";
 import { toast } from "sonner";
-import { SCHEDULING_LINKS, TEAM_COMMUNITY_LINKS } from "@/lib/apexConfig";
+import { SCHEDULING_LINKS, TEAM_COMMUNITY_LINKS, ONBOARDING_CONTACT } from "@/lib/apexConfig";
 import { TRAINING_ROUTES } from "@/lib/trainingRoutes";
 import { cn } from "@/lib/utils";
 import { useRealtimeTable } from "@/shared/realtime/useRealtimeTable";
@@ -203,10 +203,10 @@ function buildCompleteLaunchSteps(
       key: "call",
       label: "Book your onboarding call",
       detail: callBooked
-        ? "Your onboarding call with Milver is on the calendar."
+        ? "Your onboarding call is on the calendar."
         : "Book the 30-minute fast-track call so contracting, training, and launch ownership are clear.",
       status: callBooked ? "complete" : licensed ? "available" : "locked",
-      action_label: callBooked || !licensed ? null : "Book with Milver",
+      action_label: callBooked || !licensed ? null : "Book your onboarding call",
       action_url: callBooked || !licensed ? null : SCHEDULING_LINKS.onboarding,
     },
     {
@@ -249,12 +249,12 @@ function buildCompleteLaunchSteps(
     },
     {
       key: "carriers",
-      label: "Carrier appointments with Milver",
+      label: "Carrier appointments",
       detail: carriersReady
         ? "Carrier contracting is recorded and your producer setup is active."
-        : "Milver coordinates carrier-specific forms, signatures, EFT, and appointment requirements after your OneLink intake.",
+        : "We coordinate carrier-specific forms, signatures, EFT, and appointment requirements after your OneLink intake.",
       status: carriersReady ? "complete" : licensed ? "available" : "locked",
-      action_label: carriersReady || !licensed ? null : "Book with Milver",
+      action_label: carriersReady || !licensed ? null : "Book your onboarding call",
       action_url: carriersReady || !licensed ? null : SCHEDULING_LINKS.onboarding,
     },
     {
@@ -418,7 +418,7 @@ export function AgentOnboardingStepper({ agentId }: { agentId: string }) {
                 <RefreshCw className="mr-1.5 h-4 w-4" /> Retry
               </Button>
               <Button asChild size="sm" variant="outline">
-                <a href="mailto:milver.taca@gmail.com">Email Milver</a>
+                <a href={`mailto:${ONBOARDING_CONTACT.email}`}>Email onboarding</a>
               </Button>
             </div>
           </div>

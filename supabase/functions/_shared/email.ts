@@ -57,6 +57,12 @@ export const BRAND_FROM = "Sam at Galaxy Financial <sam@apex-financial.org>";
 // an address on apex-financial.org (every mailbox there returns 550) can never
 // become the Reply-To; info@kingofsales.net is the only inbox that exists.
 export const BRAND_REPLY_TO = resolveReplyTo(Deno.env.get("EMAIL_REPLY_TO"));
+// CAN-SPAM needs a valid postal address in commercial email. The LLC's registered
+// address (already public as its Stripe support address); one value, also stored in
+// system_settings.company_postal_address for the DB-rendered templates.
+export const COMPANY_POSTAL_ADDRESS =
+  Deno.env.get("COMPANY_POSTAL_ADDRESS") ??
+  "Galaxy Financial, a brand of Apex Financial Empire LLC, 30 North Gould Street, Sheridan, WY 82801";
 
 const DEFAULT_FROM     = Deno.env.get("EMAIL_FROM")     ?? BRAND_FROM;
 const DEFAULT_REPLY_TO = BRAND_REPLY_TO;
@@ -85,7 +91,7 @@ export function ensureUnsubscribeFooter(html: string, unsubscribeUrl: string): s
   return html + `
 <div style="margin-top:32px;padding-top:16px;border-top:1px solid #e5e7eb;color:#6b7280;font-size:12px;line-height:1.5;font-family:Arial,sans-serif">
   <p>You received this because you're part of the Galaxy Financial network.</p>
-  <p><a href="${unsubscribeUrl}" style="color:#6b7280;text-decoration:underline">Unsubscribe</a> · Galaxy Financial · Dallas, TX</p>
+  <p><a href="${unsubscribeUrl}" style="color:#6b7280;text-decoration:underline">Unsubscribe</a> · ${COMPANY_POSTAL_ADDRESS}</p>
 </div>`;
 }
 

@@ -44,7 +44,7 @@ describe("agent onboarding roadmap", () => {
       "Upload license and identity documents",
       "Secure and upload E&O coverage",
       "Prepare EFT documentation",
-      "Carrier appointments with Milver",
+      "Carrier appointments",
       "Complete every onboarding module",
       "Get ReadyMode field-ready",
       "Post your first deal",
@@ -60,9 +60,10 @@ describe("agent onboarding roadmap", () => {
     expect(agentLogin).toContain('|| "/agent-portal"');
   });
 
-  it("makes Slack and Milver the first post-hire contacts", () => {
+  it("makes Slack and the onboarding call the first post-hire contacts, with no staff name", () => {
     expect(welcome).toContain("Join the Galaxy Slack");
-    expect(welcome).toContain("Milver Taca is your Contracting &amp; Onboarding Manager");
+    expect(welcome).toContain("Book Your Onboarding Call");
+    expect(welcome).not.toContain("Milver");
     expect(welcome).toContain("apex-onboarding-call");
     expect(welcome).not.toContain("Join Our Team Discord");
   });

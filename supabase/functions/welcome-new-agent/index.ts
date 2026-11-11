@@ -150,9 +150,9 @@ const handler = async (req: Request): Promise<Response> => {
 
       ${isLicensed ? `
       <div class="step" style="border-left-color:#D4AF37;">
-        <h3 style="color:#D4AF37;"><span class="step-number" style="background:#D4AF37;color:#111;">2</span> Book With Milver</h3>
-        <p>Milver Taca is your Contracting &amp; Onboarding Manager. Book the 30-minute call so your first-week plan and carrier setup are clear.</p>
-        <a href="${ONBOARDING_CALL_LINK}" class="button" style="background:#D4AF37;color:#111 !important;">Book My Milver Call →</a>
+        <h3 style="color:#D4AF37;"><span class="step-number" style="background:#D4AF37;color:#111;">2</span> Book Your Onboarding Call</h3>
+        <p>Book the 30-minute onboarding call so your first-week plan and carrier setup are clear.</p>
+        <a href="${ONBOARDING_CALL_LINK}" class="button" style="background:#D4AF37;color:#111 !important;">Book My Onboarding Call →</a>
       </div>
       <div class="step">
         <h3><span class="step-number">3</span> Set Up Your Galaxy Account</h3>

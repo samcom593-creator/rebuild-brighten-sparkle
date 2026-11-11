@@ -118,7 +118,7 @@ export default function Disclosures() {
                 For questions about these disclosures or our business practices, please contact us:
               </p>
               <div className="text-muted-foreground">
-                <p>Email: info@apex-financial.org</p>
+                <p>Email: info@kingofsales.net</p>
                 <p>Phone: (469) 767-6068</p>
               </div>
             </GlassCard>

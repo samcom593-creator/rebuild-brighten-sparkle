@@ -118,7 +118,7 @@ export const SCHEDULING_LINKS = {
   unlicensed: "https://calendly.com/apexfinancialempire/licensing-call",
   /** Applied + licensed: the licensed-prospect call with Sam (Sam's 2026-11-10 choice; N2 may change it). */
   licensed: "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone",
-  /** Canonical post-hire contracting/onboarding call. Milver receives every booking. */
+  /** Canonical post-hire contracting/onboarding call (invite recipients: system_settings.onboarding_call_invite_recipients). */
   onboarding: "https://calendly.com/apexfinancialempire/apex-onboarding-call",
   /**
    * "Not ready to buy? Ask us first" — a 10-minute questions call any unlicensed applicant can
@@ -176,10 +176,15 @@ export const LICENSING_COST = {
   askFirst: "Questions about cost before you buy? Ask us first.",
 } as const;
 
+/**
+ * Who a new hire contacts about onboarding. Name-free on purpose (2026-11-11): the
+ * named manager went inactive in September and every surface kept naming her; the
+ * inbox is the one live mailbox (the apex-financial.org addresses return 550).
+ */
 export const ONBOARDING_CONTACT = {
-  name: "Milver Taca",
-  role: "Contracting & Onboarding Manager",
-  email: "milver.taca@gmail.com",
+  name: "our onboarding team",
+  role: "Onboarding",
+  email: "info@kingofsales.net",
 } as const;
 
 export const TEAM_COMMUNITY_LINKS = {

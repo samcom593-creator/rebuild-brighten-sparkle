@@ -193,7 +193,7 @@ const handler = async (req: Request): Promise<Response> => {
                 Since you're already licensed, follow this roadmap in order. Slack is the primary team hub for community and contracting support.
               </p>
               ${buildStepCard("1", "Join the Galaxy Slack", "Join the primary team workspace for daily huddles, support, training, scripts, and sales wins.", SLACK_LINK, "Join Team Slack →", "#D4AF37", "212, 175, 55")}
-              ${buildStepCard("2", "Book Your Onboarding Call", "Meet with Milver, your Contracting &amp; Onboarding Manager, to lock in your first-week plan.", SCHEDULING_LINKS.licensed, "Book My Call →", "#667eea", "102, 126, 234")}
+              ${buildStepCard("2", "Book Your Onboarding Call", "Book your 30-minute onboarding call to lock in your first-week plan.", SCHEDULING_LINKS.licensed, "Book My Call →", "#667eea", "102, 126, 234")}
               ${buildStepCard("3", "Set Up Your Galaxy Account", "Open the portal, sign in with your email, confirm your profile, and use the live roadmap as your source of truth.", PORTAL_LINK, "Open My Account &amp; Roadmap →", "#14b8a6", "20, 184, 166")}
               ${buildStepCard("4", "Complete Your Contracting Profile", `Add your NPN number, first name, last name, email address, and resident state. Our team uses this to coordinate the carrier portal steps and track Combine, AFLAC, GTO, and Ethos on your profile. ${NOT_CONTRACTED_YET}`, CONTRACTING_LINK, "Complete contracting profile →", "#f59e0b", "245, 158, 11")}
               ${buildStepCard("5", "Finish Online Training", "Complete onboarding, scripts, objections, ReadyMode, pipeline, deal-posting, and underwriting training before launch.", TRAINING_LINK, "Start Training →", "#4CAF50", "76, 175, 80")}

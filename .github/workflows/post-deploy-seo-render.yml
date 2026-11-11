@@ -83,7 +83,19 @@ jobs:
         env:
           BASE: https://apex-financial.org
 
+      # Every sitemap URL (minus /careers/*, covered above) must render PUBLIC to an
+      # anonymous crawler: no client redirect to /login, no login wall rendered in
+      # place, self-canonical. Catches the highest-$ SEO leak route-smoke is blind
+      # to — a funnel path (/apply, /vsl, ...) silently becoming a login wall after
+      # the JS runs, which would deindex the recruiting funnel. /hall-of-fame proves
+      # the shape is live today (200 shell -> client redirect to /login).
+      - name: Run sitemap public-render check
+        if: steps.promote.outputs.matched == 'true'
+        run: node scripts/check-sitemap-public-render.mjs
+        env:
+          BASE: https://apex-financial.org
+
       - name: Post failure summary
         if: failure()
         run: |
-          echo "::warning::Post-deploy SEO render FAILED on ${{ github.sha }} — a /careers/* page did not render its Google-for-Jobs payload (per-route title / self-canonical / JobPosting JSON-LD). The Vercel deploy is live; the recruiting rich result regressed. See the route output above."
+          echo "::warning::Post-deploy SEO render FAILED on ${{ github.sha }} — a /careers/* page did not render its Google-for-Jobs payload (per-route title / self-canonical / JobPosting JSON-LD), OR a sitemap URL did not render public to an anonymous crawler (login wall / redirect / wrong canonical). The Vercel deploy is live; a recruiting rich result or funnel URL regressed. See the route output above."

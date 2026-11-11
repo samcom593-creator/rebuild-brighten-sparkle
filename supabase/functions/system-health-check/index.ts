@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
-import { stalledFollowUpMessage } from "./followup-message.ts";
+import { RECRUIT_REPLY_TO } from "../_shared/reply-to.ts";
 import { restartMarker, slotVerdict } from "../_shared/cron-schedule.ts";
 
 const corsHeaders = {
@@ -92,149 +92,16 @@ serve(async (req) => {
     results.push({ service: "SMS Gateway", status: "degraded", responseTime: 0, message: String(err) });
   }
 
-  // ─── CHECK 4: Stalled applicants (self-healing) ───
-  try {
-    const threeDaysAgo = new Date(Date.now() - 3 * 86400000).toISOString();
-    const { data: stalledApplicants } = await supabase
-      .from("applications")
-      .select("id, first_name, last_name, email, phone, created_at, license_progress")
-      .is("terminated_at", null)
-      .is("contracted_at", null)
-      .lt("created_at", threeDaysAgo)
-      // 2026-10-28: the audience follows the Call list's truth rules
-      // (src/lib/recruitingQueues.ts). Someone a recruiter already reached (a recorded
-      // outcome, or last_contacted_at) is not "stalled" and must not get an automated
-      // "still interested?"; nobody under do-not-contact or without email consent is
-      // emailed; only live, non-duplicate applications count. The send is now stamped
-      // on last_automated_email_at (migration 20260421000000, unwritten until today),
-      // so this block's own mark no longer reads as a human contact. contacted_at is
-      // kept ONLY as the legacy dedupe this block wrote before today, so nobody already
-      // emailed is emailed again; a backfill into last_automated_email_at retires it.
-      .eq("record_type", "application")
-      .or("is_duplicate.is.null,is_duplicate.eq.false")
-      .is("last_contact_outcome_at", null)
-      .is("last_contacted_at", null)
-      .is("do_not_contact_at", null)
-      .or("email_consent_given.is.null,email_consent_given.eq.true")
-      .is("last_automated_email_at", null)
-      .is("contacted_at", null)
-      // An address the provider has permanently refused can never succeed, and
-      // this block runs every 15 minutes. One @example.com test row absorbed
-      // 663 send attempts in 7 days and made 91% of the email failure log
-      // unreadable. Permanent failures are excluded here and stamped below.
-      .is("email_bad_at", null);
-
-    if (stalledApplicants && stalledApplicants.length > 0) {
-      // MP-269: this block previously re-sent to the SAME applicants every 15 min forever
-      // because it never recorded that it had contacted them. 24,806 duplicate sends to
-      // 40 people in July alone, which exhausted the Resend monthly quota and silently
-      // killed every new-application notification. Send once, stamp, verify. The stamp
-      // moved from contacted_at to last_automated_email_at on 2026-10-28 (see the query).
-      let stampedCount = 0;
-      const sendErrors: string[] = [];
-
-      // PL-WIB-UNSUB-SUPPRESSION (2026-10-11). This follow-up never read
-      // email_unsubscribes. The one applicant who clicked unsubscribe
-      // (2026-05-05) got 195 "Still interested" emails after it, 188 of them
-      // 06-11..06-13, and stopped only because MP-269 stamped contacted_at on
-      // 06-18: an accident, not a suppression. Filter BEFORE the slice so
-      // opt-outs can never occupy the 10 slots and starve real applicants. If
-      // the list cannot be read, hold every follow-up this tick (the outer catch
-      // reports degraded; the stamp stays null so it retries in 15 min).
-      // Opt-outs are never stamped: a stamp means an email went out.
-      const { data: unsubRows, error: unsubError } = await supabase
-        .from("email_unsubscribes")
-        .select("email");
-      if (unsubError) throw new Error(`email_unsubscribes unreadable, follow-ups held: ${unsubError.message}`);
-      const unsubscribed = new Set(
-        (unsubRows ?? []).map((r: { email: string }) => String(r.email).trim().toLowerCase()),
-      );
-      const sendable = stalledApplicants.filter(
-        (a) => !unsubscribed.has(String(a.email ?? "").trim().toLowerCase()),
-      );
-      const suppressedCount = stalledApplicants.length - sendable.length;
-
-      for (const app of sendable.slice(0, 10)) {
-        try {
-          const res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-notification`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
-            body: JSON.stringify({
-              email: app.email,
-              title: "Still interested in Galaxy Financial?",
-              message: stalledFollowUpMessage(app.first_name),
-            })
-          });
-
-          // A non-2xx is a failure. Do not stamp, so it retries next tick instead of
-          // silently dropping the applicant.
-          if (!res.ok) {
-            // MP-269 made a non-2xx retry next tick rather than silently drop
-            // the applicant. That is right for a TRANSIENT failure and wrong
-            // for a PERMANENT one: Resend will never accept an invalid
-            // recipient, so the retry cannot ever succeed and simply repeats
-            // every 15 minutes forever. Read the provider's reason and make a
-            // permanent refusal terminal.
-            let providerReason = "";
-            try {
-              const body = await res.json();
-              providerReason = String(body?.channelErrors?.email ?? body?.error ?? "");
-            } catch {
-              // empty-catch-allow:non-json-error-body; treated as transient below
-              providerReason = "";
-            }
-
-            const permanent = /invalid .*\bto\b|invalid recipient|does not exist|hard bounce|suppress|example\.com/i
-              .test(providerReason);
-
-            if (permanent) {
-              await supabase
-                .from("applications")
-                .update({
-                  email_bad_at: new Date().toISOString(),
-                  email_bad_reason: providerReason.slice(0, 300),
-                })
-                .eq("id", app.id);
-              sendErrors.push(`${app.email}: permanently undeliverable, will not retry — ${providerReason.slice(0, 120)}`);
-              continue;
-            }
-
-            sendErrors.push(`${app.email}: HTTP ${res.status}${providerReason ? ` — ${providerReason.slice(0, 120)}` : ""}`);
-            continue;
-          }
-
-          const { error: stampError } = await supabase
-            .from("applications")
-            .update({ last_automated_email_at: new Date().toISOString() })
-            .eq("id", app.id);
-
-          // If the stamp fails the loop would repeat, so surface it rather than swallow it.
-          if (stampError) {
-            sendErrors.push(`${app.email}: sent but last_automated_email_at not stamped — ${stampError.message}`);
-            continue;
-          }
-
-          stampedCount++;
-        } catch (err) {
-          sendErrors.push(`${app.email}: ${String(err)}`);
-        }
-      }
-
-      if (stampedCount > 0) autoFixed.push(`Sent first follow-up to ${stampedCount} stalled applicants`);
-      const detail = sendErrors.length > 0 ? ` — ${sendErrors.length} failed: ${sendErrors.slice(0, 3).join("; ")}` : "";
-      results.push({
-        service: "Applicant Pipeline",
-        status: sendErrors.length > 0 ? "degraded" : (stampedCount > 0 ? "degraded" : "healthy"),
-        responseTime: 0,
-        message: `${stalledApplicants.length} applicants stalled 3+ days — ${stampedCount} contacted this run${suppressedCount > 0 ? `, ${suppressedCount} unsubscribed (not emailed)` : ""}${detail}`,
-        autoFixed: stampedCount > 0,
-      });
-    } else {
-      results.push({ service: "Applicant Pipeline", status: "healthy", responseTime: 0, message: "All applicants being worked" });
-    }
-  } catch (err) {
-    results.push({ service: "Applicant Pipeline", status: "degraded", responseTime: 0, message: String(err) });
-  }
+  // ─── CHECK 4: retired (MP-ONBOARD-ANCHOR-PKG1, 2026-11-12) ───
+  // This block used to email "Still interested in Galaxy Financial?" through
+  // send-notification to any applicant 3+ days old with no logged contact, every
+  // 15 minutes: no license check, no booking check, no quiet hours (sent at 01:05,
+  // 05:35 and 23:50 Phoenix), no link, and a Reply-To that bounced. 28 sends in 30
+  // days, 0 clicks; 3 of the last 7 went to licensed people asked whether they were
+  // "still interested in getting licensed". The next-step ladder is the one applicant
+  // sequence now (stage cadence + quiet hours + suppression gate), and people the
+  // ladder has finished with sit in the owner queue (v_recruit_sla_queue). This
+  // function sends nothing to applicants.
 
   // ─── CHECK 5: Agent production logging ───
   try {
@@ -478,6 +345,8 @@ serve(async (req) => {
         await resend.emails.send({
           from: "Galaxy System <alerts@apex-financial.org>",
           to: "info@kingofsales.net",
+          // MP-ONBOARD-ANCHOR-PKG1: alerts@ has no mailbox (550); a reply lands in the live inbox.
+          reply_to: RECRUIT_REPLY_TO,
           subject: `🚨 ${criticalIssues.length} Critical System Issue${criticalIssues.length > 1 ? "s" : ""} Detected`,
           html: `
             <div style="font-family:sans-serif;max-width:560px;background:#030712;color:white;padding:32px;border-radius:12px">
@@ -504,7 +373,9 @@ serve(async (req) => {
           carrier: "auto"
         })
       });
-    } catch {}
+    } catch (smsErr) {
+      console.error("Failed to send alert SMS:", smsErr);
+    }
   }
 
   return new Response(JSON.stringify({

@@ -1,27 +1,27 @@
-// next-step-dispatch ladder: which rungs run for one reminder, and what counts
-// as the end of the ladder. Pure (no env, no SDK), so it is tested directly by
-// ladder.test.ts and index.ts runs exactly this control flow.
+// next-step-dispatch ladder: which rungs run for one reminder, and what counts as a
+// delivery. Pure (no env, no SDK), so it is tested directly by ladder.test.ts and index.ts
+// runs exactly this control flow.
 //
-// WP4 (2026-11-10 onboarding audit). A carrier email-to-text "SMS" used to end
-// the ladder: send-sms-auto-detect answered outcome "sent", sendSms returned
-// "gateway:<carrier>", the caller set delivered = true and the email rung never
-// ran. "Sent" there only means Resend accepted a mail addressed to a carrier
-// gateway. Resend over 30 days: 190 gateway mails, 18 delivered, 142 bounced,
-// 30 suppressed. Over 90 days 488 of 726 reminders (193 people) went out as
-// gateway SMS only, with no email. Rule now:
-//   - a provider message SID ("twilio:<sid>") is a delivery and ends the ladder;
-//   - a "gateway:" receipt is best effort: it is recorded, and the email rung
-//     still runs for the same reminder;
-//   - a Telegram enqueue ends the ladder as before (7 linked chats, real users).
-// The result says what the email rung did, so the parent row can record it and
-// apex-doctor #45 can tell "email rung never ran" (a regression) from "no email
-// on file" or "email failed".
+// WP4 (2026-11-10 onboarding audit). A carrier email-to-text "SMS" used to end the ladder:
+// send-sms-auto-detect answered outcome "sent", sendSms returned "gateway:<carrier>", the
+// caller set delivered = true and the email rung never ran. Over 90 days 488 of 726
+// reminders (193 people) went out as gateway SMS only, with no email.
+//
+// MP-ONBOARD-ANCHOR-PKG1 (2026-11-12), message_map F1/F2. A Telegram enqueue still ended the
+// ladder and stamped the parent "sent": 11 of 15 ladder Telegram messages then failed
+// (template_missing) and nobody got the reminder. A queue insert is not a delivery. Rule now:
+//   - ONLY a provider receipt is a delivery: a Resend message id from the email rung, or a
+//     Twilio message SID ("twilio:<sid>");
+//   - a Telegram enqueue and a "gateway:" SMS are best effort: recorded, never terminal,
+//     and the email rung always runs after them (and after any rung that failed or skipped);
+//   - the result says what the email rung did and keeps its raw error, so index.ts can tell
+//     a transient provider error (retry) from a permanent one (fail) without parsing strings.
 
 export type EmailRung = "sent" | "failed" | "no_email" | "skipped_terminal";
 
 export interface LadderChannels {
-  /** null when the person has no linked Telegram chat (or opted out) */
-  telegram: (() => Promise<void>) | null;
+  /** null when the person has no linked Telegram chat (or opted out). Resolves when queued. */
+  telegram: (() => Promise<unknown>) | null;
   /** null when no usable phone. Resolves to a receipt, throws when nothing was sent. */
   sms: (() => Promise<string>) | null;
   /** null when no email on file. Resolves to the provider message id. */
@@ -29,15 +29,21 @@ export interface LadderChannels {
 }
 
 export interface LadderResult {
-  /** the rung that ended the ladder with a real delivery, or null */
-  terminal: "telegram" | "sms" | "email" | null;
+  /** the rung that produced a VERIFIED delivery (provider receipt), or null */
+  terminal: "sms" | "email" | null;
   smsReceipt: string | null;
   /** a gateway SMS was accepted; not proof of delivery */
   smsBestEffort: boolean;
+  /** a Telegram message was queued; not proof of delivery */
+  telegramQueued: boolean;
   emailId: string | null;
   emailRung: EmailRung;
-  /** anything at all went out (terminal or best-effort SMS) */
+  /** the email rung's own error, unparsed (index.ts classifies transient vs permanent) */
+  emailError: unknown;
+  /** a verified receipt exists */
   anySent: boolean;
+  /** something went out on a best-effort channel, but nothing verifiable */
+  bestEffortOnly: boolean;
   errors: string[];
 }
 
@@ -48,20 +54,20 @@ export function isTerminalSmsReceipt(receipt: string | null | undefined): boolea
 
 export async function runLadder(ch: LadderChannels): Promise<LadderResult> {
   const r: LadderResult = {
-    terminal: null, smsReceipt: null, smsBestEffort: false, emailId: null,
-    emailRung: "no_email", anySent: false, errors: [],
+    terminal: null, smsReceipt: null, smsBestEffort: false, telegramQueued: false, emailId: null,
+    emailRung: "no_email", emailError: null, anySent: false, bestEffortOnly: false, errors: [],
   };
 
   if (ch.telegram) {
     try {
       await ch.telegram();
-      r.terminal = "telegram";
+      r.telegramQueued = true;
     } catch (e) {
       r.errors.push(`telegram: ${(e as Error)?.message ?? e}`);
     }
   }
 
-  if (!r.terminal && ch.sms) {
+  if (ch.sms) {
     try {
       const receipt = await ch.sms();
       r.smsReceipt = receipt;
@@ -81,10 +87,12 @@ export async function runLadder(ch: LadderChannels): Promise<LadderResult> {
       r.terminal = "email";
     } catch (e) {
       r.emailRung = "failed";
+      r.emailError = e;
       r.errors.push(`email: ${(e as Error)?.message ?? e}`);
     }
   }
 
-  r.anySent = r.terminal !== null || r.smsBestEffort;
+  r.anySent = r.terminal !== null;
+  r.bestEffortOnly = !r.anySent && (r.telegramQueued || r.smsBestEffort);
   return r;
 }

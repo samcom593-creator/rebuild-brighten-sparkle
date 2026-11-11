@@ -8,6 +8,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
+import { RECRUIT_REPLY_TO } from "../_shared/reply-to.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { logFunctionError, writeAudit } from "../_shared/audit.ts";
 import { checkRateLimit, RateLimitError } from "../_shared/rateLimit.ts";
@@ -238,6 +239,7 @@ const handler = async (req: Request): Promise<Response> => {
             await resend.emails.send({
                from: "Galaxy Financial <notifications@apex-financial.org>",
               to: [smsEmail],
+              reply_to: RECRUIT_REPLY_TO,
               subject: "",
               text: `${title}: ${message}`.substring(0, 160),
             });
@@ -300,6 +302,9 @@ const handler = async (req: Request): Promise<Response> => {
           from: "Galaxy Financial <notifications@apex-financial.org>",
           to: [recipientEmail],
           cc: [ADMIN_EMAIL],
+          // MP-ONBOARD-ANCHOR-PKG1: notifications@apex-financial.org has no mailbox (550 at
+          // Google's MX), and several bodies sent through here say "reply to this email".
+          reply_to: RECRUIT_REPLY_TO,
           subject: title || "Galaxy Financial Notification",
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

@@ -67,11 +67,22 @@ describe("licensed and unlicensed onboarding email policy", () => {
       "supabase/functions/send-unlicensed-process-update/index.ts",
       "supabase/functions/send-daily-checkin-prompt/index.ts",
       "supabase/functions/send-bulk-unlicensed-outreach/index.ts",
-      "supabase/functions/submit-application/index.ts",
     ]) {
       const source = read(file);
       expect(source, file).not.toMatch(/whatsapp/i);
       expect(source, file).toMatch(/slack/i);
+    }
+    // MP-ONBOARD-ANCHOR-PKG1 (2026-11-12): the day-0 welcome carries ONE next step, so the
+    // Slack line moved to the status page with everything else. Its code must still never
+    // name a retired channel (comments keep history, so they are stripped first).
+    const code = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    for (const file of [
+      "supabase/functions/submit-application/index.ts",
+      "supabase/functions/submit-application/welcome.ts",
+    ]) {
+      const source = code(read(file));
+      expect(source, file).not.toMatch(/whatsapp/i);
+      expect(source, file).not.toMatch(/discord/i);
     }
   });
 

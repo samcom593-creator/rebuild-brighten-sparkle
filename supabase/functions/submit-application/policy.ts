@@ -42,6 +42,15 @@ export function licensedNpnIssue(licenseStatus: string, niprNumber: string | nul
   return "Your NPN (National Producer Number) is 5 to 10 digits and is required to confirm your license";
 }
 
+/**
+ * MP-ONBOARD-ANCHOR-PKG1 (2026-11-12): a person who applies again this many days or more
+ * after their latest application gets a NEW live record (it enters the ladder and the SLA
+ * queue; the old row is superseded). A repeat inside the window stays on the existing row.
+ * The database half of the rule lives in applications_flag_duplicates (migration
+ * 20261112000150) and must use the same number.
+ */
+export const REAPPLY_LIVE_AFTER_DAYS = 30;
+
 /** The welcome SMS goes only to an applicant who opted in to SMS on the form. */
 export function shouldSendWelcomeSms(
   phone: string | null | undefined,

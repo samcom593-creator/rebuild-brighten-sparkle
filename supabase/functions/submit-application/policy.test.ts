@@ -1,5 +1,18 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { emailTypoSuggestion, licensedNpnIssue, shouldSendWelcomeSms } from "./policy.ts";
+import { emailTypoSuggestion, licensedNpnIssue, REAPPLY_LIVE_AFTER_DAYS, shouldSendWelcomeSms } from "./policy.ts";
+
+Deno.test("re-application window: index.ts and the migration use the same 30 days", async () => {
+  assertEquals(REAPPLY_LIVE_AFTER_DAYS, 30);
+  const src = await Deno.readTextFile(new URL("./index.ts", import.meta.url));
+  // the full-form short-circuit reads the shared constant, not a literal
+  assertEquals(src.includes("REAPPLY_LIVE_AFTER_DAYS * 24 * 3600 * 1000"), true);
+  // the repeat-submit path no longer marks the person's only live row as a duplicate
+  assertEquals(/is_duplicate:\s*true/.test(src), false);
+  const mig = await Deno.readTextFile(
+    new URL("../../migrations/20261112000150_pkg1_reapplication_live_record.sql", import.meta.url),
+  );
+  assertEquals(mig.includes("interval '30 days'"), true);
+});
 
 Deno.test("typo map: the measured dead domains are refused with a suggestion", () => {
   assertEquals(emailTypoSuggestion("Jo@Gmail.fom"), "jo@gmail.com");

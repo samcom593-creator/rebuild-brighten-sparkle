@@ -3,9 +3,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
-import { SCHEDULING_LINKS, buildBookingUrl, statusPageUrl } from "../_shared/scheduling-links.ts";
-import { LICENSING_COST } from "../_shared/licensing-cost.ts";
-import { emailTypoSuggestion, licensedNpnIssue, shouldSendWelcomeSms } from "./policy.ts";
+import { BRAND_FROM, RECRUIT_REPLY_TO } from "../_shared/email.ts";
+import { emailTypoSuggestion, licensedNpnIssue, REAPPLY_LIVE_AFTER_DAYS, shouldSendWelcomeSms } from "./policy.ts";
+import { buildApplicantWelcome } from "./welcome.ts";
 import { emailPattern } from "../_shared/like-escape.ts";
 
 const corsHeaders = {
@@ -17,9 +17,11 @@ const corsHeaders = {
 const supabaseUrl = Deno.env.get("SUPABASE_URL");
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const resendApiKey = Deno.env.get("RESEND_API_KEY");
-// WP2: the Slack invite is read from system_settings.slack_community_invite_url (one
-// source, rotatable without a deploy). The day-0 email carries at most a "questions + daily
-// meeting link" Slack line; course receipts go to /status/<id>, never into Slack.
+// MP-ONBOARD-ANCHOR-PKG1 (2026-11-12): the day-0 email is built by ./welcome.ts and
+// carries one next step. The Slack line, the course link, the receipt upload, the daily
+// check-in and the Google doc moved off it: they all live on /status/<id>, which the
+// email links. Course receipts still go to /status/<id>, never into Slack.
+// Reply-To is the one inbox that exists; staff copies are BCC, never CC.
 
 if (!supabaseUrl || !serviceRoleKey) {
   throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
@@ -341,18 +343,26 @@ interface ManagerInfo {
   name: string;
   phone?: string;
   instagramHandle?: string;
+  /**
+   * MP-ONBOARD-ANCHOR-PKG1: the manager's login has an open agent_access_suspensions row
+   * (or the lookup failed). A suspended person receives nothing from this function: no BCC
+   * of the welcome, no manager notification. The admin email still names them.
+   */
+  suspended: boolean;
 }
 
-// WP2: the Slack invite lives in system_settings so it can be rotated without a deploy.
-// null (no Slack line in the email) when the key is absent or unreadable.
-async function getSlackInviteUrl(): Promise<string | null> {
+// MP-ONBOARD-ANCHOR-PKG1: true when the address belongs to a login with an open
+// agent_access_suspensions row. null = could not look (the caller decides; see use sites).
+async function emailIsSuspended(email: string): Promise<boolean | null> {
   try {
-    const { data, error } = await supabaseAdmin
-      .from("system_settings").select("value").eq("key", "slack_community_invite_url").maybeSingle();
-    if (error) return null;
-    const v = String((data as { value?: string } | null)?.value ?? "").trim().replace(/^"|"$/g, "");
-    return /^https:\/\/join\.slack\.com\//.test(v) ? v : null;
-  } catch {
+    const { data, error } = await supabaseAdmin.rpc("fn_email_is_suspended", { p_email: email });
+    if (error) {
+      console.error("[suspension] lookup failed:", error.message);
+      return null;
+    }
+    return data === true;
+  } catch (e) {
+    console.error("[suspension] lookup threw:", e);
     return null;
   }
 }
@@ -382,12 +392,24 @@ async function getManagerInfo(agentId: string): Promise<ManagerInfo | null> {
       console.log("Could not find profile:", profileError);
       return null;
     }
-    
+
+    // An unreadable suspension table counts as suspended: a staff copy is not worth
+    // mailing a banned login.
+    const { data: openSuspension, error: suspensionError } = await supabaseAdmin
+      .from("agent_access_suspensions")
+      .select("user_id")
+      .eq("user_id", agent.user_id)
+      .is("lifted_at", null)
+      .limit(1);
+    if (suspensionError) console.error("[suspension] manager lookup failed:", suspensionError.message);
+    const suspended = !!suspensionError || (openSuspension ?? []).length > 0;
+
     return {
       email: profile.email,
       name: profile.full_name || profile.email.split("@")[0],
       phone: profile.phone || undefined,
       instagramHandle: profile.instagram_handle || undefined,
+      suspended,
     };
   } catch (err) {
     console.error("Error getting manager info:", err);
@@ -436,6 +458,8 @@ async function sendManagerNotification(
     await resend.emails.send({
        from: "Galaxy Financial <notifications@apex-financial.org>",
       to: [manager.email],
+      // MP-ONBOARD-ANCHOR-PKG1: notifications@ has no mailbox (550); replies land here.
+      reply_to: RECRUIT_REPLY_TO,
       // 2026-07-29 Sam: same rule as the admin email — a manager must see licensed vs
       // unlicensed BEFORE anything else, because it decides whether they call now or
       // enroll. Status leads the subject so it survives phone truncation.
@@ -786,316 +810,56 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
       console.error("[email-log] admin write failed:", logErr);
     }
 
-    // Determine content based on license status
-    const isLicensed = sanitized.licenseStatus === 'licensed';
-    
-    // Licensed applicants get call scheduling, unlicensed get licensing resources
-    // WP2: one scheduling source (_shared/scheduling-links.ts), prefilled + utm_content so the
-    // booking lands on this application.
-    const licensedCalendlyUrl = buildBookingUrl(SCHEDULING_LINKS.licensed, {
+    // MP-ONBOARD-ANCHOR-PKG1 (2026-11-12): the day-0 welcome. One primary button, at most
+    // one secondary line, no income claims, no promised manager call (0 of 29 applicants in
+    // 30 days got one). Built by ./welcome.ts, which welcome.test.ts holds to those rules.
+    const welcome = buildApplicantWelcome({
       applicationId,
       firstName: data.firstName,
       lastName: data.lastName,
       email: data.email,
+      licenseStatus: data.licenseStatus,
     });
-    const statusUrl = statusPageUrl(applicationId);
-    // 2026-11-11: the questions call is bookable BEFORE the course purchase (the licensing
-    // call stays behind the receipt). Same prefill + utm_content as the licensed link.
-    const questionsCallUrl = SCHEDULING_LINKS.questions
-      ? buildBookingUrl(SCHEDULING_LINKS.questions, {
-          applicationId,
-          firstName: data.firstName,
-          lastName: data.lastName,
-          email: data.email,
-        })
-      : null;
-    const slackInviteUrl = await getSlackInviteUrl();
-    // 2026-09-07: was youtu.be/YmlLSIwfGdE, an unlisted clip literally titled
-    // "VSL   Test" that the landing page had already dropped as a placeholder.
-    // /vsl is the real 5:46 self-hosted video with a poster.
-    const testimonialsVideoUrl = 'https://apex-financial.org/vsl';
-    const unlicensedVideoUrl = 'https://apex-financial.org/get-licensed#licensing-video';
-    const licensingDocUrl = 'https://docs.google.com/document/d/1WBN_bh7Tl6IkhdXwQvrUa6Q58xmV9As_q048aKAeyNg/edit?usp=sharing';
-    const preLicensingCourseUrl = 'https://partners.xcelsolutions.com/afe';
 
-    // Build recruiter contact section if there's a referring manager
-    const recruiterContactSection = managerInfo ? `
-      <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 20px; border-radius: 8px; margin: 20px 0;">
-        <h3 style="color: #1e40af; margin-top: 0; margin-bottom: 15px; font-size: 16px;">👤 Your Recruiter</h3>
-        <table style="width: 100%; border-collapse: collapse;">
-          <tr>
-            <td style="padding: 6px 0; color: #3b82f6; width: 80px;">Name:</td>
-            <td style="padding: 6px 0; font-weight: bold; color: #1e3a8a;">${sanitizeHtml(managerInfo.name)}</td>
-          </tr>
-          <tr>
-            <td style="padding: 6px 0; color: #3b82f6;">Email:</td>
-            <td style="padding: 6px 0;"><a href="mailto:${managerInfo.email}" style="color: #2563eb; font-weight: 500;">${sanitizeHtml(managerInfo.email)}</a></td>
-          </tr>
-          ${managerInfo.phone ? `
-          <tr>
-            <td style="padding: 6px 0; color: #3b82f6;">Phone:</td>
-            <td style="padding: 6px 0;"><a href="tel:${managerInfo.phone}" style="color: #2563eb; font-weight: 500;">${sanitizeHtml(managerInfo.phone)}</a></td>
-          </tr>
-          ` : ''}
-          ${managerInfo.instagramHandle ? `
-          <tr>
-            <td style="padding: 6px 0; color: #3b82f6;">Instagram:</td>
-            <td style="padding: 6px 0;"><a href="https://instagram.com/${managerInfo.instagramHandle}" style="color: #2563eb; font-weight: 500;">@${sanitizeHtml(managerInfo.instagramHandle)}</a></td>
-          </tr>
-          ` : ''}
-        </table>
-        <p style="color: #1e40af; font-size: 13px; margin-top: 12px; margin-bottom: 0;">
-          Feel free to reach out with any questions about the opportunity!
-        </p>
-      </div>
-    ` : '';
-
-    // Build email HTML based on license status
-    const emailHtml = isLicensed 
-      ? `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background: linear-gradient(135deg, #059669, #047857); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-            <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to Galaxy Financial!</h1>
-          </div>
-          
-          <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
-            <h2 style="color: #111827; margin-top: 0;">Hi ${sanitized.firstName},</h2>
-            
-            <p style="color: #4b5563; line-height: 1.6;">
-              You just made a move that most people only talk about.
-            </p>
-            <p style="color: #4b5563; line-height: 1.6;">
-              You're licensed. You have the hardest part done. Now it's time to actually use it to build something real.
-            </p>
-
-            <div style="background: #d1fae5; border-left: 4px solid #059669; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
-              <p style="margin: 0; color: #047857; font-weight: 500;">
-                Here's exactly what happens next:<br/>
-                1. A manager will call you within 24 hours to walk you through getting contracted<br/>
-                2. You'll receive your Galaxy portal login via a separate email<br/>
-                3. Once contracted, you'll have access to scripts, leads, and the full training system
-              </p>
-            </div>
-
-            ${recruiterContactSection}
-
-            <h3 style="color: #111827; margin-bottom: 15px;">Why Producers Build With Galaxy</h3>
-            <p style="color: #4b5563; line-height: 1.6; margin-bottom: 20px;">
-              Six minutes on how the agency works, what you get, and what your first 30 days look like:
-            </p>
-
-            <div style="text-align: center; margin-bottom: 30px;">
-              <a href="${testimonialsVideoUrl}"
-                 style="display: inline-block; background: #111827; color: white;
-                        padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;
-                        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);">
-                ▶ Watch the video
-              </a>
-            </div>
-
-            <h3 style="color: #111827; margin-bottom: 15px;">Schedule Your Call</h3>
-            <p style="color: #4b5563; line-height: 1.6; margin-bottom: 20px;">
-              Ready to get started? Book your 1-on-1 onboarding call with our team:
-            </p>
-            
-            <div style="text-align: center; margin-bottom: 30px;">
-              <a href="${licensedCalendlyUrl}" 
-                 style="display: inline-block; background: linear-gradient(135deg, #059669, #047857); color: white; 
-                        padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;
-                        box-shadow: 0 4px 14px rgba(5, 150, 105, 0.4);">
-                📅 Schedule Your Call
-              </a>
-            </div>
-
-            <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-top: 20px;">
-              <h3 style="color: #111827; margin-top: 0; margin-bottom: 15px;">What Happens Next?</h3>
-              <ol style="color: #4b5563; line-height: 1.8; margin: 0; padding-left: 20px;">
-                <li>Watch the agent testimonials above</li>
-                <li>Schedule your onboarding call</li>
-                <li>Complete the contracting process</li>
-                <li>Start training and earning immediately!</li>
-              </ol>
-            </div>
-
-            <p style="color: #4b5563; line-height: 1.6; margin-top: 25px;">
-              If you have any questions, don't hesitate to reach out. We're here to help you succeed!
-            </p>
-
-            <p style="color: #4b5563; margin-top: 30px;">
-              We don't do hand-holding here. We do results. And agents on this team are averaging $23,000 per month in production.
-            </p>
-            <p style="color: #4b5563; line-height: 1.6;">
-              You applied. Now show up.
-            </p>
-            <p style="color: #4b5563; margin-top: 25px;">
-              — Sam<br/>
-              <strong style="color: #059669;">Managing Partner, Galaxy Financial</strong>
-            </p>
-          </div>
-
-          <div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">
-            <p style="margin: 0;">Galaxy Financial | apex-financial.org</p>
-          </div>
-        </div>
-      `
-      : `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background: linear-gradient(135deg, #059669, #047857); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-            <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to Galaxy Financial!</h1>
-          </div>
-          
-          <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
-            <h2 style="color: #111827; margin-top: 0;">Hi ${sanitized.firstName},</h2>
-            
-            <p style="color: #4b5563; line-height: 1.6;">
-              You took the first step. Most people never do.
-            </p>
-            <p style="color: #4b5563; line-height: 1.6;">
-              You don't have your license yet — that's okay. Agents on this team went from exactly where you are right now to earning $5,000, $10,000, even $23,000 a month. The license is just a test. We'll help you pass it.
-            </p>
-
-            <div style="background: #d1fae5; border-left: 4px solid #059669; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
-              <p style="margin: 0; color: #047857; font-weight: 500;">
-                Your roadmap: 1. Watch the video → 2. Get the course → 3. Upload your receipt → 4. Book your licensing call
-              </p>
-            </div>
-
-            ${recruiterContactSection}
-
-            <h3 style="color: #111827; margin-bottom: 15px;">Step 1: Watch the 5-minute licensing video</h3>
-            <p style="color: #4b5563; line-height: 1.6; margin-bottom: 20px;">
-              It puts every step from course to exam to license in the right order.
-            </p>
-
-            <div style="text-align: center; margin-bottom: 30px;">
-              <a href="${unlicensedVideoUrl}"
-                 style="display: inline-block; background: linear-gradient(135deg, #059669, #047857); color: white;
-                        padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;
-                        box-shadow: 0 4px 14px rgba(5, 150, 105, 0.4);">
-                ▶ Watch the licensing video
-              </a>
-            </div>
-
-            <h3 style="color: #111827; margin-bottom: 15px;">Step 2: Get the pre-licensing course</h3>
-            <p style="color: #4b5563; line-height: 1.6; margin-bottom: 12px;">
-              Create your XCEL account with the legal name on your ID. It has to match your license application.
-            </p>
-            <p style="color: #4b5563; line-height: 1.6; margin-bottom: 20px;">
-              ${LICENSING_COST.short} ${LICENSING_COST.askFirst} Reply to this email${managerInfo ? " or reach your recruiter above" : ""}.
-            </p>
-            ${questionsCallUrl ? `<p style="color: #4b5563; line-height: 1.6; margin-bottom: 20px;">
-              Want to talk it through before you buy anything? <a href="${questionsCallUrl}" style="color: #2563eb; font-weight: 600;">Book a 10-minute questions call</a>.
-            </p>` : ""}
-
-            <div style="text-align: center; margin-bottom: 30px;">
-              <a href="${preLicensingCourseUrl}"
-                 style="display: inline-block; background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white;
-                        padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;
-                        box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);">
-                🎓 Get the pre-licensing course
-              </a>
-            </div>
-
-            <h3 style="color: #111827; margin-bottom: 15px;">Step 3: Upload your course receipt</h3>
-            <p style="color: #4b5563; line-height: 1.6; margin-bottom: 20px;">
-              A screenshot or the PDF receipt both work. Upload it on your status page, not in Slack or a group chat: receipts carry personal info.
-            </p>
-
-            <div style="text-align: center; margin-bottom: 30px;">
-              <a href="${statusUrl}"
-                 style="display: inline-block; background: #111827; color: white;
-                        padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;
-                        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);">
-                📤 Upload your course receipt
-              </a>
-            </div>
-
-            <h3 style="color: #111827; margin-bottom: 15px;">Step 4: Book your licensing call</h3>
-            <p style="color: #4b5563; line-height: 1.6; margin-bottom: 20px;">
-              The licensing call unlocks on your status page the moment your receipt is in. Save the link above: it is also where you tell us when you book your exam, when you pass, and your NPN once your license posts.
-            </p>
-
-            <p style="color: #6b7280; font-size: 13px; line-height: 1.6;">
-              Want the full breakdown first? <a href="${licensingDocUrl}" style="color: #2563eb;">View the licensing steps</a>.
-            </p>
-
-            <p style="color: #4b5563; line-height: 1.6; margin-top: 25px;">
-              You'll hear from a manager within 48 hours.
-            </p>
-
-            ${slackInviteUrl ? `
-            <div style="background: #f3e8ff; border: 1px solid #d8b4fe; padding: 20px; border-radius: 8px; margin: 25px 0; text-align: center;">
-              <h3 style="color: #4A154B; margin-top: 0; margin-bottom: 10px; font-size: 16px;">Questions? Join the Galaxy Slack</h3>
-              <p style="color: #6b216f; font-size: 13px; margin-bottom: 15px;">Open #unlicensed for questions and the daily meeting link.</p>
-              <a href="${slackInviteUrl}"
-                 style="display: inline-block; background: #4A154B; color: white;
-                        padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;">
-                Join Team Slack
-              </a>
-            </div>
-            ` : ''}
-
-            <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
-              <h3 style="color: #1e40af; margin-top: 0; margin-bottom: 10px; font-size: 16px;">📋 Daily Check-In</h3>
-              <p style="color: #2563eb; font-size: 13px; margin-bottom: 15px;">Submit your daily licensing progress check-in here:</p>
-              <a href="https://apex-financial.org/daily-checkin" 
-                 style="display: inline-block; background: #2563eb; color: white; 
-                        padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;
-                        box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);">
-                Submit Daily Check-In
-              </a>
-            </div>
-
-            <p style="color: #4b5563; margin-top: 25px;">
-              — Sam<br/>
-              <strong style="color: #059669;">Managing Partner, Galaxy Financial</strong>
-            </p>
-          </div>
-
-          <div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">
-            <p style="margin: 0;">Save this email - it contains your important next steps!</p>
-            <p style="margin-top: 10px;">&copy; ${new Date().getFullYear()} Galaxy Financial. All rights reserved.</p>
-          </div>
-        </div>
-      `;
-
-    // Build CC list - always CC admin, and CC referring manager if present
-    const ccList = ['info@kingofsales.net'];
-    if (managerInfo?.email && managerInfo.email !== 'info@kingofsales.net') {
-      ccList.push(managerInfo.email);
+    // Staff copies go BCC, never CC: a CC put the admin inbox (and the referring manager's
+    // address) in front of the recruit. A suspended manager gets no copy at all.
+    const bccList = ["info@kingofsales.net"];
+    if (managerInfo?.email && !managerInfo.suspended && managerInfo.email.toLowerCase() !== "info@kingofsales.net") {
+      bccList.push(managerInfo.email);
     }
 
-    // Send confirmation email to applicant with conditional links
-    const applicantEmailResponse = await resend.emails.send({
-      from: "Galaxy Financial <notifications@apex-financial.org>",
-      to: [data.email],
-      cc: ccList,
-      subject: sanitized.licenseStatus === 'licensed'
-        ? `Welcome to Galaxy Financial, ${sanitized.firstName} — Licensed Agent Fast Track`
-        : sanitized.licenseStatus === 'pending'
-        ? `Welcome to Galaxy, ${sanitized.firstName} — You're Almost Ready to Earn`
-        : `Welcome to Galaxy, ${sanitized.firstName} — Let's Get You Licensed`,
-      html: emailHtml,
-    });
-    console.log("Applicant confirmation sent:", JSON.stringify(applicantEmailResponse));
-    // Log applicant welcome email outcome — this is the email Sam reported
-    // missing. With this row in place we can SELECT FROM email_delivery_log
-    // WHERE template = 'submit-application-applicant' to confirm whether
-    // it actually went out per application.
+    // Nobody with an open agent_access_suspensions row receives this. A failed lookup
+    // sends anyway: check_banned_prospect already refused banned prospects above, and the
+    // day-0 email is the one message every real applicant must get.
+    const applicantSuspended = await emailIsSuspended(data.email);
+
+    let applicantEmailResponse: { data?: { id?: string } | null; error?: { message?: string } | null } = {};
+    if (applicantSuspended === true) {
+      applicantEmailResponse = { data: null, error: { message: "skipped: recipient login is suspended" } };
+    } else {
+      applicantEmailResponse = await resend.emails.send({
+        from: BRAND_FROM,
+        to: [data.email],
+        bcc: bccList,
+        reply_to: RECRUIT_REPLY_TO,
+        subject: welcome.subject,
+        html: welcome.html,
+        text: welcome.text,
+      }) as typeof applicantEmailResponse;
+    }
+    console.log("Applicant confirmation:", JSON.stringify({ id: applicantEmailResponse?.data?.id ?? null, error: applicantEmailResponse?.error?.message ?? null, variant: welcome.variant }));
+    // Log applicant welcome email outcome. The receipt views (v_recruit_message_delivery,
+    // v_recruit_sequence_health) key on template = 'submit-application-applicant', so the
+    // template name stays; the subject is the new one.
     try {
-      const respErr = (applicantEmailResponse as { error?: { message?: string } })?.error;
+      const respErr = applicantEmailResponse?.error;
       await supabaseAdmin.from("email_delivery_log").insert({
         template: "submit-application-applicant",
         recipient_email: data.email,
-        subject:
-          sanitized.licenseStatus === "licensed"
-            ? `Welcome to Galaxy Financial, ${sanitized.firstName} — Licensed Agent Fast Track`
-            : sanitized.licenseStatus === "pending"
-              ? `Welcome to Galaxy, ${sanitized.firstName} — You're Almost Ready to Earn`
-              : `Welcome to Galaxy, ${sanitized.firstName} — Let's Get You Licensed`,
+        subject: welcome.subject,
         provider: "resend",
-        provider_message_id: (applicantEmailResponse as { data?: { id?: string } })?.data?.id ?? null,
-        status: respErr ? "error" : "sent",
+        provider_message_id: applicantEmailResponse?.data?.id ?? null,
+        status: applicantSuspended === true ? "skipped" : respErr ? "error" : "sent",
         error: respErr?.message ?? null,
         related_record_id: applicationId,
         related_record_type: "application",
@@ -1105,8 +869,8 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
       console.error("[email-log] applicant write failed:", logErr);
     }
 
-    // Send notification to referring manager if selected
-    if (data.selectedReferralAgentId && managerInfo) {
+    // Send notification to referring manager if selected (never to a suspended login).
+    if (data.selectedReferralAgentId && managerInfo && !managerInfo.suspended) {
       await sendManagerNotification(data, managerInfo, applicationId);
     }
 
@@ -1193,7 +957,8 @@ function dispatchFullSubmissionSideEffects(data: SubmitApplicationRequest, appli
           },
           body: JSON.stringify({
             phone: data.phone,
-            message: `Welcome to Galaxy Financial, ${data.firstName}! 🚀 Your application has been received. Check your email for next steps!`.substring(0, 160),
+            // MP-ONBOARD-ANCHOR-PKG1: plain copy, no emoji, no exclamation.
+            message: `Galaxy Financial: ${data.firstName}, your application is in. Your next step is in your email.`.substring(0, 160),
             applicationId,
           }),
         });
@@ -1264,11 +1029,14 @@ async function handleQuickQualify(data: QuickQualifyRequest, clientIP: string): 
   // recruiting trigger (Discord/Slack/manager/seminar/follow-up) never fired.
   // Measured blast radius: 380 stale "new" + 54 reviewing + 15 no_pickup +
   // 11 rejected + 8 disqualified rows could each swallow a re-applicant.
-  // Dead, closed, or >90-day matches now fall through to the normal INSERT
+  // Dead, closed, or older matches now fall through to the normal INSERT
   // below; trg_applications_flag_duplicates still links email re-applies via
   // duplicate_of, so lineage is kept. Live recent matches keep the
   // first-write-wins attribution protection.
-  const staleFloor = new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString();
+  // MP-ONBOARD-ANCHOR-PKG1: "recent" is REAPPLY_LIVE_AFTER_DAYS (30), the same window
+  // as the full form, so a re-application 30+ days later becomes the live record on
+  // both paths (the database keeps the earlier recruiter credit while that agent is active).
+  const staleFloor = new Date(Date.now() - REAPPLY_LIVE_AFTER_DAYS * 24 * 3600 * 1000).toISOString();
   const { data: existingApp } = await supabaseAdmin
     .from("applications")
     .select("id, status, recruiter_id, assigned_agent_id, referral_manager_id, referral_recruiter_id")
@@ -1616,9 +1384,16 @@ const handler = async (req: Request): Promise<Response> => {
       // 2026-09-06 test proved it: a submit on a phone shared with a 6-month-
       // old DISQUALIFIED row returned that stale id here with isDuplicate:true
       // and NO insert, so no recruiting trigger fired). Only a live, recent
-      // match may short-circuit; dead/closed/>90-day matches fall through to
+      // match may short-circuit; dead/closed/older matches fall through to
       // the INSERT and the email-dup trigger keeps duplicate_of lineage.
-      const fullFormStaleFloor = new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString();
+      //
+      // MP-ONBOARD-ANCHOR-PKG1 (2026-11-12): "recent" is 30 days, not 90. A person who
+      // applies again 30+ days after their last application is a re-application, and the
+      // new row becomes the live record (applications_flag_duplicates + the supersede
+      // trigger, migration 20261112000150): it enters the ladder and the SLA queue, the
+      // old row leaves both. Before this, 6 re-applications in Oct-Nov fell out of every
+      // queue (Havon, Brayden, Kirsten among them; 5 of 6 originals never human-touched).
+      const fullFormStaleFloor = new Date(Date.now() - REAPPLY_LIVE_AFTER_DAYS * 24 * 3600 * 1000).toISOString();
       const { data: matchedExistingApp } = await supabaseAdmin
         .from("applications")
         .select("id, created_at, license_progress, status")
@@ -1684,9 +1459,14 @@ const handler = async (req: Request): Promise<Response> => {
         existingFull?.referral_manager_id || existingFull?.recruiter_id
       );
 
+      // MP-ONBOARD-ANCHOR-PKG1: this used to set is_duplicate = true on the EXISTING row,
+      // which is the person's only live application. v_next_step_current, the SLA queue and
+      // the pager all skip is_duplicate rows, so a second submit removed the applicant from
+      // every queue (Pierre and Brayant 2026-09-28/29: is_duplicate with no duplicate_of,
+      // ladder row closed_lost). A repeat submit inside 30 days is the same application:
+      // it stays live, and the lead_activity row below records the repeat.
       const update: Record<string, unknown> = {
         updated_at: new Date().toISOString(),
-        is_duplicate: true,
       };
 
       let referrerAdopted = false;
@@ -1728,6 +1508,16 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       await supabaseAdmin.from("applications").update(update).eq("id", existingApp.id);
+
+      // The record of the repeat submit (it used to be the is_duplicate flag, see above).
+      const { error: repeatLogError } = await supabaseAdmin.from("lead_activity").insert({
+        lead_id: existingApp.id,
+        activity_type: "repeat_submission",
+        title: `Applied again within ${REAPPLY_LIVE_AFTER_DAYS} days; kept on the existing application.`,
+        actor_name: "submit-application",
+        actor_role: "system",
+      });
+      if (repeatLogError) console.error("[repeat-submission] log failed:", repeatLogError.message);
 
       if (referrerAdopted) {
         await supabaseAdmin.from("lead_activity").insert({

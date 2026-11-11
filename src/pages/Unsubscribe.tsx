@@ -66,6 +66,7 @@ export default function Unsubscribe() {
   }
 
   return (
+    <div className="min-h-screen bg-background text-foreground">
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-16 text-center">
       {!masked ? (
         <>
@@ -110,5 +111,6 @@ export default function Unsubscribe() {
         </>
       )}
     </main>
+    </div>
   );
 }

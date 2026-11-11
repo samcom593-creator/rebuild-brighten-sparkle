@@ -31,14 +31,20 @@ export function useOnboardingExceptionFacts(options: { enabled?: boolean; realti
       // WP5: the derived dialer flag (open seat or a dial in 14 days). Gated to admin + manager server-side; for anyone
       // else, or on a failed read, the rows keep agents.has_dialer_login as before.
       const ids = rows.map((r) => r.agent_id).filter(Boolean);
-      const states: Array<{ agent_id: string; dialer_active_derived: boolean | null }> = [];
+      // ANCHOR (2026-11-12): dialing_any_source counts My Leads dials; dialer_status drives the dialer-off wording.
+      const states: Array<{
+        agent_id: string;
+        dialer_active_derived: boolean | null;
+        dialing_any_source: boolean | null;
+        dialer_status: string | null;
+      }> = [];
       // The dialer enrichment is optional: a thrown or returned error keeps the base facts
       // (agents.has_dialer_login) rather than blanking every surface that reads this hook.
       try {
         for (let i = 0; i < ids.length; i += 100) {
           const part = await supabase
             .from(WP5_RELATION.dialerState as never)
-            .select("agent_id, dialer_active_derived")
+            .select("agent_id, dialer_active_derived, dialing_any_source, dialer_status")
             .in("agent_id", ids.slice(i, i + 100));
           if (part.error) return rows;
           states.push(...((part.data ?? []) as unknown as typeof states));

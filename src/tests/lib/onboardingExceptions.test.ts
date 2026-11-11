@@ -320,3 +320,44 @@ describe("WP5 derived dialer flag", () => {
     expect(merged[1].dialer_active_derived).toBeUndefined();
   });
 });
+
+describe("ANCHOR 2026-11-12: dialing from My Leads while the dialer is off", () => {
+  const notYetProducing = { first_deal_at: null, carrier_active_count: 0 } as const;
+  const off = "canceled_nonpayment";
+
+  it("a My Leads dial counts as dialing: dialing_any_source wins over the seat/ReadyMode flag", () => {
+    const [row] = mergeDialerState([facts({ ...notYetProducing, has_dialer_login: false })], [
+      { agent_id: facts().agent_id, dialer_active_derived: false, dialing_any_source: true, dialer_status: off },
+    ]);
+    expect(row.dialer_active_derived).toBe(true);
+    expect(row.dialer_status).toBe(off);
+    expect(keys(row)).not.toContain("dialer_missing");
+  });
+
+  it("with the dialer off, a hire who is not dialing gets a manager call to dial from My Leads, never a seat decision", () => {
+    const list = deriveExceptions(
+      facts({ ...notYetProducing, has_dialer_login: false, dialer_active_derived: false, dialer_status: off }),
+      NOW,
+    );
+    const e = list.find((x) => x.key === "dialer_missing");
+    expect(e?.label).toBe("No dials in 14 days");
+    expect(e?.nextAction).toContain("My Leads");
+    expect(e?.nextAction).not.toMatch(/seat/i);
+    expect(e?.owner).not.toBe("Admin (seats)");
+  });
+
+  it("with the dialer on (or its status not merged), the seat wording is unchanged", () => {
+    for (const status of [undefined, "live"]) {
+      const list = deriveExceptions(
+        facts({ ...notYetProducing, has_dialer_login: true, dialer_active_derived: false, dialer_status: status }),
+        NOW,
+      );
+      expect(list.find((x) => x.key === "dialer_missing")?.label).toBe("No dialer seat or dials in 14 days");
+    }
+  });
+
+  it("the facts hook reads dialing_any_source and dialer_status from the dialer-state view", () => {
+    const hook = source("src/components/onboarding/useOnboardingExceptionFacts.ts");
+    expect(hook).toMatch(/\.select\("agent_id, dialer_active_derived, dialing_any_source, dialer_status"\)/);
+  });
+});

@@ -108,8 +108,16 @@ export interface OnboardingFacts {
    * alias-resolved ReadyMode dial in the last 14 days. agents.has_dialer_login is never written (false for every
    * 2026 hire, including the ones dialing), so when the derived flag is present it is the truth; when a caller did
    * not merge it (undefined) the column is the fallback, exactly as before.
+   * ANCHOR (2026-11-12): mergeDialerState fills this from v_agent_dialer_state.dialing_any_source when present
+   * (seat, ReadyMode dial, OR a My Leads dial tap/outcome in 14 days), so a hire dialing from My Leads counts.
    */
   dialer_active_derived?: boolean | null;
+  /**
+   * ANCHOR (2026-11-12): system_settings.dialer_status as v_agent_dialer_state reports it ('canceled_nonpayment'
+   * since 2026-11-10). While the dialer is off there is no seat to decide on: dialing happens from My Leads, so the
+   * dialer_missing remedy is a manager call. Undefined when the caller did not merge it (the dialer-on wording stays).
+   */
+  dialer_status?: string | null;
   onboarding_call_event_id: string | null;
   onboarding_call_at: string | null;
   onboarding_call_outcome: string | null;
@@ -495,7 +503,23 @@ export function deriveExceptions(f: OnboardingFacts, now: Date = new Date()): On
   const dialerActive = f.dialer_active_derived ?? f.has_dialer_login;
   if (licensed && !producing && dialerActive !== true) {
     const derived = f.dialer_active_derived === false;
-    out.push(mk(f, "dialer_missing", {
+    // ANCHOR 2026-11-12: with the dialer account off (canceled for non-payment 2026-11-10) a seat decision cannot
+    // help. Ready licensed hires get a My Leads starter pack automatically, so the remedy is the manager's call that
+    // gets the first dials logged there, owned by the hire's manager instead of "Admin (seats)".
+    const dialerOff = /^(cancel|off|paused)/i.test(f.dialer_status ?? "");
+    if (dialerOff) {
+      out.push(mk(f, "dialer_missing", {
+        label: "No dials in 14 days",
+        why: "Every recent producer started by dialing. The dialer is off, so dialing happens from My Leads.",
+        ownerKind: "manager",
+        waitingSince: licensedSince,
+        waitingBasis: "since licensed",
+        nextAction:
+          "Call them and get their first dials logged in My Leads. Ready licensed hires get a 25-lead starter pack there automatically.",
+        resolution: { kind: "open_profile" },
+        blocking: false,
+      }));
+    } else out.push(mk(f, "dialer_missing", {
       label: derived ? "No dialer seat or dials in 14 days" : "No dialer login",
       why: "No dialer seat means no calls and no appointments.",
       ownerKind: "admin",
@@ -702,13 +726,27 @@ export function trackCounts(queue: RecruitExceptions[]): Record<Track, number> {
   return counts;
 }
 
-/** WP5: merge v_agent_dialer_state.dialer_active_derived onto exception facts by agent id. Rows with no derived
- *  state keep `undefined`, so deriveExceptions falls back to agents.has_dialer_login for them. */
+/** WP5: merge v_agent_dialer_state onto exception facts by agent id. Rows with no derived state keep `undefined`,
+ *  so deriveExceptions falls back to agents.has_dialer_login for them. ANCHOR (2026-11-12): dialing_any_source wins
+ *  when present (a My Leads dial counts as dialing), and dialer_status rides along for the dialer-off wording. */
 export function mergeDialerState(
   rows: OnboardingFacts[],
-  states: ReadonlyArray<{ agent_id: string; dialer_active_derived: boolean | null }>,
+  states: ReadonlyArray<{
+    agent_id: string;
+    dialer_active_derived: boolean | null;
+    dialing_any_source?: boolean | null;
+    dialer_status?: string | null;
+  }>,
 ): OnboardingFacts[] {
   if (!states.length) return rows;
-  const byId = new Map(states.map((s) => [s.agent_id, s.dialer_active_derived] as const));
-  return rows.map((r) => (byId.has(r.agent_id) ? { ...r, dialer_active_derived: byId.get(r.agent_id) ?? null } : r));
+  const byId = new Map(states.map((s) => [s.agent_id, s] as const));
+  return rows.map((r) => {
+    const s = byId.get(r.agent_id);
+    if (!s) return r;
+    return {
+      ...r,
+      dialer_active_derived: s.dialing_any_source ?? s.dialer_active_derived ?? null,
+      dialer_status: s.dialer_status ?? null,
+    };
+  });
 }

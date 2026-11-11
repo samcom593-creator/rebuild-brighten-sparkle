@@ -65,7 +65,10 @@ export default function MagicLogin() {
       }
 
       const dest = data.destination === "numbers" 
-        ? "apex-daily-numbers" 
+        // "numbers" used to land on /apex-daily-numbers, an ADMIN-ONLY route: every agent who
+        // tapped "log your numbers" in a login email was signed in and then refused. 224 of
+        // these links were minted Aug-Nov 2026 and 0 were ever used. /numbers is the agent page.
+        ? "numbers" 
         : data.destination === "course" 
           ? "onboarding-course" 
           : "agent-portal";
@@ -305,7 +308,7 @@ export default function MagicLogin() {
           {state === "success" && (
             <div className="text-center">
               <p className="text-sm text-muted-foreground">
-                Taking you to your {destination === "apex-daily-numbers" ? "Daily Numbers" : destination === "onboarding-course" ? "Training Course" : "Agent Portal"}...
+                Taking you to your {destination === "numbers" ? "Daily Numbers" : destination === "onboarding-course" ? "Training Course" : "Agent Portal"}...
               </p>
             </div>
           )}

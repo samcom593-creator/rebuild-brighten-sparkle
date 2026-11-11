@@ -53,3 +53,14 @@ describe("hire activation never strands a new agent (source contract)", () => {
     expect(sql).toContain("grant execute on function public.invite_resume_login(text, text) to anon");
   });
 });
+
+describe("the numbers link in login emails lands on a page agents can open", () => {
+  it("maps destination numbers to /numbers, never the admin-only /apex-daily-numbers", () => {
+    const page = read("src/pages/MagicLogin.tsx");
+    expect(page).toMatch(/data\.destination === "numbers"\s*\n[\s\S]{0,400}\? "numbers"/);
+    expect(page).not.toMatch(/\? "apex-daily-numbers"/);
+    const app = read("src/App.tsx");
+    expect(app).toContain('<Route path="/numbers" element={<Numbers />} />');
+    expect(app).toMatch(/path="\/apex-daily-numbers" element=\{<ProtectedRoute requireAdmin>/);
+  });
+});

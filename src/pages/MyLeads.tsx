@@ -373,6 +373,13 @@ export default function MyLeads() {
                     ) : (
                       <p className="text-sm text-muted-foreground">{formatPhoneDisplay(cur.phone10)} · do not call</p>
                     )}
+                    {typeof cur.attrs?.replaced_phone10 === "string" && cur.attrs.replaced_phone10 && (
+                      // MP-LEAD-PHONE-READYMODE: say which number was replaced so nobody
+                      // falls back to the one in the book that never picked up.
+                      <p className="text-xs text-muted-foreground" data-testid="replaced-number-note">
+                        This is the number ReadyMode reached them on. The book had {formatPhoneDisplay(cur.attrs.replaced_phone10)}, which never answered.
+                      </p>
+                    )}
                     {pack[0].bundle_note && <p className="text-sm italic text-amber-300/90">“{pack[0].bundle_note}”</p>}
                     <GlassCard className="p-4">
                       <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Client file</p>

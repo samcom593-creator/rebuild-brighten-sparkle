@@ -72,6 +72,9 @@ export const FLAG_BADGE: Record<string, { label: string; cls: string }> = {
   spouse: { label: "Spouse opp", cls: "bg-violet-500/15 border-violet-500/40 text-violet-300" },
   lapsed: { label: "Lapsed", cls: "bg-amber-500/15 border-amber-500/40 text-amber-300" },
   vantage: { label: "Vantage", cls: "bg-primary/15 border-primary/40 text-primary" },
+  // MP-LEAD-PHONE-READYMODE: the dial number was swapped to the one ReadyMode actually
+  // reached this client on (mat_lead_phone_fix / rewrite call link).
+  readymode_number: { label: "ReadyMode number", cls: "bg-emerald-500/15 border-emerald-500/40 text-emerald-300" },
 };
 
 export function flagBadges(flags: Record<string, unknown>, under9: boolean) {

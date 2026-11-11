@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-enum-catalog.sh (bot_sql -> pg_enum + pg_attribute.atttypid)",
- "_generated_at": "2026-11-10T21:25:39Z",
+ "_generated_at": "2026-11-11T00:10:34Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "A repo guard cannot query prod. This is a snapshot of every enum-typed column in the public schema and the exact member list Postgres will accept for it, so scripts/check-enum-filter-literals.mjs can decide whether a filter or write literal will survive PostgREST's coercion. Enum types are SCHEMA-QUALIFIED because this database has more than one type sharing a bare name. Views are included: a bad literal in a filter against a view column raises the same 22P02 as one against a table. apex-doctor Check #29 re-queries pg_enum weekly and goes red when this snapshot drifts from the live catalog.",
  "_ambiguous_bare_names": {
@@ -1302,6 +1302,22 @@
     "never_used"
    ],
    "constraint": "carrier_registry_relationship_check"
+  },
+  "channel_celebration_ledger.kind": {
+   "members": [
+    "first_deal",
+    "mtd_milestone",
+    "weekly_leaderboard"
+   ],
+   "constraint": "channel_celebration_ledger_kind_check"
+  },
+  "channel_celebration_ledger.state": {
+   "members": [
+    "baseline",
+    "enqueued",
+    "skipped"
+   ],
+   "constraint": "channel_celebration_ledger_state_check"
   },
   "client_pipeline_overrides.stage_override": {
    "members": [

@@ -4033,6 +4033,14 @@
         "raw": ""
       }
     ],
+    "fn_guard_slack_verified_source": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "fn_hierarchy_first_hops": [
       {
         "all": [

@@ -1,6 +1,7 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
   bookingBaseFor,
+  classifyProviderError,
   isRetryable,
   normalizeName,
   parseStageKey,
@@ -55,6 +56,36 @@ Deno.test("renderTemplate reports missing keys instead of rendering blanks, esca
   const text = renderTemplate("Hey {{first_name}},\n\nBook: {{booking_url}}", vars, "text");
   assertEquals(text.text, "Hey Ana <b>,\n\nBook: https://x.test/a?b=1&c=2");
   assertEquals(renderTemplate("{{nope}} hi", vars, "plain").missing, ["nope"]);
+});
+
+Deno.test("classifyProviderError stops a person only for a refusal about that person", () => {
+  // per person: never mail this address again
+  assertEquals(classifyProviderError({ name: "suppressed_recipient", message: "on Resend's suppression list" }).scope, "person");
+  assertEquals(classifyProviderError({ name: "non_routable_recipient", message: "domain cannot receive mail" }).scope, "person");
+  const badTo = classifyProviderError({
+    name: "validation_error",
+    message: "Invalid `to` field. The email address needs to follow the `email@example.com` format.",
+  });
+  assertEquals([badTo.scope, badTo.retryable], ["person", false]);
+  // the account: release untouched, open the breaker. A quota is never "retry in 15 minutes".
+  const quota = classifyProviderError({ name: "monthly_quota_exceeded", message: "You have reached your monthly quota" });
+  assertEquals([quota.scope, quota.retryable], ["account", false]);
+  const daily = classifyProviderError({ name: "daily_quota_exceeded", message: "Too many requests: daily quota" });
+  assertEquals([daily.scope, daily.retryable], ["account", false]);
+  const rate = classifyProviderError({ name: "rate_limit_exceeded", message: "Too many requests. 10 per second." });
+  assertEquals([rate.scope, rate.retryable], ["account", true]);
+  assertEquals(classifyProviderError({ name: "invalid_api_Key", message: "API key is invalid" }).scope, "account");
+  assertEquals(classifyProviderError({ name: "invalid_from_address", message: "Invalid `from` field" }).scope, "account");
+  // shares the validation_error name, but it is about the sending domain, not the recipient
+  const unverified = classifyProviderError({
+    name: "validation_error",
+    message: "You can only send testing emails to your own email address. To send to other recipients, verify a domain.",
+  });
+  assertEquals(unverified.scope, "account");
+  assertEquals(classifyProviderError({ name: "application_error", message: "Something went wrong" }).retryable, true);
+  // nothing trustworthy came back: maybe sent, so hold, never resend blind
+  assertEquals(classifyProviderError(null).scope, "unknown");
+  assertEquals(classifyProviderError({}).scope, "unknown");
 });
 
 Deno.test("isRetryable separates throttling from permanent refusals", () => {

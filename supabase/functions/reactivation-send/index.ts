@@ -27,7 +27,8 @@ import { safeEqual } from "../_shared/send-floor.ts";
 import { buildBookingUrl, SCHEDULING_LINKS, statusPageUrl } from "../_shared/scheduling-links.ts";
 import {
   bookingBaseFor,
-  isRetryable,
+  classifyProviderError,
+  type FailureScope,
   normalizeName,
   parseStageKey,
   renderTemplate,
@@ -117,7 +118,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   // applications.id is the primary key.
   const { data: app, error: appErr } = await sb
     .from("applications")
-    .select("id, first_name, last_name, email, email_consent_given, do_not_contact_at")
+    .select("id, first_name, last_name, email, email_consent_given, do_not_contact_at, status, terminated_at, contracted_at")
     .eq("id", applicationId)
     .maybeSingle();
   if (appErr) return json({ ok: false, error: `application unreadable: ${appErr.message}` }, 500);
@@ -126,8 +127,15 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const address = String(app.email ?? "").trim().toLowerCase();
 
   // A refused or skipped attempt still writes a receipt, so the campaign trigger releases the
-  // claim with the reason instead of leaving the person claimed until it goes stale.
-  const refuse = async (reason: string, status: number, subject: string | null, retryable: boolean): Promise<Response> => {
+  // claim with the reason instead of leaving the person claimed until it goes stale. scope says
+  // who the refusal is about (render.ts classifyProviderError): only "person" stops this person.
+  const refuse = async (
+    reason: string,
+    status: number,
+    subject: string | null,
+    retryable: boolean,
+    scope: FailureScope = "person",
+  ): Promise<Response> => {
     const { error: ledgerErr } = await sb.from("next_step_messages").insert({
       application_id: applicationId,
       stage_key: stageKey,
@@ -139,7 +147,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       error: reason.slice(0, 500),
       metadata: {
         campaign: "reactivation_v2", track: stage.track, touch: stage.touch, variant: stage.variant,
-        retryable,
+        retryable, scope,
       },
     });
     const { error: eventErr } = await sb.from("next_step_events").insert({
@@ -147,15 +155,22 @@ Deno.serve(async (req: Request): Promise<Response> => {
       to_stage: stageKey,
       event_type: "message_failed",
       source: "cron",
-      payload: { channel: "email", campaign: "reactivation_v2", error: reason.slice(0, 300), retryable },
+      payload: { channel: "email", campaign: "reactivation_v2", error: reason.slice(0, 300), retryable, scope },
     });
-    return json({ ok: false, error: reason, retryable, ledger_error: ledgerErr?.message ?? eventErr?.message ?? null }, status);
+    return json({ ok: false, error: reason, retryable, scope, ledger_error: ledgerErr?.message ?? eventErr?.message ?? null }, status);
   };
 
   if (!address.includes("@")) return await refuse("skipped: no_email", 422, null, false);
   // The SQL gate checked these seconds ago; checking again on the row we are about to mail costs nothing.
   if (app.email_consent_given !== true) return await refuse("skipped: no_email_consent", 409, null, false);
   if (app.do_not_contact_at) return await refuse("skipped: do_not_contact", 409, null, false);
+  // WP-4: the person moved on (hired, contracted, rejected...) since the gate last looked.
+  if (app.terminated_at) return await refuse("skipped: terminated", 409, null, false);
+  if (app.contracted_at) return await refuse("skipped: contracted", 409, null, false);
+  const appStatus = String(app.status ?? "");
+  if (!["new", "reviewing", "no_pickup"].includes(appStatus)) {
+    return await refuse(`skipped: app_status:${appStatus || "unknown"}`, 409, null, false);
+  }
 
   // The opt-out list decides the send, and an unreadable list stops it.
   const { data: optOut, error: optErr } = await sb
@@ -177,6 +192,18 @@ Deno.serve(async (req: Request): Promise<Response> => {
   if (priorErr) return json({ ok: false, error: `ledger unreadable, nothing sent: ${priorErr.message}` }, 503);
   if ((prior ?? []).length > 0) {
     return json({ ok: false, skipped: "already_sent", message_id: prior?.[0]?.id ?? null }, 409);
+  }
+  // DS-2: a send whose receipt insert failed still logged its message_sent event. That is a send too.
+  const { data: priorEvent, error: priorEventErr } = await sb
+    .from("next_step_events")
+    .select("id")
+    .eq("application_id", applicationId)
+    .eq("event_type", "message_sent")
+    .like("to_stage", `reactivation_v2_%_t${stage.touch}_%`)
+    .limit(1);
+  if (priorEventErr) return json({ ok: false, error: `event ledger unreadable, nothing sent: ${priorEventErr.message}` }, 503);
+  if ((priorEvent ?? []).length > 0) {
+    return json({ ok: false, skipped: "already_sent", event_id: priorEvent?.[0]?.id ?? null }, 409);
   }
 
   const firstName = normalizeName(app.first_name);
@@ -208,62 +235,93 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   const resend = gateResend(new Resend(RESEND_KEY));
-  const { data: sent, error: sendErr } = await resend.emails.send({
-    from: BRAND_FROM,
-    to: [address],
-    reply_to: BRAND_REPLY_TO,
-    subject: subject.text,
-    html: html.text,
-    text: text.text,
-    headers: {
-      "List-Unsubscribe": `<${unsubscribeUrl}>, <mailto:${BRAND_REPLY_TO}?subject=unsubscribe>`,
-      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-    },
-    tags: [
-      { name: "campaign", value: "reactivation_v2" },
-      { name: "track", value: stage.track },
-      { name: "touch", value: `t${stage.touch}` },
-      { name: "variant", value: stage.variant },
-    ],
-  });
-
-  if (sendErr || !sent?.id) {
-    const reason = String(sendErr?.message ?? "provider returned no id");
-    return await refuse(reason, 502, subject.text, isRetryable(reason));
+  // resend@2.0.0 THROWS when fetch itself fails. The provider may or may not hold the email then, so that
+  // outcome is "unknown": the receipt holds the person and opens the breaker, and nobody is resent blind.
+  const attempt = await (async () => {
+    try {
+      const { data: d, error: e } = await resend.emails.send({
+        from: BRAND_FROM,
+        to: [address],
+        reply_to: BRAND_REPLY_TO,
+        subject: subject.text,
+        html: html.text,
+        text: text.text,
+        headers: {
+          "List-Unsubscribe": `<${unsubscribeUrl}>, <mailto:${BRAND_REPLY_TO}?subject=unsubscribe>`,
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
+        tags: [
+          { name: "campaign", value: "reactivation_v2" },
+          { name: "track", value: stage.track },
+          { name: "touch", value: `t${stage.touch}` },
+          { name: "variant", value: stage.variant },
+        ],
+      });
+      return { sent: d as { id?: string } | null, sendErr: e as { name?: unknown; message?: unknown } | null, thrown: null };
+    } catch (e) {
+      return { sent: null, sendErr: null, thrown: errorText(e) };
+    }
+  })();
+  if (attempt.thrown !== null) {
+    return await refuse(`provider_unreachable: ${attempt.thrown}`.slice(0, 480), 502, subject.text, false, "unknown");
   }
+  const sent = attempt.sent;
+  if (attempt.sendErr || !sent?.id) {
+    // SF-1/DS-1: only a refusal about THIS address stops this person; the account's problems pause everyone
+    const failure = classifyProviderError(attempt.sendErr);
+    return await refuse(failure.reason, 502, subject.text, failure.retryable, failure.scope);
+  }
+  const resendId = sent.id;
 
-  const { data: msg, error: msgErr } = await sb
-    .from("next_step_messages")
-    .insert({
-      application_id: applicationId,
-      stage_key: stageKey,
-      channel: "email",
-      template_key: stageKey,
-      recipient: address,
-      subject: subject.text,
-      body: html.text,
-      sent_at: new Date().toISOString(),
-      external_id: sent.id,
-      dedupe_key: dedupeKey,
-      metadata: {
-        campaign: "reactivation_v2", track: stage.track, touch: stage.touch, variant: stage.variant,
-        resend_id: sent.id, email_rung: "sent", sender: "reactivation-send",
-      },
-    })
-    .select("id")
-    .single();
+  const receipt = {
+    application_id: applicationId,
+    stage_key: stageKey,
+    channel: "email",
+    template_key: stageKey,
+    recipient: address,
+    subject: subject.text,
+    body: html.text,
+    sent_at: new Date().toISOString(),
+    external_id: resendId,
+    dedupe_key: dedupeKey,
+    metadata: {
+      campaign: "reactivation_v2", track: stage.track, touch: stage.touch, variant: stage.variant,
+      resend_id: resendId, email_rung: "sent", sender: "reactivation-send",
+    },
+  };
+  // DS-2: the email is out, so the receipt gets three tries (the last without the body, in case the body
+  // was the problem). A unique violation on dedupe_key means an earlier try DID land: read it back.
+  let msgId: string | null = null;
+  let msgErrText: string | null = null;
+  for (let i = 0; i < 3 && msgId === null; i++) {
+    if (i > 0) await new Promise((r) => setTimeout(r, 400 * i));
+    const { data: row, error: insErr } = await sb
+      .from("next_step_messages")
+      .insert(i < 2 ? receipt : { ...receipt, body: null })
+      .select("id")
+      .single();
+    if (!insErr && row?.id) {
+      msgId = String(row.id);
+      break;
+    }
+    msgErrText = insErr?.message ?? "insert returned no id";
+    if (insErr?.code === "23505") {
+      const { data: landed } = await sb.from("next_step_messages").select("id").eq("dedupe_key", dedupeKey).limit(1);
+      if ((landed ?? []).length > 0) msgId = String(landed?.[0]?.id);
+    }
+  }
   const { error: eventErr } = await sb.from("next_step_events").insert({
     application_id: applicationId,
     to_stage: stageKey,
     event_type: "message_sent",
     source: "cron",
-    payload: { channel: "email", campaign: "reactivation_v2", resend_id: sent.id, message_id: msg?.id ?? null },
+    payload: { channel: "email", campaign: "reactivation_v2", resend_id: resendId, message_id: msgId },
   });
 
-  if (msgErr) {
-    // The email is out and the receipt is not. Say so. The claim stays set, so the stale-claim
-    // sweep HOLDS this person for review instead of letting a later tick mail them again.
-    return json({ ok: false, sent: true, resend_id: sent.id, error: `sent_but_unrecorded: ${msgErr.message}` }, 500);
+  if (msgId === null) {
+    // The email is out and the receipt is not. Say so. The claim stays set, and the dispatcher's
+    // reconcile HOLDS this person from this answer (sent_but_unrecorded) instead of mailing them again.
+    return json({ ok: false, sent: true, resend_id: resendId, error: `sent_but_unrecorded: ${msgErrText}` }, 500);
   }
-  return json({ ok: true, resend_id: sent.id, message_id: msg?.id ?? null, event_error: eventErr?.message ?? null });
+  return json({ ok: true, resend_id: resendId, message_id: msgId, event_error: eventErr?.message ?? null });
 });

@@ -92,3 +92,41 @@ export function renderTemplate(
 export function isRetryable(message: string): boolean {
   return /too many requests|rate limit|429|timeout|timed out|5\d\d|internal server|service unavailable|econnreset|network/i.test(message);
 }
+
+/**
+ * Who a provider refusal is about (review SF-1/DS-1, 2026-11-12).
+ *   person  - this address can never be mailed (suppressed, non-routable, a malformed `to`): stop this person.
+ *   account - the key, quota, sender, rate or provider: never this person's fault. The receipt trigger releases
+ *             the claim untouched and opens the campaign breaker, instead of stopping one innocent person per
+ *             tick until the cohort is gone (a monthly-quota refusal used to read as a permanent per-person stop).
+ *   unknown - no answer we can trust (the SDK threw, or "success" without an id): the email may be out, so the
+ *             person is HELD and never resent blind.
+ * Keyed on the error NAME (resend@2.0.0 forwards the API's `name`), with the message only to tell a bad `to`
+ * apart from the account-level validation errors that share its name.
+ */
+export type FailureScope = "person" | "account" | "unknown";
+export interface ProviderFailure {
+  scope: FailureScope;
+  retryable: boolean;
+  reason: string;
+}
+
+const PERSON_NAMES = new Set(["suppressed_recipient", "non_routable_recipient"]);
+const TO_FIELD_NAMES = new Set(["validation_error", "invalid_parameter", "missing_required_field"]);
+
+export function classifyProviderError(err: { name?: unknown; message?: unknown } | null | undefined): ProviderFailure {
+  const name = String(err?.name ?? "").trim();
+  const message = String(err?.message ?? "").trim();
+  const reason = `${name || "provider_error"}: ${message || "no message"}`.slice(0, 480);
+  if (!err || (!name && !message)) {
+    return { scope: "unknown", retryable: false, reason: "provider returned neither an id nor an error" };
+  }
+  if (PERSON_NAMES.has(name)) return { scope: "person", retryable: false, reason };
+  if (TO_FIELD_NAMES.has(name) && /`to`|\bto field\b|\brecipient/i.test(message) &&
+      !/domain|`from`|\bfrom field\b|api key|testing emails|verify/i.test(message)) {
+    return { scope: "person", retryable: false, reason };
+  }
+  const transient = name === "rate_limit_exceeded" || name === "application_error" || name === "internal_server_error" ||
+    isRetryable(message);
+  return { scope: "account", retryable: transient && !/quota/i.test(name + " " + message), reason };
+}

@@ -67,6 +67,18 @@ if match '^(supabase/functions/.*\.ts|src/config/brand\.ts|scripts/check-edge-sv
   node scripts/check-edge-svg-brand.mjs
 fi
 
+# ---------- check-edge-text-brand (2026-11-11, Website Integrity Bot) ----------
+# Trigger: any edge-function .ts, the brand source of truth, or the script. The
+# SVG guard watches the brand burned onto award IMAGES; this watches the brand
+# written into outbound email/SMS/DM/caption TEXT — the sentence a recruit reads
+# in their inbox. Fifth guard in the src/-only-ratchet-blind-spot class. Bans
+# the retired display name "Apex Financial" + recruit-facing Apex prose; leaves
+# comments, the domain, env vars and the live #APEXFinancialEmpire IG hashtag alone.
+if match '^(supabase/functions/.*\.ts|src/config/brand\.ts|scripts/check-edge-text-brand\.mjs|scripts/lib/strip-comments\.mjs)$'; then
+  echo "[pre-commit] edge-function/brand file staged — running check:edge-text-brand…"
+  node scripts/check-edge-text-brand.mjs
+fi
+
 # ---------- check-landing-external-img (2026-11-10, Website Integrity Bot) ----------
 # Trigger: any staged src/ file or the script itself. The landing Testimonials
 # section fetched its three agent avatars live from api.dicebear.com and the

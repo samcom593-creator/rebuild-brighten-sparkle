@@ -4886,13 +4886,14 @@
       {
         "all": [
           "p_email",
-          "p_message_id"
+          "p_message_id",
+          "p_reserve"
         ],
         "required": [
           "p_message_id"
         ],
         "unnamed": false,
-        "raw": "p_message_id uuid, p_email text DEFAULT NULL::text"
+        "raw": "p_message_id uuid, p_email text DEFAULT NULL::text, p_reserve boolean DEFAULT false"
       }
     ],
     "fn_next_step_send_ok": [

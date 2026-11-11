@@ -4,7 +4,7 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 import { BRAND_FROM, RECRUIT_REPLY_TO } from "../_shared/email.ts";
-import { emailTypoSuggestion, licensedNpnIssue, REAPPLY_LIVE_AFTER_DAYS, shouldSendWelcomeSms } from "./policy.ts";
+import { emailTypoSuggestion, licensedNpnIssue, REAPPLY_LIVE_AFTER_DAYS, shouldSendWelcomeSms, type WelcomeOutcome } from "./policy.ts";
 import { buildApplicantWelcome } from "./welcome.ts";
 import { emailPattern } from "../_shared/like-escape.ts";
 
@@ -568,11 +568,14 @@ async function sendManagerNotification(
   }
 }
 
-// Send email notifications
-async function sendEmailNotifications(data: SubmitApplicationRequest, applicationId: string) {
+// Send email notifications. Resolves to what happened to the applicant's day-0 welcome, so the
+// welcome SMS ("your next step is in your email") goes only when that email really went out
+// and only to someone who is not suspended (MP-ONBOARD-ANCHOR-PKG1, policy.ts).
+async function sendEmailNotifications(data: SubmitApplicationRequest, applicationId: string): Promise<WelcomeOutcome> {
+  const outcome: WelcomeOutcome = { recipientSuspended: null, welcomeSent: false };
   if (!resend) {
     console.warn("RESEND_API_KEY not configured, skipping email notifications");
-    return;
+    return outcome;
   }
 
   const sanitized = {
@@ -832,6 +835,7 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
     // sends anyway: check_banned_prospect already refused banned prospects above, and the
     // day-0 email is the one message every real applicant must get.
     const applicantSuspended = await emailIsSuspended(data.email);
+    outcome.recipientSuspended = applicantSuspended;
 
     let applicantEmailResponse: { data?: { id?: string } | null; error?: { message?: string } | null } = {};
     if (applicantSuspended === true) {
@@ -847,6 +851,7 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
         text: welcome.text,
       }) as typeof applicantEmailResponse;
     }
+    outcome.welcomeSent = applicantSuspended !== true && !applicantEmailResponse?.error && !!applicantEmailResponse?.data?.id;
     console.log("Applicant confirmation:", JSON.stringify({ id: applicantEmailResponse?.data?.id ?? null, error: applicantEmailResponse?.error?.message ?? null, variant: welcome.variant }));
     // Log applicant welcome email outcome. The receipt views (v_recruit_message_delivery,
     // v_recruit_sequence_health) key on template = 'submit-application-applicant', so the
@@ -877,6 +882,7 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
   } catch (error) {
     console.error("Error sending email notifications:", error);
   }
+  return outcome;
 }
 
 // Send leaderboard notification to ALL managers (competitive motivation)
@@ -912,9 +918,12 @@ async function sendLeaderboardNotification(data: SubmitApplicationRequest, appli
 }
 
 function dispatchFullSubmissionSideEffects(data: SubmitApplicationRequest, applicationId: string): void {
-  // Send email notifications in background (pass the application ID)
-  sendEmailNotifications(data, applicationId).catch((err) => {
+  // Send email notifications in background (pass the application ID). The welcome SMS below
+  // waits on this outcome: no text to a suspended login, and no "next step is in your email"
+  // text when that email did not go out.
+  const welcomeOutcome: Promise<WelcomeOutcome> = sendEmailNotifications(data, applicationId).catch((err) => {
     console.error("Background email notification failed:", err);
+    return { recipientSuspended: null, welcomeSent: false };
   });
 
   // WP2 (2026-11-10): the separate seminar-confirmation "Book your interview" email is no
@@ -948,7 +957,11 @@ function dispatchFullSubmissionSideEffects(data: SubmitApplicationRequest, appli
     try {
       // SMS welcome via auto-detect (applicant likely doesn't have an account yet).
       // WP2: only with an explicit SMS opt-in on the form (consent is opt-in since 2026-05-24).
-      if (shouldSendWelcomeSms(data.phone, data.consent)) {
+      // MP-ONBOARD-ANCHOR-PKG1: and only when the welcome email went out to someone whose
+      // login is not suspended or banned (send-sms-auto-detect has no suspension filter, and
+      // Kirsten, suspended, applied on 2026-11-02). A failed suspension lookup sends no text.
+      const outcome = await welcomeOutcome;
+      if (shouldSendWelcomeSms(data.phone, data.consent, outcome)) {
         await fetch(`${supabaseUrl}/functions/v1/send-sms-auto-detect`, {
           method: "POST",
           headers: {

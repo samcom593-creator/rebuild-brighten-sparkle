@@ -77,9 +77,23 @@ describe("next-step-dispatch", () => {
     const ladderAt = src.indexOf("await runLadder(");
     expect(gateAt).toBeGreaterThan(-1);
     expect(ladderAt).toBeGreaterThan(-1);
-    expect(src.indexOf("const gate = await gateFor(msg, person.email)")).toBeLessThan(ladderAt);
+    // live sends reserve today's one email under the gate's per-recipient lock; dry runs do not
+    expect(src.indexOf("const gate = await gateFor(msg, person.email, !dry)")).toBeGreaterThan(-1);
+    expect(src.indexOf("const gate = await gateFor(msg, person.email, !dry)")).toBeLessThan(ladderAt);
+    expect(src).toContain("p_reserve: reserve");
+    expect(src).toContain("if (verdict?.cap) msg.metadata = { ...(msg.metadata ?? {}), cap: verdict.cap }");
     expect(src).toContain("error: `skipped: ${verdict.reason ?? \"gate\"}`");
     expect(src).toContain("not_before: verdict.not_before");
+  });
+
+  it("runs no Telegram rung for applicants, whatever the data says", () => {
+    const tg = src.slice(src.indexOf("// Channel 1: Telegram"), src.indexOf("// Channel 2: SMS"));
+    expect(tg).toContain('person.kind !== "applicant"');
+  });
+
+  it("sends the email rung with one Resend idempotency key per parent row", () => {
+    expect(src).toContain("sendEmail(person.email as string, emailSubject, emailBody, idempotencyKeyFor(parent_id))");
+    expect(src).toContain("idempotentSendOptions(RESEND_CLIENT_HEADERS, idempotencyKey)");
   });
 
   it("claims rows atomically, strips the dead mailto, and records the Reply-To on each email", () => {
@@ -106,14 +120,72 @@ describe("migrations", () => {
     }
   });
 
-  it("one drip: applied / licensed_book_call at hour 24, 72, 168; call_booked one post-call step; cron 108 unscheduled", () => {
+  it("one drip: applied / licensed_book_call / contacted at hour 24, 72, 168; call_booked one post-call step; cron 108 unscheduled", () => {
     const copy = migration("20261112000110");
-    expect(copy.match(/reminder_cadence = 'hour:24,72,168'/g)?.length).toBe(2);
+    // applied, licensed_book_call and contacted (contacted was 6 steps: the same email up to 6 times)
+    expect(copy.match(/reminder_cadence = 'hour:24,72,168'/g)?.length).toBe(3);
     expect(copy).toContain("reminder_cadence = 'hour:24'");
     expect(copy).not.toMatch(/'[^']*mailto:hello@apex-financial\.org[^']*'\s*\|\|/);
     const cron = migration("20261112000130");
     expect(cron).toContain("jobname = 'apex-followup-emails-daily'");
     expect(cron).toContain("cron.unschedule");
+  });
+
+  it("copy: no dead STOP reply in any SMS, no 'yesterday' in the post-call message", () => {
+    const copy = migration("20261112000110");
+    const smsLines = copy.split("\n").filter((l) => /^\s*sms_template = '/.test(l));
+    expect(smsLines.length).toBeGreaterThanOrEqual(5);
+    for (const l of smsLines) expect(l).not.toMatch(/reply stop/i);
+    // the call_booked update, SQL only (its comment explains why the word is gone)
+    const callBooked = copy.slice(copy.indexOf("where stage_key = 'licensed_book_call';"), copy.indexOf("where stage_key = 'call_booked';"))
+      .split("\n").filter((l) => !/^\s*--/.test(l)).join("\n");
+    expect(callBooked).toContain("reminder_cadence = 'hour:24'");
+    expect(callBooked).toContain("did we connect");
+    expect(callBooked).not.toMatch(/yesterday/i);
+    // the migration itself refuses an SMS template that does not fit one text
+    expect(copy).toContain("SMS template(s) longer than one text");
+  });
+
+  it("the gate judges stage_changed only for sweep rows (metadata.cadence), never other senders' rows", () => {
+    const gate = migration("20261112000120");
+    expect(gate).toContain("if m.metadata ? 'cadence' and exists (");
+    expect(gate).not.toMatch(/if m\.metadata \? 'step' and exists/);
+    // the per-recipient lock and the reservation
+    expect(gate).toContain("pg_advisory_xact_lock(hashtextextended('next_step_daily_cap:' || v_email, 0))");
+    expect(gate).toMatch(/p_reserve boolean default false/);
+  });
+
+  it("the drain closes rows past the 72h limit instead of leaving them unsent forever", () => {
+    const drain = migration("20261112000120");
+    expect(drain).toContain("'expired: not sent within 72 hours (' || due_reason || ')'");
+    expect(drain).toContain("action := 'would_expire'");
+    const health = migration("20261112000180");
+    // overdue counts only rows still inside the limit; the rest are reported separately
+    expect(health).toMatch(/where p\.created_at >= now\(\) - interval '72 hours'\s+and p\.not_before < now\(\) - interval '1 hour'/);
+    expect(health).toContain("expired_unclosed");
+    expect(health).toContain("expired_7d");
+  });
+
+  it("the re-arm is forward-only: only a call after the cutoff with an outcome inside 72h, in the view and in the sweep", () => {
+    const rearm = migration("20261112000140");
+    expect(rearm).toContain("'anchor_pkg1_cutoff_at'::text");
+    expect(rearm).toContain("(pkg1_rearm_ie.scheduled_at + ''72:00:00''::interval)");
+    expect(rearm).toContain("v_miss_call < v_pkg1");
+    expect(rearm).toContain("v_miss_at > v_miss_call + interval '72 hours'");
+    // one "did we connect" per missed call: no re-arm after the post-call message went out
+    expect(rearm).toContain("pc.stage_key = 'call_booked' and pc.created_at >= v_miss_call");
+    // hired guard (journey finding J3.applicant_row_after_hire)
+    expect(rearm).toContain("continue when r.application_id is not null and public.fn_application_has_agent(r.application_id);");
+    // the view never calls the service-role-only function (authenticated views read it)
+    const viewPart = rearm.slice(rearm.indexOf("-- 1. the derivation"), rearm.indexOf("-- 2. the sweep"));
+    expect(viewPart).not.toContain("fn_anchor_pkg1_cutoff()");
+  });
+
+  it("a suspended or banned login never comes back as a live record through a re-application", () => {
+    const reapply = migration("20261112000150");
+    expect(reapply).toContain("AND NOT public.fn_email_is_suspended(NEW.email)");
+    const helper = migration("20261112000100");
+    expect(helper).toContain("u.banned_until > now()");
   });
 
   it("send-capable functions default to dry run; the cron passes p_dry_run => false explicitly", () => {

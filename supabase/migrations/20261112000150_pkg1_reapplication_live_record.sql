@@ -6,8 +6,10 @@
 --      the new one, and no application of theirs was ever hired or contracted, the NEW row is
 --      NOT flagged as a duplicate. It is tagged 'reapplication' and keeps the earlier
 --      recruiter credit (referral_recruiter_id, first-write-wins as of 2026-06-29) when that
---      agent is still active. Inside 30 days, or for anyone who was ever hired, behaviour is
---      unchanged (the new row is the duplicate). Forward-only: inserts after
+--      agent is still active. Inside 30 days, for anyone who was ever hired, or for an
+--      address whose login is suspended or banned (fn_email_is_suspended), behaviour is
+--      unchanged (the new row is the duplicate), so a banned person never re-enters the SLA
+--      queue, the pager or the ladder through a second form. Forward-only: inserts after
 --      fn_anchor_pkg1_cutoff() only.
 --   2. fn_applications_reapply_supersede() (AFTER INSERT, trg_applications_reapply_supersede):
 --      for a 'reapplication' row, the older rows with that email close their active ladder row
@@ -25,6 +27,11 @@
 --   submit-application terminated the original, so the person sat in NO queue. 6
 --   re-applications in Oct-Nov; 5 of the 6 originals were never human-touched. A second
 --   application is stronger intent than a first.
+-- NOT CHANGED
+--   A repeat INSIDE 30 days whose earlier row is rejected / disqualified / no_pickup / closed
+--   is still flagged a duplicate of that row, which submit-application then terminates
+--   (pre-existing). Measured 2026-11-11: 0 such re-applications in the last 90 days. Whether
+--   a person the owner rejected may re-enter the ladder is an owner decision, not a fix.
 -- ROLLBACK
 --   drop trigger if exists trg_applications_reapply_supersede on public.applications;
 --   drop function if exists public.fn_applications_reapply_supersede();
@@ -80,6 +87,9 @@ BEGIN
           WHERE p.id <> NEW.id
             AND lower(p.email) = lower(NEW.email)
             AND (p.contracted_at IS NOT NULL OR public.fn_application_has_agent(p.id)))
+       -- a suspended or banned login never comes back as a live record (same rule as the
+       -- catch-up below and every PKG1 sender)
+       AND NOT public.fn_email_is_suspended(NEW.email)
     THEN
       NEW.tags := ARRAY(SELECT DISTINCT t FROM unnest(coalesce(NEW.tags, '{}'::text[]) || ARRAY['reapplication']) t);
       -- first-write-wins recruiter credit (2026-06-29): keep the earlier credit while that

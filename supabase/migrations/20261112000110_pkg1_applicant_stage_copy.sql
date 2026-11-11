@@ -8,24 +8,35 @@
 --      contacted, completed_application, watched_vsl, and the retired seminar stages):
 --        * the dead "reply STOP" mailto (mailto:hello@apex-financial.org, which returns
 --          550) is removed from every email footer; the working unsubscribe link stays;
+--        * "Reply STOP to opt out" is removed from every SMS template: the gateway text goes
+--          out from an apex-financial.org address with no mailbox, so a STOP reply bounces
+--          and stops nothing (the same dead opt-out as the email footer). Every SMS template
+--          renders to 160 characters or fewer with a 20-character first name (asserted): the
+--          gateway cuts at 160, and the licensed_book_call text (full Calendly URL, about 230
+--          characters) arrived with a broken link, so it now links the status page;
 --        * 'applied' and 'licensed_book_call' cadence -> hour:24,72,168 (day 0 is the
 --          welcome email; the hour-1 step collided with it, message_map C1);
+--        * 'contacted' cadence -> hour:24,72,168 (was hour:24,48,72,168,336,720: one identical
+--          email up to 6 times; message_map 5a caps a later stage at 3), with its own copy per
+--          step so no email repeats;
 --        * 'call_booked' cadence -> hour:24: ONE post-call message the day after the call
 --          (entered_at is the call time). The sweep only sends it for calls after the
---          PKG1 cutoff and while the call has no outcome (20261112000140);
+--          PKG1 cutoff and while the call has no outcome (20261112000140). The copy does not
+--          say "yesterday": quiet hours and the one-email-a-day cap can move it a day or two;
 --        * copy rewritten in Sam's voice: 1-3 short sentences, one link, no income claim,
 --          no unverifiable number ("95% of agents...", "6-min"), no promised call-back
---          ("a manager will reach out within 24h"), no emoji, signed Sam.
+--          ("a manager will reach out within 24h", "so we can call you"), no emoji, signed Sam.
 --   3. email_template_families: the new welcome and ladder subjects map to their families,
 --      so email_events receipts keep grading (applicant_welcome / next_step).
 -- WHY
---   message_map_and_copy.md sections 4b-4d and 5b/5c; DECISIONS.md "One drip", "Reply path",
+--   message_map_and_copy.md sections 4b-4d and 5a-5c; DECISIONS.md "One drip", "Reply path",
 --   "After the call". Copy for other packages' stage rows is not touched here; the
 --   dispatcher strips the dead mailto from every rendered body at send time.
 -- FORWARD-ONLY
 --   Cadence and copy changes act only on steps the sweep queues from now on; the existing
 --   gates (fn_lane_ladder_cutoff, fn_wp3_cutoff, the 20h step window, dedupe keys) still
---   stop any old applicant from receiving a step they already passed.
+--   stop any old applicant from receiving a step they already passed. Shorter cadences only
+--   remove steps.
 -- ROLLBACK
 --   The previous rows are snapshotted into system_settings 'anchor_pkg1_stage_backup'
 --   (jsonb text). Restore with:
@@ -80,44 +91,53 @@ declare
   licensing_page text := 'https://apex-financial.org/get-licensed?applicationId={{application_id}}';
   status_page text := 'https://apex-financial.org/status/{{application_id}}';
   v_left int;
+  v_long text;
 begin
   -- 2a. applied: unlicensed / pending applicant, no booking (U1-U3, message_map 5b)
   update public.next_step_stages set
     reminder_cadence = 'hour:24,72,168',
     email_subject_template = '{{first_name}}, your licensing steps',
     email_body_template = '<p>{{first_name}}, step 1 is a short video that lays out the whole path to your state license, from the course to the exam.</p><p><a href="' || licensing_page || '#licensing-video">Watch step 1</a></p><p>Sam</p>' || f,
-    sms_template = 'Galaxy Financial: {{first_name}}, your licensing steps are here: ' || licensing_page || ' Reply STOP to opt out.',
+    sms_template = 'Galaxy Financial: {{first_name}}, your licensing steps: ' || licensing_page,
     telegram_template = '{{first_name}}, your licensing steps are here: ' || licensing_page,
     notes = 'MP-ONBOARD-ANCHOR-PKG1 2026-11-12: cadence hour:24,72,168 (day 0 is the welcome email). Step copy in next_step_step_copy (hour24 video, hour72 questions call, hour168 last note, rearm after a missed call). hour72/hour168 stay forward-only via fn_lane_ladder_cutoff().',
     updated_at = now()
   where stage_key = 'applied';
 
-  -- 2b. licensed_book_call: licensed applicant with no live booking (B1-B3, message_map 5c)
+  -- 2b. licensed_book_call: licensed applicant with no live booking (B1-B3, message_map 5c).
+  --     The SMS used to carry the full Calendly URL (about 230 characters rendered); the
+  --     gateway cuts a text at 160, so the link arrived broken. It now points at the status
+  --     page, whose booking button carries the same prefill and utm_content.
   update public.next_step_stages set
     reminder_cadence = 'hour:24,72,168',
     email_subject_template = '{{first_name}}, pick a time',
     email_body_template = '<p>{{first_name}}, you applied as a licensed agent and haven''t picked a call time yet. If none of the times work, reply with two that do.</p><p><a href="' || licensed_call || '">Pick a time</a></p><p>Sam</p>' || f,
-    notes = 'MP-ONBOARD-ANCHOR-PKG1 2026-11-12: cadence hour:24,72,168 (day 0 is the welcome email, which already asks for the booking). Step copy in next_step_step_copy; rearm = after a no_answer/no_show outcome (one per missed call, at most 2). Forward-only via fn_lane_ladder_cutoff() and fn_anchor_pkg1_cutoff().',
+    sms_template = 'Galaxy Financial: {{first_name}}, pick a time for our 15-minute call: ' || status_page,
+    notes = 'MP-ONBOARD-ANCHOR-PKG1 2026-11-12: cadence hour:24,72,168 (day 0 is the welcome email, which already asks for the booking). Step copy in next_step_step_copy; rearm = after a no_answer/no_show outcome on a call after the PKG1 cutoff, logged within 72h of the call (one per missed call, at most 2). Forward-only via fn_lane_ladder_cutoff() and fn_anchor_pkg1_cutoff().',
     updated_at = now()
   where stage_key = 'licensed_book_call';
 
-  -- 2c. call_booked: ONE post-call message the day after the call (B4, message_map 5c / G1)
+  -- 2c. call_booked: ONE post-call message the day after the call (B4, message_map 5c / G1).
+  --     No "yesterday": quiet hours and the daily cap can move the send by a day or two.
   update public.next_step_stages set
     reminder_cadence = 'hour:24',
     email_subject_template = '{{first_name}}, did we connect?',
-    email_body_template = '<p>{{first_name}}, we had a call on the calendar yesterday. If we spoke, reply here with any question about your next step. If we missed each other, pick a new time.</p><p><a href="{{next_action_url}}">Pick a new time</a></p><p>Sam</p>' || f,
-    sms_template = 'Galaxy Financial: {{first_name}}, did we connect on yesterday''s call? If we missed each other, the email I sent has a link to pick a new time. Reply STOP to opt out.',
-    telegram_template = '{{first_name}}, did we connect on yesterday''s call? If we missed each other, the email I sent has a link to pick a new time.',
+    email_body_template = '<p>{{first_name}}, we had a call booked. If we spoke, reply here with any question about your next step. If we missed each other, pick a new time.</p><p><a href="{{next_action_url}}">Pick a new time</a></p><p>Sam</p>' || f,
+    sms_template = 'Galaxy Financial: {{first_name}}, did we connect on our call? If we missed each other, the email I sent has a link to pick a new time.',
+    telegram_template = '{{first_name}}, did we connect on our call? If we missed each other, the email I sent has a link to pick a new time.',
     notes = 'MP-ONBOARD-ANCHOR-PKG1 2026-11-12: entered_at is the call time, cadence hour:24 = one message the day after the call. The sweep sends it only for calls after fn_anchor_pkg1_cutoff() and only while that call has no outcome; an agent row stops it (dispatcher gate). {{next_action_url}} is set per person by next-step-dispatch to the call they booked (rebook.ts). candidate_message_template is the pre-call page copy and is unchanged.',
     updated_at = now()
   where stage_key = 'call_booked';
 
-  -- 2d. contacted: no unverifiable number, no "your manager called"
+  -- 2d. contacted: no unverifiable number, no "your manager called"; 3 steps, each its own copy
   update public.next_step_stages set
+    reminder_cadence = 'hour:24,72,168',
     email_subject_template = '{{first_name}}, your next step is the course',
     email_body_template = '<p>{{first_name}}, your next step is the pre-license course. The course link and every step after it are on your licensing page.</p><p><a href="' || licensing_page || '">Open my licensing page</a></p><p>Questions first? Reply here.</p><p>Sam</p>' || f,
+    sms_template = 'Galaxy Financial: {{first_name}}, your next step is the pre-license course: {{next_action_url}}',
     telegram_template = '{{first_name}}, your next step is the pre-license course: {{next_action_url}}',
     candidate_message_template = '{{first_name}}, your next step is the pre-license course. Start it here: {{next_action_url}}',
+    notes = 'MP-ONBOARD-ANCHOR-PKG1 2026-11-12: cadence hour:24,72,168 (was hour:24,48,72,168,336,720, the same email up to 6 times; message_map 5a caps a later stage at 3). Step copy in next_step_step_copy (hour72, hour168). hour168 stays forward-only via fn_wp3_cutoff().',
     updated_at = now()
   where stage_key = 'contacted';
 
@@ -125,7 +145,7 @@ begin
   update public.next_step_stages set
     email_subject_template = '{{first_name}}, your application is in',
     email_body_template = '<p>{{first_name}}, your application is in. Your next step is on your page.</p><p><a href="' || status_page || '">Open my page</a></p><p>Sam</p>' || f,
-    sms_template = 'Galaxy Financial: {{first_name}}, your application is in. Your next step: ' || status_page || ' Reply STOP to opt out.',
+    sms_template = 'Galaxy Financial: {{first_name}}, your application is in. Your next step: ' || status_page,
     telegram_template = '{{first_name}}, your application is in. Your next step: ' || status_page,
     candidate_message_template = '{{first_name}}, your application is in. Your next step is on your page.',
     updated_at = now()
@@ -135,19 +155,22 @@ begin
   update public.next_step_stages set
     email_subject_template = '{{first_name}}, finish your application',
     email_body_template = '<p>{{first_name}}, you watched the video. Finishing the application is the next step, and it''s short.</p><p><a href="{{next_action_url}}">Finish my application</a></p><p>Sam</p>' || f,
+    sms_template = 'Galaxy Financial: {{first_name}}, finish your application here: {{next_action_url}}',
     telegram_template = '{{first_name}}, you watched the video. Finish your application here: {{next_action_url}}',
     candidate_message_template = '{{first_name}}, you watched the video. Finish your application here: {{next_action_url}}',
     updated_at = now()
   where stage_key = 'watched_vsl';
 
-  -- 2g. retired seminar stages: footer only (nothing derives them)
+  -- 2g. retired seminar stages: dead opt-outs only (nothing derives them)
   update public.next_step_stages set
     email_body_template = replace(email_body_template,
       ' or <a href="mailto:hello@apex-financial.org?subject=STOP">reply STOP</a> to stop these messages.',
       ' to stop these messages.'),
+    sms_template = btrim(regexp_replace(coalesce(sms_template, ''), '\s*Reply STOP to opt out\.?', '', 'gi')),
     updated_at = now()
   where stage_key in ('booked_seminar', 'attended_seminar')
-    and strpos(email_body_template, 'mailto:hello@apex-financial.org') > 0;
+    and (strpos(coalesce(email_body_template, ''), 'mailto:hello@apex-financial.org') > 0
+         or coalesce(sms_template, '') ~* 'reply stop');
 
   -- 3. step copy
   insert into public.next_step_step_copy (stage_key, step_key, email_subject, email_body, notes) values
@@ -162,7 +185,7 @@ begin
      'U3, message_map 5b. After this the person sits in the owner queue, no more automated email.'),
     ('applied', 'rearm', '{{first_name}}, we missed each other',
      '<p>{{first_name}}, we had a call on the calendar and didn''t connect. Pick a new time that works for you.</p><p><a href="' || questions_call || '">Pick a new time</a></p><p>Sam</p>' || f,
-     'After a no_answer / no_show outcome on an unlicensed applicant''s call. One per missed call, at most 2.'),
+     'After a no_answer / no_show outcome on an unlicensed applicant''s call (call after the PKG1 cutoff, outcome logged within 72h). One per missed call, at most 2, none when the post-call message already went out.'),
     ('licensed_book_call', 'hour24', '{{first_name}}, pick a time',
      '<p>{{first_name}}, you applied as a licensed agent and haven''t picked a call time yet. If none of the times work, reply with two that do.</p><p><a href="' || licensed_call || '">Pick a time</a></p><p>Sam</p>' || f,
      'B1, message_map 5c'),
@@ -174,12 +197,19 @@ begin
      'B3, message_map 5c. After this the person sits in the owner queue.'),
     ('licensed_book_call', 'rearm', '{{first_name}}, did we connect?',
      '<p>{{first_name}}, I had us down for a call and we didn''t connect. Pick a new time here.</p><p><a href="' || licensed_call || '">Pick a new time</a></p><p>Sam</p>' || f,
-     'B4 after a no_answer / no_show outcome. One per missed call, at most 2.')
+     'B4 after a no_answer / no_show outcome (call after the PKG1 cutoff, outcome logged within 72h). One per missed call, at most 2, none when the post-call message already went out.'),
+    ('contacted', 'hour72', '{{first_name}}, started the course yet?',
+     '<p>{{first_name}}, have you started the pre-license course? It''s the next step on your licensing page. If cost or timing is the problem, reply and tell me.</p><p><a href="' || licensing_page || '">Open my licensing page</a></p><p>Sam</p>' || f,
+     'contacted step 2 (message_map 5e D1 wording)'),
+    ('contacted', 'hour168', '{{first_name}}, last note from me',
+     '<p>{{first_name}}, this is my last automatic note about the course. Your licensing page stays open whenever you''re ready. Reply if you want help.</p><p><a href="' || licensing_page || '">Open my licensing page</a></p><p>Sam</p>' || f,
+     'contacted step 3. After this the person sits in the owner queue.')
   on conflict (stage_key, step_key) do update
     set email_subject = excluded.email_subject, email_body = excluded.email_body,
         notes = excluded.notes, updated_at = now();
 
-  -- 4. assert: no PKG1 stage row or step copy still carries the dead mailto
+  -- 4. asserts: no PKG1 stage row or step copy still carries a dead opt-out, and every PKG1
+  --    SMS fits one 160-character text with a 20-character first name and a full uuid
   select count(*) into v_left
     from public.next_step_stages
    where stage_key in ('applied', 'watched_vsl', 'completed_application', 'contacted', 'licensed_book_call',
@@ -192,6 +222,25 @@ begin
   if v_left > 0 then
     raise exception 'PKG1: % step copy row(s) carry a mailto', v_left;
   end if;
+  select count(*) into v_left
+    from public.next_step_stages
+   where stage_key in ('applied', 'watched_vsl', 'completed_application', 'contacted', 'licensed_book_call',
+                       'call_booked', 'booked_seminar', 'attended_seminar')
+     and coalesce(sms_template, '') ~* 'reply stop';
+  if v_left > 0 then
+    raise exception 'PKG1: % applicant stage SMS template(s) still offer the dead STOP reply', v_left;
+  end if;
+  select string_agg(stage_key, ', ') into v_long
+    from public.next_step_stages
+   where stage_key in ('applied', 'watched_vsl', 'completed_application', 'contacted', 'licensed_book_call', 'call_booked')
+     and length(replace(replace(replace(replace(coalesce(sms_template, ''),
+           '{{first_name}}', 'Abcdefghijklmnopqrst'),
+           '{{application_id}}', '00000000-0000-4000-8000-000000000000'),
+           '{{next_action_url}}', coalesce(next_action_url, '')),
+           '{{seminar_date}}', '2026-12-31')) > 160;
+  if v_long is not null then
+    raise exception 'PKG1: SMS template(s) longer than one text: %', v_long;
+  end if;
 end
 $mig$;
 
@@ -203,7 +252,7 @@ update public.email_template_families
    and strpos(subject_pattern, 'your galaxy application is in') = 0;
 
 update public.email_template_families
-   set subject_pattern = subject_pattern || '|your licensing steps$|questions before you start the course|last note from me$|we missed each other$|, pick a time$|^15 minutes, |closing the loop$|did we connect\?$|your next step is the course$|finish your application$|, your application is in$',
+   set subject_pattern = subject_pattern || '|your licensing steps$|questions before you start the course|last note from me$|we missed each other$|, pick a time$|^15 minutes, |closing the loop$|did we connect\?$|your next step is the course$|finish your application$|, your application is in$|started the course yet\?$',
        notes = coalesce(notes, '') || ' | PKG1 2026-11-12: applicant ladder step subjects.'
  where family = 'next_step'
    and strpos(subject_pattern, 'your licensing steps') = 0;

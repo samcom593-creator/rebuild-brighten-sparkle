@@ -9,8 +9,10 @@
 // the sequence was lower, so this one email has to carry the next step on its own.
 //
 // Rules this file holds (Sam's voice, DECISIONS.md "Day-0 email"):
-//   - five short lines at most, signed "Sam";
+//   - three short sentences at most, the secondary line included, signed "Sam";
 //   - ONE primary button and at most ONE secondary line;
+//   - nothing the page cannot deliver (the pending page asks for a receipt first; the NPN
+//     field appears only after that upload, so the email does not promise it);
 //   - no income or earnings claims, no unverifiable numbers, no promised call-back;
 //   - unlicensed keeps peer e5's questions-call line (SCHEDULING_LINKS.questions);
 //   - licensed keeps the licensed call with utm_content = application id;
@@ -37,6 +39,8 @@ export interface WelcomeEmail {
   primaryUrl: string;
   /** the one secondary line's link, if any */
   secondaryUrl: string | null;
+  /** the sentences a person reads: the body lines plus the secondary line's lead (no link labels) */
+  copy: string[];
 }
 
 /** The line peer e5 shipped into the unlicensed welcome on 2026-11-11; kept verbatim. */
@@ -88,18 +92,21 @@ function parts(input: WelcomeInput, variant: WelcomeVariant, name: string): Part
       subject: `${name}, book your call with Sam`,
       lines: [
         `${name}, I got your application and saw you're already licensed.`,
-        "The next step is a 15-minute call with me. Have your NPN and your resident state ready.",
+        "Pick a time for a 15-minute call with me, and have your NPN ready.",
       ],
       primary: { label: "Pick a time", url: buildBookingUrl(SCHEDULING_LINKS.licensed, prefill) },
       secondary: { lead: "Your application page stays open any time.", label: "Open my page", url: statusUrl },
     };
   }
   if (variant === "pending") {
+    // The page a pending applicant sees (ApplicationConfirmationV2 PendingBody) asks for the
+    // course receipt or completion certificate first; the NPN field only appears after that
+    // upload, so the email must not promise it.
     return {
       subject: `${name}, your Galaxy application is in`,
       lines: [
         `${name}, I got your application.`,
-        "Your page shows what's left while your license is pending, and it's where you add your NPN the day it posts.",
+        "While your license is pending, upload your course receipt or certificate on your page to unlock your licensing call.",
       ],
       primary: { label: "Open my page", url: statusUrl },
       secondary: questionsUrl
@@ -150,5 +157,6 @@ export function buildApplicantWelcome(input: WelcomeInput): WelcomeEmail {
     text,
     primaryUrl: p.primary.url,
     secondaryUrl: p.secondary?.url ?? null,
+    copy: [...p.lines, ...(p.secondary ? [p.secondary.lead] : [])],
   };
 }

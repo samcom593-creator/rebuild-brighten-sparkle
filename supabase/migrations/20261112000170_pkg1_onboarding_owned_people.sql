@@ -2,6 +2,11 @@
 --
 -- WHAT
 --   One row per lower-cased email address that the onboarding lane owns, with the reason(s):
+--     'suspended'          a login (profile or auth email) with an open
+--                          agent_access_suspensions row or a live login ban
+--                          (fn_email_is_suspended's rule). This view is an EXCLUSION list,
+--                          so a banned person is listed here, never left out: whoever
+--                          anti-joins it can then never message them;
 --     'agent'              anyone with an agents row (any status), by profile email (user_id
 --                          or profile_id) or auth email;
 --     'xcel_student'       active Xcel students (v_xcel_identity_rollup.is_active) that are
@@ -9,13 +14,13 @@
 --                          by their Xcel email and their matched application's email;
 --     'recent_application' every application created on/after 2026-11-08 19:00Z
 --                          (fn_lane_ladder_cutoff(), asserted equal below).
---   Columns: email_lower text, reason text (comma list in priority order agent, xcel_student,
---   recent_application).
+--   Columns: email_lower text, reason text (comma list in priority order suspended, agent,
+--   xcel_student, recent_application).
 -- WHY
 --   The Book-of-Business reactivation session (peer 13) mails pre-cutoff applicants and
 --   anti-joins this view, so nobody the onboarding lane is already working gets a second,
 --   conflicting message (message_map 4e: one reactivation recipient was already an agent,
---   25 were mid-course).
+--   25 were mid-course), and nobody banned gets one at all (DECISIONS.md "Banned people").
 -- SECURITY
 --   Service role only. The rows come from a SECURITY DEFINER function (it reads auth.users,
 --   which service_role cannot select directly); the view is security_invoker over it.
@@ -40,9 +45,20 @@ set search_path = public
 as $$
   with latest_report as (
     select max(r.report_date) as report_date from public.xcel_pre_licensing_reports r
+  ), banned_logins as (
+    select s.user_id as id from public.agent_access_suspensions s where s.lifted_at is null
+    union
+    select u.id from auth.users u where u.banned_until > now()
   ), src as (
+    -- (0) suspended or banned logins: listed so an anti-join excludes them
+    select lower(btrim(p.email)) as e, 0 as prio, 'suspended' as why
+      from public.profiles p join banned_logins b on b.id = p.user_id
+    union all
+    select lower(btrim(u.email)), 0, 'suspended'
+      from auth.users u join banned_logins b on b.id = u.id
+    union all
     -- (a) anyone with an agent row
-    select lower(btrim(p.email)) as e, 1 as prio, 'agent' as why
+    select lower(btrim(p.email)), 1, 'agent'
       from public.agents g join public.profiles p on p.user_id = g.user_id
     union all
     select lower(btrim(p.email)), 1, 'agent'
@@ -74,7 +90,7 @@ as $$
 $$;
 
 comment on function public.fn_onboarding_owned_people() is
-  'MP-ONBOARD-ANCHOR-PKG1: emails the onboarding lane owns (agent rows, active Xcel students, applications since 2026-11-08 19:00Z). Service role only; read through v_onboarding_owned_people.';
+  'MP-ONBOARD-ANCHOR-PKG1: emails the onboarding lane owns or that must never be messaged (suspended or banned logins, agent rows, active Xcel students, applications since 2026-11-08 19:00Z). Service role only; read through v_onboarding_owned_people.';
 
 revoke all on function public.fn_onboarding_owned_people() from public, anon, authenticated;
 grant execute on function public.fn_onboarding_owned_people() to service_role;
@@ -85,7 +101,7 @@ select o.email_lower, o.reason
   from public.fn_onboarding_owned_people() o;
 
 comment on view public.v_onboarding_owned_people is
-  'MP-ONBOARD-ANCHOR-PKG1: one row per email the onboarding lane owns (reason: agent, xcel_student, recent_application). The BoB reactivation runner anti-joins it on email_lower. Service role only.';
+  'MP-ONBOARD-ANCHOR-PKG1: one row per email the onboarding lane owns or that must never be messaged (reason: suspended, agent, xcel_student, recent_application). The BoB reactivation runner anti-joins it on email_lower. Service role only.';
 
 revoke all on public.v_onboarding_owned_people from public, anon, authenticated;
 grant select on public.v_onboarding_owned_people to service_role;

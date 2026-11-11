@@ -45,10 +45,18 @@
 //          cadence step whose stage moved on. A skip is recorded on the row as
 //          failed_at + "skipped: <reason>", never as a sent.
 //   5d     at most one automated next-step email per recipient per local day: the gate
-//          defers (metadata.not_before = next day 08:00 local), it never drops.
+//          defers (metadata.not_before = next day 08:00 local), it never drops. On the live
+//          path the gate runs with p_reserve, under a per-recipient lock, and stamps
+//          metadata.cap, so two rows for one address dispatched together cannot both pass.
 //   step copy comes from next_step_step_copy through the gate (per cadence step, and a
 //          'rearm' variant after a missed call); the stage template is the fallback.
 //   the dead "reply STOP" mailto is stripped from every rendered body (footer.ts).
+//   applicants get NO Telegram rung (DECISIONS "Telegram rung": 11 of 15 failed and read as
+//          sent). Enforced here, not only by data, so a chat linked later cannot re-open it.
+//   the email rung carries a Resend Idempotency-Key per parent row (idempotency.ts): a
+//          retry after a timeout that Resend had in fact accepted cannot send a second copy.
+//   a deferred or retryable row that passes its 72h age limit is closed by the drain
+//          (fn_next_step_retry_drain: failed_at + 'expired: ...'), never left unsent forever.
 //
 // Deploy: 2026-05-19 v1
 
@@ -62,6 +70,7 @@ import { isTerminalSmsReceipt, runLadder } from "./ladder.ts";
 import { classifyEmailError, EmailSendError, planRetry } from "./retry.ts";
 import { hasEmptyHref, stripDeadReplyStop } from "./footer.ts";
 import { rebookUrl } from "./rebook.ts";
+import { idempotencyKeyFor, idempotentSendOptions } from "./idempotency.ts";
 
 // The trigger dispatches a row seconds after insert, and the nudge sweep never
 // evaluates a step older than 20h (20261016210500_next_step_quiet_hours.sql).
@@ -90,6 +99,9 @@ const RESEND_FROM = Deno.env.get("RESEND_FROM") ?? BRAND_FROM;
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 const resend = gateResend(new Resend(RESEND_KEY));
+// The SDK's own request headers (Authorization included); idempotency.ts copies them to add
+// the Idempotency-Key, because a `headers` send option replaces them wholesale.
+const RESEND_CLIENT_HEADERS: unknown = (resend as unknown as { headers?: unknown }).headers;
 
 type Stage = {
   stage_key: string;
@@ -129,6 +141,8 @@ type GateVerdict = {
   copy?: { subject?: string | null; body?: string | null; key?: string | null } | null;
   license_status?: string | null;
   call_track?: string | null;
+  /** the daily-cap reservation the gate stamped on the row (live sends only) */
+  cap?: Record<string, unknown> | null;
 };
 
 // deno-lint-ignore no-explicit-any
@@ -323,11 +337,19 @@ async function sendSms(to: string, body: string, application_id: string | null):
 
 // Resolves to the Resend message id; anything else throws an EmailSendError that carries
 // the provider's error name and HTTP status, so retry.ts can tell 429/5xx from a refusal.
-async function sendEmail(to: string, subject: string, html: string): Promise<string> {
+// idempotencyKey: one per parent row (idempotency.ts), so a retry cannot duplicate a send
+// that Resend accepted before the connection dropped.
+async function sendEmail(to: string, subject: string, html: string, idempotencyKey: string | null = null): Promise<string> {
   if (!RESEND_KEY) throw new EmailSendError("Resend not configured", { name: "missing_api_key" });
   let r: any;
   try {
-    r = await resend.emails.send({ from: RESEND_FROM, to, subject, html, reply_to: BRAND_REPLY_TO });
+    // resend@2.0.0 types its send options as { query? } but merges any option into the fetch
+    // init; undefined options (no usable client headers) send exactly as before.
+    const emails = resend.emails as unknown as { send: (payload: unknown, options?: unknown) => Promise<unknown> };
+    r = await emails.send(
+      { from: RESEND_FROM, to, subject, html, reply_to: BRAND_REPLY_TO },
+      idempotentSendOptions(RESEND_CLIENT_HEADERS, idempotencyKey),
+    );
   } catch (e) {
     throw new EmailSendError((e as Error)?.message ?? String(e), { name: "network_error", transient: true });
   }
@@ -397,10 +419,13 @@ async function claim(messageId: string): Promise<Row | null> {
   return (rows?.[0] as Row) ?? null;
 }
 
-async function gateFor(msg: Row, email: string | null): Promise<{ verdict: GateVerdict | null; error: string | null }> {
+// reserve: true on the live send path only. The gate then serializes per recipient and stamps
+// the daily-cap reservation on the row; a dry run asks read-only.
+async function gateFor(msg: Row, email: string | null, reserve: boolean): Promise<{ verdict: GateVerdict | null; error: string | null }> {
   const { data, error } = await supabase.rpc("fn_next_step_send_gate", {
     p_message_id: msg.id,
     p_email: email ?? null,
+    p_reserve: reserve,
   });
   if (error) return { verdict: null, error: error.message };
   const v = data as GateVerdict | null;
@@ -446,9 +471,12 @@ async function dispatchOne(msg: Row, dry: boolean) {
   const person = await loadPerson(msg.application_id, msg.agent_id);
   if (!person) throw new Error("person not found");
 
-  // One place decides whether this person may be messaged now (read-only).
-  const gate = await gateFor(msg, person.email);
+  // One place decides whether this person may be messaged now. A dry run asks read-only; the
+  // live path reserves today's one email for this recipient (see fn_next_step_send_gate).
+  const gate = await gateFor(msg, person.email, !dry);
   const verdict = gate.verdict;
+  // Keep the reservation the gate stamped: every later write builds metadata from msg.
+  if (verdict?.cap) msg.metadata = { ...(msg.metadata ?? {}), cap: verdict.cap };
 
   const ctx: Record<string, any> = {
     first_name: person.first_name ?? "there",
@@ -536,8 +564,10 @@ async function dispatchOne(msg: Row, dry: boolean) {
   const bestEffort: Record<string, unknown> = { ...(msg.metadata?.best_effort ?? {}) };
 
   const ladder = await runLadder({
-    // Channel 1: Telegram (best effort: a queue row, not a delivery)
-    telegram: !isRetry && person.telegram_chat_id && !person.telegram_opt_out
+    // Channel 1: Telegram (best effort: a queue row, not a delivery). Never for applicants:
+    // the rung is off for them by decision, enforced here so a chat linked later
+    // (trg_telegram_autolink_application) cannot switch it back on.
+    telegram: !isRetry && person.kind !== "applicant" && person.telegram_chat_id && !person.telegram_opt_out
       ? async () => {
         const tgId = await sendTelegram(person.telegram_chat_id as number, tgBody, stage.stage_key, msg.dedupe_key);
         bestEffort.telegram = { queue_id: tgId ? String(tgId) : null, chat: String(person.telegram_chat_id), at: new Date().toISOString() };
@@ -578,10 +608,10 @@ async function dispatchOne(msg: Row, dry: boolean) {
         return sid;
       }
       : null,
-    // Channel 3: Email (Resend id = the receipt)
+    // Channel 3: Email (Resend id = the receipt). One idempotency key per parent row.
     email: person.email
       ? async () => {
-        const eid = await sendEmail(person.email as string, emailSubject, emailBody);
+        const eid = await sendEmail(person.email as string, emailSubject, emailBody, idempotencyKeyFor(parent_id));
         await logMessage({
           application_id: msg.application_id,
           agent_id: msg.agent_id,
@@ -682,6 +712,9 @@ Deno.serve(async (req) => {
 
     if (single && !dry) {
       // The trigger and the drain post one id. The claim decides whether it is ours to send.
+      // not_claimable = sent, failed, claimed in the last 5 minutes, not due yet, or past its
+      // age limit. Nothing is written here: a deferred/retryable row past 72h is closed as
+      // expired by fn_next_step_retry_drain, so it never sits unsent and unfailed.
       const msg = await claim(body.message_id);
       if (!msg) {
         results.push({ id: body.message_id, skipped: true, reason: "not_claimable" });

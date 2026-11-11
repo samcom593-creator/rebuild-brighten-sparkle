@@ -9,8 +9,11 @@
 -- WHY
 --   message_map 4c F1 / DECISIONS.md "Telegram rung": 11 of 15 ladder Telegram messages
 --   failed (template_missing) and were recorded as sent; while a chat was linked, the email
---   rung never ran. next-step-dispatch now treats Telegram as best effort, and these 7 get
---   the ladder by email only. No message is sent by this migration (no trigger on the column).
+--   rung never ran. next-step-dispatch now runs NO Telegram rung for applicant rows at all
+--   (enforced in code, so trg_telegram_autolink_application linking a new applicant cannot
+--   switch it back on), and the sweep never labels an applicant row 'telegram'; this data
+--   change makes the stored state say the same thing. No message is sent by this migration
+--   (no trigger on the column).
 -- ROLLBACK
 --   update public.applications a set telegram_opt_out = false
 --    where a.id in (select (jsonb_array_elements_text(value::jsonb))::uuid

@@ -27,9 +27,33 @@ Deno.test("every variant: one button, at most one secondary link, the status pag
     assert(hrefs.some((h) => h.includes(`/status/${APP}`)), `${licenseStatus}: status page link`);
     assertStringIncludes(w.html, ">Sam</p>");
     assertStringIncludes(w.text, "Sam");
-    // five short lines at most: sentences in the body copy
-    const sentences = w.text.split("\n").filter((l) => l && !l.includes("http") && l !== "Sam" && !l.startsWith("Galaxy Financial"));
-    assert(sentences.length <= 5, `${licenseStatus}: ${sentences.length} lines`);
+    // three sentences at most, the secondary line included (link labels are not sentences)
+    const n = sentenceCount(w);
+    assert(n >= 1 && n <= 3, `${licenseStatus}: ${n} sentences`);
+  }
+});
+
+// Sentences in the copy a person reads: the body lines plus the secondary line's lead (a link
+// label such as "Open my page" is not a sentence).
+function sentenceCount(w: { copy: string[] }): number {
+  return (w.copy.join(" ").match(/[.?!](\s|$)/g) ?? []).length;
+}
+
+Deno.test("sentence counter: the 2026-11-12 review's licensed welcome had 4; every variant now has 3", () => {
+  // the reviewed licensed copy: 2 body lines with 3 sentences + the secondary lead
+  assertEquals(sentenceCount({ copy: [
+    "Jordan, I got your application and saw you're already licensed.",
+    "The next step is a 15-minute call with me. Have your NPN and your resident state ready.",
+    "Your application page stays open any time.",
+  ] }), 4);
+  for (const licenseStatus of ["licensed", "pending", "unlicensed"]) {
+    const w = buildApplicantWelcome({ ...base, licenseStatus });
+    assertEquals(sentenceCount(w), 3, licenseStatus);
+    // every sentence the person reads is in the HTML and the text part
+    for (const s of w.copy) {
+      assertStringIncludes(w.text, s);
+      assertStringIncludes(w.html, s.replace(/'/g, "&#39;"));
+    }
   }
 });
 
@@ -68,12 +92,22 @@ Deno.test("unlicensed: status page is the button; the questions-call line is kep
   assertEquals(q.searchParams.get("utm_content"), APP);
 });
 
-Deno.test("pending: no licensing-course push, the page is where the NPN goes", () => {
+Deno.test("pending: the page's real first step (receipt or certificate), no NPN-field promise", () => {
   const w = buildApplicantWelcome({ ...base, licenseStatus: "pending" });
   assertEquals(w.variant, "pending");
   assertStringIncludes(w.html, "pending");
-  assertStringIncludes(w.html, "NPN");
+  assertStringIncludes(w.html, "receipt or certificate");
+  // the NPN field (LicensingSelfReport) renders only after a receipt upload
+  assertEquals(/NPN/.test(`${w.subject}\n${w.text}`), false);
   assertEquals(w.primaryUrl, `https://apex-financial.org/status/${APP}`);
+});
+
+Deno.test("the pending copy matches the page: PendingBody asks for the receipt and the NPN waits for it", async () => {
+  const page = await Deno.readTextFile(new URL("../../../src/components/landing/ApplicationConfirmationV2.tsx", import.meta.url));
+  const pending = page.slice(page.indexOf("function PendingBody"), page.indexOf("// ---------- Reusable step row"));
+  assertStringIncludes(pending, "Upload the receipt or completion certificate");
+  const proof = await Deno.readTextFile(new URL("../../../src/components/landing/LicensingProofStep.tsx", import.meta.url));
+  assertStringIncludes(proof, 'state === "submitted" && applicationId ? <LicensingSelfReport');
 });
 
 Deno.test("names are escaped in HTML and kept plain (single line) in the subject", () => {

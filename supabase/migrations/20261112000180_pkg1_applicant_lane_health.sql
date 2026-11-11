@@ -7,17 +7,25 @@
 --   the fix can never pin the check yellow:
 --     ladder_email_no_reply_to_24h  ladder emails in 24h whose child row records no live
 --                                   Reply-To (next-step-dispatch writes metadata.reply_to)
---     retry_overdue_1h              rows left retryable/deferred whose not_before passed more
---                                   than 1 hour ago (the drain stopped, or the cron is gone)
+--     retry_overdue_1h              rows left retryable/deferred, still inside their 72h age
+--                                   limit, whose not_before passed more than 1 hour ago (the
+--                                   drain stopped, or the cron is gone)
+--     expired_unclosed              rows past the 72h limit (by more than 1 hour) that are
+--                                   still unsent AND unfailed: the drain closes those every 5
+--                                   minutes, so any here means the drain is not running.
+--                                   Restoring the drain clears it (it closes them as expired).
 --     suspended_messaged_7d         applicant-stage emails in 7d to a login whose suspension
 --                                   was already open when the email went out
 --     same_day_double_7d            recipient-days in 7d with 2+ automated applicant emails
 --                                   (ladder emails + the day-0 welcome), in the recipient's zone
---   plus structure (gate, claim, drain cron, cron 108 gone, sweep gate, dead mailto, cadence,
---   Telegram opt-outs) and published context (sends, skips by reason, deferrals, retries,
---   re-applications made live, post-call and re-arm sends). The welcome email's Reply-To is
---   set in code (submit-application) and is not recorded per send, so it is NOT measured here;
---   welcome.test.ts and the vitest contract hold it.
+--   plus structure (gate, claim, drain cron, cron 108 gone, sweep gate, dead mailto, cadence)
+--   and published context that is never graded: sends, skips by reason, deferrals, retries
+--   given up, rows closed as expired in 7d (a chain of deferrals can end that way by design),
+--   linked-but-not-opted-out Telegram applicants (the dispatcher runs no Telegram rung for
+--   applicants, so it is a data note, not a fault), re-applications made live, post-call and
+--   re-arm sends. The welcome email's Reply-To is set in code (submit-application) and is not
+--   recorded per send, so it is NOT measured here; welcome.test.ts and the vitest contract
+--   hold it.
 -- ROLLBACK
 --   drop view public.v_applicant_lane_pkg1_health; drop function public.fn_applicant_lane_pkg1_health();
 
@@ -46,7 +54,9 @@ returns table (
   reapplications_live_since       integer,
   postcall_sent_since             integer,
   rearm_sent_since                integer,
-  measured_at                     timestamptz
+  measured_at                     timestamptz,
+  expired_unclosed                integer,
+  expired_7d                      integer
 )
 language sql
 stable
@@ -80,10 +90,16 @@ as $$
     select recipient, (sent_at at time zone zone)::date as local_day from applicant_email_children
     union all
     select recipient, (sent_at at time zone zone)::date from welcome
+  ), pending as (
+    -- retryable or deferred parent rows this package created, not yet sent or closed
+    select m.id, m.created_at, (m.metadata->>'not_before')::timestamptz as not_before
+      from public.next_step_messages m cross join cfg
+     where m.fallback_of_id is null and m.sent_at is null and m.failed_at is null
+       and m.created_at >= cfg.cutoff and m.metadata ? 'not_before'
   )
   select
     cfg.cutoff,
-    to_regprocedure('public.fn_next_step_send_gate(uuid,text)') is not null,
+    to_regprocedure('public.fn_next_step_send_gate(uuid,text,boolean)') is not null,
     to_regprocedure('public.fn_next_step_claim(uuid)') is not null,
     exists (select 1 from cron.job j where j.jobname = 'next_step_retry_drain' and j.active),
     exists (select 1 from cron.job j where j.jobname = 'apex-followup-emails-daily'),
@@ -96,8 +112,9 @@ as $$
     coalesce((select bool_and(case s.stage_key
                                  when 'call_booked' then s.reminder_cadence = 'hour:24'
                                  else s.reminder_cadence = 'hour:24,72,168' end)
+                  and count(*) = 4
                 from public.next_step_stages s
-               where s.stage_key in ('applied', 'licensed_book_call', 'call_booked')), false),
+               where s.stage_key in ('applied', 'licensed_book_call', 'call_booked', 'contacted')), false),
     (select count(*)::int from public.applications a
       where a.telegram_chat_id is not null and not coalesce(a.telegram_opt_out, false)),
     (select count(*)::int from public.next_step_messages c
@@ -105,13 +122,10 @@ as $$
         and c.sent_at >= now() - interval '24 hours' and c.created_at >= cfg.cutoff
         and (coalesce(c.metadata->>'reply_to', '') = ''
              or lower(c.metadata->>'reply_to') like '%@apex-financial.org%')),
-    (select count(*)::int from public.next_step_messages m
-      where m.fallback_of_id is null and m.sent_at is null and m.failed_at is null
-        and m.created_at >= cfg.cutoff and m.metadata ? 'not_before'
-        and (m.metadata->>'not_before')::timestamptz < now() - interval '1 hour'),
-    (select count(*)::int from public.next_step_messages m
-      where m.fallback_of_id is null and m.sent_at is null and m.failed_at is null
-        and m.created_at >= cfg.cutoff and m.metadata ? 'not_before'),
+    (select count(*)::int from pending p
+      where p.created_at >= now() - interval '72 hours'
+        and p.not_before < now() - interval '1 hour'),
+    (select count(*)::int from pending p where p.created_at >= now() - interval '72 hours'),
     (select count(*)::int from applicant_email_children c
       where exists (
         select 1 from public.agent_access_suspensions s
@@ -145,7 +159,11 @@ as $$
         and m.created_at >= cfg.cutoff),
     (select count(*)::int from public.next_step_messages m
       where m.fallback_of_id is null and m.metadata->>'variant' = 'rearm' and m.sent_at is not null),
-    now()
+    now(),
+    (select count(*)::int from pending p where p.created_at < now() - interval '73 hours'),
+    (select count(*)::int from public.next_step_messages m
+      where m.fallback_of_id is null and m.failed_at >= greatest(cfg.cutoff, now() - interval '7 days')
+        and m.metadata->>'skip_reason' = 'expired')
   from cfg
 $$;
 

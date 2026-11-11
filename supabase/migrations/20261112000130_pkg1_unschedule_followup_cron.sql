@@ -12,7 +12,12 @@
 --   applicant sequence. send-followup-emails itself is owned by another session (6e) and is
 --   not edited here; with no schedule nothing calls it.
 -- IDEMPOTENT
---   Unschedules only when the job exists; the backup row is written once.
+--   Unschedules only when the job exists; the backup row is written once. ANCHOR already
+--   unscheduled the job live on 2026-11-11 ~21:06Z (pre-image in business-ops
+--   2026-11-11-onboarding-anchor/receipts/preimage-cron108.txt, recruit_sequences
+--   applicant_nudge + applicant_followup retired in the same step and mirrored by the
+--   integrator as 20261112000001_retire_followup_cron.sql). On that database this migration
+--   only raises a notice and writes nothing.
 -- ROLLBACK
 --   select cron.schedule(b->>'jobname', b->>'schedule', b->>'command')
 --     from (select value::jsonb b from public.system_settings where key = 'anchor_pkg1_cron108_backup') x;

@@ -6540,6 +6540,18 @@
         "raw": ""
       }
     ],
+    "get_licensing_requirements_for_application": [
+      {
+        "all": [
+          "p_application_id"
+        ],
+        "required": [
+          "p_application_id"
+        ],
+        "unnamed": false,
+        "raw": "p_application_id uuid"
+      }
+    ],
     "get_my_agency_branding": [
       {
         "all": [],

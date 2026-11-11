@@ -32,6 +32,15 @@ if match '^(index\.html|src/components/landing/HeroSection\.tsx|scripts/check-vs
   node scripts/check-vsl-sync.mjs
 fi
 
+# ---------- check-private-surfaces (SEC-PRIVATE-SURFACES 2026-11-11) ----------
+# Sam's DMs / iMessages / camera library pages must stay Sam-only. A manager nav tab +
+# allowManagers route put his DMs on someone else's screen. Trigger: nav, routes, the script.
+if match '^(src/components/layout/agentCloudNavigation\.ts|src/App\.tsx|scripts/check-private-surfaces\.mjs)$'; then
+  echo "[pre-commit] nav/route file staged - running check:private-surfaces..."
+  node scripts/check-private-surfaces.mjs
+  node scripts/check-private-surfaces.mjs --selftest >/dev/null
+fi
+
 # ---------- check-manifest-brand (2026-11-10) ----------
 # Trigger: the real served-manifest source (vite.config.ts VitePWA block), its
 # decoy copy (public/manifest.webmanifest), the brand source of truth, or the

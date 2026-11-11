@@ -264,7 +264,7 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
     icon: Building2,
     items: [
       { label: "Money Inbox", href: "/dashboard/money-inbox", icon: MessageSquareDollar, adminOnly: true, samOnly: true },
-      { label: "Launch Board", href: "/dashboard/launch-board", icon: Megaphone, adminOnly: true },
+      { label: "Launch Board", href: "/dashboard/launch-board", icon: Megaphone, adminOnly: true, samOnly: true }, // camera library: Sam only
       { label: "Reports", href: "/dashboard/analytics", icon: BarChart3, adminOnly: true },
       { label: "Finances", href: "/dashboard/finances", icon: WalletCards, adminOnly: true },
       // One front door. The review is the working view; the older pages (requests, operations, Ethos, Aflac sends,

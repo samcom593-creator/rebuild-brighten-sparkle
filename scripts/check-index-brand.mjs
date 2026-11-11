@@ -17,15 +17,34 @@
  * the third surface of that class; index.html is now covered too.
  *
  * WHAT THIS GUARD CHECKS
- * Only the user-FACING head values (the ones a user reads in a tab title, a
- * search snippet or a social share card) are checked. Two rules:
+ * Two brand surfaces a user or a machine reads: the user-FACING head values
+ * (tab title, search snippet, social share card) AND the structured-data
+ * (JSON-LD) blocks that Google rich results + AI-search/GEO engines read for
+ * the Organization identity. For each, two rules:
  *
  *   POSITIVE  Every brand-name text field must contain the CURRENT brand, read
  *             live from the single source of truth (src/config/brand.ts
  *             platformName) — not a hardcoded token — so a FUTURE rebrand only
  *             edits brand.ts and this guard drags index.html along with it.
- *   NEGATIVE  No user-facing field (including the twitter handle fields) may
- *             contain the retired brand token "apex" that a user can see.
+ *   NEGATIVE  No user-facing field (including the twitter handle fields) and no
+ *             JSON-LD human-readable text field may contain the retired brand
+ *             token "apex" that a user or a search engine sees.
+ *
+ * THE JSON-LD HALF (added 2026-11-11, Website Integrity Bot)
+ * The <meta>/<title> pass is blind to <script type="application/ld+json">. The
+ * Organization name Google shows in a Knowledge Panel and the answer ChatGPT/
+ * Perplexity give to "who is Galaxy Financial" come from those blocks, not from
+ * og:title. A JSON-LD name that reverted to "Apex" would stay GREEN while every
+ * <meta> said Galaxy — the same one-surface-covered-sibling-open class this
+ * guard was born to close (Calendly, then PWA manifest, then <meta>, now this).
+ *   - A brand-bearing @type (Organization/LocalBusiness/WebSite/…) .name must
+ *     carry the current brand (POSITIVE). Person.name ("Samuel James") and a
+ *     VideoObject title are NOT forced to name the brand — only the NEGATIVE
+ *     retired-token test applies to them.
+ *   - Only human-readable text keys (name/legalName/description/headline/…) are
+ *     token-tested. URL/path fields (url, logo, thumbnailUrl, contentUrl,
+ *     embedUrl, sameAs) are skipped, so the apex-financial.org domain and the
+ *     apex-vsl.mp4 storage filename never trip it.
  *
  * WHAT THIS GUARD DELIBERATELY DOES NOT TOUCH
  *   - The domain `apex-financial.org` (og:url, canonical, asset URLs). The
@@ -35,8 +54,9 @@
  *   - The inline <script> in the head: BUMP_VERSION ("...-final-apex-vsl") and
  *     the localStorage keys (apex_bump_version, apex:theme:v2, apex_cache_busted)
  *     are INTERNAL identifiers, not user-facing. Renaming them force-busts every
- *     user's cache and resets their theme. This guard reads <meta>/<title>
- *     VALUES only, so it never sees them.
+ *     user's cache and resets their theme. This guard reads <meta>/<title> and
+ *     JSON-LD text values only (never inline <script> code, never JSON-LD URL/
+ *     path fields), so it never sees them.
  *
  * FAIL-LOUD: index.html missing, brand.ts unparseable, or the anchor fields
  * (<title> + og:title) not found all exit non-zero. A guard that cannot find
@@ -134,5 +154,104 @@ for (const key of [...BRAND_TEXT, ...HANDLE_FIELDS]) {
   }
 }
 
-console.log(`✅ check:index-brand OK — index.html head carries brand "${platform}"; ` +
-            `no retired "APEX" brand token in any user-facing <title>/<meta> value.`);
+// --- 3. structured-data (JSON-LD) brand identity ---------------------------
+// Google rich results and AI-search (GEO) engines read the Organization name
+// from <script type="application/ld+json"> blocks, NOT from <meta>. Those
+// blocks are a brand surface the <meta>/<title> pass above never sees.
+const LD_BLOCKS = [
+  ...indexSrc.matchAll(
+    /<script\b[^>]*type\s*=\s*"application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi,
+  ),
+].map((m) => m[1].trim());
+
+if (LD_BLOCKS.length === 0) {
+  die(
+    'no <script type="application/ld+json"> block found in index.html — the ' +
+      "site-wide Organization structured data Google reads is gone; a guard that " +
+      "can't find its operand is not green.",
+  );
+}
+
+// Human-readable text keys only — never URL/path fields, so apex-financial.org
+// and the apex-vsl.mp4 storage filename never trip the retired-token test.
+const LD_TEXT_KEYS = new Set([
+  "name",
+  "legalName",
+  "alternateName",
+  "description",
+  "headline",
+  "slogan",
+  "caption",
+]);
+// @types whose .name IS the agency brand and must carry the current brand.
+const LD_BRAND_TYPES = new Set([
+  "Organization",
+  "Corporation",
+  "LocalBusiness",
+  "WebSite",
+  "FinancialService",
+]);
+const RETIRED_LD = /apex/i;
+
+let sawOrgBrand = false;
+function walkLd(node) {
+  if (Array.isArray(node)) {
+    for (const n of node) walkLd(n);
+    return;
+  }
+  if (node === null || typeof node !== "object") return;
+  const t = typeof node["@type"] === "string" ? node["@type"] : null;
+  // POSITIVE: a brand-bearing @type's name must carry the current brand.
+  if (t && LD_BRAND_TYPES.has(t) && typeof node.name === "string") {
+    if (!node.name.toLowerCase().includes(platform.toLowerCase())) {
+      die(
+        `index.html JSON-LD ${t}.name = "${node.name}" does not carry the current ` +
+          `brand "${platform}" (from src/config/brand.ts). This is the Organization ` +
+          `identity Google and AI search read. Update brand.ts AND the JSON-LD together.`,
+      );
+    }
+    sawOrgBrand = true;
+  }
+  // NEGATIVE: no human-readable text field carries the retired brand token.
+  for (const [k, v] of Object.entries(node)) {
+    if (typeof v === "string") {
+      if (LD_TEXT_KEYS.has(k) && RETIRED_LD.test(v)) {
+        die(
+          `index.html JSON-LD ${t || "?"}.${k} = "${v}" still carries the retired ` +
+            `brand token "APEX" in structured data Google / AI search read. Update ` +
+            `it to the current brand "${platform}".`,
+        );
+      }
+    } else if (v && typeof v === "object") {
+      walkLd(v);
+    }
+  }
+}
+
+for (const raw of LD_BLOCKS) {
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (e) {
+    die(
+      `a <script type="application/ld+json"> block in index.html is not valid JSON ` +
+        `(${e.message}). Malformed structured data is rejected by Google and the guard ` +
+        `cannot verify its brand. Fix the JSON.`,
+    );
+  }
+  walkLd(parsed);
+}
+
+if (!sawOrgBrand) {
+  die(
+    "no Organization/LocalBusiness/WebSite JSON-LD with a brand name found in " +
+      "index.html — the site-wide brand identity Google reads is missing; guard " +
+      "cannot confirm the brand.",
+  );
+}
+
+console.log(
+  `✅ check:index-brand OK — index.html head + JSON-LD carry brand "${platform}"; ` +
+    `no retired "APEX" brand token in any user-facing <title>/<meta> value or ` +
+    `structured-data text field.`,
+);

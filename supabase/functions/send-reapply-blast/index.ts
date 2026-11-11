@@ -150,7 +150,13 @@ Deno.serve(async (req) => {
     try {
       const out = await RESEND.emails.send({
         from: FROM, to: [r.email], subject: SUBJECT, html, text,
-        headers: { "List-Unsubscribe": "<mailto:unsubscribe@apex-financial.org>" },
+        // sam@ and unsubscribe@ on apex-financial.org do not exist (550, 2026-11-11):
+        // replies and opt-outs go to the one live inbox.
+        reply_to: "info@kingofsales.net",
+        headers: {
+          "List-Unsubscribe": `<mailto:info@kingofsales.net?subject=unsubscribe>, <${SB_URL}/functions/v1/unsubscribe?u=${encodeURIComponent(r.email)}>`,
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
       });
       if ((out as any)?.error) throw new Error((out as any).error.message ?? String((out as any).error));
       sentEmail++;

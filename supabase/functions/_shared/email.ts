@@ -116,12 +116,15 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
 
   const firstTo = deliverable[0];
   const unsubToken = unsubscribe_token ?? encodeURIComponent(String(firstTo));
-  // Route to the unsubscribe edge function directly so one-click works
-  // regardless of whether the marketing site is up, and so the HTML
-  // confirmation is always served.
+  // One-click (RFC 8058) POSTs go straight to the unsubscribe edge function, so
+  // they work even if the site is down. A human click (GET) is redirected to
+  // apex-financial.org/unsubscribe, which asks for one press before writing.
+  // The mailto fallback must be a mailbox that exists: unsubscribe@ on the
+  // sending domain returns 550 (RCPT-probed 2026-11-11); info@kingofsales.net
+  // is the one live inbox.
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "https://xrzweoneiieddzxogewk.supabase.co";
   const unsubscribeUrl  = `${supabaseUrl}/functions/v1/unsubscribe?u=${unsubToken}`;
-  const unsubscribeMail = `mailto:unsubscribe@${DOMAIN}?subject=unsubscribe`;
+  const unsubscribeMail = `mailto:${BRAND_REPLY_TO}?subject=unsubscribe`;
   const finalHtml = ensureUnsubscribeFooter(resolvedHtml, unsubscribeUrl);
 
   try {

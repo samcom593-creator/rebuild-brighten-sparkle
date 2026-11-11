@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { resolveBrand } from "@/config/brand";
 import { supabase } from "@/integrations/supabase/client";
 import { TRAINING_ROUTES } from "@/lib/trainingRoutes";
+import { claimOnboardingPopup } from "@/lib/onboardingPopupGate";
 import { cn } from "@/lib/utils";
 
 import { CONTRACTING_PROFILE_PATH } from "@/lib/contractingLinks";
@@ -298,7 +299,9 @@ export function FirstLoginGuide({ agentId }: { agentId: string }) {
 
   const [open, setOpen] = useState(false);
   useEffect(() => {
-    if (visible && !hasSeen(agentId)) setOpen(true);
+    // One onboarding pop-up per session (src/lib/onboardingPopupGate.ts): stacked with the
+    // profile-picture prompt it froze Post a Deal until both were closed.
+    if (visible && !hasSeen(agentId) && claimOnboardingPopup("first-login-guide")) setOpen(true);
   }, [visible, agentId]);
 
   if (!visible || !current) return null;

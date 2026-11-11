@@ -20,6 +20,9 @@
 // Mount in AuthenticatedShell once so every protected page enforces it.
 
 import { useEffect, useState } from "react";
+import { claimOnboardingPopup } from "@/lib/onboardingPopupGate";
+
+const PROFILE_PROMPT_DELAY_MS = 3000;
 import { Camera, Loader2, User } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -59,6 +62,11 @@ export function RequireProfilePicture() {
         const until = Number(localStorage.getItem(`avatar-prompt-snooze:${user.id}`) ?? 0);
         if (Number.isFinite(until) && until > Date.now()) return;
       } catch { /* empty-catch-allow:storage-read-optional — blocked storage must not decide whether the prompt shows */ }
+      // One onboarding pop-up per session (src/lib/onboardingPopupGate.ts): give the first-login
+      // guide a head start, then only open if nothing else already covers the page. Stacked
+      // modals froze Post a Deal for new agents.
+      await new Promise((resolve) => setTimeout(resolve, PROFILE_PROMPT_DELAY_MS));
+      if (cancelled || !claimOnboardingPopup("profile-picture")) return;
       setNeedsPicture(true);
     })();
     return () => { cancelled = true; };

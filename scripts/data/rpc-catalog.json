@@ -4546,6 +4546,18 @@
         "raw": ""
       }
     ],
+    "fn_manychat_page_id": [
+      {
+        "all": [
+          "p_url"
+        ],
+        "required": [
+          "p_url"
+        ],
+        "unnamed": false,
+        "raw": "p_url text"
+      }
+    ],
     "fn_match_carrier_policy_agents": [
       {
         "all": [],
@@ -7125,6 +7137,21 @@
         ],
         "unnamed": false,
         "raw": "p_bundle uuid, p_user uuid"
+      }
+    ],
+    "lead_calling_window": [
+      {
+        "all": [
+          "p_at",
+          "p_phone10",
+          "p_state"
+        ],
+        "required": [
+          "p_phone10",
+          "p_state"
+        ],
+        "unnamed": false,
+        "raw": "p_state text, p_phone10 text, p_at timestamp with time zone DEFAULT now()"
       }
     ],
     "lead_closers_leaderboard": [

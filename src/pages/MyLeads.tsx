@@ -45,6 +45,29 @@ interface MyLead {
   status_note: string | null;
   status_at: string | null;
   granted_at: string | null;
+  /** MP-LEAD-CALLING-HOURS: server verdict — 8 AM to 7 PM in the LEAD's time zone. */
+  callable_now?: boolean | null;
+  /** Next opening when closed (an instant; shown in the agent's own clock). */
+  callable_at?: string | null;
+}
+// A lead is workable unless the server says its calling hours are closed. An older server
+// that does not send the flag leaves every lead workable, exactly as before.
+const callableNow = (r: Pick<MyLead, "callable_now">) => r.callable_now !== false;
+function opensLabel(iso: string | null | undefined): string {
+  if (!iso) return "tomorrow morning";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "tomorrow morning";
+  const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  const today = new Date();
+  const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+  if (d.toDateString() === today.toDateString()) return `today at ${time}`;
+  if (d.toDateString() === tomorrow.toDateString()) return `tomorrow at ${time}`;
+  return `${d.toLocaleDateString("en-US", { weekday: "long" })} at ${time}`;
+}
+function earliestOpening(list: Array<Pick<MyLead, "callable_at">>): string | null {
+  let best: string | null = null;
+  for (const r of list) if (r.callable_at && (!best || r.callable_at < best)) best = r.callable_at;
+  return best;
 }
 type Show = "open" | "done" | "all";
 const SHOW: ReadonlyArray<{ key: Show; label: string }> = [
@@ -192,8 +215,12 @@ export default function MyLeads() {
   const rows = q.data ?? [];
   const mySold = rows.filter((r) => r.status === "sold").length;
   const myWorked = rows.filter((r) => !isOpenLead(r.status)).length;
-  const count = (s: Show) => rows.filter((r) => s === "all" || (s === "open" ? isOpenLead(r.status) : !isOpenLead(r.status))).length;
-  const visible = rows.filter((r) => show === "all" || (show === "open" ? isOpenLead(r.status) : !isOpenLead(r.status)));
+  // Sam (2026-11-10): after 7 PM leads can't be worked, so they leave "To call". Closed
+  // leads stay under "All" so a call made at 6:58 can still be logged.
+  const inView = (r: MyLead, s: Show) => s === "all" || (s === "open" ? isOpenLead(r.status) && callableNow(r) : !isOpenLead(r.status));
+  const count = (s: Show) => rows.filter((r) => inView(r, s)).length;
+  const visible = rows.filter((r) => inView(r, show));
+  const closedOpen = rows.filter((r) => isOpenLead(r.status) && !callableNow(r));
   const groups: Array<{ id: string; name: string; note: string | null; format: string; leads: MyLead[] }> = [];
   for (const r of visible) {
     const g = groups.find((x) => x.id === r.bundle_id);
@@ -211,6 +238,16 @@ export default function MyLeads() {
           <span className="text-muted-foreground">
             Work a lead: <b className="text-foreground">1.</b> Call · <b className="text-foreground">2.</b> Record what happened · <b className="text-foreground">3.</b> Tap the result
           </span>
+        </div>
+      )}
+      {closedOpen.length > 0 && (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm" data-testid="calling-hours-closed">
+          <p className="font-semibold text-amber-200">
+            {closedOpen.length} lead{closedOpen.length === 1 ? " is" : "s are"} hidden: it's past calling hours where {closedOpen.length === 1 ? "that client lives" : "those clients live"}.
+          </p>
+          <p className="mt-1 text-muted-foreground">
+            Leads can be called 8 AM to 7 PM in the client's own time zone. The next ones open {opensLabel(earliestOpening(closedOpen))} (your time).
+          </p>
         </div>
       )}
       {q.isLoading ? (
@@ -240,7 +277,7 @@ export default function MyLeads() {
                     {g.note && <p className="mt-1 text-xs italic text-amber-300/90">“{g.note}”</p>}
                   </div>
                   {(() => {
-                    const fresh = rows.filter((r) => r.bundle_id === g.id && r.status === "new").length;
+                    const fresh = rows.filter((r) => r.bundle_id === g.id && r.status === "new" && callableNow(r)).length;
                     return fresh > 0 ? (
                       <Button type="button" size="sm" onClick={() => setWorkBundle(g.id)}>
                         <PhoneCall className="mr-1.5 h-3.5 w-3.5" /> Work leads ({fresh})
@@ -250,7 +287,8 @@ export default function MyLeads() {
                 </div>
                 <ul className="divide-y divide-border/60 border-t border-border/60 text-sm">
                   {g.leads.map((l) => {
-                    const href = canDial(l.status) ? phoneHref(l.phone10) : null;
+                    const hoursOpen = callableNow(l);
+                    const href = canDial(l.status) && hoursOpen ? phoneHref(l.phone10) : null;
                     return (
                       <li key={l.item_id} className="space-y-2 px-4 py-3">
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -265,7 +303,9 @@ export default function MyLeads() {
                           {href ? (
                             <a href={href} {...contactLinkProps(href)} className="inline-flex items-center gap-1 font-medium text-primary hover:underline"><Phone className="h-3.5 w-3.5" />{formatPhoneDisplay(l.phone10)}</a>
                           ) : (
-                            <span className="text-muted-foreground">{formatPhoneDisplay(l.phone10)} · do not call</span>
+                            <span className="text-muted-foreground">
+                              {formatPhoneDisplay(l.phone10)} · {canDial(l.status) && !hoursOpen ? `calling hours closed, opens ${opensLabel(l.callable_at)}` : "do not call"}
+                            </span>
                           )}
                           <TierBadge tier={l.quality_tier} pool={(l.attrs as Record<string, unknown> | null)?.pool as string | undefined} />
                           <span className="text-muted-foreground">{leadStatusLabel(l.status)}{l.status_note ? `: ${l.status_note}` : ""}</span>
@@ -333,12 +373,13 @@ export default function MyLeads() {
       {workBundle && (() => {
         const pack = rows.filter((r) => r.bundle_id === workBundle);
         if (pack.length === 0) { return null; }
-        const queue = pack.filter((r) => r.status === "new");
+        const queue = pack.filter((r) => r.status === "new" && callableNow(r));
+        const waiting = pack.filter((r) => r.status === "new" && !callableNow(r));
         const cur = queue[0] ?? null;
-        const workedN = pack.length - queue.length;
+        const workedN = pack.filter((r) => r.status !== "new").length;
         const soldN = pack.filter((r) => r.status === "sold").length;
         const pool = (pack[0].attrs as Record<string, unknown> | null)?.pool as string | undefined;
-        const href = cur && canDial(cur.status) ? phoneHref(cur.phone10) : null;
+        const href = cur && canDial(cur.status) && callableNow(cur) ? phoneHref(cur.phone10) : null;
         return (
           <div className="fixed inset-0 z-50 flex flex-col bg-background">
             <div className="flex items-center justify-between gap-2 border-b border-border/60 px-4 py-3">
@@ -428,8 +469,17 @@ export default function MyLeads() {
                 ) : (
                   <div className="flex flex-col items-center gap-3 py-16 text-center">
                     <Trophy className="h-10 w-10 text-primary" />
-                    <h2 className="text-xl font-semibold">Pack worked — every lead has a result.</h2>
-                    <p className="text-sm text-muted-foreground">{pack.length} lead{pack.length === 1 ? "" : "s"} · {soldN} sold. Callbacks and no-answers stay in your To call list.</p>
+                    {waiting.length > 0 ? (
+                      <>
+                        <h2 className="text-xl font-semibold">Calling hours are closed for the rest of this pack.</h2>
+                        <p className="text-sm text-muted-foreground" data-testid="work-mode-hours-closed">{waiting.length} lead{waiting.length === 1 ? "" : "s"} left. The next ones open {opensLabel(earliestOpening(waiting))} (your time).</p>
+                      </>
+                    ) : (
+                      <>
+                        <h2 className="text-xl font-semibold">Pack worked — every lead has a result.</h2>
+                        <p className="text-sm text-muted-foreground">{pack.length} lead{pack.length === 1 ? "" : "s"} · {soldN} sold. Callbacks and no-answers stay in your To call list.</p>
+                      </>
+                    )}
                     <Button type="button" onClick={() => setWorkBundle(null)}>Back to my leads</Button>
                   </div>
                 )}

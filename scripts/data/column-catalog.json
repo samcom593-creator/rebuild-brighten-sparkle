@@ -7258,6 +7258,11 @@
       "area_code",
       "state"
     ],
+    "us_state_timezones": [
+      "state",
+      "tz_east",
+      "tz_west"
+    ],
     "user_dashboard_prefs": [
       "created_at",
       "hidden_cards",
@@ -8094,6 +8099,18 @@
       "test_rows_excluded",
       "verdict",
       "window_days"
+    ],
+    "v_application_channel": [
+      "application_id",
+      "channel",
+      "created_at",
+      "in_app",
+      "license_status",
+      "manychat_page_id",
+      "ref_code",
+      "ref_owner",
+      "utm_source",
+      "week"
     ],
     "v_application_conversion_funnel": [
       "approved_count",
@@ -12308,6 +12325,20 @@
       "priority",
       "recruiter_id"
     ],
+    "v_reactivation_campaign_results": [
+      "attributed_exact",
+      "attributed_fallback",
+      "booked_live",
+      "booked_total",
+      "campaign_started",
+      "did_not_show_proven",
+      "last_send_at",
+      "people_emailed",
+      "send_failures",
+      "showed_proven",
+      "still_to_send",
+      "unknown_outcome"
+    ],
     "v_reactivation_cohort": [
       "ai_score_tier",
       "app_status",
@@ -12602,6 +12633,19 @@
       "pct_complete",
       "phone",
       "priority"
+    ],
+    "v_recruit_channel_dark": [
+      "baseline_per_week",
+      "channel",
+      "days_since_last",
+      "last_14d",
+      "last_application_at"
+    ],
+    "v_recruit_channel_weekly": [
+      "applications",
+      "channel",
+      "licensed",
+      "week"
     ],
     "v_recruit_funnel_applications": [
       "application_id",
@@ -13196,6 +13240,13 @@
       "status",
       "tier",
       "ts"
+    ],
+    "v_social_bot_scoreboard_freshness": [
+      "current_week_monday",
+      "days_old",
+      "generated_at",
+      "verdict",
+      "week_of"
     ],
     "v_social_bot_snapshot_freshness": [
       "hours_stale",

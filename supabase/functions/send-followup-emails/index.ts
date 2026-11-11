@@ -3,12 +3,13 @@ import { SPAM_NOTE_HTML } from "../_shared/spam-note.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
-import { BRAND_FROM } from "../_shared/email.ts";
+import { BRAND_FROM, BRAND_REPLY_TO } from "../_shared/email.ts";
 import { SCHEDULING_LINKS } from "../_shared/apex.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
 import { safeEqual } from "../_shared/send-floor.ts";
 import { DEPARTED_AGENT_COLUMNS, isBannedUser, isDepartedAgent } from "../_shared/departed.ts";
 import { parseWp3Cutoff } from "../_shared/wp3-cutoff.ts";
+import { sendClaimed } from "./claim.ts";
 
 // PL-WIB-DIGEST-GATE (2026-10-25). verify_jwt is false and this handler read no
 // credential, so any POST ran the applicant drip. The followup_*_sent_at stamps
@@ -110,7 +111,10 @@ async function sendUnlicensedFollowup(app: {
     const response = await resend.emails.send({
        from: BRAND_FROM,
       to: [app.email],
-      cc: ccList.length > 0 ? ccList : undefined,
+      // Staff copies go by BCC (2026-11-11 reply-path decision): a CC showed staff addresses
+      // to the applicant and pulled them into every reply-all. Replies go to a live inbox.
+      bcc: ccList.length > 0 ? ccList : undefined,
+      reply_to: BRAND_REPLY_TO,
       subject: "Need Help Getting Licensed? We're Here For You! 📋",
       html: `${SPAM_NOTE_HTML}
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -203,7 +207,8 @@ async function sendUnlicensedFollowup2(app: {
     const response = await resend.emails.send({
        from: BRAND_FROM,
       to: [app.email],
-      cc: ccList2.length > 0 ? ccList2 : undefined,
+      bcc: ccList2.length > 0 ? ccList2 : undefined,
+      reply_to: BRAND_REPLY_TO,
       subject: "Are You Licensed Yet? 🎓",
       html: `${SPAM_NOTE_HTML}
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -300,7 +305,8 @@ async function sendLicensedFollowup(app: {
     const response = await resend.emails.send({
       from: BRAND_FROM,
       to: [app.email],
-      cc: ccList3.length > 0 ? ccList3 : undefined,
+      bcc: ccList3.length > 0 ? ccList3 : undefined,
+      reply_to: BRAND_REPLY_TO,
       subject: "Did We Get to You Yet? Let's Connect! 🚀",
       html: `${SPAM_NOTE_HTML}
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -383,6 +389,7 @@ async function sendDay1Nudge(app: { id: string; first_name: string | null; email
     const response = await resend.emails.send({
       from: BRAND_FROM,
       to: [app.email],
+      reply_to: BRAND_REPLY_TO,
       subject: `${first}, your next step with Galaxy`,
       html: `${SPAM_NOTE_HTML}
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #111827;">
@@ -559,58 +566,40 @@ const handler = async (req: Request): Promise<Response> => {
     let unlicensed2Sent = 0;
     let licensedSent = 0;
 
-    // WP3 day-1 nudges: stamp day1_nudge_sent_at only with a Resend message id.
+    // Every drip claims its stamp before sending (claim.ts): one run wins, a send without a
+    // Resend id releases the claim, and each delivered email leaves an email_delivery_log receipt.
+    // WP3 day-1 nudges.
     for (const app of day1Apps || []) {
       if (!app.email) continue;
-      const messageId = await sendDay1Nudge(app as { id: string; first_name: string | null; email: string });
-      if (messageId) {
-        const { error: stampErr } = await supabaseAdmin
-          .from("applications")
-          .update({ day1_nudge_sent_at: new Date().toISOString() })
-          .eq("id", app.id);
-        if (stampErr) console.error("day-1 stamp failed for application:", app.id, stampErr.message);
-        day1Sent++;
-      }
+      const a = app as { id: string; first_name: string | null; email: string };
+      const r = await sendClaimed(supabaseAdmin, a, "day1_nudge_sent_at", "followup-day1", () => sendDay1Nudge(a));
+      if (r.sent) day1Sent++;
     }
 
-    // Send unlicensed follow-ups (first - 3 days) = the day-3 nudge
+    // Unlicensed follow-ups (first, day 3) = the day-3 nudge. followup_sent_at keeps the day-7
+    // chain and is the claim; day3_nudge_sent_at is the receipt column, stamped at the same instant.
     for (const app of unlicensedApps || []) {
-      const messageId = await sendUnlicensedFollowup(app);
-      if (messageId) {
-        // Mark as sent: followup_sent_at keeps the day-7 chain; day3_nudge_sent_at is the receipt column.
-        const stampAt = new Date().toISOString();
-        await supabaseAdmin
-          .from("applications")
-          .update({ followup_sent_at: stampAt, day3_nudge_sent_at: stampAt })
-          .eq("id", app.id);
+      if (!app.email) continue;
+      const r = await sendClaimed(supabaseAdmin, app, "followup_sent_at", "followup-day3", () => sendUnlicensedFollowup(app));
+      if (r.sent) {
+        const { error: d3Err } = await supabaseAdmin.from("applications").update({ day3_nudge_sent_at: r.stamp }).eq("id", app.id);
+        if (d3Err) console.error("day-3 receipt stamp failed for application:", app.id, d3Err.message);
         unlicensedSent++;
       }
     }
 
-    // Send second unlicensed follow-ups (7 days - "Are you licensed yet?")
+    // Second unlicensed follow-ups (day 7, "Are you licensed yet?")
     for (const app of unlicensedApps2 || []) {
-      const messageId = await sendUnlicensedFollowup2(app);
-      if (messageId) {
-        // Mark as sent
-        await supabaseAdmin
-          .from("applications")
-          .update({ followup_unlicensed_2_sent_at: new Date().toISOString() })
-          .eq("id", app.id);
-        unlicensed2Sent++;
-      }
+      if (!app.email) continue;
+      const r = await sendClaimed(supabaseAdmin, app, "followup_unlicensed_2_sent_at", "followup-day7", () => sendUnlicensedFollowup2(app));
+      if (r.sent) unlicensed2Sent++;
     }
 
-    // Send licensed follow-ups
+    // Licensed follow-ups
     for (const app of licensedApps || []) {
-      const messageId = await sendLicensedFollowup(app);
-      if (messageId) {
-        // Mark as sent
-        await supabaseAdmin
-          .from("applications")
-          .update({ followup_licensed_sent_at: new Date().toISOString() })
-          .eq("id", app.id);
-        licensedSent++;
-      }
+      if (!app.email) continue;
+      const r = await sendClaimed(supabaseAdmin, app, "followup_licensed_sent_at", "followup-licensed", () => sendLicensedFollowup(app));
+      if (r.sent) licensedSent++;
     }
 
     const result = {

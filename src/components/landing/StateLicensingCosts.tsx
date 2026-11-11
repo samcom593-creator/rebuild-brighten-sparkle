@@ -99,7 +99,7 @@ export function StateLicensingCostsView({ data }: { data: StateLicensingCostsDat
         />
         <Row
           label="State license fee"
-          detail={license.processingFeeUsd ? `plus ${formatUsd(license.processingFeeUsd)} processing fee` : null}
+          detail={license.processingFeeUsd ? `includes a ${formatUsd(license.processingFeeUsd)} processing fee` : null}
           value={license.feeUsd != null ? formatUsd(license.feeUsd + (license.processingFeeUsd ?? 0)) : "Fee not published"}
         />
         {data.totalKnownUsd != null ? (

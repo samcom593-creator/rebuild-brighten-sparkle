@@ -19,16 +19,35 @@
 --                                    license_processing_fee_usd, license_apply_via, license_apply_url,
 --                                    watch_outs, sources). Existing columns keep their meaning;
 --                                    exam_vendor_url = the scheduling page. 11 rows, is_active = true.
+--   fn_course_lane_login_block(uuid) / fn_course_lane_email_block(text)
+--                                  the shared "may this person hear from us at all" gate for every
+--                                  PKG3 surface and sender: 'suspended' (an open
+--                                  agent_access_suspensions row) or 'login_banned'
+--                                  (auth.users.banned_until in the future; DECISIONS 21:20Z: a login
+--                                  ban counts too, and 68 banned logins have no suspension row), for
+--                                  the login itself or for ANY login whose auth or profile email is
+--                                  the address. NULL = not blocked. Service role only.
 --   get_licensing_requirements_for_application(uuid)
 --                                  SECURITY DEFINER, anon + authenticated. The public /status/:id page
 --                                  knows only the application id; this returns the fee block for that
 --                                  application's state and nothing else (no name, no contact field).
---                                  NULL when the application is licensed, its owner is suspended, the
---                                  state is unknown, or the state has no active row.
+--                                  NULL when the application is licensed, a login on its address is
+--                                  suspended or banned, the state is unknown, or the state has no
+--                                  active row.
+--   v_licensing_cost_public        (WP2, anon-readable) total_usd now uses the same known-fees rule as
+--                                  the RPC (course extra fee and license processing fee in, a
+--                                  fingerprint fee only where fingerprints are required), so the two
+--                                  can never show different totals (they did: WI 168.75 vs 174.35,
+--                                  CA 409 vs 415, IL 406 vs 411.60). Same columns in the same order;
+--                                  as_of, course_extra_fee_usd, license_processing_fee_usd and
+--                                  fingerprint_required are appended at the end.
 --
 -- ROLLBACK: update public.licensing_state_requirements set is_active = false;  (or delete the 11 rows)
 --   drop function public.get_licensing_requirements_for_application(uuid);
+--   v_licensing_cost_public: re-create it from 20261111100100_wp2_front_door.sql section 6 after
+--   dropping it (the appended columns cannot be removed by create or replace).
 --   The added columns are nullable and harmless; drop them only after the UI no longer reads them.
+--   fn_course_lane_login_block / fn_course_lane_email_block: drop only after 0330-0370 are rolled back.
 
 alter table public.licensing_state_requirements
   add column if not exists state_name text,
@@ -111,6 +130,65 @@ on conflict (state) do update set
 
 
 -- ---------------------------------------------------------------------------
+-- Shared block gate (every PKG3 surface and sender asks these; defined here because the status-page
+-- RPC below is the first user). A login is blocked by an open suspension OR an auth ban.
+-- ---------------------------------------------------------------------------
+create or replace function public.fn_course_lane_login_block(p_user_id uuid)
+returns text
+language sql
+stable
+security definer
+set search_path to 'public'
+as $$
+  select case
+    when p_user_id is null then null
+    when exists (select 1 from public.agent_access_suspensions s
+                  where s.user_id = p_user_id and s.lifted_at is null) then 'suspended'
+    when exists (select 1 from auth.users u
+                  where u.id = p_user_id and u.banned_until is not null and u.banned_until > now()) then 'login_banned'
+  end
+$$;
+
+comment on function public.fn_course_lane_login_block(uuid) is
+  'PKG3: ''suspended'' (open agent_access_suspensions row), ''login_banned'' (auth.users.banned_until in the future) or NULL for one login. Nobody blocked here receives anything a PKG3 sender or surface builds.';
+
+create or replace function public.fn_course_lane_email_block(p_email text)
+returns text
+language sql
+stable
+security definer
+set search_path to 'public'
+as $$
+  -- every login whose auth email or profile email is this address
+  with ids as (
+    select u.id
+      from auth.users u
+     where nullif(btrim(coalesce(p_email, '')), '') is not null
+       and lower(btrim(u.email)) = lower(btrim(p_email))
+    union
+    select p.user_id
+      from public.profiles p
+     where nullif(btrim(coalesce(p_email, '')), '') is not null
+       and p.user_id is not null
+       and lower(btrim(p.email)) = lower(btrim(p_email))
+  )
+  select case
+    when exists (select 1 from ids join public.agent_access_suspensions s
+                   on s.user_id = ids.id and s.lifted_at is null) then 'suspended'
+    when exists (select 1 from ids join auth.users u
+                   on u.id = ids.id and u.banned_until is not null and u.banned_until > now()) then 'login_banned'
+  end
+$$;
+
+comment on function public.fn_course_lane_email_block(text) is
+  'PKG3: ''suspended'' or ''login_banned'' when ANY login whose auth or profile email is this address has an open suspension or an auth ban; NULL otherwise (also for a blank address).';
+
+revoke all on function public.fn_course_lane_login_block(uuid) from public, anon, authenticated;
+revoke all on function public.fn_course_lane_email_block(text) from public, anon, authenticated;
+grant execute on function public.fn_course_lane_login_block(uuid) to service_role;
+grant execute on function public.fn_course_lane_email_block(text) to service_role;
+
+-- ---------------------------------------------------------------------------
 -- The applicant's own page reads its state's row through this. No PII out: the state code is the
 -- only thing derived from the application, and the caller already holds the application id.
 -- ---------------------------------------------------------------------------
@@ -122,12 +200,15 @@ security definer
 set search_path to 'public'
 as $$
   with a as (
-    select ap.id, public.us_state_code(ap.state) as st, ap.email
+    select ap.id, public.us_state_code(ap.state) as st
       from public.applications ap
      where ap.id = p_application_id
        and coalesce(ap.license_status::text, 'unlicensed') <> 'licensed'
        and ap.licensed_at is null
        and coalesce(ap.is_duplicate, false) = false
+       -- nobody blocked (open suspension or login ban, on any login with this address) gets anything
+       -- built here: the same rule as every PKG3 sender
+       and public.fn_course_lane_email_block(ap.email) is null
   ), r as (
     select q.*,
            -- known fees only; a required-but-unpublished fee is listed in "missing", never guessed
@@ -164,17 +245,39 @@ as $$
               case when coalesce(r.fingerprint_required, true) and r.fingerprint_fee_usd is null then 'fingerprint' end,
               case when r.license_fee_usd is null then 'license' end], null)))
     from r
-   where not exists (
-     -- nobody with an open suspension gets anything built here (same rule as every PKG3 sender)
-     select 1
-       from public.agent_access_suspensions s
-       join auth.users u on u.id = s.user_id
-       join a on lower(btrim(u.email)) = lower(btrim(a.email))
-      where s.lifted_at is null)
 $$;
 
 comment on function public.get_licensing_requirements_for_application(uuid) is
-  'PKG3: the fee block for one application''s state (course partner price, exam vendor/fee/scheduling link, fingerprints, license fee, known total, as_of). Anon-callable for /status/:id like get_application_status; returns only public licensing_state_requirements data. NULL for licensed, suspended, unknown-state or unseeded-state applications.';
+  'PKG3: the fee block for one application''s state (course partner price, exam vendor/fee/scheduling link, fingerprints, license fee, known total, as_of). Anon-callable for /status/:id like get_application_status; returns only public licensing_state_requirements data. NULL for licensed, suspended or login-banned (any login on the address), unknown-state or unseeded-state applications.';
 
 revoke all on function public.get_licensing_requirements_for_application(uuid) from public;
 grant execute on function public.get_licensing_requirements_for_application(uuid) to anon, authenticated, service_role;
+
+-- ---------------------------------------------------------------------------
+-- WP2's anon-readable cost view: one total rule with the RPC above. Existing columns keep their names,
+-- types and order; the four that explain the total are appended.
+-- ---------------------------------------------------------------------------
+create or replace view public.v_licensing_cost_public with (security_invoker = true) as
+select r.state,
+       r.course_price_usd,
+       r.exam_fee_usd,
+       r.fingerprint_fee_usd,
+       r.license_fee_usd,
+       coalesce(r.course_price_usd, 0) + coalesce(r.course_extra_fee_usd, 0)
+         + coalesce(r.exam_fee_usd, 0)
+         + case when r.fingerprint_required is false then 0 else coalesce(r.fingerprint_fee_usd, 0) end
+         + coalesce(r.license_fee_usd, 0) + coalesce(r.license_processing_fee_usd, 0) as total_usd,
+       r.exam_vendor,
+       r.exam_vendor_url,
+       r.fingerprint_vendor,
+       r.updated_at,
+       r.as_of,
+       r.course_extra_fee_usd,
+       r.license_processing_fee_usd,
+       r.fingerprint_required
+  from public.licensing_state_requirements r
+ where r.is_active;
+
+comment on view public.v_licensing_cost_public is
+  'WP2 public cost view (anon-readable through the is_active RLS policy). PKG3: total_usd = the known fees, the same rule as get_licensing_requirements_for_application.total_known_usd (course + course extra fee + exam + fingerprints where required + license + license processing). Non-PII.';
+grant select on public.v_licensing_cost_public to anon, authenticated;

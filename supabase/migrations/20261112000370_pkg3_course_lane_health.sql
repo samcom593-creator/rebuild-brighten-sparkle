@@ -6,15 +6,18 @@
 --         be messaged (no block reason), finished more than 2 days ago and has no exam message with a
 --         provider receipt (Resend id on the email row)
 --   WARN  licensing_state_requirements has no active row, or its oldest as_of is more than 180 days old
---   WARN  the newest Xcel report is more than 48h old
 --   WARN  an active state row has no exam_push template (the sync trigger failed), or the exam sweep cron
 --         is not scheduled while fresh finishers exist
--- History finishers (completion before the cutoff) are context only ("awaiting catch-up"): grading them
--- would keep the check yellow until a human sends a backlog message, which is the wrong incentive.
+--   context only: the newest Xcel report's age (apex-doctor #42 owns that WARN at the same 48h
+--         threshold; grading it twice would double-count one fault); finishers from before the cutoff
+--         ("awaiting catch-up"): grading them would keep the check yellow until a human sends a
+--         backlog message, which is the wrong incentive.
 --
 -- v_course_lane_owner_tasks: what the recruit owner should do next in this lane (help a finisher book
--- the exam; call a new Xcel-roster record). Read by the recruit digest (PKG2, cross-package request) and
--- by staff. No contact fields.
+-- the exam; call a new Xcel-roster record). The owner is always fn_course_lane_owner_user_id, so a
+-- suspended or login-banned owner is never named; a person who is suspended, banned, unsubscribed or
+-- do-not-contact never appears. Read by staff and (cross-package request) by PKG2's recruit digest,
+-- which is the only owner channel DECISIONS N5 counts as read. No contact fields.
 -- ROLLBACK: drop view public.v_course_lane_owner_tasks; drop view public.v_course_lane_health;
 
 create or replace view public.v_course_lane_health as
@@ -59,11 +62,18 @@ select
   public.fn_course_lane_hired_unlicensed_from() as hired_unlicensed_anchor,
   (select count(*) from public.next_step_messages m
     where m.dedupe_key like '%:hired_unlicensed:day%' and m.created_at > now() - interval '7 days')::int as hired_unlicensed_nudges_7d,
-  (select count(*) from public.v_xcel_identity_rollup x where not x.is_linked and x.is_active)::int as xcel_unmatched_active
+  (select count(*) from public.v_xcel_identity_rollup x where not x.is_linked and x.is_active)::int as xcel_unmatched_active,
+  -- appended by the PKG3 fix pass
+  (select count(*) from public.next_step_messages m
+    where m.metadata ->> 'package' = 'MP-ONBOARD-ANCHOR-PKG3' and m.metadata ? 'step'
+      and m.fallback_of_id is null and m.created_at > now() - interval '7 days')::int as rows_with_ladder_step_key_7d,
+  (select count(*) from public.next_step_messages m
+    where m.metadata ->> 'package' = 'MP-ONBOARD-ANCHOR-PKG3' and m.fallback_of_id is null
+      and m.error like 'skipped: stage_changed%' and m.created_at > now() - interval '7 days')::int as rows_skipped_stage_changed_7d
   from cfg;
 
 comment on view public.v_course_lane_health is
-  'PKG3 guard (apex-doctor drop-in 56): one row of scalar operands for the course lane: state fee table freshness, Xcel report age, fresh finishers without a receipted exam message, cron presence, template sync.';
+  'PKG3 guard (apex-doctor drop-in 56): one row of scalar operands for the course lane: state fee table freshness, Xcel report age (context; #42 grades it), fresh finishers without a receipted exam message, cron presence, template sync, and PKG3 rows the dispatcher gate skipped as stage_changed (must stay 0).';
 revoke all on public.v_course_lane_health from public, anon, authenticated;
 grant select on public.v_course_lane_health to service_role;
 
@@ -74,28 +84,33 @@ select 'help_book_exam'::text as task,
        p.person_kind, p.application_id, p.agent_id, p.first_name, p.state,
        p.completed_on as event_on,
        p.push_sent_at as since,
-       'Finished the course; the exam message went out. Help them pick an exam date.'::text as next_action
+       'Finished the course; the exam message went out. Help them pick an exam date.'::text as next_action,
+       null::text as note
   from public.v_course_lane_exam_people p
  where p.push_sent_at is not null
    and p.push_sent_at > now() - interval '14 days'
    and not p.exam_on_file and not p.licensed
-   and coalesce(p.block_reason, '') not in ('suspended', 'unsubscribed', 'do_not_contact')
+   and coalesce(p.block_reason, '') not in ('suspended', 'login_banned', 'unsubscribed', 'do_not_contact')
 union all
 select 'call_new_xcel_record',
-       a.recruiting_owner_user_id,
-       public.fn_staff_first_name(a.recruiting_owner_user_id),
+       o.owner_user_id,
+       public.fn_staff_first_name(o.owner_user_id),
        'applicant', a.id, null::uuid,
        split_part(btrim(a.first_name), ' ', 1), a.state,
        (a.created_at at time zone 'America/Phoenix')::date,
        a.created_at,
-       'Xcel student with no application until now. Call to confirm their state and next step.'
+       'Xcel student with no application until now. Call to confirm their state and next step.',
+       -- the partner report's hiring manager, for a human to decide (never auto-assigned)
+       nullif(a.referral_source_detail, '')
   from public.applications a
+  cross join lateral (select public.fn_course_lane_owner_user_id(a.id, null) as owner_user_id) o
  where a.source = 'xcel_roster' and 'pkg3' = any(coalesce(a.tags, '{}'::text[]))
    and a.created_at > now() - interval '14 days'
    and a.human_last_contact_at is null
-   and not public.fn_course_lane_email_suspended(a.email);
+   and public.fn_course_lane_email_block(a.email) is null
+   and a.do_not_contact_at is null;
 
 comment on view public.v_course_lane_owner_tasks is
-  'PKG3: the recruit owner''s course-lane tasks (help a finisher book the exam after the exam message; call a new Xcel-roster record). First names only, no contact fields. Service role (digest) only.';
+  'PKG3: the recruit owner''s course-lane tasks (help a finisher book the exam after the exam message; call a new Xcel-roster record). Owner from fn_course_lane_owner_user_id (never a suspended or banned owner); never a suspended, banned, unsubscribed or do-not-contact person. First names only, no contact fields. Service role (digest) only.';
 revoke all on public.v_course_lane_owner_tasks from public, anon, authenticated;
 grant select on public.v_course_lane_owner_tasks to service_role;

@@ -11,9 +11,11 @@
 --   Leslie   2d82c144  WI    0% (enrolled 11-10)
 --   Michael  64e8d6a6  WI    0% (enrolled 11-10)
 -- Each gets an applications row (source xcel_roster, excluded from funnel counts), the recruit-roster
--- owner (falls back to Sam while no roster member can sign in), silent course stamps, a next-step row
--- and one owner inbox task. Any id of the identity's report rows selects it, so a newer daily report
--- does not break the list; a student who matched a record in the meantime is skipped, not duplicated.
+-- owner (the first roster member who is active and neither suspended nor login-banned; Sam when none),
+-- silent course stamps, a next-step row and one owner inbox task (whole-number percent; it names the
+-- Xcel hiring manager when the report lists one, e.g. Obi and Clyde, without assigning them). Any id
+-- of the identity's report rows selects it, so a newer daily report does not break the list; a student
+-- who matched a record in the meantime is skipped, not duplicated.
 -- SENDS: none from this migration (the insert runs with session_replication_role = replica; inbox
 -- tasks are in-app). Isaac and Clyde entered their stage from history, so every remaining
 -- started_prelicense check-in is pre-suppressed. Kaleb, Leslie and Michael enrolled after the cutoff

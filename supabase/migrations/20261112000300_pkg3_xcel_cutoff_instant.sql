@@ -31,16 +31,20 @@
 --   fn_xcel_progress_plan()                same signature/columns; freshness uses the instant rule
 --   fn_apply_xcel_progress(uuid)           same signature; the placeholder test compares instants
 --   fn_course_lane_wrong_xcel_suppressions()          read-only list of placeholders that the
---                                                     instant rule says were wrong
+--                                                     instant rule says were wrong and that are not
+--                                                     voided yet (a voided row never lists again)
 --   fn_course_lane_clear_wrong_xcel_suppressions(bool) the data fix, dry_run by default. It voids
 --                                                     the dedupe key (keeps the row and failed_at, so
 --                                                     nothing ever sends from it). Applied by
---                                                     20261112000390.
+--                                                     20261112000390. Replay-safe: a second run finds
+--                                                     nothing, and a row is never voided twice, so
+--                                                     metadata.voided_dedupe_key always holds the
+--                                                     ORIGINAL key.
 --
 -- ROLLBACK: re-apply the two function bodies and the view from 20261111100000_wp1_xcel_writeback.sql
 -- (the appended view columns can stay; nothing else reads them before PKG3). Voided placeholders are
 -- restored by: update next_step_messages set dedupe_key = metadata->>'voided_dedupe_key'
---   where metadata ? 'voided_dedupe_key';
+--   where metadata->>'voided_by' = 'pkg3_cutoff_instant';
 
 -- ---------------------------------------------------------------------------
 -- 1. The cutoff instant and the instant rule
@@ -517,12 +521,15 @@ as $$
      and m.sent_at is null
      and m.failed_at is not null
      and m.dedupe_key is not null
+     -- already voided by the data fix: done, never listed (or voided) again
+     and not (m.metadata ? 'voided_by')
+     and m.dedupe_key not like '%:void-pkg3'
      and cfg.cutoff_ts is not null
      and case when m.stage_key = 'finished_prelicense' then i.completed_ub else i.started_ub end > cfg.cutoff_ts
 $$;
 
 comment on function public.fn_course_lane_wrong_xcel_suppressions() is
-  'PKG3 read-only: WP1 ''suppressed:'' placeholder rows whose milestone happened after the Xcel cutoff instant (so they were never history). The data fix is fn_course_lane_clear_wrong_xcel_suppressions.';
+  'PKG3 read-only: WP1 ''suppressed:'' placeholder rows whose milestone happened after the Xcel cutoff instant (so they were never history) and that are not voided yet. The data fix is fn_course_lane_clear_wrong_xcel_suppressions; after it, this lists 0 rows.';
 
 create or replace function public.fn_course_lane_clear_wrong_xcel_suppressions(
   p_dry_run boolean default true, p_max integer default 10)
@@ -554,13 +561,16 @@ begin
   end if;
 
   -- Void the dedupe key, keep the row: failed_at stays set, so next-step-dispatch never sends it,
-  -- and the original key is kept in metadata for rollback.
+  -- and the ORIGINAL key is kept in metadata for rollback. The lister never returns a voided row and
+  -- the guards below repeat that, so a replay can neither void a row twice nor overwrite the saved key.
   update public.next_step_messages m
      set dedupe_key = m.dedupe_key || ':void-pkg3',
          error = left('voided by MP-ONBOARD-ANCHOR-PKG3: the milestone was after the Xcel cutoff instant, so this placeholder was never history. Was: ' || coalesce(m.error, ''), 500),
          metadata = m.metadata || jsonb_build_object('voided_by', 'pkg3_cutoff_instant', 'voided_at', now(),
-                                                    'voided_dedupe_key', m.dedupe_key)
-   where m.id in (select w.message_id from public.fn_course_lane_wrong_xcel_suppressions() w);
+                                                    'voided_dedupe_key', coalesce(m.metadata ->> 'voided_dedupe_key', m.dedupe_key))
+   where m.id in (select w.message_id from public.fn_course_lane_wrong_xcel_suppressions() w)
+     and not (m.metadata ? 'voided_by')
+     and m.dedupe_key not like '%:void-pkg3';
   get diagnostics v_done = row_count;
 
   return jsonb_build_object('dry_run', false, 'voided', v_done, 'rows', v_rows);

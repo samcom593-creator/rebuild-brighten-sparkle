@@ -104,7 +104,9 @@ describe("StateLicensingCostsView", () => {
     expect(block.textContent).toMatch(/\$75/);
     expect(block.textContent).toMatch(/Fingerprints \(Fieldprint\)/);
     expect(block.textContent).toMatch(/\$34\.75/);
-    expect(block.textContent).toMatch(/plus \$5\.60 processing fee/);
+    // the license line already contains the processing fee: "includes", never "plus" ($10 + $5.60 = $15.60)
+    expect(block.textContent).toMatch(/includes a \$5\.60 processing fee/);
+    expect(block.textContent).not.toMatch(/plus \$5\.60/);
     expect(block.textContent).toMatch(/\$15\.60/);
     expect(block.textContent).toMatch(/Total\$174\.35/);
     expect(block.textContent).toMatch(/Fees from official state sources as of Nov 11, 2026\./);

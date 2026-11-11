@@ -10,9 +10,19 @@
 -- HOW (existing pattern, not a new record type): an applications row with source = 'xcel_roster'
 -- (3 such rows exist since 08-29). The funnel views exclude that source (v_recruit_funnel_applications),
 -- so application counts do not move. record_type stays 'application' (the CHECK allows nothing else
--- that fits), so the SLA queue (v_recruit_sla_queue) shows them to the owner.
+-- that fits). These records do NOT appear in the SLA queue (v_recruit_sla_queue): a rolled-back run
+-- showed 0 of 8 there. The owner learns about them from one in-app inbox task each and from
+-- v_course_lane_owner_tasks (task call_new_xcel_record, 20261112000370). DECISIONS N5 says the in-app
+-- inbox is not read, so the recruit digest (PKG2 fn_recruit_sla_digest) must list
+-- v_course_lane_owner_tasks: filed as a cross-package request; until it lands, nothing pushes these
+-- tasks to an inbox anyone reads (doctor #56 only prints the unmatched-student count).
 --   * Owner: fn_course_lane_owner_user_id(null, null) = the recruit owner roster
---     (system_settings.recruit_owner_roster, first member active in 7 days), else Sam.
+--     (system_settings.recruit_owner_roster, first member active in 7 days and not suspended or
+--     login-banned), else Sam.
+--   * The Xcel report's hiring_manager_name is NOT made the record's manager: agents see their own
+--     rows only (access model 2026-11-09), and a name in a partner report is not an assignment. It is
+--     kept in referral_source_detail and named in the owner's task so a human decides (Obi and Clyde
+--     both name an active agent).
 --   * Inserted with session_replication_role = replica for that statement only: the ~25 AFTER INSERT
 --     triggers on applications would otherwise post "NEW APPLICANT" to the Telegram chat, queue a Slack
 --     post, queue a portal-login email (applicant_login_queue), send an inbox "call within 5 minutes",
@@ -28,7 +38,8 @@
 --     course check-in from the shared ladder) and the rest are pre-suppressed: DECISIONS gives these
 --     students one coach/exam message each, not a drip. Nobody here signed our form.
 --   * One inbox task to the owner per record.
---   * Never: a suspended person, an email that matches any application/profile/login, a phone or
+--   * Never: a person whose address belongs to a suspended or login-banned login
+--     (fn_course_lane_email_block), an email that matches any application/profile/login, a phone or
 --     name+window that matches a record (a human should link those), a staff-unlinked identity.
 --
 -- The data change is 20261112000391 (explicit student ids); this file only defines the functions.
@@ -70,7 +81,7 @@ as $$
     from ident i
     cross join lateral (
       select case
-        when public.fn_course_lane_email_suspended(i.email_key) then 'suspended'
+        when public.fn_course_lane_email_block(i.email_key) is not null then public.fn_course_lane_email_block(i.email_key)
         when exists (select 1 from public.applications a where lower(btrim(a.email)) = i.email_key) then 'application_exists_by_email'
         when exists (select 1 from public.profiles p where lower(btrim(p.email)) = i.email_key) then 'profile_exists_by_email'
         when exists (select 1 from auth.users u where lower(btrim(u.email)) = i.email_key) then 'login_exists_by_email'
@@ -133,7 +144,7 @@ begin
   loop
     if not c.would_create then
       v_rows := v_rows || jsonb_build_object('student_id', c.student_id, 'first_name', c.first_name, 'state', c.state,
-                                             'pct', c.latest_pct, 'action', 'skip', 'reason', c.reason);
+                                             'pct', round(c.latest_pct)::int, 'action', 'skip', 'reason', c.reason);
       continue;
     end if;
     if v_made >= greatest(coalesce(p_max, 12), 0) then
@@ -149,9 +160,11 @@ begin
 
     if p_dry_run then
       v_rows := v_rows || jsonb_build_object('student_id', c.student_id, 'first_name', c.first_name, 'last_initial', c.last_initial,
-                                             'state', c.state, 'pct', c.latest_pct, 'enrolled_on', c.enrolled_on,
+                                             'state', c.state, 'pct', round(c.latest_pct)::int, 'enrolled_on', c.enrolled_on,
                                              'completed_on', c.completed_on, 'license_progress', v_lp,
-                                             'owner', public.fn_staff_first_name(v_owner), 'action', 'would_create');
+                                             'owner', public.fn_staff_first_name(v_owner),
+                                             'xcel_hiring_manager', nullif(nullif(btrim(coalesce(c.hiring_manager_name, '')), ''), 'N/A'),
+                                             'action', 'would_create');
       v_made := v_made + 1;
       continue;
     end if;
@@ -188,7 +201,7 @@ begin
         'unlicensed', 'Xcel roster', nullif('Xcel hiring manager: ' || nullif(btrim(coalesce(v_hiring_manager, '')), 'N/A'), 'Xcel hiring manager: '),
         array['xcel_roster', 'pkg3']::text[],
         'Created by MP-ONBOARD-ANCHOR-PKG3 from the Xcel pre-licensing report (' || coalesce(v_course, 'course unknown')
-          || ', ' || coalesce(c.latest_pct::text, '?') || '%). This student matched no application, profile or login, so they had no owner. Not a website application: excluded from the funnel views by source.',
+          || ', ' || coalesce(round(c.latest_pct)::int::text, '?') || '%). This student matched no application, profile or login, so they had no owner. Not a website application: excluded from the funnel views by source.',
         now(), now());
 
       update public.xcel_pre_licensing_students
@@ -243,18 +256,24 @@ begin
       end if;
       execute 'set local session_replication_role = ' || quote_literal(v_prev_srr);
 
+      v_hiring_manager := nullif(nullif(btrim(coalesce(v_hiring_manager, '')), ''), 'N/A');
       perform public.fn_emit_inbox_notification(
         v_owner, 'xcel_student_assigned',
         btrim(c.first_name) || coalesce(' ' || c.last_initial || '.', '') || ' (Xcel, ' || coalesce(c.state, 'state unknown') || ') is now yours',
-        coalesce(c.latest_pct::text, '?') || '% through ' || coalesce(c.course_name, 'the course')
-          || case when c.completed_on is not null then ', finished ' || to_char(c.completed_on, 'Mon DD') else '' end
-          || '. No application was on file. Call to confirm their state and their next step.',
+        coalesce(round(c.latest_pct)::int::text, '?') || '% through ' || coalesce(c.course_name, 'the course')
+          || case when c.completed_on is not null then ', finished ' || to_char(c.completed_on, 'FMMon FMDD') else '' end
+          || '. No application was on file. Call to confirm their state and their next step.'
+          || case when v_hiring_manager is not null
+                  then ' Xcel lists ' || v_hiring_manager || ' as their hiring manager; decide who works this person.'
+                  else '' end,
         '/dashboard/recruiting?lead=' || v_id::text, 'normal',
-        jsonb_build_object('application_id', v_id, 'student_id', c.student_id, 'source', 'fn_course_lane_create_xcel_roster_records'));
+        jsonb_build_object('application_id', v_id, 'student_id', c.student_id, 'xcel_hiring_manager', v_hiring_manager,
+                           'source', 'fn_course_lane_create_xcel_roster_records'));
 
       v_made := v_made + 1;
       v_rows := v_rows || jsonb_build_object('student_id', c.student_id, 'application_id', v_id, 'first_name', c.first_name,
-                                             'state', c.state, 'pct', c.latest_pct, 'license_progress', v_lp,
+                                             'state', c.state, 'pct', round(c.latest_pct)::int, 'license_progress', v_lp,
+                                             'xcel_hiring_manager', v_hiring_manager,
                                              'stage', v_stage, 'placeholders', v_n, 'action', 'created');
     exception when others then
       -- the failed subtransaction already reverted its SET LOCAL; restate it to be certain

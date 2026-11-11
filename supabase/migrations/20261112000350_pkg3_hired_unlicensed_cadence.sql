@@ -23,9 +23,16 @@
 -- Missing or garbled -> nothing sends. People hired before it are the one-time catch-up's
 -- (fn_catchup_hired_unlicensed, 20261112000360), never this sweep's.
 --
--- NEVER: an open agent_access_suspensions row, no login/email, bounced, unsubscribed, inactive or
--- merged agent row, enrolled in Xcel (matched agent, same email, or the source application), any
--- course stamp, license_progress past unlicensed, licensed. At most one automated email per 20h.
+-- NEVER: an open agent_access_suspensions row or an auth login ban (the agent's login or any login on
+-- the same address), no login/email, bounced, unsubscribed, inactive or merged agent row, enrolled in
+-- Xcel (matched agent, same email, or the source application), any course stamp, license_progress past
+-- unlicensed, licensed. At most one automated email per 20h.
+--
+-- DISPATCH CONTRACT (PKG1): channel 'email' (the Telegram rung is off) and the step in
+-- metadata.lane_step, never metadata.step: PKG1's fn_next_step_send_gate skips a row with a 'step' key
+-- whose stage_key is not the person's current next_step_progress stage, and day 4 / day 10 render from
+-- TEMPLATE stages (hired_unlicensed_d4 / _d10) that are never anyone's current stage. The sweep asks
+-- the stop questions itself at queue time; the cron is scheduled by 20261112000380.
 --
 -- ROLLBACK: select cron.unschedule('pkg3-hired-unlicensed-sweep'); delete from system_settings
 --   where key = 'hired_unlicensed_nudges_from';  (the sweep then sends nothing)
@@ -143,13 +150,12 @@ begin
     end if;
 
     v_id := null;
+    -- channel 'email' and metadata.lane_step (never 'step'): see the header's dispatch contract
     insert into public.next_step_messages (application_id, agent_id, stage_key, channel, template_key, dedupe_key, metadata)
-    values (null, r.agent_id, v_tpl,
-            case when exists (select 1 from public.agents g where g.id = r.agent_id and g.telegram_chat_id is not null
-                                and not coalesce(g.telegram_opt_out, false)) then 'telegram' else 'email' end,
+    values (null, r.agent_id, v_tpl, 'email',
             'hired_unlicensed:' || v_step,
             r.agent_id::text || ':hired_unlicensed:' || v_step,
-            jsonb_build_object('day', substring(v_step from 4)::int, 'step', v_step, 'source', 'auto',
+            jsonb_build_object('day', substring(v_step from 4)::int, 'lane_step', v_step, 'source', 'auto',
                                'send_zones', coalesce(to_jsonb(v_zones), '"unknown: ET+PT"'::jsonb),
                                'sender', 'fn_course_lane_hired_unlicensed_sweep', 'package', 'MP-ONBOARD-ANCHOR-PKG3'))
     on conflict (dedupe_key) where dedupe_key is not null do nothing

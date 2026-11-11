@@ -6,15 +6,26 @@
 -- 0 of 10 (timeline_forensics 5, row 4). The finished_prelicense nudges said "the longer you wait,
 -- the lower your pass rate" and linked a generic page.
 --
--- HOW: fn_course_lane_exam_sweep(p_dry_run default TRUE) runs hourly from pg_cron (scheduled by the
--- integrator, not by this file). For each person whose course completion is FRESH, it inserts one
--- next_step_messages row; the existing insert trigger hands it to next-step-dispatch, which renders
--- the template row exam_push_<state> (20261112000320) with the vendor, fee and booking link:
+-- HOW: fn_course_lane_exam_sweep(p_dry_run default TRUE) runs hourly from pg_cron (scheduled by
+-- 20261112000380, which refuses to schedule before PKG1's send gate exists). For each person whose
+-- course completion is FRESH, it inserts one next_step_messages row; the existing insert trigger hands
+-- it to next-step-dispatch, which renders the template row exam_push_<state> (20261112000320) with the
+-- vendor, fee and booking link:
 --     push      at completion (first allowed hour)                 dedupe <id>:exam_push
 --     reminder  push + 72h  (finished_prelicense copy)               dedupe <id>:finished_prelicense:exam_r1
 --     last note push + 168h (finished_prelicense copy)               dedupe <id>:finished_prelicense:exam_r2
 -- Three messages, the stage's old cap. Reminders only follow an automatic push to an applicant (a
 -- one-time catch-up stays one message). The push also writes one inbox task to the recruit owner.
+-- One push per PERSON, not per record: an agent whose source application already got the push (the
+-- applicant became an agent inside the fresh window) does not get a second one.
+--
+-- DISPATCH CONTRACT (PKG1): every row is channel 'email' (DECISIONS turns the Telegram rung off) and
+-- carries its step in metadata.lane_step, never metadata.step. PKG1's fn_next_step_send_gate rule 4
+-- skips a row that has metadata 'step' whose stage_key differs from the person's current
+-- next_step_progress stage ('stage_changed'). These rows name TEMPLATE stages (exam_push_<st>) that are
+-- never anyone's current stage, so a 'step' key would have killed every one of them. The stage-moved
+-- question for these rows is asked here, at queue time (exam on file, licensed, block reason), and
+-- the dispatcher sends within seconds.
 --
 -- FORWARD-ONLY: fresh = the completion's latest possible instant is after
 -- system_settings.xcel_writeback_messages_from (fn_xcel_event_upper_bound, 20261112000300) and the
@@ -22,38 +33,24 @@
 -- licensing_milestone_events instant. No cutoff configured = nothing is fresh = nothing sends.
 -- Today exactly one person is fresh: Cooper (307a0955), the D1 defect.
 --
--- WHO NEVER GETS IT (fn_course_lane_block_reason): an open agent_access_suspensions row (by user or by
--- email), no email, bounced (applications/agents.email_bounced_at or email_suppressions), unsubscribed,
--- do-not-contact, closed/duplicate/terminated, explicit email_consent_given=false on a form application,
--- an applicant who already has an agent row (the agent lane owns them), an exam date or pass on file,
--- licensed. Quiet hours 08:00-21:00 recipient time (fn_next_step_send_ok) and at most one automated
--- email per person per 20h (fn_course_lane_recent_touch) hold a step until the next tick.
+-- WHO NEVER GETS IT (fn_course_lane_block_reason): an open agent_access_suspensions row or an auth
+-- login ban (auth.users.banned_until), for the agent's own login or for ANY login whose auth or
+-- profile email is the address (fn_course_lane_login_block / fn_course_lane_email_block,
+-- 20261112000310); no email; bounced (applications/agents.email_bounced_at or email_suppressions);
+-- unsubscribed; do-not-contact; closed/duplicate/terminated; explicit email_consent_given=false on a
+-- form application; an applicant who already has an agent row (the agent lane owns them); an exam
+-- date or pass on file; licensed. Quiet hours 08:00-21:00 recipient time (fn_next_step_send_ok) and at
+-- most one automated email per person per 20h (fn_course_lane_recent_touch) hold a step until the
+-- next tick.
 --
--- OBJECTS: fn_course_lane_email_suspended, fn_course_lane_block_reason, fn_course_lane_recent_touch,
--- fn_course_lane_owner_user_id, fn_course_lane_course_state, v_course_lane_exam_people (internal),
--- fn_course_lane_exam_sweep. All service-role only.
+-- OBJECTS: fn_course_lane_block_reason, fn_course_lane_recent_touch, fn_course_lane_owner_user_id,
+-- fn_course_lane_course_state, v_course_lane_exam_people (internal), fn_course_lane_exam_sweep. All
+-- service-role only.
 -- ROLLBACK: select cron.unschedule('pkg3-course-lane-exam-sweep'); then drop the functions/view.
 
 -- ---------------------------------------------------------------------------
 -- 1. Shared gates (also used by the hired-unlicensed sweep and the catch-ups)
 -- ---------------------------------------------------------------------------
-create or replace function public.fn_course_lane_email_suspended(p_email text)
-returns boolean
-language sql
-stable
-security definer
-set search_path to 'public'
-as $$
-  select coalesce(nullif(btrim(p_email), ''), '') <> ''
-     and exists (
-       select 1
-         from public.agent_access_suspensions s
-         left join auth.users u on u.id = s.user_id
-         left join public.profiles p on p.user_id = s.user_id
-        where s.lifted_at is null
-          and (lower(btrim(u.email)) = lower(btrim(p_email)) or lower(btrim(p.email)) = lower(btrim(p_email))))
-$$;
-
 create or replace function public.fn_course_lane_block_reason(p_application_id uuid, p_agent_id uuid)
 returns text
 language plpgsql
@@ -70,6 +67,7 @@ declare
   v_source text;
   v_status text;
   v_closed boolean := false;
+  v_block text;
 begin
   if p_application_id is not null then
     select lower(btrim(a.email)), a.email_bounced_at is not null, a.do_not_contact_at is not null,
@@ -80,6 +78,9 @@ begin
       from public.applications a
      where a.id = p_application_id;
     if not found then return 'no_record'; end if;
+    -- a suspension or a login ban on any login with this address outranks every other reason
+    v_block := public.fn_course_lane_email_block(v_email);
+    if v_block is not null then return v_block; end if;
     if v_closed or v_status in ('rejected', 'disqualified', 'lapsed') then return 'closed_or_duplicate'; end if;
     if v_dnc then return 'do_not_contact'; end if;
     -- a person who unticked email consent on the form is not emailed by a sender built here; an
@@ -94,16 +95,15 @@ begin
       left join public.profiles p on p.user_id = g.user_id
      where g.id = p_agent_id;
     if not found then return 'no_record'; end if;
+    -- the agent's own login first (suspended or banned), then any other login on the same address
+    v_block := coalesce(public.fn_course_lane_login_block(v_user), public.fn_course_lane_email_block(v_email));
+    if v_block is not null then return v_block; end if;
     if v_closed then return 'agent_inactive_or_merged'; end if;
     if v_user is null then return 'no_login'; end if;
-    if exists (select 1 from public.agent_access_suspensions s where s.user_id = v_user and s.lifted_at is null) then
-      return 'suspended';
-    end if;
   else
     return 'no_record';
   end if;
   if v_email is null or v_email = '' or position('@' in v_email) = 0 then return 'no_email'; end if;
-  if public.fn_course_lane_email_suspended(v_email) then return 'suspended'; end if;
   if v_bounced then return 'bounced'; end if;
   if exists (select 1 from public.email_suppressions s where lower(btrim(s.email)) = v_email) then return 'bounced'; end if;
   if exists (select 1 from public.email_unsubscribes u where lower(btrim(u.email)) = v_email) then return 'unsubscribed'; end if;
@@ -112,7 +112,7 @@ end;
 $$;
 
 comment on function public.fn_course_lane_block_reason(uuid, uuid) is
-  'PKG3: why a course-lane sender may not message this person now (NULL = may). Suspension (user or email), no email, bounced/suppressed, unsubscribed, do-not-contact, closed/duplicate, form consent false, applicant with an agent row, inactive/merged agent.';
+  'PKG3: why a course-lane sender may not message this person now (NULL = may). suspended / login_banned (own login, or any login on the address: auth or profile email), no email, bounced/suppressed, unsubscribed, do-not-contact, closed/duplicate, form consent false, applicant with an agent row, inactive/merged agent, no login.';
 
 -- Latest touch inside the window, NULL when none, ''infinity'' when it could not look (= do not send).
 -- p_any=false counts campaign and ladder email only (the catch-up rule); p_any=true counts any
@@ -192,18 +192,18 @@ begin
       from public.agents g join public.applications a on a.id = g.source_application_id
      where g.id = p_agent_id;
   end if;
-  -- an owner who cannot sign in (open suspension, or an auth ban) cannot work the task
-  if v is not null and (exists (select 1 from public.agent_access_suspensions s where s.user_id = v and s.lifted_at is null)
-                        or exists (select 1 from auth.users u where u.id = v and u.banned_until > now())) then
+  -- an owner who cannot sign in (open suspension, or an auth ban) is never named on a task
+  if v is not null and public.fn_course_lane_login_block(v) is not null then
     v := null;
   end if;
   if v is null then
-    -- the recruit owner roster (system_settings.recruit_owner_roster), first active member
+    -- the recruit owner roster (system_settings.recruit_owner_roster), first active, unblocked member
     select m.uid into v
       from (select (jsonb_array_elements_text(s.value::jsonb))::uuid as uid
               from public.system_settings s
              where s.key = 'recruit_owner_roster' and s.value ~ '^\s*\[') m
      where public.fn_recruit_user_is_active(m.uid)
+       and public.fn_course_lane_login_block(m.uid) is null
      order by m.uid
      limit 1;
   end if;
@@ -226,7 +226,7 @@ $$;
 
 -- ---------------------------------------------------------------------------
 -- 2. Everyone who finished the course and is not licensed, with the facts the senders need.
---    Internal (service role); one row per person (application, or agent when there is no
+--    Internal (service role); one row per person record (application, or agent when there is no
 --    application the person still belongs to).
 -- ---------------------------------------------------------------------------
 create or replace view public.v_course_lane_exam_people as
@@ -249,6 +249,7 @@ ev as (
 ),
 apps as (
   select 'applicant'::text as person_kind, a.id as application_id, null::uuid as agent_id,
+         null::uuid as source_application_id,
          split_part(btrim(coalesce(nullif(btrim(a.first_name), ''), 'there')), ' ', 1) as first_name,
          lower(btrim(a.email)) as email_lower,
          public.fn_course_lane_course_state(xi.course_name, a.state) as state,
@@ -266,7 +267,7 @@ apps as (
      and (xi.completed_on is not null or ev.at is not null or a.license_progress = 'finished_course')
 ),
 agents_only as (
-  select 'agent'::text, null::uuid, g.id,
+  select 'agent'::text, null::uuid, g.id, g.source_application_id,
          split_part(btrim(coalesce(nullif(btrim(g.display_name), ''), nullif(btrim(p.full_name), ''), 'there')), ' ', 1),
          lower(btrim(p.email)),
          public.fn_course_lane_course_state(xi.course_name, p.state),
@@ -288,17 +289,14 @@ people as (
   union all
   select ao.* from agents_only ao
 ),
-msgs as (
-  select coalesce(m.application_id, m.agent_id) as person_id,
-         (max(m.id::text) filter (where m.dedupe_key like '%:exam_push'))::uuid as push_id,
-         max(m.metadata ->> 'source') filter (where m.dedupe_key like '%:exam_push') as push_source,
-         max(m.created_at) filter (where m.dedupe_key like '%:exam_push') as push_created_at,
-         max(m.sent_at) filter (where m.dedupe_key like '%:exam_push') as push_sent_at,
-         bool_or(m.dedupe_key like '%:exam_r1') as r1_queued,
-         bool_or(m.dedupe_key like '%:exam_r2') as r2_queued
+msgs as materialized (
+  -- every exam message (automatic push, catch-up, reminders), keyed by the record it went to;
+  -- materialized once (the lateral below reads it per person)
+  select m.id, coalesce(m.application_id, m.agent_id) as record_id, m.dedupe_key,
+         m.metadata ->> 'source' as source, m.created_at, m.sent_at
     from public.next_step_messages m
-   where m.dedupe_key like '%:exam_push' or m.dedupe_key like '%:finished_prelicense:exam_r_'
-   group by 1
+   where m.fallback_of_id is null
+     and (m.dedupe_key like '%:exam_push' or m.dedupe_key like '%:finished_prelicense:exam_r_')
 )
 select pp.person_kind, pp.application_id, pp.agent_id,
        coalesce(pp.application_id, pp.agent_id) as person_id,
@@ -309,19 +307,33 @@ select pp.person_kind, pp.application_id, pp.agent_id,
        pp.exam_on_file, pp.licensed,
        case when exists (select 1 from public.next_step_stages s where s.stage_key = 'exam_push_' || lower(coalesce(pp.state, '')))
             then 'exam_push_' || lower(pp.state) else 'exam_push_generic' end as template_stage,
-       m.push_id, m.push_source, m.push_created_at, m.push_sent_at,
+       pm.push_id, pm.push_source, pm.push_created_at, pm.push_sent_at,
        exists (select 1 from public.next_step_messages c
-                where (c.id = m.push_id or c.fallback_of_id = m.push_id)
+                where (c.id = pm.push_id or c.fallback_of_id = pm.push_id)
                   and c.channel = 'email' and c.external_id is not null and c.sent_at is not null) as push_receipt,
-       coalesce(m.r1_queued, false) as r1_queued, coalesce(m.r2_queued, false) as r2_queued,
+       coalesce(pm.r1_queued, false) as r1_queued, coalesce(pm.r2_queued, false) as r2_queued,
        public.fn_course_lane_block_reason(pp.application_id, pp.agent_id) as block_reason,
-       public.fn_course_lane_owner_user_id(pp.application_id, pp.agent_id) as owner_user_id
+       public.fn_course_lane_owner_user_id(pp.application_id, pp.agent_id) as owner_user_id,
+       case when exists (select 1 from public.next_step_stages s where s.stage_key = 'exam_catchup_' || lower(coalesce(pp.state, '')))
+            then 'exam_catchup_' || lower(pp.state) else 'exam_catchup_generic' end as catchup_template_stage,
+       pp.source_application_id
   from people pp
   cross join cfg
-  left join msgs m on m.person_id = coalesce(pp.application_id, pp.agent_id);
+  left join lateral (
+    -- one push per PERSON: an agent also owns the exam messages its source application got
+    select (array_agg(m.id order by m.created_at) filter (where m.dedupe_key like '%:exam_push'))[1] as push_id,
+           (array_agg(m.source order by m.created_at) filter (where m.dedupe_key like '%:exam_push'))[1] as push_source,
+           min(m.created_at) filter (where m.dedupe_key like '%:exam_push') as push_created_at,
+           min(m.sent_at) filter (where m.dedupe_key like '%:exam_push') as push_sent_at,
+           bool_or(m.dedupe_key like '%:exam_r1') as r1_queued,
+           bool_or(m.dedupe_key like '%:exam_r2') as r2_queued
+      from msgs m
+     where m.record_id = coalesce(pp.application_id, pp.agent_id)
+        or (pp.source_application_id is not null and m.record_id = pp.source_application_id)
+  ) pm on true;
 
 comment on view public.v_course_lane_exam_people is
-  'PKG3 internal: every course finisher (Xcel or self/staff-reported) who is a person record, with completion instant, freshness against the Xcel cutoff, exam/licence state, exam-push message state and why they may not be messaged. Service role only (holds email_lower).';
+  'PKG3 internal: every course finisher (Xcel or self/staff-reported) who is a person record, with completion instant, freshness against the Xcel cutoff, exam/licence state, exam-push message state (an agent also owns its source application''s push) and why they may not be messaged. Service role only (holds email_lower).';
 revoke all on public.v_course_lane_exam_people from public, anon, authenticated;
 grant select on public.v_course_lane_exam_people to service_role;
 
@@ -342,7 +354,6 @@ declare
   v_key text;
   v_zones text[];
   v_touch timestamptz;
-  v_channel text;
   v_id uuid;
   v_queued int := 0;
   v_days int;
@@ -403,20 +414,16 @@ begin
       continue;
     end if;
 
-    v_channel := case
-      when (r.application_id is not null and exists (select 1 from public.applications a where a.id = r.application_id
-                                                       and a.telegram_chat_id is not null and not coalesce(a.telegram_opt_out, false)))
-        or (r.agent_id is not null and exists (select 1 from public.agents g where g.id = r.agent_id
-                                                 and g.telegram_chat_id is not null and not coalesce(g.telegram_opt_out, false)))
-      then 'telegram' else 'email' end;
-
     v_id := null;
+    -- channel 'email' (the Telegram rung is off) and metadata.lane_step, never metadata.step: PKG1's
+    -- send gate reads 'step' as "a shared-ladder cadence step" and skips it when stage_key is not the
+    -- person's current stage, which a template stage never is (see header).
     insert into public.next_step_messages
       (application_id, agent_id, stage_key, channel, template_key, dedupe_key, metadata)
     values
-      (r.application_id, r.agent_id, v_tpl, v_channel, case when v_step = 'exam_push' then 'exam_push' else 'finished_prelicense:' || v_step end,
+      (r.application_id, r.agent_id, v_tpl, 'email', case when v_step = 'exam_push' then 'exam_push' else 'finished_prelicense:' || v_step end,
        v_key,
-       jsonb_build_object('day', v_days, 'step', v_step, 'source', 'auto', 'state', r.state,
+       jsonb_build_object('day', v_days, 'lane_step', v_step, 'source', 'auto', 'state', r.state,
                           'completed_on', r.completed_on, 'completion_source', r.completion_source,
                           'send_zones', coalesce(to_jsonb(v_zones), '"unknown: ET+PT"'::jsonb),
                           'sender', 'fn_course_lane_exam_sweep', 'package', 'MP-ONBOARD-ANCHOR-PKG3'))
@@ -459,18 +466,16 @@ end;
 $$;
 
 comment on function public.fn_course_lane_exam_sweep(boolean, integer) is
-  'PKG3 (dry_run by default): exam push at a fresh course completion, then reminders at +72h/+168h after an automatic push to an applicant. Inserts next_step_messages (next-step-dispatch sends) and one owner inbox task per push. Forward-only from xcel_writeback_messages_from. Cron: pkg3-course-lane-exam-sweep.';
+  'PKG3 (dry_run by default): exam push at a fresh course completion, then reminders at +72h/+168h after an automatic push to an applicant. Inserts next_step_messages (channel email, metadata.lane_step; next-step-dispatch sends) and one owner inbox task per push. Forward-only from xcel_writeback_messages_from. Cron: pkg3-course-lane-exam-sweep (20261112000380).';
 
 -- ---------------------------------------------------------------------------
 -- 4. Privileges
 -- ---------------------------------------------------------------------------
-revoke all on function public.fn_course_lane_email_suspended(text) from public, anon, authenticated;
 revoke all on function public.fn_course_lane_block_reason(uuid, uuid) from public, anon, authenticated;
 revoke all on function public.fn_course_lane_recent_touch(text, uuid, uuid, interval, boolean) from public, anon, authenticated;
 revoke all on function public.fn_course_lane_owner_user_id(uuid, uuid) from public, anon, authenticated;
 revoke all on function public.fn_course_lane_course_state(text, text) from public, anon, authenticated;
 revoke all on function public.fn_course_lane_exam_sweep(boolean, integer) from public, anon, authenticated;
-grant execute on function public.fn_course_lane_email_suspended(text) to service_role;
 grant execute on function public.fn_course_lane_block_reason(uuid, uuid) to service_role;
 grant execute on function public.fn_course_lane_recent_touch(text, uuid, uuid, interval, boolean) to service_role;
 grant execute on function public.fn_course_lane_owner_user_id(uuid, uuid) to service_role;

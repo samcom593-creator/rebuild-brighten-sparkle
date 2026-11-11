@@ -6808,6 +6808,14 @@
         "raw": ""
       }
     ],
+    "is_sam": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "is_vantage_agent": [
       {
         "all": [

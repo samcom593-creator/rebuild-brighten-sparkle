@@ -87,6 +87,45 @@ const BAD_TOKENS = [
   [/\$NaN|\$undefined/, "broken money token"],
 ];
 
+// MP-WIB-LIVE-RENDER-PLACEHOLDER (2026-11-11): Check #5 (real-data / no
+// placeholder) had TWO guards and a hole between them. check:forbidden-language
+// scans SOURCE (src/ + edge fns) and is structurally blind to anything that
+// renders from the DATABASE — a testimonial seeded with lorem text, a roster
+// row named "John Doe", a stat card whose DB column still reads "coming soon".
+// This render probe was the only thing that sees the DB-driven DOM, but its
+// BAD_TOKENS list caught only NUMERIC brokenness (NaN/undefined), never textual
+// placeholder. So DB-sourced placeholder copy on the public recruiting funnel
+// (the money path: /, /apply, /vsl) was caught by NOTHING. These patterns close
+// that. They are word-boundaried / case-scoped so they cannot trip legitimate
+// English copy, and — critically — they only ever run against the 3 PUBLIC
+// FUNNEL routes, where "coming soon" is vaporware and "TBD" is an unfilled
+// field, never a legitimate per-module recording-in-progress fallback (that
+// lives on academy/admin surfaces this probe does not touch). Proven clean on
+// live prod the moment this shipped (so the guard is not born red), and proven
+// to catch each class via --selftest (both directions, incl. anti-false-
+// positive cases for 'outbid' and 'replacement').
+const PLACEHOLDER_TOKENS = [
+  [/lorem ipsum|\blorem\b|\bipsum\b/i, "lorem/ipsum — placeholder filler text rendered from a DB field or seed"],
+  [/\bcoming soon\b/i, "'coming soon' — vaporware placeholder on a conversion route; the funnel must not promise unshipped sections"],
+  [/\bTBD\b/, "TBD — an unfilled 'to be determined' placeholder reached public copy"],
+  [/\b(?:john|jane) doe\b/i, "John/Jane Doe — a fake-name placeholder rendered from a DB row"],
+  [/\bexample\.com\b/i, "example.com — a placeholder domain in VISIBLE copy (input-attribute hints never appear in innerText, so this is real body text)"],
+  [/\[placeholder\]/i, "[placeholder] — a literal bracketed placeholder annotation"],
+  [/\bREPLACE_ME\b/, "REPLACE_ME — a developer placeholder marker reached production"],
+];
+
+// Single source of truth for token scanning. probe() and --selftest BOTH call
+// this, so the selftest exercises the real detector (a guard that copies the
+// code it guards is not a guard).
+function scanForBadTokens(text) {
+  const hits = [];
+  for (const [re, why] of [...BAD_TOKENS, ...PLACEHOLDER_TOKENS]) {
+    const m = text.match(re);
+    if (m) hits.push({ token: m[0], why });
+  }
+  return hits;
+}
+
 // MP-529: a leg is (engine, viewport), never (viewport, user-agent string).
 //
 // Until this wave the "mobile" leg was a CHROMIUM context handed an iPhone
@@ -163,11 +202,7 @@ async function probe(browser, leg, route) {
   // 404 white-screen: the SPA renders a "page not found" component under a 200.
   const is404 = /page not found|404\s*·|404 not found/i.test(bodyText) && bodyText.length < 800;
 
-  const badHits = [];
-  for (const [re, why] of BAD_TOKENS) {
-    const m = bodyText.match(re);
-    if (m) badHits.push({ token: m[0], why });
-  }
+  const badHits = scanForBadTokens(bodyText);
 
   const routeSlug = route === "/" ? "home" : route.replace(/[^a-z0-9]+/gi, "_").replace(/^_|_$/g, "");
   await pg.screenshot({ path: `/tmp/apex_render_${label}_${routeSlug}.png` }).catch(() => {});
@@ -195,6 +230,36 @@ import { writeFileSync } from "node:fs";
 const RESULT_FILE = process.env.RESULT_FILE || "";
 const _err = console.error;
 function record(obj) { if (RESULT_FILE) { try { writeFileSync(RESULT_FILE, JSON.stringify(obj)); } catch (e) { _err("RESULT_FILE write failed: " + e); } } }
+
+// --selftest: prove the token detector in BOTH directions with zero rendering
+// (no browser, no network), so it can run anywhere and never flakes. It calls
+// the SAME scanForBadTokens() that probe() uses on live DOM text.
+if (process.argv.includes("--selftest")) {
+  const cases = [
+    { name: "clean funnel copy", text: "Start your career in insurance sales. 95 active agents. Apply now.", expectHit: false },
+    { name: "lorem ipsum leak (DB seed)", text: "About us: Lorem ipsum dolor sit amet, consectetur.", expectHit: true },
+    { name: "'coming soon' vaporware", text: "Our Sales Academy is coming soon!", expectHit: true },
+    { name: "John Doe fake name (DB row)", text: "Top producer this week: John Doe — $50,000 ALP.", expectHit: true },
+    { name: "TBD unfilled placeholder", text: "Next seminar: TBD", expectHit: true },
+    { name: "example.com placeholder domain", text: "Email us at team@example.com today.", expectHit: true },
+    { name: "[placeholder] annotation", text: "Headline: [placeholder]", expectHit: true },
+    { name: "REPLACE_ME dev marker", text: "Contact: REPLACE_ME", expectHit: true },
+    { name: "NaN numeric (pre-existing class)", text: "Agents: NaN+", expectHit: true },
+    { name: "anti-FP: 'outbid' must not trip TBD", text: "No competitor has ever outbid us.", expectHit: false },
+    { name: "anti-FP: 'replacement' must not trip REPLACE_ME", text: "We build a complete income-replacement plan.", expectHit: false },
+    { name: "anti-FP: 'become soon' must not trip coming-soon", text: "You could become a top earner soon.", expectHit: false },
+  ];
+  let fail = 0;
+  for (const c of cases) {
+    const hits = scanForBadTokens(c.text);
+    const hit = hits.length > 0;
+    const pass = hit === c.expectHit;
+    if (!pass) fail++;
+    console.log(`${pass ? "PASS" : "FAIL"}  expectHit=${String(c.expectHit).padEnd(5)} got=${String(hit).padEnd(5)}  ${c.name}${hit ? "  -> " + JSON.stringify(hits[0].token) : ""}`);
+  }
+  console.log(fail ? `\n❌ selftest FAILED: ${fail}/${cases.length} case(s)` : `\n✅ selftest PASSED: ${cases.length}/${cases.length} — placeholder + numeric token detector proven both directions`);
+  process.exit(fail ? 1 : 0);
+}
 
 (async () => {
   const results = [];

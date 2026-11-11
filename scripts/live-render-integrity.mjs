@@ -60,6 +60,22 @@ const CONTROL = "https://www.google.com/generate_204";
 const SETTLE_MS = 3500;
 const OVERFLOW_TOLERANCE_PX = 2; // sub-pixel rounding is not a defect
 
+// MP-WIB-LIVE-RENDER-FUNNEL (2026-11-11): this probe rendered ONLY "/" for its
+// whole life, yet its own header warns about "a landing RPC that returns null,
+// an undefined producer, or a $0/NaN ALP" — and the page MOST likely to render
+// such a token is /apply (the application form reads the applicant's licensing
+// path + status from live RPCs), not the homepage. /apply and /vsl got
+// overflow-only coverage from mobile-overflow.mjs and fetch-only coverage from
+// route-smoke.mjs (which sees the SPA shell 200, blind to rendered tokens), so
+// the broken-token / hard-page-error / 404-white-screen assertions were applied
+// to the homepage ALONE. Now every (leg, route) pair is measured. Kept tight to
+// the three public funnel money pages a recruit/lead actually walks — the ones
+// where a broken number or a React crash directly costs a conversion — so the
+// render stays fast and non-flaky. Override with ROUTES="/,/apply,/vsl,...".
+const ROUTES = (process.env.ROUTES || "/,/apply,/vsl")
+  .split(",").map((r) => r.trim()).filter(Boolean)
+  .map((r) => (r === "/" ? "/" : "/" + r.replace(/^\/+|\/+$/g, "")));
+
 // Broken-token patterns that must never appear in RENDERED public text.
 // Word-boundaried and specific to avoid matching legitimate copy.
 const BAD_TOKENS = [
@@ -110,7 +126,7 @@ async function controlReachable() {
   } catch { return false; }
 }
 
-async function probe(browser, leg) {
+async function probe(browser, leg, route) {
   const { label } = leg;
   const ctx = await browser.newContext(leg.ctx);
   const pg = await ctx.newPage();
@@ -120,11 +136,11 @@ async function probe(browser, leg) {
 
   let status = 0, navErr = null;
   try {
-    const resp = await pg.goto(BASE + "/", { waitUntil: "load", timeout: 40000 });
+    const resp = await pg.goto(BASE + route, { waitUntil: "load", timeout: 40000 });
     status = resp ? resp.status() : 0;
   } catch (e) { navErr = String(e).slice(0, 160); }
 
-  if (navErr) { await ctx.close(); return { label, ok: false, navErr }; }
+  if (navErr) { await ctx.close(); return { label, route, ok: false, navErr }; }
 
   await pg.waitForTimeout(SETTLE_MS);
 
@@ -153,7 +169,8 @@ async function probe(browser, leg) {
     if (m) badHits.push({ token: m[0], why });
   }
 
-  await pg.screenshot({ path: `/tmp/apex_render_${label}.png` }).catch(() => {});
+  const routeSlug = route === "/" ? "home" : route.replace(/[^a-z0-9]+/gi, "_").replace(/^_|_$/g, "");
+  await pg.screenshot({ path: `/tmp/apex_render_${label}_${routeSlug}.png` }).catch(() => {});
   await ctx.close();
 
   const defects = [];
@@ -168,7 +185,7 @@ async function probe(browser, leg) {
   const hardErrs = consoleErrs.filter((e) => /PAGEERROR|Minified React error|is not defined|Cannot read/i.test(e));
   for (const e of hardErrs) defects.push(`page error: ${e}`);
 
-  return { label, engineVendor: vendor, ok: defects.length === 0, status, overflowPx: overflow,
+  return { label, route, engineVendor: vendor, ok: defects.length === 0, status, overflowPx: overflow,
            defects, consoleErrCount: consoleErrs.length, textLen: bodyText.length };
 }
 
@@ -192,14 +209,19 @@ function record(obj) { if (RESULT_FILE) { try { writeFileSync(RESULT_FILE, JSON.
       // INSTRUMENT fault, never a site verdict, and it must never be laundered
       // into the CLEAN line — a leg that could not run has not passed. This is
       // the state webkit was in on this machine until 2026-09-14: absent, and
-      // therefore silently uncovered.
-      unavailable.push({ label: leg.label, reason: String(e).split("\n")[0].slice(0, 200) });
+      // therefore silently uncovered. One unavailable entry per (leg, route) so
+      // the "CLEAN over a leg that never ran is a lie" accounting stays honest
+      // once the funnel is more than one page.
+      for (const route of ROUTES)
+        unavailable.push({ label: leg.label, route, reason: String(e).split("\n")[0].slice(0, 200) });
       continue;
     }
-    let r = await probe(browser, leg);
-    if (r.navErr) r = await probe(browser, leg); // one retry on nav failure
+    for (const route of ROUTES) {
+      let r = await probe(browser, leg, route);
+      if (r.navErr) r = await probe(browser, leg, route); // one retry on nav failure
+      results.push(r);
+    }
     await browser.close();
-    results.push(r);
   }
 
   if (!results.length) {
@@ -224,31 +246,33 @@ function record(obj) { if (RESULT_FILE) { try { writeFileSync(RESULT_FILE, JSON.
   }
 
   const defective = results.filter((r) => r.ok === false && !r.navErr);
-  // A leg whose navigation failed twice while another leg loaded the same URL
-  // was NOT measured. Until 2026-10-06 it fell through both filters and the run
-  // printed CLEAN naming it in legsRun — so a WebKit-only load failure (the one
-  // fault class this file's mobile-webkit leg exists to catch) read as a pass.
-  // It is reported with the never-ran legs, which is what it is.
-  for (const r of navFailed) unavailable.push({ label: r.label, reason: "navigation failed twice: " + r.navErr });
+  // A (leg, route) whose navigation failed twice while another leg loaded the
+  // same URL was NOT measured. Until 2026-10-06 it fell through both filters and
+  // the run printed CLEAN naming it in legsRun — so a WebKit-only load failure
+  // (the one fault class this file's mobile-webkit leg exists to catch) read as
+  // a pass. It is reported with the never-ran measurements, which is what it is.
+  for (const r of navFailed) unavailable.push({ label: r.label, route: r.route, reason: "navigation failed twice: " + r.navErr });
   const measured = results.filter((r) => !r.navErr);
   const verdict = defective.length ? "DEFECT" : (unavailable.length ? "CLEAN_PARTIAL" : "CLEAN");
-  const ran = measured.map((r) => r.label).join(", ");
-  record({ verdict, base: BASE, legsRun: ran, legsNotRun: unavailable,
-    defects: defective.flatMap((r) => r.defects.map((d) => `[${r.label}] ${d}`)) });
-  console.log(JSON.stringify({ verdict, base: BASE, legsRun: ran,
+  const legsRun = [...new Set(measured.map((r) => r.label))].join(", ");
+  const routesRun = [...new Set(measured.map((r) => r.route))].join(", ");
+  record({ verdict, base: BASE, legsRun, routesRun, legsNotRun: unavailable,
+    defects: defective.flatMap((r) => r.defects.map((d) => `[${r.label} ${r.route}] ${d}`)) });
+  console.log(JSON.stringify({ verdict, base: BASE, legsRun, routesRun,
     legsNotRun: unavailable, results }, null, 2));
   if (defective.length) {
     console.error("\nRENDERED INTEGRITY DEFECTS:");
-    for (const r of defective) for (const d of r.defects) console.error(`  [${r.label}] ${d}`);
+    for (const r of defective) for (const d of r.defects) console.error(`  [${r.label} ${r.route}] ${d}`);
     process.exit(1);
   }
   if (unavailable.length) {
-    // Says exactly which engine went unmeasured. "CLEAN" over a leg that never
-    // ran is the same lie as a green build over a suite that never executed.
-    console.error(`\n⚠️  live render integrity CLEAN on ${ran} — but ${unavailable.length} leg(s) never ran: ` +
-      unavailable.map((u) => u.label).join(", ") + `. Those engines were NOT measured.`);
-    console.error(`   remedy: npx playwright install ${unavailable.map((u) => u.label.split("-").pop()).join(" ")}`);
+    // Says exactly which engine/route went unmeasured. "CLEAN" over a leg that
+    // never ran is the same lie as a green build over a suite that never ran.
+    const engines = [...new Set(unavailable.map((u) => u.label.split("-").pop()))];
+    console.error(`\n⚠️  live render integrity CLEAN on [${legsRun}] × [${routesRun}] — but ${unavailable.length} measurement(s) never ran: ` +
+      unavailable.map((u) => `${u.label} ${u.route}`).join(", ") + `. Those were NOT measured.`);
+    console.error(`   remedy: npx playwright install ${engines.join(" ")}`);
     process.exit(3);
   }
-  console.log(`\n✅ live render integrity CLEAN — ${BASE} on ${ran}: no broken tokens, no mobile overflow, every leg on the engine it is named for.`);
+  console.log(`\n✅ live render integrity CLEAN — ${BASE} on [${legsRun}] × [${routesRun}]: no broken tokens, no mobile overflow, every leg on the engine it is named for.`);
 })();

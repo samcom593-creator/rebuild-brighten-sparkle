@@ -121,6 +121,7 @@ const TrainingIndex = lazy(() => import("./pages/TrainingIndex"));
 const Signup = lazy(() => import("./pages/Signup"));
 const AgentSignup = lazy(() => import("./pages/AgentSignup"));
 const ClaimAccount = lazy(() => import("./pages/ClaimAccount"));
+const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 const AgentNumbersLogin = lazy(() => import("./pages/AgentNumbersLogin"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const VaManagerPortal = lazy(() => import("./pages/VaManagerPortal"));
@@ -488,6 +489,8 @@ const App = () => (
                       this MATCHES the record that already exists and attaches a
                       login to it. /activate is an alias so either reads fine in
                       a group message. */}
+                  {/* Where every email's Unsubscribe link lands (the unsubscribe edge function 302s here). Public; the opt-out is written only on the button press. */}
+                  <Route path="/unsubscribe" element={<Unsubscribe />} />
                   <Route path="/claim" element={<ClaimAccount />} />
                   <Route path="/activate" element={<ClaimAccount />} />
                   <Route path="/agent-login" element={<AgentNumbersLogin />} />

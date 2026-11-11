@@ -37,3 +37,8 @@ if ! npm run --silent check:metric-truth; then
   echo "[pre-push] Fix the number, amend or add a commit, then push again."
   exit 1
 fi
+
+# 2026-11-11: a push that carries migrations must not let CI re-apply an EARLIER migration that is
+# live but unrecorded (that silently reverted a security lockdown). No network unless the push
+# touches supabase/migrations. See scripts/check-migrations-recorded.mjs.
+node scripts/check-migrations-recorded.mjs

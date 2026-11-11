@@ -1,0 +1,83 @@
+name: Post-deploy mobile overflow
+
+# Fires after Vercel ships. Loads the public funnel at an iPhone-14 viewport and
+# fails if any route scrolls sideways (document.scrollWidth > innerWidth). This is
+# Check #7 (mobile audit) of the Website Integrity Bot, which had no automated
+# guard: tsc, route-smoke (pure fetch, no layout) and Lighthouse (perf score, not
+# width) all ship a horizontally-scrolling phone page green. The recruit opens the
+# apply funnel on a phone, the page slides, the field they need is off-screen — a
+# conversion leak invisible to every other gate.
+#
+# Same promotion gate as post-deploy-smoke.yml / post-deploy-lighthouse.yml: it
+# waits for THIS commit to be the live build, so it never tests the previous deploy
+# and calls it this one. If prod never serves this commit it does not run and does
+# not go red (the deploy failed, or a newer commit promoted ahead and runs its own).
+#
+# Alerts on the GitHub run page (+ notification hooks) like the sibling smoke/LH
+# workflows. It is intentionally NOT a timer-fired paging daemon — a deterministic
+# DOM width measured on the exact shipped commit is the right tool; a live prober on
+# a schedule is the class that has produced a long history of false pages here.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: post-deploy-mobile-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mobile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      # /version.json ({"id": VERCEL_GIT_COMMIT_SHA[0:8]}, written by vite.config.ts)
+      # says which build is live. Wait for THIS commit before probing so we never
+      # measure the previous deploy. Verbatim from post-deploy-smoke.yml.
+      - name: Wait for production to serve this commit
+        id: promote
+        run: |
+          SHORT="$(echo "${{ github.sha }}" | cut -c1-8)"
+          DEADLINE=$(( SECONDS + 600 ))
+          SERVED=""
+          echo "waiting for apex-financial.org to serve ${SHORT}"
+          while [ "$SECONDS" -lt "$DEADLINE" ]; do
+            SERVED="$(curl -fsS "https://apex-financial.org/version.json?ci=${GITHUB_RUN_ID}&t=${SECONDS}" \
+                      | sed -n 's/.*"id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' || true)"
+            if [ "$SERVED" = "$SHORT" ]; then
+              echo "matched=true" >> "$GITHUB_OUTPUT"
+              echo "::notice::Mobile overflow is testing build ${SERVED} (= ${{ github.sha }}), live after ${SECONDS}s."
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "matched=false" >> "$GITHUB_OUTPUT"
+          echo "::warning::Mobile overflow did NOT run: production never served ${SHORT} within 600s (last seen '${SERVED:-unreadable}'). Either the deploy did not promote, or a newer commit promoted ahead of this run. This is not a statement about the layout."
+
+      - name: Install deps
+        if: steps.promote.outputs.matched == 'true'
+        run: npm ci --no-audit --no-fund
+
+      # Chromium only; --with-deps pulls the apt libs the headless browser needs on
+      # the runner. Matches Playwright's documented CI pattern.
+      - name: Install Playwright Chromium
+        if: steps.promote.outputs.matched == 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Run mobile overflow check
+        if: steps.promote.outputs.matched == 'true'
+        run: node scripts/mobile-overflow.mjs
+        env:
+          BASE: https://apex-financial.org
+
+      - name: Post failure summary
+        if: failure()
+        run: |
+          echo "::warning::Post-deploy mobile overflow FAILED on ${{ github.sha }} — a public funnel route scrolls sideways on iPhone 14. The Vercel deploy is live; the phone layout regressed. See the route output above for the offending element."

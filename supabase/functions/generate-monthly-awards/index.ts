@@ -103,7 +103,7 @@ const COMMON_DEFS = `
 const HEADER = `<text x="80" y="120" font-family="ui-sans-serif, -apple-system" font-weight="900" font-size="52" fill="#22d3a5" letter-spacing="6">Galaxy</text><text x="262" y="120" font-family="ui-sans-serif, -apple-system" font-weight="400" font-size="52" fill="#f8fafc" letter-spacing="6">FINANCIAL</text><rect x="80" y="142" width="120" height="3" fill="url(#emerald)"/>`;
 
 const footer = (label: string) =>
-  `<rect x="80" y="1780" width="${W - 160}" height="2" fill="#22d3a5" fill-opacity="0.35"/><text x="80" y="1830" font-family="ui-sans-serif, -apple-system" font-weight="600" font-size="22" fill="#94a3b8" letter-spacing="4">${esc(label)}</text><text x="${W - 80}" y="1830" text-anchor="end" font-family="ui-sans-serif, -apple-system" font-weight="700" font-size="22" fill="#22d3a5" letter-spacing="4">@APEX.FINANCIAL</text>`;
+  `<rect x="80" y="1780" width="${W - 160}" height="2" fill="#22d3a5" fill-opacity="0.35"/><text x="80" y="1830" font-family="ui-sans-serif, -apple-system" font-weight="600" font-size="22" fill="#94a3b8" letter-spacing="4">${esc(label)}</text><text x="${W - 80}" y="1830" text-anchor="end" font-family="ui-sans-serif, -apple-system" font-weight="700" font-size="22" fill="#22d3a5" letter-spacing="4">GALAXY FINANCIAL</text>`;
 
 function teamTotalSVG(opts: { amount: number; deals: number; agentCount: number; monthLabel: string }) {
   const { amount, deals, agentCount, monthLabel } = opts;

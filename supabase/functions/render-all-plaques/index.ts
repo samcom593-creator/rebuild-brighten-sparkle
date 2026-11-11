@@ -153,7 +153,7 @@ ${hasPhoto ? `<g clip-path="url(#photoClip)">
 <!-- Date / footer row -->
 <rect x="80" y="1780" width="920" height="2" fill="${t.accent}" fill-opacity="0.35"/>
 <text x="80" y="1830" font-family="ui-sans-serif,system-ui" font-weight="600" font-size="22" fill="#94a3b8" letter-spacing="3">${esc(prettyDate(date).toUpperCase())}</text>
-<text x="1000" y="1830" text-anchor="end" font-family="ui-sans-serif,system-ui" font-weight="700" font-size="22" fill="${t.accent}" letter-spacing="4">@APEX.FINANCIAL</text>
+<text x="1000" y="1830" text-anchor="end" font-family="ui-sans-serif,system-ui" font-weight="700" font-size="22" fill="${t.accent}" letter-spacing="4">GALAXY FINANCIAL</text>
 </svg>`;
 }
 

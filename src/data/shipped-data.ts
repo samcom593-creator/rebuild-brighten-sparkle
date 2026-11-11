@@ -13,6 +13,12 @@ export interface ShippedItem {
 export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Agent award plaques stopped carrying the old brand on them. Every single-day-production plaque and the monthly awards graphic burned @APEX.FINANCIAL onto the footer a month after the Galaxy rebrand, so the dead brand went out on every award an agent screenshotted and posted to social. Both now read GALAXY FINANCIAL, and a new check stops any edge function from ever drawing the old brand onto an image again.",
+    detail: "render-all-plaques:156 (live: AwardsGallery + overseer-bot) and generate-monthly-awards:106 rendered @APEX.FINANCIAL in the SVG footer right beside a correctly rebranded Galaxy header; both now read GALAXY FINANCIAL, matching the clean siblings generate-award-graphics + send-plaque-recognition, which render the brand name rather than an unverified @handle (Galaxy has no verified social handle in brand.ts). New scripts/check-edge-svg-brand.mjs bans the retired brand token inside rendered <text>/<tspan> across supabase/functions (320 files), allowlisting the apex-financial.org domain; proven both directions. Fourth surface of the src-only brand ratchet's blind spot after the Calendly event name, PWA manifest, and index.html twitter:site. Wired verify:core + pre-commit; guard-wiring reachable.",
+    commit: "edge-svg-brand",
+  },
+  {
+    ts: "today",
     label: "The X/Twitter share card for the recruiting site stopped crediting the old brand. Its handle tag still read @APEXFinancial a month after the Galaxy rebrand, so every shared recruiting link named the retired brand on the card. Removed it, and a new check makes sure the page head can never carry stale brand again.",
     detail: "index.html twitter:site @APEXFinancial removed (optional tag; the large-image card renders without it; Galaxy has no verified X account to point it at). New scripts/check-index-brand.mjs reads the live brand from src/config/brand.ts and checks only the user-facing title/meta values, so it leaves the apex-financial.org domain and the inline cache-bust/theme storage keys alone. Third surface of the src-only brand ratchet's blind spot after the PWA manifest and the Calendly event name. Wired verify:core + pre-commit; guard-wiring 125.",
     commit: "index-brand-twitter-site",

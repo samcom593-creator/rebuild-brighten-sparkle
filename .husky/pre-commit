@@ -55,6 +55,18 @@ if match '^(index\.html|src/config/brand\.ts|scripts/check-index-brand\.mjs)$'; 
   node scripts/check-index-brand.mjs
 fi
 
+# ---------- check-edge-svg-brand (2026-11-10, Website Integrity Bot) ----------
+# Trigger: any edge-function .ts, the brand source of truth, or the script. Two
+# award renderers burned "@APEX.FINANCIAL" onto the plaque footer a month after
+# the Galaxy rebrand — a dead brand on a graphic agents post publicly. Same
+# blind spot as index.html/manifest/Calendly: the src/-only ratchet can't see
+# supabase/functions/. Bans the retired brand token inside rendered SVG
+# <text>/<tspan> only; leaves comments, apex_ identifiers and the domain alone.
+if match '^(supabase/functions/.*\.ts|src/config/brand\.ts|scripts/check-edge-svg-brand\.mjs)$'; then
+  echo "[pre-commit] edge-function/brand file staged — running check:edge-svg-brand…"
+  node scripts/check-edge-svg-brand.mjs
+fi
+
 # ---------- check-landing-external-img (2026-11-10, Website Integrity Bot) ----------
 # Trigger: any staged src/ file or the script itself. The landing Testimonials
 # section fetched its three agent avatars live from api.dicebear.com and the

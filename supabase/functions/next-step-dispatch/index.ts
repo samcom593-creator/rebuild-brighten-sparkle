@@ -5,8 +5,10 @@
 //
 // Triggers:
 //   - trg_next_step_messages_auto_dispatch (AFTER INSERT): POST {message_id}
-//     with the anon key, one call per queued row. This is the only caller that
-//     sends in practice. No pg_cron job calls this function (checked 2026-10-23).
+//     with the anon key, one call per queued row.
+//   - fn_next_step_retry_drain (pg_cron 'next_step_retry_drain', every 5 min,
+//     MP-ONBOARD-ANCHOR-PKG1): POST {message_id} with the anon key for rows this
+//     function left retryable (transient provider error) or deferred (daily cap).
 //   - fan-out: POST {} / {limit}, staff or service role only (see below)
 //   - preview: POST {dry_run: true}, staff or service role only
 //
@@ -17,10 +19,10 @@
 // (verify_jwt=false, no gate), so any bare POST re-sent texts people had
 // already received months earlier. That happened twice: 2026-08-23 03:57Z
 // (50 people) and 2026-10-23 05:43Z (39 people, a boot probe). Now:
-//   1. the SMS fallback stamps the parent, like the email fallback already did;
-//   2. a row with a sent fallback child is delivered and is never sent again;
-//   3. nothing older than MAX_QUEUE_AGE_HOURS is ever selected, on either path;
-//   4. fan-out and dry_run (which returns the person's email and phone)
+//   1. a row with a verified sent child is delivered and is never sent again;
+//   2. nothing older than MAX_QUEUE_AGE_HOURS is ever selected (a deferred or
+//      retryable row: MAX_DEFERRED_AGE_HOURS), on either path;
+//   3. fan-out and dry_run (which returns the person's email and phone)
 //      require a staff JWT or the service key. The message_id path stays open
 //      because the trigger posts with the anon key.
 //
@@ -28,12 +30,33 @@
 //           sms (Twilio REST when configured, else carrier email-to-text gateway)
 //           email (Resend)
 //
-// WP4 (2026-11-10): what ends the ladder is decided in ladder.ts. Only a Twilio
-// SID is a delivered SMS; a "gateway:" receipt is best effort, so the email rung
-// runs for the same reminder (488 of 726 reminders in 90 days had gone out as
-// gateway SMS only). The parent row's metadata.email_rung records what the
-// email rung did; apex-doctor #45 alarms on a gateway SMS with no email rung.
-// Order is determined by per-person preferences and which contact details exist.
+// WP4 (2026-11-10): what ends the ladder is decided in ladder.ts.
+//
+// MP-ONBOARD-ANCHOR-PKG1 (2026-11-12), message_map_and_copy.md section 4c:
+//   F1/F2  only a provider receipt is "sent". A Telegram enqueue or a gateway SMS no
+//          longer stamps the parent; the email rung always runs after them, and the
+//          parent's sent_at is the email's (or a Twilio SID's). Best-effort rungs are
+//          recorded in metadata.best_effort.
+//   F3     a transient provider error (429, 5xx, network) leaves the row retryable
+//          (metadata.retry + metadata.not_before); the drain retries it, 3 attempts max.
+//   C8/F12 before anything is sent, public.fn_next_step_send_gate decides: open
+//          agent_access_suspensions, unsubscribed, Resend-suppressed, and for applicant
+//          rows bounced / do-not-contact / duplicate / closed / already an agent, or a
+//          cadence step whose stage moved on. A skip is recorded on the row as
+//          failed_at + "skipped: <reason>", never as a sent.
+//   5d     at most one automated next-step email per recipient per local day: the gate
+//          defers (metadata.not_before = next day 08:00 local), it never drops. On the live
+//          path the gate runs with p_reserve, under a per-recipient lock, and stamps
+//          metadata.cap, so two rows for one address dispatched together cannot both pass.
+//   step copy comes from next_step_step_copy through the gate (per cadence step, and a
+//          'rearm' variant after a missed call); the stage template is the fallback.
+//   the dead "reply STOP" mailto is stripped from every rendered body (footer.ts).
+//   applicants get NO Telegram rung (DECISIONS "Telegram rung": 11 of 15 failed and read as
+//          sent). Enforced here, not only by data, so a chat linked later cannot re-open it.
+//   the email rung carries a Resend Idempotency-Key per parent row (idempotency.ts): a
+//          retry after a timeout that Resend had in fact accepted cannot send a second copy.
+//   a deferred or retryable row that passes its 72h age limit is closed by the drain
+//          (fn_next_step_retry_drain: failed_at + 'expired: ...'), never left unsent forever.
 //
 // Deploy: 2026-05-19 v1
 
@@ -43,13 +66,20 @@ import { gateResend } from "../_shared/resend-gate.ts";
 import { escapeLikePattern } from "../_shared/like-escape.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
 import { BRAND_FROM, BRAND_REPLY_TO } from "../_shared/email.ts";
-import { runLadder } from "./ladder.ts";
+import { isTerminalSmsReceipt, runLadder } from "./ladder.ts";
+import { classifyEmailError, EmailSendError, planRetry } from "./retry.ts";
+import { hasEmptyHref, stripDeadReplyStop } from "./footer.ts";
+import { rebookUrl } from "./rebook.ts";
+import { idempotencyKeyFor, idempotentSendOptions } from "./idempotency.ts";
 
 // The trigger dispatches a row seconds after insert, and the nudge sweep never
 // evaluates a step older than 20h (20261016210500_next_step_quiet_hours.sql).
 // A queued row older than this is a missed send, and a late one is worse than
 // none: "Welcome, step 1" four months after the person moved on.
 const MAX_QUEUE_AGE_HOURS = 24;
+// A row this function deferred (daily cap) or left retryable carries metadata.not_before
+// and may wait until the next local morning; fn_next_step_claim enforces the same 72h.
+const MAX_DEFERRED_AGE_HOURS = 72;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -69,6 +99,9 @@ const RESEND_FROM = Deno.env.get("RESEND_FROM") ?? BRAND_FROM;
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 const resend = gateResend(new Resend(RESEND_KEY));
+// The SDK's own request headers (Authorization included); idempotency.ts copies them to add
+// the Idempotency-Key, because a `headers` send option replaces them wholesale.
+const RESEND_CLIENT_HEADERS: unknown = (resend as unknown as { headers?: unknown }).headers;
 
 type Stage = {
   stage_key: string;
@@ -99,8 +132,24 @@ type Person = {
   days_in_stage: number;
 };
 
+/** What public.fn_next_step_send_gate answers for one queued row. */
+type GateVerdict = {
+  action: "send" | "skip" | "defer";
+  reason?: string | null;
+  not_before?: string | null;
+  zone?: string | null;
+  copy?: { subject?: string | null; body?: string | null; key?: string | null } | null;
+  license_status?: string | null;
+  call_track?: string | null;
+  /** the daily-cap reservation the gate stamped on the row (live sends only) */
+  cap?: Record<string, unknown> | null;
+};
+
+// deno-lint-ignore no-explicit-any
+type Row = Record<string, any>;
+
 function render(tpl: string, ctx: Record<string, any>): string {
-  return tpl.replace(/\{\{\s*([\w_\.]+)\s*\}\}/g, (_m, key) => {
+  return tpl.replace(/\{\{\s*([\w_.]+)\s*\}\}/g, (_m, key) => {
     const v = ctx[key];
     return v === null || v === undefined ? "" : String(v);
   });
@@ -217,7 +266,8 @@ async function logMessage(row: any) {
 
 async function sendTelegram(chat_id: number, body: string, stage_key: string, dedupe: string | null) {
   // Use the existing telegram_scheduled_messages queue. The Telegram worker
-  // drains it and ships via the Apex bot.
+  // drains it and ships via the Apex bot. A queue row is NOT a delivery
+  // (MP-ONBOARD-ANCHOR-PKG1, F1): the caller records it as best effort.
   const { data, error } = await supabase
     .from("telegram_scheduled_messages")
     .insert({
@@ -285,11 +335,31 @@ async function sendSms(to: string, body: string, application_id: string | null):
   return `gateway:${(j as any).carrierSelected ?? "broadcast"}`;
 }
 
-async function sendEmail(to: string, subject: string, html: string): Promise<string> {
-  if (!RESEND_KEY) throw new Error("Resend not configured");
-  const r = await resend.emails.send({ from: RESEND_FROM, to, subject, html, reply_to: BRAND_REPLY_TO });
-  if ((r as any).error) throw new Error((r as any).error.message);
-  return (r as any).data?.id ?? "";
+// Resolves to the Resend message id; anything else throws an EmailSendError that carries
+// the provider's error name and HTTP status, so retry.ts can tell 429/5xx from a refusal.
+// idempotencyKey: one per parent row (idempotency.ts), so a retry cannot duplicate a send
+// that Resend accepted before the connection dropped.
+async function sendEmail(to: string, subject: string, html: string, idempotencyKey: string | null = null): Promise<string> {
+  if (!RESEND_KEY) throw new EmailSendError("Resend not configured", { name: "missing_api_key" });
+  let r: any;
+  try {
+    // resend@2.0.0 types its send options as { query? } but merges any option into the fetch
+    // init; undefined options (no usable client headers) send exactly as before.
+    const emails = resend.emails as unknown as { send: (payload: unknown, options?: unknown) => Promise<unknown> };
+    r = await emails.send(
+      { from: RESEND_FROM, to, subject, html, reply_to: BRAND_REPLY_TO },
+      idempotentSendOptions(RESEND_CLIENT_HEADERS, idempotencyKey),
+    );
+  } catch (e) {
+    throw new EmailSendError((e as Error)?.message ?? String(e), { name: "network_error", transient: true });
+  }
+  const err = r?.error;
+  if (err) {
+    throw new EmailSendError(err.message ?? String(err), { name: err.name ?? null, statusCode: err.statusCode ?? null });
+  }
+  const id = r?.data?.id;
+  if (!id) throw new EmailSendError("provider accepted the send without a message id", { name: "no_receipt" });
+  return String(id);
 }
 
 function smartPhone(phone: string | null): string | null {
@@ -301,37 +371,97 @@ function smartPhone(phone: string | null): string | null {
   return null;
 }
 
-async function isUnsubscribed(email: string | null): Promise<boolean> {
-  if (!email) return false;
-  const { data } = await supabase
-    .from("email_unsubscribes")
-    .select("email")
-    .eq("email", email.toLowerCase())
-    .limit(1)
-    .maybeSingle();
-  return !!data;
-}
-
-// A parent whose fallback already went out is delivered. Before the SMS branch
-// stamped its parent, this was the only record of that send.
+// A parent whose delivery already happened is delivered. Only a VERIFIED child counts:
+// an email child with a Resend id, or a Twilio SID. A gateway SMS child is best effort
+// and must not close the row (MP-ONBOARD-ANCHOR-PKG1, F2): if it did, a retry after a
+// transient email failure would mark the reminder delivered without sending the email.
 async function sentFallbackChild(parentId: string): Promise<{ id: string; sent_at: string } | null> {
   const { data, error } = await supabase
     .from("next_step_messages")
-    .select("id, sent_at")
+    .select("id, sent_at, channel, external_id")
     .eq("fallback_of_id", parentId)
     .not("sent_at", "is", null)
     .order("sent_at", { ascending: true })
-    .limit(1);
+    .limit(10);
   // Could not look: refuse to send rather than risk a second copy.
   if (error) throw new Error(`fallback lookup failed: ${error.message}`);
-  return (data?.[0] as any) ?? null;
+  const verified = (data ?? []).find((c: any) =>
+    (c.channel === "email" && typeof c.external_id === "string" && c.external_id.length > 0) ||
+    (c.channel === "sms" && isTerminalSmsReceipt(c.external_id))
+  );
+  return verified ? { id: (verified as any).id, sent_at: (verified as any).sent_at } : null;
 }
 
-async function dispatchOne(msg: any, dry: boolean) {
+/** metadata without the claim marker, plus the patch. */
+function metaWith(msg: Row, patch: Record<string, unknown>): Record<string, unknown> {
+  const base = { ...(msg.metadata ?? {}) } as Record<string, unknown>;
+  delete base.claimed_at;
+  return { ...base, ...patch };
+}
+
+// Atomic claim (fn_next_step_claim): a row is processed by one invocation at a time, only
+// while unsent/unfailed, only inside its age limit, and not before its not_before.
+async function claim(messageId: string): Promise<Row | null> {
+  const { data, error } = await supabase.rpc("fn_next_step_claim", { p_message_id: messageId });
+  if (!error) return (data as Row | null) ?? null;
+  // The claim function is missing (migration not applied yet): fall back to the
+  // pre-PKG1 selection so a fresh reminder is not lost in the deploy window.
+  console.error("[claim] fn_next_step_claim failed, legacy select:", error.message);
+  const notBefore = new Date(Date.now() - MAX_QUEUE_AGE_HOURS * 3600_000).toISOString();
+  const { data: rows, error: selErr } = await supabase.from("next_step_messages").select("*")
+    .eq("id", messageId)
+    .is("sent_at", null)
+    .is("failed_at", null)
+    .is("fallback_of_id", null)
+    .gte("created_at", notBefore)
+    .limit(1);
+  if (selErr) throw selErr;
+  return (rows?.[0] as Row) ?? null;
+}
+
+// reserve: true on the live send path only. The gate then serializes per recipient and stamps
+// the daily-cap reservation on the row; a dry run asks read-only.
+async function gateFor(msg: Row, email: string | null, reserve: boolean): Promise<{ verdict: GateVerdict | null; error: string | null }> {
+  const { data, error } = await supabase.rpc("fn_next_step_send_gate", {
+    p_message_id: msg.id,
+    p_email: email ?? null,
+    p_reserve: reserve,
+  });
+  if (error) return { verdict: null, error: error.message };
+  const v = data as GateVerdict | null;
+  if (!v || !v.action) return { verdict: null, error: "gate returned no verdict" };
+  return { verdict: v, error: null };
+}
+
+async function scheduleRetry(msg: Row, reason: string, extra: Record<string, unknown> = {}) {
+  const prev = (msg.metadata?.retry ?? {}) as Record<string, unknown>;
+  const plan = planRetry(Number(prev.attempts ?? 0));
+  const nowIso = new Date().toISOString();
+  const retry = {
+    attempts: plan.attempts,
+    first_at: (prev.first_at as string) ?? nowIso,
+    last_at: nowIso,
+    last_error: reason.slice(0, 300),
+  };
+  if (plan.giveUp) {
+    await supabase.from("next_step_messages").update({
+      failed_at: nowIso,
+      error: `gave up after ${plan.attempts} attempts: ${reason}`.slice(0, 500),
+      metadata: metaWith(msg, { ...extra, retry }),
+    }).eq("id", msg.id);
+    return { ok: false, id: msg.id, gave_up: true, attempts: plan.attempts, error: reason };
+  }
+  await supabase.from("next_step_messages").update({
+    metadata: metaWith(msg, { ...extra, retry, not_before: plan.notBefore }),
+  }).eq("id", msg.id);
+  return { ok: false, id: msg.id, retry_scheduled: true, attempts: plan.attempts, not_before: plan.notBefore, error: reason };
+}
+
+async function dispatchOne(msg: Row, dry: boolean) {
   const child = await sentFallbackChild(msg.id);
   if (child) {
     if (!dry) {
-      await supabase.from("next_step_messages").update({ sent_at: child.sent_at })
+      await supabase.from("next_step_messages").update({ sent_at: child.sent_at, metadata: metaWith(msg, {}) })
         .eq("id", msg.id).is("sent_at", null);
     }
     return { ok: true, skipped: true, reason: "already_delivered_by_fallback", id: msg.id, child_id: child.id };
@@ -341,16 +471,12 @@ async function dispatchOne(msg: any, dry: boolean) {
   const person = await loadPerson(msg.application_id, msg.agent_id);
   if (!person) throw new Error("person not found");
 
-  // CAN-SPAM / TCPA pre-flight: skip sending entirely if person has
-  // unsubscribed via the email path. Mark the queued row as failed_at
-  // with a clear reason so the stuck pool surfaces it.
-  if (!dry && person.email && (await isUnsubscribed(person.email))) {
-    await supabase.from("next_step_messages").update({
-      failed_at: new Date().toISOString(),
-      error: "skipped: recipient unsubscribed",
-    }).eq("id", msg.id);
-    return { ok: false, skipped: true, reason: "unsubscribed", id: msg.id };
-  }
+  // One place decides whether this person may be messaged now. A dry run asks read-only; the
+  // live path reserves today's one email for this recipient (see fn_next_step_send_gate).
+  const gate = await gateFor(msg, person.email, !dry);
+  const verdict = gate.verdict;
+  // Keep the reservation the gate stamped: every later write builds metadata from msg.
+  if (verdict?.cap) msg.metadata = { ...(msg.metadata ?? {}), cap: verdict.cap };
 
   const ctx: Record<string, any> = {
     first_name: person.first_name ?? "there",
@@ -364,49 +490,106 @@ async function dispatchOne(msg: any, dry: boolean) {
     agent_id: msg.agent_id ?? "",
     days_in_stage: msg.metadata?.day ?? "",
   };
+  // Post-call message: "pick a new time" is the call this person booked.
+  if (stage.stage_key === "call_booked" && msg.application_id) {
+    ctx.next_action_url = rebookUrl({
+      callTrack: verdict?.call_track ?? null,
+      licenseStatus: verdict?.license_status ?? null,
+      applicationId: msg.application_id,
+      firstName: person.first_name,
+      lastName: person.last_name,
+      email: person.email,
+    });
+  }
+  const step = verdict?.copy ?? null;
   const tgBody = render(stage.telegram_template || stage.candidate_message_template, ctx);
   const smsBody = render(stage.sms_template || stage.candidate_message_template, ctx);
-  const emailSubject = render(stage.email_subject_template || stage.display_name, ctx);
-  const emailBody = render(stage.email_body_template || stage.candidate_message_template, ctx);
+  const emailSubject = render(step?.subject || stage.email_subject_template || stage.display_name, ctx);
+  const emailBody = stripDeadReplyStop(
+    render(step?.body || stage.email_body_template || stage.candidate_message_template, ctx),
+  );
 
   if (dry) {
-    return { dry_run: true, person, telegram: tgBody, sms: smsBody, email_subject: emailSubject, email_body: emailBody };
+    return {
+      dry_run: true,
+      id: msg.id,
+      stage_key: stage.stage_key,
+      step: msg.metadata?.step ?? null,
+      variant: msg.metadata?.variant ?? null,
+      first_name: person.first_name,
+      gate: verdict ?? { error: gate.error },
+      person,
+      telegram: tgBody,
+      sms: smsBody,
+      email_subject: emailSubject,
+      email_body: emailBody,
+    };
   }
 
-  // Mark the queued message as the parent
+  // The gate could not answer: never send blind. Transient, so the drain retries.
+  if (!verdict) {
+    return await scheduleRetry(msg, `send_gate_unavailable: ${gate.error}`);
+  }
+  if (verdict.action === "skip") {
+    await supabase.from("next_step_messages").update({
+      failed_at: new Date().toISOString(),
+      error: `skipped: ${verdict.reason ?? "gate"}`,
+      metadata: metaWith(msg, { skip_reason: verdict.reason ?? "gate" }),
+    }).eq("id", msg.id);
+    return { ok: false, skipped: true, reason: verdict.reason, id: msg.id };
+  }
+  if (verdict.action === "defer") {
+    await supabase.from("next_step_messages").update({
+      metadata: metaWith(msg, {
+        not_before: verdict.not_before,
+        deferred: { reason: verdict.reason ?? "deferred", at: new Date().toISOString(), zone: verdict.zone ?? null },
+      }),
+    }).eq("id", msg.id);
+    return { ok: false, deferred: true, reason: verdict.reason, not_before: verdict.not_before, id: msg.id };
+  }
+  // A link that renders blank is a broken email, not a reminder.
+  if (person.email && hasEmptyHref(emailBody)) {
+    await supabase.from("next_step_messages").update({
+      failed_at: new Date().toISOString(),
+      error: "skipped: template rendered an empty link",
+      metadata: metaWith(msg, { skip_reason: "empty_link" }),
+    }).eq("id", msg.id);
+    return { ok: false, skipped: true, reason: "empty_link", id: msg.id };
+  }
+
   const parent_id = msg.id;
   const smsTo = smartPhone(person.phone);
+  // A retry re-runs only the email rung: the best-effort rungs already went out once.
+  const isRetry = !!msg.metadata?.retry;
+  const bestEffort: Record<string, unknown> = { ...(msg.metadata?.best_effort ?? {}) };
 
-  // The rung order and what ends the ladder live in ladder.ts (tested there).
-  // WP4: a "gateway:" SMS receipt no longer ends it; the email rung still runs.
   const ladder = await runLadder({
-    // Channel 1: Telegram
-    telegram: person.telegram_chat_id && !person.telegram_opt_out
+    // Channel 1: Telegram (best effort: a queue row, not a delivery). Never for applicants:
+    // the rung is off for them by decision, enforced here so a chat linked later
+    // (trg_telegram_autolink_application) cannot switch it back on.
+    telegram: !isRetry && person.kind !== "applicant" && person.telegram_chat_id && !person.telegram_opt_out
       ? async () => {
         const tgId = await sendTelegram(person.telegram_chat_id as number, tgBody, stage.stage_key, msg.dedupe_key);
-        await supabase.from("next_step_messages").update({
-          sent_at: new Date().toISOString(),
-          body: tgBody,
-          recipient: String(person.telegram_chat_id),
-          external_id: tgId ? String(tgId) : null,
-          channel: "telegram",
-        }).eq("id", parent_id);
+        bestEffort.telegram = { queue_id: tgId ? String(tgId) : null, chat: String(person.telegram_chat_id), at: new Date().toISOString() };
+        return tgId;
       }
       : null,
-    // Channel 2: SMS
-    sms: smsTo
+    // Channel 2: SMS. A Twilio SID is a delivery; a carrier-gateway receipt is best effort.
+    sms: !isRetry && smsTo
       ? async () => {
         const sid = await sendSms(smsTo, smsBody, msg.application_id);
-        if (msg.channel !== "telegram") {
-          // upgrade the queued parent
+        if (isTerminalSmsReceipt(sid)) {
           await supabase.from("next_step_messages").update({
             sent_at: new Date().toISOString(),
             body: smsBody,
             recipient: smsTo,
             external_id: sid,
             channel: "sms",
+            failed_at: null,
           }).eq("id", parent_id);
         } else {
+          // Logged with its gateway receipt (v_sms_receipt_truth adjudicates these); the
+          // parent stays unsent until a verified rung lands.
           await logMessage({
             application_id: msg.application_id,
             agent_id: msg.agent_id,
@@ -418,21 +601,17 @@ async function dispatchOne(msg: any, dry: boolean) {
             sent_at: new Date().toISOString(),
             external_id: sid,
             fallback_of_id: parent_id,
+            metadata: { best_effort: true },
           });
-          // Stamp the parent, as the email fallback does. Without this the
-          // parent stayed queued and the fan-out sent it again.
-          await supabase.from("next_step_messages").update({
-            sent_at: new Date().toISOString(),
-            failed_at: null,
-          }).eq("id", parent_id);
+          bestEffort.sms = { receipt: sid, at: new Date().toISOString() };
         }
         return sid;
       }
       : null,
-    // Channel 3: Email
+    // Channel 3: Email (Resend id = the receipt). One idempotency key per parent row.
     email: person.email
       ? async () => {
-        const eid = await sendEmail(person.email as string, emailSubject, emailBody);
+        const eid = await sendEmail(person.email as string, emailSubject, emailBody, idempotencyKeyFor(parent_id));
         await logMessage({
           application_id: msg.application_id,
           agent_id: msg.agent_id,
@@ -445,9 +624,8 @@ async function dispatchOne(msg: any, dry: boolean) {
           sent_at: new Date().toISOString(),
           external_id: eid,
           fallback_of_id: parent_id,
+          metadata: { reply_to: BRAND_REPLY_TO, step_copy: step?.key ?? null },
         });
-        // A best-effort gateway SMS may already have stamped the parent; keep
-        // that first send time.
         await supabase.from("next_step_messages").update({
           sent_at: new Date().toISOString(),
           failed_at: null,
@@ -458,43 +636,58 @@ async function dispatchOne(msg: any, dry: boolean) {
   });
 
   const lastError = ladder.errors.length ? ladder.errors.join("; ") : null;
-  if (!ladder.anySent) {
-    await supabase.from("next_step_messages").update({
-      failed_at: new Date().toISOString(),
-      error: lastError ?? "no contact channel",
-      metadata: { ...(msg.metadata ?? {}), email_rung: ladder.emailRung },
-    }).eq("id", parent_id);
-    return { ok: false, error: lastError ?? "no contact channel" };
+  const rungMeta: Record<string, unknown> = {
+    email_rung: ladder.emailRung,
+    ...(Object.keys(bestEffort).length ? { best_effort: bestEffort } : {}),
+    ...(ladder.smsBestEffort ? { sms_best_effort: true } : {}),
+    ...(step?.key ? { step_copy: step.key } : {}),
+  };
+
+  if (ladder.anySent) {
+    const done = metaWith(msg, rungMeta);
+    delete done.not_before; // delivered: nothing is due any more
+    await supabase.from("next_step_messages").update({ metadata: done }).eq("id", parent_id);
+    await supabase.from("next_step_events").insert({
+      application_id: msg.application_id,
+      agent_id: msg.agent_id,
+      to_stage: stage.stage_key,
+      event_type: "message_sent",
+      source: "cron",
+      payload: { template_key: msg.template_key, parent_message_id: parent_id },
+    });
+    return {
+      ok: true,
+      parent_id,
+      channel: ladder.terminal,
+      email_rung: ladder.emailRung,
+      ...(lastError ? { warnings: lastError } : {}),
+    };
   }
 
-  // What the email rung did, on the parent: apex-doctor #45 reads an absent
-  // value next to a gateway SMS as "the email rung never ran" (a regression).
+  if (ladder.emailRung === "failed") {
+    const cls = classifyEmailError(ladder.emailError);
+    if (cls.transient) {
+      return await scheduleRetry(msg, cls.message, rungMeta);
+    }
+    await supabase.from("next_step_messages").update({
+      failed_at: new Date().toISOString(),
+      error: `email failed: ${cls.message}`.slice(0, 500),
+      metadata: metaWith(msg, { ...rungMeta, email_error: cls.message }),
+    }).eq("id", parent_id);
+    return { ok: false, id: parent_id, error: cls.message, email_rung: "failed" };
+  }
+
+  // No email on file. A best-effort rung may have gone out, but nothing is verifiable,
+  // so the row is not "sent" (F1/F2).
+  const why = ladder.bestEffortOnly
+    ? "unverified: only a best-effort channel went out (telegram queue / gateway sms) and no email is on file"
+    : (lastError ?? "no contact channel");
   await supabase.from("next_step_messages").update({
-    metadata: {
-      ...(msg.metadata ?? {}),
-      email_rung: ladder.emailRung,
-      ...(ladder.smsBestEffort ? { sms_best_effort: true } : {}),
-      ...(ladder.emailRung === "failed" && lastError ? { email_error: lastError.slice(0, 300) } : {}),
-    },
+    failed_at: new Date().toISOString(),
+    error: why.slice(0, 500),
+    metadata: metaWith(msg, rungMeta),
   }).eq("id", parent_id);
-
-  // Log event
-  await supabase.from("next_step_events").insert({
-    application_id: msg.application_id,
-    agent_id: msg.agent_id,
-    to_stage: stage.stage_key,
-    event_type: "message_sent",
-    source: "cron",
-    payload: { template_key: msg.template_key, parent_message_id: parent_id },
-  });
-
-  return {
-    ok: true,
-    parent_id,
-    channel: ladder.terminal ?? (ladder.smsBestEffort ? "sms_best_effort" : null),
-    email_rung: ladder.emailRung,
-    ...(lastError ? { warnings: lastError } : {}),
-  };
+  return { ok: false, id: parent_id, error: why };
 }
 
 Deno.serve(async (req) => {
@@ -514,28 +707,45 @@ Deno.serve(async (req) => {
     }
     const limit = Math.max(1, Math.min(200, body.limit ?? 50));
     const notBefore = new Date(Date.now() - MAX_QUEUE_AGE_HOURS * 3600_000).toISOString();
-    let q = supabase.from("next_step_messages")
-      .select("*")
-      .is("sent_at", null)
-      .is("failed_at", null)
-      .gte("created_at", notBefore)
-      .order("created_at", { ascending: true })
-      .limit(limit);
-    if (single) {
-      // Same three filters: a sent, failed or stale row is never re-sent by id.
-      q = supabase.from("next_step_messages").select("*")
-        .eq("id", body.message_id)
+    const deferredFloor = new Date(Date.now() - MAX_DEFERRED_AGE_HOURS * 3600_000).toISOString();
+    const results: any[] = [];
+
+    if (single && !dry) {
+      // The trigger and the drain post one id. The claim decides whether it is ours to send.
+      // not_claimable = sent, failed, claimed in the last 5 minutes, not due yet, or past its
+      // age limit. Nothing is written here: a deferred/retryable row past 72h is closed as
+      // expired by fn_next_step_retry_drain, so it never sits unsent and unfailed.
+      const msg = await claim(body.message_id);
+      if (!msg) {
+        results.push({ id: body.message_id, skipped: true, reason: "not_claimable" });
+      } else {
+        try { results.push(await dispatchOne(msg, false)); }
+        catch (e: any) {
+          // Unexpected throw after the claim: release the row for the drain instead of
+          // leaving it claimed and unsent.
+          results.push(await scheduleRetry(msg, `dispatch_error: ${e?.message ?? String(e)}`).catch(() => ({ id: msg.id, error: e?.message ?? String(e) })));
+        }
+      }
+    } else {
+      let q = supabase.from("next_step_messages")
+        .select("*")
         .is("sent_at", null)
         .is("failed_at", null)
-        .gte("created_at", notBefore)
-        .limit(1);
-    }
-    const { data: queue, error } = await q;
-    if (error) throw error;
-    const results: any[] = [];
-    for (const msg of queue ?? []) {
-      try { results.push(await dispatchOne(msg, dry)); }
-      catch (e: any) { results.push({ id: msg.id, error: e?.message ?? String(e) }); }
+        .is("fallback_of_id", null)
+        .gte("created_at", single ? deferredFloor : notBefore)
+        .order("created_at", { ascending: true })
+        .limit(limit);
+      if (single) q = q.eq("id", body.message_id);
+      const { data: queue, error } = await q;
+      if (error) throw error;
+      for (const row of queue ?? []) {
+        try {
+          if (dry) { results.push(await dispatchOne(row, true)); continue; }
+          const msg = await claim(row.id);
+          if (!msg) { results.push({ id: row.id, skipped: true, reason: "not_claimable" }); continue; }
+          results.push(await dispatchOne(msg, false));
+        } catch (e: any) { results.push({ id: row.id, error: e?.message ?? String(e) }); }
+      }
     }
     return new Response(JSON.stringify({ ok: true, processed: results.length, dry, results }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

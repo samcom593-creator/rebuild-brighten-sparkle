@@ -45,8 +45,11 @@ const FN = (name) => path.resolve(ROOT, process.env.UNSUB_GUARD_FUNCTIONS_DIR ??
 export const SENDERS = [
   // Admin blast to every non-terminated applicant (836 on 2026-10-11).
   { name: "send-push-optin-email", send: /\bsendEmail\s*\(/, directResend: false },
-  // Every-15-min follow-up to applicants stalled 3+ days, via send-notification.
-  { name: "system-health-check", send: /functions\/v1\/send-notification/, directResend: true },
+  // system-health-check was listed here for its every-15-min "Still interested" follow-up.
+  // MP-ONBOARD-ANCHOR-PKG1 (2026-11-12) removed that block: the function sends nothing to
+  // applicants any more, so it has no send call to grade. The removal is pinned by
+  // supabase/functions/system-health-check/no-applicant-mail.test.ts, and the one applicant
+  // sequence (next-step-dispatch) reads email_unsubscribes in fn_next_step_send_gate.
   // Admin Bulk Compose (BulkComposeDrawer): recipients come off the request body.
   { name: "send-bulk-email", send: /\bsendEmail\s*\(/, directResend: false },
   // reactivation v2 (2026-11-12): one email per pg_cron call; reads the opt-out list and stops on a read error.

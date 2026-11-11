@@ -42,10 +42,34 @@ export function licensedNpnIssue(licenseStatus: string, niprNumber: string | nul
   return "Your NPN (National Producer Number) is 5 to 10 digits and is required to confirm your license";
 }
 
-/** The welcome SMS goes only to an applicant who opted in to SMS on the form. */
+/**
+ * MP-ONBOARD-ANCHOR-PKG1 (2026-11-12): a person who applies again this many days or more
+ * after their latest application gets a NEW live record (it enters the ladder and the SLA
+ * queue; the old row is superseded). A repeat inside the window stays on the existing row.
+ * The database half of the rule lives in applications_flag_duplicates (migration
+ * 20261112000150) and must use the same number.
+ */
+export const REAPPLY_LIVE_AFTER_DAYS = 30;
+
+/** What happened to the applicant's day-0 welcome email (index.ts sendEmailNotifications). */
+export interface WelcomeOutcome {
+  /** fn_email_is_suspended for the applicant's address: true, false, or null (could not look) */
+  recipientSuspended: boolean | null;
+  /** Resend accepted the day-0 welcome email (it returned a message id) */
+  welcomeSent: boolean;
+}
+
+/**
+ * The welcome SMS goes only to an applicant who opted in to SMS on the form, whose login is
+ * known NOT to be suspended or banned (a failed lookup sends no text: the SMS is optional,
+ * DECISIONS.md "Banned people"), and whose welcome email actually went out (the text says
+ * "Your next step is in your email"). MP-ONBOARD-ANCHOR-PKG1.
+ */
 export function shouldSendWelcomeSms(
   phone: string | null | undefined,
   consent: { smsConsentGiven?: boolean | null } | null | undefined,
+  welcome: WelcomeOutcome | null | undefined,
 ): boolean {
-  return Boolean(phone) && consent?.smsConsentGiven === true;
+  return Boolean(phone) && consent?.smsConsentGiven === true
+    && welcome?.recipientSuspended === false && welcome?.welcomeSent === true;
 }

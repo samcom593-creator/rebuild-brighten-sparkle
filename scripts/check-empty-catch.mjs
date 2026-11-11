@@ -119,7 +119,9 @@ const ROOTS = [
   // not an artifact of one worker's tree. Locking it because a floor with a free
   // slot lets the next real regression be absorbed in silence while the guard
   // still exits 0 -- the fungible-floor disease MP-356 shipped a fix for.
-  { dir: "supabase/functions", baseline: 50 },
+  // MP-ONBOARD-ANCHOR-PKG1 (2026-11-12): 50 -> 49. system-health-check's alert-SMS
+  // `} catch {}` now logs the failure (earned in this commit).
+  { dir: "supabase/functions", baseline: 49 },
   // MP-479: the recovered orphan mirrors (live prod functions whose source
   // exists nowhere else) get their OWN budget rather than being folded into
   // the supabase/functions figure. Merging them would let a mirror regression

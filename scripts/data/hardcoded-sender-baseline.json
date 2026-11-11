@@ -103,7 +103,7 @@
     "supabase/functions/send-unlicensed-process-update/index.ts": 1,
     "supabase/functions/send-weekly-analytics/index.ts": 1,
     "supabase/functions/site-shell-watch/index.ts": 1,
-    "supabase/functions/submit-application/index.ts": 5,
+    "supabase/functions/submit-application/index.ts": 4,
     "supabase/functions/system-health-check/index.ts": 1,
     "supabase/functions/test-email-flows/index.ts": 12,
     "supabase/functions/track-email-click/index.ts": 1,

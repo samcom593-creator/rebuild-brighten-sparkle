@@ -3068,6 +3068,28 @@
         "raw": ""
       }
     ],
+    "fn_anchor_pkg1_cutoff": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_anchor_pkg1_reapply_catchup": [
+      {
+        "all": [
+          "p_application_ids",
+          "p_dry_run",
+          "p_max"
+        ],
+        "required": [
+          "p_application_ids"
+        ],
+        "unnamed": false,
+        "raw": "p_application_ids uuid[], p_dry_run boolean DEFAULT true, p_max integer DEFAULT 3"
+      }
+    ],
     "fn_apex_log_http_call": [
       {
         "all": [],
@@ -3085,6 +3107,14 @@
       }
     ],
     "fn_applicant_first_dm_on_apply": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_applicant_lane_pkg1_health": [
       {
         "all": [],
         "required": [],
@@ -3113,6 +3143,14 @@
       }
     ],
     "fn_applications_derive_record_type": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_applications_reapply_supersede": [
       {
         "all": [],
         "required": [],
@@ -3833,6 +3871,18 @@
       }
     ],
     "fn_email_is_sendable": [
+      {
+        "all": [
+          "p_email"
+        ],
+        "required": [
+          "p_email"
+        ],
+        "unnamed": false,
+        "raw": "p_email text"
+      }
+    ],
+    "fn_email_is_suspended": [
       {
         "all": [
           "p_email"
@@ -4732,6 +4782,18 @@
         "raw": "p_cadence text, p_entered timestamp with time zone, p_now timestamp with time zone, p_zones text[]"
       }
     ],
+    "fn_next_step_claim": [
+      {
+        "all": [
+          "p_message_id"
+        ],
+        "required": [
+          "p_message_id"
+        ],
+        "unnamed": false,
+        "raw": "p_message_id uuid"
+      }
+    ],
     "fn_next_step_deal_first_check": [
       {
         "all": [],
@@ -4807,6 +4869,31 @@
         "required": [],
         "unnamed": false,
         "raw": "p_application_id uuid DEFAULT NULL::uuid, p_agent_id uuid DEFAULT NULL::uuid"
+      }
+    ],
+    "fn_next_step_retry_drain": [
+      {
+        "all": [
+          "p_dry_run",
+          "p_limit"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_dry_run boolean DEFAULT true, p_limit integer DEFAULT 5"
+      }
+    ],
+    "fn_next_step_send_gate": [
+      {
+        "all": [
+          "p_email",
+          "p_message_id",
+          "p_reserve"
+        ],
+        "required": [
+          "p_message_id"
+        ],
+        "unnamed": false,
+        "raw": "p_message_id uuid, p_email text DEFAULT NULL::text, p_reserve boolean DEFAULT false"
       }
     ],
     "fn_next_step_send_ok": [
@@ -5012,6 +5099,14 @@
       }
     ],
     "fn_onboarding_email_backfill_sweep": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_onboarding_owned_people": [
       {
         "all": [],
         "required": [],

@@ -1,5 +1,7 @@
-// WP4: a carrier-gateway SMS is best effort and must not end the ladder; only a
-// provider SID does. Run: deno test --no-check supabase/functions/next-step-dispatch/ladder.test.ts
+// WP4: a carrier-gateway SMS is best effort and must not end the ladder; only a provider SID
+// does. MP-ONBOARD-ANCHOR-PKG1: a Telegram enqueue is best effort too; the email rung always
+// runs after a best-effort, failed or skipped rung, and only a provider receipt is "sent".
+// Run: deno test --no-check supabase/functions/next-step-dispatch/ladder.test.ts
 import { assert, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { isTerminalSmsReceipt, runLadder } from "./ladder.ts";
 
@@ -23,6 +25,7 @@ Deno.test("gateway SMS is best effort: the email rung still runs", async () => {
   assertEquals(r.emailRung, "sent");
   assertEquals(r.emailId, "re_123");
   assert(r.anySent);
+  assertEquals(r.bestEffortOnly, false);
 });
 
 Deno.test("twilio SID is terminal: no email", async () => {
@@ -33,21 +36,26 @@ Deno.test("twilio SID is terminal: no email", async () => {
   assertEquals(r.terminal, "sms");
   assertEquals(r.emailRung, "skipped_terminal");
   assertEquals(r.smsBestEffort, false);
+  assert(r.anySent);
 });
 
-Deno.test("gateway SMS + failed email: still sent (best effort), rung recorded as failed", async () => {
-  const r = await runLadder({ telegram: null, sms: spy("gateway:metro").fn, email: spy(new Error("suppressed")).fn });
+Deno.test("gateway SMS + failed email: NOT sent; best effort only, email error kept for the retry decision", async () => {
+  const boom = new Error("Too many requests");
+  const r = await runLadder({ telegram: null, sms: spy("gateway:metro").fn, email: spy(boom).fn });
   assertEquals(r.terminal, null);
   assertEquals(r.smsBestEffort, true);
   assertEquals(r.emailRung, "failed");
-  assert(r.anySent);
+  assertEquals(r.anySent, false, "a gateway receipt is not a delivery");
+  assertEquals(r.bestEffortOnly, true);
+  assertEquals(r.emailError, boom);
   assert(r.errors.some((e) => e.startsWith("email:")));
 });
 
-Deno.test("gateway SMS + no email on file: rung says no_email (not a regression)", async () => {
+Deno.test("gateway SMS + no email on file: best effort only, rung says no_email", async () => {
   const r = await runLadder({ telegram: null, sms: spy("gateway:cricket").fn, email: null });
   assertEquals(r.emailRung, "no_email");
-  assert(r.anySent);
+  assertEquals(r.anySent, false);
+  assertEquals(r.bestEffortOnly, true);
 });
 
 Deno.test("SMS refused (skipped, no consent, retired gateway): falls through to email", async () => {
@@ -58,19 +66,31 @@ Deno.test("SMS refused (skipped, no consent, retired gateway): falls through to 
   assertEquals(r.smsReceipt, null);
 });
 
-Deno.test("Telegram enqueue ends the ladder; failure falls through", async () => {
+Deno.test("Telegram enqueue is best effort: SMS and email still run (F1: 11 of 15 queued messages failed)", async () => {
   const sms = spy("gateway:uscellular");
-  const ok = await runLadder({ telegram: () => Promise.resolve(), sms: sms.fn, email: spy("re_1").fn });
-  assertEquals(ok.terminal, "telegram");
-  assertEquals(sms.calls.n, 0);
-  assertEquals(ok.emailRung, "skipped_terminal");
+  const email = spy("re_1");
+  const ok = await runLadder({ telegram: () => Promise.resolve(42), sms: sms.fn, email: email.fn });
+  assertEquals(ok.telegramQueued, true);
+  assertEquals(sms.calls.n, 1);
+  assertEquals(email.calls.n, 1, "email must run after a Telegram enqueue");
+  assertEquals(ok.terminal, "email");
+  assertEquals(ok.emailRung, "sent");
   const bad = await runLadder({ telegram: () => Promise.reject(new Error("x")), sms: null, email: spy("re_2").fn });
   assertEquals(bad.terminal, "email");
+  assertEquals(bad.telegramQueued, false);
+});
+
+Deno.test("Telegram queued, no email on file: best effort only, never a delivery", async () => {
+  const r = await runLadder({ telegram: () => Promise.resolve(), sms: null, email: null });
+  assertEquals(r.anySent, false);
+  assertEquals(r.bestEffortOnly, true);
+  assertEquals(r.terminal, null);
 });
 
 Deno.test("nothing available: nothing sent", async () => {
   const r = await runLadder({ telegram: null, sms: null, email: null });
   assertEquals(r.anySent, false);
+  assertEquals(r.bestEffortOnly, false);
   assertEquals(r.terminal, null);
 });
 

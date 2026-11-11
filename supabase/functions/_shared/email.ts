@@ -21,6 +21,9 @@
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { nonRoutableDomain } from "./non-routable.ts";
 import { lookupSuppressed } from "./suppression.ts";
+import { RECRUIT_REPLY_TO, resolveReplyTo } from "./reply-to.ts";
+
+export { RECRUIT_REPLY_TO };
 
 export interface SendEmailInput {
   to: string | string[];
@@ -49,10 +52,11 @@ export interface SendEmailResult {
 // (verified in Resend; changing it would reset reputation).
 export const BRAND_FROM = "Sam at Galaxy Financial <sam@apex-financial.org>";
 // Reply-To is the inbox the pipeline owner actually works. EMAIL_REPLY_TO is
-// unset in edge secrets today (checked 2026-11-10), so replies keep going to
-// the current default until Sam names the monitored inbox (open question in
-// the 2026-11-10 onboarding audit). Set the secret; no code change needed.
-export const BRAND_REPLY_TO = Deno.env.get("EMAIL_REPLY_TO") ?? "info@kingofsales.net";
+// unset in edge secrets today (checked 2026-11-10). MP-ONBOARD-ANCHOR-PKG1
+// (2026-11-12): the value goes through resolveReplyTo(), so an empty secret or
+// an address on apex-financial.org (every mailbox there returns 550) can never
+// become the Reply-To; info@kingofsales.net is the only inbox that exists.
+export const BRAND_REPLY_TO = resolveReplyTo(Deno.env.get("EMAIL_REPLY_TO"));
 
 const DEFAULT_FROM     = Deno.env.get("EMAIL_FROM")     ?? BRAND_FROM;
 const DEFAULT_REPLY_TO = BRAND_REPLY_TO;
@@ -132,7 +136,8 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
     const result = await resend.emails.send({
       from:     from     ?? DEFAULT_FROM,
       to:       deliverable,
-      reply_to: reply_to ?? DEFAULT_REPLY_TO,
+      // A caller that passes none (or an empty or dead address) still gets the live inbox.
+      reply_to: resolveReplyTo(reply_to ?? DEFAULT_REPLY_TO),
       subject,
       html:     finalHtml,
       text:     resolvedText,

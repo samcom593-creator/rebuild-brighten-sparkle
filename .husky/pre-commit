@@ -1017,3 +1017,14 @@ if match '^(supabase/migrations/.*\.sql$|scripts/check-anon-definer-rpcs\.mjs$|s
   rc=0; node scripts/check-anon-definer-rpcs.mjs || rc=$?
   if [ "$rc" -eq 2 ]; then echo "[pre-commit] anon-definer: catalog unreadable, skipped (doctor #44 covers it)"; elif [ "$rc" -ne 0 ]; then exit 1; fi
 fi
+
+# ---------- check-canonical-url (2026-11-10, Website Integrity Bot) ----------
+# Trigger: the static canonical surface (index.html), the router mount (App.tsx),
+# the canonical manager, the sitemap, or the script. This is an SPA — every route
+# served index.html's single homepage canonical, so the whole recruiting funnel
+# deduped onto "/" and dropped from Google's index. Guard asserts the fix is
+# mounted + non-degenerate and that every sitemap <loc> is a real route. <1s.
+if match '^(index\.html|src/App\.tsx|src/components/seo/RouteCanonical\.tsx|public/sitemap\.xml|scripts/check-canonical-url\.mjs)$'; then
+  echo "[pre-commit] canonical/sitemap file staged — running check:canonical-url…"
+  node scripts/check-canonical-url.mjs && node scripts/check-canonical-url.mjs --selftest || exit 1
+fi

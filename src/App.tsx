@@ -54,6 +54,7 @@ const AuthenticatedShell = lazy(() =>
   })),
 );
 import { RouteTelemetry } from "@/shared/telemetry/useRouteTelemetry";
+import { RouteCanonical } from "@/components/seo/RouteCanonical";
 // SupabaseHealthBanner is lazy: it renders null 99% of the time (only shows when
 // Postgres data plane is slow/down). Eager-loading it pulled @/integrations/supabase/client
 // + its 60s probe into the entry chunk. Deferring until 1s after LCP is invisible to
@@ -427,6 +428,11 @@ const App = () => (
             </Suspense>
             <ScrollToTop />
             <RouteTelemetry />
+            {/* Self-referencing canonical per route. index.html ships one static
+                canonical (homepage); without this every SPA route declared the
+                homepage as its canonical and Google deduped the funnel onto "/".
+                Inside the router on purpose — useLocation() throws outside it. */}
+            <RouteCanonical />
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 {/* Landing route — bare. No QCP wrapper at this level.

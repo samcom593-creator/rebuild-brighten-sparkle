@@ -77,6 +77,20 @@ jobs:
         if: steps.promote.outputs.matched == 'true'
         run: npx playwright install --with-deps chromium
 
+      # Prove the funnel external-CTA detector still classifies alive/dead/
+      # unresolved correctly BEFORE trusting its live verdict below. It launches
+      # a browser against its own 127.0.0.1 fixtures (no public network), so it
+      # belongs in this Chromium-equipped job, NOT in verify:core — verify:core
+      # runs on a cold runner with no browser, where this selftest fails forever
+      # with "Executable doesn't exist" and reddens the required gate about the
+      # guard's ENVIRONMENT, not the funnel. A broken detector run live would
+      # pass dead links or red healthy ones; catching that here keeps the live
+      # check honest. Siblings (mobile-overflow / careers-render) keep their
+      # selftests local-only; this one is exercised on every promoted deploy.
+      - name: Selftest funnel external-CTA detector (fixtures, both directions)
+        if: steps.promote.outputs.matched == 'true'
+        run: node scripts/check-funnel-external-cta.mjs --selftest
+
       - name: Run careers JobPosting render check
         if: steps.promote.outputs.matched == 'true'
         run: node scripts/careers-jobposting-render.mjs
@@ -121,4 +135,4 @@ jobs:
       - name: Post failure summary
         if: failure()
         run: |
-          echo "::warning::Post-deploy SEO render FAILED on ${{ github.sha }} — a /careers/* page did not render its Google-for-Jobs payload (per-route title / self-canonical / JobPosting JSON-LD), OR a sitemap URL did not render public to an anonymous crawler (login wall / redirect / wrong canonical), OR the funnel serves a DEAD external onboarding CTA (Xcel enrollment / Calendly / study-guide Doc rendered a page-not-found/access-wall). The Vercel deploy is live; a recruiting rich result, funnel URL, or partner handoff regressed. See the route output above."
+          echo "::warning::Post-deploy SEO render FAILED on ${{ github.sha }} — the funnel external-CTA DETECTOR selftest failed (the guard's own alive/dead logic regressed, not the site), OR a /careers/* page did not render its Google-for-Jobs payload (per-route title / self-canonical / JobPosting JSON-LD), OR a sitemap URL did not render public to an anonymous crawler (login wall / redirect / wrong canonical), OR the funnel serves a DEAD external onboarding CTA (Xcel enrollment / Calendly / study-guide Doc rendered a page-not-found/access-wall). The Vercel deploy is live; a detector regressed, or a recruiting rich result, funnel URL, or partner handoff did. See the step output above."

@@ -15,11 +15,24 @@
 //   opens a real browser, renders desktop + mobile, and asserts the visible
 //   text carries no broken token and mobile does not scroll sideways.
 //
-//   This header used to say "run by the BOT each fire". It was run by nothing
-//   until 2026-10-06 (PL-WIB-LIVE-RENDER-WIRE). It now runs every 6h on Sam's
-//   Mac via launchd com.samjames.apex.live-render ->
-//   business-ops/scripts/apex-live-render-cron.sh, graded by apex-doctor
-//   Check #92. It is deliberately NOT wired as a blocking CI gate: a browser render in CI is
+//   This header's wiring claim was fiction twice over. It first said "run by
+//   the BOT each fire" (run by nothing). On 2026-10-06 it was rewritten to
+//   claim launchd com.samjames.apex.live-render + apex-doctor "Check #92" —
+//   but that launchd job had no plist, business-ops/scripts/apex-live-render-cron.sh
+//   did not exist, and the doctor's highest check is #50, so #92 never existed.
+//   Still run by nothing, graded by nothing: the ONE guard that catches a
+//   broken number rendering to the public funnel. MP-WIB-LIVE-RENDER-RUN
+//   (2026-11-11) made it REAL and PROVEN: it now runs every 6h on Sam's Mac
+//   via launchd com.samjames.apex.live-render -> business-ops/scripts/apex-live-render-cron.sh,
+//   which points RESULT_FILE at business-ops/session-state/site-health/live-render-latest.json
+//   and pages ntfy (transition-de-stormed) only on a genuine DEFECT/SITE_DOWN.
+//   The job's LIVENESS is graded by apex-doctor Check #5 (EXPECTED_LABELS): if
+//   the plist is present+enabled but the job is unloaded it goes CRITICAL; a
+//   deliberate retirement (remove/disable the plist) is a NOTE, never a
+//   permanent red. One-time setup the runner assumes: `node_modules/.bin/playwright
+//   install webkit` so the mobile-webkit leg runs on the real Apple engine (it
+//   was never installed, so that leg had silently never run -> CLEAN_PARTIAL).
+//   It is deliberately NOT wired as a blocking CI gate: a browser render in CI is
 //   flaky, and a flaky gate that blocks the deploy is worse than the bug it
 //   guards (the lesson from every "permanently-red guard" wave). So this
 //   fails LOUD locally and NEVER blocks a push.

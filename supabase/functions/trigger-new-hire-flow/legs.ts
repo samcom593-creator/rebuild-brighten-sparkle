@@ -12,8 +12,9 @@ export function isSettled(status: LegStatus | null | undefined): boolean {
 
 /**
  * The run is finished once the welcome email reached a terminal outcome: delivered to the provider, refused by the
- * gate (suppressed / non-routable: retrying cannot change that), or impossible (no address). Only then is the agent
- * marked unlocked; a transient failure leaves the run open for the hourly retry (3 attempts).
+ * gate (suppressed / non-routable: retrying cannot change that), or impossible (no address). A transient failure
+ * leaves the run open for the hourly retry (3 attempts). Production access does not wait on this: it is unlocked at
+ * the first claim (fn_new_hire_flow_claim).
  */
 export function runIsDone(legs: Record<string, LegStatus | undefined>): boolean {
   return isSettled(legs.welcome_email);

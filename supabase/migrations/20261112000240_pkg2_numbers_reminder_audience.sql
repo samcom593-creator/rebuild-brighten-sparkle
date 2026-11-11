@@ -1,4 +1,4 @@
--- MP-ONBOARD-ANCHOR-PKG2 (2026-11-12) — licensed-hire activation, part 5 of 11: who the nightly numbers reminder is for.
+-- MP-ONBOARD-ANCHOR-PKG2 (2026-11-12) — licensed-hire activation, part 5 of 10: who the nightly numbers reminder is for.
 --
 -- WHAT
 --   v_numbers_reminder_audience: one row per agent row the live sender (supabase/functions/numbers-reminder, crons

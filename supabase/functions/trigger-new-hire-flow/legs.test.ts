@@ -21,7 +21,7 @@ Deno.test("a provider id is the only thing that makes a send 'sent'", () => {
   assertEquals(legFromSend({ ok: false, id: null, error: "x", refused: "suppressed" }), "refused:suppressed");
 });
 
-Deno.test("a failed welcome email keeps the run open (no claim before the send)", () => {
+Deno.test("a failed welcome email keeps the run open for the retry sweep", () => {
   assertFalse(runIsDone({ welcome_email: "failed:timeout", sam_notice: "sent:re_2" }));
   assertFalse(runIsDone({}));
   assert(runIsDone({ welcome_email: "sent:re_3" }));

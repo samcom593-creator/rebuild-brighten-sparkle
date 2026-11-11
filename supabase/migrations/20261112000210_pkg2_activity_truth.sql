@@ -1,6 +1,8 @@
--- MP-ONBOARD-ANCHOR-PKG2 (2026-11-12) — licensed-hire activation, part 2 of 11: activity truth without the dialer.
+-- MP-ONBOARD-ANCHOR-PKG2 (2026-11-12) — licensed-hire activation, part 2 of 10: activity truth without the dialer.
 --
 -- WHAT
+--   0. v_agent_first_deal_definer: the one definition of "first deal, any source", readable inside the definer staff
+--      views; v_agent_first_deal_any_source (WP5) becomes a thin invoker view over it, same columns and grants.
 --   1. my_lead_dial_tap(p_item_id): records a tap on a lead's call link in My Leads as
 --      lead_bundle_events(action = 'dial_tap', actor = caller). Only the holder of a live grant on that lead's
 --      bundle can record it; a second tap on the same lead inside 30 seconds is one tap. Writes nothing else.
@@ -28,7 +30,8 @@
 -- v_agent_activation_state and v_activation_seat_queue succeeds (the planner never evaluates the column), but reading
 -- next_action / first_deal_state / derived_stage / has_deal raises "permission denied for materialized view
 -- mat_production_unified". The staff views below are definer views with their own role gates, so they read this
--- definer twin instead. Same rows; not granted to authenticated (only reachable through those gated views).
+-- definer view instead, and the invoker original becomes a thin view over it (one definition, cannot drift). Not
+-- granted to authenticated (only reachable through those gated views).
 create or replace view public.v_agent_first_deal_definer with (security_barrier = true) as
 with ids as (
   select a.id as member_id,
@@ -59,7 +62,21 @@ revoke all on public.v_agent_first_deal_definer from public, anon, authenticated
 grant select on public.v_agent_first_deal_definer to service_role;
 
 comment on view public.v_agent_first_deal_definer is
-  'PKG2: definer twin of v_agent_first_deal_any_source (same rows) for the definer staff views (hire clock, activation state, seat queue). The invoker original raises permission denied on mat_production_unified for every signed-in reader. Not granted to authenticated.';
+  'PKG2: the ONE definition of "first deal, any source" per canonical agent. Definer view so the definer staff views (hire clock, activation state, seat queue, launch board) can read it for signed-in staff; v_agent_first_deal_any_source is a thin invoker view over it. Not granted to authenticated.';
+
+-- One definition, two names: v_agent_first_deal_any_source (WP5, security_invoker, service_role only) now reads the
+-- definer view above, so the two can never drift. Only this direction works: an invoker view's base tables are
+-- checked as the CALLER even when a definer view wraps it, so a definer wrapper over the invoker view would still
+-- deny every signed-in reader. Columns, the invoker setting and the grants are unchanged.
+create or replace view public.v_agent_first_deal_any_source with (security_invoker = true) as
+select f.agent_id, f.first_deal_at, f.sources
+  from public.v_agent_first_deal_definer f;
+
+revoke all on public.v_agent_first_deal_any_source from public, anon, authenticated;
+grant select on public.v_agent_first_deal_any_source to service_role;
+
+comment on view public.v_agent_first_deal_any_source is
+  'WP5 + PKG2 (2026-11-12): first deal per canonical agent from any source (mat_production_unified, deals, agents.first_deal_at). Thin invoker view over v_agent_first_deal_definer, which holds the one definition. Service role only.';
 
 -- ---------------------------------------------------------------------------
 -- 1. Dial tap RPC

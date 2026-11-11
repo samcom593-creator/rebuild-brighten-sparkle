@@ -1,4 +1,4 @@
--- MP-ONBOARD-ANCHOR-PKG2 (2026-11-12) — licensed-hire activation, part 4 of 11: starter packs in My Leads.
+-- MP-ONBOARD-ANCHOR-PKG2 (2026-11-12) — licensed-hire activation, part 4 of 10: starter packs in My Leads.
 --
 -- WHAT
 --   fn_starter_pack_candidates()  — who is ready, who is not, and why (read-only).

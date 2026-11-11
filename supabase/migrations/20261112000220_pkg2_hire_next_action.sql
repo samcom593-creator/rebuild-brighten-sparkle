@@ -1,4 +1,4 @@
--- MP-ONBOARD-ANCHOR-PKG2 (2026-11-12) — licensed-hire activation, part 3 of 11: next action while the dialer is off,
+-- MP-ONBOARD-ANCHOR-PKG2 (2026-11-12) — licensed-hire activation, part 3 of 10: next action while the dialer is off,
 -- and suspended people off every hire list.
 --
 -- WHAT

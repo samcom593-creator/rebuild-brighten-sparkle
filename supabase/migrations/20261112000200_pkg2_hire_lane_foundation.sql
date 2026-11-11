@@ -1,4 +1,4 @@
--- MP-ONBOARD-ANCHOR-PKG2 (2026-11-12) — licensed-hire activation, part 1 of 11: foundation.
+-- MP-ONBOARD-ANCHOR-PKG2 (2026-11-12) — licensed-hire activation, part 1 of 10: foundation.
 --
 -- WHAT
 --   1. Settings this package reads (insert-only; a value someone already set is never overwritten):
@@ -13,6 +13,13 @@
 --      non-routable guard, unsubscribe footer), Reply-To info@kingofsales.net (the only mailbox that exists; the
 --      apex-financial.org From mailboxes return 550). A row is 'sent' ONLY when send-email answered ok with a
 --      provider id (read back from net._http_response by the settle step); a queued request is never a receipt.
+--      * No unsubscribe_token is passed: sendEmail then builds the Unsubscribe link from the recipient's own address,
+--        which is the only value supabase/functions/unsubscribe can record (it ignores anything without an '@').
+--      * A failed row is retried ONLY when send-email's reply proves nothing reached Resend (401/403/429, Resend's
+--        rate-limit error, no Resend key). A timeout, a 5xx or no reply is ambiguous (Resend may have accepted it and
+--        there is no idempotency key), so it stays failed and doctor #55 reports it: never the same email twice.
+--      * Every settled send also lands in email_delivery_log under template 'hire-lane-<kind>', keys registered in
+--        recruit_touch_kinds first, so v_recruit_touches / doctor #53 see this package's mail.
 --
 -- WHY
 --   The decisions (business-ops/2026-11-11-onboarding-anchor/decisions/DECISIONS.md) need three automatic emails:
@@ -132,6 +139,7 @@ create table if not exists public.hire_lane_email_outbox (
   magic_destination text,
   magic_token_id    uuid,
   status            text not null default 'queued',
+  retryable         boolean not null default false,
   attempts          integer not null default 0,
   req_id            bigint,
   requested_at      timestamptz,
@@ -148,6 +156,9 @@ create table if not exists public.hire_lane_email_outbox (
   constraint hire_lane_email_outbox_dedupe_key unique (dedupe_key)
 );
 
+-- idempotent re-apply over an earlier shape of this table
+alter table public.hire_lane_email_outbox add column if not exists retryable boolean not null default false;
+
 create index if not exists hire_lane_email_outbox_status_idx on public.hire_lane_email_outbox (status, created_at);
 create index if not exists hire_lane_email_outbox_recipient_idx on public.hire_lane_email_outbox (kind, recipient_user_id, created_at desc);
 create index if not exists hire_lane_email_outbox_agent_idx on public.hire_lane_email_outbox (agent_id, kind);
@@ -158,6 +169,19 @@ comment on table public.hire_lane_email_outbox is
 alter table public.hire_lane_email_outbox enable row level security;
 revoke all on table public.hire_lane_email_outbox from public, anon, authenticated;
 grant all on table public.hire_lane_email_outbox to service_role;
+
+-- Register this package's email_delivery_log keys BEFORE anything can send (lanes/_touch_read_model_usage.md): a send
+-- from an unregistered key turns doctor #53 yellow. Data only; an existing registration is never changed.
+insert into public.recruit_touch_kinds (source, key_pattern, kind, note) values
+  ('email_delivery_log', 'hire-lane-starter_pack', 'operational',
+   'MP-ONBOARD-ANCHOR-PKG2: "your first leads are in My Leads", one per ready licensed hire ever (hire_lane_email_outbox).'),
+  ('email_delivery_log', 'hire-lane-contracting_request', 'staff',
+   'MP-ONBOARD-ANCHOR-PKG2: contracting request at licensed hire, to the contracting owner (hire_lane_email_outbox).'),
+  ('email_delivery_log', 'hire-lane-recruit_page', 'staff',
+   'MP-ONBOARD-ANCHOR-PKG2: recruit SLA page by email to an active non-Sam recruit owner (hire_lane_email_outbox).'),
+  ('email_delivery_log', 'hire-lane-recruit_digest', 'staff',
+   'MP-ONBOARD-ANCHOR-PKG2: daily recruit-queue digest email to an active non-Sam recruit owner (hire_lane_email_outbox).')
+on conflict (source, key_pattern) do nothing;
 
 -- Enqueue. Returns the row id (also for a row recorded as 'skipped'), or null when the dedupe key was already
 -- used (one touch per person per purpose). Gates checked HERE and again at dispatch: suspension, opt-out.
@@ -258,7 +282,8 @@ begin
     select o.*
       from public.hire_lane_email_outbox o
      where o.status = 'queued'
-        or (o.status = 'failed' and o.attempts < 3 and o.requested_at < now() - interval '30 minutes')
+        -- only a failure settle PROVED unsent (retryable); an ambiguous one is never sent a second time
+        or (o.status = 'failed' and o.retryable and o.attempts < 3 and o.requested_at < now() - interval '30 minutes')
      order by o.created_at
      limit greatest(1, least(coalesce(p_limit, 5), 20))
      for update skip locked
@@ -313,8 +338,9 @@ begin
         'html', replace(r.body_html, '{{login_link}}', v_link),
         'text', replace(r.body_text, '{{login_link}}', v_link),
         'reply_to', 'info@kingofsales.net',
-        'tagName', 'hire-lane-' || r.kind,
-        'unsubscribe_token', coalesce(r.recipient_user_id::text, r.agent_id::text)),
+        -- no unsubscribe_token: sendEmail builds the link from the recipient address, the only thing the
+        -- unsubscribe endpoint can record (a user id was silently dropped while the page said "unsubscribed")
+        'tagName', 'hire-lane-' || r.kind),
       headers := jsonb_build_object('Content-Type', 'application/json',
                                     'Authorization', 'Bearer ' || v_key,
                                     'apikey', v_key),
@@ -322,7 +348,7 @@ begin
     update public.hire_lane_email_outbox
        set status = 'requested', req_id = v_req, requested_at = now(), attempts = attempts + 1,
            magic_token_id = coalesce(v_token_id, magic_token_id),
-           settled_at = null, http_status = null, error = null
+           settled_at = null, http_status = null, error = null, retryable = false
      where id = r.id;
     v_requested := v_requested + 1;
   end loop;
@@ -336,7 +362,8 @@ comment on function public.fn_hire_lane_email_dispatch(integer, boolean) is
   'PKG2: hands up to p_limit queued rows to send-email (status requested + pg_net request id). p_dry_run defaults to TRUE. A requested row is NOT a send; settle reads the provider reply. Service role only.';
 
 -- Settle: read send-email's reply. sent = ok + provider id; refused = send-email refused (suppressed / non-routable);
--- failed = anything else (retried by dispatch up to 3 attempts); no reply in 6h = failed.
+-- failed = anything else; no reply in 6h = failed. A failed row is marked retryable ONLY when the reply proves
+-- nothing reached Resend; dispatch retries those (3 attempts) and never the ambiguous ones.
 create or replace function public.fn_hire_lane_email_settle()
 returns jsonb
 language plpgsql
@@ -350,13 +377,16 @@ declare
   v_err text;
   v_body jsonb;
   v_status text;
+  v_retry boolean;
+  v_error text;
   v_sent int := 0;
   v_failed int := 0;
+  v_retryable int := 0;
   v_refused int := 0;
   v_expired int := 0;
 begin
   for r in
-    select o.id, o.req_id, o.requested_at, o.magic_token_id
+    select o.id, o.req_id, o.requested_at, o.magic_token_id, o.kind, o.to_email, o.agent_id, o.subject, o.attempts
       from public.hire_lane_email_outbox o
      where o.status = 'requested' and o.req_id is not null and o.settled_at is null
      for update skip locked
@@ -364,31 +394,44 @@ begin
     select h.status_code, h.content, h.error_msg into v_code, v_content, v_err
       from net._http_response h where h.id = r.req_id;
     if not found then
-      if r.requested_at < now() - interval '6 hours' then
-        update public.hire_lane_email_outbox
-           set status = 'failed', settled_at = now(), error = 'no response from send-email within 6h'
-         where id = r.id;
-        v_expired := v_expired + 1;
+      if r.requested_at >= now() - interval '6 hours' then
+        continue;
       end if;
-      continue;
-    end if;
-
-    v_body := null;
-    begin
-      v_body := v_content::jsonb;
-    exception when others then
+      -- no reply at all: ambiguous (the request may have run), so never retried
+      v_code := null;
       v_body := null;
-    end;
-
-    if v_code = 200 and coalesce(v_body ->> 'ok', '') = 'true' and nullif(v_body ->> 'id', '') is not null then
-      v_status := 'sent';
-      v_sent := v_sent + 1;
-    elsif nullif(v_body ->> 'refused', '') is not null then
-      v_status := 'refused';
-      v_refused := v_refused + 1;
-    else
       v_status := 'failed';
-      v_failed := v_failed + 1;
+      v_retry := false;
+      v_error := 'no response from send-email within 6h';
+      v_expired := v_expired + 1;
+    else
+      v_body := null;
+      begin
+        v_body := v_content::jsonb;
+      exception when others then
+        v_body := null;
+      end;
+
+      v_retry := false;
+      if v_code = 200 and coalesce(v_body ->> 'ok', '') = 'true' and nullif(v_body ->> 'id', '') is not null then
+        v_status := 'sent';
+        v_sent := v_sent + 1;
+      elsif nullif(v_body ->> 'refused', '') is not null then
+        v_status := 'refused';
+        v_refused := v_refused + 1;
+      else
+        v_status := 'failed';
+        v_failed := v_failed + 1;
+        -- Proven unsent: send-email refused the caller before reading the body (401/403), the request was
+        -- rate-limited before it ran (429) or Resend itself refused it for rate (its error text), or send-email had
+        -- no Resend key. A timeout, any other 5xx, a crash or an unreadable reply is ambiguous: Resend may already
+        -- have accepted the email and there is no idempotency key, so it is not retried.
+        v_retry := coalesce(v_code, 0) in (401, 403, 429)
+                   or coalesce(v_body ->> 'error', '') ~* '(rate[ _-]?limit|too many requests|RESEND_API_KEY missing)';
+        if v_retry then v_retryable := v_retryable + 1; end if;
+      end if;
+      v_error := case when v_status = 'sent' then null
+                      else left(coalesce(v_body ->> 'error', v_err, 'HTTP ' || coalesce(v_code::text, '?')), 300) end;
     end if;
 
     update public.hire_lane_email_outbox
@@ -396,8 +439,9 @@ begin
            settled_at = now(),
            http_status = v_code,
            provider_id = case when v_status = 'sent' then v_body ->> 'id' end,
-           error = case when v_status = 'sent' then null
-                        else left(coalesce(v_body ->> 'error', v_err, 'HTTP ' || coalesce(v_code::text, '?')), 300) end
+           retryable = v_retry,
+           error = case when v_status = 'failed' and not v_retry then left('not retried (may have been accepted): ' || v_error, 300)
+                        else v_error end
      where id = r.id;
 
     if r.magic_token_id is not null then
@@ -407,13 +451,28 @@ begin
              sent_at = case when v_status = 'sent' then now() end
        where id = r.magic_token_id;
     end if;
+
+    -- One receipt per attempt in email_delivery_log (the touch model's ledger; keys registered above). The hire is
+    -- the person only on the starter-pack email; the other kinds go to staff. A ledger failure never blocks settling.
+    begin
+      insert into public.email_delivery_log
+        (template, recipient_email, agent_id, subject, provider, provider_message_id, status, error, retries,
+         related_record_id, related_record_type, sent_at)
+      values
+        ('hire-lane-' || r.kind, r.to_email, case when r.kind = 'starter_pack' then r.agent_id end, r.subject, 'resend',
+         case when v_status = 'sent' then v_body ->> 'id' end, v_status, v_error, greatest(coalesce(r.attempts, 1) - 1, 0),
+         r.id, 'hire_lane_email_outbox', case when v_status = 'sent' then now() end);
+    exception when others then
+      raise warning 'fn_hire_lane_email_settle: email_delivery_log write failed for outbox row %: %', r.id, sqlerrm;
+    end;
   end loop;
-  return jsonb_build_object('sent', v_sent, 'failed', v_failed, 'refused', v_refused, 'expired', v_expired, 'at', now());
+  return jsonb_build_object('sent', v_sent, 'failed', v_failed, 'failed_retryable', v_retryable, 'refused', v_refused,
+                            'expired', v_expired, 'at', now());
 end;
 $$;
 
 comment on function public.fn_hire_lane_email_settle() is
-  'PKG2: settles requested outbox rows from net._http_response (sent only with a provider id). Service role only.';
+  'PKG2: settles requested outbox rows from net._http_response (sent only with a provider id; failed rows retryable only when provably unsent) and writes one email_delivery_log receipt per attempt (template hire-lane-<kind>). Service role only.';
 
 create or replace function public.fn_hire_lane_email_tick(p_dry_run boolean default true)
 returns jsonb

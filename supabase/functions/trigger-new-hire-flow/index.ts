@@ -42,13 +42,16 @@ const SAM_NOTICE_TO = "info@kingofsales.net";
 //      (fn_recruit_sam_user_id), or not at all.
 //   2. The manager email went to invited_by_manager_id with no check. A suspended, departed or deactivated manager
 //      now gets nothing, and a suspended hire gets nothing at all.
-//   3. The agent was claimed (production_unlocked_at) BEFORE the send, so a failed send was never retried. The claim
-//      is now a 10-minute lease in new_hire_flow_runs; each leg's outcome is recorded there; a retry re-attempts only
-//      the legs that did not land; production access is unlocked only when the welcome email reached a terminal
-//      outcome (sent / refused / no address). fn_new_hire_flow_retry_sweep retries failed runs hourly, 3 attempts.
+//   3. production_unlocked_at was both the claim and the only retry key, so a failed send was never retried. The
+//      claim is now a 10-minute lease in new_hire_flow_runs (fn_new_hire_flow_claim); each leg's outcome is recorded
+//      there and a retry re-attempts only the legs that did not land. Production access is still unlocked at the
+//      first claim, the moment the old code set it (an access grant, not a delivery receipt; next-step stage timing
+//      unchanged); an agent unlocked before run rows existed is 'already_unlocked' and gets nothing.
+//      fn_new_hire_flow_retry_sweep retries failed runs hourly, 3 attempts; doctor #55 reports exhausted runs.
 // Mail goes through _shared/email.ts sendEmail (suppression + non-routable gate, unsubscribe footer) with Reply-To
-// info@kingofsales.net, the only inbox that exists. The text-message leg is gone: the carrier gateway has no working
-// path and one touch per person per purpose is the email.
+// info@kingofsales.net, the only inbox that exists. No unsubscribe_token is passed, so the footer link carries the
+// recipient's address (the unsubscribe endpoint records nothing for an id). The text-message leg is gone: the carrier
+// gateway has no working path and one touch per person per purpose is the email.
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   // PL-LEAK-GATE (2026-10-25): service key always passes; otherwise a signed-in staff JWT.
@@ -79,16 +82,17 @@ serve(async (req) => {
 
     const { data: agentRow, error: agentErr } = await supabase
       .from("agents")
-      .select("id, user_id, display_name, profile_id, invited_by_manager_id, production_unlocked_at")
+      .select("id, user_id, display_name, profile_id, invited_by_manager_id")
       .eq("id", agentId)
       .maybeSingle();
     if (agentErr) return json({ ok: false, error: `agent read failed: ${agentErr.message}` }, 500);
     if (!agentRow) return json({ ok: false, error: "Agent not found" }, 404);
     const agent = agentRow as {
       id: string; user_id: string | null; display_name: string | null; profile_id: string | null;
-      invited_by_manager_id: string | null; production_unlocked_at: string | null;
+      invited_by_manager_id: string | null;
     };
-    if (agent.production_unlocked_at) return json({ ok: true, skipped: "already_unlocked" });
+    // "Already unlocked" is decided by fn_new_hire_flow_claim below: an agent unlocked before this flow kept run rows
+    // is skipped there, while a run that unlocked the agent and then failed its email is retried.
 
     // Standing rule: nobody with an open agent_access_suspensions row receives anything; a banned login neither.
     const { data: suspended, error: suspErr } = await supabase.rpc("fn_agent_is_suspended", { p_agent_id: agentId });
@@ -100,7 +104,7 @@ serve(async (req) => {
       if (banned === true) return json({ ok: true, skipped: "login_banned" });
     }
 
-    // Lease, not claim: a failed send leaves the run open for a retry.
+    // Lease: a failed send leaves the run open for a retry. The first claim also unlocks production access.
     const { data: claim, error: claimErr } = await supabase.rpc("fn_new_hire_flow_claim", { p_agent_id: agentId });
     if (claimErr) return json({ ok: false, error: `claim failed: ${claimErr.message}` }, 500);
     const lease = (claim ?? {}) as { claimed?: boolean; reason?: string; legs?: Record<string, LegStatus> };
@@ -131,7 +135,6 @@ serve(async (req) => {
           html: mail.html,
           text: mail.text,
           reply_to: BRAND_REPLY_TO,
-          unsubscribe_token: agentId,
           tagName: "new-hire-live",
         }));
       }

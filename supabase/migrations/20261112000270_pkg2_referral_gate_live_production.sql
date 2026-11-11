@@ -1,4 +1,4 @@
--- MP-ONBOARD-ANCHOR-PKG2 (2026-11-12) — licensed-hire activation, part 9 of 11: the referral gate reads live production.
+-- MP-ONBOARD-ANCHOR-PKG2 (2026-11-12) — licensed-hire activation, part 9 of 10: the referral gate reads live production.
 --
 -- WHAT
 --   my_referral_status(): same JSON keys, same policy (system_settings.referral_unlock_threshold, $20,000, set by Sam

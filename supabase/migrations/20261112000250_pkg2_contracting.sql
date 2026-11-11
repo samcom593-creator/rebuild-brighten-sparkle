@@ -1,4 +1,4 @@
--- MP-ONBOARD-ANCHOR-PKG2 (2026-11-12) — licensed-hire activation, part 6 of 11: contracting.
+-- MP-ONBOARD-ANCHOR-PKG2 (2026-11-12) — licensed-hire activation, part 6 of 10: contracting.
 --
 -- WHAT
 --   (a) contracted_at, decision N7: an EMPTY contracting_required_carriers means "any one appointment".
@@ -6,11 +6,13 @@
 --         agents.contracted_at; a non-empty list keeps the all-required rule.
 --       * NEW fn_stamp_contracted_at_from_deal + triggers on deals (insert, draft->posted) and production_external_deals
 --         (insert): the first deal stamps contracted_at (a written deal proves an appointment).
---       * Both are forward-only (they fire on new rows) and never overwrite a value.
+--       * Both are forward-only (they fire on new rows) and never overwrite a value. Both return before issuing any
+--         UPDATE when contracted_at is already set (a no-op UPDATE still fires agents' statement-level trg_truth_dirty).
 --       * NEW fn_backfill_contracted_at(p_dry_run default true): ONE-TIME data backfill for people who already have a
 --         mark or a deal = least(first mark, first deal). Data only: while it runs, the next-step recompute trigger
 --         and the Discord activation trigger on agents are disabled inside the same transaction, so no stage moves
---         and nothing posts; it refuses to run live unless Discord is paused.
+--         and nothing posts; it refuses to run live unless Discord is paused. It writes its pre-image to
+--         ops_preimage_snapshots first, so the rollback is exact.
 --   (b) The contracting request at licensed hire (none since 10-09).
 --       * NEW fn_contracting_request_open(agent, dry_run): records a contracting_intakes row (source
 --         'licensed_hire', NO delivery legs: the retired channel/sheet/Slack triggers stay disabled) and queues one
@@ -18,6 +20,10 @@
 --         falls back to Sam when unset or suspended). First names only; link to the contracting review.
 --       * NEW fn_contracting_request_sweep(p_dry_run default true) + cron apex-contracting-request-sweep (every 15
 --         minutes, live): forward-only from system_settings.pkg2_contracting_request_cutoff (set at apply time).
+--         Each hire runs in its own subtransaction (one hire's bad data cannot abort the run), never-paged hires
+--         first, newest first (stuck hires cannot starve new ones).
+--       * An agent with no license_states (46 of 54 active licensed agents on 2026-11-11) is handled as "states not
+--         on file": the draft always carries a JSON array, never a JSON null (jsonb_array_elements_text raised 22023).
 --       * NEW fn_contracting_request_backfill(p_dry_run default true, p_since default 2026-10-09): the licensed hires
 --         since 10-09 who never got one (Jeremiah, Darin, Jonathan, Nevin, Keyel). Live mode records their intakes and
 --         sends the owner ONE list, not one page each.
@@ -43,6 +49,10 @@ begin
   v_required := public.fn_contracting_required_carriers();
   select c.version into v_version from public.contract_review_config c where c.singleton;
   if new.version <> v_version then return null; end if;
+  -- Already stamped: issue no UPDATE at all (a no-op UPDATE still fires agents' statement-level trg_truth_dirty).
+  if not exists (select 1 from public.agents a where a.id = new.agent_id and a.contracted_at is null) then
+    return null;
+  end if;
 
   if cardinality(v_required) = 0 then
     -- N7 (2026-11-11): no required list means ANY one carrier appointment counts. Forward-only: the first mark
@@ -84,6 +94,11 @@ begin
   if new.agent_id is null then return null; end if;
   select coalesce(nullif(a.canonical_agent_id, a.id), a.id) into v_agent from public.agents a where a.id = new.agent_id;
   if v_agent is null then return null; end if;
+  -- Almost every deal belongs to someone already stamped: issue no UPDATE then (a no-op UPDATE still fires agents'
+  -- statement-level trg_truth_dirty on every deal write).
+  if not exists (select 1 from public.agents a where a.id = v_agent and a.contracted_at is null) then
+    return null;
+  end if;
   if tg_table_name = 'deals' then
     -- deals.posted_at is the canonical deal date
     v_at := coalesce((to_jsonb(new) ->> 'posted_at')::timestamptz, (to_jsonb(new) ->> 'created_at')::timestamptz, now());
@@ -143,7 +158,7 @@ select a.id as agent_id,
                from public.contract_review_marks m
               where m.version = (select c.version from public.contract_review_config c where c.singleton)
               group by m.agent_id) mk on mk.agent_id = a.id
-  left join public.v_agent_first_deal_any_source fd on fd.agent_id = a.id
+  left join public.v_agent_first_deal_definer fd on fd.agent_id = a.id
  where a.contracted_at is null
    and (a.canonical_agent_id is null or a.canonical_agent_id = a.id)
    and (mk.first_mark is not null or fd.first_deal_at is not null)
@@ -175,6 +190,16 @@ begin
     raise exception 'refusing the live backfill while Discord posting is on: a contracted_at change triggers the agent-activated post'
       using errcode = '55000';
   end if;
+  -- Pre-image first (every row this run will stamp had contracted_at = null), so the rollback reverts exactly these
+  -- rows and only while they still hold the stamped value:
+  --   update agents a set contracted_at = null from (select (e->>'agent_id')::uuid id, (e->>'stamp_at')::timestamptz s
+  --     from ops_preimage_snapshots p, jsonb_array_elements(p.payload) e
+  --    where p.reason = 'MP-ONBOARD-ANCHOR-PKG2 contracted_at backfill') x where a.id = x.id and a.contracted_at = x.s;
+  insert into public.ops_preimage_snapshots (taken_at, reason, payload)
+  select now(), 'MP-ONBOARD-ANCHOR-PKG2 contracted_at backfill',
+         coalesce(jsonb_agg(jsonb_build_object('agent_id', d.agent_id, 'contracted_at', null, 'stamp_at', d.stamp_at)
+                            order by d.stamp_at), '[]'::jsonb)
+    from public.v_contracted_at_backfill_due d;
   -- Data only: no next-step stage recompute (contracted_at feeds stage_entered_at, which times ladder nudges) and
   -- no activation post. Both triggers come back on before this function returns, in the same transaction.
   alter table public.agents disable trigger trg_next_step_agents_update;
@@ -196,7 +221,7 @@ end;
 $$;
 
 comment on function public.fn_backfill_contracted_at(boolean) is
-  'PKG2 (N7): one-time backfill of agents.contracted_at = least(first carrier mark, first deal) for canonical agents that have either. Data only (next-step recompute and the Discord activation trigger are off for the update). p_dry_run defaults to TRUE. Service role only.';
+  'PKG2 (N7): one-time backfill of agents.contracted_at = least(first carrier mark, first deal) for canonical agents that have either. Data only (next-step recompute and the Discord activation trigger are off for the update); the live run first writes its pre-image to ops_preimage_snapshots (reason ''MP-ONBOARD-ANCHOR-PKG2 contracted_at backfill''). p_dry_run defaults to TRUE. Service role only.';
 
 revoke all on function public.fn_backfill_contracted_at(boolean) from public, anon, authenticated;
 grant execute on function public.fn_backfill_contracted_at(boolean) to service_role;
@@ -262,7 +287,9 @@ as $$
     'email', case when f.email like '%_@_%.__%' and length(f.email) <= 254 then f.email end,
     'phone_e164', f.phone_e164,
     'npn', case when f.npn ~ '^[0-9]{5,10}$' then f.npn end,
-    'license_states', to_jsonb(f.license_states),
+    -- ALWAYS a JSON array: to_jsonb(NULL::text[]) is a JSON null, and jsonb_array_elements_text on a JSON null raises
+    -- 22023. 46 of 54 active licensed agents have no license_states on file (measured 2026-11-11).
+    'license_states', coalesce(to_jsonb(f.license_states), '[]'::jsonb),
     'missing', to_jsonb(array_remove(array[
         case when f.first_name is null then 'first name' end,
         case when f.last_name is null then 'last name' end,
@@ -284,6 +311,7 @@ set search_path to 'public'
 as $$
 declare
   v_d jsonb := public.fn_contracting_intake_draft(p_agent_id);
+  v_lic text[];
   v_first text;
   v_missing text[];
   v_npn text;
@@ -306,7 +334,11 @@ begin
   end if;
   v_first := coalesce(v_d ->> 'first_name', 'A new hire');
   v_npn := v_d ->> 'npn';
-  select coalesce(array_agg(x), '{}'::text[]) into v_missing from jsonb_array_elements_text(v_d -> 'missing') x;
+  -- Read the arrays defensively: anything but a JSON array (a JSON null included) is "none on file", never an error.
+  v_lic := case when jsonb_typeof(v_d -> 'license_states') = 'array'
+                then array(select jsonb_array_elements_text(v_d -> 'license_states')) else '{}'::text[] end;
+  v_missing := case when jsonb_typeof(v_d -> 'missing') = 'array'
+                    then array(select jsonb_array_elements_text(v_d -> 'missing')) else '{}'::text[] end;
   select (g.created_at at time zone 'America/Phoenix')::date into v_hired from public.agents g where g.id = p_agent_id;
 
   select i.id into v_intake from public.contracting_intakes i where i.agent_id = p_agent_id order by i.created_at limit 1;
@@ -342,7 +374,7 @@ begin
            p_agent_id,
            -- contracting_intakes_licensed_requires_npn forbids 'licensed' without an NPN; say exactly what is known
            case when v_npn is null then 'licensed_npn_missing' else 'licensed' end,
-           (select array(select jsonb_array_elements_text(coalesce(v_d -> 'license_states', '[]'::jsonb)))))
+           v_lic)
         on conflict (idempotency_key) do nothing
         returning id into v_intake;
         if v_intake is not null then
@@ -358,7 +390,7 @@ begin
 
   if p_page_owner and not p_dry_run then
     v_owner := public.fn_contracting_owner_user_id();
-    v_states := coalesce(nullif(array_to_string(array(select jsonb_array_elements_text(coalesce(v_d -> 'license_states', '[]'::jsonb))), ', '), ''), 'states not on file');
+    v_states := coalesce(nullif(array_to_string(v_lic, ', '), ''), 'states not on file');
     v_subject := 'Contracting: ' || v_first || ' joined licensed';
     v_text := v_first || ' joined the team as a licensed agent on ' || to_char(v_hired, 'Mon DD') || ' (' || v_states || '). '
            || 'Their carrier contracting has not started'
@@ -451,21 +483,39 @@ as $$
 declare
   r record;
   v_out jsonb := '[]'::jsonb;
+  v_errors int := 0;
 begin
   -- Each due hire is retried every run until an intake exists (data fixed later is picked up); the owner email and
   -- the in-app notice go once per hire ever (dedupe key contracting_request:<agent>).
+  -- Order: hires whose owner was never paged first, newest first. A hire that cannot get an intake (no phone, an NPN
+  -- already on someone else's intake) stays due forever; ordering it after every unpaged hire means twenty of those
+  -- can never starve a new one out of the 20-per-run window.
   for r in
-    select d.agent_id from public.fn_contracting_request_due(public.fn_contracting_request_cutoff()) d
+    select d.agent_id, d.first_name
+      from public.fn_contracting_request_due(public.fn_contracting_request_cutoff()) d
+     order by exists (select 1 from public.hire_lane_email_outbox o
+                       where o.dedupe_key = 'contracting_request:' || d.agent_id::text),
+              greatest(d.hired_at, coalesce(d.licensed_at, d.hired_at)) desc
      limit 20
   loop
-    v_out := v_out || jsonb_build_array(public.fn_contracting_request_open(r.agent_id, p_dry_run, true));
+    -- One hire's bad data never stops the others: each hire runs in its own subtransaction, and a failure is
+    -- reported in the result (and as a WARNING) instead of aborting every hire in the run.
+    begin
+      v_out := v_out || jsonb_build_array(public.fn_contracting_request_open(r.agent_id, p_dry_run, true));
+    exception when others then
+      v_errors := v_errors + 1;
+      raise warning 'fn_contracting_request_sweep: agent % failed: % (%)', r.agent_id, sqlerrm, sqlstate;
+      v_out := v_out || jsonb_build_array(jsonb_build_object('agent_id', r.agent_id, 'first_name', r.first_name,
+                                                             'decision', 'error', 'error', left(sqlstate || ' ' || sqlerrm, 200)));
+    end;
   end loop;
-  return jsonb_build_object('dry_run', p_dry_run, 'cutoff', public.fn_contracting_request_cutoff(), 'opened', v_out, 'at', now());
+  return jsonb_build_object('dry_run', p_dry_run, 'cutoff', public.fn_contracting_request_cutoff(), 'opened', v_out,
+                            'errors', v_errors, 'at', now());
 end;
 $$;
 
 comment on function public.fn_contracting_request_sweep(boolean) is
-  'PKG2 (N7): opens the contracting request for licensed hires (or newly licensed agents) since pkg2_contracting_request_cutoff. Forward-only, 20 per run, one owner email per hire ever. p_dry_run defaults to TRUE.';
+  'PKG2 (N7): opens the contracting request for licensed hires (or newly licensed agents) since pkg2_contracting_request_cutoff. Forward-only, 20 per run (never-paged hires first, newest first), one owner email per hire ever, each hire isolated in its own subtransaction. p_dry_run defaults to TRUE.';
 
 revoke all on function public.fn_contracting_request_sweep(boolean) from public, anon, authenticated;
 grant execute on function public.fn_contracting_request_sweep(boolean) to service_role;
@@ -487,15 +537,24 @@ declare
   c_link constant text := 'https://apex-financial.org/dashboard/team?view=contracting';
 begin
   for r in select * from public.fn_contracting_request_due(p_since, public.fn_contracting_request_cutoff()) d loop
-    -- the owner gets one list below, not one page per person
-    v_res := public.fn_contracting_request_open(r.agent_id, p_dry_run, false);
     agent_id := r.agent_id;
     first_name := r.first_name;
     hired_at := r.hired_at;
-    intake := v_res ->> 'intake';
-    missing := (select string_agg(x, ', ') from jsonb_array_elements_text(coalesce(v_res -> 'missing', '[]'::jsonb)) x);
-    decision := case when p_dry_run then 'would_open' else 'opened' end;
-    v_names := v_names || r.first_name;
+    -- the owner gets one list below, not one page per person; each hire in its own subtransaction, so one hire's bad
+    -- data is reported on its row instead of aborting the catch-up for everyone
+    begin
+      v_res := public.fn_contracting_request_open(r.agent_id, p_dry_run, false);
+      intake := v_res ->> 'intake';
+      missing := case when jsonb_typeof(v_res -> 'missing') = 'array'
+                      then (select string_agg(x, ', ') from jsonb_array_elements_text(v_res -> 'missing') x) end;
+      decision := case when p_dry_run then 'would_open' else 'opened' end;
+      v_names := v_names || r.first_name;
+    exception when others then
+      raise warning 'fn_contracting_request_backfill: agent % failed: % (%)', r.agent_id, sqlerrm, sqlstate;
+      intake := left(sqlstate || ' ' || sqlerrm, 200);
+      missing := null;
+      decision := 'error';
+    end;
     return next;
   end loop;
 

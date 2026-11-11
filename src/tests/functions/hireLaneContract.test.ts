@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -23,7 +23,11 @@ const AUDIENCE = sql("20261112000240_pkg2_numbers_reminder_audience.sql");
 const CONTRACTING = sql("20261112000250_pkg2_contracting.sql");
 const NEW_HIRE_RUNS = sql("20261112000255_pkg2_new_hire_flow_runs.sql");
 const RECRUIT_EMAIL = sql("20261112000260_pkg2_recruit_owner_email.sql");
-const INVOICES = sql("20261112000280_pkg2_dialer_invoice_guard.sql");
+const ACTIVITY = sql("20261112000210_pkg2_activity_truth.sql");
+const HEALTH = sql("20261112000290_pkg2_hire_activation_health.sql");
+// every file in PKG2's version range (20261112000200-20261112000299)
+const PKG2_FILES = readdirSync(resolve(ROOT, "supabase/migrations")).filter((f) => /^202611120002\d{2}_.*\.sql$/.test(f));
+const ALL_PKG2 = PKG2_FILES.map(sql).join("\n");
 
 describe("dialer canceled: next action and settings", () => {
   it("creates dialer_status as canceled and the starter-pack switch OFF, never overwriting an existing value", () => {
@@ -91,6 +95,30 @@ describe("the email outbox", () => {
     expect(FOUNDATION).toMatch(/v_code = 200 and coalesce\(v_body ->> 'ok', ''\) = 'true' and nullif\(v_body ->> 'id', ''\) is not null/);
   });
 
+  it("passes no unsubscribe_token, so the footer link carries the recipient's address (the endpoint ignores ids)", () => {
+    const dispatch = FOUNDATION.slice(FOUNDATION.indexOf("create or replace function public.fn_hire_lane_email_dispatch"),
+                                      FOUNDATION.indexOf("create or replace function public.fn_hire_lane_email_settle"));
+    expect(dispatch).toContain("'tagName', 'hire-lane-' || r.kind)");
+    expect(dispatch).not.toContain("unsubscribe_token");
+  });
+
+  it("retries only a failure proven unsent; a timeout or 5xx is never sent twice", () => {
+    expect(FOUNDATION).toContain("or (o.status = 'failed' and o.retryable and o.attempts < 3");
+    expect(FOUNDATION).toMatch(/v_retry := coalesce\(v_code, 0\) in \(401, 403, 429\)/);
+    expect(FOUNDATION).toContain("retryable boolean not null default false");
+  });
+
+  it("every settled send lands in email_delivery_log under a key registered first", () => {
+    expect(FOUNDATION).toContain("insert into public.recruit_touch_kinds (source, key_pattern, kind, note) values");
+    for (const k of ["starter_pack", "contracting_request", "recruit_page", "recruit_digest"]) {
+      expect(FOUNDATION).toContain(`('email_delivery_log', 'hire-lane-${k}',`);
+    }
+    expect(FOUNDATION).toContain("insert into public.email_delivery_log");
+    expect(FOUNDATION).toContain("('hire-lane-' || r.kind, r.to_email,");
+    expect(FOUNDATION.indexOf("insert into public.recruit_touch_kinds")).toBeLessThan(
+      FOUNDATION.indexOf("create or replace function public.fn_hire_lane_email_enqueue"));
+  });
+
   it("a one-tap token is minted at dispatch, never in a dry run", () => {
     const dispatch = FOUNDATION.slice(FOUNDATION.indexOf("create or replace function public.fn_hire_lane_email_dispatch"),
                                       FOUNDATION.indexOf("create or replace function public.fn_hire_lane_email_settle"));
@@ -114,8 +142,17 @@ describe("numbers reminder", () => {
     expect(AUDIENCE).toContain("where not f.suspended");
   });
 
-  it("sets Reply-To on the email", () => {
+  it("sets Reply-To on the email and no id as an unsubscribe token", () => {
     expect(fn).toContain("reply_to: BRAND_REPLY_TO,");
+    expect(fn).not.toContain("unsubscribe_token");
+  });
+
+  it("the copy comes from copy.ts: no em dash, no 'Galaxy ·' subject, no 'Hey ... quick reminder'", () => {
+    expect(fn).toContain('from "./copy.ts"');
+    expect(fn).not.toMatch(/\u2014|Galaxy \u00b7|quick reminder/i);
+    const copy = ts("supabase/functions/numbers-reminder/copy.ts");
+    expect(copy).not.toMatch(/\u2014|\u00b7/);
+    expect(copy).toContain("subject: `${first}, log today's numbers`");
   });
 });
 
@@ -124,6 +161,32 @@ describe("contracting", () => {
     expect(CONTRACTING).toMatch(/if cardinality\(v_required\) = 0 then\s+update public\.agents set contracted_at = new\.confirmed_at/);
     expect(CONTRACTING).toContain("create trigger trg_pkg2_contracted_from_deal");
     expect(CONTRACTING).toContain("create trigger trg_pkg2_contracted_from_external_deal");
+  });
+
+  it("an agent already stamped gets no UPDATE at all from either trigger", () => {
+    expect(CONTRACTING).toMatch(/if not exists \(select 1 from public\.agents a where a\.id = new\.agent_id and a\.contracted_at is null\) then\s+return null;/);
+    expect(CONTRACTING).toMatch(/if not exists \(select 1 from public\.agents a where a\.id = v_agent and a\.contracted_at is null\) then\s+return null;/);
+  });
+
+  it("no license_states on file is 'states not on file', never a JSON null that crashes the request", () => {
+    expect(CONTRACTING).toContain("'license_states', coalesce(to_jsonb(f.license_states), '[]'::jsonb)");
+    expect(CONTRACTING).toContain("when jsonb_typeof(v_d -> 'license_states') = 'array'");
+    expect(CONTRACTING).not.toMatch(/jsonb_array_elements_text\(coalesce\(v_d -> 'license_states'/);
+  });
+
+  it("one hire's bad data cannot abort the sweep or the catch-up, and stuck hires cannot starve new ones", () => {
+    const sweep = CONTRACTING.slice(CONTRACTING.indexOf("create or replace function public.fn_contracting_request_sweep"),
+                                    CONTRACTING.indexOf("create or replace function public.fn_contracting_request_backfill"));
+    expect(sweep).toMatch(/begin\s+v_out := v_out \|\| jsonb_build_array\(public\.fn_contracting_request_open\(r\.agent_id, p_dry_run, true\)\);\s+exception when others then/);
+    expect(sweep).toMatch(/order by exists \(select 1 from public\.hire_lane_email_outbox o\s+where o\.dedupe_key = 'contracting_request:' \|\| d\.agent_id::text\),\s+greatest\(d\.hired_at, coalesce\(d\.licensed_at, d\.hired_at\)\) desc/);
+    const backfill = CONTRACTING.slice(CONTRACTING.indexOf("create or replace function public.fn_contracting_request_backfill"));
+    expect(backfill).toMatch(/begin\s+v_res := public\.fn_contracting_request_open\(r\.agent_id, p_dry_run, false\);[\s\S]*?exception when others then/);
+  });
+
+  it("the live contracted_at backfill writes its pre-image first, so the rollback is exact", () => {
+    const fn = CONTRACTING.slice(CONTRACTING.indexOf("create or replace function public.fn_backfill_contracted_at"));
+    expect(fn.indexOf("insert into public.ops_preimage_snapshots")).toBeGreaterThan(-1);
+    expect(fn.indexOf("insert into public.ops_preimage_snapshots")).toBeLessThan(fn.indexOf("set contracted_at = d.stamp_at"));
   });
 
   it("the one-time backfill defaults to a dry run and stays data-only", () => {
@@ -156,11 +219,24 @@ describe("new-hire live flow", () => {
     expect(fn).toContain('supabase.rpc("fn_agent_is_suspended", { p_agent_id: m.id })');
   });
 
-  it("leases instead of claiming the agent before the send; unlock happens at finish", () => {
+  it("a lease drives retries; production access unlocks at the first claim, never waiting on the email", () => {
     expect(fn).toContain('supabase.rpc("fn_new_hire_flow_claim", { p_agent_id: agentId })');
     expect(fn).not.toMatch(/\.update\(\{ has_production_access: true, production_unlocked_at/);
-    expect(NEW_HIRE_RUNS).toMatch(/if p_done then[\s\S]*has_production_access = true, production_unlocked_at = coalesce\(production_unlocked_at, now\(\)\)/);
+    expect(fn).not.toContain("production_unlocked_at");
+    const claim = NEW_HIRE_RUNS.slice(NEW_HIRE_RUNS.indexOf("create or replace function public.fn_new_hire_flow_claim"),
+                                      NEW_HIRE_RUNS.indexOf("create or replace function public.fn_new_hire_flow_finish"));
+    expect(claim).toContain("set has_production_access = true, production_unlocked_at = coalesce(production_unlocked_at, now())");
+    expect(claim).toContain("'reason', 'already_unlocked'");
+    const finish = NEW_HIRE_RUNS.slice(NEW_HIRE_RUNS.indexOf("create or replace function public.fn_new_hire_flow_finish"),
+                                       NEW_HIRE_RUNS.indexOf("create or replace function public.fn_new_hire_flow_retry_sweep"));
+    expect(finish).not.toContain("update public.agents");
     expect(NEW_HIRE_RUNS).toContain("and r.attempts < 3");
+    expect(NEW_HIRE_RUNS).not.toContain("and a.production_unlocked_at is null");
+    expect(HEALTH).toContain("as new_hire_flow_exhausted");
+  });
+
+  it("passes no id as an unsubscribe token", () => {
+    expect(fn).not.toContain("unsubscribe_token");
   });
 
   it("every email has Reply-To and the SMS leg is gone", () => {
@@ -177,15 +253,43 @@ describe("recruit owner email", () => {
     expect(RECRUIT_EMAIL).toContain("and a.human_last_contact_at is null");
   });
 
+  it("pages and the digest email only an active, unsuspended, unbanned recruit-pool owner, never Sam", () => {
+    const gate = RECRUIT_EMAIL.slice(RECRUIT_EMAIL.indexOf("create or replace function public.fn_recruit_owner_email_ok"),
+                                     RECRUIT_EMAIL.indexOf("create or replace function public.fn_recruit_sla_pager"));
+    expect(gate).toContain("p_user_id = public.fn_recruit_sam_user_id()");
+    expect(gate).toContain("not public.fn_recruit_user_is_active(p_user_id)");
+    expect(gate).toContain("public.fn_user_is_suspended(p_user_id)");
+    expect(gate).toContain("public.fn_user_login_blocked(p_user_id)");
+    expect(gate).toContain("s.key = 'recruit_owner_roster'");
+    expect(RECRUIT_EMAIL).toContain("continue when not public.fn_recruit_owner_email_ok(r.uid);");
+    expect(RECRUIT_EMAIL).toContain("continue when v_owner_total = 0 or not public.fn_recruit_owner_email_ok(r.uid);");
+  });
+
   it("one digest email per owner per Phoenix day; the backlog is a count, names are post-go-live only", () => {
     expect(RECRUIT_EMAIL).toContain("'recruit_digest:' || r.uid::text || ':' || to_char(now() at time zone 'America/Phoenix', 'YYYY-MM-DD')");
     expect(RECRUIT_EMAIL).toContain("q.sla_state = 'NEW_UNTOUCHED' and q.post_deploy");
   });
 });
 
-describe("dialer invoices", () => {
-  it("no invoice row while the dialer is not active, from the function or any other writer", () => {
-    expect(INVOICES).toMatch(/'unset'\) <> 'active' then\s+raise notice/);
-    expect(INVOICES).toContain("before insert on public.dialer_weekly_payments");
+describe("dialer invoices belong to peer 32's pause", () => {
+  it("PKG2 never redefines generate_weekly_dialer_invoices nor guards dialer_weekly_payments (it overrode the pause)", () => {
+    expect(PKG2_FILES.length).toBe(10);
+    expect(existsSync(resolve(ROOT, "supabase/migrations/20261112000280_pkg2_dialer_invoice_guard.sql"))).toBe(false);
+    expect(ALL_PKG2).not.toMatch(/function public\.generate_weekly_dialer_invoices/);
+    expect(ALL_PKG2).not.toMatch(/on public\.dialer_weekly_payments/);
+  });
+
+  it("the doctor reads the pause read-only: invoices written while dialer_billing_paused is true", () => {
+    expect(HEALTH).toContain("where s.key = 'dialer_billing_paused'), 'false') = 'true'");
+    expect(HEALTH).toContain("as dialer_invoices_while_paused");
+  });
+});
+
+describe("first deal: one definition", () => {
+  it("v_agent_first_deal_any_source is a thin invoker view over v_agent_first_deal_definer", () => {
+    expect(ACTIVITY).toMatch(/create or replace view public\.v_agent_first_deal_any_source with \(security_invoker = true\) as\s+select f\.agent_id, f\.first_deal_at, f\.sources\s+from public\.v_agent_first_deal_definer f;/);
+    expect(ACTIVITY.indexOf("create or replace view public.v_agent_first_deal_definer")).toBeLessThan(
+      ACTIVITY.indexOf("create or replace view public.v_agent_first_deal_any_source"));
+    expect(CONTRACTING).toContain("left join public.v_agent_first_deal_definer fd on fd.agent_id = a.id");
   });
 });

@@ -31,6 +31,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { BRAND_REPLY_TO, sendEmail, isUnsubscribed } from "../_shared/email.ts";
+import { numbersReminderEmail, numbersReminderSlack, reminderFirstName } from "./copy.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -168,7 +169,8 @@ Deno.serve(async (req) => {
       const profile = profileByUser.get(a.user_id) as any;
       recipients.push({
         agent_id: a.id,
-        name: profile?.full_name ?? a.display_name ?? "Agent",
+        // a blank or email-shaped name greets "there" (reminderFirstName), never "Agent"
+        name: profile?.full_name ?? a.display_name ?? "",
         email: profile?.email ?? null,
         phone: profile?.phone ?? null,
         slack_user_id: slackByAgent.get(a.id) ?? null,
@@ -201,18 +203,11 @@ Deno.serve(async (req) => {
     }
 
     // ── 3. Send exactly one reminder per agent/business day, on every leg ──
-    const subject = "Galaxy · log your numbers";
-    const messageBody = `Quick reminder — log today's calls, presentations, and deals before close of business.\n\nhttps://apex-financial.org/numbers`;
-    const html = `
-      <p>Hey ${"{{first_name}}"} — quick reminder.</p>
-      <p>Log today's calls, presentations, and deals before close of business so your stats stay accurate:</p>
-      <p><a href="https://apex-financial.org/numbers" style="display:inline-block;padding:10px 18px;background:#EDB81D;color:#0a0f1a;text-decoration:none;border-radius:6px;font-weight:600;">Log my numbers</a></p>
-      <p style="font-size:12px;color:#64748b">Sam — Galaxy Financial</p>
-    `;
-
+    // Copy lives in ./copy.ts (pinned by copy.test.ts): one sentence, one link, signed Sam.
     let emailsSent = 0, smsSent = 0, slackSent = 0, errors = 0, rowsWritten = 0;
     for (const r of recipients) {
-      const first = r.name.split(" ")[0];
+      const first = reminderFirstName(r.name);
+      const mail = numbersReminderEmail(first);
       const legs: Record<string, Leg> = {};
 
       // email
@@ -222,12 +217,13 @@ Deno.serve(async (req) => {
         try {
           const result = await sendEmail({
             to: r.email,
-            subject,
-            html: html.replace("{{first_name}}", first),
-            text: messageBody,
+            subject: mail.subject,
+            html: mail.html,
+            text: mail.text,
             // the only inbox that exists; the apex-financial.org senders return 550
             reply_to: BRAND_REPLY_TO,
-            unsubscribe_token: r.agent_id,
+            // no unsubscribe_token: the footer link then carries the recipient's address, the only thing the
+            // unsubscribe endpoint can record (it ignored the agent id this used to pass)
             tagName: "numbers-reminder",
           });
           // A refusal (non-routable domain, Resend suppression) is a decision
@@ -284,7 +280,7 @@ Deno.serve(async (req) => {
             headers: { Authorization: `Bearer ${slackToken}`, "Content-Type": "application/json; charset=utf-8" },
             body: JSON.stringify({
               channel: r.slack_user_id,
-              text: `Hey ${first} — log today's calls, presentations and deals before close of business: https://apex-financial.org/numbers`,
+              text: numbersReminderSlack(first),
             }),
           });
           const body = await resp.json().catch(() => ({} as any));

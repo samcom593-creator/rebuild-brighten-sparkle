@@ -1,4 +1,4 @@
--- MP-ONBOARD-ANCHOR-PKG2 (2026-11-12) — licensed-hire activation, part 8 of 11: recruit pages reach the owner by email.
+-- MP-ONBOARD-ANCHOR-PKG2 (2026-11-12) — licensed-hire activation, part 8 of 10: recruit pages reach the owner by email.
 --
 -- WHAT
 --   fn_recruit_sla_pager: unchanged paging rules, plus step (b2): every owner who is not Sam and who got in-app pages
@@ -10,13 +10,60 @@
 --   fn_recruit_sla_digest: unchanged, plus a daily digest EMAIL to each non-Sam owner who has rows in the queue
 --   (dedupe key per owner per Phoenix day): counts, and the first names of up to 10 recruits who applied since
 --   go-live with no human contact. Pre-cutoff backlog appears as a count, never as a name list.
---   Both resolve the owner's address from auth.users, skip suspended owners, and send through the PKG2 outbox
---   (send-email, Reply-To info@kingofsales.net).
+--   Both resolve the owner's address from auth.users and send through the PKG2 outbox (send-email, Reply-To
+--   info@kingofsales.net), and both email ONLY an owner that fn_recruit_owner_email_ok() passes: not Sam (his pages
+--   stay on ntfy), active (fn_recruit_user_is_active: signed in within 7 days, not banned), no open suspension, no
+--   auth ban, and a member of the recruit-owner pool (system_settings.recruit_owner_roster, or the va / va_manager
+--   role, the people fn_pick_recruit_owner can route a recruit to). DECISIONS 2026-11-11 21:20Z: owner email paging
+--   goes only to an active, non-banned roster owner.
 --
 -- WHY
 --   funnel_now 6.2 / shipped_vs_live 6.7: unlicensed recruits (87% of inflow) route to Aisha, whose only page is an
 --   in-app notification; she last read that inbox on 11-02. DECISIONS N5: pages for Aisha also go by email to an
 --   inbox she reads; licensed pages stay on Sam's phone (ntfy, unchanged).
+
+-- The one gate for every owner email this package sends (pages and digest).
+create or replace function public.fn_recruit_owner_email_ok(p_user_id uuid)
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path to 'public'
+as $$
+declare
+  v_in_pool boolean := false;
+begin
+  if p_user_id is null or p_user_id = public.fn_recruit_sam_user_id() then
+    return false;
+  end if;
+  if not public.fn_recruit_user_is_active(p_user_id)
+     or public.fn_user_is_suspended(p_user_id)
+     or public.fn_user_login_blocked(p_user_id) then
+    return false;
+  end if;
+  select exists (select 1 from public.user_roles ur
+                  where ur.user_id = p_user_id and ur.role::text in ('va', 'va_manager'))
+    into v_in_pool;
+  if not v_in_pool then
+    begin
+      select coalesce((select s.value::jsonb ? p_user_id::text
+                         from public.system_settings s
+                        where s.key = 'recruit_owner_roster' and s.value ~ '^\s*\['), false)
+        into v_in_pool;
+    exception when others then
+      -- a garbled roster setting emails nobody (never everybody)
+      v_in_pool := false;
+    end;
+  end if;
+  return v_in_pool;
+end;
+$$;
+
+comment on function public.fn_recruit_owner_email_ok(uuid) is
+  'PKG2: true only for an owner who may get recruit pages / the digest by email: not Sam, signed in within 7 days, not banned, no open suspension, and in the recruit-owner pool (recruit_owner_roster or va / va_manager). Service role only.';
+
+revoke all on function public.fn_recruit_owner_email_ok(uuid) from public, anon, authenticated;
+grant execute on function public.fn_recruit_owner_email_ok(uuid) to service_role;
 
 create or replace function public.fn_recruit_sla_pager()
 returns jsonb
@@ -152,7 +199,8 @@ begin
     continue when exists (select 1 from public.hire_lane_email_outbox o
                            where o.kind = 'recruit_page' and o.recipient_user_id = r.uid
                              and o.created_at > now() - interval '1 hour');
-    continue when public.fn_user_is_suspended(r.uid) or public.fn_user_login_blocked(r.uid);
+    -- only an active, unsuspended, unbanned member of the recruit-owner pool (DECISIONS 2026-11-11 21:20Z)
+    continue when not public.fn_recruit_owner_email_ok(r.uid);
     v_since := greatest(v_cutoff, now() - interval '24 hours',
                         coalesce((select max(o.created_at) from public.hire_lane_email_outbox o
                                    where o.kind = 'recruit_page' and o.recipient_user_id = r.uid), '-infinity'::timestamptz));
@@ -307,10 +355,11 @@ begin
     v_sent_inbox := v_sent_inbox + 1;
 
     -- PKG2 (N5): the same digest by EMAIL, once per owner per Phoenix day, only to an owner who has rows in the
-    -- queue and is not suspended. Names: first names of recruits who applied since go-live with no human contact
-    -- (up to 10). The pre-go-live backlog is a count only.
+    -- queue and passes fn_recruit_owner_email_ok (active, unsuspended, unbanned, in the recruit-owner pool). Names:
+    -- first names of recruits who applied since go-live with no human contact (up to 10). The pre-go-live backlog is
+    -- a count only.
     select coalesce(sum((value)::int), 0) into v_owner_total from jsonb_each_text(v_counts);
-    continue when v_owner_total = 0 or public.fn_user_is_suspended(r.uid) or public.fn_user_login_blocked(r.uid);
+    continue when v_owner_total = 0 or not public.fn_recruit_owner_email_ok(r.uid);
     select count(*) filter (where q.post_deploy), count(*) filter (where not q.post_deploy)
       into v_new_n, v_backlog_n
       from public.v_recruit_sla_queue q

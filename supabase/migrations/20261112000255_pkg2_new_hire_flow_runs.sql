@@ -1,20 +1,30 @@
--- MP-ONBOARD-ANCHOR-PKG2 (2026-11-12) — licensed-hire activation, part 7 of 11: the "your dashboard is live" flow can retry.
+-- MP-ONBOARD-ANCHOR-PKG2 (2026-11-12) — licensed-hire activation, part 7 of 10: the "your dashboard is live" flow can retry.
 --
 -- WHAT
---   new_hire_flow_runs: one row per agent for supabase/functions/trigger-new-hire-flow. The function now claims a
---   10-minute LEASE here instead of claiming the agent (production_unlocked_at) before sending, records each leg's
---   outcome in `legs`, and only on completion stamps agents.has_production_access / production_unlocked_at.
+--   new_hire_flow_runs: one row per agent for supabase/functions/trigger-new-hire-flow. The function claims a
+--   10-minute LEASE here and records each leg's outcome in `legs`; retries of a failed email are driven by this table,
+--   never by production_unlocked_at.
 --     fn_new_hire_flow_claim(agent)            -> {claimed, reason, attempts, legs}   (3 attempts max)
+--                                                 The FIRST claim also unlocks production access
+--                                                 (has_production_access, production_unlocked_at): the access grant
+--                                                 is not a delivery receipt, and that is the moment the pre-PKG2 code
+--                                                 set it, so next-step stage_entered_at (COALESCE(production_unlocked_at,
+--                                                 ...) for has_training_course agents) is unchanged. An agent unlocked
+--                                                 before this table existed (no run row) is 'already_unlocked': nothing
+--                                                 is sent (forward-only).
 --     fn_new_hire_flow_finish(agent, legs, done, error)
---     fn_new_hire_flow_retry_sweep()           -> re-invokes the function for runs that failed (hourly cron
---                                                 apex-new-hire-flow-retry); does nothing while
---                                                 new_hire_live_flow_enabled <> 'true'.
+--     fn_new_hire_flow_retry_sweep()           -> re-invokes the function for runs whose welcome email failed (hourly
+--                                                 cron apex-new-hire-flow-retry); does nothing while
+--                                                 new_hire_live_flow_enabled <> 'true'. A run that used its 3 attempts
+--                                                 without a terminal email outcome is reported by doctor #55
+--                                                 (v_hire_activation_health.new_hire_flow_exhausted), never silent.
 --
 -- WHY
 --   shipped_vs_live 6.2 / handoff reviewer finding: the edge function claimed the agent (production_unlocked_at)
---   BEFORE it sent, so a failed send left the agent claimed and the trigger (which only fires while
---   production_unlocked_at is null) could never retry. Forward-only by construction: a run row exists only after the
---   live flow fired for an agent, which needs the flag (still 'false'; the integrator flips it after review).
+--   BEFORE it sent, and production_unlocked_at was also the only retry key (the trigger fires only while it is null),
+--   so a failed send was never retried. The lease table is the retry key now. Forward-only by construction: a run row
+--   exists only after the live flow fired for an agent, which needs the flag (still 'false'; the integrator flips it
+--   after review).
 
 create table if not exists public.new_hire_flow_runs (
   agent_id     uuid primary key references public.agents(id) on delete cascade,
@@ -28,7 +38,7 @@ create table if not exists public.new_hire_flow_runs (
 );
 
 comment on table public.new_hire_flow_runs is
-  'PKG2: lease + per-leg receipts for trigger-new-hire-flow (the "your dashboard is live" flow). completed_at is set only when the welcome email reached a terminal outcome. Service role only.';
+  'PKG2: lease + per-leg receipts for trigger-new-hire-flow (the "your dashboard is live" flow). Production access is unlocked at the first claim; completed_at is set only when the welcome email reached a terminal outcome. Service role only.';
 
 alter table public.new_hire_flow_runs enable row level security;
 revoke all on table public.new_hire_flow_runs from public, anon, authenticated;
@@ -40,10 +50,20 @@ language plpgsql
 security definer
 set search_path to 'public'
 as $$
-declare v public.new_hire_flow_runs%rowtype;
+declare
+  v public.new_hire_flow_runs%rowtype;
+  v_unlocked timestamptz;
 begin
   if p_agent_id is null then
     return jsonb_build_object('claimed', false, 'reason', 'no_agent');
+  end if;
+  select a.production_unlocked_at into v_unlocked from public.agents a where a.id = p_agent_id;
+  if not found then
+    return jsonb_build_object('claimed', false, 'reason', 'no_agent');
+  end if;
+  -- Forward-only: an agent unlocked before this flow kept run rows (or unlocked by hand) gets nothing.
+  if v_unlocked is not null and not exists (select 1 from public.new_hire_flow_runs n where n.agent_id = p_agent_id) then
+    return jsonb_build_object('claimed', false, 'reason', 'already_unlocked');
   end if;
   insert into public.new_hire_flow_runs as r (agent_id, claimed_at, attempts)
   values (p_agent_id, now(), 1)
@@ -61,6 +81,12 @@ begin
                      else 'in_flight' end,
       'attempts', v.attempts, 'legs', v.legs);
   end if;
+  -- The access grant happens once, here, at the first claim (where the pre-PKG2 code set it); it never waits on the
+  -- email. The where clause makes every later claim a no-op (no UPDATE, no trigger churn on agents).
+  update public.agents
+     set has_production_access = true, production_unlocked_at = coalesce(production_unlocked_at, now())
+   where id = p_agent_id
+     and (production_unlocked_at is null or has_production_access is distinct from true);
   return jsonb_build_object('claimed', true, 'attempts', v.attempts, 'legs', v.legs);
 end;
 $$;
@@ -79,12 +105,8 @@ begin
          last_error = case when p_done then null else left(p_error, 500) end,
          updated_at = now()
    where agent_id = p_agent_id;
-  if p_done then
-    -- the unlock is the LAST step now: a failed send leaves the agent unclaimed and retryable
-    update public.agents
-       set has_production_access = true, production_unlocked_at = coalesce(production_unlocked_at, now())
-     where id = p_agent_id;
-  end if;
+  -- No agents write here: production access was unlocked at the first claim, and a run that is not done stays open
+  -- for fn_new_hire_flow_retry_sweep (3 attempts), then shows on doctor #55 as exhausted.
   return jsonb_build_object('done', p_done);
 end;
 $$;
@@ -108,7 +130,6 @@ begin
        and n.attempts < 3
        and (n.claimed_at is null or n.claimed_at < now() - interval '10 minutes')
        and n.updated_at < now() - interval '1 hour'
-       and a.production_unlocked_at is null
        and a.onboarding_stage::text = 'in_field_training'
        and a.status::text = 'active'
        and not public.fn_agent_is_suspended(a.id)

@@ -15,10 +15,12 @@
 -- and one owner inbox task. Any id of the identity's report rows selects it, so a newer daily report
 -- does not break the list; a student who matched a record in the meantime is skipped, not duplicated.
 -- SENDS: none from this migration (the insert runs with session_replication_role = replica; inbox
--- tasks are in-app). Isaac and Clyde entered their stage from history, so their remaining
--- started_prelicense check-ins are pre-suppressed; Kaleb, Leslie and Michael enrolled after the cutoff
--- instant and keep the normal day 3/7/14/21 check-ins from the shared ladder. Obi, Jakara and Analynn
--- get nothing automatic: they are the one-time catch-up's (fn_catchup_course_finishers).
+-- tasks are in-app). Isaac and Clyde entered their stage from history, so every remaining
+-- started_prelicense check-in is pre-suppressed. Kaleb, Leslie and Michael enrolled after the cutoff
+-- instant, so the shared ladder (fn_next_step_nudge_sweep, PKG1) sends each ONE course check-in at
+-- day 3 (from 11-13 19:00Z, 08:00-21:00 Central) and the later steps are pre-suppressed. Obi, Jakara
+-- and Analynn get nothing automatic: they are the one-time catch-up's (fn_catchup_course_finishers).
+-- Clyde (96%) gets the automatic exam message when a report shows him at 100%.
 -- GUARD: p_max 12.
 -- ROLLBACK: see 20261112000340 (delete the rows tagged 'pkg3' with source 'xcel_roster', unlink the
 --           Xcel rows whose match_method = 'roster_record').

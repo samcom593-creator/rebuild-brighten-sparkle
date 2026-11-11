@@ -22,9 +22,11 @@
 --     logged in xcel_writeback_log mode 'backfill') and the Xcel rows are linked with
 --     match_method = 'roster_record'.
 --   * The next-step row is computed (fn_next_step_recompute_one). If the stage was entered from
---     HISTORY (the driving Xcel event is not fresh by fn_xcel_progress_plan), the steps still ahead get
---     'suppressed:' placeholders, exactly like WP1. A fresh enrolment (Kaleb, Michael, Leslie: 11-10,
---     first seen 11-11) keeps its normal started_prelicense check-ins.
+--     HISTORY (the driving Xcel event is not fresh by fn_xcel_progress_plan), every step still ahead
+--     gets a 'suppressed:' placeholder, exactly like WP1. A FRESH enrolment (Kaleb, Michael, Leslie:
+--     enrolled 11-10, first seen 11-11) keeps only the FIRST step of its stage cadence (the day 3
+--     course check-in from the shared ladder) and the rest are pre-suppressed: DECISIONS gives these
+--     students one coach/exam message each, not a drip. Nobody here signed our form.
 --   * One inbox task to the owner per record.
 --   * Never: a suspended person, an email that matches any application/profile/login, a phone or
 --     name+window that matches a record (a human should link those), a staff-unlinked identity.
@@ -205,6 +207,7 @@ begin
       perform public.fn_next_step_recompute_one(v_id, null);
 
       -- History stays history: a stage entered from an event that is not fresh starts no cadence.
+      -- A fresh one keeps its first step only (one message each, see header).
       select np.current_stage_key, np.entered_at into v_stage, v_entered
         from public.next_step_progress np where np.application_id = v_id;
       select pp.purchased_fresh, pp.started_fresh, pp.target_fresh
@@ -215,22 +218,25 @@ begin
                    when 'started_prelicense' then coalesce(v_purchased_fresh, false) or coalesce(v_started_fresh, false)
                    else false end;
       v_n := 0;
-      if v_stage in ('started_prelicense', 'finished_prelicense') and not v_fresh then
+      if v_stage in ('started_prelicense', 'finished_prelicense') then
         select st.reminder_cadence into v_cadence from public.next_step_stages st where st.stage_key = v_stage;
         if coalesce(v_cadence, '') like '%:%' then
           insert into public.next_step_messages
             (application_id, stage_key, channel, template_key, dedupe_key, failed_at, error, metadata)
           select v_id, v_stage, 'email', v_stage || ':' || k.unit || k.n,
                  v_id::text || ':' || v_stage || ':' || k.unit || k.n, now(),
-                 'suppressed: Xcel roster record created from historic course data (PKG3); not sent',
+                 case when v_fresh
+                      then 'suppressed: Xcel roster record (PKG3) keeps one check-in, not a drip; not sent'
+                      else 'suppressed: Xcel roster record created from historic course data (PKG3); not sent' end,
                  jsonb_build_object('suppressed_by', 'pkg3_xcel_roster_record', 'entered_at', v_entered,
-                                    'cutoff_at', v_cutoff_ts)
-            from (select lower(btrim(split_part(v_cadence, ':', 1))) as unit, btrim(x) as n
-                    from unnest(string_to_array(split_part(v_cadence, ':', 2), ',')) x
-                   where btrim(x) ~ '^-?\d+$') k
-           where v_entered is null
+                                    'cutoff_at', v_cutoff_ts, 'fresh_entry', v_fresh)
+            from (select lower(btrim(split_part(v_cadence, ':', 1))) as unit, btrim(x.s) as n, x.ord
+                    from unnest(string_to_array(split_part(v_cadence, ':', 2), ',')) with ordinality as x(s, ord)
+                   where btrim(x.s) ~ '^-?\d+$') k
+           where (not v_fresh or k.ord > 1)
+             and (v_entered is null
               or (k.unit = 'day' and v_entered + make_interval(days => k.n::int + 1) > now())
-              or (k.unit = 'hour' and v_entered + make_interval(hours => k.n::int + 21) > now())
+              or (k.unit = 'hour' and v_entered + make_interval(hours => k.n::int + 21) > now()))
           on conflict (dedupe_key) where dedupe_key is not null do nothing;
           get diagnostics v_n = row_count;
         end if;

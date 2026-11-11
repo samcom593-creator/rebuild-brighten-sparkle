@@ -189,8 +189,10 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       { label: "Call list", href: "/dashboard/recruiting", icon: FolderKanban, modes: ["manager", "recruiter", "va", "va_manager"] },
       { label: "New hires", href: "/dashboard/recruits", icon: Milestone, modes: ["manager", "va", "va_manager"] },
       { label: "Invite an agent", href: "/admin/invite-links", icon: UserPlus, modes: ["manager"] },
-      // Instagram command center (MP-305, 2026-10-28): every DM, comment and follow-up graded on deliveries. Sam-only route.
-      { label: "Instagram", href: "/dashboard/inbox/instagram", icon: Instagram, modes: ["manager"] },
+      // Instagram command center (MP-305, 2026-10-28): Sam's own DMs. SAM ONLY (2026-11-11): this tab was shown to
+      // managers and exposed every DM thread; private surfaces never get a `modes` entry. Guarded by
+      // scripts/check-private-surfaces.mjs and the DB audit fn_private_surface_audit().
+      { label: "Instagram", href: "/dashboard/inbox/instagram", icon: Instagram, adminOnly: true, samOnly: true },
       { label: "Refer a recruit", href: "/dashboard/referrals/new", icon: Send, modes: ["agent", "agency_owner"] },
       // Interviews are booked from Calendar (open to every signed-in user).
       // Producers and managers reach it under Sell; the staff who book

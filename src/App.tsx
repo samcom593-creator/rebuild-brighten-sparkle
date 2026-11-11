@@ -796,7 +796,7 @@ const App = () => (
                        <Route path="/terms-of-service" element={<LegacyWorkspaceRedirect to="/terms" />} />
                        <Route path="/bot-token" element={<ProtectedRoute requireAdmin><BotToken /></ProtectedRoute>} />
                        <Route path="/dashboard/bot-token" element={<ProtectedRoute requireAdmin><BotToken /></ProtectedRoute>} />
-                       <Route path="/dashboard/inbox/instagram" element={<ProtectedRoute requireAdmin allowManagers><InstagramInbox /></ProtectedRoute>} />
+                       <Route path="/dashboard/inbox/instagram" element={<ProtectedRoute requireAdmin><InstagramInbox /></ProtectedRoute>} />
                        {/* The alias carried a looser guard than the canonical route (any signed-in user vs
                            admin + manager). An alias never renders the page itself now: one hop to the
                            canonical route, which owns the gate (route board finding 4, 2026-10-28). */}

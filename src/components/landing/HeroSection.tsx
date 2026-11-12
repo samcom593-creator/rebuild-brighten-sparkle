@@ -74,7 +74,7 @@ const partnerPaths = [
   },
   {
     title: "Licensed Producers",
-    description: "Direct lines with 14+ top carriers, day-one script and portal access, and aggressive comp tiers up to 100%+.",
+    description: "Direct lines with 22 top carriers, day-one script and portal access, and aggressive comp tiers up to 145%.",
     icon: BadgeCheck,
     track: "licensed-producer",
   },

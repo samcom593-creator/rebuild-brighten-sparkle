@@ -459,6 +459,7 @@
     "public.outbox_events",
     "public.outreach_queue",
     "public.outreach_templates",
+    "public.owner_subscriptions",
     "public.partial_applications",
     "public.people",
     "public.perf_bot_findings",

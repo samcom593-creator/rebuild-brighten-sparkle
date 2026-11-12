@@ -104486,6 +104486,63 @@ export type Database = {
         }
         Relationships: []
       }
+      owner_subscriptions: {
+        Row: {
+          account_owner: string | null
+          billing_frequency: string | null
+          billing_url: string | null
+          cost_cents: number | null
+          created_at: string
+          currency: string
+          id: string
+          last_verified: string | null
+          notes: string | null
+          plan: string | null
+          purpose: string | null
+          renewal_date: string | null
+          service: string
+          source: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          account_owner?: string | null
+          billing_frequency?: string | null
+          billing_url?: string | null
+          cost_cents?: number | null
+          created_at?: string
+          currency?: string
+          id?: string
+          last_verified?: string | null
+          notes?: string | null
+          plan?: string | null
+          purpose?: string | null
+          renewal_date?: string | null
+          service: string
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          account_owner?: string | null
+          billing_frequency?: string | null
+          billing_url?: string | null
+          cost_cents?: number | null
+          created_at?: string
+          currency?: string
+          id?: string
+          last_verified?: string | null
+          notes?: string | null
+          plan?: string | null
+          purpose?: string | null
+          renewal_date?: string | null
+          service?: string
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       partial_applications: {
         Row: {
           abandoned_at: string | null
@@ -194190,7 +194247,10 @@ export type Database = {
       api_is_full_reader: { Args: never; Returns: boolean }
       api_my_ahl_exempt: { Args: never; Returns: boolean }
       api_scope_agent_ids: { Args: never; Returns: string[] }
-      approve_social_draft: { Args: { p_id: number; p_seen_hash: string }; Returns: string }
+      approve_social_draft: {
+        Args: { p_id: number; p_seen_hash: string }
+        Returns: string
+      }
       ayro_book: { Args: never; Returns: Json }
       ayro_set_client_names: {
         Args: { p_rows: Json; p_source?: string }
@@ -195424,6 +195484,7 @@ export type Database = {
         Args: never
         Returns: undefined
       }
+      fn_perf_bot_run: { Args: never; Returns: Json }
       fn_policy_number_grade: { Args: { p: string }; Returns: string }
       fn_private_surface_audit: {
         Args: never
@@ -195680,6 +195741,7 @@ export type Database = {
       }
       is_agency_staff: { Args: never; Returns: boolean }
       is_owner: { Args: never; Returns: boolean }
+      is_sam: { Args: never; Returns: boolean }
       is_vantage_agent: { Args: { p_agent_id: string }; Returns: boolean }
       issue_strike: {
         Args: {
@@ -196173,6 +196235,10 @@ export type Database = {
           training_required_total: number
           training_started: boolean
         }[]
+      }
+      perf_bot_core: {
+        Args: { p_floor: number; p_target: number }
+        Returns: Json
       }
       perf_bot_summary: { Args: never; Returns: Json }
       phc_admin_lead_stats: {

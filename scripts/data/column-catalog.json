@@ -5939,6 +5939,24 @@
       "template_key",
       "updated_at"
     ],
+    "owner_subscriptions": [
+      "account_owner",
+      "billing_frequency",
+      "billing_url",
+      "cost_cents",
+      "created_at",
+      "currency",
+      "id",
+      "last_verified",
+      "notes",
+      "plan",
+      "purpose",
+      "renewal_date",
+      "service",
+      "source",
+      "status",
+      "updated_at"
+    ],
     "partial_applications": [
       "abandoned_at",
       "admin_notified_at",

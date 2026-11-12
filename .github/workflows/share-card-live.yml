@@ -1,0 +1,67 @@
+# Is the funnel's social-share preview image still ALIVE on the live edge? (MP-WIB-SHARE-CARD-LIVE)
+#
+# The share card (public/galaxy-recruit-og.jpg, named in scripts/data/share-card.json)
+# is the og:image + twitter:image on the one served index.html, so it is the
+# preview card for EVERY apex-financial.org recruiting link shared on LinkedIn,
+# X, Facebook, Discord, iMessage, WhatsApp or Slack — none of which run JS, so
+# they all read that one static file.
+#
+# check-share-card (commit gate) proves the SVG -> image -> og:image chain is
+# consistent AT SOURCE and the wordmark is on-brand; it never makes one HTTP
+# request, so the file can vanish from the live edge while it stays green.
+# route-smoke proves the HTML shell 200s — which is EXACTLY the masquerade a
+# missing image returns: vercel.json's catch-all rewrite exempts only
+# /api,/assets,/fonts,/img, so a dropped root .jpg falls through to the SPA
+# shell and the edge answers 200 text/html (proven on prod 2026-11-12). Every
+# share then previews a blank/broken card while the URL "200s".
+#
+# Deliberately a SCHEDULE, not a commit gate. It grades a LIVE edge response, so
+# wiring the over-the-wire probe into verify:core would block every commit on a
+# condition only a redeploy can clear. The pure classifier IS gated every commit
+# via check:share-card-live-selftest in verify:core; only the live probe runs
+# here. A push that touches the guard/workflow re-runs it immediately.
+#
+# Needs no secrets: the share card is a public static file.
+#
+# Can't cry wolf (check-share-card-live.mjs exit contract):
+#   exit 1 DEFECT        -> card genuinely gone/masquerading w/ egress proven up: FAIL (red, Sam sees it)
+#   exit 3 UNRESOLVED    -> transient 5xx/timeout: warning only, run stays green
+#   exit 0 CLEAN/UNKNOWN -> alive, or egress itself down (not trusted): green
+name: share-card-live
+
+on:
+  schedule:
+    - cron: "22 14 * * *" # daily ~07:22 Phoenix, offset from vsl-media/edge-boot/funnel-capture; GH schedules drift (p90 ~40min, MP-304)
+  workflow_dispatch:
+  push:
+    paths:
+      - "scripts/check-share-card-live.mjs"
+      - "scripts/data/share-card.json"
+      - ".github/workflows/share-card-live.yml"
+
+jobs:
+  share-card-live:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      # Prove the detector's own alive/dead/unresolved + control-gating logic is
+      # intact BEFORE trusting its live verdict (deterministic, local-only).
+      - name: Selftest share-card detector (fixtures, both directions)
+        run: npm run check:share-card-live-selftest
+      # Live probe. Only a real DEFECT (card gone/masquerading, egress up) fails
+      # the run; a transient UNRESOLVED (exit 3) warns without reddening it.
+      - name: Probe live share-card (og:image) liveness
+        run: |
+          node scripts/check-share-card-live.mjs; code=$?
+          if [ "$code" = "3" ]; then
+            echo "::warning::share-card UNRESOLVED — neither proved alive nor dead (transient edge 5xx/timeout). Not failing; re-run to confirm."
+            exit 0
+          fi
+          exit $code
+      - name: Post failure summary
+        if: failure()
+        run: |
+          echo "::warning::share-card-live FAILED — either the detector selftest regressed (the guard's own alive/dead logic, not the site), OR the funnel's og:image/twitter:image share card is DEAD: the file named in scripts/data/share-card.json is missing from the live deploy and the SPA catch-all is serving the HTML shell in its place, so every social share of an apex-financial.org recruiting link previews a broken/blank card. Fix: restore public/galaxy-recruit-og.jpg and redeploy (re-render with scripts/render-share-card.mjs if the SVG changed). See the step output above for the exact URL + status."

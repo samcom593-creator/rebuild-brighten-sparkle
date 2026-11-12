@@ -86,7 +86,8 @@ function samsBoard(): Row[] {
   ];
 }
 
-function renderPage(path = "/dashboard/launch-board") {
+// The Plan tab is the default since MP-BRAND-ENGINE; these tests pin the Videos view, so they open it by its URL.
+function renderPage(path = "/dashboard/launch-board?tab=today") {
   return render(
     <ConfirmProvider>
       <MemoryRouter initialEntries={[path]}>

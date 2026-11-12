@@ -80,11 +80,12 @@ import {
 } from "lucide-react";
 
 // The content-ops approval queue + invite list (formerly /dashboard/content) renders as the Queue tab.
+const LaunchPlanner = lazy(() => import("@/components/content/LaunchPlanner").then((m) => ({ default: m.LaunchPlanner })));
 const ContentQueue = lazy(() => import("./ContentQueue"));
 const AccountsAnalytics = lazy(() => import("@/components/content/AccountsAnalytics"));
 
 type Job = "REACH" | "AUTHORITY" | "PROOF" | "CONVERT";
-type Tab = "today" | "board" | "week" | "library" | "queue" | "analytics";
+type Tab = "plan" | "today" | "board" | "week" | "library" | "queue" | "analytics";
 
 interface Card {
   id: string; title: string; brand: string; content_type: string; job: string; hook: string; caption: string;
@@ -121,9 +122,9 @@ const JOBS: { k: Job; label: string }[] = [
 // The views. Videos is the default (?tab=board, the old Board tab, opens it too). Queue is hidden from the bar while
 // its Mac mini feed is offline (it showed 14 empty "Nothing slated" boxes); ?tab=queue and /dashboard/content open it.
 const VIEWS: { k: Tab; label: string }[] = [
-  { k: "today", label: "Videos" }, { k: "week", label: "Week" }, { k: "library", label: "Library" }, { k: "analytics", label: "Analytics" },
+  { k: "plan", label: "Plan" }, { k: "today", label: "Videos" }, { k: "week", label: "Week" }, { k: "library", label: "Library" }, { k: "analytics", label: "Analytics" },
 ];
-const TAB_KEYS = new Set<Tab>(["today", "board", "week", "library", "analytics", "queue"]);
+const TAB_KEYS = new Set<Tab>(["plan", "today", "board", "week", "library", "analytics", "queue"]);
 
 // Library footage filters — a way to find clips in the archive, not a grading system. A clip's
 // category is read off its existing AI tags / title / description, so nothing needs re-tagging.
@@ -195,7 +196,7 @@ export default function LaunchBoard() {
   usePageTitle("Launch Board");
   const askConfirm = useConfirm();
   const { isAdmin } = useAuth();
-  const [tab, setTabState] = useState<Tab>("today");
+  const [tab, setTabState] = useState<Tab>("plan");
   const [cards, setCards] = useState<Card[]>([]);
   const [archivedCards, setArchivedCards] = useState<Card[]>([]);
   const [archiveBusy, setArchiveBusy] = useState(false);
@@ -226,6 +227,8 @@ export default function LaunchBoard() {
   useEffect(() => {
     const t = searchParams.get("tab") as Tab | null;
     if (t && TAB_KEYS.has(t)) setTabState(t);
+    // Plan is the default view, but ?list=… links were written for the Videos view and still open it.
+    else if (searchParams.get("list")) setTabState("today");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
@@ -823,6 +826,9 @@ export default function LaunchBoard() {
           The content workflow migration (20261006150000) is not on this database yet. The board, library and downloads work; stage moves, approvals, plans and publish confirmations are off until it is applied.
         </div>
       )}
+
+      {/* MP-BRAND-ENGINE: the six-stage plan (Idea to Posted), Tuesday planning, Saturday record, rant batch. */}
+      {view === "plan" && <Suspense fallback={<PageSkeleton />}><LaunchPlanner /></Suspense>}
 
       {view === "today" && (
         <LaunchBoardList

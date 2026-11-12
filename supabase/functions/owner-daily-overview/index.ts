@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
     if (setting("owner_overview_last_sent") === today) return json({ sent: false, reason: "already sent today" });
   }
 
-  const { data, error } = await supabase.rpc("owner_daily_overview", body.day ? { p_day: body.day } : {});
+  const { data, error } = await supabase.rpc("owner_daily_overview", { p_day: body.day ?? null });
   if (error || !data) return json({ error: `overview: ${error?.message ?? "no data"}` }, 500);
   const rendered = renderOverview(data as OverviewData);
 

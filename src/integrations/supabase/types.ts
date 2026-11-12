@@ -195416,6 +195416,7 @@ export type Database = {
         Returns: boolean
       }
       home_conversion_people: { Args: { p_today?: string }; Returns: Json }
+      home_conversion_people_range: { Args: { p_end: string; p_start: string }; Returns: Json }
       imo_by_agency_period: {
         Args: { p_end: string; p_start: string }
         Returns: {
@@ -195997,6 +195998,8 @@ export type Database = {
           training_started: boolean
         }[]
       }
+      owner_daily_overview: { Args: { p_day?: string }; Returns: Json }
+      owner_overview_settings: { Args: never; Returns: Json }
       phc_admin_lead_stats: {
         Args: never
         Returns: {
@@ -196544,6 +196547,10 @@ export type Database = {
           p_note?: string
           p_to_status: string
         }
+        Returns: Json
+      }
+      set_owner_overview_settings: {
+        Args: { p_enabled?: boolean; p_mute_enabled?: boolean; p_time_az?: string }
         Returns: Json
       }
       set_recruit_instagram: {

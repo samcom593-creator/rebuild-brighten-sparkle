@@ -24,6 +24,7 @@ import {
   RefreshCw,
   Sparkles,
   Trophy,
+  UserCheck,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -32,11 +33,12 @@ import { CountUp } from "@/components/ui/delight/CountUp";
 import { ToneBubble } from "@/components/ui/delight/ToneBubble";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useHomeConversions } from "@/hooks/useHomeConversions";
+import { useHomeConversions, type ConversionRange } from "@/hooks/useHomeConversions";
 import { describeQuery, errorMessage, formatAsOf } from "@/lib/queryState";
 import {
   CONVERSION_GROUPS,
   CONVERSION_STEPS,
+  RANGE_STEPS,
   SELLING_STEP,
   conversionCount,
   conversionTone,
@@ -47,6 +49,7 @@ import {
   personHref,
   personValue,
   priorLabel,
+  priorRangeLabel,
   unknownReason,
   type ConversionKind,
   type ConversionPayload,
@@ -64,11 +67,14 @@ const ICONS: Record<ConversionKind, ComponentType<{ className?: string }>> = {
   passed_test: ClipboardCheck,
   licensed: BadgeCheck,
   first_deal: Trophy,
+  hired: UserCheck,
   selling: Users,
 };
 
 const ALL_STEPS: readonly ConversionStep[] = [...CONVERSION_STEPS, SELLING_STEP];
-const stepFor = (kind: ConversionKind) => ALL_STEPS.find((s) => s.kind === kind) ?? SELLING_STEP;
+/** In range mode every step answers for the selected dates; Selling agents is always its own 30 days. */
+const stepFor = (kind: ConversionKind, ranged = false) =>
+  (ranged ? RANGE_STEPS.find((s) => s.kind === kind) : undefined) ?? ALL_STEPS.find((s) => s.kind === kind) ?? SELLING_STEP;
 
 const peopleWord = (n: number) => (n === 1 ? "person" : "people");
 /** An error message as a sentence, so the next sentence does not run into it. */
@@ -195,14 +201,19 @@ function ConversionListSheet({
   payload,
   onClose,
   returnFocusTo,
+  rangeLabel,
 }: {
   kind: ConversionKind | null;
   payload: ConversionPayload | null;
+  /** Range mode: the selected dates in words; the lists are titled with them. */
+  rangeLabel?: string;
   onClose: () => void;
   /** The tile that opened the list; focus goes back to it when the list closes. */
   returnFocusTo: RefObject<HTMLElement | null>;
 }) {
-  const step = kind ? stepFor(kind) : null;
+  const step = kind ? stepFor(kind, Boolean(rangeLabel)) : null;
+  const ranged = step?.window === "range";
+  const priorDates = priorRangeLabel(payload);
   const tone = step ? conversionTone(step.kind) : "gold";
   const Icon = step ? ICONS[step.kind] : Sparkles;
   const current = step ? peopleFor(payload, step.kind, "current") : [];
@@ -231,7 +242,7 @@ function ConversionListSheet({
                   <SheetTitle className="text-xl font-bold leading-7">{step.label}</SheetTitle>
                   <SheetDescription className="text-sm">
                     {count === null ? "Count unknown" : `${count.toLocaleString()} ${peopleWord(count)}`}
-                    {step.window === "day" ? " · Phoenix time" : ` · ${currentLabel(step.window).toLowerCase()}`}
+                    {ranged ? ` · ${rangeLabel} · Phoenix time` : step.window === "day" ? " · Phoenix time" : ` · ${currentLabel(step.window).toLowerCase()}`}
                   </SheetDescription>
                 </div>
               </div>
@@ -243,7 +254,7 @@ function ConversionListSheet({
               ) : null}
             </SheetHeader>
             <PeopleSection
-              title={currentLabel(step.window)}
+              title={ranged && rangeLabel ? rangeLabel : currentLabel(step.window)}
               people={current}
               todayKey={todayKey}
               empty={
@@ -259,7 +270,7 @@ function ConversionListSheet({
             />
             {step.kind !== "selling" ? (
               <PeopleSection
-                title={capitalize(priorLabel(step.window))}
+                title={ranged && priorDates ? `Before that · ${priorDates}` : capitalize(priorLabel(step.window))}
                 people={prior}
                 todayKey={todayKey}
                 empty={<p className="text-sm text-muted-foreground">Nobody {priorLabel(step.window)} either.</p>}
@@ -310,8 +321,9 @@ function useListSheet() {
  * test, Newly licensed, First deals). Stacked on a phone and up to 1279px; side by side from
  * 1280px, six equal tiles in a row.
  */
-export function HomeConversions() {
-  const query = useHomeConversions();
+export function HomeConversions({ range, rangeLabel }: { range?: ConversionRange | null; rangeLabel?: string } = {}) {
+  const query = useHomeConversions(range);
+  const ranged = Boolean(range);
   const { open, opener, openFrom, close } = useListSheet();
   const payload = query.data ?? null;
   const state = describeQuery(query);
@@ -324,7 +336,9 @@ export function HomeConversions() {
             <ToneBubble tone="gold" size="md" className="apex-pop"><Sparkles /></ToneBubble>
             <div className="min-w-0">
               <h2 id="home-conversions-title" className="text-lg font-bold leading-6 text-foreground sm:text-xl">Conversions</h2>
-              <p className="text-sm text-muted-foreground">Who moved forward. Tap a number to see who.</p>
+              <p className="text-sm text-muted-foreground">
+                {ranged ? "Who moved forward in the selected dates. Tap a number to see who." : "Who moved forward. Tap a number to see who."}
+              </p>
             </div>
           </div>
           {payload?.as_of ? <p className="text-[13px] text-muted-foreground">Updated {formatAsOf(payload.as_of)}</p> : null}
@@ -334,6 +348,21 @@ export function HomeConversions() {
             <StripNotice query={query} />
           </div>
         ) : null}
+        {ranged ? (
+          <div role="group" aria-label={rangeLabel ?? "Selected dates"} className="overflow-hidden rounded-2xl border border-border bg-card">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 border-b border-border px-3 py-2.5 sm:px-5">
+              <h3 className="text-[15px] font-semibold text-foreground">{rangeLabel ?? "Selected dates"}</h3>
+              <p className="text-[13px] text-muted-foreground">
+                {priorRangeLabel(payload) ? `compared with ${priorRangeLabel(payload)}` : "activity in these dates"}
+              </p>
+            </div>
+            <div className="apex-rise-list grid grid-cols-2 gap-px bg-border sm:grid-cols-4 xl:grid-cols-7">
+              {RANGE_STEPS.map((step) => (
+                <Tile key={step.kind} step={step} payload={payload} onOpen={openFrom} />
+              ))}
+            </div>
+          </div>
+        ) : (
         <div className="grid gap-3 xl:grid-cols-[minmax(0,2fr)_minmax(0,4fr)]">
           {CONVERSION_GROUPS.map((group) => (
             <div key={group.window} role="group" aria-label={group.title} className="overflow-hidden rounded-2xl border border-border bg-card">
@@ -349,8 +378,9 @@ export function HomeConversions() {
             </div>
           ))}
         </div>
+        )}
       </section>
-      <ConversionListSheet kind={open} payload={payload} onClose={close} returnFocusTo={opener} />
+      <ConversionListSheet kind={open} payload={payload} onClose={close} returnFocusTo={opener} rangeLabel={ranged ? rangeLabel ?? "Selected dates" : undefined} />
     </TooltipProvider>
   );
 }
@@ -360,8 +390,8 @@ export function HomeConversions() {
  * active, 59 of whom had never sold ("No sale yet"). This is the licensed agents with a posted
  * deal in the last 30 days, and it opens every one of them.
  */
-export function SellingAgentsTile() {
-  const query = useHomeConversions();
+export function SellingAgentsTile({ range }: { range?: ConversionRange | null } = {}) {
+  const query = useHomeConversions(range);
   const { open, opener, openFrom, close } = useListSheet();
   const payload = query.data ?? null;
   const state = describeQuery(query);
@@ -390,7 +420,7 @@ export function SellingAgentsTile() {
               className={cn("mt-2 block text-[2.5rem] font-bold leading-none tracking-[-0.02em]", (count ?? 0) > 0 ? TONE_CLASS[tone].text : "text-foreground")}
             />
             <span className="mt-2 block text-sm leading-5 text-muted-foreground">
-              {state.status === "error" ? `Did not load: ${sentence(errorMessage(query.error))}` : "Licensed, sold in the last 30 days"}
+              {state.status === "error" ? `Did not load: ${sentence(errorMessage(query.error))}` : "Licensed, sold in the last 30 days · not the selected dates"}
             </span>
           </button>
         </TooltipTrigger>

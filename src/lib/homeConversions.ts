@@ -27,6 +27,7 @@ export const CONVERSION_KINDS = [
   "passed_test",
   "licensed",
   "first_deal",
+  "hired",
   "selling",
 ] as const;
 export type ConversionKind = (typeof CONVERSION_KINDS)[number];
@@ -72,10 +73,13 @@ export interface ConversionPayload {
   month_start: string;
   /** The newest Xcel daily report on file, or null when none ever arrived. */
   xcel_report_on: string | null;
+  /** Set by home_conversion_people_range: the window asked for and the equal window before it. */
+  range: { start: string; end: string; prior_start: string; prior_end: string } | null;
   people: ConversionPerson[];
 }
 
-export type ConversionWindow = "day" | "week" | "month";
+/** "range" (MP-302) is the one date range the owner Home is showing. */
+export type ConversionWindow = "day" | "week" | "month" | "range";
 
 export interface ConversionStep {
   kind: ConversionKind;
@@ -150,6 +154,57 @@ export const CONVERSION_STEPS: readonly ConversionStep[] = [
   },
 ];
 
+/**
+ * The strip for ONE date range (MP-302): every step counts the same selected dates, so no two
+ * tiles on Home answer for different periods. Funnel order, with New hires added. Interviews
+ * attended and Qualified are deliberately absent: measured 2026-11-12, an interview outcome is
+ * recorded on 1 of the last 55 interviews and qualified_at on 0 of the last 95 applications.
+ */
+export const RANGE_STEPS: readonly ConversionStep[] = [
+  {
+    kind: "applied", label: "Applications received", short: "Applied", window: "range",
+    definition: "Applications received in the selected dates, Phoenix time. A second application from the same person and interview-only bookings are not counted.",
+    emptyText: "No applications in these dates.",
+    emptyAction: { label: "Share a recruiting link", to: "/admin/invite-links" },
+  },
+  {
+    kind: "interview_booked", label: "Interviews booked", short: "Interviews booked", window: "range",
+    definition: "Licensed calls and leader calls booked in the selected dates that are still on. Booked, not attended: attendance is not recorded reliably enough to count. One per person per day.",
+    emptyText: "No interviews booked in these dates.",
+    emptyAction: { label: "Open the Call list", to: "/dashboard/recruiting" },
+  },
+  {
+    kind: "hired", label: "New hires", short: "New hires", window: "range",
+    definition: "People whose agent record was created in the selected dates. Test and placeholder records are not counted.",
+    emptyText: "No new hires in these dates.",
+    emptyAction: { label: "Open New hires", to: "/dashboard/recruits" },
+  },
+  {
+    kind: "xcel_bought", label: "Bought Xcel", short: "Bought Xcel", window: "range",
+    definition: "People whose first enrollment in the Xcel pre-licensing course falls in the selected dates. Someone enrolling again is not a new purchase.",
+    emptyText: "Nobody bought Xcel in these dates.",
+    emptyAction: { label: "See who still needs Xcel", to: "/dashboard/recruits" },
+  },
+  {
+    kind: "passed_test", label: "Passed the test", short: "Passed the test", window: "range",
+    definition: "People first marked as having passed the state licensing exam in the selected dates.",
+    emptyText: "Nobody passed the test in these dates.",
+    emptyAction: { label: "Open New hires", to: "/dashboard/recruits" },
+  },
+  {
+    kind: "licensed", label: "Newly licensed", short: "Newly licensed", window: "range",
+    definition: "People who got licensed in the selected dates after they applied or were hired without a license. Someone who applied already licensed is not counted.",
+    emptyText: "Nobody got licensed in these dates.",
+    emptyAction: { label: "Open New hires", to: "/dashboard/recruits" },
+  },
+  {
+    kind: "first_deal", label: "First deals", short: "First deals", window: "range",
+    definition: "Agents whose first posted deal ever falls in the selected dates, from the same book as the production numbers.",
+    emptyText: "No first deals in these dates.",
+    emptyAction: { label: "Open New hires", to: "/dashboard/recruits" },
+  },
+];
+
 /** The strip's two groups: what happened today, and what moved in the last 7 days. */
 export const CONVERSION_GROUPS: ReadonlyArray<{ window: ConversionWindow; title: string; compared: string; steps: readonly ConversionStep[] }> = [
   { window: "day", title: "Today", compared: "compared with yesterday", steps: CONVERSION_STEPS.filter((s) => s.window === "day") },
@@ -181,6 +236,8 @@ export function conversionTone(kind: ConversionKind): Tone {
       return "cool";
     case "passed_test":
       return "royal";
+    case "hired":
+      return "gold";
     case "xcel_bought":
     case "licensed":
     case "first_deal":
@@ -242,6 +299,10 @@ export function parseConversionPayload(raw: unknown): ConversionPayload | null {
     prior_week_start: dayKey(o.prior_week_start) ?? today,
     month_start: dayKey(o.month_start) ?? today,
     xcel_report_on: dayKey(o.xcel_report_on),
+    range: (() => {
+      const start = dayKey(o.start), end = dayKey(o.end), prior_start = dayKey(o.prior_start), prior_end = dayKey(o.prior_end);
+      return start && end && prior_start && prior_end ? { start, end, prior_start, prior_end } : null;
+    })(),
     people,
   };
 }
@@ -284,12 +345,12 @@ export function conversionCount(payload: ConversionPayload | null, kind: Convers
 
 /** What the comparison period is called on a tile and in a list. */
 export function priorLabel(window: ConversionWindow): string {
-  return window === "day" ? "yesterday" : window === "week" ? "the week before" : "the 30 days before";
+  return window === "day" ? "yesterday" : window === "week" ? "the week before" : window === "range" ? "the period before" : "the 30 days before";
 }
 
 /** What the current period is called, when the label does not already say it. */
 export function currentLabel(window: ConversionWindow): string {
-  return window === "day" ? "Today" : window === "week" ? "Last 7 days" : "Last 30 days";
+  return window === "day" ? "Today" : window === "week" ? "Last 7 days" : window === "range" ? "Selected dates" : "Last 30 days";
 }
 
 /**
@@ -347,7 +408,10 @@ export function personDetail(p: ConversionPerson, todayKey: string): string {
   const when = clock ? `${day}, ${clock}` : day;
   switch (p.kind) {
     case "applied":
-      return [`Applied ${clock ?? day}`, licenseWords(p.license)].filter(Boolean).join(" · ");
+      // A day list sits under "Today"/"Yesterday" and needs only the time; a date-range list needs the day.
+      return [`Applied ${p.on && p.on !== todayKey && daysBetween(p.on, todayKey) > 1 ? when : clock ?? day}`, licenseWords(p.license)].filter(Boolean).join(" · ");
+    case "hired":
+      return [`Joined ${day}`, licenseWords(p.license)].filter(Boolean).join(" · ");
     case "interview_booked": {
       const call = p.track === "leader" ? "Leader call" : "Licensed call";
       const slot = validInstant(p.starts_at)
@@ -407,4 +471,16 @@ export function unknownReason(payload: ConversionPayload | null, kind: Conversio
       : "No Xcel daily report has arrived yet, so purchases cannot be counted.";
   }
   return null;
+}
+
+const shortDay = (key: string) => {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+};
+
+/** "Oct 20 – Oct 31" (or one day): the comparison window's own dates, for the strip header. */
+export function priorRangeLabel(payload: ConversionPayload | null): string | null {
+  const r = payload?.range;
+  if (!r) return null;
+  return r.prior_start === r.prior_end ? shortDay(r.prior_start) : `${shortDay(r.prior_start)} – ${shortDay(r.prior_end)}`;
 }

@@ -1,4 +1,5 @@
 import { Suspense, lazy, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { ChevronDown, LineChart as LineChartIcon } from "lucide-react";
@@ -17,7 +18,9 @@ import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 import { useBusinessToday } from "@/hooks/useBusinessToday";
 import { invalidateOperationalTruth } from "@/lib/invalidateOperationalTruth";
 import type { HomeData } from "@/lib/homeDashboard";
-import { scoreboardWindow, type ScoreboardPeriod } from "@/lib/scoreboardPeriod";
+import { isDayKey, isScoreboardPeriod, scoreboardWindow, windowLastDay, type ScoreboardPeriod } from "@/lib/scoreboardPeriod";
+import { HomeDateBar } from "@/components/dashboard/HomeDateBar";
+import { NeedsAttention } from "@/components/dashboard/NeedsAttention";
 
 // F24: the only Recharts consumer on the Home route. Lazy, and rendered only
 // after the "Trend and policy status" disclosure has been opened once, so a
@@ -56,14 +59,37 @@ export function AgentCloudHome() {
   // Total IMO by agency read the exact window the scoreboard shows. Two pickers gave
   // two answers for the same month: "This month" ran to Nov 1 and counted policies
   // dated later in October, while the scoreboard read month to date.
-  const [period, setPeriod] = useState<ScoreboardPeriod>("month");
-  // The window follows the business day until someone picks another date: a picked
-  // date sticks, "today" rolls over at Phoenix midnight and after a laptop wake. Seeding
-  // useState with todayKey froze Home on the day the page mounted.
-  const [pickedDate, setPickedDate] = useState<string | null>(null);
+  //
+  // MP-302: the range lives in the address (?period=&through=&from=), not in component
+  // state, so opening a person from a card and coming back, a reload, or a shared link all
+  // land on the same dates. A missing or malformed value falls back to this month to date.
+  const [params, setParams] = useSearchParams();
+  const rawPeriod = params.get("period");
+  const period: ScoreboardPeriod = isScoreboardPeriod(rawPeriod) ? rawPeriod : "month";
+  const rawThrough = params.get("through");
+  // The window follows the business day until someone picks another date: a picked date
+  // sticks, "today" rolls over at Phoenix midnight and after a laptop wake.
+  const pickedDate = isDayKey(rawThrough) && rawThrough < todayKey ? rawThrough : null;
   const throughDate = pickedDate ?? todayKey;
-  const setThroughDate = (d: string) => setPickedDate(d === todayKey ? null : d);
-  const win = scoreboardWindow(period, throughDate);
+  const rawFrom = params.get("from");
+  const customStart = isDayKey(rawFrom) && rawFrom <= throughDate ? rawFrom : throughDate;
+  const writeRange = (next: { period?: ScoreboardPeriod; through?: string | null; from?: string | null }) => {
+    setParams((prev) => {
+      const out = new URLSearchParams(prev);
+      const set = (key: string, value: string | null | undefined) => { if (value) out.set(key, value); else out.delete(key); };
+      if (next.period !== undefined) set("period", next.period === "month" ? null : next.period);
+      if (next.through !== undefined) set("through", next.through && next.through !== todayKey ? next.through : null);
+      if (next.from !== undefined) set("from", next.from);
+      return out;
+    }, { replace: true });
+  };
+  // A preset is anchored to today; only Custom and the scoreboard's own picker move the end.
+  const setPeriod = (p: ScoreboardPeriod) =>
+    writeRange(p === "custom" ? { period: p, from: customStart, through: throughDate } : { period: p, from: null, through: isAdmin ? null : undefined });
+  const setThroughDate = (d: string) => writeRange({ through: d });
+  const win = scoreboardWindow(period, throughDate, customStart);
+  // The conversion strip counts inclusive days; the scoreboard window's end is exclusive.
+  const range = { start: win.start, end: windowLastDay(win) };
   // F24: the analytics panel mounts on the first expansion and stays mounted
   // afterwards, so re-opening does not refetch the chunk or lose chart state.
   const [analyticsOpened, setAnalyticsOpened] = useState(false);
@@ -134,8 +160,21 @@ export function AgentCloudHome() {
       {/* OVERHAUL-home (Sam, 2026-10-28: "Give me better stats and make it easier for me to
           convert"). First on the owner's Home: the funnel from a new application to a first
           deal, every number opening the people it counts. Admin only, like its RPC. */}
-      {isAdmin && <HomeConversions />}
-      <ScopedProductionScoreboard control={{ period, throughDate, onPeriodChange: setPeriod, onThroughDateChange: setThroughDate }} />
+      {isAdmin && (
+        <HomeDateBar
+          period={period}
+          label={win.label}
+          todayKey={todayKey}
+          throughDate={throughDate}
+          customStart={customStart}
+          onPeriodChange={setPeriod}
+          onCustomChange={(start, through) => writeRange({ period: "custom", from: start, through })}
+        />
+      )}
+      {isAdmin && <HomeConversions range={range} rangeLabel={win.label} />}
+      {/* MP-302: people waiting on a decision, between what happened and the production board. */}
+      {isAdmin && <NeedsAttention />}
+      <ScopedProductionScoreboard control={{ period, throughDate, customStart, hideControls: isAdmin, onPeriodChange: setPeriod, onThroughDateChange: setThroughDate }} />
 
       {/* OVERHAUL-home: the all-time Ayro Financial production block that sat here is off
           Home (Sam: remove the all-time production section). Its numbers are unchanged and
@@ -162,7 +201,7 @@ export function AgentCloudHome() {
               counted every agent row marked active, and its Producing number read only the
               AgentLink book, which stopped receiving deals. Selling agents is the licensed
               agents with a posted deal in the last 30 days, and it opens every one of them. */}
-          {isAdmin && <SellingAgentsTile />}
+          {isAdmin && <SellingAgentsTile range={range} />}
           <div className="mb-1 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 pt-1">
             <h2 className="text-sm font-semibold text-foreground">Total IMO by agency</h2>
             <p className="text-xs text-muted-foreground">{win.label} · same dates as the scoreboard</p>

@@ -54,7 +54,7 @@ const RAW = {
     { kind: "selling", period: "current", name: "Hal Ives", at: null, on: "2026-10-28", application_id: null, agent_id: "agent-8", deals: 8, ap: "13226" },
     { kind: "selling", period: "current", name: "Ida Jay", at: null, on: "2026-10-02", application_id: null, agent_id: "agent-9", deals: 1, ap: 1411 },
     // Rows the page does not know are dropped, never counted somewhere.
-    { kind: "hired", period: "current", name: "Unknown kind", on: "2026-10-29" },
+    { kind: "promoted", period: "current", name: "Unknown kind", on: "2026-10-29" },
     { kind: "applied", period: "later", name: "Unknown period", on: "2026-10-29" },
     null,
   ],
@@ -251,5 +251,56 @@ describe("where a person opens", () => {
     expect(personHref(person({ kind: "applied", application_id: null, name: null }))).toBeNull();
     expect(personHref(person({ kind: "xcel_bought", name: null }))).toBeNull();
     expect(personHref(person({ kind: "selling", agent_id: null }))).toBeNull();
+  });
+});
+
+// MP-302: one date range for the owner Home.
+import { RANGE_STEPS as RANGE_STEPS_302, parseConversionPayload as parse302, priorRangeLabel as priorRangeLabel302, conversionCount as count302 } from "@/lib/homeConversions";
+import { scoreboardWindow as window302, windowLastDay as lastDay302, isDayKey as isDayKey302, isScoreboardPeriod as isPeriod302 } from "@/lib/scoreboardPeriod";
+
+describe("MP-302 range mode", () => {
+  const raw = {
+    as_of: "2026-11-12T10:00:00Z", today: "2026-11-12", week_start: "2026-11-01", prior_week_start: "2026-10-20",
+    month_start: "2026-10-14", xcel_report_on: "2026-11-12",
+    start: "2026-11-01", end: "2026-11-12", prior_start: "2026-10-20", prior_end: "2026-10-31",
+    people: [
+      { kind: "hired", period: "current", name: "A", on: "2026-11-03", agent_id: "a1" },
+      { kind: "hired", period: "prior", name: "B", on: "2026-10-22", agent_id: "b1" },
+      { kind: "applied", period: "current", name: "C", on: "2026-11-02", application_id: "c1" },
+      { kind: "made_up", period: "current", name: "D" },
+    ],
+  };
+  it("keeps the range the server answered for and counts hires; an unknown kind is dropped", () => {
+    const p = parse302(raw);
+    expect(p?.range).toEqual({ start: "2026-11-01", end: "2026-11-12", prior_start: "2026-10-20", prior_end: "2026-10-31" });
+    expect(count302(p, "hired")).toBe(1);
+    expect(count302(p, "hired", "prior")).toBe(1);
+    expect(p?.people.length).toBe(3);
+    expect(priorRangeLabel302(p)).toBe("Oct 20 – Oct 31");
+  });
+  it("a fixed-window reply has no range", () => {
+    const { start: _s, end: _e, prior_start: _ps, prior_end: _pe, ...fixed } = raw;
+    expect(parse302(fixed)?.range).toBeNull();
+    expect(priorRangeLabel302(parse302(fixed))).toBeNull();
+  });
+  it("every range step reads the selected dates, and none claims attendance or qualification", () => {
+    expect(RANGE_STEPS_302.every((s) => s.window === "range")).toBe(true);
+    expect(RANGE_STEPS_302.map((s) => s.kind)).toEqual(["applied", "interview_booked", "hired", "xcel_bought", "passed_test", "licensed", "first_deal"]);
+  });
+  it("windows: last 30 days, custom, and a bad custom start", () => {
+    expect(window302("past_30", "2026-11-12")).toMatchObject({ start: "2026-10-14", end: "2026-11-13" });
+    const custom = window302("custom", "2026-11-12", "2026-11-05");
+    expect(custom).toMatchObject({ start: "2026-11-05", end: "2026-11-13" });
+    expect(lastDay302(custom)).toBe("2026-11-12");
+    expect(window302("custom", "2026-11-12", "2026-12-01").start).toBe("2026-11-12");
+    expect(window302("custom", "2026-11-12", "garbage").start).toBe("2026-11-12");
+    expect(window302("week", "2026-11-12").start).toBe("2026-11-09");
+    expect(lastDay302(window302("yesterday", "2026-11-12"))).toBe("2026-11-11");
+  });
+  it("address values are validated before use", () => {
+    expect(isPeriod302("past_30")).toBe(true);
+    expect(isPeriod302("forever")).toBe(false);
+    expect(isDayKey302("2026-11-12")).toBe(true);
+    expect(isDayKey302("2026-13-45")).toBe(false);
   });
 });

@@ -7553,6 +7553,20 @@
         "raw": "p_today date DEFAULT NULL::date"
       }
     ],
+    "home_conversion_people_range": [
+      {
+        "all": [
+          "p_end",
+          "p_start"
+        ],
+        "required": [
+          "p_end",
+          "p_start"
+        ],
+        "unnamed": false,
+        "raw": "p_start date, p_end date"
+      }
+    ],
     "ig_bucket": [
       {
         "all": [
@@ -8947,6 +8961,24 @@
       }
     ],
     "orphan_deal_audit": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "owner_daily_overview": [
+      {
+        "all": [
+          "p_day"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_day date DEFAULT NULL::date"
+      }
+    ],
+    "owner_overview_settings": [
       {
         "all": [],
         "required": [],
@@ -10389,6 +10421,18 @@
         ],
         "unnamed": false,
         "raw": "p_token text"
+      }
+    ],
+    "set_owner_overview_settings": [
+      {
+        "all": [
+          "p_enabled",
+          "p_mute_enabled",
+          "p_time_az"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_time_az text DEFAULT NULL::text, p_enabled boolean DEFAULT NULL::boolean, p_mute_enabled boolean DEFAULT NULL::boolean"
       }
     ],
     "set_recruit_instagram": [

@@ -1,4 +1,4 @@
-export type ScoreboardPeriod = "day" | "yesterday" | "week" | "past_week" | "month" | "last_month" | "year";
+export type ScoreboardPeriod = "day" | "yesterday" | "week" | "past_week" | "past_30" | "month" | "last_month" | "year" | "custom";
 
 const fromIso = (value: string) => new Date(`${value}T12:00:00Z`);
 const addDays = (value: string, amount: number) => {
@@ -7,8 +7,14 @@ const addDays = (value: string, amount: number) => {
   return date.toISOString().slice(0, 10);
 };
 
-/** Calendar windows anchored to the producer's selected business date. */
-export function scoreboardWindow(period: ScoreboardPeriod, throughDate: string) {
+const KEY_RX = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Calendar windows anchored to the producer's selected business date. `end` is exclusive.
+ * "custom" (MP-302) runs from `customStart` through the through-date; a missing, malformed or
+ * later start falls back to the single through-date, never to an open-ended window.
+ */
+export function scoreboardWindow(period: ScoreboardPeriod, throughDate: string, customStart?: string | null) {
   const through = fromIso(throughDate);
   let start = throughDate;
 
@@ -29,6 +35,10 @@ export function scoreboardWindow(period: ScoreboardPeriod, throughDate: string) 
     start = addDays(throughDate, -(day === 0 ? 6 : day - 1));
   } else if (period === "past_week") {
     start = addDays(throughDate, -6);
+  } else if (period === "past_30") {
+    start = addDays(throughDate, -29);
+  } else if (period === "custom") {
+    start = customStart && KEY_RX.test(customStart) && customStart <= throughDate ? customStart : throughDate;
   } else if (period === "month") {
     start = `${throughDate.slice(0, 7)}-01`;
   } else if (period === "year") {
@@ -48,9 +58,27 @@ export function scoreboardWindow(period: ScoreboardPeriod, throughDate: string) 
   }
 
   const end = addDays(throughDate, 1);
-  const label = period === "day"
+  const label = period === "day" || start === throughDate
     ? through.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" })
     : `${fromIso(start).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })} – ${through.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}`;
 
   return { start, end, label };
+}
+
+/** The last business day inside a window (its `end` is exclusive). */
+export function windowLastDay(win: { end: string }): string {
+  return addDays(win.end, -1);
+}
+
+/** Every period a link may carry. */
+export const SCOREBOARD_PERIODS: readonly ScoreboardPeriod[] = [
+  "day", "yesterday", "week", "past_week", "past_30", "month", "last_month", "year", "custom",
+];
+
+export function isScoreboardPeriod(value: unknown): value is ScoreboardPeriod {
+  return typeof value === "string" && (SCOREBOARD_PERIODS as readonly string[]).includes(value);
+}
+
+export function isDayKey(value: unknown): value is string {
+  return typeof value === "string" && KEY_RX.test(value) && Number.isFinite(Date.parse(`${value}T12:00:00Z`));
 }

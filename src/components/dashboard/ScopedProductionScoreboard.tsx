@@ -154,6 +154,7 @@ const PERIODS: Array<{ key: ScoreboardPeriod; label: string }> = [
   { key: "yesterday", label: "Yesterday" },
   { key: "week", label: "Week to date" },
   { key: "past_week", label: "Past 7 days" },
+  { key: "past_30", label: "Past 30 days" },
   { key: "month", label: "Month to date" },
   { key: "last_month", label: "Last month" },
   { key: "year", label: "Year to date" },
@@ -278,6 +279,10 @@ export interface ScoreboardDateControl {
   throughDate: string;
   onPeriodChange: (period: ScoreboardPeriod) => void;
   onThroughDateChange: (throughDate: string) => void;
+  /** First day of a "custom" window (MP-302). Only a page that owns the date bar sets it. */
+  customStart?: string | null;
+  /** The page draws its own date bar above; the scoreboard shows the dates and no second picker. */
+  hideControls?: boolean;
 }
 
 export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDateControl } = {}) {
@@ -307,7 +312,8 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
   const toggleBlur = (key: keyof typeof blur) => setBlur((b) => ({ ...b, [key]: !b[key] }));
   // Collapsible agency groups in the who-sold table (Apex / Vantage / sub-agency heads).
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
-  const window = useMemo(() => scoreboardWindow(period, throughDate), [period, throughDate]);
+  const customStart = control?.customStart ?? null;
+  const window = useMemo(() => scoreboardWindow(period, throughDate, customStart), [period, throughDate, customStart]);
 
   const query = useQuery({
     queryKey: ["scoped-production-scoreboard", window.start, window.end],
@@ -489,6 +495,7 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
             <p className="mt-1 text-xs text-muted-foreground">{window.label} · personal results and your signed-in hierarchy</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {control?.hideControls ? null : (<>
             <div className="relative">
               <CalendarDays className="pointer-events-none absolute left-2.5 top-2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -514,6 +521,7 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+            </>)}
             <Button
               aria-label={presenting ? "Show all hidden figures" : "Blur names, projection, split and earnings for posting"}
               className={cn("h-9", presenting && "border-primary/50 bg-primary/10 text-primary")}

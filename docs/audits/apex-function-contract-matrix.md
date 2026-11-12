@@ -1,15 +1,15 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-11-10T21:55:25.050Z
-Repository: `/Users/samjames/projects/rbs-integrate`
+Generated: 2026-11-12T08:12:35.324Z
+Repository: `/Users/samjames/projects/rbs-brand`
 
 ## Inventory Summary
 
-- Total Local Edge Functions: **250**
-- Configured in `config.toml`: **251**
-- Invoked Edge Functions in Source: **98**
-- Invoked RPC Calls in Source: **270**
-- SQL Functions in Migrations: **866**
+- Total Local Edge Functions: **256**
+- Configured in `config.toml`: **257**
+- Invoked Edge Functions in Source: **99**
+- Invoked RPC Calls in Source: **286**
+- SQL Functions in Migrations: **979**
 
 ## Edge Function Auth & Verification Contracts
 
@@ -42,6 +42,7 @@ Repository: `/Users/samjames/projects/rbs-integrate`
 | `backfill-plaque-images` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `bot-sql` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `brand-collab` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
+| `brand-metrics-ingest` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `brand-photo-upload` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `bulk-agent-message` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `bulk-resend-course-emails` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
@@ -97,6 +98,8 @@ Repository: `/Users/samjames/projects/rbs-integrate`
 | `get-active-managers` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `get-public-recruiters` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `get-vapid-public-key` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `glowup-lead` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
+| `glowup-nurture` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `ics-feed` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `ig-trial-reel-publish` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `ig-voice-broadcast` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -168,8 +171,11 @@ Repository: `/Users/samjames/projects/rbs-integrate`
 | `poke-webhook` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `post-deal` | Yes | Yes | `true` | Authenticated JWT | PASS |
 | `post-plaque-to-instagram` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `postiz-bridge` | Yes | Yes | `true` | Authenticated JWT | PASS |
 | `postmark-approval-monitor` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `proof-wall` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `provision-agent-accounts` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
+| `reactivation-send` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `readymode-ingest` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `readymode-sync` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `readymode-webhook` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
@@ -274,6 +280,6 @@ applied by hand through bot-sql and never round-tripped into
 `supabase/migrations`, so this directory does not model the deployed database.
 `apex-doctor` queries `pg_proc` and is the authority on deployed state.
 
-- Invoked RPCs: **270**
-- Also declared in this commit's migrations: **262**
+- Invoked RPCs: **286**
+- Also declared in this commit's migrations: **278**
 - Declared only in the database: **8**

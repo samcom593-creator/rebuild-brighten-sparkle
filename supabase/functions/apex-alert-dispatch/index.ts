@@ -75,12 +75,16 @@ function refuse(status: number, error: string) {
 // Only these severities trigger a standalone email/SMS. Everything else waits.
 const STANDALONE = new Set(["critical", "celebrate"]);
 
-function emailShell(subject: string, inner: string, severity: string) {
+function emailShell(subject: string, inner: string, severity: string, eventType = "") {
   const tone: Record<string, { bg: string; border: string; tag: string }> = {
     critical: { bg: "#fee2e2", border: "#dc2626", tag: "🚨 CRITICAL" },
     celebrate: { bg: "#dcfce7", border: "#16a34a", tag: "🎉 WIN" },
   };
-  const t = tone[severity] ?? { bg: "#f3f4f6", border: "#64748b", tag: severity };
+  // The daily performance digest rides the celebrate severity only because that is what the flush sends;
+  // it is a report, not a win, so it carries its own neutral label instead of the green WIN tag.
+  const t = eventType === "perf_bot_digest"
+    ? { bg: "#fef9e7", border: "#a5873f", tag: "PERFORMANCE BOT" }
+    : tone[severity] ?? { bg: "#f3f4f6", border: "#64748b", tag: severity };
   return `<div style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:560px;margin:0 auto;padding:20px;color:#0f172a;line-height:1.5">
 <div style="border-left:3px solid ${t.border};padding-left:12px;margin-bottom:16px"><div style="color:${t.border};font-size:11px;font-weight:bold;letter-spacing:0.5px">${t.tag}</div><h2 style="margin:2px 0;font-size:18px">${subject}</h2></div>
 ${inner}
@@ -238,7 +242,7 @@ async function send(alert: any): Promise<{ email_id: string | null; sent_sms: bo
 
   if (channels.has("email")) {
     try {
-      const html = emailShell(alert.subject, alert.body, alert.severity);
+      const html = emailShell(alert.subject, alert.body, alert.severity, String(alert?.event_type ?? ""));
       // brand_funnel leads also land in Sam's personal Gmail (the inbox on his
       // phone); every other alert keeps the business inbox only.
       const r = await resend.emails.send({

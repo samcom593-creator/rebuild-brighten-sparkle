@@ -26,6 +26,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { supabase } from "@/integrations/supabase/client";
 import type { HomeData } from "@/lib/homeDashboard";
@@ -47,9 +48,12 @@ vi.mock("@/components/dashboard/ScopedProductionScoreboard", () => ({
   ),
 }));
 vi.mock("@/components/dashboard/HomeConversions", () => ({
-  HomeConversions: () => <div data-testid="conversions" />,
+  HomeConversions: ({ range }: { range?: { start: string; end: string } }) => (
+    <div data-testid="conversions" data-start={range?.start} data-end={range?.end} />
+  ),
   SellingAgentsTile: () => <div data-testid="selling-agents" />,
 }));
+vi.mock("@/components/dashboard/NeedsAttention", () => ({ NeedsAttention: () => <div data-testid="needs-attention" /> }));
 vi.mock("@/components/dashboard/OperationsCommandCenter", () => ({ OperationsCommandCenter: () => <div data-testid="ops" /> }));
 vi.mock("@/components/dashboard/HomeOperationsSummary", () => ({ HomeOperationsSummary: () => <div data-testid="ops-summary" /> }));
 vi.mock("@/components/dashboard/RecordsAndBounties", () => ({ RecordsAndBounties: () => <div data-testid="records" /> }));
@@ -94,12 +98,15 @@ type RpcFn = (fn: string, args?: Record<string, unknown>) => Promise<unknown>;
 const rpc = vi.mocked(supabase.rpc as unknown as RpcFn);
 const rpcCalls = (): RpcArgs[] => rpc.mock.calls.map((call) => call[1] as unknown as RpcArgs);
 
-function renderHome() {
+function renderHome(initialPath = "/dashboard") {
   const client = new QueryClient();
   const utils = render(
-    <QueryClientProvider client={client}>
-      <AgentCloudHome />
-    </QueryClientProvider>,
+    // MP-302: Home keeps its date range in the address, so it renders inside a router.
+    <MemoryRouter initialEntries={[initialPath]}>
+      <QueryClientProvider client={client}>
+        <AgentCloudHome />
+      </QueryClientProvider>
+    </MemoryRouter>,
   );
   return { client, ...utils };
 }
@@ -219,9 +226,11 @@ describe("AgentCloudHome", () => {
     showOverview();
     expect(screen.getByTestId("scoreboard")).toHaveAttribute("data-through", "2026-10-14");
     const tree = () => (
-      <QueryClientProvider client={client}>
-        <AgentCloudHome />
-      </QueryClientProvider>
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <QueryClientProvider client={client}>
+          <AgentCloudHome />
+        </QueryClientProvider>
+      </MemoryRouter>
     );
     // Midnight passes (useBusinessToday re-renders with the new key): Home follows it.
     businessDay.key = "2026-10-15";
@@ -234,6 +243,25 @@ describe("AgentCloudHome", () => {
     businessDay.key = "2026-10-16";
     rerender(tree());
     expect(screen.getByTestId("scoreboard")).toHaveAttribute("data-through", "2026-10-10");
+  });
+
+  it("MP-302: the conversion strip reads the same dates as the scoreboard, from the address", () => {
+    rpc.mockResolvedValue({ data: HOME, error: null } as never);
+    // No address: this month to date. The strip's range is inclusive, the scoreboard's end exclusive.
+    const first = renderHome();
+    expect(screen.getByTestId("conversions")).toHaveAttribute("data-start", "2026-10-01");
+    expect(screen.getByTestId("conversions")).toHaveAttribute("data-end", "2026-10-14");
+    expect(screen.getByTestId("imo")).toHaveAttribute("data-end", "2026-10-15");
+    first.unmount();
+    // A link carrying a range lands on exactly that range, and a malformed one falls back.
+    const linked = renderHome("/dashboard?period=custom&from=2026-10-03&through=2026-10-09");
+    expect(screen.getByTestId("conversions")).toHaveAttribute("data-start", "2026-10-03");
+    expect(screen.getByTestId("conversions")).toHaveAttribute("data-end", "2026-10-09");
+    expect(screen.getByTestId("scoreboard")).toHaveAttribute("data-through", "2026-10-09");
+    linked.unmount();
+    renderHome("/dashboard?period=forever&through=not-a-date");
+    expect(screen.getByTestId("scoreboard")).toHaveAttribute("data-period", "month");
+    expect(screen.getByTestId("conversions")).toHaveAttribute("data-start", "2026-10-01");
   });
 
   it("changing the scoreboard's period or date moves every production block on Home", async () => {
@@ -283,6 +311,6 @@ describe("AgentCloudHome", () => {
     // OVERHAUL-home: the all-time Ayro block and the roster tiles are not rendered on Home.
     expect(home).not.toContain("<AyroProductionPanel");
     expect(home).not.toContain("RosterTiles");
-    expect(home).toContain("<HomeConversions />");
+    expect(home).toContain("<HomeConversions range={range} rangeLabel={win.label} />");
   });
 });

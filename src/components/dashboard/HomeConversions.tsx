@@ -420,7 +420,7 @@ export function SellingAgentsTile({ range }: { range?: ConversionRange | null } 
               className={cn("mt-2 block text-[2.5rem] font-bold leading-none tracking-[-0.02em]", (count ?? 0) > 0 ? TONE_CLASS[tone].text : "text-foreground")}
             />
             <span className="mt-2 block text-sm leading-5 text-muted-foreground">
-              {state.status === "error" ? `Did not load: ${sentence(errorMessage(query.error))}` : "Licensed, sold in the last 30 days · not the selected dates"}
+              {state.status === "error" ? `Did not load: ${sentence(errorMessage(query.error))}` : range ? "Licensed, sold in the last 30 days · not the selected dates" : "Licensed, sold in the last 30 days"}
             </span>
           </button>
         </TooltipTrigger>

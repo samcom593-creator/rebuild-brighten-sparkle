@@ -1013,6 +1013,20 @@
         "raw": ""
       }
     ],
+    "approve_social_draft": [
+      {
+        "all": [
+          "p_id",
+          "p_seen_hash"
+        ],
+        "required": [
+          "p_id",
+          "p_seen_hash"
+        ],
+        "unnamed": false,
+        "raw": "p_id bigint, p_seen_hash text"
+      }
+    ],
     "assign_va_to_application": [
       {
         "all": [

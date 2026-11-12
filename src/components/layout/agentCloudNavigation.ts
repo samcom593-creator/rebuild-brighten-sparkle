@@ -1,6 +1,7 @@
 import type { ElementType } from "react";
 import { resolveBrand } from "@/config/brand";
 import {
+  Activity,
   Instagram,
   BarChart3,
   BookOpen,
@@ -165,7 +166,9 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
     items: [
       { label: "My Pipeline", href: "/dashboard/agent-pipeline", icon: FolderKanban, modes: PRODUCERS },
       { label: "Call Center", href: "/dashboard/call-center", icon: ContactRound },
-      { label: "Calendar", href: "/dashboard/calendar", icon: CalendarDays, modes: PRODUCERS },
+      // MP-302: for the owner Calendar is secondary (it sits at the foot of the Owner group);
+      // producers keep it here, where they book from.
+      { label: "Calendar", href: "/dashboard/calendar", icon: CalendarDays, modes: PRODUCERS, hideWhenSeesAll: true },
     ],
   },
 
@@ -267,13 +270,17 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       { label: "Money Inbox", href: "/dashboard/money-inbox", icon: MessageSquareDollar, adminOnly: true, samOnly: true },
       { label: "Launch Board", href: "/dashboard/launch-board", icon: Megaphone, adminOnly: true, samOnly: true }, // camera library: Sam only
       { label: "Brand Command", href: "/dashboard/admin/brand-command", icon: Crown, adminOnly: true },
-      { label: "Social Media Center", href: "/dashboard/admin/social-media-bot", icon: Megaphone, adminOnly: true },
+      // Owner only (MP-302): the route, this entry and the four tables behind the page answer to Sam alone.
+      { label: "Social Media Center", href: "/dashboard/admin/social-media-bot", icon: Megaphone, adminOnly: true, samOnly: true },
       { label: "Reports", href: "/dashboard/analytics", icon: BarChart3, adminOnly: true },
       { label: "Finances", href: "/dashboard/finances", icon: WalletCards, adminOnly: true },
       // One front door. The review is the working view; the older pages (requests, operations, Ethos, Aflac sends,
       // documents, audit) are reachable from its "Earlier records" row, as history and reference.
       { label: "Contracting", href: "/dashboard/contracting", icon: FileSearch, adminOnly: true },
       { label: "Import", href: "/dashboard/import", icon: Import, adminOnly: true },
+      // MP-302: subscriptions, integrations and what is owed, in one place.
+      { label: "System", href: "/dashboard/system-health", icon: Activity, adminOnly: true, samOnly: true },
+      { label: "Calendar", href: "/dashboard/calendar", icon: CalendarDays, adminOnly: true },
     ],
   },
 ];

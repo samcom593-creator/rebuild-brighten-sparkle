@@ -83,6 +83,7 @@
   "applicant_login_tick": "jsonb",
   "applications_auto_route_hiring_manager": "trigger",
   "applications_flag_duplicates": "trigger",
+  "approve_social_draft": "text",
   "assign_va_to_application": "void",
   "auth_user_id_by_email": "uuid",
   "auto_admin_for_sam": "trigger",

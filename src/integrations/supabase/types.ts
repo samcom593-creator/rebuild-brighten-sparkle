@@ -117373,9 +117373,11 @@ export type Database = {
           account: string | null
           approved_at: string | null
           approved_by: string | null
+          approved_content_hash: string | null
           body: string | null
           caption: string | null
           card_id: string | null
+          content_hash: string | null
           created_at: string
           cta: string | null
           draft_date: string
@@ -117402,6 +117404,7 @@ export type Database = {
           account?: string | null
           approved_at?: string | null
           approved_by?: string | null
+          approved_content_hash?: string | null
           body?: string | null
           caption?: string | null
           card_id?: string | null
@@ -117431,6 +117434,7 @@ export type Database = {
           account?: string | null
           approved_at?: string | null
           approved_by?: string | null
+          approved_content_hash?: string | null
           body?: string | null
           caption?: string | null
           card_id?: string | null
@@ -194020,6 +194024,7 @@ export type Database = {
       api_is_full_reader: { Args: never; Returns: boolean }
       api_my_ahl_exempt: { Args: never; Returns: boolean }
       api_scope_agent_ids: { Args: never; Returns: string[] }
+      approve_social_draft: { Args: { p_id: number; p_seen_hash: string }; Returns: string }
       ayro_book: { Args: never; Returns: Json }
       ayro_set_client_names: {
         Args: { p_rows: Json; p_source?: string }

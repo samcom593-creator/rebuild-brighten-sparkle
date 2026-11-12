@@ -25,6 +25,8 @@ export const PRIVATE_PATHS = [
   "/dashboard/inbox/instagram", // Instagram DMs
   "/dashboard/money-inbox", // iMessage + DM conversations
   "/dashboard/launch-board", // camera roll / media library clips
+  "/dashboard/admin/social-media-bot", // the owner's unpublished posts, approval queue and inbound (MP-302)
+  "/dashboard/system-health", // subscriptions, costs and integration accounts (MP-302)
 ];
 const ROLE_OPENERS = /\b(allowManagers|allowPresenters|allowedRoles|extraRoles|allowRoles)\b/;
 

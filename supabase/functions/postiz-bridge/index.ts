@@ -16,6 +16,9 @@ import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 
 const API = (Deno.env.get("POSTIZ_API_URL") ?? "https://api.postiz.com/public/v1").replace(/\/+$/, "");
 const KEY = Deno.env.get("POSTIZ_API_KEY") ?? "";
+const OWNER_UID = "71826bba-5577-4810-a226-1f6f2ad5288a";
+/** Written on the draft while a schedule call is in flight, so two taps cannot both post. */
+const PENDING = "pending";
 
 interface Draft {
   id: number; draft_date: string | null; slot: string | null; platform: string | null; account: string | null;
@@ -36,6 +39,8 @@ Deno.serve(async (req) => {
   try {
     const ctx = await requireAuth(req);
     await requireRole(ctx, "admin");
+    // MP-302: the Social Media Center is the owner's. Holding the admin role is not enough.
+    if (ctx.userId !== OWNER_UID) return jsonResponse({ error: "owner only" }, 403);
     const sb = ctx.serviceClient;
 
     let body: Record<string, unknown> = {};
@@ -60,33 +65,43 @@ Deno.serve(async (req) => {
       if (got.error || !got.data) return jsonResponse({ error: "draft not found" }, 404);
       const d = got.data as Draft;
       if (d.status !== "approved") return jsonResponse({ error: "only an approved draft can be scheduled" }, 409);
+      if (d.postiz_post_id === PENDING) return jsonResponse({ configured, scheduled: false, reason: "a schedule request for this draft is already in flight" });
       if (d.postiz_post_id) return jsonResponse({ configured, scheduled: true, already: true, postiz_post_id: d.postiz_post_id });
       const integration = integrations[d.account ?? ""];
       if (!integration) return jsonResponse({ configured, scheduled: false, reason: `no Postiz channel mapped for ${d.account ?? "this draft"}` });
       const when = slotInstant(d);
       if (!when) return jsonResponse({ configured, scheduled: false, reason: "the draft has no date" });
       const content = [d.caption || d.hook || d.title || "", d.cta ? `DM "${d.cta}"` : ""].filter(Boolean).join("\n\n");
+      // Claim the draft before calling Postiz. The filter on a null id makes the claim atomic:
+      // of two simultaneous requests, one updates the row and the other updates nothing.
+      const claim = await sb.from("social_bot_drafts").update({ postiz_post_id: PENDING }).eq("id", id).eq("status", "approved").is("postiz_post_id", null).select("id");
+      if (claim.error) return jsonResponse({ configured, scheduled: false, reason: `could not claim the draft: ${claim.error.message}` });
+      if ((claim.data?.length ?? 0) !== 1) return jsonResponse({ configured, scheduled: false, reason: "another request is already scheduling this draft" });
+      const release = async () => {
+        const back = await sb.from("social_bot_drafts").update({ postiz_post_id: null }).eq("id", id).eq("postiz_post_id", PENDING);
+        if (back.error) console.error("postiz-bridge: could not release the claim on draft", id, back.error.message);
+      };
       const r = await fetch(`${API}/posts`, {
         method: "POST",
         headers: { Authorization: KEY, "Content-Type": "application/json" },
         body: JSON.stringify({ type: "schedule", date: when, shortLink: false, tags: [], posts: [{ integration: { id: integration }, value: [{ content }], settings: {} }] }),
       });
       const text = await r.text();
-      if (!r.ok) return jsonResponse({ configured, scheduled: false, reason: `Postiz answered ${r.status}`, detail: text.slice(0, 300) });
+      if (!r.ok) { await release(); return jsonResponse({ configured, scheduled: false, reason: `Postiz answered ${r.status}`, detail: text.slice(0, 300) }); }
       let postId = "";
       try {
         const parsed = JSON.parse(text);
         const first = Array.isArray(parsed) ? parsed[0] : parsed;
         postId = String(first?.postId ?? first?.id ?? "");
       } catch { postId = ""; }
-      if (!postId) return jsonResponse({ configured, scheduled: false, reason: "Postiz returned no post id", detail: text.slice(0, 300) });
+      if (!postId) { await release(); return jsonResponse({ configured, scheduled: false, reason: "Postiz returned no post id", detail: text.slice(0, 300) }); }
       const saved = await sb.from("social_bot_drafts").update({ postiz_post_id: postId, ship_source: "postiz" }).eq("id", id).select("id");
       if (saved.error || (saved.data?.length ?? 0) !== 1) return jsonResponse({ configured, scheduled: true, postiz_post_id: postId, warning: "scheduled in Postiz, but the post id was not saved on the draft" });
       return jsonResponse({ configured, scheduled: true, postiz_post_id: postId, at: when });
     }
 
     if (action === "sync") {
-      const open = await sb.from("social_bot_drafts").select("id,postiz_post_id").eq("status", "approved").not("postiz_post_id", "is", null);
+      const open = await sb.from("social_bot_drafts").select("id,postiz_post_id").eq("status", "approved").not("postiz_post_id", "is", null).neq("postiz_post_id", PENDING);
       if (open.error) return jsonResponse({ error: open.error.message }, 500);
       const rows = open.data ?? [];
       if (!rows.length) return jsonResponse({ configured, checked: 0, shipped: 0 });

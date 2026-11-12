@@ -371,6 +371,18 @@
         "raw": "p_agent_id uuid"
       }
     ],
+    "agent_launch_details": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
     "agentlink_award_top_producers": [
       {
         "all": [],

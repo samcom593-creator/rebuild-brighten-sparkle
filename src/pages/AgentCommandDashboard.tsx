@@ -4,8 +4,7 @@
 //   - v_agent_command_center (40 cols of derived stats per agent)
 //   - daily_production (30-day trend)
 //   - agent_lifetime_production (lifetime ALP + deal count)
-//   - agent_revenue_estimate (commission projection from contract %)
-//   - agent_goals (current month income goal)
+//   - agent_goals (current month income goal + comp %)
 //   - deals (recent 8 closed)
 //
 // No mock numbers, no fallback placeholders, no fluff. If a row is
@@ -121,19 +120,6 @@ interface Lifetime {
   last_production_date: string | null;
 }
 
-interface Revenue {
-  agent_id: string;
-  contract_pct: number | string;
-  override_rate: number | string;
-  personal_monthly_alp: number | string;
-  downline_monthly_alp: number | string;
-  personal_monthly_estimate: number | string;
-  override_monthly_estimate: number | string;
-  insuracloud_mtd: number | string;
-  insuracloud_direct: number | string;
-  insuracloud_override: number | string;
-  insuracloud_last_sync: string | null;
-}
 
 interface Goal {
   id: string; agent_id: string;
@@ -227,18 +213,12 @@ export default function AgentCommandDashboard() {
     },
   });
 
-  const revenue = useQuery({
-    queryKey: ["revenue-self", agentId],
-    enabled: !isAdmin && !!agentId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("agent_revenue_estimate" as any).select("contract_pct")
-        .eq("agent_id", agentId!)
-        .maybeSingle();
-      if (error) throw error;
-      return data as unknown as Revenue | null;
-    },
-  });
+  // PERF-LOAD-TIMES (2026-11-12): the agent_revenue_estimate read is gone. That view ends in
+  // `WHERE is_owner()` (Sam only) and this query only ran for non-admins, so it could never
+  // return a row for anyone who sent it; since MP-328 it 403'd outright (contract_percentage is
+  // column-locked), and React Query retried each 403 with backoff while the "Commission
+  // projected" tile showed a spinner. Comp % comes from the agent's own goal, as it always did
+  // whenever this returned nothing.
 
   const monthYear = format(new Date(), "yyyy-MM");
   const goal = useQuery({
@@ -309,7 +289,7 @@ export default function AgentCommandDashboard() {
   // v26 audit fix: was falling back to 100% comp when contract not set,
   // wildly inflating projected commission. Default to 35% (typical agent
   // contract floor) and show a "not set" indicator instead.
-  const rawCompPct = goal.data?.comp_percentage ?? revenue.data?.contract_pct;
+  const rawCompPct = goal.data?.comp_percentage;
   const hasCompSet = rawCompPct !== null && rawCompPct !== undefined;
   const compPct = (hasCompSet ? Number(rawCompPct) : 35) / 100;
   const monthApProjected = dayOfMonth > 0 ? (apMtd / dayOfMonth) * daysInMonth : 0;
@@ -446,7 +426,7 @@ export default function AgentCommandDashboard() {
           value={fmtUsd(monthCommissionProjected, true)}
           subValue={incomeGoal > 0 ? `${fmtPct(goalProgressPct)} of $${fmtNum(incomeGoal)} goal` : "Set a monthly goal →"}
           color="text-primary"
-          loading={cc.isLoading || revenue.isLoading}
+          loading={cc.isLoading}
         />
         <KpiTile
           icon={Crown}

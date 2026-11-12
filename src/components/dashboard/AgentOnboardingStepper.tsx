@@ -356,12 +356,15 @@ export function AgentOnboardingStepper({ agentId }: { agentId: string }) {
   const detailsQuery = useQuery({
     queryKey: detailsKey,
     queryFn: async (): Promise<LaunchDetails> => {
-      const { data: agent, error: agentError } = await supabase
-        .from("agents")
-        .select("display_name,user_id,profile_id,license_status,nipr_number,eft_ready,eo_certificate_url,eo_expires_at,contracted_at")
-        .eq("id", agentId)
-        .maybeSingle();
+      // nipr_number + eo_certificate_url are column-locked for authenticated since MP-328
+      // (20260827150000), so selecting them from agents 403'd on every load. The RPC returns
+      // these same nine fields for this one agent, to that agent or an admin only.
+      const { data: agentJson, error: agentError } = await supabase.rpc(
+        "agent_launch_details" as never,
+        { p_agent_id: agentId } as never,
+      );
       if (agentError) throw agentError;
+      const agent = (agentJson ?? null) as unknown as LaunchDetails["agent"];
 
       const profileQuery = agent?.profile_id
         ? supabase.from("profiles").select("full_name,email,phone,state,avatar_url,photo_url").eq("id", agent.profile_id).maybeSingle()

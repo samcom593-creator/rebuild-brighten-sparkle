@@ -333,6 +333,8 @@
     "public.free_leads_weekly_delivery_log",
     "public.function_errors",
     "public.getting_started_progress",
+    "public.glowup_leads",
+    "public.glowup_nurture_emails",
     "public.health_check_log",
     "public.hh_activity",
     "public.hh_applicants",

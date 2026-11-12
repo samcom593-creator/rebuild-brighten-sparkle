@@ -756,6 +756,15 @@ verify_jwt = false
 [functions.brand-metrics-ingest]
 verify_jwt = false
 
+[functions.glowup-lead]
+verify_jwt = false
+
+[functions.glowup-nurture]
+verify_jwt = false
+
+[functions.proof-wall]
+verify_jwt = false
+
 [functions.cron-inbound-brain-health]
 verify_jwt = false
 

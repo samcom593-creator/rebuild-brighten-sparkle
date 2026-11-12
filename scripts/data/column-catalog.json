@@ -1122,6 +1122,7 @@
       "potential_rating",
       "production_unlocked_at",
       "profile_id",
+      "proof_wall_consent",
       "recruiter_agent_id",
       "ref_slug",
       "slack_joined_at",
@@ -4220,6 +4221,31 @@
       "updated_at",
       "uploaded_id",
       "watched_welcome_video"
+    ],
+    "glowup_leads": [
+      "checklist_email_id",
+      "checklist_sent_at",
+      "created_at",
+      "email",
+      "first_name",
+      "id",
+      "nurture_last_at",
+      "nurture_step",
+      "page",
+      "phone",
+      "stage",
+      "utm_campaign",
+      "utm_content",
+      "utm_medium",
+      "utm_source"
+    ],
+    "glowup_nurture_emails": [
+      "body",
+      "day_offset",
+      "stage",
+      "step",
+      "subject",
+      "updated_at"
     ],
     "health_check_log": [
       "check_name",

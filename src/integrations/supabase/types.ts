@@ -29287,6 +29287,7 @@ export type Database = {
           potential_rating: number | null
           production_unlocked_at: string | null
           profile_id: string | null
+          proof_wall_consent: boolean
           recruiter_agent_id: string | null
           ref_slug: string | null
           slack_joined_at: string | null
@@ -29399,6 +29400,7 @@ export type Database = {
           potential_rating?: number | null
           production_unlocked_at?: string | null
           profile_id?: string | null
+          proof_wall_consent?: boolean
           recruiter_agent_id?: string | null
           ref_slug?: string | null
           slack_joined_at?: string | null
@@ -29511,6 +29513,7 @@ export type Database = {
           potential_rating?: number | null
           production_unlocked_at?: string | null
           profile_id?: string | null
+          proof_wall_consent?: boolean
           recruiter_agent_id?: string | null
           ref_slug?: string | null
           slack_joined_at?: string | null
@@ -73765,6 +73768,87 @@ export type Database = {
             referencedColumns: ["agent_id"]
           },
         ]
+      }
+      glowup_leads: {
+        Row: {
+          checklist_email_id: string | null
+          checklist_sent_at: string | null
+          created_at: string
+          email: string
+          first_name: string
+          id: string
+          nurture_last_at: string | null
+          nurture_step: number
+          page: string | null
+          phone: string | null
+          stage: number
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+        }
+        Insert: {
+          checklist_email_id?: string | null
+          checklist_sent_at?: string | null
+          created_at?: string
+          email: string
+          first_name: string
+          id?: string
+          nurture_last_at?: string | null
+          nurture_step?: number
+          page?: string | null
+          phone?: string | null
+          stage: number
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+        }
+        Update: {
+          checklist_email_id?: string | null
+          checklist_sent_at?: string | null
+          created_at?: string
+          email?: string
+          first_name?: string
+          id?: string
+          nurture_last_at?: string | null
+          nurture_step?: number
+          page?: string | null
+          phone?: string | null
+          stage?: number
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+        }
+        Relationships: []
+      }
+      glowup_nurture_emails: {
+        Row: {
+          body: string
+          day_offset: number
+          stage: number | null
+          step: number
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          day_offset: number
+          stage?: number | null
+          step: number
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          day_offset?: number
+          stage?: number | null
+          step?: number
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       health_check_log: {
         Row: {
@@ -193749,6 +193833,7 @@ export type Database = {
         }
         Returns: string
       }
+      agent_launch_details: { Args: { p_agent_id: string }; Returns: Json }
       agentlink_award_top_producers: {
         Args: never
         Returns: {
@@ -194105,6 +194190,20 @@ export type Database = {
         }[]
       }
       brand_command_summary: { Args: { p_week_start?: string }; Returns: Json }
+      brand_proof_wall_agents: {
+        Args: never
+        Returns: {
+          agent_id: string
+          consent: boolean
+          display_name: string
+          latest: string
+          plaques: number
+        }[]
+      }
+      brand_set_proof_wall_consent: {
+        Args: { p_agent_id: string; p_consent: boolean }
+        Returns: boolean
+      }
       bump_manager_post: {
         Args: { p_agent_id?: string; p_delta?: number }
         Returns: number

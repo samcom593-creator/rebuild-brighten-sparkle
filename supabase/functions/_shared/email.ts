@@ -51,6 +51,9 @@ export interface SendEmailResult {
 // and a NEW one fails the ratchet. The sending domain stays apex-financial.org
 // (verified in Resend; changing it would reset reputation).
 export const BRAND_FROM = "Sam at Galaxy Financial <sam@apex-financial.org>";
+// Personal-brand mail (sell4daddy.com: the Glow-Up checklist and its sequence). Same verified sending
+// domain, Sam's own name: these readers signed up to hear from him, not from the agency.
+export const PERSONAL_FROM = "Samuel James <sam@apex-financial.org>";
 // Reply-To is the inbox the pipeline owner actually works. EMAIL_REPLY_TO is
 // unset in edge secrets today (checked 2026-11-10). MP-ONBOARD-ANCHOR-PKG1
 // (2026-11-12): the value goes through resolveReplyTo(), so an empty secret or

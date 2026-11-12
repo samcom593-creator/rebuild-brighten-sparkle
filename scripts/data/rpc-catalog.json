@@ -1465,6 +1465,28 @@
         "raw": ""
       }
     ],
+    "brand_proof_wall_agents": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "brand_set_proof_wall_consent": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_consent"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_consent"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_consent boolean"
+      }
+    ],
     "bridge_hh_hire": [
       {
         "all": [
@@ -9118,6 +9140,16 @@
         ],
         "unnamed": false,
         "raw": "p_application_id uuid, p_manager_id uuid DEFAULT NULL::uuid"
+      }
+    ],
+    "public_proof_wall": [
+      {
+        "all": [
+          "p_limit"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_limit integer DEFAULT 12"
       }
     ],
     "public_seminar_meeting": [

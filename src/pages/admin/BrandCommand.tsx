@@ -22,6 +22,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { TonePill } from "@/components/ui/delight/ToneBubble";
 import { TONE_CLASS } from "@/lib/tones";
 import { cn } from "@/lib/utils";
+import { AttributedPosts, GlowUpPanel, ProofWallPanel, type AttributedPost, type GlowUpStats } from "@/components/brand/BrandGrowthPanels";
 import {
   ACCOUNTS, FIVE_NUMBERS, LANE_TONE, LANE_WORD, REVIEW_RULES, accountLabel, addDaysKey, conversion, fmtNum, laneState, phoenixDay,
   pillarLabel, weekPace, type AccountKey, type Lane,
@@ -34,6 +35,8 @@ interface Summary {
   funnel: { key: string; label: string; value: number; prev: number }[];
   views_days_logged: number;
   post_sync_at: string | null;
+  attributed?: AttributedPost[];
+  glowup?: GlowUpStats;
 }
 interface MetricRow { metric_date: string; account: string; metric: string; value: number; source: string }
 interface PostRow { id: number; platform: string; account: string | null; title: string | null; url: string | null; views: number | null; category: string | null; format: string; posted_at: string | null }
@@ -108,6 +111,7 @@ export default function BrandCommand() {
   const qc = useQueryClient();
   const [entryOpen, setEntryOpen] = useState(false);
   const [remaking, setRemaking] = useState<number | null>(null);
+  const [remakingCard, setRemakingCard] = useState<string | null>(null);
 
   const s = useQuery({ queryKey: ["brand-command", "summary"], queryFn: fetchSummary, staleTime: 60_000 });
   const b = useQuery({ queryKey: ["brand-command", "board"], queryFn: fetchBoard, staleTime: 60_000 });
@@ -166,6 +170,18 @@ export default function BrandCommand() {
       brief: { remake_of: p.url, account: postAccount(p) ?? "", pillar: p.category ?? "", format: long ? "long-lesson" : "short", source_views: p.views ?? 0 },
     });
     setRemaking(null);
+    if (error) { toast.error(`Could not create the card: ${error.message}`); return; }
+    toast.success("Added to the Launch Board as an idea.");
+  };
+
+  const remakeCard = async (p: AttributedPost) => {
+    setRemakingCard(p.card_id);
+    const { error } = await supabase.from("content_cards").insert({
+      title: `Remake: ${p.title}`.slice(0, 180), hook: p.hook ?? "", brand: "SH", content_type: "short", job: "REACH", status: "idea",
+      sort: Math.floor(Date.now() / 1000),
+      brief: { remake_of: p.url ?? p.card_id, account: p.account ?? "", pillar: p.pillar ?? "", source_leads: p.leads, source_applications: p.applications },
+    });
+    setRemakingCard(null);
     if (error) { toast.error(`Could not create the card: ${error.message}`); return; }
     toast.success("Added to the Launch Board as an idea.");
   };
@@ -272,7 +288,7 @@ export default function BrandCommand() {
       {!review && s.data && (
         <section aria-labelledby="bc-funnel" className="mb-6">
           <h2 id="bc-funnel" className="mb-2 text-lg font-bold tracking-tight">Funnel, last 7 days</h2>
-          <ol className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+          <ol className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {s.data.funnel.map((f, i) => {
               const noViews = f.key === "views" && s.data.views_days_logged === 0;
               const before = i > 0 ? s.data.funnel[i - 1] : null;
@@ -353,6 +369,7 @@ export default function BrandCommand() {
           <h2 id="bc-working" className="mb-2 text-lg font-bold tracking-tight">What's working, last 7 days</h2>
           {b.isLoading ? <Skeleton className="h-32 w-full" /> : (
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+              <AttributedPosts rows={s.data?.attributed ?? []} onRemake={(p) => void remakeCard(p)} busyId={remakingCard} />
               <div className="rounded-xl border border-border/60 bg-card p-3">
                 <h3 className="mb-1 text-[15px] font-bold">Top 5 by views</h3>
                 {topByViews.length === 0 ? (
@@ -419,6 +436,9 @@ export default function BrandCommand() {
           )}
         </section>
       )}
+
+      {!review && <GlowUpPanel stats={s.data?.glowup} onChanged={refresh} />}
+      {!review && <ProofWallPanel />}
 
       {/* Review: the two rules */}
       {review && s.data && (

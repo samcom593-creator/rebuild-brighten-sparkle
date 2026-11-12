@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-11-12T06:49:07Z",
+ "_generated_at": "2026-11-12T07:08:45Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -119,6 +119,7 @@
   "brand_command_summary": "jsonb",
   "brand_lane_value": "numeric",
   "brand_metrics_youtube_pull": "jsonb",
+  "brand_set_proof_wall_consent": "boolean",
   "bridge_hh_hire": "jsonb",
   "broadcast_to_all_channels": "jsonb",
   "build_plaque_svg": "text",
@@ -2707,6 +2708,45 @@
     "public",
     "ssn",
     "vault"
+   ]
+  },
+  "brand_proof_wall_agents.agent_id": {
+   "candidates": [
+    "plaque_awards.agent_id"
+   ],
+   "body_literals": [
+    "admin",
+    "public"
+   ]
+  },
+  "brand_proof_wall_agents.consent": {
+   "candidates": [],
+   "body_literals": [
+    "admin",
+    "public"
+   ]
+  },
+  "brand_proof_wall_agents.display_name": {
+   "candidates": [
+    "agents.display_name"
+   ],
+   "body_literals": [
+    "admin",
+    "public"
+   ]
+  },
+  "brand_proof_wall_agents.latest": {
+   "candidates": [],
+   "body_literals": [
+    "admin",
+    "public"
+   ]
+  },
+  "brand_proof_wall_agents.plaques": {
+   "candidates": [],
+   "body_literals": [
+    "admin",
+    "public"
    ]
   },
   "calendar_owner_conflicts.ends_at": {
@@ -17633,6 +17673,34 @@
     "month",
     "public",
     "year"
+   ]
+  },
+  "public_proof_wall.label": {
+   "candidates": [],
+   "body_literals": [
+    "Mon YYYY",
+    "public"
+   ]
+  },
+  "public_proof_wall.month": {
+   "candidates": [],
+   "body_literals": [
+    "Mon YYYY",
+    "public"
+   ]
+  },
+  "public_proof_wall.production": {
+   "candidates": [],
+   "body_literals": [
+    "Mon YYYY",
+    "public"
+   ]
+  },
+  "public_proof_wall.who": {
+   "candidates": [],
+   "body_literals": [
+    "Mon YYYY",
+    "public"
    ]
   },
   "public_seminar_meeting.label": {

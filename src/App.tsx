@@ -285,7 +285,7 @@ const AdminStrikes = lazy(() => import("./pages/AdminStrikes"));
 const MyStrikes = lazy(() => import("./pages/MyStrikes"));
 // v9 Wave A complaint #19: ChargesAudit no longer mounted; route redirects.
 // const ChargesAudit = lazy(() => import("./pages/ChargesAudit"));
-const SocialMediaBot = lazy(() => import("./pages/admin/SocialMediaBot"));
+const SocialMediaCenter = lazy(() => import("./pages/admin/SocialMediaCenter"));
 const BrandCommand = lazy(() => import("./pages/admin/BrandCommand"));
 const TelegramBot = lazy(() => import("./pages/admin/TelegramBot"));
 // v9 Wave A complaint #20: ConductCommandCenter no longer mounted; route redirects.
@@ -889,7 +889,7 @@ const App = () => (
                            {/* Social Media Bot — APEX content engine dashboard */}
                            {/* Brand Command (MP-BRAND-ENGINE): weekly scorecard, funnel, accounts. Admin only. */}
                            <Route path="/dashboard/admin/brand-command" element={<ProtectedRoute requireAdmin><BrandCommand /></ProtectedRoute>} />
-                           <Route path="/dashboard/admin/social-media-bot" element={<ProtectedRoute requireAdmin><SocialMediaBot /></ProtectedRoute>} />
+                           <Route path="/dashboard/admin/social-media-bot" element={<ProtectedRoute requireAdmin><SocialMediaCenter /></ProtectedRoute>} />
                            {/* Telegram Bot — APEX pre-hire + onboarding operating layer */}
                            <Route path="/dashboard/admin/telegram-bot" element={<ProtectedRoute requireAdmin><TelegramBot /></ProtectedRoute>} />
                            {/* Sam HQ — Sam's command surface: today's tasks, week strip, what shipped, leaks, bots */}

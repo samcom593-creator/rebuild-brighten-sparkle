@@ -266,6 +266,7 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
     items: [
       { label: "Money Inbox", href: "/dashboard/money-inbox", icon: MessageSquareDollar, adminOnly: true, samOnly: true },
       { label: "Brand Command", href: "/dashboard/admin/brand-command", icon: Crown, adminOnly: true },
+      { label: "Social Media Center", href: "/dashboard/admin/social-media-bot", icon: Megaphone, adminOnly: true },
       { label: "Launch Board", href: "/dashboard/launch-board", icon: Megaphone, adminOnly: true, samOnly: true }, // camera library: Sam only
       { label: "Reports", href: "/dashboard/analytics", icon: BarChart3, adminOnly: true },
       { label: "Finances", href: "/dashboard/finances", icon: WalletCards, adminOnly: true },

@@ -1,0 +1,72 @@
+# Are the funnel's TWO search-crawl entry points (/robots.txt + /sitemap.xml)
+# still SERVED on the live edge? (MP-WIB-CRAWL-ENTRYPOINTS-LIVE)
+#
+# Google's entire crawl of apex-financial.org — the agency's recruiting funnel,
+# whose organic + Google-for-Jobs (/careers/*) inbound is a load-bearing lead
+# source — starts at two static files in public/: robots.txt declares Allow:/
+# plus the Sitemap: URL, and sitemap.xml lists the URLs to index (/apply, /vsl,
+# /careers/*, …).
+#
+# check-robots-indexable (commit gate) is EXPLICITLY "all static, no build, no
+# network": it reads public/robots.txt + public/sitemap.xml from disk and proves
+# they agree. check-sitemap-public-render reads the route list from the LOCAL
+# public/sitemap.xml and renders each route. NEITHER makes one HTTP request to
+# the live-served FILE — so the files can be perfect in the repo and absent from
+# the live edge while both stay green. vercel.json's catch-all rewrite
+# /((?!api/|assets/|fonts/|img/).*) -> /index.html means a dropped root static
+# falls through to the SPA shell and the edge answers 200 text/html, NOT 404
+# (proven on prod 2026-11-12: GET /sitemap-DOESNOTEXIST.xml -> 200 text/html).
+# Google then reads HTML garbage at both entry points and the funnel silently
+# deindexes — at HTTP 200 the whole way. route-smoke proves the shell 200s,
+# which is exactly that masquerade. Same 465-InsuraCloud soft-success class as
+# the share-card-live + vsl-media-live guards.
+#
+# Deliberately a SCHEDULE, not a commit gate. It grades a LIVE edge response, so
+# wiring the over-the-wire probe into verify:core would block every commit on a
+# condition only a redeploy can clear. The pure classifier IS gated every commit
+# via check:crawl-entrypoints-live-selftest in verify:core; only the live probe
+# runs here. A push that touches the guard/workflow re-runs it immediately.
+#
+# Needs no secrets: robots.txt + sitemap.xml are public static files.
+#
+# Can't cry wolf (check-crawl-entrypoints-live.mjs exit contract):
+#   exit 1 DEFECT        -> entry point genuinely gone/masquerading w/ egress proven up: FAIL (red, Sam sees it)
+#   exit 3 UNRESOLVED    -> transient 5xx/timeout: warning only, run stays green
+#   exit 0 CLEAN/UNKNOWN -> served live, or egress itself down (not trusted): green
+name: crawl-entrypoints-live
+
+on:
+  schedule:
+    - cron: "37 14 * * *" # daily ~07:37 Phoenix, offset from share-card(22)/vsl-media/apply-form-render; GH schedules drift (p90 ~40min, MP-304)
+  workflow_dispatch:
+  push:
+    paths:
+      - "scripts/check-crawl-entrypoints-live.mjs"
+      - ".github/workflows/crawl-entrypoints-live.yml"
+
+jobs:
+  crawl-entrypoints-live:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      # Prove the detector's own alive/dead/unresolved + chain + control-gating
+      # logic is intact BEFORE trusting its live verdict (deterministic, local).
+      - name: Selftest crawl-entrypoint detector (fixtures, both directions)
+        run: npm run check:crawl-entrypoints-live-selftest
+      # Live probe. Only a real DEFECT (entry point gone/masquerading, egress up)
+      # fails the run; a transient UNRESOLVED (exit 3) warns without reddening it.
+      - name: Probe live /robots.txt + /sitemap.xml liveness
+        run: |
+          node scripts/check-crawl-entrypoints-live.mjs; code=$?
+          if [ "$code" = "3" ]; then
+            echo "::warning::crawl entry points UNRESOLVED — neither proved alive nor dead (transient edge 5xx/timeout). Not failing; re-run to confirm."
+            exit 0
+          fi
+          exit $code
+      - name: Post failure summary
+        if: failure()
+        run: |
+          echo "::warning::crawl-entrypoints-live FAILED — either the detector selftest regressed (the guard's own alive/dead logic, not the site), OR a search-crawl entry point for the recruiting funnel is DEAD: public/robots.txt and/or public/sitemap.xml is missing from the live deploy and vercel.json's catch-all is serving the HTML shell at 200 in its place, so Google reads garbage where it expects robots directives / the URL set and the funnel's deep routes (/apply, /vsl, /careers/*) silently leave the index. Fix: restore the file(s) in public/ and redeploy; re-verify source agreement with scripts/check-robots-indexable.mjs. See the step output for the exact URL + reason."

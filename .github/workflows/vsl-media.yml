@@ -1,0 +1,68 @@
+# Is the hosted VSL video + poster still ALIVE? (MP-WIB-VSL-MEDIA-LIVE)
+#
+# The public VSL is the funnel's most persuasive asset: the homepage hero plays
+# it, /vsl is built around it, and index.html's VideoObject structured data
+# (contentUrl + thumbnailUrl) hands it to Google video rich results + AI-search.
+# All three read ONE pair of Supabase storage objects pinned in
+# src/lib/vslMedia.ts — apex-vsl.mp4 and apex-vsl-poster.jpg — which live in a
+# public bucket OUTSIDE the git tree and OUTSIDE Vite's content-hashed build.
+#
+# check-vsl-sync (commit gate) proves those five surfaces REFERENCE the same
+# release; it never makes one HTTP request, so all five can agree on a URL that
+# 404s. route-smoke proves the /vsl HTML shell 200s, not the <video><source>.
+# The asset-graph guard resolves JS/CSS chunks, not storage media. So a re-cut
+# that bumps the base without uploading, an accidental object delete, or the
+# bucket flipping private kills the player on / and /vsl AND points the Google
+# VideoObject at a dead URL — silently, independent of any deploy.
+#
+# Deliberately a SCHEDULE, not a commit gate. It grades a LIVE third-party
+# storage origin, so wiring the over-the-wire probe into verify:core would block
+# every commit on a condition only an upload can clear — the permanently-red
+# guard this repo keeps paying for. The pure classifier IS gated every commit
+# via check:vsl-media-live-selftest in verify:core; only the live probe runs
+# here. A push that touches the guard/workflow re-runs it immediately.
+#
+# Needs no secrets: the objects are in a PUBLIC bucket.
+#
+# Can't cry wolf (check-vsl-media-live.mjs exit contract):
+#   exit 1 DEFECT      -> object genuinely gone/forbidden w/ egress proven up: FAIL (red, Sam sees it)
+#   exit 3 UNRESOLVED  -> transient 5xx/timeout: warning only, run stays green
+#   exit 0 CLEAN/UNKNOWN -> alive, or egress itself down (not trusted): green
+name: vsl-media
+
+on:
+  schedule:
+    - cron: "52 13 * * *" # daily ~06:52 Phoenix, offset from edge-boot/funnel-capture; GH schedules drift (p90 ~40min, MP-304)
+  workflow_dispatch:
+  push:
+    paths:
+      - "scripts/check-vsl-media-live.mjs"
+      - "src/lib/vslMedia.ts"
+      - ".github/workflows/vsl-media.yml"
+
+jobs:
+  vsl-media:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      # Prove the detector's own alive/dead/unresolved + control-gating logic is
+      # intact BEFORE trusting its live verdict (deterministic, local-only).
+      - name: Selftest VSL-media detector (fixtures, both directions)
+        run: npm run check:vsl-media-live-selftest
+      # Live probe. Only a real DEFECT (object gone, egress up) fails the run;
+      # a transient UNRESOLVED (exit 3) warns without reddening the deploy.
+      - name: Probe hosted VSL video + poster liveness
+        run: |
+          node scripts/check-vsl-media-live.mjs; code=$?
+          if [ "$code" = "3" ]; then
+            echo "::warning::VSL media UNRESOLVED — an object neither proved alive nor dead (transient storage 5xx/timeout). Not failing; re-run to confirm."
+            exit 0
+          fi
+          exit $code
+      - name: Post failure summary
+        if: failure()
+        run: |
+          echo "::warning::vsl-media FAILED — either the detector selftest regressed (the guard's own alive/dead logic, not the site), OR the hosted VSL video/poster the funnel serves is DEAD: the homepage hero player, the /vsl player, and the Google VideoObject (contentUrl/thumbnailUrl) all point at a storage object that no longer resolves. A re-cut bumped src/lib/vslMedia.ts without uploading, the object was deleted, or the bucket flipped private. See the step output above for the exact object + status."

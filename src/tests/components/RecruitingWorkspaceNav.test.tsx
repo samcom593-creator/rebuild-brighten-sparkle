@@ -1,8 +1,13 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RecruitingWorkspaceNav } from "@/components/recruiting/RecruitingWorkspaceNav";
+
+// The Licensed tab is staff-only (admin, VA manager, VA). null = rendered outside an AuthProvider.
+let auth: { isAdmin: boolean; isVaManager: boolean; isVa: boolean } | null = null;
+vi.mock("@/hooks/useAuth", () => ({ useOptionalAuth: () => auth }));
+beforeEach(() => { auth = null; });
 
 function renderNav(pathname: string) {
   render(<MemoryRouter initialEntries={[pathname]}><RecruitingWorkspaceNav /></MemoryRouter>);
@@ -62,5 +67,33 @@ describe("RecruitingWorkspaceNav", () => {
     expect(strip.className).not.toMatch(/(^|\s)min-w-max/);
     expect(nav.className).not.toMatch(/(^|\s)overflow-x-auto/);
     for (const link of screen.getAllByRole("link")) expect(link.className).toContain("min-h-11");
+  });
+
+  it("shows the Licensed tab to staff, right after the Call list and ahead of New hires", () => {
+    auth = { isAdmin: true, isVaManager: false, isVa: false };
+    renderNav("/dashboard/recruiting/licensed");
+    const licensed = screen.getByRole("link", { name: "Licensed" });
+    expect(licensed.getAttribute("href")).toBe("/dashboard/recruiting/licensed");
+    expect(licensed.getAttribute("aria-current")).toBe("page");
+    // The Call list is an exact match, so it is not also marked open on the Licensed tab.
+    expect(screen.getByRole("link", { name: "Call list" }).getAttribute("aria-current")).toBeNull();
+    const order = screen.getAllByRole("link").map((a) => a.getAttribute("aria-label"));
+    expect(order.slice(0, 3)).toEqual(["Call list", "Licensed", "Pipeline"]);
+    expect(order.indexOf("Licensed")).toBeLessThan(order.indexOf("New hires"));
+    cleanup();
+    auth = { isAdmin: false, isVaManager: false, isVa: true };
+    renderNav("/dashboard/recruiting");
+    expect(screen.getByRole("link", { name: "Licensed" })).toBeTruthy();
+  });
+
+  it("hides the Licensed tab from managers, recruiters and anyone without auth (its page is staff-only)", () => {
+    auth = { isAdmin: false, isVaManager: false, isVa: false };
+    renderNav("/dashboard/recruiting");
+    expect(screen.queryByRole("link", { name: "Licensed" })).toBeNull();
+    cleanup();
+    auth = null;
+    renderNav("/dashboard/recruiting");
+    expect(screen.queryByRole("link", { name: "Licensed" })).toBeNull();
+    expect(screen.getByRole("link", { name: "New hires" })).toBeTruthy();
   });
 });

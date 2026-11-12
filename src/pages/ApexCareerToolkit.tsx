@@ -349,7 +349,7 @@ export default function ApexCareerToolkit() {
         actions={(
           <>
             <Button asChild variant="outline" className="h-10 gap-2 sm:h-9">
-              <Link to="/admin/licensed-inbox">
+              <Link to="/dashboard/recruiting/licensed">
                 <ArrowLeft className="h-4 w-4" /> Licensed Inbox
               </Link>
             </Button>

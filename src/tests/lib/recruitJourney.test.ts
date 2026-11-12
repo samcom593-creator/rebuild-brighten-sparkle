@@ -60,7 +60,7 @@ function row(over: Partial<JourneyRow> = {}): JourneyRow {
 
 describe("the seven steps", () => {
   it("are applied, contacted, interview, licensing, licensed, contracted, first deal, each with a plain meaning and its own tone where the palette allows", () => {
-    expect(RECRUIT_STEPS.map((s) => s.label)).toEqual(["Applied", "Contacted", "Interview", "Licensing", "Licensed", "Contracted", "First deal"]);
+    expect(RECRUIT_STEPS.map((s) => s.label)).toEqual(["Applied", "Contacted", "Interview", "Getting licensed", "Licensed", "Contracted", "First deal"]);
     expect(STEP_COUNT).toBe(7);
     for (const s of RECRUIT_STEPS) expect(s.means.length).toBeGreaterThan(10);
     expect(RECRUIT_STEPS.map((s) => recruitStepTone(s.key))).toEqual(["slate", "cool", "warm", "royal", "good", "gold", "good"]);
@@ -89,7 +89,7 @@ describe("the seven steps", () => {
   it("say the engine's own stage beside the step only when it adds something", () => {
     expect(recruitStep(row(), NOW)).toMatchObject({ index: 1, key: "applied", label: "Applied", detail: null, reason: "stage" });
     expect(recruitStep(row({ stage_key: "contacted", stage_name: "Contacted" }), NOW).detail).toBeNull();
-    expect(recruitStep(row({ stage_key: "started_prelicense", stage_name: "In Pre-License" }), NOW)).toMatchObject({ label: "Licensing", detail: "In Pre-License" });
+    expect(recruitStep(row({ stage_key: "started_prelicense", stage_name: "In Pre-License" }), NOW)).toMatchObject({ label: "Getting licensed", detail: "In Pre-License" });
     expect(recruitStep(row({ person_type: "agent", stage_key: "course_started", stage_name: "Galaxy Course Started" }), NOW)).toMatchObject({ label: "Contracted", detail: "Galaxy Course Started" });
   });
 

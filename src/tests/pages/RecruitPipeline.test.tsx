@@ -84,9 +84,10 @@ vi.mock("@/integrations/supabase/client", () => ({
     functions: { invoke: () => Promise.resolve({ data: null, error: null }) },
   },
 }));
-vi.mock("@/hooks/useAuth", () => ({
-  useAuth: () => ({ user: { id: "me" }, isAdmin: true, isManager: false, isVa: false, isVaManager: false, isRecruiter: false }),
-}));
+vi.mock("@/hooks/useAuth", () => {
+  const auth = { user: { id: "me" }, isAdmin: true, isManager: false, isVa: false, isVaManager: false, isRecruiter: false };
+  return { useAuth: () => auth, useOptionalAuth: () => auth };
+});
 vi.mock("@/hooks/useConfirm", () => ({ useConfirm: () => confirmMock }));
 vi.mock("@/lib/noLongerWithUs", () => ({
   markNoLongerWithUs: async (args: unknown) => { removed.calls.push(args); return { ok: true, message: "removed", emailFailed: false }; },
@@ -224,7 +225,7 @@ describe("New hires", () => {
     expect(within(chips()).getByRole("button", { name: /^All\s*4$/ })).toBeInTheDocument();
     expect(within(chips()).getByRole("button", { name: /^Applied\s*1$/ })).toBeInTheDocument();
     expect(within(chips()).getByRole("button", { name: /^Contacted\s*1$/ })).toBeInTheDocument();
-    expect(within(chips()).getByRole("button", { name: /^Licensing\s*1$/ })).toBeInTheDocument();
+    expect(within(chips()).getByRole("button", { name: /^Getting licensed\s*1$/ })).toBeInTheDocument();
     expect(within(chips()).getByRole("button", { name: /^First deal\s*1$/ })).toBeInTheDocument();
     expect(within(chips()).queryByRole("button", { name: /^Interview/ })).toBeNull();
     for (const b of within(chips()).getAllByRole("button")) expect(b.textContent).not.toMatch(/^\d+\./);
@@ -232,7 +233,7 @@ describe("New hires", () => {
     expect(within(chips()).queryByRole("button", { name: /^Closed/ })).toBeNull();
     // Section headings carry the step's name, not its number.
     expect(screen.getByRole("heading", { level: 2, name: "Applied" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: "Licensing" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Getting licensed" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { level: 2, name: /^\d+\./ })).toBeNull();
 
     fireEvent.click(tile("Stuck 7+ days"));
@@ -325,7 +326,7 @@ describe("New hires", () => {
     expect(barIn(rowOf("Di Park"))).toHaveAttribute("data-filled", "7");
     expect(barIn(rowOf("Cy Dunn"))).toHaveAttribute("aria-hidden", "true");
     expect(within(rowOf("Cy Dunn")).getByText("Step 4 of 7:")).toHaveClass("sr-only");
-    expect(within(rowOf("Cy Dunn")).getByText("Licensing")).toBeInTheDocument();
+    expect(within(rowOf("Cy Dunn")).getByText("Getting licensed")).toBeInTheDocument();
     // The engine's finer stage is said beside the step when it adds something, never repeated.
     expect(within(rowOf("Cy Dunn")).getByText(/·\sHired, unlicensed/)).toBeInTheDocument();
     expect(within(rowOf("Jo Agent")).getByText("Contracted")).toBeInTheDocument();
@@ -437,7 +438,7 @@ describe("New hires", () => {
     await screen.findByText("Ana Ruiz");
     fireEvent.click(screen.getByRole("button", { name: "What the steps mean" }));
     const legend = await screen.findByRole("dialog");
-    for (const word of ["Applied.", "Contacted.", "Interview.", "Licensing.", "Licensed.", "Contracted.", "First deal."]) {
+    for (const word of ["Applied.", "Contacted.", "Interview.", "Getting licensed.", "Licensed.", "Contracted.", "First deal."]) {
       expect(within(legend).getByText(word)).toBeInTheDocument();
     }
     expect(within(legend).getByText(/matched by email first, then phone/)).toBeInTheDocument();
@@ -571,7 +572,8 @@ describe("New hires", () => {
     expect(addIg).toHaveTextContent("Add Instagram");
     expect(addIg.className).toMatch(/\bmin-h-11\b/);
     expect(addIg.className).toMatch(/\btext-sm\b/);
-    expect(screen.getByText("Licensed", { selector: "span" }).className).toMatch(/text-\[13px\]/);
+    // The row badge, not the "Licensed" recruiting tab (staff see that tab; this mock is an admin).
+    expect(within(rowOf("Di Park")).getByText("Licensed", { selector: "span" }).className).toMatch(/text-\[13px\]/);
     for (const chip of within(chips()).getAllByRole("button")) h11(chip);
 
     const people = screen.getByRole("region", { name: "People" });
@@ -621,7 +623,7 @@ describe("New hires", () => {
     expect(cyBubble.textContent).toBe("CD");
     expect(cyBubble).toHaveAttribute("aria-hidden", "true");
     expect(cyBubble.className).toMatch(/\btext-tone-royal\b/);
-    expect(within(cyRow).getByText("Licensing").className).toMatch(/\btext-tone-royal\b/);
+    expect(within(cyRow).getByText("Getting licensed").className).toMatch(/\btext-tone-royal\b/);
     // One stage vocabulary per row: the onboarding rung is not said again beside the name.
     expect(within(cyRow).queryByText("Field training")).toBeNull();
     // Di is at First deal, in the going-well tone (the stage box beside it says the engine's stage).
@@ -637,7 +639,7 @@ describe("New hires", () => {
     // The chips: each step carries its dot in its tone and takes that tint when chosen. The counts
     // and aria-pressed are as before.
     expect(chips().className).toMatch(/\bapex-rise-list\b/);
-    const licensing = within(chips()).getByRole("button", { name: /^Licensing\s*2$/ });
+    const licensing = within(chips()).getByRole("button", { name: /^Getting licensed\s*2$/ });
     expect(licensing.querySelector(".bg-tone-royal")).not.toBeNull();
     expect(within(chips()).getByRole("button", { name: /^Applied\s*1$/ }).querySelector(".bg-tone-slate")).not.toBeNull();
     const firstDeal = within(chips()).getByRole("button", { name: /^First deal\s*1$/ });

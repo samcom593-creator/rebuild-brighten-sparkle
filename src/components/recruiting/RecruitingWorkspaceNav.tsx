@@ -1,7 +1,8 @@
 import { Link, useLocation } from "react-router-dom";
-import { BookOpenCheck, CalendarClock, LayoutList, UserCheck, Users } from "lucide-react";
+import { BadgeCheck, BookOpenCheck, CalendarClock, LayoutList, UserCheck, Users } from "lucide-react";
 
 import { resolveBrand } from "@/config/brand";
+import { useOptionalAuth } from "@/hooks/useAuth";
 import { TONE_CLASS } from "@/lib/tones";
 import { cn } from "@/lib/utils";
 
@@ -10,8 +11,12 @@ const trainingLabel = `${resolveBrand().platformName} Training`;
 // Each page's tone (src/lib/tones.ts, 2026-10-28) is the colour its own header bubble wears, so
 // the open tab's icon matches the page it opened: the Call list is the brand moment, the
 // Pipeline new and scheduled, New hires going well, the Calendar a nudge, training paperwork.
+// "Licensed" (2026-11-12, Sam: "I need a tab that shows me licensed agents ... call them and bring them on
+// the team") sits right after the Call list, ahead of New hires: licensed people can write business the day
+// they join. It is staff-only like the page behind it (admin, VA manager, VA), so it only shows for them.
 const WORKSPACE_VIEWS = [
   { label: "Call list", detail: "Contact, outcome, next step", href: "/dashboard/recruiting", icon: Users, tone: "gold", exact: true },
+  { label: "Licensed", detail: "Licensed agents to bring on", href: "/dashboard/recruiting/licensed", icon: BadgeCheck, tone: "good", staffOnly: true },
   { label: "Pipeline", detail: "Everyone, one view", href: "/dashboard/recruiting/pipeline", icon: LayoutList, tone: "cool" },
   { label: "New hires", detail: "Hire to first deal", href: "/dashboard/recruits", icon: UserCheck, tone: "good" },
   { label: "Calendar", detail: "Interviews and calls", href: "/dashboard/calendar", icon: CalendarClock, tone: "warm" },
@@ -28,11 +33,14 @@ const WORKSPACE_VIEWS = [
  */
 export function RecruitingWorkspaceNav() {
   const { pathname } = useLocation();
+  const auth = useOptionalAuth();
+  const isStaff = !!auth && (auth.isAdmin || auth.isVaManager || auth.isVa);
+  const views = WORKSPACE_VIEWS.filter((view) => !("staffOnly" in view && view.staffOnly) || isStaff);
 
   return (
     <nav aria-label="Recruiting workspace" className="border-b border-border sm:overflow-x-auto">
       <div className="flex flex-wrap gap-1 sm:min-w-max sm:flex-nowrap">
-        {WORKSPACE_VIEWS.map((view) => {
+        {views.map((view) => {
           // Interviews and follow-ups are no longer separate destinations: interviews are booked
           // from Calendar and the worklist, follow-ups are the worklist's due and overdue queues.
           const active = "exact" in view && view.exact

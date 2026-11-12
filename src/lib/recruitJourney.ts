@@ -34,7 +34,9 @@ export const RECRUIT_STEPS: readonly RecruitStepDef[] = [
   { key: "applied", label: "Applied", means: "Sent an application. Nobody has talked to them yet." },
   { key: "contacted", label: "Contacted", means: "Someone on the team reached them." },
   { key: "interview", label: "Interview", means: "Booked a Licensed Call or Leader Call on Calendly." },
-  { key: "licensing", label: "Licensing", means: "Getting licensed: the course, the exam, or hired and still needs the license." },
+  // "Getting licensed", not "Licensing" (2026-11-12): Sam tapped "Licensing" looking for licensed agents. Licensed
+  // people to call are on the Licensed tab (/dashboard/recruiting/licensed); this step is the course and the exam.
+  { key: "licensing", label: "Getting licensed", means: "Getting licensed: the course, the exam, or hired and still needs the license." },
   { key: "licensed", label: "Licensed", means: "Licensed and past the interview. Contracting is next." },
   { key: "contracted", label: "Contracted", means: "Hired as an agent and working through onboarding." },
   { key: "first_deal", label: "First deal", means: "Closed a first deal." },
@@ -121,7 +123,7 @@ export interface RecruitStep {
   /** 1..7 on the journey; null for a closed person or a stage this page has no step for. */
   index: number | null;
   key: RecruitStepKey | null;
-  /** The step in words: "Licensing", or "Closed", or the stage's own name when it has no step. */
+  /** The step in words: "Getting licensed", or "Closed", or the stage's own name when it has no step. */
   label: string;
   /** The finer stage beside it ("In Pre-License", "Interview was Oct 12"); null when it would repeat the label. */
   detail: string | null;

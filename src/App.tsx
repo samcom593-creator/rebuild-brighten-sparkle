@@ -553,6 +553,8 @@ const App = () => (
                         as redirects so bookmarks keep their filters/query. */}
                     <Route path="/dashboard/recruiting" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va", "recruiter"]}><DashboardApplicants /></ProtectedRoute>} />
                     <Route path="/dashboard/recruiting/pipeline" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va", "recruiter"]}><RecruitingPipeline /></ProtectedRoute>} />
+                    {/* Licensed agents to bring on (2026-11-12): the Licensed Inbox as a recruiting tab. Staff only, same as before. */}
+                    <Route path="/dashboard/recruiting/licensed" element={<ProtectedRoute requireAdmin allowRoles={["va_manager", "va"]}><LicensedInbox /></ProtectedRoute>} />
                     <Route path="/dashboard/recruiting/interviews" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va", "recruiter"]}><Interviews /></ProtectedRoute>} />
                     <Route path="/dashboard/recruiting/follow-ups" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va", "recruiter"]}><InterviewRecovery /></ProtectedRoute>} />
                     <Route path="/dashboard/recruiting/hires" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va", "recruiter"]}><DashboardApplicants /></ProtectedRoute>} />
@@ -680,7 +682,7 @@ const App = () => (
                         8-rung onboarding sequence per active agent; rung 2 deep-links to /admin/missing-al-link. */}
                     <Route path="/dashboard/onboarding-ladder" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><OnboardingLadder /></ProtectedRoute>} />
                     {/* MP-232 regression restore: licensed applicants need the immediate-call inbox. */}
-                    <Route path="/admin/licensed-inbox" element={<ProtectedRoute requireAdmin allowRoles={["va_manager", "va"]}><LicensedInbox /></ProtectedRoute>} />
+                    <Route path="/admin/licensed-inbox" element={<LegacyWorkspaceRedirect to="/dashboard/recruiting/licensed" />} />
                     {/* Executable Welcome Aboard toolkit: persisted licensed/unlicensed paths,
                         30/60/90-day milestones, and career qualification calculator. */}
                     <Route path="/admin/apex-toolkit" element={<LegacyWorkspaceRedirect to="/dashboard/training" />} />

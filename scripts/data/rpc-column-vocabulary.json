@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-11-12T09:13:34Z",
+ "_generated_at": "2026-11-12T16:42:37Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -14365,6 +14365,297 @@
    "body_literals": [
     "New",
     "public"
+   ]
+  },
+  "licensed_prospects.came_from": {
+   "candidates": [],
+   "body_literals": [
+    "application",
+    "applied",
+    "booked a call",
+    "contracting",
+    "disqualified",
+    "g",
+    "interview_booking",
+    "licensed",
+    "public",
+    "rejected",
+    "va",
+    "va_manager"
+   ]
+  },
+  "licensed_prospects.city": {
+   "candidates": [
+    "applications.city",
+    "profiles.city"
+   ],
+   "body_literals": [
+    "application",
+    "applied",
+    "booked a call",
+    "contracting",
+    "disqualified",
+    "g",
+    "interview_booking",
+    "licensed",
+    "public",
+    "rejected",
+    "va",
+    "va_manager"
+   ]
+  },
+  "licensed_prospects.created_at": {
+   "candidates": [
+    "agents.created_at",
+    "applications.created_at",
+    "interview_events.created_at",
+    "people.created_at",
+    "profiles.created_at"
+   ],
+   "body_literals": [
+    "application",
+    "applied",
+    "booked a call",
+    "contracting",
+    "disqualified",
+    "g",
+    "interview_booking",
+    "licensed",
+    "public",
+    "rejected",
+    "va",
+    "va_manager"
+   ]
+  },
+  "licensed_prospects.email": {
+   "candidates": [
+    "applications.email",
+    "profiles.email"
+   ],
+   "body_literals": [
+    "application",
+    "applied",
+    "booked a call",
+    "contracting",
+    "disqualified",
+    "g",
+    "interview_booking",
+    "licensed",
+    "public",
+    "rejected",
+    "va",
+    "va_manager"
+   ]
+  },
+  "licensed_prospects.first_name": {
+   "candidates": [
+    "applications.first_name"
+   ],
+   "body_literals": [
+    "application",
+    "applied",
+    "booked a call",
+    "contracting",
+    "disqualified",
+    "g",
+    "interview_booking",
+    "licensed",
+    "public",
+    "rejected",
+    "va",
+    "va_manager"
+   ]
+  },
+  "licensed_prospects.id": {
+   "candidates": [
+    "agents.id",
+    "applications.id",
+    "interview_events.id",
+    "people.id",
+    "profiles.id"
+   ],
+   "body_literals": [
+    "application",
+    "applied",
+    "booked a call",
+    "contracting",
+    "disqualified",
+    "g",
+    "interview_booking",
+    "licensed",
+    "public",
+    "rejected",
+    "va",
+    "va_manager"
+   ]
+  },
+  "licensed_prospects.last_contacted_at": {
+   "candidates": [
+    "applications.last_contacted_at"
+   ],
+   "body_literals": [
+    "application",
+    "applied",
+    "booked a call",
+    "contracting",
+    "disqualified",
+    "g",
+    "interview_booking",
+    "licensed",
+    "public",
+    "rejected",
+    "va",
+    "va_manager"
+   ]
+  },
+  "licensed_prospects.last_name": {
+   "candidates": [
+    "applications.last_name"
+   ],
+   "body_literals": [
+    "application",
+    "applied",
+    "booked a call",
+    "contracting",
+    "disqualified",
+    "g",
+    "interview_booking",
+    "licensed",
+    "public",
+    "rejected",
+    "va",
+    "va_manager"
+   ]
+  },
+  "licensed_prospects.license_status": {
+   "candidates": [
+    "agents.license_status",
+    "applications.license_status"
+   ],
+   "body_literals": [
+    "application",
+    "applied",
+    "booked a call",
+    "contracting",
+    "disqualified",
+    "g",
+    "interview_booking",
+    "licensed",
+    "public",
+    "rejected",
+    "va",
+    "va_manager"
+   ]
+  },
+  "licensed_prospects.nipr_verified": {
+   "candidates": [
+    "agents.nipr_verified",
+    "applications.nipr_verified"
+   ],
+   "body_literals": [
+    "application",
+    "applied",
+    "booked a call",
+    "contracting",
+    "disqualified",
+    "g",
+    "interview_booking",
+    "licensed",
+    "public",
+    "rejected",
+    "va",
+    "va_manager"
+   ]
+  },
+  "licensed_prospects.npn": {
+   "candidates": [],
+   "body_literals": [
+    "application",
+    "applied",
+    "booked a call",
+    "contracting",
+    "disqualified",
+    "g",
+    "interview_booking",
+    "licensed",
+    "public",
+    "rejected",
+    "va",
+    "va_manager"
+   ]
+  },
+  "licensed_prospects.phone": {
+   "candidates": [
+    "applications.phone",
+    "profiles.phone"
+   ],
+   "body_literals": [
+    "application",
+    "applied",
+    "booked a call",
+    "contracting",
+    "disqualified",
+    "g",
+    "interview_booking",
+    "licensed",
+    "public",
+    "rejected",
+    "va",
+    "va_manager"
+   ]
+  },
+  "licensed_prospects.record_status": {
+   "candidates": [],
+   "body_literals": [
+    "application",
+    "applied",
+    "booked a call",
+    "contracting",
+    "disqualified",
+    "g",
+    "interview_booking",
+    "licensed",
+    "public",
+    "rejected",
+    "va",
+    "va_manager"
+   ]
+  },
+  "licensed_prospects.records": {
+   "candidates": [],
+   "body_literals": [
+    "application",
+    "applied",
+    "booked a call",
+    "contracting",
+    "disqualified",
+    "g",
+    "interview_booking",
+    "licensed",
+    "public",
+    "rejected",
+    "va",
+    "va_manager"
+   ]
+  },
+  "licensed_prospects.state": {
+   "candidates": [
+    "applications.state",
+    "profiles.state"
+   ],
+   "body_literals": [
+    "application",
+    "applied",
+    "booked a call",
+    "contracting",
+    "disqualified",
+    "g",
+    "interview_booking",
+    "licensed",
+    "public",
+    "rejected",
+    "va",
+    "va_manager"
    ]
   },
   "list_my_vas.created_at": {

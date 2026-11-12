@@ -471,6 +471,14 @@ function IdleSessionGate({ enabled, onTimeout }: { enabled: boolean; onTimeout: 
   );
 }
 
+/**
+ * The auth context, or null outside an AuthProvider. For small shared pieces (the recruiting tab bar)
+ * that render inside page tests with no provider and must not throw there.
+ */
+export function useOptionalAuth(): AuthContextValue | null {
+  return useContext(AuthContext);
+}
+
 export function useAuth(): AuthContextValue {
   const context = useContext(AuthContext);
   if (!context) {

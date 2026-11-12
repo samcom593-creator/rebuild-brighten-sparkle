@@ -19,6 +19,7 @@ import {
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { QuickAddAgentDialog } from "@/components/onboarding/QuickAddAgentDialog";
+import { RecruitingWorkspaceNav } from "@/components/recruiting/RecruitingWorkspaceNav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -43,8 +44,13 @@ import { createCanonicalHire, promoteApplicationToAgent } from "@/lib/hireToOnbo
 import { startPhoneCall, startSmsThread } from "@/lib/phone";
 
 /**
- * /admin/licensed-inbox: immediate-call surface for licensed applicants and
- * staff-added agents.
+ * /dashboard/recruiting/licensed (the "Licensed" recruiting tab; /admin/licensed-inbox redirects here):
+ * immediate-call surface for licensed people to bring onto the team, and staff-added agents.
+ *
+ * 2026-11-12, Sam: "I need a tab that shows me licensed agents. I can just call licensed agents and be
+ * able to bring them on the team." The list now comes from licensed_prospects(): one row per person,
+ * never someone already on the team (45 of the old 118 rows were), never a duplicate or closed record,
+ * plus licensed people who only booked a call (dated by the call, not the 2026-08-01 import).
  *
  * Sam directive: when a *licensed* applicant applies, don't queue Calendly.
  * Call them NOW. This page is a tight, phone-first inbox showing every
@@ -74,7 +80,10 @@ interface LicensedRow {
   npn: string | null;
   pa_number: string | null;
   status: string | null;
+  /** Latest activity: applied, or the booked call's time for someone who only booked a call. */
   created_at: string;
+  /** How they came in, from licensed_prospects(): "applied" or "booked a call". Toolkit agents carry none. */
+  came_from?: string | null;
   /** Last time anyone reached out. Null = never contacted. Toolkit agents do not carry it. */
   last_contacted_at?: string | null;
 }
@@ -171,7 +180,7 @@ function licensedRowKey(row: Pick<LicensedRow, "id" | "origin">): string {
 }
 
 export default function LicensedInbox() {
-  usePageTitle("Licensed Inbox · Galaxy Admin");
+  usePageTitle("Licensed agents · Recruiting");
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [lane, setLane] = useState<InboxLane>("go");
@@ -186,29 +195,10 @@ export default function LicensedInbox() {
     queryKey: ["licensed-inbox"],
     queryFn: async () => {
       const [applicationResult, manualAgentResult] = await Promise.all([
-        supabase
-          .from("applications")
-          .select(
-            "id, first_name, last_name, email, phone, state, city, license_status, nipr_number, nipr_verified, status, created_at, last_contacted_at",
-          )
-          .eq("license_status", "licensed")
-        // wave-p1k: exclude terminal dispositions so the inbox actually drains.
-        // The disposition RPC flips hired to contracting and passed to rejected.
-        //
-        // 2026-07-27: this list also carried 'hired', 'active' and 'terminated', none of
-        // which are members of the application_status enum. Those are agent_status values.
-        // PostgREST coerces the literals during planning, so the whole request failed with
-        // 400 / 22P02 "invalid input value for enum application_status", the catch below
-        // turned it into `return []`, and this page rendered EMPTY for three days while
-        // looking like a legitimately clear queue. 73 licensed applicants were invisible.
-        //
-        // Only real enum members belong here. Full set:
-        //   new, reviewing, interview, contracting, approved, rejected, no_pickup, lead,
-        //   registered, attended, attended_no_show, paid, onboarding, producing, lapsed,
-        //   disqualified, quick_qualified
-          .not("status", "in", "(contracting,rejected)")
-          .order("created_at", { ascending: false })
-          .limit(500),
+        // One row per licensed person who is not on the team yet (licensed_prospects(), staff only). It
+        // replaced a direct applications read that also listed 45 people already on the team, 16 duplicate
+        // records and a closed record (measured 2026-11-12).
+        supabase.rpc("licensed_prospects" as never),
         toolkitInboxClient
           .from<Omit<LicensedRow, "origin" | "state" | "city" | "nipr_verified">>("apex_toolkit_agents")
           .select("id,first_name,last_name,email,phone,npn,pa_number,license_status,status,created_at")
@@ -229,11 +219,11 @@ export default function LicensedInbox() {
         throw manualAgentResult.error;
       }
       const applications = ((applicationResult.data ?? []) as unknown as Array<
-        Omit<LicensedRow, "origin" | "npn" | "pa_number"> & { nipr_number: string | null }
-      >).map(({ nipr_number, ...row }) => ({
+        Omit<LicensedRow, "origin" | "pa_number" | "status"> & { records?: number | null; record_status?: string | null }
+      >).map(({ records: _records, record_status, ...row }) => ({
         ...row,
         origin: "application" as const,
-        npn: nipr_number,
+        status: record_status ?? null,
         pa_number: null,
       }));
       const manualAgents = (manualAgentResult.data ?? []).map((row) => ({
@@ -430,11 +420,12 @@ export default function LicensedInbox() {
 
   return (
     <div className="page-enter mx-auto w-full max-w-6xl space-y-5 px-4 pb-24 sm:px-6">
+      <RecruitingWorkspaceNav />
       <PageHeader
         eyebrowIcon={<Phone className="h-4 w-4" />}
-        eyebrow="Immediate outbound"
-        title="Licensed Inbox"
-        subtitle="Licensed applicants and added agents. Call now. Newest first. Every tap is logged."
+        eyebrow="Bring them on the team"
+        title="Licensed agents"
+        subtitle="Licensed people who applied or booked a call and are not on the team yet. Call, then tap what happened. Every tap is logged."
         accent="emerald"
         actions={(
           <>
@@ -609,7 +600,7 @@ export default function LicensedInbox() {
                       {applied}
                     </div>
                     <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                      {r.origin === "toolkit_agent" ? "Added" : "Applied"}
+                      {r.origin === "toolkit_agent" ? "Added" : r.came_from === "booked a call" ? "Booked a call" : "Applied"}
                     </div>
                   </div>
                 </div>

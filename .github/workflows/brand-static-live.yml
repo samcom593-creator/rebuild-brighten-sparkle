@@ -1,0 +1,68 @@
+# Is the funnel's icon + PWA-manifest chain still ALIVE on the live edge? (MP-WIB-BRAND-STATIC-LIVE)
+#
+# Every served index.html declares fixed-name root statics the browser loads to
+# paint the site's identity: /favicon.ico (tab), /apple-touch-icon.png (iOS home
+# screen), /manifest.webmanifest (PWA install) and the manifest's own
+# /pwa-192x192.png + /pwa-512x512.png (installed-app icon). All live OUTSIDE
+# Vite's content-hashed build (public/ -> dist root, verbatim).
+#
+# check-manifest-brand (commit gate) proves the manifest NAME is on-brand AT
+# SOURCE (vite.config.ts + src/config/brand.ts); it makes zero HTTP requests, so
+# the served file can vanish while it stays green. route-smoke proves the HTML
+# shell 200s — which is EXACTLY the masquerade a missing root static returns:
+# vercel.json's catch-all rewrite exempts only /api,/assets,/fonts,/img, so a
+# dropped root /manifest.webmanifest or /favicon.ico falls through to the SPA
+# shell and the edge answers 200 text/html (proven on prod 2026-11-12). The tab
+# icon goes blank, the iOS home-screen icon breaks, and the browser rejects the
+# manifest with "Manifest: Unexpected token <" — all while the URL "200s".
+#
+# Deliberately a SCHEDULE, not a commit gate. It grades a LIVE edge response, so
+# wiring the over-the-wire probe into verify:core would block every commit on a
+# condition only a redeploy can clear. The pure classifier + head-chain parser
+# ARE gated every commit via check:brand-static-live-selftest in verify:core;
+# only the live probe runs here. A push that touches the guard/workflow re-runs
+# it immediately.
+#
+# Needs no secrets: every icon and the manifest is a public static file.
+#
+# Can't cry wolf (check-brand-static-live.mjs exit contract):
+#   exit 1 DEFECT        -> an icon/manifest genuinely gone/masquerading w/ egress proven up: FAIL (red, Sam sees it)
+#   exit 3 UNRESOLVED    -> transient 5xx/timeout (incl. the index.html seed that derives the chain): warning only, run stays green
+#   exit 0 CLEAN/UNKNOWN -> alive, or egress itself down (not trusted): green
+name: brand-static-live
+
+on:
+  schedule:
+    - cron: "34 14 * * *" # daily ~07:34 Phoenix, offset from share-card/vsl-media/crawl-entrypoints; GH schedules drift (p90 ~40min, MP-304)
+  workflow_dispatch:
+  push:
+    paths:
+      - "scripts/check-brand-static-live.mjs"
+      - ".github/workflows/brand-static-live.yml"
+
+jobs:
+  brand-static-live:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      # Prove the detector's own alive/dead/unresolved + head-chain + control-
+      # gating logic is intact BEFORE trusting its live verdict (local-only).
+      - name: Selftest brand-static detector (fixtures, both directions)
+        run: npm run check:brand-static-live-selftest
+      # Live probe. Only a real DEFECT (icon/manifest gone/masquerading, egress
+      # up) fails the run; a transient UNRESOLVED (exit 3) warns without reddening.
+      - name: Probe live favicon + apple-touch + manifest + pwa-icon chain
+        run: |
+          node scripts/check-brand-static-live.mjs; code=$?
+          if [ "$code" = "3" ]; then
+            echo "::warning::brand-static UNRESOLVED — a surface was neither proved alive nor dead (transient edge 5xx/timeout, or the index.html seed that derives the chain). Not failing; re-run to confirm."
+            exit 0
+          fi
+          exit $code
+      - name: Post failure summary
+        if: failure()
+        run: |
+          echo "::warning::brand-static-live FAILED — either the detector selftest regressed (the guard's own alive/dead logic, not the site), OR a funnel icon / the PWA manifest is DEAD on the live edge: a fixed-name root static (favicon.ico / apple-touch-icon.png / manifest.webmanifest / pwa-*.png) is missing from the live deploy and the SPA catch-all is serving the HTML shell in its place, so the browser tab icon, iOS home-screen icon, or Android/Chrome install is broken for every visitor. Fix: restore the missing public/ static and redeploy; if the manifest is generated, verify the vite-plugin-pwa manifest block in vite.config.ts ships the referenced icons. See the step output above for the exact URL + status."

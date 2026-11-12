@@ -824,3 +824,6 @@ verify_jwt = false
 # x-reactivation-key against REACTIVATION_SEND_KEY in constant time before any read or send.
 [functions.reactivation-send]
 verify_jwt = false
+
+[functions.postiz-bridge]
+verify_jwt = true

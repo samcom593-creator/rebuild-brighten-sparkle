@@ -144,6 +144,13 @@ PUBLIC_ALLOWLIST=(
   # That is the sixteen-day death agentlink-clients-sync already paid for.
   "brand-collab"
   "brand-photo-upload"
+  # MP-BRAND-ENGINE (2026-11-12): contracts declared in check-function-contracts.mjs.
+  # brand-metrics-ingest / glowup-nurture gate on a stored key (x-brand-key / x-cron-key);
+  # glowup-lead / proof-wall are public by design for sell4daddy.com.
+  "brand-metrics-ingest"
+  "glowup-nurture"
+  "glowup-lead"
+  "proof-wall"
   "cron-inbound-brain-health"
   # monday-starter-reminders: Sunday pg_cron caller presents a vault hex secret,
   # gated in-handler (rationale in check-function-contracts.mjs).

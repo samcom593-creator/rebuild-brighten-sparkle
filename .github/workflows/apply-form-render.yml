@@ -1,0 +1,89 @@
+# Does the recruit APPLICATION FORM render? (MP-WIB-APPLY-FORM-RENDER)
+#
+# /apply is the single conversion point of the recruiting funnel: every lead a
+# recruit becomes walks through this form. check-funnel-capture-handler proves
+# the ENDPOINT it POSTs to (submit-application) runs, but nothing proves the
+# BROWSER FORM that calls it renders. A React crash caught by an error boundary,
+# a gating regression that hides the fields, a broken step-1->step-2 transition,
+# or a data regression that empties the state picker all leave the endpoint
+# healthy while the form a recruit sees is gone — and route-smoke (SPA shell
+# 200), live-render-integrity (tokens/crash only), and mobile-overflow (width)
+# are all blind to it. This guard renders /apply in a real browser and asserts
+# the entry form is present and populated (>=2 selects, state picker >= 20
+# options, >= 3 controls, no crash/404-shell).
+#
+# Deliberately a SCHEDULE, not a commit gate. It grades PRODUCTION, so wiring the
+# live render into verify:core would block every commit on a condition only a
+# deploy can clear — the permanently-red guard this repo keeps paying for. The
+# pure classifier + verdict logic IS gated every commit via
+# check:apply-form-render-selftest in verify:core (no browser); only the live
+# render runs here. A push that touches the guard/workflow re-runs it at once.
+#
+# Needs no secrets: it renders a public page.
+#
+# Can't cry wolf (check-apply-form-render.mjs exit contract):
+#   exit 1 DEFECT      -> a page WAS served and the form is broken/absent: FAIL (red)
+#   exit 3 UNRESOLVED  -> transient 5xx/429, nav timeout w/ egress up: warning, run stays green
+#   exit 0 HEALTHY/UNKNOWN -> form rendered, or egress itself down (not trusted): green
+name: apply-form-render
+
+on:
+  schedule:
+    - cron: "7 14 * * *" # daily ~07:07 Phoenix, offset from vsl-media/funnel-capture; GH schedules drift (p90 ~40min, MP-304)
+  workflow_dispatch:
+  push:
+    paths:
+      - "scripts/check-apply-form-render.mjs"
+      - ".github/workflows/apply-form-render.yml"
+
+jobs:
+  apply-form:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+
+      # Prove the detector's own classifier + verdict + control-gating logic is
+      # intact BEFORE trusting its live render. Deterministic, local-only, no
+      # browser — the same selftest verify:core runs on every commit.
+      - name: Selftest apply-form detector (fixtures, both directions)
+        run: npm run check:apply-form-render-selftest
+
+      # Browser binary FIRST from Playwright's own CDN — no apt, so immune to the
+      # apt-mirror DNS outage that took the post-deploy browser guards dark
+      # 2026-11-11 (MP-WIB-POSTDEPLOY-APT-RESILIENT). ubuntu-latest pre-ships the
+      # libs chromium needs to launch; refresh them best-effort with retries. If a
+      # lib is truly missing, chromium fails to launch at the render step and it
+      # reds loudly there — not here, about GitHub's infra.
+      - name: Install Playwright Chromium
+        run: |
+          npx playwright install chromium
+          deps_ok=""
+          for i in 1 2 3; do
+            if npx playwright install-deps chromium; then deps_ok=1; break; fi
+            echo "::warning::playwright install-deps attempt $i failed (apt/DNS); retrying"
+            sleep $((i * 10))
+          done
+          [ -n "$deps_ok" ] || echo "::warning::apt system deps not refreshed (GitHub mirror outage); relying on runner's pre-installed Playwright libs — the render step is the judge."
+
+      # Live render. Only a real DEFECT (a served page whose form is broken/absent)
+      # fails the run; a transient UNRESOLVED (exit 3) warns without reddening.
+      - name: Render /apply + assert the application form is present
+        run: |
+          node scripts/check-apply-form-render.mjs; code=$?
+          if [ "$code" = "3" ]; then
+            echo "::warning::apply-form UNRESOLVED — the render did not complete (transient 5xx/429/nav timeout while egress is up). Not failing; re-run to confirm."
+            exit 0
+          fi
+          exit $code
+        env:
+          APEX_SITE_ORIGIN: https://apex-financial.org
+
+      - name: Post failure summary
+        if: failure()
+        run: |
+          echo "::warning::apply-form-render FAILED — either the detector selftest regressed (the guard's own classifier/verdict logic, not the site), OR the recruiting funnel's single conversion point does not render a usable application form: a recruit lands on /apply and the entry form is missing, the state picker is empty, or the component threw. submit-application (the endpoint) can be perfectly healthy while this is broken. See the render output above for controls/selects/options and the classifier verdict."

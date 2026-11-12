@@ -66734,6 +66734,110 @@ export type Database = {
           },
         ]
       }
+      deal_lead_returns: {
+        Row: {
+          agent_id: string
+          annual_premium: number | null
+          bundle_id: string | null
+          deal_id: string
+          item_id: string | null
+          outcome: string
+          policy_grade: string
+          returned_at: string
+        }
+        Insert: {
+          agent_id: string
+          annual_premium?: number | null
+          bundle_id?: string | null
+          deal_id: string
+          item_id?: string | null
+          outcome?: string
+          policy_grade: string
+          returned_at?: string
+        }
+        Update: {
+          agent_id?: string
+          annual_premium?: number | null
+          bundle_id?: string | null
+          deal_id?: string
+          item_id?: string | null
+          outcome?: string
+          policy_grade?: string
+          returned_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_lead_returns_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_lead_returns_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "v_deals_leaderboard"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_lead_returns_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "v_deals_needing_real_policy"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_lead_returns_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "v_ghost_deals"
+            referencedColumns: ["deal_id"]
+          },
+          {
+            foreignKeyName: "deal_lead_returns_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "v_insuracloud_push_blocked"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_lead_returns_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "v_insuracloud_push_eligible"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_lead_returns_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "v_insuracloud_push_refused"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_lead_returns_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "v_insuracloud_push_verdict"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_lead_returns_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "v_lapses_30d_detail"
+            referencedColumns: ["deal_id"]
+          },
+          {
+            foreignKeyName: "deal_lead_returns_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "v_policy_number_vocabulary_drift"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_status_history: {
         Row: {
           actor_id: string | null
@@ -104510,6 +104614,66 @@ export type Database = {
           },
         ]
       }
+      perf_bot_findings: {
+        Row: {
+          agent_id: string | null
+          created_at: string
+          detail: Json
+          dollars: number | null
+          headline: string
+          id: number
+          kind: string
+          run_date: string
+          severity: string
+        }
+        Insert: {
+          agent_id?: string | null
+          created_at?: string
+          detail?: Json
+          dollars?: number | null
+          headline: string
+          id?: never
+          kind: string
+          run_date: string
+          severity?: string
+        }
+        Update: {
+          agent_id?: string | null
+          created_at?: string
+          detail?: Json
+          dollars?: number | null
+          headline?: string
+          id?: never
+          kind?: string
+          run_date?: string
+          severity?: string
+        }
+        Relationships: []
+      }
+      perf_bot_runs: {
+        Row: {
+          error: string | null
+          id: number
+          ok: boolean
+          ran_at: string
+          summary: Json | null
+        }
+        Insert: {
+          error?: string | null
+          id?: never
+          ok: boolean
+          ran_at?: string
+          summary?: Json | null
+        }
+        Update: {
+          error?: string | null
+          id?: never
+          ok?: boolean
+          ran_at?: string
+          summary?: Json | null
+        }
+        Relationships: []
+      }
       personal_records: {
         Row: {
           achieved_on: string
@@ -117408,6 +117572,7 @@ export type Database = {
           body?: string | null
           caption?: string | null
           card_id?: string | null
+          content_hash?: string | null
           created_at?: string
           cta?: string | null
           draft_date?: string
@@ -117438,6 +117603,7 @@ export type Database = {
           body?: string | null
           caption?: string | null
           card_id?: string | null
+          content_hash?: string | null
           created_at?: string
           cta?: string | null
           draft_date?: string
@@ -195189,6 +195355,7 @@ export type Database = {
         }
       }
       fn_lane_ladder_cutoff: { Args: never; Returns: string }
+      fn_lead_type_of: { Args: { p: string }; Returns: string }
       fn_license_stage_rank: {
         Args: { p: Database["public"]["Enums"]["license_progress"] }
         Returns: number
@@ -195257,6 +195424,7 @@ export type Database = {
         Args: never
         Returns: undefined
       }
+      fn_policy_number_grade: { Args: { p: string }; Returns: string }
       fn_private_surface_audit: {
         Args: never
         Returns: {
@@ -195421,7 +195589,10 @@ export type Database = {
         Returns: boolean
       }
       home_conversion_people: { Args: { p_today?: string }; Returns: Json }
-      home_conversion_people_range: { Args: { p_end: string; p_start: string }; Returns: Json }
+      home_conversion_people_range: {
+        Args: { p_end: string; p_start: string }
+        Returns: Json
+      }
       imo_by_agency_period: {
         Args: { p_end: string; p_start: string }
         Returns: {
@@ -196003,8 +196174,7 @@ export type Database = {
           training_started: boolean
         }[]
       }
-      owner_daily_overview: { Args: { p_day?: string }; Returns: Json }
-      owner_overview_settings: { Args: never; Returns: Json }
+      perf_bot_summary: { Args: never; Returns: Json }
       phc_admin_lead_stats: {
         Args: never
         Returns: {
@@ -196554,10 +196724,6 @@ export type Database = {
         }
         Returns: Json
       }
-      set_owner_overview_settings: {
-        Args: { p_enabled?: boolean; p_mute_enabled?: boolean; p_time_az?: string }
-        Returns: Json
-      }
       set_recruit_instagram: {
         Args: { p_agent_id: string; p_application_id: string; p_handle: string }
         Returns: Json
@@ -197038,7 +197204,37 @@ export type Database = {
       strike_status: "active" | "expired" | "resolved" | "voided"
     }
     CompositeTypes: {
-      [_ in never]: never
+      perf_agent_row: {
+        id: string | null
+        name: string | null
+        licensed: boolean | null
+        since_d: string | null
+        mtd: number | null
+        d30: number | null
+        n30: number | null
+        d90: number | null
+        last_deal: string | null
+        legs: number | null
+        applicants_90d: number | null
+        seg: string | null
+        proj: number | null
+        ticket: number | null
+      }
+      perf_deal_fact: {
+        deal_id: string | null
+        agent_id: string | null
+        canonical_agent_id: string | null
+        source: string | null
+        posted_date: string | null
+        annual_premium: number | null
+        status: string | null
+        policy_number: string | null
+        policy_grade: string | null
+        lead_type: string | null
+        lead_type_from: string | null
+        lead_list: string | null
+        p10: string | null
+      }
     }
   }
 }

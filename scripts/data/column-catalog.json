@@ -3765,6 +3765,16 @@
       "status",
       "updated_at"
     ],
+    "deal_lead_returns": [
+      "agent_id",
+      "annual_premium",
+      "bundle_id",
+      "deal_id",
+      "item_id",
+      "outcome",
+      "policy_grade",
+      "returned_at"
+    ],
     "deal_status_history": [
       "actor_id",
       "actor_role",
@@ -5966,6 +5976,24 @@
       "phone_normalized",
       "preferred_name",
       "updated_at"
+    ],
+    "perf_bot_findings": [
+      "agent_id",
+      "created_at",
+      "detail",
+      "dollars",
+      "headline",
+      "id",
+      "kind",
+      "run_date",
+      "severity"
+    ],
+    "perf_bot_runs": [
+      "error",
+      "id",
+      "ok",
+      "ran_at",
+      "summary"
     ],
     "personal_records": [
       "achieved_on",

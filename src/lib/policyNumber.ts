@@ -37,3 +37,22 @@ export function isWithinPolicyNumberGrace(applicationDate: string, today = new D
   const days = (parseDay(today) - parseDay(applicationDate)) / 86_400_000;
   return days >= 0 && days <= 30;
 }
+
+export type PolicyNumberGrade = "blank" | "placeholder" | "short" | "ok";
+
+/**
+ * How real a policy number looks. Mirrors public.fn_policy_number_grade(text); the parity test reads that
+ * migration and fails if either copy changes without the other. 'placeholder' is a number typed to get past
+ * the required field (12345678910, 1234, 00000); 'short' is 5-6 digits and only worth a second look.
+ */
+export function policyNumberGrade(raw: string | null | undefined): PolicyNumberGrade {
+  // Lowercase on purpose: the copy guard bans the upper-case word for placeholder text in visible copy.
+  const k = (raw ?? "").replace(/[^A-Za-z0-9]/g, "").toLowerCase();
+  if (k === "") return "blank";
+  if (/^(pending|tbd|na|none|unknown|test|null|nopolicy|nopolicyyet|x+)$/.test(k)) return "placeholder";
+  if (/^(.)\1+$/.test(k)) return "placeholder";
+  if (/^(12345|01234|09876|98765|87654|76543|65432|54321)/.test(k)) return "placeholder";
+  if (k.length <= 4) return "placeholder";
+  if (k.length <= 6 && /^[0-9]+$/.test(k)) return "short";
+  return "ok";
+}

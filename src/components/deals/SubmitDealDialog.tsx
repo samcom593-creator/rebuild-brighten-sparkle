@@ -15,7 +15,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { invalidateOperationalTruth } from "@/lib/invalidateOperationalTruth";
-import { normalizePolicyNumber, sanitizePolicyInput, isWithinPolicyNumberGrace } from "@/lib/policyNumber";
+import { normalizePolicyNumber, sanitizePolicyInput, isWithinPolicyNumberGrace, policyNumberGrade } from "@/lib/policyNumber";
+import { LEAD_TYPES } from "@/lib/leadTypes";
 import { enqueue, isOffline, isTransportError } from "@/lib/offlineQueue";
 import { TeamLookupError } from "@/components/shared/TeamLookupError";
 
@@ -453,8 +454,12 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
       if (!form.carrierId || !form.product.trim()) return "Carrier and product are required.";
       if (!form.applicationDate) return "Application date is required.";
       if (!normalizePolicyNumber(form.policyNumber) && !isWithinPolicyNumberGrace(form.applicationDate)) return "An application or policy number is required more than 30 days after the sale date.";
+      // A made-up number (12345678910, 1234, 00000) gets past the required field and then blocks the real one.
+      // Blank is honest and allowed; the deal comes back to the agent's leads if it is still missing later.
+      if (policyNumberGrade(form.policyNumber) === "placeholder" && normalizePolicyNumber(form.policyNumber)) return "That looks like a placeholder, not a real policy number. Leave it blank if the carrier has not given it yet. It comes back to your leads if it is still missing in 14 days.";
     }
     if (index === 2) {
+      if (!form.leadSource.trim()) return "Tap the lead type: POS, Veteran, FEX, Mortgage, Aged, Referral or Other.";
       if (safeNumber(form.modalPremium) <= 0) return "Modal premium must be greater than zero.";
       if (calculatedAnnualPaid <= 0) return "Annualized paid premium must be greater than zero.";
       if (calculatedAlp <= 0) return "Annualized commissionable premium must be greater than zero.";
@@ -908,7 +913,7 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
                       </datalist>
                     </div>
                     <Field label="Policy number" id="deal-policy" value={form.policyNumber} onChange={(value) => update("policyNumber", sanitizePolicyInput(value))} placeholder="e.g., POL-123456" autoComplete="off" />
-                    <p className="text-xs text-muted-foreground">Optional through 30 days after the sale date. Add the number once the carrier provides it; older deals require it to post.</p>
+                    <p className="text-xs text-muted-foreground">Leave it blank if the carrier has not given it yet. If it is still missing after 14 days, the deal goes back to your leads so you can chase it. A made-up number is refused.</p>
                     <Field label="Effective date" id="deal-effective-date" value={form.effectiveDate} onChange={(value) => update("effectiveDate", value)} type="date" />
                     <div className="space-y-1.5">
                       <Field label="Sale date" id="deal-application-date" value={form.applicationDate} onChange={(value) => update("applicationDate", value)} type="date" max={TODAY} />
@@ -943,7 +948,27 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
                         </SelectContent>
                       </Select>
                     </div>
-                    <Field label="Lead source" id="deal-lead-source" value={form.leadSource} onChange={(value) => update("leadSource", value)} placeholder="Optional" />
+                    <div className="space-y-1.5" role="group" aria-labelledby="deal-lead-type-label">
+                      <Label id="deal-lead-type-label">What kind of lead was this?</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {LEAD_TYPES.map((type) => (
+                          <button
+                            key={type.key}
+                            type="button"
+                            aria-pressed={form.leadSource === type.label}
+                            title={type.hint}
+                            onClick={() => update("leadSource", type.label)}
+                            className={cn(
+                              "min-h-11 rounded-full border px-4 text-sm font-semibold transition-colors",
+                              form.leadSource === type.label ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-foreground hover:bg-muted",
+                            )}
+                          >
+                            {type.label}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground">One tap. It tells us which leads actually close, so the next ones are better.</p>
+                    </div>
                     {factor === null && (
                       <Field label="Annual paid premium" id="deal-paid-premium" value={form.annualizedPaidPremium} onChange={(value) => update("annualizedPaidPremium", value)} type="number" min="0.01" step="0.01" inputMode="decimal" placeholder="Enter for this frequency" />
                     )}

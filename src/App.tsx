@@ -287,6 +287,7 @@ const MyStrikes = lazy(() => import("./pages/MyStrikes"));
 // const ChargesAudit = lazy(() => import("./pages/ChargesAudit"));
 const SocialMediaCenter = lazy(() => import("./pages/admin/SocialMediaCenter"));
 const BrandCommand = lazy(() => import("./pages/admin/BrandCommand"));
+const PerformanceBot = lazy(() => import("./pages/admin/PerformanceBot"));
 const TelegramBot = lazy(() => import("./pages/admin/TelegramBot"));
 // v9 Wave A complaint #20: ConductCommandCenter no longer mounted; route redirects.
 // const ConductCommandCenter = lazy(() => import("./pages/ConductCommandCenter"));
@@ -888,6 +889,8 @@ const App = () => (
                            <Route path="/dashboard/readymode" element={<ProtectedRoute requireAdmin><ReadyModeIntegration /></ProtectedRoute>} />
                            {/* Social Media Bot — APEX content engine dashboard */}
                            {/* Brand Command (MP-BRAND-ENGINE): weekly scorecard, funnel, accounts. Admin only. */}
+                           {/* Performance bot (MP-PERF-BOT): goal pace, lead yield, downline gaps, policy-number queue. Admin only. */}
+                           <Route path="/dashboard/admin/performance-bot" element={<ProtectedRoute requireAdmin><PerformanceBot /></ProtectedRoute>} />
                            <Route path="/dashboard/admin/brand-command" element={<ProtectedRoute requireAdmin><BrandCommand /></ProtectedRoute>} />
                            <Route path="/dashboard/admin/social-media-bot" element={<ProtectedRoute requireAdmin><SocialMediaCenter /></ProtectedRoute>} />
                            {/* Telegram Bot — APEX pre-hire + onboarding operating layer */}

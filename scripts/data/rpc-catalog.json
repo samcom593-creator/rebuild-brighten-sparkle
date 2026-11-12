@@ -4995,6 +4995,18 @@
         "raw": ""
       }
     ],
+    "fn_lead_type_of": [
+      {
+        "all": [
+          "p"
+        ],
+        "required": [
+          "p"
+        ],
+        "unnamed": false,
+        "raw": "p text"
+      }
+    ],
     "fn_license_milestone_emit": [
       {
         "all": [],
@@ -5739,6 +5751,24 @@
         "raw": ""
       }
     ],
+    "fn_perf_bot_run": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_perf_return_deals_to_leads": [
+      {
+        "all": [
+          "p_dry_run"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_dry_run boolean DEFAULT true"
+      }
+    ],
     "fn_phoenix_today": [
       {
         "all": [],
@@ -5784,6 +5814,18 @@
         ],
         "unnamed": false,
         "raw": "p_text text"
+      }
+    ],
+    "fn_policy_number_grade": [
+      {
+        "all": [
+          "p"
+        ],
+        "required": [
+          "p"
+        ],
+        "unnamed": false,
+        "raw": "p text"
       }
     ],
     "fn_policy_number_report_placeholder": [
@@ -9000,6 +9042,36 @@
         "raw": ""
       }
     ],
+    "perf_bot_core": [
+      {
+        "all": [
+          "p_floor",
+          "p_target"
+        ],
+        "required": [
+          "p_floor",
+          "p_target"
+        ],
+        "unnamed": false,
+        "raw": "p_floor numeric, p_target numeric"
+      }
+    ],
+    "perf_bot_summary": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "perf_deal_facts": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "phc_admin_lead_stats": [
       {
         "all": [],
@@ -11510,6 +11582,14 @@
       }
     ],
     "trg_scripts_packet_on_progress": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trg_social_draft_approval_binding": [
       {
         "all": [],
         "required": [],

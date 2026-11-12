@@ -21,6 +21,7 @@ import {
   ListChecks,
   Megaphone,
   Crown,
+  Gauge,
   createLucideIcon,
   ScrollText,
   Settings,
@@ -272,6 +273,7 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       { label: "Brand Command", href: "/dashboard/admin/brand-command", icon: Crown, adminOnly: true },
       // Owner only (MP-302): the route, this entry and the four tables behind the page answer to Sam alone.
       { label: "Social Media Center", href: "/dashboard/admin/social-media-bot", icon: Megaphone, adminOnly: true, samOnly: true },
+      { label: "Performance Bot", href: "/dashboard/admin/performance-bot", icon: Gauge, adminOnly: true },
       { label: "Reports", href: "/dashboard/analytics", icon: BarChart3, adminOnly: true },
       { label: "Finances", href: "/dashboard/finances", icon: WalletCards, adminOnly: true },
       // One front door. The review is the working view; the older pages (requests, operations, Ethos, Aflac sends,

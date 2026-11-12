@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, Pencil, Plus, EyeOff, Loader2, CloudOff, Cloud } from "lucide-react";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { DAY_THEMES, THEME_TONE, phoenixDateKey } from "@/lib/contentWeek";
@@ -29,6 +30,17 @@ const CATEGORY_DOT: Record<string, string> = {
   faith: "bg-violet-400", health: "bg-emerald-400", sales: "bg-primary", recruiting: "bg-orange-400",
   content: "bg-sky-400", leadership: "bg-rose-400", ceo: "bg-amber-300", learning: "bg-teal-400",
   planning: "bg-indigo-400", rest: "bg-slate-400",
+};
+// Q4 schedule (MP-BRAND-ENGINE part 5): the weekday spine is the same every day; this is what rotates.
+// Topics are decided Tuesday and filmed Saturday, so no block names a topic for the day.
+const Q4_FOCUS: Record<number, string> = {
+  1: "Business audit, builder meeting",
+  2: "Content planning, builder meeting",
+  3: "Data check, pre-licensing push",
+  4: "Business audit, builder meeting",
+  5: "Applicant calls, Saturday prep",
+  6: "Record Day",
+  7: "Numbers video, edit the week, weekly review",
 };
 const LENGTHS = [5, 10, 15, 20, 30, 45, 60, 75, 90, 120, 150, 180, 240];
 const WEEKDAY_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -354,7 +366,7 @@ export default function MyDay() {
         <div className="min-w-0">
           <h1 className="text-2xl font-bold tracking-tight">{dateLabel}</h1>
           <span className={cn("mt-2 inline-flex items-center rounded-full border px-3 py-1 text-sm font-medium", tone.chip)}>
-            {theme.name} · {theme.themeLabel} day — {theme.angle}
+            {theme.name} · {Q4_FOCUS[weekday]}
           </span>
         </div>
         <Button variant={editing ? "secondary" : "outline"} className="min-h-[44px] shrink-0" onClick={editing ? () => setEditing(false) : startEdit}>
@@ -393,6 +405,10 @@ export default function MyDay() {
         <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-muted">
           <div className={cn("h-full rounded-full transition-all", tone.bar)} style={{ width: `${pct}%` }} />
         </div>
+        <p className="mt-3 text-sm text-muted-foreground">
+          If it isn't tapped done, it didn't happen. Every tap fills the scorecard on{" "}
+          <Link to={weekday === 7 ? "/dashboard/admin/brand-command?review=1" : "/dashboard/admin/brand-command"} className="font-semibold text-foreground underline underline-offset-4">Brand Command</Link>.
+        </p>
       </div>
 
       {!editing ? (
@@ -522,7 +538,7 @@ export default function MyDay() {
                     <p className={cn("mt-1 text-base font-bold leading-snug", isDone && "line-through decoration-2 decoration-foreground dark:decoration-white")}>
                       {t.title}
                     </p>
-                    {t.category === "content" ? <p className="mt-0.5 text-sm font-medium text-primary">{/tomorrow/i.test(t.title) ? `Tomorrow: ${DAY_THEMES[(weekday % 7) + 1].angle}` : theme.angle}</p> : null}
+                    
                     {t.detail ? <p className="mt-1 text-sm text-muted-foreground">{t.detail}</p> : null}
                   </div>
                 </div>

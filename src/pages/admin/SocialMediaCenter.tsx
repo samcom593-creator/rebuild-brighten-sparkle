@@ -38,6 +38,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TonePill } from "@/components/ui/delight/ToneBubble";
 import { cn } from "@/lib/utils";
+import { externalHref } from "@/lib/externalHref";
 import {
   ACCOUNTS, ACCOUNT_BY_KEY, KEYWORDS, KEYWORD_BY_KEY, accountLabel, accountOfDraft, keywordOf, phoenixDay, pillarLabel, type AccountKey, type Keyword,
 } from "@/lib/brand";
@@ -383,8 +384,8 @@ export default function SocialMediaCenter() {
 
                   {view === "published" ? (
                     <div className="mt-3">
-                      {d.shipped_url ? (
-                        <Button asChild variant="outline" className="h-11 w-full"><a href={d.shipped_url} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" aria-hidden /> Open the post</a></Button>
+                      {externalHref(d.shipped_url) ? (
+                        <Button asChild variant="outline" className="h-11 w-full"><a href={externalHref(d.shipped_url) ?? undefined} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" aria-hidden /> Open the post</a></Button>
                       ) : <p className="text-[13px] text-tone-warm">Marked published with no link on file.</p>}
                     </div>
                   ) : rejecting === d.id ? (
@@ -471,8 +472,8 @@ export default function SocialMediaCenter() {
                     ) : KEYWORDS.map((k) => (
                       <Button key={k.key} variant="outline" className="h-11" onClick={() => void copyReply(k.key)}><Copy className="h-4 w-4" aria-hidden /> {k.key}</Button>
                     ))}
-                    {r.source_url && /^https:\/\//.test(r.source_url) ? (
-                      <Button asChild variant="outline" className="h-11"><a href={r.source_url} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" aria-hidden /> Open thread</a></Button>
+                    {externalHref(r.source_url) ? (
+                      <Button asChild variant="outline" className="h-11"><a href={externalHref(r.source_url) ?? undefined} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" aria-hidden /> Open thread</a></Button>
                     ) : null}
                     <Button className="h-11 flex-1" disabled={busy !== null} onClick={() => void confirmSent(r, r.keyword)}>
                       {busy === r.id ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Check className="h-4 w-4" aria-hidden />} I sent it

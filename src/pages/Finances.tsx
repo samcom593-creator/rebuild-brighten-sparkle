@@ -259,12 +259,14 @@ function OverviewTab({ scope }: { scope: FinScope }) {
 
   return (
     <div className="space-y-5">
-      {/* KPI row — AC: Today / Forecast 90-day / MTD / YTD */}
+      {/* MP-302: these four are ESTIMATED commission (the rate applied to posted production), not
+          money received. Each card now says so; a bare dollar figure under "Today" on a page
+          called Finances read as income. */}
       <div className="grid gap-4 grid-cols-2 xl:grid-cols-4">
-        <KpiCard label="Today" value={money(k.today)} sub={new Date().toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })} accent />
-        <KpiCard label="Forecast 90-day" value={money(k.forecast_90d)} sub="Run rate of the last 90 days" accent />
-        <KpiCard label="Month-to-date (MTD)" value={money(k.mtd)} sub={new Date().toLocaleDateString(undefined, { month: "long", year: "numeric" })} />
-        <KpiCard label="Year-to-date (YTD)" value={money(k.ytd)} sub="Since Jan 1" />
+        <KpiCard label="Estimated commission · today" value={money(k.today)} sub={new Date().toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })} accent />
+        <KpiCard label="Estimated commission · 90-day forecast" value={money(k.forecast_90d)} sub="Run rate of the last 90 days. A projection, not money received" accent />
+        <KpiCard label="Estimated commission · month to date" value={money(k.mtd)} sub={new Date().toLocaleDateString(undefined, { month: "long", year: "numeric" })} />
+        <KpiCard label="Estimated commission · year to date" value={money(k.ytd)} sub="Since Jan 1. Estimated from posted production" />
       </div>
 
       <div className="flex flex-col gap-1 rounded-lg border border-border bg-card px-4 py-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
@@ -753,7 +755,7 @@ export default function Finances() {
         eyebrow="Finances"
         eyebrowIcon={<DollarSign className="h-3 w-3" />}
         title="Finances"
-        subtitle="Commissions, forecasts & payouts"
+        subtitle="Estimated commissions, forecasts and payouts"
         actions={
           <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1">
             {SCOPES.map((s) => (

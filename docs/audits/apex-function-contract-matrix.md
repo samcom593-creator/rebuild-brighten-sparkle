@@ -1,6 +1,6 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-11-12T08:52:57.234Z
+Generated: 2026-11-12T09:09:35.042Z
 Repository: `/Users/samjames/projects/rbs-owner-os`
 
 ## Inventory Summary
@@ -8,8 +8,8 @@ Repository: `/Users/samjames/projects/rbs-owner-os`
 - Total Local Edge Functions: **257**
 - Configured in `config.toml`: **258**
 - Invoked Edge Functions in Source: **99**
-- Invoked RPC Calls in Source: **288**
-- SQL Functions in Migrations: **983**
+- Invoked RPC Calls in Source: **289**
+- SQL Functions in Migrations: **985**
 
 ## Edge Function Auth & Verification Contracts
 
@@ -281,6 +281,6 @@ applied by hand through bot-sql and never round-tripped into
 `supabase/migrations`, so this directory does not model the deployed database.
 `apex-doctor` queries `pg_proc` and is the authority on deployed state.
 
-- Invoked RPCs: **288**
-- Also declared in this commit's migrations: **280**
+- Invoked RPCs: **289**
+- Also declared in this commit's migrations: **281**
 - Declared only in the database: **8**

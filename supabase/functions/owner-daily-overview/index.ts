@@ -5,7 +5,7 @@
 // decides when to send and records that it did.
 //
 // Callers:
-//   pg_cron 'owner-daily-overview-tick', hourly at :05 (service bearer). Sends only when the
+//   pg_cron 'owner-daily-overview-tick', hourly at :05 (APEX bot token bearer). Sends only when the
 //     Phoenix hour equals system_settings.owner_overview_time_az and nothing has been sent
 //     for that Phoenix date, so a changed time takes effect the same day and a repeat tick
 //     is a no-op.
@@ -19,6 +19,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { safeEqual } from "../_shared/send-floor.ts";
 import { BRAND_FROM } from "../_shared/email.ts";
 import { isSendHour, phoenixDay, renderOverview, type OverviewData } from "./render.ts";
 
@@ -29,6 +30,7 @@ const corsHeaders = {
 };
 
 const OWNER_UID = "71826bba-5577-4810-a226-1f6f2ad5288a";
+const BOT_TOKEN = Deno.env.get("APEX_BOT_TOKEN") ?? "";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -36,11 +38,17 @@ const json = (body: unknown, status = 200) =>
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  // Service key (the cron) or a signed-in admin; then narrowed to the owner below.
-  const sendAuth = await requireSendAuth(req);
-  if (!sendAuth.ok) return json({ error: sendAuth.error }, sendAuth.status);
-  const isService = sendAuth.caller === "service";
-  if (!isService && sendAuth.caller !== `user:${OWNER_UID}`) return json({ error: "owner only" }, 403);
+  // Three callers, nothing else. The cron presents the APEX bot token (it is not a JWT, which is
+  // why verify_jwt is off); an internal caller presents the service key; a person must be the
+  // owner. Found by calling the deployed function: without the bot-token branch every hourly
+  // tick was a 401 and the overview would never have sent.
+  const bearer = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+  const isBot = BOT_TOKEN !== "" && bearer !== "" && safeEqual(bearer, BOT_TOKEN);
+  if (!isBot) {
+    const sendAuth = await requireSendAuth(req);
+    if (!sendAuth.ok) return json({ error: sendAuth.error }, sendAuth.status);
+    if (sendAuth.caller !== "service" && sendAuth.caller !== `user:${OWNER_UID}`) return json({ error: "owner only" }, 403);
+  }
 
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
 

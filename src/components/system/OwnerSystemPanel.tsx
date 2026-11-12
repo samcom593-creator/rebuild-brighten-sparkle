@@ -23,6 +23,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { TonePill } from "@/components/ui/delight/ToneBubble";
 import type { Tone } from "@/lib/tones";
+import { externalHref } from "@/lib/externalHref";
 import {
   HEALTH_LABEL, HEALTH_TONE, STATUS_LABEL, STATUS_TONE, emptyDraft, formatCost, groupIntegrations, obligationCount, validateSubscription,
   type Integration, type Obligations, type Subscription, type SubscriptionDraft,
@@ -260,7 +261,7 @@ export function OwnerSystemPanel() {
                 {row.notes ? <p className="text-[13px] leading-5 text-muted-foreground">{row.notes}</p> : null}
                 <div className="mt-2 flex flex-wrap gap-2">
                   <Button variant="outline" className="h-10" onClick={() => setEditing(emptyDraft(row))}>Edit</Button>
-                  {row.billing_url ? <Button asChild variant="outline" className="h-10"><a href={row.billing_url} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" aria-hidden /> Billing page</a></Button> : null}
+                  {externalHref(row.billing_url) ? <Button asChild variant="outline" className="h-10"><a href={externalHref(row.billing_url) ?? undefined} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" aria-hidden /> Billing page</a></Button> : null}
                 </div>
                 {editing?.id === row.id ? <div className="mt-3"><SubscriptionForm initial={editing} onDone={() => { setEditing(null); void qc.invalidateQueries({ queryKey: ["owner-system"] }); }} /></div> : null}
               </li>

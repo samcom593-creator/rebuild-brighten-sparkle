@@ -297,6 +297,52 @@ console.log(
 );
 console.log("  This is NOT hung. Expect no further output until it finishes.");
 
+// ---------------------------------------------------------------------------
+// MP-WIB-TSC-OOM (2026-11-12): GIVE THE COMPILER ENOUGH HEAP, OR IT ABORTS
+// MID-COMPILE AND THE AUTHORITY GOES BLIND.
+//
+// f04a61a0 pushed a type-irrelevant diff (two string literals + a standalone
+// .mjs guard) onto a parent (aafa1d59) that had passed verify-core 2h earlier.
+// The verify-core.yml run went RED here with:
+//
+//   ✗ check:tsc-error-count — UNMEASURABLE after 86s: the compiler exited 134,
+//     which is not a status tsc uses to report diagnostics.
+//
+// Exit 134 = 128 + 6 (SIGABRT). For a V8/tsc process that is a JS-heap
+// out-of-memory abort, not a type-error regression — the MP-496 classifier
+// above correctly refused to score it as a pass (0 errors from a compiler that
+// never finished would otherwise read as a clean tree). But an authority that
+// goes UNMEASURABLE on random pushes turns main red for no code reason and
+// trains the operator to ignore verify-core — the cry-wolf failure mode this
+// repo has paid for repeatedly.
+//
+// MEASURED, not assumed. `tsc -b --noEmit --force` reproduced on Sam's machine
+// at f04a61a0 under `/usr/bin/time -l`: exit 2 (ran clean), 70 errors (<= the
+// 71 baseline, so the tree is fine), **maximum resident set size 2,915,418,112
+// bytes ≈ 2.72 GB**, 128s wall. GitHub `ubuntu-latest` is a 16 GB VM but Node
+// 20's DEFAULT old-space ceiling sits below ~2.7 GB, so the CI compile aborted
+// at 86s — partway, before it could reach the 128s completion. The crash is a
+// marginal OOM, deterministic in direction (the graph genuinely needs the
+// memory) and non-deterministic in exactly when GC tips it over.
+//
+// Fix lives HERE, in the gate's own spawn, not in verify-core.yml: this gate is
+// THE AUTHORITY (see header) and ALSO runs locally via
+// `npm run check:tsc-error-count`, so fixing the workflow alone would leave the
+// local path able to OOM on a smaller machine, and a second NODE_OPTIONS in the
+// yaml is a value that can drift from this one. --max-old-space-size IS on the
+// NODE_OPTIONS allowlist, so it propagates through `npx` to the tsc node
+// process. 8192 MB is generous headroom over the measured 2.72 GB and leaves
+// ~8 GB on a 16 GB runner for young-gen + OS; it is a CEILING, not an
+// allocation, so it costs nothing on a run that stays under it. Appended (not
+// replaced) so any pre-existing NODE_OPTIONS survives; Node takes the last
+// --max-old-space-size, so this one wins if the yaml ever sets its own.
+const TSC_HEAP_MB = 8192;
+const tscEnv = {
+  ...process.env,
+  NODE_OPTIONS:
+    `${process.env.NODE_OPTIONS ?? ""} --max-old-space-size=${TSC_HEAP_MB}`.trim(),
+};
+
 let stdout = "";
 let stderr = "";
 let childStatus = 0;
@@ -310,6 +356,7 @@ try {
     stdio: ["ignore", "pipe", "pipe"],
     encoding: "utf8",
     maxBuffer: 50 * 1024 * 1024,
+    env: tscEnv,
   });
 } catch (err) {
   // Expected path when errors exist — but ALSO the path taken when the

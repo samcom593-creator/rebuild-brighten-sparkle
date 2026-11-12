@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-unique-index-catalog.sh (bot_sql -> pg_index)",
- "_generated_at": "2026-11-11T00:39:21Z",
+ "_generated_at": "2026-11-12T06:45:52Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "A repo guard cannot query prod. This is a snapshot of which (table, column-set) combinations Postgres actually enforces as unique, so scripts/check-maybesingle-nonunique.mjs can decide whether an equality filter can match more than one row. Partial unique indexes are recorded SEPARATELY and deliberately NOT treated as uniqueness: they only constrain rows matching their predicate, so an equality filter can still match one in-predicate row and one out. apex-doctor Check #23 re-queries pg_index weekly and goes red when this snapshot drifts from the live catalog.",
  "relation_kind": {
@@ -153,7 +153,10 @@
   "bot_audits": "r",
   "bot_metrics_snapshots": "r",
   "bot_priorities": "r",
+  "brand_activities": "r",
   "brand_leads": "r",
+  "brand_metrics_daily": "r",
+  "brand_targets": "r",
   "calendar_events": "r",
   "calendly_reconciliation_runs": "r",
   "call_access_grants": "r",
@@ -296,6 +299,7 @@
   "hh_rate_limits": "r",
   "hh_user_prefs": "r",
   "hh_users": "r",
+  "hire_lane_email_outbox": "r",
   "hiring_manager_assignments": "r",
   "hub_course_progress": "r",
   "ics_feed_tokens": "r",
@@ -329,6 +333,7 @@
   "invitation_seen": "r",
   "invite_tokens": "r",
   "job_runs": "r",
+  "keyword_dm_log": "r",
   "lead_activity": "r",
   "lead_bundle_events": "r",
   "lead_bundle_grants": "r",
@@ -389,10 +394,12 @@
   "mv_production_comp_truth": "m",
   "myday_alerts_sent": "r",
   "myday_counter_events": "r",
+  "new_hire_flow_runs": "r",
   "next_step_events": "r",
   "next_step_messages": "r",
   "next_step_progress": "r",
   "next_step_stages": "r",
+  "next_step_step_copy": "r",
   "notification_log": "r",
   "notification_prefs": "r",
   "notifications": "r",
@@ -419,6 +426,7 @@
   "poke_queue": "r",
   "policy_quality_flags": "r",
   "prelicensing_confirmations": "r",
+  "private_surface_registry": "r",
   "production_external_daily_snapshots": "r",
   "production_external_deals": "r",
   "production_ledger": "r",
@@ -442,6 +450,9 @@
   "qe_source_documents": "r",
   "qe_underwriting_knockouts": "r",
   "rate_limits": "r",
+  "reactivation_bad_domains": "r",
+  "reactivation_replies": "r",
+  "reactivation_sequence": "r",
   "readymode_agent_aliases": "r",
   "readymode_agent_coaching": "r",
   "readymode_booking_packets": "r",
@@ -458,6 +469,7 @@
   "recruit_funnel_snapshot_meta": "r",
   "recruit_sequences": "r",
   "recruit_sla_push_log": "r",
+  "recruit_touch_kinds": "r",
   "recruiter_bounties": "r",
   "recurring_calendar_blocks": "r",
   "referrals": "r",
@@ -541,6 +553,7 @@
   "v_agent_duplicate_candidates": "v",
   "v_agent_duplicates": "v",
   "v_agent_first_deal_any_source": "v",
+  "v_agent_first_deal_definer": "v",
   "v_agent_license_alert_health": "v",
   "v_agent_manager_conflicts": "v",
   "v_agent_monthly_production": "v",
@@ -576,6 +589,8 @@
   "v_apex_contracts_summary": "v",
   "v_apex_roster": "v",
   "v_applicant_funnel_health": "v",
+  "v_applicant_lane_ladder_health": "v",
+  "v_applicant_lane_pkg1_health": "v",
   "v_application_channel": "v",
   "v_application_conversion_funnel": "v",
   "v_applications_real": "v",
@@ -634,8 +649,11 @@
   "v_cfo_ghost_ap_verdict": "v",
   "v_cfo_ica_paid_stuck": "v",
   "v_cfo_ica_paid_verdict": "v",
+  "v_cfo_placeholder_policy_chase": "v",
   "v_cfo_snapshot": "v",
+  "v_cfo_snapshot_operand_health": "v",
   "v_cfo_sync_health_watch": "v",
+  "v_cfo_unprovisioned_producer": "v",
   "v_channel_deprovision_needed": "v",
   "v_channel_health": "v",
   "v_charge_anomalies": "v",
@@ -652,6 +670,7 @@
   "v_conduct_command_center": "v",
   "v_content_utm_analytics": "v",
   "v_contract_send_health": "v",
+  "v_contracted_at_backfill_due": "v",
   "v_contracting_audit": "v",
   "v_contracting_audit_summary": "v",
   "v_contracting_carrier_cases": "v",
@@ -661,6 +680,9 @@
   "v_contracting_reconciliation": "v",
   "v_contracting_truth_health": "v",
   "v_contracting_worklist": "v",
+  "v_course_lane_exam_people": "v",
+  "v_course_lane_health": "v",
+  "v_course_lane_owner_tasks": "v",
   "v_course_proof_funnel": "v",
   "v_critical_losses_open": "v",
   "v_cron_schedule_convergence": "v",
@@ -702,6 +724,7 @@
   "v_ghost_deals": "v",
   "v_hh_hires_not_in_apex": "v",
   "v_hierarchy_unreachable": "v",
+  "v_hire_activation_health": "v",
   "v_hire_activity": "v",
   "v_hire_launch_board": "v",
   "v_hire_notification_gaps": "v",
@@ -787,6 +810,7 @@
   "v_next_step_manager_board": "v",
   "v_next_step_stuck_pool": "v",
   "v_notification_log_with_role": "v",
+  "v_numbers_reminder_audience": "v",
   "v_numbers_reminder_channel_health": "v",
   "v_objection_calls": "v",
   "v_offboarding_preservation": "v",
@@ -798,6 +822,7 @@
   "v_onboarding_funnel": "v",
   "v_onboarding_funnel_summary": "v",
   "v_onboarding_integrity": "v",
+  "v_onboarding_owned_people": "v",
   "v_onboarding_sequence": "v",
   "v_outreach_daily_cap_check": "v",
   "v_paid_applicants": "v",
@@ -820,6 +845,7 @@
   "v_production_comp_truth": "v",
   "v_production_integrity": "v",
   "v_production_origin_freshness": "v",
+  "v_production_run_rate_truth": "v",
   "v_production_truth_freshness": "v",
   "v_production_unified": "v",
   "v_profile_directory": "v",
@@ -831,11 +857,16 @@
   "v_queue_stalled_applications": "v",
   "v_reactivation_campaign_results": "v",
   "v_reactivation_cohort": "v",
+  "v_reactivation_funnel": "v",
+  "v_reactivation_health": "v",
+  "v_reactivation_outcomes": "v",
   "v_reactivation_targets": "v",
   "v_readymode_agent_daily": "v",
   "v_readymode_agent_scorecard": "v",
   "v_readymode_agent_today": "v",
   "v_readymode_coaching_queue": "v",
+  "v_readymode_disposition_taxonomy_health": "v",
+  "v_readymode_fictional_filter_views": "v",
   "v_readymode_ingest_health": "v",
   "v_readymode_lead_pool": "v",
   "v_readymode_lead_quality": "v",
@@ -855,9 +886,11 @@
   "v_recruit_funnel_applications": "v",
   "v_recruit_funnel_cohort": "v",
   "v_recruit_funnel_freshness": "v",
+  "v_recruit_last_touch": "v",
   "v_recruit_message_delivery": "v",
   "v_recruit_sequence_health": "v",
   "v_recruit_sla_queue": "v",
+  "v_recruit_touches": "v",
   "v_recruiter_bounty_candidates": "v",
   "v_recruiter_pipeline": "v",
   "v_recruiting_billing_status": "v",
@@ -888,12 +921,16 @@
   "v_slack_invite_receipts": "v",
   "v_smb_cw_bridge": "v",
   "v_sms_receipt_truth": "v",
+  "v_social_bot_content_pickup_health": "v",
   "v_social_bot_dashboard": "v",
   "v_social_bot_follower_total": "v",
   "v_social_bot_follower_truth": "v",
+  "v_social_bot_inbound_dead_band": "v",
   "v_social_bot_inbound_dead_cta": "v",
+  "v_social_bot_inbound_person_value": "v",
   "v_social_bot_inbound_unvalued": "v",
   "v_social_bot_scoreboard_freshness": "v",
+  "v_social_bot_scoreboard_value_parity": "v",
   "v_social_bot_snapshot_freshness": "v",
   "v_social_funnel_30d": "v",
   "v_social_inbox_priority": "v",
@@ -1845,9 +1882,29 @@
     "id"
    ]
   ],
+  "brand_activities": [
+   [
+    "id"
+   ]
+  ],
   "brand_leads": [
    [
     "id"
+   ]
+  ],
+  "brand_metrics_daily": [
+   [
+    "id"
+   ],
+   [
+    "metric_date",
+    "account",
+    "metric"
+   ]
+  ],
+  "brand_targets": [
+   [
+    "lane_key"
    ]
   ],
   "calendar_events": [
@@ -2735,6 +2792,14 @@
     "id"
    ]
   ],
+  "hire_lane_email_outbox": [
+   [
+    "dedupe_key"
+   ],
+   [
+    "id"
+   ]
+  ],
   "hiring_manager_assignments": [
    [
     "id"
@@ -2975,6 +3040,11 @@
    ]
   ],
   "job_runs": [
+   [
+    "id"
+   ]
+  ],
+  "keyword_dm_log": [
    [
     "id"
    ]
@@ -3362,6 +3432,11 @@
     "id"
    ]
   ],
+  "new_hire_flow_runs": [
+   [
+    "agent_id"
+   ]
+  ],
   "next_step_events": [
    [
     "id"
@@ -3383,6 +3458,12 @@
    ],
    [
     "stage_key"
+   ]
+  ],
+  "next_step_step_copy": [
+   [
+    "stage_key",
+    "step_key"
    ]
   ],
   "notification_log": [
@@ -3567,6 +3648,12 @@
     "email_key"
    ]
   ],
+  "private_surface_registry": [
+   [
+    "kind",
+    "name"
+   ]
+  ],
   "production_external_daily_snapshots": [
    [
     "agency_name",
@@ -3726,6 +3813,24 @@
     "id"
    ]
   ],
+  "reactivation_bad_domains": [
+   [
+    "domain"
+   ]
+  ],
+  "reactivation_replies": [
+   [
+    "thread_id"
+   ]
+  ],
+  "reactivation_sequence": [
+   [
+    "application_id"
+   ],
+   [
+    "email_lower"
+   ]
+  ],
   "readymode_agent_aliases": [
    [
     "agent_raw"
@@ -3821,6 +3926,12 @@
   "recruit_sla_push_log": [
    [
     "id"
+   ]
+  ],
+  "recruit_touch_kinds": [
+   [
+    "source",
+    "key_pattern"
    ]
   ],
   "recruiter_bounties": [
@@ -4291,6 +4402,12 @@
     "contact_action_id"
    ]
   ],
+  "brand_activities": [
+   [
+    "activity_date",
+    "task_id"
+   ]
+  ],
   "calendar_events": [
    [
     "source",
@@ -4360,6 +4477,11 @@
     "calendly_invitee_uri"
    ]
   ],
+  "keyword_dm_log": [
+   [
+    "inbound_id"
+   ]
+  ],
   "lead_bundle_grants": [
    [
     "bundle_id",
@@ -4421,6 +4543,11 @@
   "plaque_awards": [
    [
     "share_slug"
+   ]
+  ],
+  "social_bot_drafts": [
+   [
+    "card_id"
    ]
   ],
   "social_bot_inbound": [

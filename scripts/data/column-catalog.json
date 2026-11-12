@@ -2271,6 +2271,15 @@
       "sub_bot",
       "title"
     ],
+    "brand_activities": [
+      "activity_date",
+      "created_at",
+      "done",
+      "id",
+      "kind",
+      "notes",
+      "task_id"
+    ],
     "brand_leads": [
       "answers",
       "created_at",
@@ -2286,6 +2295,25 @@
       "source",
       "status",
       "user_agent"
+    ],
+    "brand_metrics_daily": [
+      "account",
+      "created_at",
+      "id",
+      "metric",
+      "metric_date",
+      "source",
+      "updated_at",
+      "value"
+    ],
+    "brand_targets": [
+      "activity_kind",
+      "kind",
+      "label",
+      "lane_key",
+      "sort",
+      "updated_at",
+      "weekly_target"
     ],
     "calendar_events": [
       "created_at",
@@ -3657,17 +3685,20 @@
       "user_id"
     ],
     "day_plan_defaults": [
+      "activity_kind",
       "category",
       "detail",
       "duration_min",
       "id",
       "sort",
       "start_min",
+      "template_version",
       "title",
       "weekday"
     ],
     "day_plan_tasks": [
       "active",
+      "activity_kind",
       "alert",
       "category",
       "created_at",
@@ -3676,6 +3707,7 @@
       "id",
       "sort",
       "start_min",
+      "template_version",
       "title",
       "updated_at",
       "user_id",
@@ -4277,6 +4309,30 @@
       "role",
       "updated_at"
     ],
+    "hire_lane_email_outbox": [
+      "agent_id",
+      "attempts",
+      "body_html",
+      "body_text",
+      "created_at",
+      "dedupe_key",
+      "error",
+      "http_status",
+      "id",
+      "kind",
+      "magic_destination",
+      "magic_token_id",
+      "meta",
+      "provider_id",
+      "recipient_user_id",
+      "req_id",
+      "requested_at",
+      "retryable",
+      "settled_at",
+      "status",
+      "subject",
+      "to_email"
+    ],
     "hiring_manager_assignments": [
       "created_at",
       "id",
@@ -4734,6 +4790,18 @@
       "started_at",
       "status"
     ],
+    "keyword_dm_log": [
+      "account",
+      "created_at",
+      "handle",
+      "happened_at",
+      "id",
+      "inbound_id",
+      "keyword",
+      "notes",
+      "post_url",
+      "status"
+    ],
     "lead_activity": [
       "activity_type",
       "actor_name",
@@ -5015,17 +5083,36 @@
       "prior_tracker_stage"
     ],
     "licensing_state_requirements": [
+      "as_of",
+      "course_extra_fee_label",
+      "course_extra_fee_usd",
+      "course_list_price_usd",
+      "course_name",
       "course_price_usd",
+      "course_provider",
+      "course_required",
+      "course_url",
       "exam_fee_usd",
+      "exam_name",
+      "exam_phone",
+      "exam_schedule_url",
       "exam_vendor",
       "exam_vendor_url",
       "fingerprint_fee_usd",
+      "fingerprint_required",
+      "fingerprint_url",
       "fingerprint_vendor",
       "is_active",
+      "license_apply_url",
+      "license_apply_via",
       "license_fee_usd",
+      "license_processing_fee_usd",
       "notes",
+      "sources",
       "state",
-      "updated_at"
+      "state_name",
+      "updated_at",
+      "watch_outs"
     ],
     "licensing_students": [
       "application_id",
@@ -5524,6 +5611,16 @@
       "occurred_at",
       "user_id"
     ],
+    "new_hire_flow_runs": [
+      "agent_id",
+      "attempts",
+      "claimed_at",
+      "completed_at",
+      "created_at",
+      "last_error",
+      "legs",
+      "updated_at"
+    ],
     "next_step_events": [
       "actor_user_id",
       "agent_id",
@@ -5607,6 +5704,14 @@
       "stall_action",
       "success_event",
       "telegram_template",
+      "updated_at"
+    ],
+    "next_step_step_copy": [
+      "email_body",
+      "email_subject",
+      "notes",
+      "stage_key",
+      "step_key",
       "updated_at"
     ],
     "notification_log": [
@@ -5984,6 +6089,12 @@
       "prelicensing_done_at",
       "updated_at"
     ],
+    "private_surface_registry": [
+      "added_at",
+      "kind",
+      "name",
+      "why"
+    ],
     "production_external_daily_snapshots": [
       "agency_name",
       "business_date",
@@ -6237,6 +6348,52 @@
       "id",
       "request_count",
       "window_start"
+    ],
+    "reactivation_bad_domains": [
+      "created_at",
+      "domain",
+      "reason"
+    ],
+    "reactivation_replies": [
+      "application_id",
+      "classification",
+      "created_at",
+      "email_lower",
+      "last_push_error",
+      "matched_by",
+      "notified_at",
+      "push_attempts",
+      "push_body",
+      "push_priority",
+      "push_title",
+      "received_at",
+      "sequences_stopped",
+      "stop_ambiguous",
+      "subject",
+      "subtype",
+      "thread_id"
+    ],
+    "reactivation_sequence": [
+      "application_id",
+      "attempts_failed",
+      "claim_reconciled_at",
+      "claim_request_id",
+      "claimed_at",
+      "current_touch",
+      "email_lower",
+      "enrolled_at",
+      "enrolled_from",
+      "last_error",
+      "last_http_status",
+      "last_message_id",
+      "last_resend_id",
+      "last_touch_at",
+      "next_due_at",
+      "status",
+      "stop_reason",
+      "track",
+      "updated_at",
+      "variant"
     ],
     "readymode_agent_aliases": [
       "agent_id",
@@ -6516,6 +6673,13 @@
       "settle_note",
       "settled_at",
       "status_code"
+    ],
+    "recruit_touch_kinds": [
+      "created_at",
+      "key_pattern",
+      "kind",
+      "note",
+      "source"
     ],
     "recruiter_bounties": [
       "amount_cents",
@@ -6828,10 +6992,12 @@
       "title"
     ],
     "social_bot_drafts": [
+      "account",
       "approved_at",
       "approved_by",
       "body",
       "caption",
+      "card_id",
       "created_at",
       "cta",
       "draft_date",
@@ -6843,6 +7009,9 @@
       "notes",
       "pillar",
       "platform",
+      "postiz_post_id",
+      "reject_reason",
+      "ship_source",
       "shipped_at",
       "shipped_url",
       "slot",
@@ -7395,9 +7564,12 @@
     ],
     "v_agent_activation_state": [
       "agent_id",
+      "app_calls_14d",
+      "app_last_activity_at",
       "derived_stage",
       "dialer_first_call_at",
       "dials_14d",
+      "dials_any_source_14d",
       "first_deal_at",
       "has_open_seat",
       "has_signed_in",
@@ -7526,9 +7698,18 @@
     ],
     "v_agent_dialer_state": [
       "agent_id",
+      "app_calls_14d",
+      "app_calls_7d",
+      "app_conversations_14d",
+      "app_dial_taps_14d",
+      "app_last_activity_at",
+      "app_outcomes_14d",
       "dialer_active_derived",
+      "dialer_status",
+      "dialing_any_source",
       "dials_14d",
       "dials_7d",
+      "dials_any_source_14d",
       "dials_total",
       "first_dial_at",
       "has_dialer_login_column",
@@ -7572,6 +7753,11 @@
       "dup_display_name"
     ],
     "v_agent_first_deal_any_source": [
+      "agent_id",
+      "first_deal_at",
+      "sources"
+    ],
+    "v_agent_first_deal_definer": [
       "agent_id",
       "first_deal_at",
       "sources"
@@ -8099,6 +8285,49 @@
       "test_rows_excluded",
       "verdict",
       "window_days"
+    ],
+    "v_applicant_lane_ladder_health": [
+      "applied_step_sends_new_copy",
+      "booking_trigger_enabled",
+      "cutoff_at",
+      "derivation_licensed_leak",
+      "licensed_apps_since",
+      "licensed_booked_since",
+      "licensed_step_sends",
+      "progress_drift",
+      "sweep_gate_present",
+      "unknown_tokens",
+      "unlicensed_apps_since",
+      "unlicensed_booked_since",
+      "unlicensed_course_since"
+    ],
+    "v_applicant_lane_pkg1_health": [
+      "cadence_ok",
+      "claim_fn_present",
+      "cutoff_at",
+      "dead_mailto_other_stages",
+      "dead_mailto_pkg1_stages",
+      "deferred_7d",
+      "drain_cron_active",
+      "expired_7d",
+      "expired_unclosed",
+      "followup_cron_present",
+      "gate_fn_present",
+      "gave_up_7d",
+      "ladder_email_no_reply_to_24h",
+      "ladder_emails_24h",
+      "measured_at",
+      "postcall_sent_since",
+      "reapplications_live_since",
+      "rearm_sent_since",
+      "retry_overdue_1h",
+      "retry_pending",
+      "same_day_double_7d",
+      "skips_7d",
+      "suspended_messaged_7d",
+      "sweep_gate_present",
+      "telegram_linked_not_optout",
+      "welcome_sent_24h"
     ],
     "v_application_channel": [
       "application_id",
@@ -9154,6 +9383,19 @@
       "stuck_count",
       "verdict"
     ],
+    "v_cfo_placeholder_policy_chase": [
+      "agent_name",
+      "alp",
+      "bucket",
+      "client_name",
+      "days_old",
+      "deal_ref",
+      "is_current_month",
+      "junk_policy",
+      "likely_unsubmitted",
+      "origin",
+      "posted_date"
+    ],
     "v_cfo_snapshot": [
       "agentlink_sync",
       "as_of",
@@ -9170,17 +9412,39 @@
       "mentorship_paid_total",
       "mentorship_revenue_usd"
     ],
+    "v_cfo_snapshot_operand_health": [
+      "as_of",
+      "discredited_phantom_operand",
+      "ghost_ap_at_risk_should_be",
+      "operand_honest",
+      "operand_is_phantom",
+      "verdict"
+    ],
     "v_cfo_sync_health_watch": [
       "agentlink_appts_total",
       "agentlink_commissions_total",
       "agentlink_health",
       "agentlink_leads_total",
+      "any_critical",
       "as_of",
       "insuracloud_health",
       "insuracloud_payouts_total",
       "insuracloud_policies_total",
       "last_agentlink_sync",
-      "last_insuracloud_sync"
+      "last_insuracloud_sync",
+      "verdict"
+    ],
+    "v_cfo_unprovisioned_producer": [
+      "agent_code",
+      "agent_id",
+      "alp_total",
+      "as_of",
+      "deals_count",
+      "display_name",
+      "has_login",
+      "last_deal_at",
+      "license_status",
+      "status"
     ],
     "v_channel_deprovision_needed": [
       "agent_id",
@@ -9397,6 +9661,14 @@
       "rows",
       "status"
     ],
+    "v_contracted_at_backfill_due": [
+      "agent_id",
+      "agent_status",
+      "first_deal_at",
+      "first_mark_at",
+      "first_name",
+      "stamp_at"
+    ],
     "v_contracting_audit": [
       "agent_id",
       "al_active",
@@ -9576,6 +9848,71 @@
       "next_action",
       "note",
       "npn_db"
+    ],
+    "v_course_lane_exam_people": [
+      "agent_id",
+      "application_id",
+      "block_reason",
+      "catchup_template_stage",
+      "completed_on",
+      "completion_source",
+      "completion_upper",
+      "email_lower",
+      "exam_on_file",
+      "first_name",
+      "is_fresh",
+      "licensed",
+      "owner_user_id",
+      "person_id",
+      "person_kind",
+      "push_created_at",
+      "push_id",
+      "push_receipt",
+      "push_sent_at",
+      "push_source",
+      "r1_queued",
+      "r2_queued",
+      "source_application_id",
+      "state",
+      "template_stage"
+    ],
+    "v_course_lane_health": [
+      "exam_messages_7d",
+      "exam_messages_receipted_7d",
+      "exam_sweep_cron_active",
+      "fresh_finishers_blocked",
+      "fresh_finishers_open",
+      "fresh_finishers_unreceipted_2d",
+      "fresh_finishers_unreceipted_2d_list",
+      "hired_unlicensed_anchor",
+      "hired_unlicensed_cron_active",
+      "hired_unlicensed_nudges_7d",
+      "last_exam_sweep_at",
+      "latest_xcel_report_at",
+      "lsr_active_rows",
+      "lsr_age_days",
+      "lsr_oldest_as_of",
+      "lsr_states_missing_template",
+      "recent_finishers_awaiting_catchup",
+      "rows_skipped_stage_changed_7d",
+      "rows_with_ladder_step_key_7d",
+      "xcel_cutoff_at",
+      "xcel_report_age_hours",
+      "xcel_unmatched_active"
+    ],
+    "v_course_lane_owner_tasks": [
+      "agent_id",
+      "application_id",
+      "event_on",
+      "first_name",
+      "next_action",
+      "note",
+      "owner_first_name",
+      "owner_user_id",
+      "person_kind",
+      "since",
+      "state",
+      "task"
     ],
     "v_course_proof_funnel": [
       "cutoff_at",
@@ -9949,7 +10286,11 @@
       "effective_date",
       "face_amount",
       "id",
-      "policy_number"
+      "policy_number",
+      "premium_note",
+      "priced_lapse_view",
+      "source_snapshot_at",
+      "verdict"
     ],
     "v_first_deal_reconcile_backlog": [
       "agent_id",
@@ -10028,6 +10369,36 @@
       "manager_id",
       "reason",
       "status"
+    ],
+    "v_hire_activation_health": [
+      "contracted_at_backfill_due",
+      "contracting_backlog_since_1009",
+      "contracting_cutoff",
+      "dialer_billing_paused",
+      "dialer_invoices_while_paused",
+      "dialer_status",
+      "licensed_hires_no_intake_1d",
+      "licensed_hires_no_intake_names",
+      "measured_at",
+      "new_hire_flow_exhausted",
+      "new_hire_flow_exhausted_names",
+      "numbers_audience",
+      "outbox_failed_24h",
+      "outbox_failed_not_retried_24h",
+      "outbox_unsettled_1h",
+      "pkg2_crons_active",
+      "starter_emails_failed_7d",
+      "starter_emails_sent_7d",
+      "starter_pack_enabled",
+      "starter_pack_enabled_since",
+      "starter_packs_granted_7d",
+      "starter_ready_2d_names",
+      "starter_ready_names",
+      "starter_ready_no_pack",
+      "starter_ready_no_pack_2d",
+      "suspended_in_hire_clock",
+      "suspended_in_numbers_audience",
+      "suspended_in_seat_queue"
     ],
     "v_hire_activity": [
       "activity_state",
@@ -10905,12 +11276,16 @@
     ],
     "v_licensed_hire_clock": [
       "agent_id",
+      "app_calls_14d",
+      "app_last_activity_at",
       "contract_profile_present",
       "contracting_state",
       "dark_origins",
       "days_since_hire",
       "dialer_first_dial_at",
+      "dialer_status",
       "dials_14d",
+      "dials_any_source_14d",
       "dials_total",
       "first_deal_at",
       "first_deal_state",
@@ -10948,13 +11323,17 @@
       "suggested_next_step"
     ],
     "v_licensing_cost_public": [
+      "as_of",
+      "course_extra_fee_usd",
       "course_price_usd",
       "exam_fee_usd",
       "exam_vendor",
       "exam_vendor_url",
       "fingerprint_fee_usd",
+      "fingerprint_required",
       "fingerprint_vendor",
       "license_fee_usd",
+      "license_processing_fee_usd",
       "state",
       "total_usd",
       "updated_at"
@@ -11134,10 +11513,14 @@
     ],
     "v_mercury_subscription_summary": [
       "active",
+      "any_charge_ever_succeeded",
+      "data_state",
       "essential_burn",
       "failing",
       "failing_burn",
       "monthly_burn",
+      "snapshot_age_days",
+      "source_snapshot_at",
       "total_subs"
     ],
     "v_missed_opportunity_ledger": [
@@ -11487,6 +11870,15 @@
       "status",
       "subject",
       "title"
+    ],
+    "v_numbers_reminder_audience": [
+      "agent_id",
+      "display_name",
+      "has_active_pack",
+      "has_deal_60d",
+      "new_hire_21d",
+      "reason",
+      "user_id"
     ],
     "v_numbers_reminder_channel_health": [
       "agents_reminded_last_run",
@@ -11860,6 +12252,10 @@
       "status",
       "unreachable"
     ],
+    "v_onboarding_owned_people": [
+      "email_lower",
+      "reason"
+    ],
     "v_onboarding_sequence": [
       "agent_id",
       "agent_name",
@@ -12203,6 +12599,21 @@
       "origin",
       "verdict"
     ],
+    "v_production_run_rate_truth": [
+      "blended_alp_30d",
+      "blended_alp_prior_30d",
+      "blended_drop_alp",
+      "blended_pct_change",
+      "dead_feeds",
+      "external_dark_prior_alp",
+      "external_live_alp_30d",
+      "measured_at",
+      "native_alp_30d",
+      "native_alp_prior_30d",
+      "native_pct_change",
+      "pct_of_drop_from_dead_feeds",
+      "verdict"
+    ],
     "v_production_truth_freshness": [
       "age_seconds",
       "dirty",
@@ -12360,7 +12771,75 @@
       "phone",
       "segment",
       "send_rank",
-      "state"
+      "state",
+      "track"
+    ],
+    "v_reactivation_funnel": [
+      "bounced",
+      "clicked",
+      "complained",
+      "delivered",
+      "no_provider_event_yet",
+      "sent",
+      "touch",
+      "track",
+      "variant"
+    ],
+    "v_reactivation_health": [
+      "active",
+      "ambiguous_7d",
+      "bounced_14d",
+      "breaker",
+      "breaker_open",
+      "claim_outstanding",
+      "complained_14d",
+      "completed",
+      "coverage_sends",
+      "coverage_with_event",
+      "cron_tick_active",
+      "daily_cap",
+      "due_now",
+      "enrolled",
+      "events_14d",
+      "gate_misses",
+      "held",
+      "held_by_reason",
+      "incident_bounced",
+      "incident_complained",
+      "incident_since",
+      "last_reply_at",
+      "last_send_at",
+      "last_tick",
+      "not_yet_enrolled",
+      "ramp_log",
+      "ramp_state",
+      "replies_total",
+      "reply_last_beat",
+      "reply_last_ok",
+      "retrying",
+      "sent_7d",
+      "sent_after_unsubscribe",
+      "sent_today",
+      "sent_without_email_consent",
+      "sent_without_provider_id",
+      "stage_rows_loaded",
+      "stale_claims",
+      "stopped",
+      "stops_7d",
+      "tick_error_streak",
+      "unnotified_replies"
+    ],
+    "v_reactivation_outcomes": [
+      "active",
+      "booked_after_send",
+      "completed_3_touches",
+      "emailed",
+      "enrolled",
+      "replied",
+      "stopped",
+      "track",
+      "unsubscribed",
+      "variant"
     ],
     "v_reactivation_targets": [
       "ai_score_tier",
@@ -12440,6 +12919,19 @@
       "recording_url",
       "summary"
     ],
+    "v_readymode_disposition_taxonomy_health": [
+      "kind",
+      "matcher",
+      "rows_matched",
+      "signal",
+      "total_calls",
+      "verdict"
+    ],
+    "v_readymode_fictional_filter_views": [
+      "fictional_filter_used",
+      "remediation",
+      "viewname"
+    ],
     "v_readymode_ingest_health": [
       "current_mode",
       "ingest_24h",
@@ -12486,9 +12978,19 @@
     ],
     "v_readymode_lead_source_roi": [
       "applications",
+      "appointments",
       "connects",
+      "contact_pct",
+      "contacts",
+      "days_since_last_call",
+      "dnc",
+      "last_call_at",
       "lead_source",
       "leads_touched",
+      "objections",
+      "sale_pct",
+      "sales",
+      "source_attribution_note",
       "total_calls"
     ],
     "v_readymode_leads": [
@@ -12721,6 +13223,17 @@
       "started_at",
       "verdict"
     ],
+    "v_recruit_last_touch": [
+      "campaign_touches_7d",
+      "double_touch_72h",
+      "email_lower",
+      "first_name",
+      "last_any_at",
+      "last_campaign_at",
+      "last_campaign_source",
+      "last_campaign_source_key",
+      "last_ladder_at"
+    ],
     "v_recruit_message_delivery": [
       "agent_id",
       "application_id",
@@ -12775,6 +13288,20 @@
       "sla_state",
       "sort_rank",
       "state"
+    ],
+    "v_recruit_touches": [
+      "agent_id",
+      "application_id",
+      "channel",
+      "email_lower",
+      "first_name",
+      "has_receipt",
+      "kind",
+      "outcome",
+      "person_kind",
+      "sent_at",
+      "source",
+      "source_key"
     ],
     "v_recruiter_bounty_candidates": [
       "application_id",
@@ -13183,6 +13710,15 @@
       "vocab_sent_rows",
       "vocab_skipped_rows"
     ],
+    "v_social_bot_content_pickup_health": [
+      "distinct_platforms",
+      "fresh_count",
+      "note",
+      "oldest_days",
+      "stranded_21d",
+      "total_awaiting",
+      "verdict"
+    ],
     "v_social_bot_dashboard": [
       "analytics",
       "as_of",
@@ -13221,6 +13757,17 @@
       "subscribers",
       "verdict"
     ],
+    "v_social_bot_inbound_dead_band": [
+      "cold_people",
+      "cold_recoverable_val",
+      "computed_at",
+      "dead_days",
+      "dead_people",
+      "dead_suppressed_val",
+      "fresh_people",
+      "fresh_val",
+      "legacy_blended_cold_val"
+    ],
     "v_social_bot_inbound_dead_cta": [
       "draft_reply",
       "handle",
@@ -13232,6 +13779,14 @@
       "stripe_link",
       "tier",
       "ts"
+    ],
+    "v_social_bot_inbound_person_value": [
+      "comment_rows",
+      "distinct_people",
+      "inflation_usd",
+      "person_sum_usd",
+      "row_sum_usd",
+      "segment"
     ],
     "v_social_bot_inbound_unvalued": [
       "handle",
@@ -13247,6 +13802,17 @@
       "generated_at",
       "verdict",
       "week_of"
+    ],
+    "v_social_bot_scoreboard_value_parity": [
+      "generated_at",
+      "is_diverged",
+      "scoreboard_cold_usd",
+      "scoreboard_fresh_usd",
+      "scoreboard_open",
+      "stored_basis",
+      "truth_cold_usd",
+      "truth_fresh_usd",
+      "truth_people"
     ],
     "v_social_bot_snapshot_freshness": [
       "hours_stale",
@@ -13886,9 +14452,11 @@
     ],
     "v_xcel_identity_rollup": [
       "application_id",
+      "completed_first_seen_at",
       "completed_on",
       "course_name",
       "email_key",
+      "enrolled_first_seen_at",
       "enrolled_on",
       "first_name",
       "first_seen_at",
@@ -13903,6 +14471,7 @@
       "match_method",
       "matched_agent_id",
       "staff_unlinked",
+      "started_first_seen_at",
       "started_on",
       "student_id"
     ],

@@ -753,6 +753,9 @@ verify_jwt = false
 [functions.brand-photo-upload]
 verify_jwt = false
 
+[functions.brand-metrics-ingest]
+verify_jwt = false
+
 [functions.cron-inbound-brain-health]
 verify_jwt = false
 

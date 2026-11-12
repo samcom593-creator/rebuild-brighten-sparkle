@@ -1419,6 +1419,40 @@
         "raw": ""
       }
     ],
+    "brand_command_summary": [
+      {
+        "all": [
+          "p_week_start"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_week_start date DEFAULT NULL::date"
+      }
+    ],
+    "brand_lane_value": [
+      {
+        "all": [
+          "p_from",
+          "p_key",
+          "p_to"
+        ],
+        "required": [
+          "p_from",
+          "p_key",
+          "p_to"
+        ],
+        "unnamed": false,
+        "raw": "p_key text, p_from timestamp with time zone, p_to timestamp with time zone"
+      }
+    ],
+    "brand_metrics_youtube_pull": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "bridge_hh_hire": [
       {
         "all": [
@@ -1878,7 +1912,23 @@
         "raw": ""
       }
     ],
+    "content_cards_brand_gate": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "content_cards_set_planned_week": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "content_cards_to_approval_queue": [
       {
         "all": [],
         "required": [],
@@ -2491,6 +2541,14 @@
       }
     ],
     "data_quality_audit": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "day_plan_check_to_brand_activity": [
       {
         "all": [],
         "required": [],
@@ -3512,6 +3570,31 @@
         "raw": ""
       }
     ],
+    "fn_catchup_course_finishers": [
+      {
+        "all": [
+          "p_dry_run",
+          "p_ids",
+          "p_max",
+          "p_window_days"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_dry_run boolean DEFAULT true, p_ids uuid[] DEFAULT NULL::uuid[], p_max integer DEFAULT 10, p_window_days integer DEFAULT 30"
+      }
+    ],
+    "fn_catchup_hired_unlicensed": [
+      {
+        "all": [
+          "p_dry_run",
+          "p_ids",
+          "p_max"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_dry_run boolean DEFAULT true, p_ids uuid[] DEFAULT NULL::uuid[], p_max integer DEFAULT 25"
+      }
+    ],
     "fn_client_pipeline_action": [
       {
         "all": [
@@ -3831,6 +3914,274 @@
       }
     ],
     "fn_contracting_stalled_settle": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_course_lane_agent_course_started": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
+    "fn_course_lane_block_reason": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_application_id"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_application_id"
+        ],
+        "unnamed": false,
+        "raw": "p_application_id uuid, p_agent_id uuid"
+      }
+    ],
+    "fn_course_lane_campaign_touch_ok": [
+      {
+        "all": [
+          "p_email"
+        ],
+        "required": [
+          "p_email"
+        ],
+        "unnamed": false,
+        "raw": "p_email text"
+      }
+    ],
+    "fn_course_lane_clear_wrong_xcel_suppressions": [
+      {
+        "all": [
+          "p_dry_run",
+          "p_max"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_dry_run boolean DEFAULT true, p_max integer DEFAULT 10"
+      }
+    ],
+    "fn_course_lane_course_state": [
+      {
+        "all": [
+          "p_course_name",
+          "p_fallback_state"
+        ],
+        "required": [
+          "p_course_name",
+          "p_fallback_state"
+        ],
+        "unnamed": false,
+        "raw": "p_course_name text, p_fallback_state text"
+      }
+    ],
+    "fn_course_lane_create_xcel_roster_records": [
+      {
+        "all": [
+          "p_dry_run",
+          "p_max",
+          "p_student_ids"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_dry_run boolean DEFAULT true, p_student_ids uuid[] DEFAULT NULL::uuid[], p_max integer DEFAULT 12"
+      }
+    ],
+    "fn_course_lane_email_block": [
+      {
+        "all": [
+          "p_email"
+        ],
+        "required": [
+          "p_email"
+        ],
+        "unnamed": false,
+        "raw": "p_email text"
+      }
+    ],
+    "fn_course_lane_exam_sweep": [
+      {
+        "all": [
+          "p_dry_run",
+          "p_limit"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_dry_run boolean DEFAULT true, p_limit integer DEFAULT 25"
+      }
+    ],
+    "fn_course_lane_footer": [
+      {
+        "all": [
+          "p_audience"
+        ],
+        "required": [
+          "p_audience"
+        ],
+        "unnamed": false,
+        "raw": "p_audience text"
+      }
+    ],
+    "fn_course_lane_hired_unlicensed_from": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_course_lane_hired_unlicensed_sweep": [
+      {
+        "all": [
+          "p_dry_run",
+          "p_limit"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_dry_run boolean DEFAULT true, p_limit integer DEFAULT 50"
+      }
+    ],
+    "fn_course_lane_html_escape": [
+      {
+        "all": [
+          "p"
+        ],
+        "required": [
+          "p"
+        ],
+        "unnamed": false,
+        "raw": "p text"
+      }
+    ],
+    "fn_course_lane_login_block": [
+      {
+        "all": [
+          "p_user_id"
+        ],
+        "required": [
+          "p_user_id"
+        ],
+        "unnamed": false,
+        "raw": "p_user_id uuid"
+      }
+    ],
+    "fn_course_lane_owner_user_id": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_application_id"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_application_id"
+        ],
+        "unnamed": false,
+        "raw": "p_application_id uuid, p_agent_id uuid"
+      }
+    ],
+    "fn_course_lane_postal_address": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_course_lane_questions_link": [
+      {
+        "all": [
+          "p_id_token"
+        ],
+        "required": [
+          "p_id_token"
+        ],
+        "unnamed": false,
+        "raw": "p_id_token text"
+      }
+    ],
+    "fn_course_lane_recent_touch": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_any",
+          "p_application_id",
+          "p_email",
+          "p_since"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_application_id",
+          "p_email",
+          "p_since"
+        ],
+        "unnamed": false,
+        "raw": "p_email text, p_application_id uuid, p_agent_id uuid, p_since interval, p_any boolean DEFAULT false"
+      }
+    ],
+    "fn_course_lane_sync_exam_templates": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_course_lane_sync_exam_templates_trigger": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_course_lane_upsert_template": [
+      {
+        "all": [
+          "p_audience",
+          "p_body_html",
+          "p_display_name",
+          "p_label",
+          "p_manager_alert",
+          "p_notes",
+          "p_short",
+          "p_stage_key",
+          "p_subject",
+          "p_url"
+        ],
+        "required": [
+          "p_audience",
+          "p_body_html",
+          "p_display_name",
+          "p_label",
+          "p_manager_alert",
+          "p_notes",
+          "p_short",
+          "p_stage_key",
+          "p_subject",
+          "p_url"
+        ],
+        "unnamed": false,
+        "raw": "p_stage_key text, p_display_name text, p_audience text, p_label text, p_url text, p_subject text, p_body_html text, p_short text, p_manager_alert text, p_notes text"
+      }
+    ],
+    "fn_course_lane_wrong_xcel_suppressions": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_course_lane_xcel_roster_candidates": [
       {
         "all": [],
         "required": [],
@@ -4996,6 +5347,14 @@
         "raw": "p_message_id uuid"
       }
     ],
+    "fn_next_step_close_hired_applicant": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "fn_next_step_deal_first_check": [
       {
         "all": [],
@@ -5434,6 +5793,22 @@
         "raw": "p_report_id uuid DEFAULT NULL::uuid"
       }
     ],
+    "fn_private_surface_alert": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_private_surface_audit": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "fn_production_integrity_anchor": [
       {
         "all": [],
@@ -5549,6 +5924,237 @@
         "raw": ""
       }
     ],
+    "fn_reactivation_breaker_state": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_reactivation_canary_guard": [
+      {
+        "all": [
+          "p_cap"
+        ],
+        "required": [
+          "p_cap"
+        ],
+        "unnamed": false,
+        "raw": "p_cap integer"
+      }
+    ],
+    "fn_reactivation_claim_next": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_reactivation_dispatch": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_reactivation_dispatch_inner": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_reactivation_gate": [
+      {
+        "all": [
+          "p_application_id",
+          "p_since"
+        ],
+        "required": [
+          "p_application_id"
+        ],
+        "unnamed": false,
+        "raw": "p_application_id uuid, p_since timestamp with time zone DEFAULT NULL::timestamp with time zone"
+      }
+    ],
+    "fn_reactivation_hold_stale_claims": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_reactivation_in_window": [
+      {
+        "all": [
+          "p_now",
+          "p_state"
+        ],
+        "required": [
+          "p_state"
+        ],
+        "unnamed": false,
+        "raw": "p_state text, p_now timestamp with time zone DEFAULT now()"
+      }
+    ],
+    "fn_reactivation_incidents": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_reactivation_on_receipt": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_reactivation_phone10": [
+      {
+        "all": [
+          "p"
+        ],
+        "required": [
+          "p"
+        ],
+        "unnamed": false,
+        "raw": "p text"
+      }
+    ],
+    "fn_reactivation_ramp_evaluate": [
+      {
+        "all": [
+          "p_now"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_now timestamp with time zone DEFAULT now()"
+      }
+    ],
+    "fn_reactivation_reconcile": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_reactivation_reply_last_ok": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_reactivation_reply_reader_beat": [
+      {
+        "all": [
+          "p_detail",
+          "p_ok"
+        ],
+        "required": [
+          "p_ok"
+        ],
+        "unnamed": false,
+        "raw": "p_ok boolean, p_detail text DEFAULT NULL::text"
+      }
+    ],
+    "fn_reactivation_stop": [
+      {
+        "all": [
+          "p_email",
+          "p_reason",
+          "p_unsubscribe"
+        ],
+        "required": [
+          "p_email",
+          "p_reason"
+        ],
+        "unnamed": false,
+        "raw": "p_email text, p_reason text, p_unsubscribe boolean DEFAULT false"
+      }
+    ],
+    "fn_reactivation_track": [
+      {
+        "all": [
+          "p_application_id"
+        ],
+        "required": [
+          "p_application_id"
+        ],
+        "unnamed": false,
+        "raw": "p_application_id uuid"
+      }
+    ],
+    "fn_reactivation_track_of": [
+      {
+        "all": [
+          "p_course_purchased_at",
+          "p_course_started_at",
+          "p_exam_passed_at",
+          "p_license_progress",
+          "p_license_status",
+          "p_stage"
+        ],
+        "required": [
+          "p_course_purchased_at",
+          "p_course_started_at",
+          "p_exam_passed_at",
+          "p_license_progress",
+          "p_license_status",
+          "p_stage"
+        ],
+        "unnamed": false,
+        "raw": "p_license_status text, p_license_progress text, p_exam_passed_at timestamp with time zone, p_course_started_at timestamp with time zone, p_course_purchased_at timestamp with time zone, p_stage text"
+      }
+    ],
+    "fn_reactivation_track_warmth": [
+      {
+        "all": [
+          "p_track"
+        ],
+        "required": [
+          "p_track"
+        ],
+        "unnamed": false,
+        "raw": "p_track text"
+      }
+    ],
+    "fn_reactivation_trip": [
+      {
+        "all": [
+          "p_for",
+          "p_reason"
+        ],
+        "required": [
+          "p_reason"
+        ],
+        "unnamed": false,
+        "raw": "p_reason text, p_for interval DEFAULT NULL::interval"
+      }
+    ],
+    "fn_reactivation_variant": [
+      {
+        "all": [
+          "p_application_id"
+        ],
+        "required": [
+          "p_application_id"
+        ],
+        "unnamed": false,
+        "raw": "p_application_id uuid"
+      }
+    ],
     "fn_readymode_ingest": [
       {
         "all": [
@@ -5636,6 +6242,19 @@
         "raw": "p_application_id uuid, p_action text, p_new_agent_id uuid DEFAULT NULL::uuid, p_note text DEFAULT NULL::text"
       }
     ],
+    "fn_recruit_campaign_touch_ok": [
+      {
+        "all": [
+          "p_email",
+          "p_min_gap"
+        ],
+        "required": [
+          "p_email"
+        ],
+        "unnamed": false,
+        "raw": "p_email text, p_min_gap interval DEFAULT '7 days'::interval"
+      }
+    ],
     "fn_recruit_owner_email_ok": [
       {
         "all": [
@@ -5704,6 +6323,20 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "fn_recruit_touch_kind": [
+      {
+        "all": [
+          "p_key",
+          "p_source"
+        ],
+        "required": [
+          "p_key",
+          "p_source"
+        ],
+        "unnamed": false,
+        "raw": "p_source text, p_key text"
       }
     ],
     "fn_recruit_user_is_active": [
@@ -6313,6 +6946,28 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "fn_xcel_cutoff_ts": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_xcel_event_upper_bound": [
+      {
+        "all": [
+          "p_event_on",
+          "p_seen_at"
+        ],
+        "required": [
+          "p_event_on",
+          "p_seen_at"
+        ],
+        "unnamed": false,
+        "raw": "p_event_on date, p_seen_at timestamp with time zone"
       }
     ],
     "fn_xcel_events_auto_upgrade": [
@@ -9968,6 +10623,14 @@
         "raw": ""
       }
     ],
+    "social_bot_drafts_card_backflow": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "social_command_center": [
       {
         "all": [],
@@ -10721,6 +11384,14 @@
       }
     ],
     "trg_profile_name_from_application": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trg_sam_new_session_alert": [
       {
         "all": [],
         "required": [],

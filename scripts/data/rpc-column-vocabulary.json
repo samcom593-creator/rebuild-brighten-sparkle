@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-11-11T20:34:23Z",
+ "_generated_at": "2026-11-12T06:45:51Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -115,6 +115,9 @@
   "bot_alert_licensed_app": "trigger",
   "bot_alert_newly_licensed": "trigger",
   "bot_alert_sync_error": "trigger",
+  "brand_command_summary": "jsonb",
+  "brand_lane_value": "numeric",
+  "brand_metrics_youtube_pull": "jsonb",
   "bridge_hh_hire": "jsonb",
   "broadcast_to_all_channels": "jsonb",
   "build_plaque_svg": "text",
@@ -146,7 +149,9 @@
   "client_birthday_wisher": "jsonb",
   "commission_ledger_reconcile": "jsonb",
   "content_can_access": "boolean",
+  "content_cards_brand_gate": "trigger",
   "content_cards_set_planned_week": "trigger",
+  "content_cards_to_approval_queue": "trigger",
   "content_cards_touch_updated_at": "trigger",
   "content_cards_workflow_guard": "trigger",
   "content_clips_canon_tags": "text[]",
@@ -193,6 +198,7 @@
   "cw_winner_schedule_ig": "trigger",
   "dashboard_paid_today_summary": "jsonb",
   "data_quality_audit": "jsonb",
+  "day_plan_check_to_brand_activity": "trigger",
   "day_plan_ensure_seeded": "integer",
   "deal_sync_queue_promote_dead": "integer",
   "deals_ensure_posted_at": "trigger",
@@ -222,6 +228,7 @@
   "fn_agent_is_placeholder": "boolean",
   "fn_agent_is_roster_excluded": "boolean",
   "fn_agent_is_roster_excluded_live": "boolean",
+  "fn_agent_is_suspended": "boolean",
   "fn_agent_license_returned_alert": "trigger",
   "fn_agent_licensing_ready": "boolean",
   "fn_agent_onboarding_call_booking": "uuid",
@@ -238,12 +245,14 @@
   "fn_agents_manager_no_cycle": "trigger",
   "fn_alert_blacklisted_carrier_deal": "trigger",
   "fn_alert_sms_fix_anchor": "timestamp with time zone",
+  "fn_anchor_pkg1_cutoff": "timestamp with time zone",
   "fn_apex_log_http_call": "trigger",
   "fn_append_only_guard": "trigger",
   "fn_applicant_first_dm_on_apply": "trigger",
   "fn_application_has_agent": "boolean",
   "fn_application_milestone_broadcast": "trigger",
   "fn_applications_derive_record_type": "trigger",
+  "fn_applications_reapply_supersede": "trigger",
   "fn_apply_invite_target_role": "trigger",
   "fn_apply_licensing_self_report": "trigger",
   "fn_apply_xcel_progress": "jsonb",
@@ -275,6 +284,8 @@
   "fn_capture_application_licensing_milestone": "trigger",
   "fn_capture_pg_cron_timeout_state": "void",
   "fn_carrier_policies_touch": "trigger",
+  "fn_catchup_course_finishers": "jsonb",
+  "fn_catchup_hired_unlicensed": "jsonb",
   "fn_client_pipeline_action": "void",
   "fn_client_pipeline_create": "uuid",
   "fn_client_pipeline_update": "jsonb",
@@ -285,11 +296,36 @@
   "fn_contract_review_my_agent": "uuid",
   "fn_contract_review_save_profile": "jsonb",
   "fn_contracting_case_events_append_only": "trigger",
+  "fn_contracting_intake_draft": "jsonb",
   "fn_contracting_is_staff": "boolean",
+  "fn_contracting_owner_user_id": "uuid",
+  "fn_contracting_request_cutoff": "timestamp with time zone",
   "fn_contracting_request_eval": "jsonb",
+  "fn_contracting_request_open": "jsonb",
   "fn_contracting_request_row": "jsonb",
+  "fn_contracting_request_sweep": "jsonb",
   "fn_contracting_required_carriers": "text[]",
   "fn_contracting_stalled_settle": "jsonb",
+  "fn_course_lane_agent_course_started": "boolean",
+  "fn_course_lane_block_reason": "text",
+  "fn_course_lane_campaign_touch_ok": "boolean",
+  "fn_course_lane_clear_wrong_xcel_suppressions": "jsonb",
+  "fn_course_lane_course_state": "text",
+  "fn_course_lane_create_xcel_roster_records": "jsonb",
+  "fn_course_lane_email_block": "text",
+  "fn_course_lane_exam_sweep": "jsonb",
+  "fn_course_lane_footer": "text",
+  "fn_course_lane_hired_unlicensed_from": "timestamp with time zone",
+  "fn_course_lane_hired_unlicensed_sweep": "jsonb",
+  "fn_course_lane_html_escape": "text",
+  "fn_course_lane_login_block": "text",
+  "fn_course_lane_owner_user_id": "uuid",
+  "fn_course_lane_postal_address": "text",
+  "fn_course_lane_questions_link": "text",
+  "fn_course_lane_recent_touch": "timestamp with time zone",
+  "fn_course_lane_sync_exam_templates": "integer",
+  "fn_course_lane_sync_exam_templates_trigger": "trigger",
+  "fn_course_lane_upsert_template": "void",
   "fn_csv_cell": "text",
   "fn_culture_loop_on_deal": "trigger",
   "fn_deal_capture_writing_npn": "trigger",
@@ -302,6 +338,7 @@
   "fn_email_events_ingest": "jsonb",
   "fn_email_failure_alarm": "jsonb",
   "fn_email_is_sendable": "boolean",
+  "fn_email_is_suspended": "boolean",
   "fn_emit_bounty_reversed": "trigger",
   "fn_emit_inbox_notification": "uuid",
   "fn_enforce_quiz_attempt_cap": "trigger",
@@ -321,6 +358,10 @@
   "fn_first_deal_unified_cutoff": "date",
   "fn_guard_daily_production_date": "trigger",
   "fn_guard_slack_verified_source": "trigger",
+  "fn_hire_lane_email_dispatch": "jsonb",
+  "fn_hire_lane_email_enqueue": "uuid",
+  "fn_hire_lane_email_settle": "jsonb",
+  "fn_hire_lane_email_tick": "jsonb",
   "fn_hire_stage_for_rank": "text",
   "fn_hire_stage_rank": "integer",
   "fn_identity_collision_anchor": "timestamp with time zone",
@@ -367,6 +408,9 @@
   "fn_missed_opportunity_digest": "jsonb",
   "fn_money_inbox_guard": "trigger",
   "fn_money_inbox_touch": "trigger",
+  "fn_new_hire_flow_claim": "jsonb",
+  "fn_new_hire_flow_finish": "jsonb",
+  "fn_new_hire_flow_retry_sweep": "jsonb",
   "fn_next_onboarding_window": "timestamp with time zone",
   "fn_next_seminar_date": "date",
   "fn_next_seminar_slot": "timestamp with time zone",
@@ -374,12 +418,15 @@
   "fn_next_step_applications_recompute_trigger": "trigger",
   "fn_next_step_cadence_due": "text",
   "fn_next_step_cadence_due_local": "text",
+  "fn_next_step_claim": "jsonb",
+  "fn_next_step_close_hired_applicant": "trigger",
   "fn_next_step_deal_first_check": "trigger",
   "fn_next_step_interview_recompute_trigger": "trigger",
   "fn_next_step_manual_advance": "jsonb",
   "fn_next_step_messages_auto_dispatch": "trigger",
   "fn_next_step_rank": "integer",
   "fn_next_step_recompute_one": "void",
+  "fn_next_step_send_gate": "jsonb",
   "fn_next_step_send_ok": "boolean",
   "fn_next_step_send_zones": "text[]",
   "fn_normalize_contracting_email": "text",
@@ -402,10 +449,12 @@
   "fn_phoenix_today": "date",
   "fn_phx_business_minutes": "integer",
   "fn_pick_recruit_owner": "uuid",
+  "fn_pkg2_html_escape": "text",
   "fn_policy_number_report_placeholder": "boolean",
   "fn_post_deal_celebration": "bigint",
   "fn_post_new_applicant_to_onboarding_chat": "trigger",
   "fn_post_unlicensed_digest": "void",
+  "fn_private_surface_alert": "integer",
   "fn_production_integrity_anchor": "timestamp with time zone",
   "fn_project_contract_marks_to_getting_started": "trigger",
   "fn_protect_application_attribution": "trigger",
@@ -420,17 +469,38 @@
   "fn_queue_interview_noshow_slack": "trigger",
   "fn_queue_licensing_milestone_slack": "trigger",
   "fn_queue_onboarding_call_invites": "trigger",
+  "fn_reactivation_canary_guard": "text",
+  "fn_reactivation_dispatch": "text",
+  "fn_reactivation_dispatch_inner": "text",
+  "fn_reactivation_gate": "text",
+  "fn_reactivation_hold_stale_claims": "integer",
+  "fn_reactivation_in_window": "boolean",
+  "fn_reactivation_on_receipt": "trigger",
+  "fn_reactivation_phone10": "text",
+  "fn_reactivation_ramp_evaluate": "text",
+  "fn_reactivation_reconcile": "text",
+  "fn_reactivation_reply_last_ok": "timestamp with time zone",
+  "fn_reactivation_reply_reader_beat": "void",
+  "fn_reactivation_stop": "integer",
+  "fn_reactivation_track": "text",
+  "fn_reactivation_track_of": "text",
+  "fn_reactivation_track_warmth": "integer",
+  "fn_reactivation_trip": "void",
+  "fn_reactivation_variant": "text",
   "fn_readymode_ingest": "jsonb",
   "fn_reconcile_licensing_vocabularies": "trigger",
   "fn_record_auth_provision_failure": "void",
   "fn_record_slack_placement": "uuid",
   "fn_recover_stale_applicant": "jsonb",
+  "fn_recruit_campaign_touch_ok": "boolean",
+  "fn_recruit_owner_email_ok": "boolean",
   "fn_recruit_sam_user_id": "uuid",
   "fn_recruit_scope_ok": "boolean",
   "fn_recruit_sla_digest": "jsonb",
   "fn_recruit_sla_open_untouched": "SETOF applications",
   "fn_recruit_sla_pager": "jsonb",
   "fn_recruit_sla_pager_settle": "jsonb",
+  "fn_recruit_touch_kind": "text",
   "fn_recruit_user_is_active": "boolean",
   "fn_recruiting_billing_weekly": "void",
   "fn_reissue_40d_html": "text",
@@ -454,6 +524,8 @@
   "fn_stamp_agent_licensed_at": "trigger",
   "fn_stamp_applications_licensed_at": "trigger",
   "fn_stamp_candidate_note_author": "trigger",
+  "fn_stamp_contracted_at_from_deal": "trigger",
+  "fn_starter_pack_cron": "jsonb",
   "fn_status_answer_indicates_licensed": "boolean",
   "fn_supersede_interview_reminders": "integer",
   "fn_sweep_manager_followup_reminders": "integer",
@@ -472,6 +544,8 @@
   "fn_touch_messaging_updated_at": "trigger",
   "fn_unlicensed_slack_digest": "text",
   "fn_us_state_send_zones": "text[]",
+  "fn_user_is_suspended": "boolean",
+  "fn_user_login_blocked": "boolean",
   "fn_weekdays_valid": "boolean",
   "fn_work_weekdays_on": "smallint[]",
   "fn_workday_apply": "jsonb",
@@ -480,6 +554,8 @@
   "fn_wp4_reset_email_bounced": "trigger",
   "fn_wp5_staff_reader": "boolean",
   "fn_xcel_auto_upgrade_all": "integer",
+  "fn_xcel_cutoff_ts": "timestamp with time zone",
+  "fn_xcel_event_upper_bound": "timestamp with time zone",
   "fn_xcel_events_auto_upgrade": "trigger",
   "fn_xcel_stage_rank": "integer",
   "fn_xcel_students_apply_trigger": "trigger",
@@ -726,6 +802,7 @@
   "slack_delivery_receipt_stats": "jsonb",
   "sms_allowed": "boolean",
   "snapshot_aged_leads_daily": "void",
+  "social_bot_drafts_card_backflow": "trigger",
   "social_command_center": "jsonb",
   "social_draft_set_status": "jsonb",
   "social_lead_csv": "text",
@@ -801,6 +878,7 @@
   "trg_fn_worklist_outcome_sync_stage": "trigger",
   "trg_mark_truth_dirty": "trigger",
   "trg_profile_name_from_application": "trigger",
+  "trg_sam_new_session_alert": "trigger",
   "trg_scripts_packet_on_agent": "trigger",
   "trg_scripts_packet_on_progress": "trigger",
   "trigger_interview_noshow_recovery": "jsonb",
@@ -7935,6 +8013,914 @@
     "stuck"
    ]
   },
+  "fn_anchor_pkg1_reapply_catchup.application_id": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "already_live",
+    "application",
+    "closed_lost",
+    "made_live",
+    "newer_application_exists",
+    "no_email",
+    "not_a_reapplication_30d",
+    "not_an_application",
+    "not_found",
+    "public",
+    "reapplication",
+    "reapplication_catchup",
+    "reason",
+    "superseded_at",
+    "superseded_by",
+    "suspended",
+    "terminated",
+    "was_hired",
+    "would_make_live"
+   ]
+  },
+  "fn_anchor_pkg1_reapply_catchup.first_name": {
+   "candidates": [
+    "applications.first_name"
+   ],
+   "body_literals": [
+    "active",
+    "already_live",
+    "application",
+    "closed_lost",
+    "made_live",
+    "newer_application_exists",
+    "no_email",
+    "not_a_reapplication_30d",
+    "not_an_application",
+    "not_found",
+    "public",
+    "reapplication",
+    "reapplication_catchup",
+    "reason",
+    "superseded_at",
+    "superseded_by",
+    "suspended",
+    "terminated",
+    "was_hired",
+    "would_make_live"
+   ]
+  },
+  "fn_anchor_pkg1_reapply_catchup.superseded_ids": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "already_live",
+    "application",
+    "closed_lost",
+    "made_live",
+    "newer_application_exists",
+    "no_email",
+    "not_a_reapplication_30d",
+    "not_an_application",
+    "not_found",
+    "public",
+    "reapplication",
+    "reapplication_catchup",
+    "reason",
+    "superseded_at",
+    "superseded_by",
+    "suspended",
+    "terminated",
+    "was_hired",
+    "would_make_live"
+   ]
+  },
+  "fn_anchor_pkg1_reapply_catchup.verdict": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "already_live",
+    "application",
+    "closed_lost",
+    "made_live",
+    "newer_application_exists",
+    "no_email",
+    "not_a_reapplication_30d",
+    "not_an_application",
+    "not_found",
+    "public",
+    "reapplication",
+    "reapplication_catchup",
+    "reason",
+    "superseded_at",
+    "superseded_by",
+    "suspended",
+    "terminated",
+    "was_hired",
+    "would_make_live"
+   ]
+  },
+  "fn_applicant_lane_pkg1_health.cadence_ok": {
+   "candidates": [],
+   "body_literals": [
+    "apex-followup-emails-daily",
+    "applicant",
+    "applied",
+    "attended_seminar",
+    "booked_seminar",
+    "both",
+    "call_booked",
+    "completed_application",
+    "contacted",
+    "deferred",
+    "email",
+    "expired",
+    "fn_anchor_pkg1_cutoff",
+    "licensed_book_call",
+    "next_step_retry_drain",
+    "not_before",
+    "public",
+    "reapplication",
+    "rearm",
+    "reply_to",
+    "send_zones",
+    "sent",
+    "skip_reason",
+    "submit-application-applicant",
+    "variant",
+    "watched_vsl"
+   ]
+  },
+  "fn_applicant_lane_pkg1_health.claim_fn_present": {
+   "candidates": [],
+   "body_literals": [
+    "apex-followup-emails-daily",
+    "applicant",
+    "applied",
+    "attended_seminar",
+    "booked_seminar",
+    "both",
+    "call_booked",
+    "completed_application",
+    "contacted",
+    "deferred",
+    "email",
+    "expired",
+    "fn_anchor_pkg1_cutoff",
+    "licensed_book_call",
+    "next_step_retry_drain",
+    "not_before",
+    "public",
+    "reapplication",
+    "rearm",
+    "reply_to",
+    "send_zones",
+    "sent",
+    "skip_reason",
+    "submit-application-applicant",
+    "variant",
+    "watched_vsl"
+   ]
+  },
+  "fn_applicant_lane_pkg1_health.cutoff_at": {
+   "candidates": [],
+   "body_literals": [
+    "apex-followup-emails-daily",
+    "applicant",
+    "applied",
+    "attended_seminar",
+    "booked_seminar",
+    "both",
+    "call_booked",
+    "completed_application",
+    "contacted",
+    "deferred",
+    "email",
+    "expired",
+    "fn_anchor_pkg1_cutoff",
+    "licensed_book_call",
+    "next_step_retry_drain",
+    "not_before",
+    "public",
+    "reapplication",
+    "rearm",
+    "reply_to",
+    "send_zones",
+    "sent",
+    "skip_reason",
+    "submit-application-applicant",
+    "variant",
+    "watched_vsl"
+   ]
+  },
+  "fn_applicant_lane_pkg1_health.dead_mailto_other_stages": {
+   "candidates": [],
+   "body_literals": [
+    "apex-followup-emails-daily",
+    "applicant",
+    "applied",
+    "attended_seminar",
+    "booked_seminar",
+    "both",
+    "call_booked",
+    "completed_application",
+    "contacted",
+    "deferred",
+    "email",
+    "expired",
+    "fn_anchor_pkg1_cutoff",
+    "licensed_book_call",
+    "next_step_retry_drain",
+    "not_before",
+    "public",
+    "reapplication",
+    "rearm",
+    "reply_to",
+    "send_zones",
+    "sent",
+    "skip_reason",
+    "submit-application-applicant",
+    "variant",
+    "watched_vsl"
+   ]
+  },
+  "fn_applicant_lane_pkg1_health.dead_mailto_pkg1_stages": {
+   "candidates": [],
+   "body_literals": [
+    "apex-followup-emails-daily",
+    "applicant",
+    "applied",
+    "attended_seminar",
+    "booked_seminar",
+    "both",
+    "call_booked",
+    "completed_application",
+    "contacted",
+    "deferred",
+    "email",
+    "expired",
+    "fn_anchor_pkg1_cutoff",
+    "licensed_book_call",
+    "next_step_retry_drain",
+    "not_before",
+    "public",
+    "reapplication",
+    "rearm",
+    "reply_to",
+    "send_zones",
+    "sent",
+    "skip_reason",
+    "submit-application-applicant",
+    "variant",
+    "watched_vsl"
+   ]
+  },
+  "fn_applicant_lane_pkg1_health.deferred_7d": {
+   "candidates": [],
+   "body_literals": [
+    "apex-followup-emails-daily",
+    "applicant",
+    "applied",
+    "attended_seminar",
+    "booked_seminar",
+    "both",
+    "call_booked",
+    "completed_application",
+    "contacted",
+    "deferred",
+    "email",
+    "expired",
+    "fn_anchor_pkg1_cutoff",
+    "licensed_book_call",
+    "next_step_retry_drain",
+    "not_before",
+    "public",
+    "reapplication",
+    "rearm",
+    "reply_to",
+    "send_zones",
+    "sent",
+    "skip_reason",
+    "submit-application-applicant",
+    "variant",
+    "watched_vsl"
+   ]
+  },
+  "fn_applicant_lane_pkg1_health.drain_cron_active": {
+   "candidates": [],
+   "body_literals": [
+    "apex-followup-emails-daily",
+    "applicant",
+    "applied",
+    "attended_seminar",
+    "booked_seminar",
+    "both",
+    "call_booked",
+    "completed_application",
+    "contacted",
+    "deferred",
+    "email",
+    "expired",
+    "fn_anchor_pkg1_cutoff",
+    "licensed_book_call",
+    "next_step_retry_drain",
+    "not_before",
+    "public",
+    "reapplication",
+    "rearm",
+    "reply_to",
+    "send_zones",
+    "sent",
+    "skip_reason",
+    "submit-application-applicant",
+    "variant",
+    "watched_vsl"
+   ]
+  },
+  "fn_applicant_lane_pkg1_health.expired_7d": {
+   "candidates": [],
+   "body_literals": [
+    "apex-followup-emails-daily",
+    "applicant",
+    "applied",
+    "attended_seminar",
+    "booked_seminar",
+    "both",
+    "call_booked",
+    "completed_application",
+    "contacted",
+    "deferred",
+    "email",
+    "expired",
+    "fn_anchor_pkg1_cutoff",
+    "licensed_book_call",
+    "next_step_retry_drain",
+    "not_before",
+    "public",
+    "reapplication",
+    "rearm",
+    "reply_to",
+    "send_zones",
+    "sent",
+    "skip_reason",
+    "submit-application-applicant",
+    "variant",
+    "watched_vsl"
+   ]
+  },
+  "fn_applicant_lane_pkg1_health.expired_unclosed": {
+   "candidates": [],
+   "body_literals": [
+    "apex-followup-emails-daily",
+    "applicant",
+    "applied",
+    "attended_seminar",
+    "booked_seminar",
+    "both",
+    "call_booked",
+    "completed_application",
+    "contacted",
+    "deferred",
+    "email",
+    "expired",
+    "fn_anchor_pkg1_cutoff",
+    "licensed_book_call",
+    "next_step_retry_drain",
+    "not_before",
+    "public",
+    "reapplication",
+    "rearm",
+    "reply_to",
+    "send_zones",
+    "sent",
+    "skip_reason",
+    "submit-application-applicant",
+    "variant",
+    "watched_vsl"
+   ]
+  },
+  "fn_applicant_lane_pkg1_health.followup_cron_present": {
+   "candidates": [],
+   "body_literals": [
+    "apex-followup-emails-daily",
+    "applicant",
+    "applied",
+    "attended_seminar",
+    "booked_seminar",
+    "both",
+    "call_booked",
+    "completed_application",
+    "contacted",
+    "deferred",
+    "email",
+    "expired",
+    "fn_anchor_pkg1_cutoff",
+    "licensed_book_call",
+    "next_step_retry_drain",
+    "not_before",
+    "public",
+    "reapplication",
+    "rearm",
+    "reply_to",
+    "send_zones",
+    "sent",
+    "skip_reason",
+    "submit-application-applicant",
+    "variant",
+    "watched_vsl"
+   ]
+  },
+  "fn_applicant_lane_pkg1_health.gate_fn_present": {
+   "candidates": [],
+   "body_literals": [
+    "apex-followup-emails-daily",
+    "applicant",
+    "applied",
+    "attended_seminar",
+    "booked_seminar",
+    "both",
+    "call_booked",
+    "completed_application",
+    "contacted",
+    "deferred",
+    "email",
+    "expired",
+    "fn_anchor_pkg1_cutoff",
+    "licensed_book_call",
+    "next_step_retry_drain",
+    "not_before",
+    "public",
+    "reapplication",
+    "rearm",
+    "reply_to",
+    "send_zones",
+    "sent",
+    "skip_reason",
+    "submit-application-applicant",
+    "variant",
+    "watched_vsl"
+   ]
+  },
+  "fn_applicant_lane_pkg1_health.gave_up_7d": {
+   "candidates": [],
+   "body_literals": [
+    "apex-followup-emails-daily",
+    "applicant",
+    "applied",
+    "attended_seminar",
+    "booked_seminar",
+    "both",
+    "call_booked",
+    "completed_application",
+    "contacted",
+    "deferred",
+    "email",
+    "expired",
+    "fn_anchor_pkg1_cutoff",
+    "licensed_book_call",
+    "next_step_retry_drain",
+    "not_before",
+    "public",
+    "reapplication",
+    "rearm",
+    "reply_to",
+    "send_zones",
+    "sent",
+    "skip_reason",
+    "submit-application-applicant",
+    "variant",
+    "watched_vsl"
+   ]
+  },
+  "fn_applicant_lane_pkg1_health.ladder_email_no_reply_to_24h": {
+   "candidates": [],
+   "body_literals": [
+    "apex-followup-emails-daily",
+    "applicant",
+    "applied",
+    "attended_seminar",
+    "booked_seminar",
+    "both",
+    "call_booked",
+    "completed_application",
+    "contacted",
+    "deferred",
+    "email",
+    "expired",
+    "fn_anchor_pkg1_cutoff",
+    "licensed_book_call",
+    "next_step_retry_drain",
+    "not_before",
+    "public",
+    "reapplication",
+    "rearm",
+    "reply_to",
+    "send_zones",
+    "sent",
+    "skip_reason",
+    "submit-application-applicant",
+    "variant",
+    "watched_vsl"
+   ]
+  },
+  "fn_applicant_lane_pkg1_health.ladder_emails_24h": {
+   "candidates": [],
+   "body_literals": [
+    "apex-followup-emails-daily",
+    "applicant",
+    "applied",
+    "attended_seminar",
+    "booked_seminar",
+    "both",
+    "call_booked",
+    "completed_application",
+    "contacted",
+    "deferred",
+    "email",
+    "expired",
+    "fn_anchor_pkg1_cutoff",
+    "licensed_book_call",
+    "next_step_retry_drain",
+    "not_before",
+    "public",
+    "reapplication",
+    "rearm",
+    "reply_to",
+    "send_zones",
+    "sent",
+    "skip_reason",
+    "submit-application-applicant",
+    "variant",
+    "watched_vsl"
+   ]
+  },
+  "fn_applicant_lane_pkg1_health.measured_at": {
+   "candidates": [],
+   "body_literals": [
+    "apex-followup-emails-daily",
+    "applicant",
+    "applied",
+    "attended_seminar",
+    "booked_seminar",
+    "both",
+    "call_booked",
+    "completed_application",
+    "contacted",
+    "deferred",
+    "email",
+    "expired",
+    "fn_anchor_pkg1_cutoff",
+    "licensed_book_call",
+    "next_step_retry_drain",
+    "not_before",
+    "public",
+    "reapplication",
+    "rearm",
+    "reply_to",
+    "send_zones",
+    "sent",
+    "skip_reason",
+    "submit-application-applicant",
+    "variant",
+    "watched_vsl"
+   ]
+  },
+  "fn_applicant_lane_pkg1_health.postcall_sent_since": {
+   "candidates": [],
+   "body_literals": [
+    "apex-followup-emails-daily",
+    "applicant",
+    "applied",
+    "attended_seminar",
+    "booked_seminar",
+    "both",
+    "call_booked",
+    "completed_application",
+    "contacted",
+    "deferred",
+    "email",
+    "expired",
+    "fn_anchor_pkg1_cutoff",
+    "licensed_book_call",
+    "next_step_retry_drain",
+    "not_before",
+    "public",
+    "reapplication",
+    "rearm",
+    "reply_to",
+    "send_zones",
+    "sent",
+    "skip_reason",
+    "submit-application-applicant",
+    "variant",
+    "watched_vsl"
+   ]
+  },
+  "fn_applicant_lane_pkg1_health.reapplications_live_since": {
+   "candidates": [],
+   "body_literals": [
+    "apex-followup-emails-daily",
+    "applicant",
+    "applied",
+    "attended_seminar",
+    "booked_seminar",
+    "both",
+    "call_booked",
+    "completed_application",
+    "contacted",
+    "deferred",
+    "email",
+    "expired",
+    "fn_anchor_pkg1_cutoff",
+    "licensed_book_call",
+    "next_step_retry_drain",
+    "not_before",
+    "public",
+    "reapplication",
+    "rearm",
+    "reply_to",
+    "send_zones",
+    "sent",
+    "skip_reason",
+    "submit-application-applicant",
+    "variant",
+    "watched_vsl"
+   ]
+  },
+  "fn_applicant_lane_pkg1_health.rearm_sent_since": {
+   "candidates": [],
+   "body_literals": [
+    "apex-followup-emails-daily",
+    "applicant",
+    "applied",
+    "attended_seminar",
+    "booked_seminar",
+    "both",
+    "call_booked",
+    "completed_application",
+    "contacted",
+    "deferred",
+    "email",
+    "expired",
+    "fn_anchor_pkg1_cutoff",
+    "licensed_book_call",
+    "next_step_retry_drain",
+    "not_before",
+    "public",
+    "reapplication",
+    "rearm",
+    "reply_to",
+    "send_zones",
+    "sent",
+    "skip_reason",
+    "submit-application-applicant",
+    "variant",
+    "watched_vsl"
+   ]
+  },
+  "fn_applicant_lane_pkg1_health.retry_overdue_1h": {
+   "candidates": [],
+   "body_literals": [
+    "apex-followup-emails-daily",
+    "applicant",
+    "applied",
+    "attended_seminar",
+    "booked_seminar",
+    "both",
+    "call_booked",
+    "completed_application",
+    "contacted",
+    "deferred",
+    "email",
+    "expired",
+    "fn_anchor_pkg1_cutoff",
+    "licensed_book_call",
+    "next_step_retry_drain",
+    "not_before",
+    "public",
+    "reapplication",
+    "rearm",
+    "reply_to",
+    "send_zones",
+    "sent",
+    "skip_reason",
+    "submit-application-applicant",
+    "variant",
+    "watched_vsl"
+   ]
+  },
+  "fn_applicant_lane_pkg1_health.retry_pending": {
+   "candidates": [],
+   "body_literals": [
+    "apex-followup-emails-daily",
+    "applicant",
+    "applied",
+    "attended_seminar",
+    "booked_seminar",
+    "both",
+    "call_booked",
+    "completed_application",
+    "contacted",
+    "deferred",
+    "email",
+    "expired",
+    "fn_anchor_pkg1_cutoff",
+    "licensed_book_call",
+    "next_step_retry_drain",
+    "not_before",
+    "public",
+    "reapplication",
+    "rearm",
+    "reply_to",
+    "send_zones",
+    "sent",
+    "skip_reason",
+    "submit-application-applicant",
+    "variant",
+    "watched_vsl"
+   ]
+  },
+  "fn_applicant_lane_pkg1_health.same_day_double_7d": {
+   "candidates": [],
+   "body_literals": [
+    "apex-followup-emails-daily",
+    "applicant",
+    "applied",
+    "attended_seminar",
+    "booked_seminar",
+    "both",
+    "call_booked",
+    "completed_application",
+    "contacted",
+    "deferred",
+    "email",
+    "expired",
+    "fn_anchor_pkg1_cutoff",
+    "licensed_book_call",
+    "next_step_retry_drain",
+    "not_before",
+    "public",
+    "reapplication",
+    "rearm",
+    "reply_to",
+    "send_zones",
+    "sent",
+    "skip_reason",
+    "submit-application-applicant",
+    "variant",
+    "watched_vsl"
+   ]
+  },
+  "fn_applicant_lane_pkg1_health.skips_7d": {
+   "candidates": [],
+   "body_literals": [
+    "apex-followup-emails-daily",
+    "applicant",
+    "applied",
+    "attended_seminar",
+    "booked_seminar",
+    "both",
+    "call_booked",
+    "completed_application",
+    "contacted",
+    "deferred",
+    "email",
+    "expired",
+    "fn_anchor_pkg1_cutoff",
+    "licensed_book_call",
+    "next_step_retry_drain",
+    "not_before",
+    "public",
+    "reapplication",
+    "rearm",
+    "reply_to",
+    "send_zones",
+    "sent",
+    "skip_reason",
+    "submit-application-applicant",
+    "variant",
+    "watched_vsl"
+   ]
+  },
+  "fn_applicant_lane_pkg1_health.suspended_messaged_7d": {
+   "candidates": [],
+   "body_literals": [
+    "apex-followup-emails-daily",
+    "applicant",
+    "applied",
+    "attended_seminar",
+    "booked_seminar",
+    "both",
+    "call_booked",
+    "completed_application",
+    "contacted",
+    "deferred",
+    "email",
+    "expired",
+    "fn_anchor_pkg1_cutoff",
+    "licensed_book_call",
+    "next_step_retry_drain",
+    "not_before",
+    "public",
+    "reapplication",
+    "rearm",
+    "reply_to",
+    "send_zones",
+    "sent",
+    "skip_reason",
+    "submit-application-applicant",
+    "variant",
+    "watched_vsl"
+   ]
+  },
+  "fn_applicant_lane_pkg1_health.sweep_gate_present": {
+   "candidates": [],
+   "body_literals": [
+    "apex-followup-emails-daily",
+    "applicant",
+    "applied",
+    "attended_seminar",
+    "booked_seminar",
+    "both",
+    "call_booked",
+    "completed_application",
+    "contacted",
+    "deferred",
+    "email",
+    "expired",
+    "fn_anchor_pkg1_cutoff",
+    "licensed_book_call",
+    "next_step_retry_drain",
+    "not_before",
+    "public",
+    "reapplication",
+    "rearm",
+    "reply_to",
+    "send_zones",
+    "sent",
+    "skip_reason",
+    "submit-application-applicant",
+    "variant",
+    "watched_vsl"
+   ]
+  },
+  "fn_applicant_lane_pkg1_health.telegram_linked_not_optout": {
+   "candidates": [],
+   "body_literals": [
+    "apex-followup-emails-daily",
+    "applicant",
+    "applied",
+    "attended_seminar",
+    "booked_seminar",
+    "both",
+    "call_booked",
+    "completed_application",
+    "contacted",
+    "deferred",
+    "email",
+    "expired",
+    "fn_anchor_pkg1_cutoff",
+    "licensed_book_call",
+    "next_step_retry_drain",
+    "not_before",
+    "public",
+    "reapplication",
+    "rearm",
+    "reply_to",
+    "send_zones",
+    "sent",
+    "skip_reason",
+    "submit-application-applicant",
+    "variant",
+    "watched_vsl"
+   ]
+  },
+  "fn_applicant_lane_pkg1_health.welcome_sent_24h": {
+   "candidates": [],
+   "body_literals": [
+    "apex-followup-emails-daily",
+    "applicant",
+    "applied",
+    "attended_seminar",
+    "booked_seminar",
+    "both",
+    "call_booked",
+    "completed_application",
+    "contacted",
+    "deferred",
+    "email",
+    "expired",
+    "fn_anchor_pkg1_cutoff",
+    "licensed_book_call",
+    "next_step_retry_drain",
+    "not_before",
+    "public",
+    "reapplication",
+    "rearm",
+    "reply_to",
+    "send_zones",
+    "sent",
+    "skip_reason",
+    "submit-application-applicant",
+    "variant",
+    "watched_vsl"
+   ]
+  },
   "fn_auto_merge_clear_duplicates.canonical_id": {
    "candidates": [],
    "body_literals": [
@@ -7954,6 +8940,101 @@
    "body_literals": [
     "public",
     "terminated"
+   ]
+  },
+  "fn_backfill_contracted_at.agent_id": {
+   "candidates": [
+    "contract_review_marks.agent_id",
+    "deals.agent_id",
+    "mat_production_unified.agent_id",
+    "v_agent_first_deal_definer.agent_id",
+    "v_contracted_at_backfill_due.agent_id"
+   ],
+   "body_literals": [
+    "agent_id",
+    "contracted_at",
+    "public",
+    "stamp_at",
+    "stamped",
+    "would_stamp"
+   ]
+  },
+  "fn_backfill_contracted_at.agent_status": {
+   "candidates": [
+    "v_contracted_at_backfill_due.agent_status"
+   ],
+   "body_literals": [
+    "agent_id",
+    "contracted_at",
+    "public",
+    "stamp_at",
+    "stamped",
+    "would_stamp"
+   ]
+  },
+  "fn_backfill_contracted_at.decision": {
+   "candidates": [],
+   "body_literals": [
+    "agent_id",
+    "contracted_at",
+    "public",
+    "stamp_at",
+    "stamped",
+    "would_stamp"
+   ]
+  },
+  "fn_backfill_contracted_at.first_deal_at": {
+   "candidates": [
+    "agents.first_deal_at",
+    "v_agent_first_deal_definer.first_deal_at",
+    "v_contracted_at_backfill_due.first_deal_at"
+   ],
+   "body_literals": [
+    "agent_id",
+    "contracted_at",
+    "public",
+    "stamp_at",
+    "stamped",
+    "would_stamp"
+   ]
+  },
+  "fn_backfill_contracted_at.first_mark_at": {
+   "candidates": [
+    "v_contracted_at_backfill_due.first_mark_at"
+   ],
+   "body_literals": [
+    "agent_id",
+    "contracted_at",
+    "public",
+    "stamp_at",
+    "stamped",
+    "would_stamp"
+   ]
+  },
+  "fn_backfill_contracted_at.first_name": {
+   "candidates": [
+    "v_contracted_at_backfill_due.first_name"
+   ],
+   "body_literals": [
+    "agent_id",
+    "contracted_at",
+    "public",
+    "stamp_at",
+    "stamped",
+    "would_stamp"
+   ]
+  },
+  "fn_backfill_contracted_at.stamp_at": {
+   "candidates": [
+    "v_contracted_at_backfill_due.stamp_at"
+   ],
+   "body_literals": [
+    "agent_id",
+    "contracted_at",
+    "public",
+    "stamp_at",
+    "stamped",
+    "would_stamp"
    ]
   },
   "fn_backfill_orphan_agent_id.distinct_customers": {
@@ -8130,6 +9211,166 @@
     "va_manager"
    ]
   },
+  "fn_contracting_request_backfill.agent_id": {
+   "candidates": [],
+   "body_literals": [
+    "Mon DD",
+    "These licensed hires joined since ",
+    "YYYY-MM-DD",
+    "array",
+    "contracting_request",
+    "error",
+    "intake",
+    "missing",
+    "names",
+    "opened",
+    "public",
+    "would_open"
+   ]
+  },
+  "fn_contracting_request_backfill.decision": {
+   "candidates": [],
+   "body_literals": [
+    "Mon DD",
+    "These licensed hires joined since ",
+    "YYYY-MM-DD",
+    "array",
+    "contracting_request",
+    "error",
+    "intake",
+    "missing",
+    "names",
+    "opened",
+    "public",
+    "would_open"
+   ]
+  },
+  "fn_contracting_request_backfill.first_name": {
+   "candidates": [],
+   "body_literals": [
+    "Mon DD",
+    "These licensed hires joined since ",
+    "YYYY-MM-DD",
+    "array",
+    "contracting_request",
+    "error",
+    "intake",
+    "missing",
+    "names",
+    "opened",
+    "public",
+    "would_open"
+   ]
+  },
+  "fn_contracting_request_backfill.hired_at": {
+   "candidates": [],
+   "body_literals": [
+    "Mon DD",
+    "These licensed hires joined since ",
+    "YYYY-MM-DD",
+    "array",
+    "contracting_request",
+    "error",
+    "intake",
+    "missing",
+    "names",
+    "opened",
+    "public",
+    "would_open"
+   ]
+  },
+  "fn_contracting_request_backfill.intake": {
+   "candidates": [],
+   "body_literals": [
+    "Mon DD",
+    "These licensed hires joined since ",
+    "YYYY-MM-DD",
+    "array",
+    "contracting_request",
+    "error",
+    "intake",
+    "missing",
+    "names",
+    "opened",
+    "public",
+    "would_open"
+   ]
+  },
+  "fn_contracting_request_backfill.missing": {
+   "candidates": [],
+   "body_literals": [
+    "Mon DD",
+    "These licensed hires joined since ",
+    "YYYY-MM-DD",
+    "array",
+    "contracting_request",
+    "error",
+    "intake",
+    "missing",
+    "names",
+    "opened",
+    "public",
+    "would_open"
+   ]
+  },
+  "fn_contracting_request_due.agent_id": {
+   "candidates": [
+    "contracting_intakes.agent_id"
+   ],
+   "body_literals": [
+    "Unnamed",
+    "active",
+    "admin",
+    "agent",
+    "infinity",
+    "licensed",
+    "manager",
+    "public"
+   ]
+  },
+  "fn_contracting_request_due.first_name": {
+   "candidates": [
+    "contracting_intakes.first_name"
+   ],
+   "body_literals": [
+    "Unnamed",
+    "active",
+    "admin",
+    "agent",
+    "infinity",
+    "licensed",
+    "manager",
+    "public"
+   ]
+  },
+  "fn_contracting_request_due.hired_at": {
+   "candidates": [],
+   "body_literals": [
+    "Unnamed",
+    "active",
+    "admin",
+    "agent",
+    "infinity",
+    "licensed",
+    "manager",
+    "public"
+   ]
+  },
+  "fn_contracting_request_due.licensed_at": {
+   "candidates": [
+    "agents.licensed_at"
+   ],
+   "body_literals": [
+    "Unnamed",
+    "active",
+    "admin",
+    "agent",
+    "infinity",
+    "licensed",
+    "manager",
+    "public"
+   ]
+  },
   "fn_contracting_stalled_due.agent_id": {
    "candidates": [
     "contracting_stalled_checkpoints.agent_id"
@@ -8163,6 +9404,342 @@
   "fn_contracting_stalled_due.first_name": {
    "candidates": [],
    "body_literals": [
+    "public"
+   ]
+  },
+  "fn_course_lane_wrong_xcel_suppressions.application_id": {
+   "candidates": [
+    "next_step_messages.application_id",
+    "v_xcel_identity_rollup.application_id",
+    "xcel_pre_licensing_students.application_id"
+   ],
+   "body_literals": [
+    "entered_at",
+    "finished_prelicense",
+    "public",
+    "suppressed_by",
+    "voided_by",
+    "wp1_xcel_backfill"
+   ]
+  },
+  "fn_course_lane_wrong_xcel_suppressions.cutoff_at": {
+   "candidates": [],
+   "body_literals": [
+    "entered_at",
+    "finished_prelicense",
+    "public",
+    "suppressed_by",
+    "voided_by",
+    "wp1_xcel_backfill"
+   ]
+  },
+  "fn_course_lane_wrong_xcel_suppressions.dedupe_key": {
+   "candidates": [
+    "next_step_messages.dedupe_key"
+   ],
+   "body_literals": [
+    "entered_at",
+    "finished_prelicense",
+    "public",
+    "suppressed_by",
+    "voided_by",
+    "wp1_xcel_backfill"
+   ]
+  },
+  "fn_course_lane_wrong_xcel_suppressions.entered_at": {
+   "candidates": [],
+   "body_literals": [
+    "entered_at",
+    "finished_prelicense",
+    "public",
+    "suppressed_by",
+    "voided_by",
+    "wp1_xcel_backfill"
+   ]
+  },
+  "fn_course_lane_wrong_xcel_suppressions.event_on": {
+   "candidates": [],
+   "body_literals": [
+    "entered_at",
+    "finished_prelicense",
+    "public",
+    "suppressed_by",
+    "voided_by",
+    "wp1_xcel_backfill"
+   ]
+  },
+  "fn_course_lane_wrong_xcel_suppressions.event_upper_bound": {
+   "candidates": [],
+   "body_literals": [
+    "entered_at",
+    "finished_prelicense",
+    "public",
+    "suppressed_by",
+    "voided_by",
+    "wp1_xcel_backfill"
+   ]
+  },
+  "fn_course_lane_wrong_xcel_suppressions.first_name": {
+   "candidates": [
+    "applications.first_name",
+    "v_xcel_identity_rollup.first_name",
+    "xcel_pre_licensing_students.first_name"
+   ],
+   "body_literals": [
+    "entered_at",
+    "finished_prelicense",
+    "public",
+    "suppressed_by",
+    "voided_by",
+    "wp1_xcel_backfill"
+   ]
+  },
+  "fn_course_lane_wrong_xcel_suppressions.message_id": {
+   "candidates": [],
+   "body_literals": [
+    "entered_at",
+    "finished_prelicense",
+    "public",
+    "suppressed_by",
+    "voided_by",
+    "wp1_xcel_backfill"
+   ]
+  },
+  "fn_course_lane_wrong_xcel_suppressions.stage_key": {
+   "candidates": [
+    "next_step_messages.stage_key"
+   ],
+   "body_literals": [
+    "entered_at",
+    "finished_prelicense",
+    "public",
+    "suppressed_by",
+    "voided_by",
+    "wp1_xcel_backfill"
+   ]
+  },
+  "fn_course_lane_wrong_xcel_suppressions.template_key": {
+   "candidates": [
+    "next_step_messages.template_key"
+   ],
+   "body_literals": [
+    "entered_at",
+    "finished_prelicense",
+    "public",
+    "suppressed_by",
+    "voided_by",
+    "wp1_xcel_backfill"
+   ]
+  },
+  "fn_course_lane_xcel_roster_candidates.completed_on": {
+   "candidates": [
+    "v_xcel_identity_rollup.completed_on"
+   ],
+   "body_literals": [
+    "application_exists_by_email",
+    "g",
+    "login_exists_by_email",
+    "name_matches_a_record",
+    "no_first_name",
+    "phone_matches_a_record",
+    "profile_exists_by_email",
+    "public"
+   ]
+  },
+  "fn_course_lane_xcel_roster_candidates.course_name": {
+   "candidates": [
+    "v_xcel_identity_rollup.course_name",
+    "xcel_pre_licensing_students.course_name"
+   ],
+   "body_literals": [
+    "application_exists_by_email",
+    "g",
+    "login_exists_by_email",
+    "name_matches_a_record",
+    "no_first_name",
+    "phone_matches_a_record",
+    "profile_exists_by_email",
+    "public"
+   ]
+  },
+  "fn_course_lane_xcel_roster_candidates.email_key": {
+   "candidates": [
+    "v_xcel_identity_rollup.email_key"
+   ],
+   "body_literals": [
+    "application_exists_by_email",
+    "g",
+    "login_exists_by_email",
+    "name_matches_a_record",
+    "no_first_name",
+    "phone_matches_a_record",
+    "profile_exists_by_email",
+    "public"
+   ]
+  },
+  "fn_course_lane_xcel_roster_candidates.enrolled_on": {
+   "candidates": [
+    "v_xcel_identity_rollup.enrolled_on"
+   ],
+   "body_literals": [
+    "application_exists_by_email",
+    "g",
+    "login_exists_by_email",
+    "name_matches_a_record",
+    "no_first_name",
+    "phone_matches_a_record",
+    "profile_exists_by_email",
+    "public"
+   ]
+  },
+  "fn_course_lane_xcel_roster_candidates.first_name": {
+   "candidates": [
+    "applications.first_name",
+    "v_xcel_identity_rollup.first_name",
+    "xcel_pre_licensing_students.first_name"
+   ],
+   "body_literals": [
+    "application_exists_by_email",
+    "g",
+    "login_exists_by_email",
+    "name_matches_a_record",
+    "no_first_name",
+    "phone_matches_a_record",
+    "profile_exists_by_email",
+    "public"
+   ]
+  },
+  "fn_course_lane_xcel_roster_candidates.hiring_manager_name": {
+   "candidates": [
+    "v_xcel_identity_rollup.hiring_manager_name",
+    "xcel_pre_licensing_students.hiring_manager_name"
+   ],
+   "body_literals": [
+    "application_exists_by_email",
+    "g",
+    "login_exists_by_email",
+    "name_matches_a_record",
+    "no_first_name",
+    "phone_matches_a_record",
+    "profile_exists_by_email",
+    "public"
+   ]
+  },
+  "fn_course_lane_xcel_roster_candidates.last_initial": {
+   "candidates": [
+    "v_xcel_identity_rollup.last_initial"
+   ],
+   "body_literals": [
+    "application_exists_by_email",
+    "g",
+    "login_exists_by_email",
+    "name_matches_a_record",
+    "no_first_name",
+    "phone_matches_a_record",
+    "profile_exists_by_email",
+    "public"
+   ]
+  },
+  "fn_course_lane_xcel_roster_candidates.last_log_in": {
+   "candidates": [
+    "v_xcel_identity_rollup.last_log_in",
+    "xcel_pre_licensing_students.last_log_in"
+   ],
+   "body_literals": [
+    "application_exists_by_email",
+    "g",
+    "login_exists_by_email",
+    "name_matches_a_record",
+    "no_first_name",
+    "phone_matches_a_record",
+    "profile_exists_by_email",
+    "public"
+   ]
+  },
+  "fn_course_lane_xcel_roster_candidates.latest_pct": {
+   "candidates": [
+    "v_xcel_identity_rollup.latest_pct"
+   ],
+   "body_literals": [
+    "application_exists_by_email",
+    "g",
+    "login_exists_by_email",
+    "name_matches_a_record",
+    "no_first_name",
+    "phone_matches_a_record",
+    "profile_exists_by_email",
+    "public"
+   ]
+  },
+  "fn_course_lane_xcel_roster_candidates.reason": {
+   "candidates": [],
+   "body_literals": [
+    "application_exists_by_email",
+    "g",
+    "login_exists_by_email",
+    "name_matches_a_record",
+    "no_first_name",
+    "phone_matches_a_record",
+    "profile_exists_by_email",
+    "public"
+   ]
+  },
+  "fn_course_lane_xcel_roster_candidates.started_on": {
+   "candidates": [
+    "v_xcel_identity_rollup.started_on"
+   ],
+   "body_literals": [
+    "application_exists_by_email",
+    "g",
+    "login_exists_by_email",
+    "name_matches_a_record",
+    "no_first_name",
+    "phone_matches_a_record",
+    "profile_exists_by_email",
+    "public"
+   ]
+  },
+  "fn_course_lane_xcel_roster_candidates.state": {
+   "candidates": [
+    "applications.state",
+    "profiles.state"
+   ],
+   "body_literals": [
+    "application_exists_by_email",
+    "g",
+    "login_exists_by_email",
+    "name_matches_a_record",
+    "no_first_name",
+    "phone_matches_a_record",
+    "profile_exists_by_email",
+    "public"
+   ]
+  },
+  "fn_course_lane_xcel_roster_candidates.student_id": {
+   "candidates": [
+    "v_xcel_identity_rollup.student_id"
+   ],
+   "body_literals": [
+    "application_exists_by_email",
+    "g",
+    "login_exists_by_email",
+    "name_matches_a_record",
+    "no_first_name",
+    "phone_matches_a_record",
+    "profile_exists_by_email",
+    "public"
+   ]
+  },
+  "fn_course_lane_xcel_roster_candidates.would_create": {
+   "candidates": [],
+   "body_literals": [
+    "application_exists_by_email",
+    "g",
+    "login_exists_by_email",
+    "name_matches_a_record",
+    "no_first_name",
+    "phone_matches_a_record",
+    "profile_exists_by_email",
     "public"
    ]
   },
@@ -8266,6 +9843,198 @@
     "pending",
     "reissue-40d-",
     "reissue-40d-2026-07-22"
+   ]
+  },
+  "fn_grant_starter_packs.agent_id": {
+   "candidates": [],
+   "body_literals": [
+    "A",
+    "B",
+    "Mon DD",
+    "Sam",
+    "agent_id",
+    "bundle_id",
+    "client_leads",
+    "created",
+    "deferred_limit",
+    "fn_grant_starter_packs",
+    "granted",
+    "granted_by",
+    "items",
+    "lead_age_days",
+    "leads",
+    "limit",
+    "new",
+    "only ",
+    "pool",
+    "public",
+    "skip",
+    "starter_pack",
+    "state_source",
+    "states",
+    "tiers",
+    "under_9mo",
+    "would_grant"
+   ]
+  },
+  "fn_grant_starter_packs.decision": {
+   "candidates": [],
+   "body_literals": [
+    "A",
+    "B",
+    "Mon DD",
+    "Sam",
+    "agent_id",
+    "bundle_id",
+    "client_leads",
+    "created",
+    "deferred_limit",
+    "fn_grant_starter_packs",
+    "granted",
+    "granted_by",
+    "items",
+    "lead_age_days",
+    "leads",
+    "limit",
+    "new",
+    "only ",
+    "pool",
+    "public",
+    "skip",
+    "starter_pack",
+    "state_source",
+    "states",
+    "tiers",
+    "under_9mo",
+    "would_grant"
+   ]
+  },
+  "fn_grant_starter_packs.first_name": {
+   "candidates": [],
+   "body_literals": [
+    "A",
+    "B",
+    "Mon DD",
+    "Sam",
+    "agent_id",
+    "bundle_id",
+    "client_leads",
+    "created",
+    "deferred_limit",
+    "fn_grant_starter_packs",
+    "granted",
+    "granted_by",
+    "items",
+    "lead_age_days",
+    "leads",
+    "limit",
+    "new",
+    "only ",
+    "pool",
+    "public",
+    "skip",
+    "starter_pack",
+    "state_source",
+    "states",
+    "tiers",
+    "under_9mo",
+    "would_grant"
+   ]
+  },
+  "fn_grant_starter_packs.leads_selected": {
+   "candidates": [],
+   "body_literals": [
+    "A",
+    "B",
+    "Mon DD",
+    "Sam",
+    "agent_id",
+    "bundle_id",
+    "client_leads",
+    "created",
+    "deferred_limit",
+    "fn_grant_starter_packs",
+    "granted",
+    "granted_by",
+    "items",
+    "lead_age_days",
+    "leads",
+    "limit",
+    "new",
+    "only ",
+    "pool",
+    "public",
+    "skip",
+    "starter_pack",
+    "state_source",
+    "states",
+    "tiers",
+    "under_9mo",
+    "would_grant"
+   ]
+  },
+  "fn_grant_starter_packs.license_states": {
+   "candidates": [],
+   "body_literals": [
+    "A",
+    "B",
+    "Mon DD",
+    "Sam",
+    "agent_id",
+    "bundle_id",
+    "client_leads",
+    "created",
+    "deferred_limit",
+    "fn_grant_starter_packs",
+    "granted",
+    "granted_by",
+    "items",
+    "lead_age_days",
+    "leads",
+    "limit",
+    "new",
+    "only ",
+    "pool",
+    "public",
+    "skip",
+    "starter_pack",
+    "state_source",
+    "states",
+    "tiers",
+    "under_9mo",
+    "would_grant"
+   ]
+  },
+  "fn_grant_starter_packs.reason": {
+   "candidates": [],
+   "body_literals": [
+    "A",
+    "B",
+    "Mon DD",
+    "Sam",
+    "agent_id",
+    "bundle_id",
+    "client_leads",
+    "created",
+    "deferred_limit",
+    "fn_grant_starter_packs",
+    "granted",
+    "granted_by",
+    "items",
+    "lead_age_days",
+    "leads",
+    "limit",
+    "new",
+    "only ",
+    "pool",
+    "public",
+    "skip",
+    "starter_pack",
+    "state_source",
+    "states",
+    "tiers",
+    "under_9mo",
+    "would_grant"
    ]
   },
   "fn_hierarchy_first_hops.depth": {
@@ -9292,7 +11061,7 @@
     "deals.agent_id",
     "mat_production_unified.agent_id",
     "v_agent_first_deal_any_source.agent_id",
-    "v_production_unified.agent_id"
+    "v_agent_first_deal_definer.agent_id"
    ],
    "body_literals": [
     "ahl",
@@ -9357,6 +11126,7 @@
     "active",
     "applied",
     "cadence",
+    "call_booked",
     "contacted",
     "day",
     "day30",
@@ -9364,15 +11134,22 @@
     "day60",
     "email",
     "hour168",
+    "hour24",
     "hour336",
     "hour72",
     "hour720",
     "licensed_book_call",
+    "no_answer",
+    "no_show",
+    "onboarding",
+    "other",
     "public",
+    "rearm",
     "send_zones",
     "started_prelicense",
     "step",
-    "telegram"
+    "telegram",
+    "variant"
    ]
   },
   "fn_next_step_recompute_all.advanced": {
@@ -9391,6 +11168,145 @@
     "closed_lost",
     "completed",
     "public"
+   ]
+  },
+  "fn_next_step_retry_drain.action": {
+   "candidates": [],
+   "body_literals": [
+    "Authorization",
+    "Bearer ",
+    "Content-Type",
+    "claimed_at",
+    "deferred",
+    "dispatched",
+    "due",
+    "expired",
+    "expired_at",
+    "held_quiet_hours",
+    "hour",
+    "message_id",
+    "no_endpoint",
+    "not_before",
+    "public",
+    "reason",
+    "retry",
+    "skip_reason",
+    "supabase_anon_key",
+    "supabase_url",
+    "would_dispatch",
+    "would_expire"
+   ]
+  },
+  "fn_next_step_retry_drain.due_reason": {
+   "candidates": [],
+   "body_literals": [
+    "Authorization",
+    "Bearer ",
+    "Content-Type",
+    "claimed_at",
+    "deferred",
+    "dispatched",
+    "due",
+    "expired",
+    "expired_at",
+    "held_quiet_hours",
+    "hour",
+    "message_id",
+    "no_endpoint",
+    "not_before",
+    "public",
+    "reason",
+    "retry",
+    "skip_reason",
+    "supabase_anon_key",
+    "supabase_url",
+    "would_dispatch",
+    "would_expire"
+   ]
+  },
+  "fn_next_step_retry_drain.first_name": {
+   "candidates": [
+    "applications.first_name"
+   ],
+   "body_literals": [
+    "Authorization",
+    "Bearer ",
+    "Content-Type",
+    "claimed_at",
+    "deferred",
+    "dispatched",
+    "due",
+    "expired",
+    "expired_at",
+    "held_quiet_hours",
+    "hour",
+    "message_id",
+    "no_endpoint",
+    "not_before",
+    "public",
+    "reason",
+    "retry",
+    "skip_reason",
+    "supabase_anon_key",
+    "supabase_url",
+    "would_dispatch",
+    "would_expire"
+   ]
+  },
+  "fn_next_step_retry_drain.message_id": {
+   "candidates": [],
+   "body_literals": [
+    "Authorization",
+    "Bearer ",
+    "Content-Type",
+    "claimed_at",
+    "deferred",
+    "dispatched",
+    "due",
+    "expired",
+    "expired_at",
+    "held_quiet_hours",
+    "hour",
+    "message_id",
+    "no_endpoint",
+    "not_before",
+    "public",
+    "reason",
+    "retry",
+    "skip_reason",
+    "supabase_anon_key",
+    "supabase_url",
+    "would_dispatch",
+    "would_expire"
+   ]
+  },
+  "fn_next_step_retry_drain.stage_key": {
+   "candidates": [
+    "next_step_messages.stage_key"
+   ],
+   "body_literals": [
+    "Authorization",
+    "Bearer ",
+    "Content-Type",
+    "claimed_at",
+    "deferred",
+    "dispatched",
+    "due",
+    "expired",
+    "expired_at",
+    "held_quiet_hours",
+    "hour",
+    "message_id",
+    "no_endpoint",
+    "not_before",
+    "public",
+    "reason",
+    "retry",
+    "skip_reason",
+    "supabase_anon_key",
+    "supabase_url",
+    "would_dispatch",
+    "would_expire"
    ]
   },
   "fn_next_step_stall_sweep.flagged": {
@@ -9413,6 +11329,67 @@
     "sla_due_at",
     "stall",
     "stall_action"
+   ]
+  },
+  "fn_numbers_reminder_audience.agent_id": {
+   "candidates": [
+    "mat_production_unified.agent_id",
+    "v_numbers_reminder_audience.agent_id",
+    "v_production_unified.agent_id"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "fn_numbers_reminder_audience.display_name": {
+   "candidates": [
+    "agents.display_name",
+    "v_numbers_reminder_audience.display_name"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "fn_numbers_reminder_audience.reason": {
+   "candidates": [
+    "agent_access_suspensions.reason",
+    "v_numbers_reminder_audience.reason"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "fn_numbers_reminder_audience.user_id": {
+   "candidates": [
+    "agent_access_suspensions.user_id",
+    "agents.user_id",
+    "lead_bundle_grants.user_id",
+    "v_numbers_reminder_audience.user_id"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "fn_onboarding_owned_people.email_lower": {
+   "candidates": [],
+   "body_literals": [
+    "agent",
+    "public",
+    "recent_application",
+    "suspended",
+    "xcel_student"
+   ]
+  },
+  "fn_onboarding_owned_people.reason": {
+   "candidates": [
+    "agent_access_suspensions.reason"
+   ],
+   "body_literals": [
+    "agent",
+    "public",
+    "recent_application",
+    "suspended",
+    "xcel_student"
    ]
   },
   "fn_preview_xcel_progress.agent_id": {
@@ -9571,6 +11548,417 @@
     "manager",
     "public",
     "unlicensed"
+   ]
+  },
+  "fn_private_surface_audit.detail": {
+   "candidates": [],
+   "body_literals": [
+    "PERMISSIVE",
+    "anon",
+    "authenticated",
+    "definer_fn_backdoor",
+    "definer_view_backdoor",
+    "execute",
+    "fn_private_surface_alert",
+    "fn_private_surface_audit",
+    "function missing",
+    "gate_fn_not_sam_only",
+    "m",
+    "p",
+    "pg_catalog",
+    "policy_not_sam_only",
+    "private_function",
+    "private_table",
+    "public",
+    "r",
+    "reads ",
+    "reviewed_not_private",
+    "rls_off_or_missing",
+    "select",
+    "selects ",
+    "trigger",
+    "unregistered_private_looking_table",
+    "v"
+   ]
+  },
+  "fn_private_surface_audit.object": {
+   "candidates": [],
+   "body_literals": [
+    "PERMISSIVE",
+    "anon",
+    "authenticated",
+    "definer_fn_backdoor",
+    "definer_view_backdoor",
+    "execute",
+    "fn_private_surface_alert",
+    "fn_private_surface_audit",
+    "function missing",
+    "gate_fn_not_sam_only",
+    "m",
+    "p",
+    "pg_catalog",
+    "policy_not_sam_only",
+    "private_function",
+    "private_table",
+    "public",
+    "r",
+    "reads ",
+    "reviewed_not_private",
+    "rls_off_or_missing",
+    "select",
+    "selects ",
+    "trigger",
+    "unregistered_private_looking_table",
+    "v"
+   ]
+  },
+  "fn_private_surface_audit.violation": {
+   "candidates": [],
+   "body_literals": [
+    "PERMISSIVE",
+    "anon",
+    "authenticated",
+    "definer_fn_backdoor",
+    "definer_view_backdoor",
+    "execute",
+    "fn_private_surface_alert",
+    "fn_private_surface_audit",
+    "function missing",
+    "gate_fn_not_sam_only",
+    "m",
+    "p",
+    "pg_catalog",
+    "policy_not_sam_only",
+    "private_function",
+    "private_table",
+    "public",
+    "r",
+    "reads ",
+    "reviewed_not_private",
+    "rls_off_or_missing",
+    "select",
+    "selects ",
+    "trigger",
+    "unregistered_private_looking_table",
+    "v"
+   ]
+  },
+  "fn_reactivation_breaker_state.is_open": {
+   "candidates": [],
+   "body_literals": [
+    "infinity",
+    "public",
+    "reactivation_breaker"
+   ]
+  },
+  "fn_reactivation_breaker_state.reason": {
+   "candidates": [],
+   "body_literals": [
+    "infinity",
+    "public",
+    "reactivation_breaker"
+   ]
+  },
+  "fn_reactivation_breaker_state.until_at": {
+   "candidates": [],
+   "body_literals": [
+    "infinity",
+    "public",
+    "reactivation_breaker"
+   ]
+  },
+  "fn_reactivation_claim_next.application_id": {
+   "candidates": [
+    "next_step_messages.application_id",
+    "next_step_progress.application_id",
+    "reactivation_replies.application_id",
+    "reactivation_sequence.application_id",
+    "v_reactivation_cohort.application_id",
+    "v_reactivation_targets.application_id"
+   ],
+   "body_literals": [
+    "active",
+    "bounce rate ",
+    "bounced",
+    "claim_outstanding",
+    "claimed",
+    "claimed_new",
+    "cohort",
+    "complained",
+    "daily_cap_reached",
+    "nothing_due",
+    "paused_bounce_8pct",
+    "paused_cap_0",
+    "paused_complaint",
+    "paused_events_blind",
+    "paused_failures",
+    "paused_reply_reader_stale",
+    "paused_stop_rate",
+    "public",
+    "reactivation_daily_cap",
+    "retryable",
+    "spam complaint on a reactivation email",
+    "stop",
+    "stopped"
+   ]
+  },
+  "fn_reactivation_claim_next.email": {
+   "candidates": [
+    "applications.email",
+    "email_suppressions.email",
+    "email_unsubscribes.email",
+    "profiles.email",
+    "v_reactivation_cohort.email",
+    "v_reactivation_targets.email"
+   ],
+   "body_literals": [
+    "active",
+    "bounce rate ",
+    "bounced",
+    "claim_outstanding",
+    "claimed",
+    "claimed_new",
+    "cohort",
+    "complained",
+    "daily_cap_reached",
+    "nothing_due",
+    "paused_bounce_8pct",
+    "paused_cap_0",
+    "paused_complaint",
+    "paused_events_blind",
+    "paused_failures",
+    "paused_reply_reader_stale",
+    "paused_stop_rate",
+    "public",
+    "reactivation_daily_cap",
+    "retryable",
+    "spam complaint on a reactivation email",
+    "stop",
+    "stopped"
+   ]
+  },
+  "fn_reactivation_claim_next.first_name": {
+   "candidates": [
+    "applications.first_name",
+    "v_reactivation_cohort.first_name",
+    "v_reactivation_targets.first_name"
+   ],
+   "body_literals": [
+    "active",
+    "bounce rate ",
+    "bounced",
+    "claim_outstanding",
+    "claimed",
+    "claimed_new",
+    "cohort",
+    "complained",
+    "daily_cap_reached",
+    "nothing_due",
+    "paused_bounce_8pct",
+    "paused_cap_0",
+    "paused_complaint",
+    "paused_events_blind",
+    "paused_failures",
+    "paused_reply_reader_stale",
+    "paused_stop_rate",
+    "public",
+    "reactivation_daily_cap",
+    "retryable",
+    "spam complaint on a reactivation email",
+    "stop",
+    "stopped"
+   ]
+  },
+  "fn_reactivation_claim_next.last_name": {
+   "candidates": [
+    "applications.last_name",
+    "v_reactivation_cohort.last_name",
+    "v_reactivation_targets.last_name"
+   ],
+   "body_literals": [
+    "active",
+    "bounce rate ",
+    "bounced",
+    "claim_outstanding",
+    "claimed",
+    "claimed_new",
+    "cohort",
+    "complained",
+    "daily_cap_reached",
+    "nothing_due",
+    "paused_bounce_8pct",
+    "paused_cap_0",
+    "paused_complaint",
+    "paused_events_blind",
+    "paused_failures",
+    "paused_reply_reader_stale",
+    "paused_stop_rate",
+    "public",
+    "reactivation_daily_cap",
+    "retryable",
+    "spam complaint on a reactivation email",
+    "stop",
+    "stopped"
+   ]
+  },
+  "fn_reactivation_claim_next.reason": {
+   "candidates": [
+    "email_unsubscribes.reason",
+    "v_onboarding_owned_people.reason"
+   ],
+   "body_literals": [
+    "active",
+    "bounce rate ",
+    "bounced",
+    "claim_outstanding",
+    "claimed",
+    "claimed_new",
+    "cohort",
+    "complained",
+    "daily_cap_reached",
+    "nothing_due",
+    "paused_bounce_8pct",
+    "paused_cap_0",
+    "paused_complaint",
+    "paused_events_blind",
+    "paused_failures",
+    "paused_reply_reader_stale",
+    "paused_stop_rate",
+    "public",
+    "reactivation_daily_cap",
+    "retryable",
+    "spam complaint on a reactivation email",
+    "stop",
+    "stopped"
+   ]
+  },
+  "fn_reactivation_claim_next.touch": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "bounce rate ",
+    "bounced",
+    "claim_outstanding",
+    "claimed",
+    "claimed_new",
+    "cohort",
+    "complained",
+    "daily_cap_reached",
+    "nothing_due",
+    "paused_bounce_8pct",
+    "paused_cap_0",
+    "paused_complaint",
+    "paused_events_blind",
+    "paused_failures",
+    "paused_reply_reader_stale",
+    "paused_stop_rate",
+    "public",
+    "reactivation_daily_cap",
+    "retryable",
+    "spam complaint on a reactivation email",
+    "stop",
+    "stopped"
+   ]
+  },
+  "fn_reactivation_claim_next.track": {
+   "candidates": [
+    "reactivation_sequence.track",
+    "v_reactivation_cohort.track"
+   ],
+   "body_literals": [
+    "active",
+    "bounce rate ",
+    "bounced",
+    "claim_outstanding",
+    "claimed",
+    "claimed_new",
+    "cohort",
+    "complained",
+    "daily_cap_reached",
+    "nothing_due",
+    "paused_bounce_8pct",
+    "paused_cap_0",
+    "paused_complaint",
+    "paused_events_blind",
+    "paused_failures",
+    "paused_reply_reader_stale",
+    "paused_stop_rate",
+    "public",
+    "reactivation_daily_cap",
+    "retryable",
+    "spam complaint on a reactivation email",
+    "stop",
+    "stopped"
+   ]
+  },
+  "fn_reactivation_claim_next.variant": {
+   "candidates": [
+    "reactivation_sequence.variant"
+   ],
+   "body_literals": [
+    "active",
+    "bounce rate ",
+    "bounced",
+    "claim_outstanding",
+    "claimed",
+    "claimed_new",
+    "cohort",
+    "complained",
+    "daily_cap_reached",
+    "nothing_due",
+    "paused_bounce_8pct",
+    "paused_cap_0",
+    "paused_complaint",
+    "paused_events_blind",
+    "paused_failures",
+    "paused_reply_reader_stale",
+    "paused_stop_rate",
+    "public",
+    "reactivation_daily_cap",
+    "retryable",
+    "spam complaint on a reactivation email",
+    "stop",
+    "stopped"
+   ]
+  },
+  "fn_reactivation_incidents.bounced": {
+   "candidates": [],
+   "body_literals": [
+    "approved",
+    "bounced",
+    "complained",
+    "public",
+    "reactivation_incident_ack"
+   ]
+  },
+  "fn_reactivation_incidents.complained": {
+   "candidates": [],
+   "body_literals": [
+    "approved",
+    "bounced",
+    "complained",
+    "public",
+    "reactivation_incident_ack"
+   ]
+  },
+  "fn_reactivation_incidents.gate_misses": {
+   "candidates": [],
+   "body_literals": [
+    "approved",
+    "bounced",
+    "complained",
+    "public",
+    "reactivation_incident_ack"
+   ]
+  },
+  "fn_reactivation_incidents.since": {
+   "candidates": [],
+   "body_literals": [
+    "approved",
+    "bounced",
+    "complained",
+    "public",
+    "reactivation_incident_ack"
    ]
   },
   "fn_reconcile_first_deal_at.agent_id": {
@@ -9838,6 +12226,508 @@
     "unlicensed"
    ]
   },
+  "fn_starter_pack_candidates.agent_id": {
+   "candidates": [
+    "agent_contract_profile.agent_id"
+   ],
+   "body_literals": [
+    "active",
+    "admin",
+    "agent",
+    "has_live_lead_bundle",
+    "license_state_unknown",
+    "licensed",
+    "login_banned",
+    "manager",
+    "manager_seat",
+    "not_signed_in_since_hire",
+    "public",
+    "ready",
+    "starter_pack",
+    "starter_pack_already_given",
+    "suspended",
+    "there",
+    "true"
+   ]
+  },
+  "fn_starter_pack_candidates.days_since_hire": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "admin",
+    "agent",
+    "has_live_lead_bundle",
+    "license_state_unknown",
+    "licensed",
+    "login_banned",
+    "manager",
+    "manager_seat",
+    "not_signed_in_since_hire",
+    "public",
+    "ready",
+    "starter_pack",
+    "starter_pack_already_given",
+    "suspended",
+    "there",
+    "true"
+   ]
+  },
+  "fn_starter_pack_candidates.eligible": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "admin",
+    "agent",
+    "has_live_lead_bundle",
+    "license_state_unknown",
+    "licensed",
+    "login_banned",
+    "manager",
+    "manager_seat",
+    "not_signed_in_since_hire",
+    "public",
+    "ready",
+    "starter_pack",
+    "starter_pack_already_given",
+    "suspended",
+    "there",
+    "true"
+   ]
+  },
+  "fn_starter_pack_candidates.first_name": {
+   "candidates": [
+    "agent_contract_profile.first_name",
+    "applications.first_name"
+   ],
+   "body_literals": [
+    "active",
+    "admin",
+    "agent",
+    "has_live_lead_bundle",
+    "license_state_unknown",
+    "licensed",
+    "login_banned",
+    "manager",
+    "manager_seat",
+    "not_signed_in_since_hire",
+    "public",
+    "ready",
+    "starter_pack",
+    "starter_pack_already_given",
+    "suspended",
+    "there",
+    "true"
+   ]
+  },
+  "fn_starter_pack_candidates.hired_at": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "admin",
+    "agent",
+    "has_live_lead_bundle",
+    "license_state_unknown",
+    "licensed",
+    "login_banned",
+    "manager",
+    "manager_seat",
+    "not_signed_in_since_hire",
+    "public",
+    "ready",
+    "starter_pack",
+    "starter_pack_already_given",
+    "suspended",
+    "there",
+    "true"
+   ]
+  },
+  "fn_starter_pack_candidates.license_states": {
+   "candidates": [
+    "agents.license_states"
+   ],
+   "body_literals": [
+    "active",
+    "admin",
+    "agent",
+    "has_live_lead_bundle",
+    "license_state_unknown",
+    "licensed",
+    "login_banned",
+    "manager",
+    "manager_seat",
+    "not_signed_in_since_hire",
+    "public",
+    "ready",
+    "starter_pack",
+    "starter_pack_already_given",
+    "suspended",
+    "there",
+    "true"
+   ]
+  },
+  "fn_starter_pack_candidates.reason": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "admin",
+    "agent",
+    "has_live_lead_bundle",
+    "license_state_unknown",
+    "licensed",
+    "login_banned",
+    "manager",
+    "manager_seat",
+    "not_signed_in_since_hire",
+    "public",
+    "ready",
+    "starter_pack",
+    "starter_pack_already_given",
+    "suspended",
+    "there",
+    "true"
+   ]
+  },
+  "fn_starter_pack_candidates.state_source": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "admin",
+    "agent",
+    "has_live_lead_bundle",
+    "license_state_unknown",
+    "licensed",
+    "login_banned",
+    "manager",
+    "manager_seat",
+    "not_signed_in_since_hire",
+    "public",
+    "ready",
+    "starter_pack",
+    "starter_pack_already_given",
+    "suspended",
+    "there",
+    "true"
+   ]
+  },
+  "fn_starter_pack_candidates.user_id": {
+   "candidates": [
+    "agents.user_id",
+    "lead_bundle_grants.user_id",
+    "profiles.user_id"
+   ],
+   "body_literals": [
+    "active",
+    "admin",
+    "agent",
+    "has_live_lead_bundle",
+    "license_state_unknown",
+    "licensed",
+    "login_banned",
+    "manager",
+    "manager_seat",
+    "not_signed_in_since_hire",
+    "public",
+    "ready",
+    "starter_pack",
+    "starter_pack_already_given",
+    "suspended",
+    "there",
+    "true"
+   ]
+  },
+  "fn_starter_pack_inventory.age": {
+   "candidates": [
+    "client_leads.age",
+    "lead_bundle_items.age",
+    "mat_lead_pool.age",
+    "v_pool_dialer.age",
+    "v_pool_marketing.age",
+    "v_pool_rewrite.age",
+    "v_pool_winback.age",
+    "v_sellable_client_leads.age"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "dialer",
+    "dnc",
+    "do not call",
+    "do_not_call",
+    "marketing",
+    "public"
+   ]
+  },
+  "fn_starter_pack_inventory.email": {
+   "candidates": [
+    "agentlink_clients.email",
+    "applications.email",
+    "client_leads.email",
+    "lead_bundle_items.email",
+    "mat_lead_pool.email",
+    "profiles.email",
+    "v_leads_do_not_dial.email",
+    "v_pool_dialer.email",
+    "v_pool_marketing.email",
+    "v_pool_rewrite.email",
+    "v_pool_winback.email",
+    "v_readymode_lead_quality.email",
+    "v_sellable_client_leads.email"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "dialer",
+    "dnc",
+    "do not call",
+    "do_not_call",
+    "marketing",
+    "public"
+   ]
+  },
+  "fn_starter_pack_inventory.first_name": {
+   "candidates": [
+    "agentlink_clients.first_name",
+    "applications.first_name",
+    "client_leads.first_name",
+    "lead_bundle_items.first_name",
+    "mat_lead_pool.first_name",
+    "v_leads_do_not_dial.first_name",
+    "v_leads_sold_already.first_name",
+    "v_pool_dialer.first_name",
+    "v_pool_marketing.first_name",
+    "v_pool_rewrite.first_name",
+    "v_pool_winback.first_name",
+    "v_readymode_lead_quality.first_name",
+    "v_sellable_client_leads.first_name"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "dialer",
+    "dnc",
+    "do not call",
+    "do_not_call",
+    "marketing",
+    "public"
+   ]
+  },
+  "fn_starter_pack_inventory.flags": {
+   "candidates": [
+    "mat_lead_pool.flags",
+    "v_pool_dialer.flags",
+    "v_pool_marketing.flags",
+    "v_pool_rewrite.flags",
+    "v_pool_winback.flags"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "dialer",
+    "dnc",
+    "do not call",
+    "do_not_call",
+    "marketing",
+    "public"
+   ]
+  },
+  "fn_starter_pack_inventory.last_name": {
+   "candidates": [
+    "agentlink_clients.last_name",
+    "applications.last_name",
+    "client_leads.last_name",
+    "lead_bundle_items.last_name",
+    "mat_lead_pool.last_name",
+    "v_leads_do_not_dial.last_name",
+    "v_leads_sold_already.last_name",
+    "v_pool_dialer.last_name",
+    "v_pool_marketing.last_name",
+    "v_pool_rewrite.last_name",
+    "v_pool_winback.last_name",
+    "v_readymode_lead_quality.last_name",
+    "v_sellable_client_leads.last_name"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "dialer",
+    "dnc",
+    "do not call",
+    "do_not_call",
+    "marketing",
+    "public"
+   ]
+  },
+  "fn_starter_pack_inventory.lead_age_days": {
+   "candidates": [
+    "mat_lead_pool.lead_age_days",
+    "v_pool_dialer.lead_age_days",
+    "v_pool_marketing.lead_age_days",
+    "v_pool_rewrite.lead_age_days",
+    "v_pool_winback.lead_age_days",
+    "v_sellable_client_leads.lead_age_days"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "dialer",
+    "dnc",
+    "do not call",
+    "do_not_call",
+    "marketing",
+    "public"
+   ]
+  },
+  "fn_starter_pack_inventory.lead_id": {
+   "candidates": [
+    "lead_bundle_items.lead_id",
+    "lead_resale_ledger.lead_id",
+    "mat_lead_pool.lead_id",
+    "v_leads_do_not_dial.lead_id",
+    "v_leads_sold_already.lead_id",
+    "v_leads_suppression_all.lead_id",
+    "v_pool_dialer.lead_id",
+    "v_pool_marketing.lead_id",
+    "v_pool_rewrite.lead_id",
+    "v_pool_winback.lead_id",
+    "v_sellable_client_leads.lead_id"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "dialer",
+    "dnc",
+    "do not call",
+    "do_not_call",
+    "marketing",
+    "public"
+   ]
+  },
+  "fn_starter_pack_inventory.phone10": {
+   "candidates": [
+    "lead_bundle_items.phone10",
+    "lead_resale_ledger.phone10",
+    "mat_lead_pool.phone10",
+    "v_pool_dialer.phone10",
+    "v_pool_marketing.phone10",
+    "v_pool_rewrite.phone10",
+    "v_pool_winback.phone10",
+    "v_readymode_lead_quality.phone10",
+    "v_sellable_client_leads.phone10"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "dialer",
+    "dnc",
+    "do not call",
+    "do_not_call",
+    "marketing",
+    "public"
+   ]
+  },
+  "fn_starter_pack_inventory.source": {
+   "candidates": [
+    "agentlink_book.source",
+    "applications.source",
+    "deals.source",
+    "mat_lead_phone_fix.source",
+    "mat_lead_pool.source"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "dialer",
+    "dnc",
+    "do not call",
+    "do_not_call",
+    "marketing",
+    "public"
+   ]
+  },
+  "fn_starter_pack_inventory.state": {
+   "candidates": [
+    "agentlink_clients.state",
+    "applications.state",
+    "client_leads.state",
+    "lead_bundle_items.state",
+    "mat_lead_pool.state",
+    "profiles.state",
+    "v_leads_do_not_dial.state",
+    "v_pool_dialer.state",
+    "v_pool_marketing.state",
+    "v_pool_rewrite.state",
+    "v_pool_winback.state",
+    "v_sellable_client_leads.state"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "dialer",
+    "dnc",
+    "do not call",
+    "do_not_call",
+    "marketing",
+    "public"
+   ]
+  },
+  "fn_starter_pack_inventory.tags": {
+   "candidates": [
+    "applications.tags",
+    "mat_lead_pool.tags",
+    "v_pool_dialer.tags",
+    "v_pool_marketing.tags",
+    "v_pool_rewrite.tags",
+    "v_pool_winback.tags"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "dialer",
+    "dnc",
+    "do not call",
+    "do_not_call",
+    "marketing",
+    "public"
+   ]
+  },
+  "fn_starter_pack_inventory.tier": {
+   "candidates": [
+    "mat_lead_pool.tier",
+    "v_pool_dialer.tier",
+    "v_pool_marketing.tier",
+    "v_pool_rewrite.tier",
+    "v_pool_winback.tier"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "dialer",
+    "dnc",
+    "do not call",
+    "do_not_call",
+    "marketing",
+    "public"
+   ]
+  },
+  "fn_starter_pack_inventory.under_9mo": {
+   "candidates": [
+    "mat_lead_pool.under_9mo",
+    "v_pool_dialer.under_9mo",
+    "v_pool_marketing.under_9mo",
+    "v_pool_rewrite.under_9mo",
+    "v_pool_winback.under_9mo"
+   ],
+   "body_literals": [
+    "A",
+    "B",
+    "dialer",
+    "dnc",
+    "do not call",
+    "do_not_call",
+    "marketing",
+    "public"
+   ]
+  },
   "fn_sweep_interview_reminders.missed_emitted": {
    "candidates": [],
    "body_literals": [
@@ -10048,8 +12938,7 @@
    "body_literals": [
     "course_purchased",
     "finished_course",
-    "public",
-    "xcel_writeback_messages_from"
+    "public"
    ]
   },
   "fn_xcel_progress_plan.application_id": {
@@ -10060,8 +12949,7 @@
    "body_literals": [
     "course_purchased",
     "finished_course",
-    "public",
-    "xcel_writeback_messages_from"
+    "public"
    ]
   },
   "fn_xcel_progress_plan.completed_on": {
@@ -10071,8 +12959,7 @@
    "body_literals": [
     "course_purchased",
     "finished_course",
-    "public",
-    "xcel_writeback_messages_from"
+    "public"
    ]
   },
   "fn_xcel_progress_plan.cutoff_on": {
@@ -10080,8 +12967,7 @@
    "body_literals": [
     "course_purchased",
     "finished_course",
-    "public",
-    "xcel_writeback_messages_from"
+    "public"
    ]
   },
   "fn_xcel_progress_plan.email_key": {
@@ -10091,8 +12977,7 @@
    "body_literals": [
     "course_purchased",
     "finished_course",
-    "public",
-    "xcel_writeback_messages_from"
+    "public"
    ]
   },
   "fn_xcel_progress_plan.enrolled_on": {
@@ -10102,8 +12987,7 @@
    "body_literals": [
     "course_purchased",
     "finished_course",
-    "public",
-    "xcel_writeback_messages_from"
+    "public"
    ]
   },
   "fn_xcel_progress_plan.first_name": {
@@ -10115,8 +12999,7 @@
    "body_literals": [
     "course_purchased",
     "finished_course",
-    "public",
-    "xcel_writeback_messages_from"
+    "public"
    ]
   },
   "fn_xcel_progress_plan.latest_pct": {
@@ -10126,8 +13009,7 @@
    "body_literals": [
     "course_purchased",
     "finished_course",
-    "public",
-    "xcel_writeback_messages_from"
+    "public"
    ]
   },
   "fn_xcel_progress_plan.purchased_fresh": {
@@ -10135,8 +13017,7 @@
    "body_literals": [
     "course_purchased",
     "finished_course",
-    "public",
-    "xcel_writeback_messages_from"
+    "public"
    ]
   },
   "fn_xcel_progress_plan.started_fresh": {
@@ -10144,8 +13025,7 @@
    "body_literals": [
     "course_purchased",
     "finished_course",
-    "public",
-    "xcel_writeback_messages_from"
+    "public"
    ]
   },
   "fn_xcel_progress_plan.started_on": {
@@ -10155,8 +13035,7 @@
    "body_literals": [
     "course_purchased",
     "finished_course",
-    "public",
-    "xcel_writeback_messages_from"
+    "public"
    ]
   },
   "fn_xcel_progress_plan.student_id": {
@@ -10166,8 +13045,7 @@
    "body_literals": [
     "course_purchased",
     "finished_course",
-    "public",
-    "xcel_writeback_messages_from"
+    "public"
    ]
   },
   "fn_xcel_progress_plan.target_fresh": {
@@ -10175,8 +13053,7 @@
    "body_literals": [
     "course_purchased",
     "finished_course",
-    "public",
-    "xcel_writeback_messages_from"
+    "public"
    ]
   },
   "fn_xcel_progress_plan.target_on": {
@@ -10184,8 +13061,7 @@
    "body_literals": [
     "course_purchased",
     "finished_course",
-    "public",
-    "xcel_writeback_messages_from"
+    "public"
    ]
   },
   "fn_xcel_progress_plan.target_progress": {
@@ -10193,8 +13069,7 @@
    "body_literals": [
     "course_purchased",
     "finished_course",
-    "public",
-    "xcel_writeback_messages_from"
+    "public"
    ]
   },
   "get_agent_production_stats.agent_id": {

@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-enum-catalog.sh (bot_sql -> pg_enum + pg_attribute.atttypid)",
- "_generated_at": "2026-11-11T00:39:25Z",
+ "_generated_at": "2026-11-12T06:45:55Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "A repo guard cannot query prod. This is a snapshot of every enum-typed column in the public schema and the exact member list Postgres will accept for it, so scripts/check-enum-filter-literals.mjs can decide whether a filter or write literal will survive PostgREST's coercion. Enum types are SCHEMA-QUALIFIED because this database has more than one type sharing a bare name. Views are included: a bad literal in a filter against a view column raises the same 22P02 as one against a table. apex-doctor Check #29 re-queries pg_enum weekly and goes red when this snapshot drifts from the live catalog.",
  "_ambiguous_bare_names": {
@@ -51,6 +51,7 @@
   "v_apex_roster": "v",
   "v_applications_real": "v",
   "v_builder_operating_dashboard": "v",
+  "v_cfo_unprovisioned_producer": "v",
   "v_channel_deprovision_needed": "v",
   "v_contracting_audit": "v",
   "v_contracting_worklist": "v",
@@ -539,6 +540,8 @@
   "v_builder_operating_dashboard.license_status": "public.license_status",
   "v_builder_operating_dashboard.onboarding_stage": "public.onboarding_stage",
   "v_builder_operating_dashboard.status": "public.agent_status",
+  "v_cfo_unprovisioned_producer.license_status": "public.license_status",
+  "v_cfo_unprovisioned_producer.status": "public.agent_status",
   "v_channel_deprovision_needed.status": "public.agent_status",
   "v_contracting_audit.license_status": "public.license_status",
   "v_contracting_worklist.license_status": "public.license_status",
@@ -1201,6 +1204,25 @@
    ],
    "constraint": "bot_audits_severity_check"
   },
+  "brand_metrics_daily.account": {
+   "members": [
+    "youtube",
+    "tiktok-main",
+    "tiktok-sales",
+    "tiktok-rant",
+    "snapchat",
+    "instagram",
+    "all"
+   ],
+   "constraint": "brand_metrics_daily_account_chk"
+  },
+  "brand_targets.kind": {
+   "members": [
+    "output",
+    "result"
+   ],
+   "constraint": "brand_targets_kind_check"
+  },
   "calendly_reconciliation_runs.status": {
    "members": [
     "ok",
@@ -1834,6 +1856,26 @@
    ],
    "constraint": "free_leads_weekly_delivery_log_status_check"
   },
+  "hire_lane_email_outbox.kind": {
+   "members": [
+    "starter_pack",
+    "contracting_request",
+    "recruit_page",
+    "recruit_digest"
+   ],
+   "constraint": "hire_lane_email_outbox_kind_check"
+  },
+  "hire_lane_email_outbox.status": {
+   "members": [
+    "queued",
+    "requested",
+    "sent",
+    "failed",
+    "refused",
+    "skipped"
+   ],
+   "constraint": "hire_lane_email_outbox_status_check"
+  },
   "hub_course_progress.kind": {
    "members": [
     "lesson",
@@ -2028,6 +2070,23 @@
     "skipped"
    ],
    "constraint": "job_runs_status_check"
+  },
+  "keyword_dm_log.keyword": {
+   "members": [
+    "TEAM",
+    "BODY",
+    "BUILD"
+   ],
+   "constraint": "keyword_dm_log_keyword_check"
+  },
+  "keyword_dm_log.status": {
+   "members": [
+    "new",
+    "pitched",
+    "converted",
+    "dead"
+   ],
+   "constraint": "keyword_dm_log_status_check"
   },
   "lead_bundle_items.status": {
    "members": [
@@ -2471,6 +2530,14 @@
    ],
    "constraint": "phc_leads_status_check"
   },
+  "private_surface_registry.kind": {
+   "members": [
+    "private_table",
+    "private_function",
+    "reviewed_not_private"
+   ],
+   "constraint": "private_surface_registry_kind_check"
+  },
   "production_ledger.entry_type": {
    "members": [
     "approved_alp",
@@ -2499,6 +2566,50 @@
     "failed"
    ],
    "constraint": "production_submission_notifications_status_check"
+  },
+  "reactivation_replies.classification": {
+   "members": [
+    "stop",
+    "not_interested",
+    "interested",
+    "question",
+    "auto_reply",
+    "unknown"
+   ],
+   "constraint": "reactivation_replies_classification_check"
+  },
+  "reactivation_sequence.enrolled_from": {
+   "members": [
+    "cohort",
+    "v1_carryover"
+   ],
+   "constraint": "reactivation_sequence_enrolled_from_check"
+  },
+  "reactivation_sequence.status": {
+   "members": [
+    "active",
+    "stopped",
+    "completed",
+    "held"
+   ],
+   "constraint": "reactivation_sequence_status_check"
+  },
+  "reactivation_sequence.track": {
+   "members": [
+    "T_COLD",
+    "T_IN_COURSE",
+    "T_COURSE_DONE",
+    "T_PENDING",
+    "T_LICENSED"
+   ],
+   "constraint": "reactivation_sequence_track_check"
+  },
+  "reactivation_sequence.variant": {
+   "members": [
+    "A",
+    "B"
+   ],
+   "constraint": "reactivation_sequence_variant_check"
   },
   "readymode_agent_aliases.person_type": {
    "members": [
@@ -2577,6 +2688,16 @@
     "digest"
    ],
    "constraint": "recruit_sla_push_log_kind_check"
+  },
+  "recruit_touch_kinds.kind": {
+   "members": [
+    "campaign",
+    "ladder",
+    "transactional",
+    "staff",
+    "operational"
+   ],
+   "constraint": "recruit_touch_kinds_kind_check"
   },
   "recruiter_bounties.status": {
    "members": [

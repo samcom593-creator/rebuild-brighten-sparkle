@@ -1,3 +1,6 @@
+import { OwnerSystemPanel } from "@/components/system/OwnerSystemPanel";
+import { useAuth } from "@/hooks/useAuth";
+import { isSamEmail } from "@/lib/samOnly";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -125,6 +128,8 @@ const SEV_DOT = {
 } as const;
 
 export default function SystemHealth() {
+  const { user } = useAuth();
+  const isSam = isSamEmail(user?.email);
   const [results, setResults] = useState<HealthResult[]>([]);
   const [lastCheck, setLastCheck] = useState<HealthLog | null>(null);
   const [recentLogs, setRecentLogs] = useState<HealthLog[]>([]);
@@ -219,6 +224,9 @@ export default function SystemHealth() {
           </Badge>
         }
       />
+
+      {/* MP-302: what the owner pays for, what is connected and what is owed. Owner only. */}
+      {isSam ? <OwnerSystemPanel /> : null}
 
       {/* MP-268 — Data quality. Service health answers "is the pipe up";
           this answers "is what came through the pipe usable". Rows with a

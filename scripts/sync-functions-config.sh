@@ -54,6 +54,7 @@ PUBLIC_ALLOWLIST=(
   "numbers-reminder"
   "resend-suppression-sync"   # pg_cron bot bearer; in-handler gate (check-function-contracts.mjs)
   "manager-daily-digest"      # pg_cron job 19 bot bearer; in-handler gate (PL-WIB-DIGEST-GATE)
+  "owner-daily-overview"      # pg_cron owner-daily-overview-tick bot bearer; requireSendAuth then owner uid only (MP-302)
   "send-followup-emails"      # pg_cron job 108 bot bearer; in-handler gate (PL-WIB-DIGEST-GATE)
   "slack-identity-admin"
   # MP-441 — RECOVERED FROM PROD, not a new decision. These two are ACTIVE in

@@ -1,15 +1,15 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-11-12T08:12:35.324Z
-Repository: `/Users/samjames/projects/rbs-brand`
+Generated: 2026-11-12T08:52:57.234Z
+Repository: `/Users/samjames/projects/rbs-owner-os`
 
 ## Inventory Summary
 
-- Total Local Edge Functions: **256**
-- Configured in `config.toml`: **257**
+- Total Local Edge Functions: **257**
+- Configured in `config.toml`: **258**
 - Invoked Edge Functions in Source: **99**
-- Invoked RPC Calls in Source: **286**
-- SQL Functions in Migrations: **979**
+- Invoked RPC Calls in Source: **288**
+- SQL Functions in Migrations: **983**
 
 ## Edge Function Auth & Verification Contracts
 
@@ -166,6 +166,7 @@ Repository: `/Users/samjames/projects/rbs-brand`
 | `onboarding-nudge-sweep` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `outreach-sender` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `overseer-bot` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `owner-daily-overview` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `parse-schedule-image` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `poke-pusher` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `poke-webhook` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
@@ -280,6 +281,6 @@ applied by hand through bot-sql and never round-tripped into
 `supabase/migrations`, so this directory does not model the deployed database.
 `apex-doctor` queries `pg_proc` and is the authority on deployed state.
 
-- Invoked RPCs: **286**
-- Also declared in this commit's migrations: **278**
+- Invoked RPCs: **288**
+- Also declared in this commit's migrations: **280**
 - Declared only in the database: **8**

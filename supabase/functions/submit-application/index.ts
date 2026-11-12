@@ -548,7 +548,7 @@ async function sendManagerNotification(
               ` : ''}
               <tr>
                 <td align="center" style="padding: 6px;">
-                  <a href="https://apex-financial.org/dashboard/applicants?lead=${applicationId}" style="display: inline-block; background: #111827; color: white; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 14px; max-width: 100%; box-sizing: border-box;">
+                  <a href="https://apex-financial.org/dashboard/recruiting?lead=${applicationId}" style="display: inline-block; background: #111827; color: white; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 14px; max-width: 100%; box-sizing: border-box;">
                     👤 View Lead in Dashboard
                   </a>
                 </td>
@@ -650,8 +650,33 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
       ? '📞 CALL NOW: ' + sanitized.phone
       : '📞 View Lead & Call Now →';
     
+    // MP-302: one owner alert per application. A retried submit, or a second call
+    // for the same application id, finds the first alert's log row and stops here;
+    // idx_email_delivery_log_one_applicant_alert backs this check at the database.
+    const { data: alreadyAlerted } = await supabaseAdmin
+      .from("email_delivery_log")
+      .select("id")
+      .eq("template", "submit-application-admin")
+      .eq("related_record_id", applicationId)
+      .eq("status", "sent")
+      .limit(1);
+    const skipAdminAlert = Boolean(alreadyAlerted && alreadyAlerted.length > 0);
+    if (skipAdminAlert) console.log("Admin notification already sent for this application; skipping the duplicate.");
+
+    // MP-302: who owns this person and the one thing to do next, first in the body.
+    const ownerName = managerInfo ? sanitizeHtml(managerInfo.name) : "Sam (no referrer on the application)";
+    const nextAction = isLicensedApplicant
+      ? "Call now and book the licensed interview."
+      : "Text the pre-licensing course link and confirm they enrolled.";
+    const sourceLabel = sanitizeHtml(String(data.utmSource ?? "").trim()) || sanitized.referralSource || "";
+    const whatToDo = `
+            <div style="background: white; padding: 16px 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid ${isLicensedApplicant ? '#047857' : '#b45309'};">
+              <p style="margin: 0 0 6px 0; font-size: 15px;"><strong>Next:</strong> ${nextAction}</p>
+              <p style="margin: 0; color: #6b7280; font-size: 14px;">Owner: ${ownerName}${sourceLabel ? ` · Source: ${sourceLabel}` : ''}</p>
+            </div>`;
+
     // Send notification email to APEX team
-    const adminEmailResponse = await resend.emails.send({
+    const adminEmailResponse = skipAdminAlert ? null : await resend.emails.send({
       from: "Galaxy Applications <notifications@apex-financial.org>",
       to: ["info@kingofsales.net"],
       subject: adminSubject,
@@ -688,6 +713,7 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
             </div>
             ` : ''}
             
+            ${whatToDo}
             <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
               <h2 style="color: ${isLicensedApplicant ? '#dc2626' : '#059669'}; margin-top: 0; font-size: 18px;">Applicant Details</h2>
               <table style="width: 100%; border-collapse: collapse;">
@@ -777,7 +803,7 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
             </div>
 
             <div style="margin-top: 25px; text-align: center;">
-              <a href="https://apex-financial.org/dashboard/applicants?lead=${applicationId}" style="${callToActionStyle}">
+              <a href="https://apex-financial.org/dashboard/recruiting?lead=${applicationId}" style="${callToActionStyle}">
                 ${callToActionText}
               </a>
               ${isLicensedApplicant ? `
@@ -796,7 +822,7 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
     console.log("Admin notification sent:", JSON.stringify(adminEmailResponse));
     // Log to email_delivery_log so admins can audit what fired vs. failed
     // without digging into Resend's dashboard.
-    try {
+    if (!skipAdminAlert) try {
       await supabaseAdmin.from("email_delivery_log").insert({
         template: "submit-application-admin",
         recipient_email: "info@kingofsales.net",

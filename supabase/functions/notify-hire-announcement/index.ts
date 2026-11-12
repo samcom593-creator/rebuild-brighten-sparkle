@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { dropOwnerMuted, loadOwnerMute } from "../_shared/owner-mute.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const corsHeaders = {
@@ -93,7 +94,16 @@ Deno.serve(async (req) => {
 </body>
 </html>`;
 
-    const allRecipients = [...new Set([...managerEmails, adminEmail])];
+    // Owner inbox mute (MP-302): hires reach the owner once a day in the owner
+    // overview, so his copy of each announcement is dropped when he has switched
+    // it off. Managers still get theirs.
+    const allRecipients = dropOwnerMuted(await loadOwnerMute(), [...new Set([...managerEmails, adminEmail])], subject);
+    if (allRecipients.length === 0) {
+      return new Response(
+        JSON.stringify({ success: true, sent: 0, skipped: "owner_muted" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const emailRes = await fetch("https://api.resend.com/emails", {
       method: "POST",

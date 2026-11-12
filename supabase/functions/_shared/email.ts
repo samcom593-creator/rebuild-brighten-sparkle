@@ -21,6 +21,7 @@
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { nonRoutableDomain } from "./non-routable.ts";
 import { lookupSuppressed } from "./suppression.ts";
+import { dropOwnerMuted, loadOwnerMute } from "./owner-mute.ts";
 import { RECRUIT_REPLY_TO, resolveReplyTo } from "./reply-to.ts";
 
 export { RECRUIT_REPLY_TO };
@@ -40,7 +41,7 @@ export interface SendEmailResult {
   ok: boolean;
   id: string | null;
   error?: string;
-  refused?: "non_routable" | "suppressed";
+  refused?: "non_routable" | "suppressed" | "owner_muted";
 }
 
 // WP4 (2026-11-10): one sender identity for recruit-facing mail. Resend showed
@@ -117,7 +118,13 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
   // Resend accepts a send to an address on its suppression list, returns an
   // id, and never attempts it. Drop those here (see suppression.ts). A failed
   // lookup returns null and the send goes ahead unchanged.
-  const wanted = (Array.isArray(to) ? to : [to]).map((a) => String(a).trim()).filter(Boolean);
+  const asked = (Array.isArray(to) ? to : [to]).map((a) => String(a).trim()).filter(Boolean);
+  // Owner inbox mute (owner-mute.ts): the notices the owner switched off never
+  // reach his inbox; a failed lookup mutes nothing.
+  const wanted = dropOwnerMuted(await loadOwnerMute(), asked, subject);
+  if (wanted.length === 0) {
+    return { ok: false, id: null, error: "owner switched this notice off; not sent", refused: "owner_muted" };
+  }
   const blocked = await lookupSuppressed(wanted);
   const deliverable = blocked ? wanted.filter((a) => !blocked.has(a.toLowerCase())) : wanted;
   if (deliverable.length === 0) {

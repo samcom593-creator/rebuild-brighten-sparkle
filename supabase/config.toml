@@ -836,3 +836,9 @@ verify_jwt = false
 
 [functions.postiz-bridge]
 verify_jwt = true
+
+# owner-daily-overview (MP-302, 2026-11-12): pg_cron owner-daily-overview-tick calls it hourly
+# with the apex_bot_token bearer, which is not a JWT. The handler passes requireSendAuth
+# (service key or signed-in admin) and then refuses every signed-in user except the owner.
+[functions.owner-daily-overview]
+verify_jwt = false

@@ -21,6 +21,7 @@
 
 import { lookupSuppressed } from "./suppression.ts";
 import { nonRoutableDomain } from "./non-routable.ts";
+import { dropOwnerMuted, loadOwnerMute, REFUSED_OWNER_MUTED, type OwnerMutePolicy } from "./owner-mute.ts";
 
 export const REFUSED_SUPPRESSED = "suppressed_recipient";
 export const REFUSED_NON_ROUTABLE = "non_routable_recipient";
@@ -34,6 +35,8 @@ interface ResendLike { emails: { send: AnySend } }
 export interface GateOptions {
   /** Override for tests. Same contract as lookupSuppressed: null = could not look. */
   lookup?: (emails: string[]) => Promise<Set<string> | null>;
+  /** Override for tests. null = could not look, so nothing is muted. */
+  ownerMute?: () => Promise<OwnerMutePolicy | null>;
 }
 
 /** "Name <a@b.com>" -> "a@b.com"; plain addresses pass through. Lower-cased. */
@@ -56,14 +59,45 @@ export function gateResend<T extends ResendLike | null | undefined>(client: T, o
   const inner: AnySend = client.emails.send.bind(client.emails);
   const lookup = opts.lookup ?? ((list: string[]) => lookupSuppressed(list));
 
+  const ownerMute = opts.ownerMute ?? (() => loadOwnerMute());
+
   // deno-lint-ignore no-explicit-any
-  const gated: AnySend = async (payload: any, ...rest: any[]) => {
+  const gated: AnySend = async (original: any, ...rest: any[]) => {
+    // deno-lint-ignore no-explicit-any
+    let payload: any = original;
+    const all: string[] = (Array.isArray(payload?.to) ? payload.to : [payload?.to])
+      .map((r: unknown) => String(r ?? "").trim())
+      .filter(Boolean);
+    // Nothing to check: let Resend report its own validation error.
+    if (all.length === 0) return inner(payload, ...rest);
+
+    // Owner inbox mute (owner-mute.ts): the owner is taken off to, cc and bcc
+    // for the subjects he switched off. Everyone else on the message still gets it.
+    const policy = await ownerMute();
+    if (policy?.enabled) {
+      const kept = dropOwnerMuted(policy, all, payload?.subject);
+      if (kept.length === 0) {
+        console.warn(`[resend-gate] owner mute: "${String(payload?.subject ?? "").slice(0, 60)}" not sent`);
+        return { data: null, error: { name: REFUSED_OWNER_MUTED, message: "owner switched this notice off; not sent" } };
+      }
+      // deno-lint-ignore no-explicit-any
+      const trim = (field: any) => {
+        if (field === undefined || field === null) return field;
+        const left = dropOwnerMuted(policy, Array.isArray(field) ? field : [field], payload?.subject);
+        return left.length === 0 ? undefined : Array.isArray(field) ? left : left[0];
+      };
+      const cc = trim(payload.cc), bcc = trim(payload.bcc);
+      if (kept.length < all.length || cc !== payload.cc || bcc !== payload.bcc) {
+        const next = { ...payload, to: Array.isArray(payload.to) ? kept : kept[0] };
+        if (cc === undefined) delete next.cc; else next.cc = cc;
+        if (bcc === undefined) delete next.bcc; else next.bcc = bcc;
+        payload = next;
+      }
+    }
     const raw = payload?.to;
     const wanted: string[] = (Array.isArray(raw) ? raw : [raw])
       .map((r: unknown) => String(r ?? "").trim())
       .filter(Boolean);
-    // Nothing to check: let Resend report its own validation error.
-    if (wanted.length === 0) return inner(payload, ...rest);
 
     const routable = wanted.filter((r) => !nonRoutableDomain(addressOf(r)));
     const blocked = routable.length ? await lookup(routable.map(addressOf)) : new Set<string>();

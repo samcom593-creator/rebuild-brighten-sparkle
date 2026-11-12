@@ -287,6 +287,10 @@ const PUBLIC_ALLOWLIST = new Set([
   // must pass requireSendAuth (service key or admin/manager JWT) or get 401.
   "manager-daily-digest",
   "send-followup-emails",
+  // owner-daily-overview (MP-302): pg_cron owner-daily-overview-tick calls it hourly
+  // with the apex_bot_token bearer. requireSendAuth first (service key or admin JWT),
+  // then the handler refuses every signed-in caller whose uid is not the owner's.
+  "owner-daily-overview",
   // license-milestone-sms-drain (MP-341): pg_cron jobid 94 invokes it every 10 min
   // through run_automation_job with the bot bearer; the handler rejects any
   // caller without it, so verify_jwt=false is the cron seam, not an open door.
@@ -655,6 +659,8 @@ const PUBLIC_CONTRACT = {
   // marker, so every unauthenticated POST mailed all managers + CC Sam again.
   "manager-daily-digest": "in_handler_gate",
   "send-followup-emails": "in_handler_gate",
+  // MP-302: requireSendAuth, then owner uid only for a signed-in caller.
+  "owner-daily-overview": "in_handler_gate",
   // send-batch-blast: requireSendAuth, admin_or_manager. Caller NotificationHub.
   "send-batch-blast": "in_handler_gate",
   // The four applicant blasts: requireSendAuth, admin_or_manager. Callers

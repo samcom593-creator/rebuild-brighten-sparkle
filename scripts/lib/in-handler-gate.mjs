@@ -185,12 +185,38 @@ export function firstOffset(pats, src) {
 // makes the answer the same for every consumer. stripComments blanks rather
 // than deletes, so offsets still index the caller's text, and running it on
 // already-stripped code changes nothing.
+// STORED_KEY (MP-BRAND-ENGINE, 2026-11-12): a caller-presented header compared in constant time against
+// a key the function reads from the database, refused on mismatch:
+//
+//     const given = (req.headers.get("x-brand-key") ?? "").trim();
+//     ...
+//     if (!expected || !sameKey(given, expected)) return json({ error: "wrong key" }, 401);
+//
+// brand-metrics-ingest and glowup-nurture gate this way because their key must be readable by the
+// owner's admin page and by pg_cron, which an edge-only env secret is not. SHARED_SECRET cannot see
+// it: there is no env-bound identifier and no ===. The leg requires all three of: the first argument
+// is a header-bound identifier, the call is NEGATED (a compare whose result is not refused on is not a
+// gate), and a refusal follows. Proven load-bearing on both real functions: remove the `!`, swap the
+// header identifier for a body field, or drop the 401, and each one reads NO GATE again.
+export function storedKeyGateAt(code) {
+  const headerIds = boundIdents(code, /\bheaders\s*\.\s*get\s*\(/);
+  if (headerIds.size === 0) return Infinity;
+  let best = Infinity;
+  for (const m of code.matchAll(/!\s*sameKey\s*\(\s*([A-Za-z_$][\w$]*)\s*,/g)) {
+    if (!headerIds.has(m[1])) continue;
+    if (!refusalFollows(code, m.index)) continue;
+    if (m.index < best) best = m.index;
+  }
+  return best;
+}
+
 export function inHandlerGate(rawCode) {
   const code = stripComments(rawCode);
   const legs = {
     CRED: firstOffset(CRED_PATTERNS, code),
     SHARED_SECRET: sharedSecretGateAt(code),
     MAC_VERIFY: macVerifyGateAt(code),
+    STORED_KEY: storedKeyGateAt(code),
   };
   let offset = Infinity;
   let via = null;

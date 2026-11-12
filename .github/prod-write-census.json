@@ -45,6 +45,10 @@
     "external-cron-backup.yml::heartbeat::Check pg_cron heartbeat": {
       "classification": "read",
       "why": "SELECT EXTRACT(EPOCH FROM ...) against cron.job_run_details. Reaches prod only through the job-level $BOT_SQL env var - it names nothing itself, which is how the first cut of the guard missed it."
+    },
+    "vsl-media.yml::vsl-media::Post failure summary": {
+      "classification": "read",
+      "why": "echo-only ::warning:: on failure. Reaches the census solely because its message names src/lib/vslMedia.ts, which contains the project ref; it runs no command against prod."
     }
   }
 }

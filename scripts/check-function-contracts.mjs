@@ -337,6 +337,13 @@ const PUBLIC_ALLOWLIST = new Set([
   // records debt, and correct code is not debt.
   "brand-collab",
   "brand-photo-upload",
+  // MP-BRAND-ENGINE (2026-11-12): four sell4daddy.com / Brand Command endpoints. None has a Supabase
+  // session to present (a static site, an iOS Shortcut, pg_cron), so the gateway JWT check cannot be
+  // their boundary. Two carry their own key; two are public by design. Contracts are declared below.
+  "brand-metrics-ingest",
+  "glowup-nurture",
+  "glowup-lead",
+  "proof-wall",
   "cron-inbound-brain-health",
   // monday-starter-reminders (2026-10-07): its Sunday pg_cron caller presents a
   // 48-char hex vault secret, which the gateway refuses as
@@ -618,6 +625,13 @@ const PUBLIC_CONTRACT = {
   // forced fast. Refuses with json(body, 401) — a positional argument, which
   // is why the detector had to learn that shape (MP-415).
   "brand-photo-upload": "in_handler_gate",
+  // brand-metrics-ingest: x-brand-key compared in constant time against
+  // system_settings.brand_ingest_key (admin-readable only); 401 without it. Probed live 2026-11-12:
+  // no key -> 401, wrong key -> 401, good key -> one upserted row.
+  "brand-metrics-ingest": "in_handler_gate",
+  // glowup-nurture: x-cron-key compared in constant time against system_settings.glowup_cron_key; 401
+  // without it. Its only caller is the glowup-nurture-daily pg_cron job, which has no user JWT.
+  "glowup-nurture": "in_handler_gate",
   // test-email-flows: requireSendAuth (service key or admin/manager JWT), the
   // send-email gate. Its fan-out flows mail every manager.
   "test-email-flows": "in_handler_gate",
@@ -746,6 +760,15 @@ const PUBLIC_CONTRACT = {
   // an email shape and a message length, then inserts with the service role and
   // mails Sam. Same shape as submit-application. No gate, and correctly so.
   "brand-collab": "public_by_design",
+  // glowup-lead (MP-BRAND-ENGINE): the /glowup lead-magnet form on sell4daddy.com. POST-only,
+  // validates name, email shape, phone and stage, then upserts one glowup_leads row per email. The
+  // only mail it can cause is the fixed checklist, to the submitted address, once per address ever
+  // (checklist_sent_at), so it is not a relay. Same shape as submit-application and brand-collab.
+  "glowup-lead": "public_by_design",
+  // proof-wall (MP-BRAND-ENGINE): GET-only, read-only feed for the public proof section. Returns
+  // first name + last initial, plaque label, month and production, only for agents whose
+  // proof_wall_consent is true. It exists so the wall did NOT need a new anon SECURITY DEFINER rpc.
+  "proof-wall": "public_by_design",
   // MP-415 RECORDED HONESTLY RATHER THAN DRESSED UP: these two sat in the flat
   // allowlist under a shared comment asserting they "authenticate with the
   // rotating bot token or a valid user session". They do not. Neither reads any
@@ -768,7 +791,10 @@ const PUBLIC_CONTRACT = {
 
 // The ceiling on gateless endpoints. A ceiling, not a bump-me floor: the only
 // way past it is to delete an entry or argue in a commit for raising it.
-const PUBLIC_BY_DESIGN_CEILING = 13;
+// 13 -> 15 (MP-BRAND-ENGINE, 2026-11-12): glowup-lead and proof-wall, both for the public
+// sell4daddy.com site Sam asked for (a lead-magnet form and a consent-gated proof feed). Neither
+// can carry a caller credential, and each is bounded as its contract comment above says.
+const PUBLIC_BY_DESIGN_CEILING = 15;
 
 // Neither structure may drift from the other. An allowlist entry with no
 // declared contract would silently keep the old name-is-enough standard, and a

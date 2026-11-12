@@ -92,6 +92,7 @@ export const CARD_FORMATS: { key: string; label: string; long: boolean }[] = [
   { key: "long-story", label: "Long-form: story", long: true },
   { key: "long-case-study", label: "Long-form: case study", long: true },
   { key: "long-hot-seat", label: "Long-form: hot seat", long: true },
+  { key: "long-sit-down-qa", label: "Long-form: sit-down Q&A", long: true },
   { key: "long-teardown", label: "Long-form: teardown", long: true },
   { key: "short", label: "Short", long: false },
   { key: "rant", label: "Rant", long: false },

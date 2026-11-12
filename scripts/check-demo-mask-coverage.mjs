@@ -38,6 +38,7 @@ const EXEMPT = new Map([
   ["src/components/dashboard/CalendarSyncSection.tsx", "builds an ICS feed URL for display; never reads a body"],
   ["src/pages/ReadyModeIntegration.tsx", "builds a webhook URL for display; never reads a body"],
   ["src/pages/BotToken.tsx", "documentation string showing operators the endpoint"],
+  ["src/pages/admin/BrandCommand.tsx", "builds the brand-metrics-ingest address for a copy button; never fetches it"],
   ["src/pages/HireLink.tsx", "comment describing the submit path"],
   ["src/lib/callLab/providers.ts", "call-lab transport base URL; session audio, not book data"],
   ["src/components/dashboard/ProfileSettings.tsx", "write: update-user-email, returns a status not a row"],

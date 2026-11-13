@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Clipboard, RefreshCw, Search, Wallet } from "lucide-react";
+import { AlertTriangle, Clipboard, RefreshCw, Search, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -91,6 +91,26 @@ export default function CommissionRecovery() {
     };
   }, [agents]);
 
+  const FROZEN_AFTER_DAYS = 90;
+  const feedFreshness = useMemo(() => {
+    const rows = policies ?? [];
+    const times = rows
+      .map((row) => (row.effective_date ? new Date(row.effective_date).getTime() : NaN))
+      .filter((t) => Number.isFinite(t));
+    if (times.length === 0) return { newest: null as Date | null, ageDays: null as number | null };
+    const newestMs = Math.max(...times);
+    return { newest: new Date(newestMs), ageDays: Math.floor((Date.now() - newestMs) / 86_400_000) };
+  }, [policies]);
+
+  // Show the retired-feed banner unless the loaded rows positively prove the feed
+  // is still live (newest effective date within FROZEN_AFTER_DAYS). This cannot
+  // blank-green: zero rows, all-null dates, or a failed load all keep the caution
+  // up; it clears only when a genuinely fresh row loads. AgentLink sync was retired
+  // 2026-10-17 (finance-bot v_commission_recovery_verdict is permanently FROZEN).
+  const feedFrozen =
+    !loadingPolicies &&
+    !(feedFreshness.ageDays != null && feedFreshness.ageDays <= FROZEN_AFTER_DAYS);
+
   const [visibleCount, setVisibleCount] = useState(100);
 
   const refetchAll = () => {
@@ -113,6 +133,25 @@ export default function CommissionRecovery() {
           </Button>
         }
       />
+
+      {feedFrozen && (
+        <Card className="border-amber-500/40 bg-amber-500/[0.06]">
+          <CardContent className="p-4 flex items-start gap-3 text-sm">
+            <AlertTriangle className="h-5 w-5 shrink-0 text-amber-400 mt-0.5" />
+            <div className="space-y-1">
+              <div className="font-semibold text-amber-200">AgentLink feed retired</div>
+              <p className="text-slate-600 dark:text-slate-300">
+                This recovery queue is a static historical backlog from before the AgentLink sync was retired on 2026-10-17. It is not live recoverable commission. Do not chase these as new money.
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {feedFreshness.newest
+                  ? `Newest policy effective date loaded: ${format(feedFreshness.newest, "MMM d, yyyy")} (${feedFreshness.ageDays} days ago).`
+                  : "No dated recovery rows are currently loaded."}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Metric label="Policies to recover" value={totals.total} tone="text-rose-300" />

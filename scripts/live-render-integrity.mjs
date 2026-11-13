@@ -69,10 +69,24 @@ const OVERFLOW_TOLERANCE_PX = 2; // sub-pixel rounding is not a defect
 // route-smoke.mjs (which sees the SPA shell 200, blind to rendered tokens), so
 // the broken-token / hard-page-error / 404-white-screen assertions were applied
 // to the homepage ALONE. Now every (leg, route) pair is measured. Kept tight to
-// the three public funnel money pages a recruit/lead actually walks — the ones
+// the public funnel money pages a recruit/lead actually walks — the ones
 // where a broken number or a React crash directly costs a conversion — so the
 // render stays fast and non-flaky. Override with ROUTES="/,/apply,/vsl,...".
-const ROUTES = (process.env.ROUTES || "/,/apply,/vsl")
+//
+// MP-WIB-LIVE-RENDER-CTA (2026-11-13): widened to the two HOMEPAGE-PRIMARY
+// conversion CTAs that were still render-blind. The homepage serves "Schedule a
+// Call" -> /schedule-call (a client-rendered license-status gate that routes to
+// booking) and "Licensed?/Not licensed yet" -> /get-licensed (the first step for
+// the LARGER unlicensed-recruit population). Both had only route-smoke's fetch-200
+// (SPA shell, blind to a client-render white-screen) + sitemap/external-CTA
+// coverage — the exact blind spot this probe exists to close, and the one /careers
+// proved real the same day (a homepage-reachable conversion surface can silently
+// collapse to the shell while every fetch/source guard stays green). Proven CLEAN
+// on live prod across all 3 legs (desktop-blink + mobile-blink + real Apple WebKit:
+// 200 / 0 overflow / 0 broken tokens / no soft-404) BEFORE widening, so the guard
+// is not born red; /get-licensed's benign video-embed console noise is recorded,
+// not graded (ok stays true), so adding it does not make the probe flaky-red.
+const ROUTES = (process.env.ROUTES || "/,/apply,/vsl,/schedule-call,/get-licensed")
   .split(",").map((r) => r.trim()).filter(Boolean)
   .map((r) => (r === "/" ? "/" : "/" + r.replace(/^\/+|\/+$/g, "")));
 

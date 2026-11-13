@@ -39,6 +39,16 @@ const SURFACE = "src/components/landing/HeroSection.tsx";
 // class as the HeroSection half, one file over.
 const SIBLINGS = ["src/components/landing/CareerPathwaySection.tsx"];
 
+// Static, crawlable SEO claim surfaces. index.html's <meta name="description">
+// hardcodes the comp range ("70%–145%") — the exact text Google shows in the
+// search snippet and that AI search (ChatGPT/Perplexity/Claude) ingests when a
+// recruit asks about Galaxy's commission. If the comp ceiling ever moves, the
+// landing components + their guards update, but this snippet keeps quoting the
+// stale number to every crawler forever, with nothing going red. Same claim-
+// drift disease class as the sibling sweep (MP-WIB-HERO-PATH-CLAIMS-SWEEP), on
+// the highest-external-visibility surface. MP-WIB-HERO-PATH-CLAIMS-SEO (2026-11-13).
+const SEO_SURFACES = ["index.html"];
+
 /** Slice the body of `const <name> = [ ... ];` (first match). Returns null if absent. */
 function arrayBlock(src, name) {
   const start = src.indexOf(`const ${name} = [`);
@@ -127,19 +137,16 @@ export function findViolations(src) {
   return violations;
 }
 
-/** Grade a sibling landing surface that restates the canonical numbers as
- *  hardcoded literals, against the canonical facts derived from HeroSection.
- *  Comments are blanked FIRST (offset-preserving, via the repo's one lexer) so
- *  a claim-of-record in a `//` note is never matched as live copy — the
- *  MP-277 comment-false-positive trap. Returns violation strings. */
-export function findSiblingViolations(src, canonical, label) {
+/** Comp-range + carrier-count claim checks shared by every non-canonical
+ *  surface (JS siblings and static SEO HTML). `text` must already have its
+ *  surface-appropriate comments removed by the caller. Returns violations. */
+function claimViolationsInText(text, canonical, label) {
   const { carrierCount, compTop, compBottom } = canonical;
-  const clean = stripComments(src);
   const violations = [];
 
   // comp RANGE literals like "70%–145%" / "70%-145%" — every one must equal the
   // canonical bottom–top (order-independent; a "145%–70%" typo still normalizes).
-  for (const cm of clean.matchAll(/(\d+)\s*%\s*[–-]\s*(\d+)\s*%/g)) {
+  for (const cm of text.matchAll(/(\d+)\s*%\s*[–-]\s*(\d+)\s*%/g)) {
     const lo = Math.min(Number(cm[1]), Number(cm[2]));
     const hi = Math.max(Number(cm[1]), Number(cm[2]));
     if (lo !== compBottom || hi !== compTop) {
@@ -153,7 +160,7 @@ export function findSiblingViolations(src, canonical, label) {
   // hardcoded carrier-count literals ("50+ carriers" / "22 carriers"). The live
   // value flows through the `${carriers}` variable and carries no leading digit,
   // so it is never matched here — only a stray hardcoded number is.
-  for (const cm of clean.matchAll(/(\d+)\s*\+?\s*(?:top\s+)?carriers\b/gi)) {
+  for (const cm of text.matchAll(/(\d+)\s*\+?\s*(?:top\s+)?carriers\b/gi)) {
     const stated = Number(cm[1]);
     if (stated !== carrierCount) {
       violations.push(
@@ -162,6 +169,19 @@ export function findSiblingViolations(src, canonical, label) {
       );
     }
   }
+
+  return violations;
+}
+
+/** Grade a sibling landing surface that restates the canonical numbers as
+ *  hardcoded literals, against the canonical facts derived from HeroSection.
+ *  Comments are blanked FIRST (offset-preserving, via the repo's one lexer) so
+ *  a claim-of-record in a `//` note is never matched as live copy — the
+ *  MP-277 comment-false-positive trap. Returns violation strings. */
+export function findSiblingViolations(src, canonical, label) {
+  const { carrierCount } = canonical;
+  const clean = stripComments(src);
+  const violations = claimViolationsInText(clean, canonical, label);
 
   // the first-paint / RPC-miss fallback literal: `carriers_partnered ?? N`. A
   // stale RPC or the very first render shows N, so N must equal canonical too.
@@ -173,6 +193,25 @@ export function findSiblingViolations(src, canonical, label) {
     );
   }
 
+  return violations;
+}
+
+/** Grade a static, crawlable SEO HTML surface. Every <meta ...description...>
+ *  content value is claim text Google + AI search read verbatim. HTML comments
+ *  (<!-- -->) are stripped first, and we deliberately read ONLY description-type
+ *  meta content (never arbitrary markup or <script>/JSON-LD bodies) so a URL's
+ *  "//", an og:image dimension, or a JSON-LD number can never false-match.
+ *  Returns violation strings. */
+export function findSeoDescriptionViolations(html, canonical, label) {
+  const noComments = html.replace(/<!--[\s\S]*?-->/g, "");
+  const violations = [];
+  for (const tag of noComments.matchAll(/<meta\b[^>]*>/gi)) {
+    const t = tag[0];
+    if (!/(?:name|property)\s*=\s*"[^"]*description[^"]*"/i.test(t)) continue;
+    const cm = t.match(/content\s*=\s*"([^"]*)"/i);
+    if (!cm) continue;
+    violations.push(...claimViolationsInText(cm[1], canonical, `${label} meta description`));
+  }
   return violations;
 }
 
@@ -258,7 +297,36 @@ const partnerPaths = [
     }
   }
 
-  const total = cases.length + derivationGuards.length + siblingCases.length;
+  // ── SEO-surface logic (findSeoDescriptionViolations) ──
+  const seoCases = [
+    // [name, html, expectViolations]
+    ["seo clean: meta description matches 70–145", `<meta name="description" content="Earn 70%–145% commissions paid weekly.">`, 0],
+    ["seo dirty: stale comp ceiling in description (70-120)", `<meta name="description" content="Earn 70%-120% commissions.">`, 1],
+    ["seo dirty: og:description comp drift (90-130)", `<meta property="og:description" content="Up to 90%-130% comp.">`, 1],
+    ["seo dirty: stale carrier count in description", `<meta name="description" content="Partner with 14 top carriers.">`, 1],
+    ["seo dirty: both description metas drift", `<meta name="description" content="80%-140%"><meta property="og:description" content="60%-145%">`, 2],
+    ["seo clean: non-description meta ignored (og:image:width)", `<meta property="og:image:width" content="1200">`, 0],
+    ["seo clean: drift in a NON-description meta is not graded (scoped read)", `<meta name="keywords" content="90%-130% comp"><meta name="description" content="70%–145%">`, 0],
+    ["seo clean: wrong numbers inside an HTML comment are NOT matched", `<!-- old: 50%-200% and 14 carriers --><meta name="description" content="70%–145%">`, 0],
+    ["seo clean: a URL's digits never false-match (description-only read)", `<meta property="og:url" content="https://x.org/70-145-carriers"><meta name="description" content="70%–145%">`, 0],
+  ];
+  for (const [name, html, want] of seoCases) {
+    let got;
+    try {
+      got = findSeoDescriptionViolations(html, canon, "fixture").length;
+    } catch (e) {
+      console.error(`  ✗ ${name}: threw unexpectedly — ${e.message}`);
+      continue;
+    }
+    if (got === want) {
+      pass++;
+      console.log(`  ✓ ${name} (${got} violation${got === 1 ? "" : "s"})`);
+    } else {
+      console.error(`  ✗ ${name}: expected ${want} violation(s), got ${got}`);
+    }
+  }
+
+  const total = cases.length + derivationGuards.length + siblingCases.length + seoCases.length;
   if (pass === total) {
     console.log(`\n✓ check:hero-path-claims --selftest ${pass}/${total} PASS`);
     process.exit(0);
@@ -303,6 +371,18 @@ function main() {
       process.exit(1);
     }
     surfaces.push({ label: rel, violations: findSiblingViolations(src, canonical, rel) });
+  }
+
+  for (const rel of SEO_SURFACES) {
+    const abs = path.join(repoRoot, rel);
+    let src;
+    try {
+      src = fs.readFileSync(abs, "utf8");
+    } catch {
+      console.error(`✗ check:hero-path-claims — SEO surface ${rel} not found; re-point this guard.`);
+      process.exit(1);
+    }
+    surfaces.push({ label: rel, violations: findSeoDescriptionViolations(src, canonical, rel) });
   }
 
   const totalViolations = surfaces.reduce((n, s) => n + s.violations.length, 0);

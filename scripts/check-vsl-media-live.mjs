@@ -1,18 +1,23 @@
 #!/usr/bin/env node
-// check-vsl-media-live.mjs — prove the hosted VSL video + poster the recruiting
-// funnel actually serves are still ALIVE at their storage origin. Owned by the
-// Website Integrity Bot.
+// check-vsl-media-live.mjs — prove every hosted conversion-funnel video + poster
+// the site serves is still ALIVE at its storage origin. Owned by the Website
+// Integrity Bot. (Script/CI/cron name kept for its established wiring; scope is
+// now all three conversion-media libs, not the VSL alone — MP-WIB-MEDIA-SWEEP.)
 //
-// WHY THIS EXISTS. The public VSL is the funnel's single most persuasive asset:
-// the homepage hero plays it, /vsl is built around it, and index.html's
-// VideoObject structured data (contentUrl + thumbnailUrl) hands it to Google
-// video rich results and AI-search. All three read ONE pair of Supabase storage
-// objects — apex-vsl.mp4 and apex-vsl-poster.jpg — pinned in src/lib/vslMedia.ts.
-// Those objects live in a public storage bucket, OUTSIDE the git tree and
-// OUTSIDE Vite's content-hashed build. A re-cut that bumps VSL_MEDIA_BASE but
-// forgets to upload, an accidental object delete, or the bucket flipping private
-// kills the player on / and /vsl AND points the VideoObject at a dead URL — and
-// every visitor sees a black box reading "Your browser cannot play this video".
+// WHY THIS EXISTS. The funnel serves three public videos, each a persuasive or
+// load-bearing conversion asset, each pinned to ONE Supabase storage pair
+// (mp4 + jpg poster) in its own source-of-truth lib:
+//   - src/lib/vslMedia.ts        apex-vsl.mp4         — homepage hero + /vsl player + index.html VideoObject (Google video rich results + AI-search)
+//   - src/lib/licensingMedia.ts  how-to-get-...mp4    — /get-licensed licensing player (the unlicensed-prospect conversion path)
+//   - src/lib/onboardingMedia.ts apex-new-agent-...mp4 — /get-licensed + post-submit onboarding player
+// Every object lives in a PUBLIC storage bucket, OUTSIDE the git tree and OUTSIDE
+// Vite's content-hashed build. A re-cut that bumps a *_MEDIA_BASE but forgets to
+// upload, an accidental object delete, or the bucket flipping private kills the
+// player on its surface AND (for the VSL) points the Google VideoObject at a dead
+// URL — every visitor sees a black box reading "this video cannot be played".
+// Live-render-integrity confirmed 2026-11-13 that /get-licensed fires requests to
+// the licensing + onboarding objects (they serve 206 today); only the VSL pair
+// was guarded until this sweep, so either of the other two could silently rot.
 //
 // EVERY EXISTING GUARD IS BLIND TO THIS:
 //   - route-smoke proves the /vsl HTML shell 200s; the <video><source> is a
@@ -56,12 +61,13 @@
 // same way:
 //   0 CLEAN | 0 UNKNOWN (network) | 1 DEFECT | 3 UNRESOLVED/partial
 //
-// The probed URLs are DERIVED from src/lib/vslMedia.ts (the single source of
-// truth), never hardcoded here — so a future re-cut that bumps VSL_MEDIA_BASE is
-// probed at its NEW object automatically, and this guard can never go stale
-// against a URL the site no longer serves. check-vsl-sync already pins
-// index.html's VideoObject + preload to this same base, so probing the two
-// derived objects covers the player AND the structured data.
+// The probed URLs are DERIVED from each lib's *_MEDIA_BASE const + the src/poster
+// filenames in its template literals (the single source of truth), never
+// hardcoded here — so a future re-cut that bumps any base or renames an object is
+// probed at its NEW url automatically, and this guard can never go stale against
+// a URL the site no longer serves. check-vsl-sync already pins index.html's
+// VideoObject + preload to the VSL base, so probing the derived VSL objects
+// covers that player AND the structured data.
 //
 // Usage:
 //   node scripts/check-vsl-media-live.mjs
@@ -73,7 +79,14 @@ import { fileURLToPath } from "node:url";
 import http from "node:http";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const MEDIA = resolve(ROOT, "src/lib/vslMedia.ts");
+// Each conversion-media lib pins ONE public storage pair (video mp4 + jpg poster)
+// the funnel serves. Probed URLs are derived from each lib below — add a lib here
+// and its pair is swept automatically.
+const MEDIA_LIBS = [
+  { path: resolve(ROOT, "src/lib/vslMedia.ts"),        name: "VSL",        surface: "homepage hero + /vsl player + Google VideoObject" },
+  { path: resolve(ROOT, "src/lib/licensingMedia.ts"),  name: "Licensing",  surface: "/get-licensed licensing player" },
+  { path: resolve(ROOT, "src/lib/onboardingMedia.ts"), name: "Onboarding", surface: "/get-licensed + post-submit onboarding player" },
+];
 const CONTROL = process.env.VSL_CONTROL_URL || "https://www.google.com/generate_204";
 const TIMEOUT_MS = Number(process.env.VSL_TIMEOUT_MS || 25000);
 
@@ -158,24 +171,44 @@ function decideVerdict(results, controlUp) {
   return { verdict: "CLEAN", code: 0 };
 }
 
-// Parse the canonical media base from src/lib/vslMedia.ts — same regex as
-// check-vsl-sync.mjs, so the two guards read the identical source of truth.
-function canonicalObjects() {
-  if (!existsSync(MEDIA)) {
-    console.error(`[check-vsl-media-live] missing required file: ${MEDIA}`);
+// Derive a lib's (video, poster) object pair from its *_MEDIA_BASE const + the
+// src/poster filenames in its template literals — the same single-source-of-truth
+// discipline as check-vsl-sync.mjs. Nothing is hardcoded, so a re-cut that bumps
+// the base OR renames the object is probed at its new url automatically. A lib
+// that cannot be read or parsed exits(1) LOUDLY rather than silently probing
+// fewer objects (the fake-success failure mode this repo keeps paying for).
+function objectsFromLib({ path, name, surface }) {
+  if (!existsSync(path)) {
+    console.error(`[check-vsl-media-live] missing required media lib: ${path}`);
     process.exit(1);
   }
-  const media = readFileSync(MEDIA, "utf8");
-  const m = media.match(/const\s+VSL_MEDIA_BASE\s*=\s*["']([^"']+)["']/);
-  if (!m) {
-    console.error("[check-vsl-media-live] could not find VSL_MEDIA_BASE in src/lib/vslMedia.ts");
+  const src = readFileSync(path, "utf8");
+  const baseM = src.match(/const\s+([A-Z0-9_]*MEDIA_BASE)\s*=\s*["']([^"']+)["']/);
+  if (!baseM) {
+    console.error(`[check-vsl-media-live] could not find a *_MEDIA_BASE const in ${path}`);
     process.exit(1);
   }
-  const base = m[1].replace(/\/$/, "");
+  const baseConst = baseM[1];
+  const base = baseM[2].replace(/\/$/, "");
+  const grab = (field) => {
+    const m = src.match(new RegExp(field + "\\s*:\\s*`\\$\\{" + baseConst + "\\}\\/([^`]+)`"));
+    return m ? m[1] : null;
+  };
+  const videoFile = grab("src");
+  const posterFile = grab("poster");
+  if (!videoFile || !posterFile) {
+    console.error(`[check-vsl-media-live] ${path}: could not derive ${videoFile ? "" : "src(video) "}${posterFile ? "" : "poster "}filename from a \`\${${baseConst}}/...\` template literal`);
+    process.exit(1);
+  }
   return [
-    { url: `${base}/apex-vsl.mp4`, expectFamily: "video", label: "VSL video (hero + /vsl player + VideoObject.contentUrl)" },
-    { url: `${base}/apex-vsl-poster.jpg`, expectFamily: "image", label: "VSL poster (player poster + VideoObject.thumbnailUrl)" },
+    { url: `${base}/${videoFile}`, expectFamily: "video", label: `${name} video (${surface})` },
+    { url: `${base}/${posterFile}`, expectFamily: "image", label: `${name} poster (${surface})` },
   ];
+}
+
+// Every conversion-media object across all libs. One flake-proof probe set.
+function canonicalObjects() {
+  return MEDIA_LIBS.flatMap(objectsFromLib);
 }
 
 // ---- selftest: deterministic, local-only -----------------------------------
@@ -230,6 +263,18 @@ async function selftest() {
   ok(decideVerdict([{ state: "unresolved" }], true).code === 3, "unresolved -> exit 3");
   ok(decideVerdict([{ state: "alive" }, { state: "alive" }], true).verdict === "CLEAN", "all alive -> CLEAN(0)");
 
+  // 5. canonicalObjects parses ALL conversion-media libs from real source — the
+  // load-bearing anti-fake-success assertion. A parser that silently matched
+  // nothing would probe fewer objects and still read CLEAN; pin the count, the
+  // family split, the url shape, and that each lib's distinct storage prefix is
+  // actually present (so dropping a lib from the sweep fails loudly here).
+  const objs = canonicalObjects();
+  ok(objs.length === MEDIA_LIBS.length * 2, `canonicalObjects -> ${MEDIA_LIBS.length * 2} objects (video+poster per lib); got ${objs.length}`);
+  ok(objs.filter((o) => o.expectFamily === "video").length === MEDIA_LIBS.length, `${MEDIA_LIBS.length} video objects (one per lib)`);
+  ok(objs.filter((o) => o.expectFamily === "image").length === MEDIA_LIBS.length, `${MEDIA_LIBS.length} poster objects (one per lib)`);
+  ok(objs.every((o) => /^https:\/\/.+\.(mp4|jpg|jpeg|png|webp)$/.test(o.url)), "every derived url is an absolute https media url");
+  ok(["/vsl/", "/licensing/", "/onboarding/"].every((seg) => objs.some((o) => o.url.includes(seg))), "all three storage prefixes (vsl, licensing, onboarding) present");
+
   console.log(`\nselftest: ${pass}/${total}`);
   if (pass !== total) { console.error("SELFTEST FAILED — the VSL-media alive/dead detector is wrong."); process.exit(1); }
   console.log("✅ selftest: alive/dead/unresolved + control-gating all classified correctly, both directions.");
@@ -258,20 +303,20 @@ async function main() {
   console.log(JSON.stringify(out, null, 2));
 
   if (verdict === "DEFECT") {
-    console.error("\nVSL MEDIA DEFECT — the recruiting funnel's video asset is DEAD (hero player, /vsl, and the Google VideoObject all point at it):");
+    console.error("\nCONVERSION-MEDIA DEFECT — a hosted funnel video/poster is DEAD; the surface that embeds it serves a broken player (and for the VSL, the Google VideoObject points at a dead URL):");
     for (const r of results.filter((r) => r.state === "dead")) console.error(`  [${r.label}] ${r.url} — ${r.reason}`);
     process.exit(1);
   }
   if (verdict === "UNRESOLVED") {
-    console.error("\n⚠️  VSL media UNRESOLVED — an object neither proved alive nor dead (transient 5xx/timeout). NOT a defect; re-run to confirm.");
+    console.error("\n⚠️  conversion media UNRESOLVED — an object neither proved alive nor dead (transient 5xx/timeout). NOT a defect; re-run to confirm.");
     for (const r of results.filter((r) => r.state === "unresolved")) console.error(`  [${r.label}] ${r.url} — ${r.reason}`);
     process.exit(3);
   }
   if (verdict === "UNKNOWN") {
-    console.log("\nVSL media UNKNOWN — egress control down; object verdicts not trusted (runner/network offline, not a dead asset).");
+    console.log("\nconversion media UNKNOWN — egress control down; object verdicts not trusted (runner/network offline, not a dead asset).");
     process.exit(0);
   }
-  console.log(`\n✅ VSL media CLEAN — both canonical objects serve live: ` +
+  console.log(`\n✅ conversion media CLEAN — all ${results.length} canonical objects serve live: ` +
     results.map((r) => `${r.url.replace(/^https?:\/\//, "").split("/").pop()} (${r.status} ${r.contentType})`).join(", "));
   process.exit(0);
 }

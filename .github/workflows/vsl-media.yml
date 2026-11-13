@@ -1,11 +1,12 @@
-# Is the hosted VSL video + poster still ALIVE? (MP-WIB-VSL-MEDIA-LIVE)
+# Is every hosted conversion-funnel video + poster still ALIVE? (MP-WIB-MEDIA-SWEEP)
 #
-# The public VSL is the funnel's most persuasive asset: the homepage hero plays
-# it, /vsl is built around it, and index.html's VideoObject structured data
-# (contentUrl + thumbnailUrl) hands it to Google video rich results + AI-search.
-# All three read ONE pair of Supabase storage objects pinned in
-# src/lib/vslMedia.ts — apex-vsl.mp4 and apex-vsl-poster.jpg — which live in a
-# public bucket OUTSIDE the git tree and OUTSIDE Vite's content-hashed build.
+# The funnel serves THREE public videos, each pinned to one Supabase storage pair
+# (mp4 + jpg poster) in its own source-of-truth lib:
+#   - src/lib/vslMedia.ts        — homepage hero + /vsl player + index.html VideoObject (Google rich results + AI-search)
+#   - src/lib/licensingMedia.ts  — /get-licensed licensing player (unlicensed-prospect conversion path)
+#   - src/lib/onboardingMedia.ts — /get-licensed + post-submit onboarding player
+# Every object lives in a public bucket OUTSIDE the git tree and OUTSIDE Vite's
+# content-hashed build. Until this sweep only the VSL pair was probed.
 #
 # check-vsl-sync (commit gate) proves those five surfaces REFERENCE the same
 # release; it never makes one HTTP request, so all five can agree on a URL that
@@ -38,6 +39,8 @@ on:
     paths:
       - "scripts/check-vsl-media-live.mjs"
       - "src/lib/vslMedia.ts"
+      - "src/lib/licensingMedia.ts"
+      - "src/lib/onboardingMedia.ts"
       - ".github/workflows/vsl-media.yml"
 
 jobs:
@@ -54,7 +57,7 @@ jobs:
         run: npm run check:vsl-media-live-selftest
       # Live probe. Only a real DEFECT (object gone, egress up) fails the run;
       # a transient UNRESOLVED (exit 3) warns without reddening the deploy.
-      - name: Probe hosted VSL video + poster liveness
+      - name: Probe hosted conversion-media (VSL + licensing + onboarding) liveness
         run: |
           node scripts/check-vsl-media-live.mjs; code=$?
           if [ "$code" = "3" ]; then
@@ -65,4 +68,4 @@ jobs:
       - name: Post failure summary
         if: failure()
         run: |
-          echo "::warning::vsl-media FAILED — either the detector selftest regressed (the guard's own alive/dead logic, not the site), OR the hosted VSL video/poster the funnel serves is DEAD: the homepage hero player, the /vsl player, and the Google VideoObject (contentUrl/thumbnailUrl) all point at a storage object that no longer resolves. A re-cut bumped src/lib/vslMedia.ts without uploading, the object was deleted, or the bucket flipped private. See the step output above for the exact object + status."
+          echo "::warning::vsl-media FAILED — either the detector selftest regressed (the guard's own alive/dead logic or the media-lib parser, not the site), OR one of the hosted conversion videos/posters the funnel serves is DEAD: the VSL (homepage hero + /vsl + Google VideoObject), the /get-licensed licensing player, or the onboarding player points at a storage object that no longer resolves. A re-cut bumped a *_MEDIA_BASE without uploading, the object was deleted, or the bucket flipped private. See the step output above for the exact object + status."

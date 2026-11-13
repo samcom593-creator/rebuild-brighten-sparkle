@@ -5,8 +5,10 @@
 //
 // WHY THIS EXISTS. The funnel's money pages hand every recruit off to external
 // partners: Xcel pre-licensing enrollment (partners.xcelsolutions.com/afe), the
-// onboarding-call Calendly event, and the "how to get licensed" study-guide
-// Google Doc. That handoff is the monetization-critical path — an unlicensed
+// onboarding-call Calendly event, the "how to get licensed" study-guide Google
+// Doc, and the /storefront buy.stripe.com subscription buttons — Apex's ONLY
+// recurring-revenue line (Gold Leads $250/wk + Platinum Vet Leads $500/wk). That
+// handoff is the monetization-critical path — an unlicensed
 // recruit who clicks "Get Licensed" and lands on a dead Xcel page never enrolls,
 // never gets licensed, never writes a policy. Sam loses the agent and the
 // override, silently, at HTTP 200.
@@ -64,10 +66,11 @@ const SETTLE_MS = 2500;
 const NAV_TIMEOUT = 40000;
 const MIN_BODY_CHARS = 60; // a healthy partner page renders real content
 
-// The public money pages. External CTAs live on /get-licensed today, but every
-// funnel page is rendered so a new external handoff on /apply or /vsl is covered
-// without editing this list.
-const ROUTES = (process.env.ROUTES || "/,/apply,/vsl,/leads,/get-licensed,/schedule-call")
+// The public money pages. External CTAs live on /get-licensed (Xcel/Calendly/
+// Doc) and /storefront (the buy.stripe.com subscription buttons — Apex's only
+// recurring-revenue line), but every funnel page is rendered so a new external
+// handoff on /apply or /vsl is covered without editing this list.
+const ROUTES = (process.env.ROUTES || "/,/apply,/vsl,/leads,/get-licensed,/schedule-call,/storefront")
   .split(",").map((s) => s.trim()).filter(Boolean);
 
 const RESULT_FILE = process.env.RESULT_FILE || "";
@@ -112,6 +115,16 @@ const DEAD_SIGNATURES = [
   "this calendly url is not valid",
   "link you clicked may be broken",
   "account is no longer active",
+  // Stripe payment-link death, captured LIVE 2026-11-13 by rendering the two
+  // buy.stripe.com links the /storefront serves. A DEACTIVATED link renders
+  // exactly "The link is no longer active." at HTTP 200; a deleted/typo'd code
+  // renders "...page you were looking for..." (already covered above). Without
+  // the first phrase, a dead recurring-revenue buy button reads ALIVE — the
+  // 465-fake-success disease on Apex's only subscription line. Negative
+  // detection only (the phrase is VISIBLE iff the link is dead), so a slow or
+  // empty Stripe render can never read as a false DEFECT — unlike a positive
+  // hallmark, which would red a deploy on Stripe's client-render timing.
+  "link is no longer active",
 ];
 
 // Known partners get an extra expected-ALIVE signal: even if a dead signature
@@ -210,6 +223,12 @@ async function selftest() {
       You need access. Ask the owner for access, or switch to an account with access.
       Request access</body>`,
     "/blank-500": `HTTP-STUB-500`,
+    // Stripe ground truth captured live 2026-11-13 off the /storefront buy
+    // links. Both dead states are caught by DEAD_SIGNATURES, which are tested
+    // BEFORE any partner hint, so these are host-independent (the loopback
+    // selftest-partner's hallmark check never runs on them).
+    "/stripe-deactivated": `<!doctype html><title> </title><body>The link is no longer active.</body>`,
+    "/stripe-broken": `<!doctype html><title> </title><body>Something went wrong The page you were looking for could not be found. Please check the URL or contact the merchant.</body>`,
   };
   const server = http.createServer((req, res) => {
     const path = req.url.split("?")[0];
@@ -237,6 +256,8 @@ async function selftest() {
     { url: `${origin}/doc-viewonly`, want: "alive" },  // benign "Request edit access" must NOT read dead
     { url: `${origin}/doc-walled`, want: "dead" },     // real "You need access" wall reads dead
     { url: `${origin}/blank-500`, want: "unresolved" }, // error + near-empty => not DEAD
+    { url: `${origin}/stripe-deactivated`, want: "dead" }, // "The link is no longer active." — the gap this ship closes
+    { url: `${origin}/stripe-broken`, want: "dead" },      // deleted/typo'd code => "page you were looking for"
   ];
   let pass = 0;
   for (const c of cases) {

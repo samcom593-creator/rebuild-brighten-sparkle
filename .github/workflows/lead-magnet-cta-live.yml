@@ -1,0 +1,71 @@
+# Are the lead-magnet keyword-CTA doors still ALIVE on the live edge? (MP-WIB-LEAD-MAGNET-CTA-LIVE)
+#
+# The documented "lever that prints leads" is the keyword-CTA: a Short/Reel/TikTok
+# says "comment TEAM" (or BODY / BUILD), the social bot auto-replies with the door
+# URL, and the prospect lands on a page that captures them. Those doors are the
+# KEYWORDS array in src/lib/brand.ts:
+#   TEAM  -> https://sell4daddy.com/team    BODY -> /body    BUILD -> /build
+# Memory (social_bot_lead_magnet_attribution): one Short routed 9 leads / $21,600
+# through a single door.
+#
+# THE BLIND SPOT: those pages live on sell4daddy.com — a SEPARATE Vercel project
+# outside THIS repo's deploy pipeline and every guard it runs. apex-financial.org
+# has a dense live-edge suite (share-card-live, vsl-media-live,
+# crawl-entrypoints-live, brand-static-live, funnel-external-CTA liveness) but the
+# doors where the lead-printing engine actually DELIVERS are watched by nothing. A
+# broken deploy there, a removed /team route, or a lapsed domain kills every
+# keyword-CTA lead silently: the comment fires, the auto-reply sends the link, the
+# prospect clicks — and dead-ends on a 404. Nothing in this repo would ever know,
+# because nothing here ever fetches that domain.
+#
+# Deliberately a SCHEDULE, not a commit gate. It grades a LIVE edge response on a
+# cross-project domain, so wiring the over-the-wire probe into verify:core would
+# block every commit on a condition only a redeploy of a DIFFERENT project can
+# clear. The pure classifier + KEYWORDS door parser ARE gated every commit via
+# check:lead-magnet-cta-live-selftest in verify:core; only the live probe runs
+# here. A push that touches the guard/workflow re-runs it immediately.
+#
+# Needs no secrets: every door is a public landing page.
+#
+# Can't cry wolf (check-lead-magnet-cta-live.mjs exit contract):
+#   exit 1 DEFECT        -> a door genuinely dead/parked/soft-404 w/ egress proven up: FAIL (red, Sam sees it)
+#   exit 3 UNRESOLVED    -> transient 5xx/timeout/DNS (incl. the brand.ts seed read): warning only, run stays green
+#   exit 0 CLEAN/UNKNOWN -> alive, or egress itself down (not trusted): green
+name: lead-magnet-cta-live
+
+on:
+  schedule:
+    - cron: "41 14 * * *" # daily ~07:41 Phoenix, offset from brand-static(34)/share-card/vsl-media/crawl-entrypoints; GH schedules drift (p90 ~40min, MP-304)
+  workflow_dispatch:
+  push:
+    paths:
+      - "scripts/check-lead-magnet-cta-live.mjs"
+      - ".github/workflows/lead-magnet-cta-live.yml"
+      - "src/lib/brand.ts"
+
+jobs:
+  lead-magnet-cta-live:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      # Prove the detector's own alive/dead/unresolved + door-parse + control-
+      # gating logic is intact BEFORE trusting its live verdict (local-only).
+      - name: Selftest lead-magnet-cta detector (fixtures, both directions)
+        run: npm run check:lead-magnet-cta-live-selftest
+      # Live probe. Only a real DEFECT (a door dead/parked/soft-404, egress up)
+      # fails the run; a transient UNRESOLVED (exit 3) warns without reddening.
+      - name: Probe live keyword-CTA doors (derived from src/lib/brand.ts KEYWORDS)
+        run: |
+          node scripts/check-lead-magnet-cta-live.mjs; code=$?
+          if [ "$code" = "3" ]; then
+            echo "::warning::lead-magnet-cta UNRESOLVED — a door was neither proved alive nor dead (transient edge 5xx/timeout/DNS, or the brand.ts seed read). Not failing; re-run to confirm. A persistent domain lapse surfaces as a repeating daily warning."
+            exit 0
+          fi
+          exit $code
+      - name: Post failure summary
+        if: failure()
+        run: |
+          echo "::warning::lead-magnet-cta-live FAILED — either the detector selftest regressed (the guard's own alive/dead logic, not the site), OR a keyword-CTA door is DEAD on the live edge: a sell4daddy.com route (/team, /body, /build) the social bot routes every 'comment TEAM/BODY/BUILD' lead to is returning a 404, a Vercel platform error, a parked-domain page, or a blank shell — so every keyword-CTA lead dead-ends while the auto-reply keeps sending the link. Fix: redeploy / restore the sell4daddy.com route(s) on that Vercel project, or update the url in src/lib/brand.ts KEYWORDS to the live door. See the step output above for the exact door + status."

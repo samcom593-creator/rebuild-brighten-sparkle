@@ -86,7 +86,19 @@ const OVERFLOW_TOLERANCE_PX = 2; // sub-pixel rounding is not a defect
 // 200 / 0 overflow / 0 broken tokens / no soft-404) BEFORE widening, so the guard
 // is not born red; /get-licensed's benign video-embed console noise is recorded,
 // not graded (ok stays true), so adding it does not make the probe flaky-red.
-const ROUTES = (process.env.ROUTES || "/,/apply,/vsl,/schedule-call,/get-licensed")
+//
+// MP-WIB-STOREFRONT-RENDER (2026-11-13): widened to /storefront, the ONE
+// recurring-revenue money page ($250/wk Gold Leads + $500/wk Platinum Vet Leads,
+// each a live Stripe subscribe). 3460973f gave its buy LINKS a liveness watchdog
+// the same day, but the PAGE itself was render-blind: the package names and the
+// weekly prices are the copy a lead reads before subscribing, and a null/NaN
+// price or a client-render white-screen there kills a $250–500/wk conversion
+// while route-smoke's fetch-200 (SPA shell) and every source/data guard stay
+// green — the identical blind spot /careers proved real and the CTA widening
+// closed hours earlier. Proven CLEAN on live prod across all 3 legs (desktop-blink
+// + mobile-blink + real Apple WebKit: 200 / 0 overflow / 0 broken tokens / 0
+// console errors / no soft-404) BEFORE widening, so the guard is not born red.
+const ROUTES = (process.env.ROUTES || "/,/apply,/vsl,/schedule-call,/get-licensed,/storefront")
   .split(",").map((r) => r.trim()).filter(Boolean)
   .map((r) => (r === "/" ? "/" : "/" + r.replace(/^\/+|\/+$/g, "")));
 

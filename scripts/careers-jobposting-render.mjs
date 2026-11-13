@@ -42,6 +42,14 @@
 // parity check. This probe owns "does the JS still paint the payload", not "is
 // every state's data present" — that split is intentional, not a silent cap.
 //
+// IT ALSO PROBES THE /careers HUB (CareersIndex), explicitly — not sampled. The
+// hub is a DIFFERENT component from the state pages: no JobPosting, its payload
+// is a national <title> + an ItemList JSON-LD enumerating all 10 state pages,
+// plus an app-level (RouteCanonical) self-canonical. The same head-inject /
+// <JsonLd> regression that strips a state page's JobPosting strips the hub's
+// title + ItemList and collapses it to the SPA shell, so Google dedups the hub
+// away. gradeHub owns that contract.
+//
 // Post-deploy, against the live promoted commit, mirroring mobile-overflow.mjs /
 // route-smoke.mjs. Alerts on the GitHub run; NOT a timer-fired paging daemon
 // (that class has a long false-page history in this system — a deterministic
@@ -69,6 +77,12 @@ const PROBE_ROUTES = [
 
 const GOOGLE_REQUIRED = ["title", "description", "datePosted", "hiringOrganization", "jobLocation"];
 
+// The /careers hub (CareersIndex). Probed explicitly — it is a separate render
+// path from the state pages (see header). Its canonical is the fixed prod
+// origin + /careers (owned by app-level RouteCanonical, not the component).
+const HUB = { path: "/careers", canonical: `${PROD_ORIGIN}/careers` };
+const HUB_MIN_STATES = 10; // CareersIndex + the sitemap both enumerate all 10 state pages
+
 // Pull the single JobPosting object from however the page shaped its ld+json
 // blocks (a block may be an object, an array, or an @graph).
 function extractJobPosting(rawBlocks) {
@@ -86,6 +100,28 @@ function extractJobPosting(rawBlocks) {
         : [parsed];
     for (const c of candidates) {
       if (c && c["@type"] === "JobPosting") return c;
+    }
+  }
+  return null;
+}
+
+// Pull the single ItemList object from the page's ld+json blocks (same block
+// shapes as extractJobPosting: object, array, or @graph).
+function extractItemList(rawBlocks) {
+  for (const raw of rawBlocks) {
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      continue;
+    }
+    const candidates = Array.isArray(parsed)
+      ? parsed
+      : Array.isArray(parsed?.["@graph"])
+        ? parsed["@graph"]
+        : [parsed];
+    for (const c of candidates) {
+      if (c && c["@type"] === "ItemList") return c;
     }
   }
   return null;
@@ -134,13 +170,59 @@ function gradeRoute({ slug, name }, { title, canonical, jobPosting }) {
   return fails;
 }
 
-async function readRouteFromPage(page) {
+// Pure verdict over the HUB's rendered head + ld+json. Same shape as gradeRoute:
+// returns a list of failure strings (empty = pass).
+function gradeHub({ title, canonical, itemList }) {
+  const fails = [];
+
+  // 1. national title injected (not the homepage shell). "Nationwide" is the
+  //    marker that distinguishes the hub title from both the shell and the
+  //    per-state titles; "Galaxy Financial" confirms the effect ran at all.
+  if (!title || !(/nationwide/i.test(title) && /galaxy financial/i.test(title))) {
+    fails.push(`hub title not injected — got ${JSON.stringify(title)} (expected to contain "Nationwide" + "Galaxy Financial"; homepage shell title means the head-injection effect did not run)`);
+  }
+
+  // 2. self-referencing canonical (owned by app-level RouteCanonical for /careers)
+  if (canonical !== HUB.canonical) {
+    fails.push(`hub canonical is ${JSON.stringify(canonical)}, expected ${HUB.canonical} (dedup regressed — the hub points Google at a different URL)`);
+  }
+
+  // 3. ItemList present at all
+  if (!itemList) {
+    fails.push("no ItemList JSON-LD rendered (the <JsonLd> mount broke — the hub no longer tells Google the 10 state pages are one collection)");
+    return fails; // the element check below is meaningless without it
+  }
+
+  // 4. ItemList enumerates all 10 state pages, each a ListItem pointing at a
+  //    /careers/<slug> url
+  const els = Array.isArray(itemList.itemListElement) ? itemList.itemListElement : [];
+  const stateItems = els.filter(
+    (e) => e && e["@type"] === "ListItem" && typeof e.url === "string" && /\/careers\/[a-z-]+$/.test(e.url)
+  );
+  if (stateItems.length < HUB_MIN_STATES) {
+    fails.push(`ItemList has ${stateItems.length} state ListItem(s) with a /careers/<slug> url, expected >= ${HUB_MIN_STATES} (the hub's cluster schema is incomplete)`);
+  }
+
+  return fails;
+}
+
+async function readRaw(page) {
   const title = await page.title();
   const canonical = await page.getAttribute('link[rel="canonical"]', "href").catch(() => null);
   const rawBlocks = await page
     .$$eval('script[type="application/ld+json"]', (els) => els.map((e) => e.textContent || ""))
     .catch(() => []);
+  return { title, canonical, rawBlocks };
+}
+
+async function readRouteFromPage(page) {
+  const { title, canonical, rawBlocks } = await readRaw(page);
   return { title, canonical, jobPosting: extractJobPosting(rawBlocks) };
+}
+
+async function readHubFromPage(page) {
+  const { title, canonical, rawBlocks } = await readRaw(page);
+  return { title, canonical, itemList: extractItemList(rawBlocks) };
 }
 
 // ---- selftest: exercise gradeRoute both directions with zero network ----
@@ -162,7 +244,7 @@ async function selftest() {
     },
   };
 
-  const cases = [
+  const stateCases = [
     ["clean page passes", good, true],
     ["homepage shell title fails", { ...good, title: "Galaxy Financial — Start Your Career in Insurance Sales" }, false],
     ["homepage canonical fails", { ...good, canonical: PROD_ORIGIN }, false],
@@ -171,16 +253,49 @@ async function selftest() {
     ["TELECOMMUTE without applicantLocationRequirements fails", { ...good, jobPosting: { ...good.jobPosting, applicantLocationRequirements: undefined } }, false],
   ];
 
+  const HUB_SLUGS = ["florida", "texas", "california", "georgia", "arizona", "north-carolina", "ohio", "tennessee", "michigan", "pennsylvania"];
+  const goodHub = {
+    title: "Life Insurance Agent Jobs — Remote, Nationwide | Galaxy Financial",
+    canonical: `${PROD_ORIGIN}/careers`,
+    itemList: {
+      "@type": "ItemList",
+      itemListElement: HUB_SLUGS.map((s, i) => ({
+        "@type": "ListItem",
+        position: i + 1,
+        name: `Life Insurance Agent Jobs in ${s}`,
+        url: `https://apex-financial.org/careers/${s}`,
+      })),
+    },
+  };
+
+  const hubCases = [
+    ["hub clean passes", goodHub, true],
+    ["hub homepage shell title fails", { ...goodHub, title: "Galaxy Financial — Start Your Career in Insurance Sales" }, false],
+    ["hub homepage canonical fails", { ...goodHub, canonical: PROD_ORIGIN }, false],
+    ["hub missing ItemList fails", { ...goodHub, itemList: null }, false],
+    ["hub ItemList with <10 states fails", { ...goodHub, itemList: { "@type": "ItemList", itemListElement: goodHub.itemList.itemListElement.slice(0, 9) } }, false],
+  ];
+
   let ok = 0;
-  for (const [label, rendered, shouldPass] of cases) {
+  let total = 0;
+  for (const [label, rendered, shouldPass] of stateCases) {
+    total++;
     const fails = gradeRoute(route, rendered);
     const passed = fails.length === 0;
     const correct = passed === shouldPass;
     console.log(`  ${correct ? "✓" : "✗"} ${label} — ${passed ? "PASS" : "FAIL(" + fails.length + ")"}${correct ? "" : "  <<< SELFTEST WRONG"}`);
     if (correct) ok++;
   }
-  const allOk = ok === cases.length;
-  console.log(`selftest: ${ok}/${cases.length} ${allOk ? "OK" : "BROKEN"}`);
+  for (const [label, rendered, shouldPass] of hubCases) {
+    total++;
+    const fails = gradeHub(rendered);
+    const passed = fails.length === 0;
+    const correct = passed === shouldPass;
+    console.log(`  ${correct ? "✓" : "✗"} ${label} — ${passed ? "PASS" : "FAIL(" + fails.length + ")"}${correct ? "" : "  <<< SELFTEST WRONG"}`);
+    if (correct) ok++;
+  }
+  const allOk = ok === total;
+  console.log(`selftest: ${ok}/${total} ${allOk ? "OK" : "BROKEN"}`);
   process.exit(allOk ? 0 : 1);
 }
 
@@ -221,14 +336,40 @@ async function main() {
         for (const f of fails) console.log(`    - ${f}`);
       }
     }
+
+    // Hub probe — explicit, not sampled (separate render path from the states).
+    {
+      const page = await ctx.newPage();
+      let rendered;
+      try {
+        await page.goto(`${BASE}${HUB.path}`, { waitUntil: "networkidle", timeout: NAV_TIMEOUT });
+        await page.waitForTimeout(SETTLE_MS);
+        rendered = await readHubFromPage(page);
+      } catch (e) {
+        console.log(`✗ ${HUB.path} (hub) — navigation/read error: ${e.message}`);
+        anyFail = true;
+      }
+      await page.close();
+
+      if (rendered) {
+        const fails = gradeHub(rendered);
+        if (fails.length === 0) {
+          console.log(`✓ ${HUB.path} (hub) — title+canonical+ItemList(>=${HUB_MIN_STATES} state pages) all rendered`);
+        } else {
+          anyFail = true;
+          console.log(`✗ ${HUB.path} (hub) — ${fails.length} failure(s):`);
+          for (const f of fails) console.log(`    - ${f}`);
+        }
+      }
+    }
   } finally {
     await browser.close();
   }
 
   console.log(
     anyFail
-      ? `\nFAIL: a /careers/* page's Google-for-Jobs payload did not render live on ${BASE}. The recruiting rich result is at risk.`
-      : `\nOK: /careers/* Google-for-Jobs payload renders live on ${BASE} (sampled ${PROBE_ROUTES.length} of 10 — shared render path).`
+      ? `\nFAIL: a /careers page's SEO payload did not render live on ${BASE}. The recruiting rich result / cluster hub is at risk.`
+      : `\nOK: /careers/* Google-for-Jobs payload + /careers hub ItemList render live on ${BASE} (sampled ${PROBE_ROUTES.length} of 10 state pages — shared render path — plus the hub explicitly).`
   );
   process.exit(anyFail ? 1 : 0);
 }

@@ -71,7 +71,17 @@ const CAREERS_ROUTES = [
   "/careers/texas",
 ];
 
-const ROUTES = [...FUNNEL_ROUTES, ...CAREERS_ROUTES];
+// The /careers hub (CareersIndex) is a SEPARATE component from the state pages
+// above — its own hero, stat tiles, and 10-card state grid. The shared-template
+// sampling argument for CAREERS_ROUTES does NOT cover it, so a layout regression
+// on the hub (e.g. a too-wide stat row or grid) would scroll sideways on a phone
+// with nothing red. It is a crawlable public page in the sitemap and the parent
+// a recruit walks up to, so it gets its own width probe.
+const HUB_ROUTES = [
+  "/careers",
+];
+
+const ROUTES = [...FUNNEL_ROUTES, ...HUB_ROUTES, ...CAREERS_ROUTES];
 
 const IPHONE = devices["iPhone 14"];
 
@@ -215,7 +225,7 @@ async function run() {
     console.error(`FAIL: ${failed} funnel/careers route(s) with horizontal overflow or load error on ${BASE}.`);
     process.exit(1);
   }
-  console.log(`OK: ${rows.length} funnel/careers routes (${FUNNEL_ROUTES.length} funnel + ${CAREERS_ROUTES.length} careers), no horizontal overflow on iPhone 14.`);
+  console.log(`OK: ${rows.length} funnel/careers routes (${FUNNEL_ROUTES.length} funnel + ${HUB_ROUTES.length} hub + ${CAREERS_ROUTES.length} careers), no horizontal overflow on iPhone 14.`);
 }
 
 if (process.argv.includes("--selftest")) {

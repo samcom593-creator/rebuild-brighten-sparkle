@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { stripComments } from "./lib/strip-comments.mjs";
 
 // Persistence-mandate guard — HeroSection path-card claim consistency.
 //
@@ -26,6 +27,17 @@ import path from "node:path";
 // fail) against synthetic fixtures so every commit re-verifies the logic.
 
 const SURFACE = "src/components/landing/HeroSection.tsx";
+
+// Sibling public landing surfaces that INDEPENDENTLY restate the same two
+// numbers (carrier count + comp range) as hardcoded literals. HeroSection is
+// the single source of truth; a sibling that drifts means two money-surfaces
+// disagree on the agency's headline comp claim with nothing going red.
+// MP-WIB-HERO-PATH-CLAIMS-SWEEP (2026-11-13) — the f04a61a0 fix guarded only
+// HeroSection; CareerPathwaySection restates "70%–145%" in three spots (a step
+// description, a step title, a stat pill) and a `carriers_partnered ?? 22`
+// first-paint/RPC-miss fallback, none of them graded until now. Same disease
+// class as the HeroSection half, one file over.
+const SIBLINGS = ["src/components/landing/CareerPathwaySection.tsx"];
 
 /** Slice the body of `const <name> = [ ... ];` (first match). Returns null if absent. */
 function arrayBlock(src, name) {
@@ -68,8 +80,9 @@ export function deriveCanonical(src) {
     throw new Error(`could not find a comp range (e.g. "70%–145%") in \`stats\` of ${SURFACE} — re-point check-hero-path-claims.mjs`);
   }
   const compTop = Math.max(Number(compMatch[1]), Number(compMatch[2]));
+  const compBottom = Math.min(Number(compMatch[1]), Number(compMatch[2]));
 
-  return { carrierCount, compTop };
+  return { carrierCount, compTop, compBottom };
 }
 
 /** Validate partnerPaths descriptions against canonical facts.
@@ -111,6 +124,55 @@ export function findViolations(src) {
       }
     }
   }
+  return violations;
+}
+
+/** Grade a sibling landing surface that restates the canonical numbers as
+ *  hardcoded literals, against the canonical facts derived from HeroSection.
+ *  Comments are blanked FIRST (offset-preserving, via the repo's one lexer) so
+ *  a claim-of-record in a `//` note is never matched as live copy — the
+ *  MP-277 comment-false-positive trap. Returns violation strings. */
+export function findSiblingViolations(src, canonical, label) {
+  const { carrierCount, compTop, compBottom } = canonical;
+  const clean = stripComments(src);
+  const violations = [];
+
+  // comp RANGE literals like "70%–145%" / "70%-145%" — every one must equal the
+  // canonical bottom–top (order-independent; a "145%–70%" typo still normalizes).
+  for (const cm of clean.matchAll(/(\d+)\s*%\s*[–-]\s*(\d+)\s*%/g)) {
+    const lo = Math.min(Number(cm[1]), Number(cm[2]));
+    const hi = Math.max(Number(cm[1]), Number(cm[2]));
+    if (lo !== compBottom || hi !== compTop) {
+      violations.push(
+        `${label} states comp range "${cm[0].trim()}" but the canonical range is ` +
+        `${compBottom}%–${compTop}% (${SURFACE} stats). Say "${compBottom}%–${compTop}%".`,
+      );
+    }
+  }
+
+  // hardcoded carrier-count literals ("50+ carriers" / "22 carriers"). The live
+  // value flows through the `${carriers}` variable and carries no leading digit,
+  // so it is never matched here — only a stray hardcoded number is.
+  for (const cm of clean.matchAll(/(\d+)\s*\+?\s*(?:top\s+)?carriers\b/gi)) {
+    const stated = Number(cm[1]);
+    if (stated !== carrierCount) {
+      violations.push(
+        `${label} states "${cm[0].trim()}" but the canonical carrier count is ${carrierCount} ` +
+        `(${SURFACE}). Use the live \`carriers\` value or ${carrierCount}.`,
+      );
+    }
+  }
+
+  // the first-paint / RPC-miss fallback literal: `carriers_partnered ?? N`. A
+  // stale RPC or the very first render shows N, so N must equal canonical too.
+  const fb = clean.match(/carriers_partnered\s*\?\?\s*(\d+)/);
+  if (fb && Number(fb[1]) !== carrierCount) {
+    violations.push(
+      `${label} carrier fallback "?? ${fb[1]}" drifts from the canonical carrier count ${carrierCount} ` +
+      `(${SURFACE}) — a stale RPC / first paint renders ${fb[1]}. Say "?? ${carrierCount}".`,
+    );
+  }
+
   return violations;
 }
 
@@ -167,7 +229,36 @@ const partnerPaths = [
     else console.error(`  ✗ ${name}: expected a throw, got none`);
   }
 
-  const total = cases.length + derivationGuards.length;
+  // ── sibling-surface logic (findSiblingViolations) ──
+  const canon = { carrierCount: 22, compTop: 145, compBottom: 70 };
+  const siblingCases = [
+    // [name, source, expectViolations]
+    ["sibling clean: range + fallback agree", `const stats=[{value:"70%–145%"}];\nconst carriers = s?.carriers_partnered ?? 22; // note`, 0],
+    ["sibling dirty: stale comp range (70-120)", `title:"70%-120% Commission",`, 1],
+    ["sibling: inverted range normalizes to clean", `x:"145%–70%"`, 0],
+    ["sibling dirty: fallback drift (?? 18)", `const c = s?.carriers_partnered ?? 18;`, 1],
+    ["sibling dirty: hardcoded 50+ carriers", `desc:"Contract with up to 50+ carriers"`, 1],
+    ["sibling: wrong numbers INSIDE a comment are NOT matched (MP-277 trap)", `// old copy said 50+ carriers and 90%-130%\nconst stats=[{value:"70%–145%"}];`, 0],
+    ["sibling dirty: two stale ranges counted separately", `a:"60%-145%", b:"70%-150%"`, 2],
+    ["sibling clean: live \${carriers} variable is not a literal", `desc:\`up to \${carriers} carriers\``, 0],
+  ];
+  for (const [name, src, want] of siblingCases) {
+    let got;
+    try {
+      got = findSiblingViolations(src, canon, "fixture").length;
+    } catch (e) {
+      console.error(`  ✗ ${name}: threw unexpectedly — ${e.message}`);
+      continue;
+    }
+    if (got === want) {
+      pass++;
+      console.log(`  ✓ ${name} (${got} violation${got === 1 ? "" : "s"})`);
+    } else {
+      console.error(`  ✗ ${name}: expected ${want} violation(s), got ${got}`);
+    }
+  }
+
+  const total = cases.length + derivationGuards.length + siblingCases.length;
   if (pass === total) {
     console.log(`\n✓ check:hero-path-claims --selftest ${pass}/${total} PASS`);
     process.exit(0);
@@ -180,31 +271,55 @@ function main() {
   if (process.argv.includes("--selftest")) return selftest();
 
   const repoRoot = path.resolve(import.meta.dirname, "..");
-  const abs = path.join(repoRoot, SURFACE);
-  let src;
+
+  // Canonical truth comes from HeroSection. If it can't be read or derived, fail
+  // loud (a refactor must re-point this guard, never silently pass).
+  const heroAbs = path.join(repoRoot, SURFACE);
+  let heroSrc;
   try {
-    src = fs.readFileSync(abs, "utf8");
+    heroSrc = fs.readFileSync(heroAbs, "utf8");
   } catch {
     console.error(`✗ check:hero-path-claims — ${SURFACE} not found; re-point this guard.`);
     process.exit(1);
   }
 
-  let violations;
+  const surfaces = []; // { label, violations }
+  let canonical;
   try {
-    violations = findViolations(src);
+    canonical = deriveCanonical(heroSrc);
+    surfaces.push({ label: SURFACE, violations: findViolations(heroSrc) });
   } catch (e) {
     console.error(`✗ check:hero-path-claims — ${e.message}`);
     process.exit(1);
   }
 
-  if (violations.length === 0) {
-    console.log(`✓ check:hero-path-claims — hero path-card claims agree with the file's canonical carrier count + comp range.`);
+  for (const rel of SIBLINGS) {
+    const abs = path.join(repoRoot, rel);
+    let src;
+    try {
+      src = fs.readFileSync(abs, "utf8");
+    } catch {
+      console.error(`✗ check:hero-path-claims — sibling ${rel} not found; re-point this guard.`);
+      process.exit(1);
+    }
+    surfaces.push({ label: rel, violations: findSiblingViolations(src, canonical, rel) });
+  }
+
+  const totalViolations = surfaces.reduce((n, s) => n + s.violations.length, 0);
+  if (totalViolations === 0) {
+    const names = surfaces.map((s) => s.label.split("/").pop()).join(", ");
+    console.log(
+      `✓ check:hero-path-claims — carrier count (${canonical.carrierCount}) + comp range ` +
+      `(${canonical.compBottom}%–${canonical.compTop}%) agree across ${surfaces.length} landing surface(s): ${names}.`,
+    );
     process.exit(0);
   }
 
-  console.error(`✗ check:hero-path-claims — ${violations.length} path-card claim(s) contradict the landing's own truth:`);
-  for (const v of violations) console.error(`   • ${v}`);
-  console.error(`\n   Fix ${SURFACE} so partnerPaths copy matches the canonical stats/carriers values.`);
+  console.error(`✗ check:hero-path-claims — ${totalViolations} claim(s) contradict the landing's canonical truth:`);
+  for (const s of surfaces) {
+    for (const v of s.violations) console.error(`   • ${v}`);
+  }
+  console.error(`\n   Canonical source: ${SURFACE} (carriers[] length + stats comp range). Make every landing surface agree.`);
   process.exit(1);
 }
 

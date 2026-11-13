@@ -36,6 +36,11 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://apex-financial.org/careers</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://apex-financial.org/careers/florida</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>

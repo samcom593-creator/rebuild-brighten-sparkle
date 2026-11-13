@@ -105,6 +105,7 @@ if (typeof window !== "undefined" && /^\/apply\/?$/.test(window.location.pathnam
 const Apply = lazy(loadApply);
 const AssistantInterviewForm = lazy(() => import("./pages/AssistantInterviewForm"));
 const StateCareerLanding = lazy(() => import("./pages/StateCareerLanding"));
+const CareersIndex = lazy(() => import("./pages/CareersIndex"));
 
 // Lazy loaded pages (heavy or less critical)
 const LogNumbers = lazy(() => import("./pages/LogNumbers"));
@@ -448,6 +449,7 @@ const App = () => (
                     QueryClientProvider. log-numbers redirect + NotFound stay outside
                     because they make zero useQuery calls. */}
                 <Route element={<QueryShell />}>
+                <Route path="/careers" element={<CareersIndex />} />
                 <Route path="/careers/:state" element={<StateCareerLanding />} />
                   <Route path="/apply" element={<Apply />} />
                   <Route path="/share/:token" element={<SharePage />} />

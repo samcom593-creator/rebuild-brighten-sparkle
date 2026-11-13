@@ -20,14 +20,18 @@ import { ArrowRight, CheckCircle2, MapPin, DollarSign, Clock } from "lucide-reac
  * Routing wired in App.tsx at /careers/:state.
  */
 
-interface StateConfig {
+export interface StateConfig {
   slug: string;     // url slug, lowercase
   name: string;     // display name
   abbr: string;     // postal abbreviation
   region: string;   // for nearby contracts copy
 }
 
-const STATES: StateConfig[] = [
+// Exported so the /careers hub (CareersIndex) renders the same single source of
+// truth — adding a state here lights it up on both the hub and its own page. The
+// `slug:` literals also feed check-canonical-url.mjs Rule D, so this array must
+// stay in THIS file (the guard regex-reads it by path).
+export const STATES: StateConfig[] = [
   { slug: "florida",       name: "Florida",        abbr: "FL", region: "Southeast" },
   { slug: "texas",         name: "Texas",          abbr: "TX", region: "South" },
   { slug: "california",    name: "California",     abbr: "CA", region: "West" },

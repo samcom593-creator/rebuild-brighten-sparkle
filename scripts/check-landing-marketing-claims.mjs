@@ -41,6 +41,11 @@ const NUMERIC_TRACKED_GLOBS = [
   // structured claims are off, plus mis-stated compensation in a job
   // ad is regulator-visible.
   "src/pages/StateCareerLanding.tsx",
+  // 2026-11-13: /careers hub (CareersIndex) restates the same $120K+ top-producer
+  // and $10K+ first-year-pace claims as the state pages. It was a soft-404 until
+  // this wave; now that it's a real indexed surface, its claims stay truth-locked
+  // alongside StateCareerLanding so the hub can't drift independently.
+  "src/pages/CareersIndex.tsx",
 ];
 
 // Superlative SUPERLATIVE_PATTERNS scope — public landing + every other

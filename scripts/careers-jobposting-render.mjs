@@ -31,8 +31,19 @@
 //   5. jobLocationType=TELECOMMUTE without applicantLocationRequirements
 //      (Google's documented rule for remote postings — without it the remote
 //      job is dropped from the rich result)
-// It does NOT grade recommended-only fields (identifier, baseSalary) — those are
-// legitimately absent by design (100% commission, no fabricated salary).
+//   6. validThrough present but NOT in the future (past/today/garbage). Google
+//      treats a JobPosting whose validThrough has lapsed as EXPIRED and removes
+//      it from Google for Jobs — silently, no error. That is WORSE than an
+//      absent validThrough (an omitted one is evergreen and stays listed), so
+//      an ABSENT validThrough is tolerated and only a present-stale one fails.
+//      StateCareerLanding computes validThrough = today+60 on every render, so
+//      it is always future today; this check fires the day a future edit pins
+//      it to a literal date that has since passed — exactly when the whole
+//      10-state cluster would vanish from the SERP with nothing going red.
+// It does NOT grade the PRESENCE of recommended-only fields (identifier,
+// baseSalary, validThrough) — those are legitimately absent by design (100%
+// commission, no fabricated salary; an evergreen posting omits validThrough).
+// It grades only the FRESHNESS of validThrough when the page chose to emit one.
 //
 // IT SAMPLES 2 OF 10 BY DESIGN, AND SAYS SO. StateCareerLanding renders all 10
 // states from ONE data-driven code path, so a render-MECHANISM break hits every
@@ -130,7 +141,12 @@ function extractItemList(rawBlocks) {
 // Pure, no-browser verdict over one route's rendered head + ld+json. Returns a
 // list of failure strings (empty = pass). Shared by the live probe and the
 // selftest so the selftest exercises the REAL predicate, not a copy of it.
-function gradeRoute({ slug, name }, { title, canonical, jobPosting }) {
+// `now` is injected (default = call-time instant) so the live probe grades
+// validThrough against the real moment while the selftest pins a FIXED reference
+// — otherwise the "clean passes" fixture (a literal future date) would silently
+// rot into a past date and the selftest would start failing on its own, the
+// exact stale-fixture trap this repo has been bitten by before.
+function gradeRoute({ slug, name }, { title, canonical, jobPosting }, now = new Date()) {
   const fails = [];
   const selfUrl = `${PROD_ORIGIN}/careers/${slug}`;
 
@@ -164,6 +180,22 @@ function gradeRoute({ slug, name }, { title, canonical, jobPosting }) {
     const alr = jobPosting.applicantLocationRequirements;
     if (!alr || (typeof alr === "object" && Object.keys(alr).length === 0)) {
       fails.push("jobLocationType=TELECOMMUTE but applicantLocationRequirements is absent (Google drops remote postings without it)");
+    }
+  }
+
+  // 6. validThrough freshness (see header #6). Absent is tolerated (evergreen);
+  //    present-but-not-future is a DEFECT — Google treats a lapsed validThrough
+  //    as expired and silently delists the posting. Date-only ISO strings parse
+  //    as UTC midnight, so compare instants: validThrough must be strictly after
+  //    `now`. A garbage/unparseable value also fails (a malformed expiry can
+  //    drop the rich result, and it is never what the dynamic code emits).
+  const vtRaw = jobPosting.validThrough;
+  if (vtRaw !== undefined && vtRaw !== null && vtRaw !== "") {
+    const vt = new Date(vtRaw);
+    if (Number.isNaN(vt.getTime())) {
+      fails.push(`validThrough is not a parseable date: ${JSON.stringify(vtRaw)} (Google cannot read the expiry; a malformed one can drop the rich result)`);
+    } else if (vt.getTime() <= now.getTime()) {
+      fails.push(`validThrough ${JSON.stringify(vtRaw)} is not in the future (<= ${now.toISOString().slice(0, 10)}) — Google treats the posting as EXPIRED and delists it from Google for Jobs`);
     }
   }
 
@@ -228,6 +260,10 @@ async function readHubFromPage(page) {
 // ---- selftest: exercise gradeRoute both directions with zero network ----
 async function selftest() {
   const route = { slug: "florida", name: "Florida" };
+  // Fixed reference instant so the validThrough cases are deterministic forever
+  // (the good fixture's 2027-01-10 is future relative to this; a 2026-10-01
+  // fixture is past). Never `new Date()` here or the fixtures rot over time.
+  const NOW = new Date("2026-12-01T00:00:00Z");
   const good = {
     title: "Life Insurance Agent Jobs in Florida | Remote | Galaxy Financial",
     canonical: `${PROD_ORIGIN}/careers/florida`,
@@ -251,6 +287,9 @@ async function selftest() {
     ["missing JobPosting fails", { ...good, jobPosting: null }, false],
     ["JobPosting missing datePosted fails", { ...good, jobPosting: { ...good.jobPosting, datePosted: "" } }, false],
     ["TELECOMMUTE without applicantLocationRequirements fails", { ...good, jobPosting: { ...good.jobPosting, applicantLocationRequirements: undefined } }, false],
+    ["validThrough in the past fails (Google delists expired postings)", { ...good, jobPosting: { ...good.jobPosting, validThrough: "2026-10-01" } }, false],
+    ["validThrough unparseable fails", { ...good, jobPosting: { ...good.jobPosting, validThrough: "whenever" } }, false],
+    ["validThrough absent passes (evergreen posting, Google keeps it listed)", { ...good, jobPosting: { ...good.jobPosting, validThrough: undefined } }, true],
   ];
 
   const HUB_SLUGS = ["florida", "texas", "california", "georgia", "arizona", "north-carolina", "ohio", "tennessee", "michigan", "pennsylvania"];
@@ -280,7 +319,7 @@ async function selftest() {
   let total = 0;
   for (const [label, rendered, shouldPass] of stateCases) {
     total++;
-    const fails = gradeRoute(route, rendered);
+    const fails = gradeRoute(route, rendered, NOW);
     const passed = fails.length === 0;
     const correct = passed === shouldPass;
     console.log(`  ${correct ? "✓" : "✗"} ${label} — ${passed ? "PASS" : "FAIL(" + fails.length + ")"}${correct ? "" : "  <<< SELFTEST WRONG"}`);
@@ -329,7 +368,7 @@ async function main() {
 
       const fails = gradeRoute(route, rendered);
       if (fails.length === 0) {
-        console.log(`✓ /careers/${route.slug} — title+canonical+JobPosting(${GOOGLE_REQUIRED.length} required fields) all rendered`);
+        console.log(`✓ /careers/${route.slug} — title+canonical+JobPosting(${GOOGLE_REQUIRED.length} required fields, validThrough fresh) all rendered`);
       } else {
         anyFail = true;
         console.log(`✗ /careers/${route.slug} — ${fails.length} failure(s):`);

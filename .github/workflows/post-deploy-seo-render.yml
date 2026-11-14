@@ -104,11 +104,19 @@ jobs:
       # with "Executable doesn't exist" and reddens the required gate about the
       # guard's ENVIRONMENT, not the funnel. A broken detector run live would
       # pass dead links or red healthy ones; catching that here keeps the live
-      # check honest. Siblings (mobile-overflow / careers-render) keep their
-      # selftests local-only; this one is exercised on every promoted deploy.
+      # check honest. The careers-render selftest now runs here for the same
+      # reason (MP-WIB-JOBPOSTING-VALIDTHROUGH added date-math to its predicate —
+      # a subtly-wrong grader could pass a stale validThrough or red a healthy
+      # page); it needs no browser, so it also passes on a cold runner, but it
+      # lives in this job beside the live probe it validates. mobile-overflow
+      # keeps its selftest local-only.
       - name: Selftest funnel external-CTA detector (fixtures, both directions)
         if: steps.promote.outputs.matched == 'true'
         run: node scripts/check-funnel-external-cta.mjs --selftest
+
+      - name: Selftest careers JobPosting grader (fixtures, both directions)
+        if: steps.promote.outputs.matched == 'true'
+        run: node scripts/careers-jobposting-render.mjs --selftest
 
       - name: Run careers JobPosting render check
         if: steps.promote.outputs.matched == 'true'

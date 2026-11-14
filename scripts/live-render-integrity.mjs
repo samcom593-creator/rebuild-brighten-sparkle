@@ -54,6 +54,7 @@
 //   BASE=https://apex-financial.org node scripts/live-render-integrity.mjs
 
 import { chromium, webkit, devices } from "playwright";
+import { FORBIDDEN, RENDER_SAFE_TERMS } from "./check-forbidden-language.mjs";
 
 const BASE = (process.env.BASE || "https://apex-financial.org").replace(/\/$/, "");
 const CONTROL = "https://www.google.com/generate_204";
@@ -140,12 +141,43 @@ const PLACEHOLDER_TOKENS = [
   [/\bREPLACE_ME\b/, "REPLACE_ME — a developer placeholder marker reached production"],
 ];
 
+// MP-WIB-RENDER-AITELL (2026-11-14): the AI-tell / fake-success-stat ban-list
+// was applied to SOURCE ONLY (check:forbidden-language scans src/ + edge fns).
+// Nothing ever scanned the RENDERED public pages for it, so a banned term that
+// reaches the DOM from a DATABASE field — a testimonial seeded with "delve
+// into", a stat card whose copy reads "thousands of agents" or "50+ carriers"
+// (the real count is 22) — shipped to a recruit and was caught by NOTHING. This
+// is the EXACT hole MP-WIB-LIVE-RENDER-PLACEHOLDER closed for placeholder text,
+// left open for AI-tells + inflated stats — the fake-success-number class the
+// whole charter is built around (the 465 InsuraCloud rows). We import the
+// ban-list (single source — the two guards cannot drift) and apply ONLY the
+// render-safe subset: inflation stats that are never the real number, and pure
+// machine-filler tells. The real live counts ("95 active agents", "22 carriers
+// ·") are DELIBERATELY NOT in that subset — on a rendered page those are the
+// truth from landing_live_stats(), not a defect. Marketing superlatives a human
+// might legitimately write stay source-only. Startup-asserted against FORBIDDEN
+// so a rename in the source guard fails LOUD here instead of silently stopping.
+{
+  const known = new Set(FORBIDDEN.map(([t]) => t.toLowerCase()));
+  for (const t of RENDER_SAFE_TERMS)
+    if (!known.has(t.toLowerCase()))
+      throw new Error(`RENDER_SAFE_TERMS drift: "${t}" is no longer verbatim in FORBIDDEN (check-forbidden-language.mjs) — the render AI-tell scan would silently stop covering it`);
+}
+const AI_TELL_TOKENS = FORBIDDEN
+  .filter(([term]) => RENDER_SAFE_TERMS.has(term))
+  .map(([term, reason]) => [
+    // Escaped literal, case-insensitive, substring (NO \b) — mirrors the source
+    // guard's lower.includes(term) exactly, so the two detectors agree.
+    new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"),
+    `AI-tell / inflated-stat "${term}" rendered to public copy — ${reason}`,
+  ]);
+
 // Single source of truth for token scanning. probe() and --selftest BOTH call
 // this, so the selftest exercises the real detector (a guard that copies the
 // code it guards is not a guard).
 function scanForBadTokens(text) {
   const hits = [];
-  for (const [re, why] of [...BAD_TOKENS, ...PLACEHOLDER_TOKENS]) {
+  for (const [re, why] of [...BAD_TOKENS, ...PLACEHOLDER_TOKENS, ...AI_TELL_TOKENS]) {
     const m = text.match(re);
     if (m) hits.push({ token: m[0], why });
   }
@@ -274,6 +306,13 @@ if (process.argv.includes("--selftest")) {
     { name: "anti-FP: 'outbid' must not trip TBD", text: "No competitor has ever outbid us.", expectHit: false },
     { name: "anti-FP: 'replacement' must not trip REPLACE_ME", text: "We build a complete income-replacement plan.", expectHit: false },
     { name: "anti-FP: 'become soon' must not trip coming-soon", text: "You could become a top earner soon.", expectHit: false },
+    // MP-WIB-RENDER-AITELL: the AI-tell / inflated-stat class, both directions.
+    { name: "inflated 'thousands of agents' (DB/stale stat card)", text: "Join thousands of agents building generational wealth.", expectHit: true },
+    { name: "inflated '50+ carriers' (real count is 22)", text: "We partner with 50+ carriers nationwide.", expectHit: true },
+    { name: "AI-tell 'delve into' (DB testimonial seed)", text: "Let's delve into exactly why Apex works.", expectHit: true },
+    { name: "AI-tell 'in the realm of'", text: "In the realm of insurance sales, speed wins.", expectHit: true },
+    { name: "anti-FP: real live '95 active agents' + '22 carriers ·' are the TRUTH, not banned on render", text: "95 active agents. 22 carriers · nationwide coverage.", expectHit: false },
+    { name: "anti-FP: 'transform your career' is source-only (a real agent might say it)", text: "Apex can transform your career in 90 days.", expectHit: false },
   ];
   let fail = 0;
   for (const c of cases) {

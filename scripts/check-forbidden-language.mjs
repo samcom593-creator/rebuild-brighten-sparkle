@@ -11,10 +11,11 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 
-const FORBIDDEN = [
+export const FORBIDDEN = [
   ["slave account", "racially-charged language; use 'satellite account'"],
   ["slave accounts", "racially-charged language; use 'satellite accounts'"],
   ["army of slave", "racially-charged language"],
@@ -83,11 +84,45 @@ const FORBIDDEN = [
 // wave-placeholder-guard (2026-08-05): word-boundary / case-sensitive markers
 // that would trip on innocent English substrings if added to FORBIDDEN. Each
 // entry is [RegExp, reason]. Same SKIP_FILES + SKIP_LINE_REGEX apply.
-const FORBIDDEN_REGEX = [
+export const FORBIDDEN_REGEX = [
   [/\bTBD\b/, "TBD placeholder must never ship as visible copy (case-sensitive: covers 'TBD' but not 'outbid' etc)"],
   [/\bREPLACE[_ ]?ME\b/i, "REPLACE_ME / 'replace me' placeholder must never ship (word-bounded: 'replacement' is safe)"],
   [/\[placeholder\]/i, "bracketed [placeholder] annotation must never ship in user-facing copy"],
 ];
+
+// RENDER-SAFE SUBSET (Website Integrity Bot, MP-WIB-RENDER-AITELL 2026-11-14):
+// the terms from FORBIDDEN above that are ALSO safe to scan against LIVE
+// RENDERED body text — including DB-driven and user-generated (testimonial)
+// copy — with zero risk of flagging a real human's words or a legitimate live
+// number. live-render-integrity.mjs imports this and applies ONLY these to the
+// rendered DOM of the public funnel; the full list stays SOURCE-only here.
+// WHY this is a subset, not the whole list:
+//   - Inflation stats ONLY (a number Apex has never had): "thousands of agents",
+//     "50+ carriers" etc. "95 active agents" and "22 carriers ·" are
+//     DELIBERATELY EXCLUDED — those ARE the real live values rendered from
+//     landing_live_stats(), so a render match would be the truth, not a defect.
+//   - Pure machine-filler AI-tells no agent would type in a real testimonial.
+//   - Marketing superlatives a human might legitimately write (transform your
+//     career, world-class, game changer, …) stay OUT — they are caught in
+//     source, and crying wolf on a real quote is worse than the miss.
+// Every entry MUST be verbatim-present in FORBIDDEN; live-render-integrity.mjs
+// asserts that at startup so a future rename here cannot silently stop scanning.
+export const RENDER_SAFE_TERMS = new Set([
+  "thousands of agents",
+  "50+ carriers",
+  "over 50 carriers",
+  "50 carrier partners",
+  "delve into",
+  "it's important to note",
+  "in today's fast-paced",
+  "in the realm of",
+  "tapestry",
+  "navigate the complex",
+  "navigate the ever-changing",
+  "a myriad of",
+  "a plethora of",
+  "paradigm shift",
+]);
 
 const TEXT_EXTS = new Set([".tsx", ".ts", ".jsx", ".js", ".md", ".html"]);
 const SKIP_DIRS = new Set([
@@ -133,6 +168,7 @@ function walk(dir, acc = []) {
   return acc;
 }
 
+function runCheck() {
 const files = walk(repoRoot);
 const violations = [];
 
@@ -186,3 +222,9 @@ for (const v of violations) {
 }
 console.error("Fix or argue with Website Integrity Bot — do not just remove the check.");
 process.exit(1);
+}
+
+// Importable without side-effects: the static scan + process.exit run ONLY when
+// this file is executed directly (npm run check:forbidden-language). When
+// live-render-integrity.mjs imports FORBIDDEN / RENDER_SAFE_TERMS, nothing runs.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) runCheck();

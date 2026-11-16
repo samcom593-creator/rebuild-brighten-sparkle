@@ -63,6 +63,17 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { stripComments } from "./lib/strip-comments.mjs";
+// The four pure robots/indexability parsers live in ./lib so the live-edge
+// guard (check-robots-indexable-live.mjs) shares the EXACT same detector and
+// the two guards can never drift about what "blocked" or "noindex" means
+// (MP-WIB-ROBOTS-LIVE). Re-exported below to preserve this guard's public API.
+import {
+  sitemapPaths,
+  parseRobots,
+  isBlocked,
+  noindexMetas,
+} from "./lib/robots-indexable-parse.mjs";
+export { sitemapPaths, parseRobots, isBlocked, noindexMetas };
 
 const ROOT = new URL("..", import.meta.url).pathname;
 const ROBOTS = join(ROOT, "public/robots.txt");
@@ -84,112 +95,11 @@ const PROD_HOST = "apex-financial.org";
 const ALLOWLIST = new Set(["src/data/shipped-data.ts"]);
 
 // ── pure extractors ─────────────────────────────────────────────────────────
-
-/** <loc> inner-text paths (pathname only) from a sitemap, on the prod host. */
-export function sitemapPaths(xml) {
-  const out = [];
-  for (const t of xml.match(/<loc>\s*([^<\s][^<]*?)\s*<\/loc>/gi) || []) {
-    const raw = t.replace(/<\/?loc>/gi, "").trim();
-    try {
-      const u = new URL(raw);
-      out.push({ path: u.pathname || "/", host: u.host });
-    } catch {
-      out.push({ path: null, host: null, raw });
-    }
-  }
-  return out;
-}
-
-/**
- * Parse robots.txt into { "<user-agent-lower>": {allow:[], disallow:[]} } and a
- * list of Sitemap: directives. Consecutive `User-agent:` lines share the rules
- * that follow (the robots.txt grouping rule).
- */
-export function parseRobots(txt) {
-  const groups = {};
-  const sitemaps = [];
-  let current = []; // user-agents the next rule block applies to
-  let sawRuleSinceUA = false;
-  for (const lineRaw of txt.split(/\r?\n/)) {
-    const line = lineRaw.replace(/#.*$/, "").trim();
-    if (!line) continue;
-    const m = line.match(/^([A-Za-z-]+)\s*:\s*(.*)$/);
-    if (!m) continue;
-    const field = m[1].toLowerCase();
-    const value = m[2].trim();
-    if (field === "user-agent") {
-      // A UA line after a rule block starts a NEW group set.
-      if (sawRuleSinceUA) {
-        current = [];
-        sawRuleSinceUA = false;
-      }
-      const ua = value.toLowerCase();
-      current.push(ua);
-      if (!groups[ua]) groups[ua] = { allow: [], disallow: [] };
-    } else if (field === "allow" || field === "disallow") {
-      sawRuleSinceUA = true;
-      for (const ua of current.length ? current : ["*"]) {
-        if (!groups[ua]) groups[ua] = { allow: [], disallow: [] };
-        groups[ua][field].push(value);
-      }
-    } else if (field === "sitemap") {
-      sitemaps.push(value);
-    }
-  }
-  return { groups, sitemaps };
-}
-
-/** Does a robots path pattern match `path`? Supports `*` glob and `$` end-anchor. */
-function ruleMatches(pattern, path) {
-  // Empty pattern matches nothing meaningful (an empty Disallow = "allow all").
-  if (pattern === "") return false;
-  let anchorEnd = false;
-  let pat = pattern;
-  if (pat.endsWith("$")) {
-    anchorEnd = true;
-    pat = pat.slice(0, -1);
-  }
-  const rx =
-    "^" +
-    pat
-      .split("*")
-      .map((s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
-      .join(".*") +
-    (anchorEnd ? "$" : "");
-  return new RegExp(rx).test(path);
-}
-
-/**
- * Is `path` blocked for a user-agent group? Google's algorithm: among all
- * Allow/Disallow rules that match, the MOST SPECIFIC (longest pattern) wins;
- * on a tie Allow wins. No matching rule → allowed.
- */
-export function isBlocked(path, group) {
-  if (!group) return false;
-  let best = null; // { len, type }
-  for (const type of ["allow", "disallow"]) {
-    for (const pat of group[type]) {
-      if (!ruleMatches(pat, path)) continue;
-      const len = pat.replace(/\$$/, "").length;
-      if (!best || len > best.len || (len === best.len && type === "allow")) {
-        best = { len, type };
-      }
-    }
-  }
-  return best ? best.type === "disallow" : false;
-}
-
-/** robots/googlebot <meta> tags whose content carries a noindex/none token. */
-export function noindexMetas(html) {
-  const out = [];
-  for (const tag of html.match(/<meta\b[^>]*>/gi) || []) {
-    const name = (tag.match(/\bname\s*=\s*["']([^"']*)["']/i) || [])[1];
-    if (!name || !/^(robots|googlebot)$/i.test(name.trim())) continue;
-    const content = (tag.match(/\bcontent\s*=\s*["']([^"']*)["']/i) || [])[1] || "";
-    if (/\b(noindex|none)\b/i.test(content)) out.push(tag);
-  }
-  return out;
-}
+// sitemapPaths / parseRobots / isBlocked / noindexMetas are imported from
+// ./lib/robots-indexable-parse.mjs (shared with the live-edge guard) and
+// re-exported at the top of this file. vercelNoindexHeaders stays local: it is
+// a SOURCE-only concern (it parses the committed vercel.json), with no live
+// counterpart — the edge serves the resolved header, not the file.
 
 /**
  * vercel.json header entries that set X-Robots-Tag to noindex/none on a source

@@ -1,0 +1,70 @@
+# Are the recruiting funnel's money routes still INDEXABLE on the live edge? (MP-WIB-ROBOTS-LIVE)
+#
+# apex-financial.org's organic inbound ("insurance sales career", "get
+# licensed", the /careers Google-for-Jobs pages) is a load-bearing recruiting
+# lead source. A single `noindex` signal removes a route from Google's index
+# entirely — worse than the 2026-11-10 canonical bug that only MERGED routes.
+# Two edge-level ways to emit one are invisible to every other guard:
+#
+#   1. An X-Robots-Tag: noindex RESPONSE HEADER set from the Vercel dashboard
+#      (Project Settings -> Headers), an edge-config rule, a middleware, or a
+#      proxy — none of which touch the committed vercel.json, so the SOURCE
+#      guard check:robots-indexable stays green while Google sees noindex.
+#   2. A <meta name=robots content=noindex> injected by an edge rewrite serving
+#      a different shell than the committed index.html.
+#
+# crawl-entrypoints-live proves the robots.txt + sitemap.xml FILES serve live;
+# it never reads a money ROUTE's response headers or body for a noindex signal.
+# This workflow is the only thing that does.
+#
+# Deliberately a SCHEDULE, not a commit gate. It grades a LIVE edge response, so
+# wiring the over-the-wire probe into verify:core would block every commit on a
+# condition only a redeploy / dashboard change can clear. The pure classifier IS
+# gated every commit via check:robots-indexable-live-selftest in verify:core;
+# only the live probe runs here. A push that touches the guard re-runs it.
+#
+# Needs no secrets: robots.txt, the sitemap, and every funnel route are public.
+#
+# Can't cry wolf (check-robots-indexable-live.mjs exit contract):
+#   exit 1 DEFECT        -> a route carries a noindex header/meta, or the live
+#                           robots.txt blocks a funnel path, egress proven up: FAIL (red)
+#   exit 3 UNRESOLVED    -> transient route/robots 5xx/4xx/timeout: warning only, run stays green
+#   exit 0 CLEAN/UNKNOWN -> indexable, or egress itself down (not trusted): green
+name: robots-indexable-live
+
+on:
+  schedule:
+    - cron: "42 14 * * *" # daily ~07:42 Phoenix, offset from share-card(22)/vsl-media/crawl-entrypoints; GH schedules drift (p90 ~40min, MP-304)
+  workflow_dispatch:
+  push:
+    paths:
+      - "scripts/check-robots-indexable-live.mjs"
+      - "scripts/lib/robots-indexable-parse.mjs"
+      - ".github/workflows/robots-indexable-live.yml"
+
+jobs:
+  robots-indexable-live:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      # Prove the detector's own noindex/block/control-gating logic is intact
+      # BEFORE trusting its live verdict (deterministic, local-only, both ways).
+      - name: Selftest robots-indexable-live detector (fixtures, both directions)
+        run: npm run check:robots-indexable-live-selftest
+      # Live probe. Only a real DEFECT (a noindex signal or a live robots block,
+      # egress up) fails the run; a transient UNRESOLVED (exit 3) warns.
+      - name: Probe live funnel routes for a noindex signal
+        run: |
+          node scripts/check-robots-indexable-live.mjs; code=$?
+          if [ "$code" = "3" ]; then
+            echo "::warning::robots-indexable-live UNRESOLVED — a route/robots probe was transient (5xx/4xx/timeout), no noindex proven. Not failing; re-run to confirm."
+            exit 0
+          fi
+          exit $code
+      - name: Post failure summary
+        if: failure()
+        run: |
+          echo "::warning::robots-indexable-live FAILED — either the detector selftest regressed (the guard's own logic, not the site), OR a recruiting-funnel money route on apex-financial.org is being told to leave Google's index ON THE LIVE EDGE while the source guard (check:robots-indexable) is green. A noindex X-Robots-Tag header is NOT in the repo — look at Vercel Project Settings -> Headers, any edge-config / middleware, and any proxy in front of the origin. A live robots block means the SERVED robots.txt differs from public/robots.txt. See the step output above for the exact route + signal."

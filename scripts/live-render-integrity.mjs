@@ -132,7 +132,25 @@ const OVERFLOW_TOLERANCE_PX = 2; // sub-pixel rounding is not a defect
 // contracting-profile, a ProtectedRoute; a logged-out probe renders the login
 // shell = false coverage, the /purchase-leads pattern) and /seminar
 // (LegacyWorkspaceRedirect -> /apply, already guarded, covered transitively).
-const ROUTES = (process.env.ROUTES || "/,/apply,/vsl,/schedule-call,/get-licensed,/storefront,/links,/unlicensed-overview,/leads,/get-leads,/contact")
+//
+// MP-WIB-CAREERS-RENDER (2026-11-16): closed the final public-route delta between
+// this render probe and the mobile-overflow WIDTH guard — the Google-for-Jobs
+// recruiting SEO cluster. Added /careers (the CareersIndex HUB) + /careers/florida
+// + /careers/texas (the StateCareerLanding component — a DIFFERENT component from
+// the hub, so a route-config or import break can white-screen one while the other
+// renders; both the hub and at least one state page must be covered). These pages
+// client-INJECT their JobPosting/ItemList JSON-LD + canonical, so route-smoke's
+// fetch-200 (SPA shell) stays green through a mount crash — the exact client-
+// render-collapse class /careers itself proved real when it was a soft-404. They
+// have check-careers-hub (soft-404) + careers-jobposting-render (JSON-LD payload)
+// guards, but NO general white-screen / broken-token render guard until now. Proven
+// CLEAN on live prod across all 3 legs (desktop-blink + mobile-blink + real Apple
+// WebKit: 200 / 0 overflow / 0 broken tokens / 0 console errors / no soft-404, real
+// content textLen ~1300+ not a login/404 shell) BEFORE widening, so the guard is
+// not born red. After this, the two funnel guards' public-route coverage is fully
+// reconciled (mobile-overflow WIDTH set is a superset only by the /schedule-call
+// redirect asymmetry, which is intentional).
+const ROUTES = (process.env.ROUTES || "/,/apply,/vsl,/schedule-call,/get-licensed,/storefront,/links,/unlicensed-overview,/leads,/get-leads,/contact,/careers,/careers/florida,/careers/texas")
   .split(",").map((r) => r.trim()).filter(Boolean)
   .map((r) => (r === "/" ? "/" : "/" + r.replace(/^\/+|\/+$/g, "")));
 

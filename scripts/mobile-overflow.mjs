@@ -68,6 +68,16 @@ const FUNNEL_ROUTES = [
   // width, not the lead-purchase UI (which only exists behind auth). Guarding it
   // here would falsely claim purchase-leads width is covered when it isn't.
   "/storefront",
+  // /links is the link-in-bio page — the convergence point for ALL of Sam's
+  // social-bio traffic (Instagram @sell4daddy, TikTok @sellfordaddy ~84K, YouTube
+  // @sell4daddy, Snapchat samueljameshq, all verified live 2026-11-16). 100% of
+  // its visitors arrive from inside a phone social app, which makes it the single
+  // most phone-first public surface Sam owns — yet it was absent from every width
+  // and live-render guard. Its offer cards route to /apply, /schedule-call, and an
+  // in-page Elite Circle waitlist form, so a layout regression on those CTA cards
+  // would scroll sideways on the exact device every visitor is holding, with
+  // nothing red. Verified publicly reachable + rendering + overflow=0 2026-11-16.
+  "/links",
 ];
 
 // The /careers/* state pages are a live recruiting acquisition channel: they

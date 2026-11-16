@@ -57,6 +57,17 @@ const FUNNEL_ROUTES = [
   "/leads",
   "/get-leads",
   "/contact",
+  // /storefront is the PUBLIC Stripe-checkout surface (no ProtectedRoute): the
+  // Gold Leads + Dialer $250/wk and Platinum Vet Leads $500/wk subscribe cards
+  // where a lead actually pays — from a phone. It is the most literal point of
+  // "the money path" yet was absent here, so a layout regression on the pricing
+  // cards would scroll sideways on Sam's phone-first revenue page with nothing
+  // red. Verified publicly reachable + rendering real prices 2026-11-16.
+  // NOTE: /purchase-leads is deliberately NOT added — logged out it renders the
+  // sign-in page, so an unauthenticated width probe there would guard /login's
+  // width, not the lead-purchase UI (which only exists behind auth). Guarding it
+  // here would falsely claim purchase-leads width is covered when it isn't.
+  "/storefront",
 ];
 
 // The /careers/* state pages are a live recruiting acquisition channel: they

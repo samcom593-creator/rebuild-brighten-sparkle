@@ -72,7 +72,7 @@ export function CallCenterStageSelector({
     <div className={cn("space-y-2", className)}>
       <label className="text-xs font-medium text-muted-foreground">Licensing Progress</label>
       <Select value={currentStage} onValueChange={(v) => onStageChange(v as LicensingStage)} disabled={disabled}>
-        <SelectTrigger className={cn("w-full", current.bgColor, current.color, "border-0")}>
+        <SelectTrigger aria-label="Licensing stage" className={cn("w-full", current.bgColor, current.color, "border-0")}>
           <div className="flex items-center gap-2">
             <CurrentIcon className="h-4 w-4" />
             <SelectValue placeholder="Select stage" />

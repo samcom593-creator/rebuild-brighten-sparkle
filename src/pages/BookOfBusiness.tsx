@@ -1838,7 +1838,7 @@ export default function BookOfBusiness() {
             value={sortMode}
             onValueChange={(v) => setSortMode(v as SortMode)}
           >
-            <SelectTrigger className="h-10 w-full sm:h-9 sm:w-[190px]">
+            <SelectTrigger aria-label="Sort book of business" className="h-10 w-full sm:h-9 sm:w-[190px]">
               <SelectValue placeholder="Sort" />
             </SelectTrigger>
             <SelectContent>

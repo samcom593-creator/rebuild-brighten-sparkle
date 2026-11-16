@@ -250,8 +250,44 @@ if (!sawOrgBrand) {
   );
 }
 
+// --- Rule NEGATIVE-SOCIAL: no RETIRED social handle in any index.html URL ---
+// The brand-name passes above deliberately SKIP url/path/sameAs keys (so the
+// apex-financial.org domain and the apex-vsl.mp4 filename never trip them).
+// That left the JSON-LD `sameAs` entity graph — the official-profiles list
+// Google Knowledge Graph + AI search (ChatGPT / Perplexity) read to ground
+// "who is Samuel James / Galaxy Financial" — with NO guard at all. It shipped
+// three dead handles (instagram/tiktok @theprincejamez + a stale youtube
+// @samueljameshq) for ~7 weeks (found 2026-11-16): a dead handle in sameAs
+// points every AI answer and social unfurl at a profile that no longer exists —
+// the dead-CTA-handle class (@theprincejamez was retired in LinksPage.tsx on
+// 2026-09-28, and the sameAs block never got the memo). This pass scans the
+// WHOLE served index.html (sameAs + twitter:site/creator + any href) for
+// handles the brand has RETIRED. Denylist, NOT allowlist: it can only fire on a
+// KNOWN-dead string, so it is born-green after the fix and can NEVER false-red a
+// correct NEW handle (no DB dependency, CI-safe, no snapshot rot — cf. the
+// pg_index-snapshot rot lesson). Append a row here whenever a handle is retired.
+// Canonical LIVE handles live in system_settings.social_* (the DM-assistant
+// source of truth): IG/YT = sell4daddy, TikTok = sellfordaddy, Snapchat =
+// samueljameshq. The youtube rule is URL-anchored so it never trips the live
+// Snapchat handle, which legitimately shares the "samueljameshq" string.
+const RETIRED_HANDLES = [
+  { re: /theprincejame[sz]/i, note: "@theprincejame[sz] — dead since 2026-09-28; IG/TikTok are now sell4daddy / sellfordaddy" },
+  { re: /youtube\.com\/@samueljameshq\b/i, note: "youtube.com/@samueljameshq — stale; the live YouTube handle is @sell4daddy" },
+];
+for (const { re, note } of RETIRED_HANDLES) {
+  const hit = indexSrc.match(re);
+  if (hit) {
+    die(
+      `index.html still ships the RETIRED social handle "${hit[0]}" (${note}). ` +
+        `This is read by Google Knowledge Graph and AI search via the JSON-LD ` +
+        `sameAs entity graph and points every answer + social unfurl at a dead ` +
+        `profile. Replace it with the canonical handle from system_settings.social_*.`,
+    );
+  }
+}
+
 console.log(
   `✅ check:index-brand OK — index.html head + JSON-LD carry brand "${platform}"; ` +
     `no retired "APEX" brand token in any user-facing <title>/<meta> value or ` +
-    `structured-data text field.`,
+    `structured-data text field; no retired social handle in any sameAs/URL.`,
 );

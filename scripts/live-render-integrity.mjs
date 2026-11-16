@@ -374,6 +374,56 @@ const LEGS = [
     ctx: { ...devices["iPhone 14"] } },
 ];
 
+// MP-WIB-BOOKING: /schedule-call gates the CalendlyEmbed behind TWO client-state
+// clicks (license → call-type). The per-route probe above only ever renders the
+// first gate, so a regression in the gate's onClick→setState flow, or a crash in
+// CalendlyEmbed, leaves the single most literal money action on the site — book a
+// call with Sam — unverified while every token / overflow / canonical assertion
+// stays green. The daily check-calendly-brand.sh proves the SLUG is active on
+// Calendly's side; nothing proved the on-site gate still REACHES that embed.
+//
+// The assertion is the Calendly booking URL itself, read from the booking
+// container AFTER clicking through. It survives CalendlyEmbed's no-cors
+// reachability race by design: the widget-div default render carries it as
+// data-url, and the offline fallback carries the SAME url as an <a href> ("Try
+// opening in a new tab"), so a transient HEAD timeout in headless flips the
+// render path but not the presence of the url. A missing/malformed url means the
+// gate did not advance or the embed did not mount — a real break, not a flake.
+const BOOKING_ROUTE = "/schedule-call";
+// Must be an apexfinancialempire event slug (the only account the funnel books
+// into — check-scheduling-links.mjs enforces the same host single-source). A
+// bare host with an empty slug (data-url="") or a different account fails.
+const BOOKING_URL_RE = /calendly\.com\/apexfinancialempire\/[a-z0-9][a-z0-9-]*/i;
+// Pure, zero-network grader — the SAME one --selftest exercises, so the test
+// drives the real detector (a guard that copies the code it guards is not a
+// guard). Returns a (possibly empty) defect list for ONE leg's booking url.
+function gradeBooking(bookingUrl) {
+  if (BOOKING_URL_RE.test(String(bookingUrl ?? ""))) return [];
+  return [bookingUrl == null
+    ? "booking gate did not reach a Calendly embed (no url in the booking container after clicking through)"
+    : `booking container rendered a non-funnel Calendly url "${String(bookingUrl).slice(0, 80)}" (want calendly.com/apexfinancialempire/<slug>)`];
+}
+
+// Click through the /schedule-call gate and read the booking url. Runs inside
+// probe() before ctx.close(). Returns the url string, or null if the gate could
+// not be advanced on this leg. Per-leg failure is NOT a defect on its own — the
+// cross-leg consensus below (like the hero check) pages only when ALL legs fail,
+// so one slow/headless engine cannot false-red.
+async function probeBooking(pg) {
+  try {
+    await pg.locator("button", { hasText: /yes.*licensed/i }).first().click({ timeout: 8000 });
+    await pg.locator("button", { hasText: /strategy call|interview/i }).first().click({ timeout: 8000 });
+    const dataUrl = await pg.locator(".calendly-inline-widget").first()
+      .getAttribute("data-url", { timeout: 8000 }).catch(() => null);
+    if (dataUrl) return dataUrl;
+    // Offline-fallback render path: the same url lives on the "try in a new tab" link.
+    return await pg.locator('a[href*="calendly.com/apexfinancialempire/"]').first()
+      .getAttribute("href").catch(() => null);
+  } catch {
+    return null; // gate did not advance on this leg
+  }
+}
+
 async function controlReachable() {
   try {
     const r = await fetch(CONTROL, { method: "GET", signal: AbortSignal.timeout(8000) });
@@ -435,6 +485,13 @@ async function probe(browser, leg, route) {
     canonicalDefects = gradeCanonical(route, { canonical, canonicalCount });
   }
 
+  // MP-WIB-BOOKING: on /schedule-call only, click through the gate and capture
+  // the Calendly booking url. Must run before ctx.close(). On every other route
+  // bookingProbed is false and the cross-leg check below skips it, so a page with
+  // no booking gate is never mistaken for a broken one.
+  let bookingUrl = null, bookingProbed = false;
+  if (route === BOOKING_ROUTE) { bookingProbed = true; bookingUrl = await probeBooking(pg); }
+
   const routeSlug = route === "/" ? "home" : route.replace(/[^a-z0-9]+/gi, "_").replace(/^_|_$/g, "");
   await pg.screenshot({ path: `/tmp/apex_render_${label}_${routeSlug}.png` }).catch(() => {});
   await ctx.close();
@@ -453,7 +510,8 @@ async function probe(browser, leg, route) {
   for (const d of canonicalDefects) defects.push(d);
 
   return { label, route, engineVendor: vendor, ok: defects.length === 0, status, overflowPx: overflow,
-           defects, consoleErrCount: consoleErrs.length, textLen: bodyText.length, heroProducers };
+           defects, consoleErrCount: consoleErrs.length, textLen: bodyText.length, heroProducers,
+           bookingProbed, bookingUrl };
 }
 
 // RESULT_FILE: the scheduled runner (business-ops/scripts/apex-live-render-cron.sh)
@@ -534,8 +592,28 @@ if (process.argv.includes("--selftest")) {
     if (!pass) fail++;
     console.log(`${pass ? "PASS" : "FAIL"}  canon expectDefect=${String(c.expectDefect).padEnd(5)} got=${String(got).padEnd(5)}  ${c.name}${got ? "  -> " + JSON.stringify(defs[0].slice(0, 54)) : ""}`);
   }
-  const total = cases.length + heroCases.length + canonicalCases.length;
-  console.log(fail ? `\n❌ selftest FAILED: ${fail}/${total} case(s)` : `\n✅ selftest PASSED: ${total}/${total} — placeholder + numeric token + hero-feed + funnel-canonical detectors proven both directions`);
+  // MP-WIB-BOOKING: prove gradeBooking both directions, no browser — the SAME
+  // grader the cross-leg check runs on the url probeBooking() reads off the live
+  // DOM after clicking through the /schedule-call gate. The live funnel url and
+  // the offline-fallback href must both pass; a gate that never advanced (null),
+  // an empty data-url, or a different Calendly account must fail.
+  const bookingCases = [
+    { name: "live funnel embed url (widget data-url)", url: "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone", expectDefect: false },
+    { name: "offline-fallback href carries the same funnel url", url: "https://calendly.com/apexfinancialempire/licensing-call", expectDefect: false },
+    { name: "REGRESSION: gate never advanced — no url in booking container", url: null, expectDefect: true },
+    { name: "REGRESSION: embed mounted but data-url is empty", url: "https://calendly.com/apexfinancialempire/", expectDefect: true },
+    { name: "REGRESSION: booking points at a different Calendly account", url: "https://calendly.com/someone-else/intro", expectDefect: true },
+    { name: "anti-FP: query string after the slug still passes", url: "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone?hide_gdpr_banner=1", expectDefect: false },
+  ];
+  for (const c of bookingCases) {
+    const defs = gradeBooking(c.url);
+    const got = defs.length > 0;
+    const pass = got === c.expectDefect;
+    if (!pass) fail++;
+    console.log(`${pass ? "PASS" : "FAIL"}  booking expectDefect=${String(c.expectDefect).padEnd(5)} got=${String(got).padEnd(5)}  ${c.name}`);
+  }
+  const total = cases.length + heroCases.length + canonicalCases.length + bookingCases.length;
+  console.log(fail ? `\n❌ selftest FAILED: ${fail}/${total} case(s)` : `\n✅ selftest PASSED: ${total}/${total} — placeholder + numeric token + hero-feed + funnel-canonical + booking-gate detectors proven both directions`);
   process.exit(fail ? 1 : 0);
 }
 
@@ -616,12 +694,33 @@ if (process.argv.includes("--selftest")) {
       `social proof collapsed to a carrier-only bar while every broken-token / white-screen assertion stayed green`);
   }
 
+  // MP-WIB-BOOKING cross-leg assertion: clicking through the /schedule-call gate
+  // must reach a live apexfinancialempire Calendly embed on at LEAST ONE measured
+  // leg. Taking "any leg ok" (not every leg) is the same anti-flake guarantee as
+  // the hero check — a single headless engine that fails the two-click advance
+  // (animation timing, actionability race) cannot false-red while another leg
+  // reached the embed; only a genuine gate/embed break (no funnel url on any leg)
+  // pages. If /schedule-call was not measured on any leg, bookingLegs is empty and
+  // this is skipped — that state is carried by legsNotRun / UNKNOWN, not laundered
+  // into a booking defect.
+  const bookingLegs = measured.filter((r) => r.route === BOOKING_ROUTE && r.bookingProbed);
+  const bestBooking = bookingLegs.find((r) => gradeBooking(r.bookingUrl).length === 0) || null;
+  if (bookingLegs.length && !bestBooking) {
+    crossLegDefects.push(
+      `[all legs ${BOOKING_ROUTE}] the booking gate did not reach a live Calendly embed on any leg ` +
+      `(${gradeBooking(bookingLegs[0].bookingUrl)[0]}) — the two-click license→call-type flow that ` +
+      `delivers every converted recruit their single next step (book a call with Sam) is broken while ` +
+      `the gate's own render, tokens and canonical stayed green. check-calendly-brand.sh proves the ` +
+      `SLUG is active; this proves the on-site path still reaches it.`);
+  }
+
   const verdict = (defective.length || crossLegDefects.length) ? "DEFECT" : (unavailable.length ? "CLEAN_PARTIAL" : "CLEAN");
   const legsRun = [...new Set(measured.map((r) => r.label))].join(", ");
   const routesRun = [...new Set(measured.map((r) => r.route))].join(", ");
-  record({ verdict, base: BASE, legsRun, routesRun, legsNotRun: unavailable, heroProducers: bestHero,
+  const bookingUrl = bestBooking ? bestBooking.bookingUrl : (bookingLegs.length ? null : undefined);
+  record({ verdict, base: BASE, legsRun, routesRun, legsNotRun: unavailable, heroProducers: bestHero, bookingUrl,
     defects: [...defective.flatMap((r) => r.defects.map((d) => `[${r.label} ${r.route}] ${d}`)), ...crossLegDefects] });
-  console.log(JSON.stringify({ verdict, base: BASE, legsRun, routesRun, heroProducers: bestHero,
+  console.log(JSON.stringify({ verdict, base: BASE, legsRun, routesRun, heroProducers: bestHero, bookingUrl,
     legsNotRun: unavailable, results }, null, 2));
   if (defective.length || crossLegDefects.length) {
     console.error("\nRENDERED INTEGRITY DEFECTS:");
@@ -639,5 +738,6 @@ if (process.argv.includes("--selftest")) {
     process.exit(3);
   }
   console.log(`\n✅ live render integrity CLEAN — ${BASE} on [${legsRun}] × [${routesRun}]: no broken tokens, no mobile overflow, every leg on the engine it is named for` +
-    (bestHero !== null ? `, hero production ticker shows ${bestHero} live producer(s)` : ``) + `.`);
+    (bestHero !== null ? `, hero production ticker shows ${bestHero} live producer(s)` : ``) +
+    (bestBooking ? `, /schedule-call gate reaches the live Calendly embed (${bestBooking.bookingUrl.replace(/^https?:\/\//, "").slice(0, 60)})` : ``) + `.`);
 })();

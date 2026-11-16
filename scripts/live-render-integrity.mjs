@@ -235,6 +235,48 @@ function scanForBadTokens(text) {
   return hits;
 }
 
+// MP-WIB-HERO-FEED (2026-11-16): the homepage hero production ticker
+// (DealsTicker.tsx — "🔥 NAME closed $X ALP", the "Numbers not slogans" bar)
+// is the site's single most prominent trust / social-proof element, and it is
+// DB-driven: a hand-rolled anon POST to the SECURITY DEFINER RPC
+// landing_deal_highlights, which returns the top producers whose deals landed
+// in public.deals in the LAST 30 DAYS (status submitted/active, ALP >= 500).
+//
+// Every assertion above catches a BROKEN number (NaN/undefined/$0) or a
+// white-screen. NONE of them catches the window going EMPTY. If the deal feed
+// freezes (the exact class that froze the YouTube sync 175d, the weekly
+// scoreboard 176d, and that retired the AgentLink sync), the 30-day window
+// drains to zero rows, the RPC returns [], and DealsTicker renders its
+// carrier-only fallback — valid tokens, no broken money, no crash — so the
+// render guard stays GREEN while the homepage silently loses all of its live
+// social proof. The CFO production-freshness pulse watches a DIFFERENT operand
+// (apex_native run-rate decline), not this public ALL-deals hero, so the two do
+// not overlap. This asserts, at the surface a visitor actually sees, that the
+// hero is NOT empty.
+//
+// Detector counts DISTINCT producer first-names (the RPC UPPERs + first-word-
+// splits them, and the component renders the list TWICE for a seamless loop, so
+// a distinct-name count is immune to that doubling). Proven both directions on
+// live prod before shipping: carrier-only text -> 0, one deal -> 1, the live
+// board -> 9 (EDWIN..CARI, exactly the RPC's rows). It is deliberately anchored
+// on the full "NAME closed $X ALP" shape so ordinary prose containing the word
+// "closed" (e.g. "our office is closed on Sundays") cannot trip it.
+const HERO_DEAL_RE = /([A-Z][A-Za-z.'’-]{1,30})\s+closed\s+\$[\d,]+\s+ALP/g;
+function countHeroProducers(text) {
+  const names = new Set();
+  let m;
+  HERO_DEAL_RE.lastIndex = 0;
+  while ((m = HERO_DEAL_RE.exec(text)) !== null) names.add(m[1].toUpperCase());
+  return names.size;
+}
+// Default floor = 1, i.e. a DEFECT fires ONLY when the hero rendered ZERO
+// producers on EVERY leg (total collapse — the feed drained / the RPC failed /
+// the anon key rotated). A legitimately thin board (a slow sales week) is NOT a
+// defect — that run-rate question is the CFO pulse's, not this guard's — so this
+// never cries wolf; the live count is always reported so a thinning board is
+// visible without paging. Raise MIN_HERO_PRODUCERS to tighten.
+const MIN_HERO_PRODUCERS = Number(process.env.MIN_HERO_PRODUCERS || 1);
+
 // MP-529: a leg is (engine, viewport), never (viewport, user-agent string).
 //
 // Until this wave the "mobile" leg was a CHROMIUM context handed an iPhone
@@ -313,6 +355,11 @@ async function probe(browser, leg, route) {
 
   const badHits = scanForBadTokens(bodyText);
 
+  // MP-WIB-HERO-FEED: only the homepage carries the production ticker. On every
+  // other route heroProducers is undefined and the cross-leg check below skips
+  // it, so this never mistakes a page that simply has no ticker for a collapse.
+  const heroProducers = route === "/" ? countHeroProducers(bodyText) : undefined;
+
   const routeSlug = route === "/" ? "home" : route.replace(/[^a-z0-9]+/gi, "_").replace(/^_|_$/g, "");
   await pg.screenshot({ path: `/tmp/apex_render_${label}_${routeSlug}.png` }).catch(() => {});
   await ctx.close();
@@ -330,7 +377,7 @@ async function probe(browser, leg, route) {
   for (const e of hardErrs) defects.push(`page error: ${e}`);
 
   return { label, route, engineVendor: vendor, ok: defects.length === 0, status, overflowPx: overflow,
-           defects, consoleErrCount: consoleErrs.length, textLen: bodyText.length };
+           defects, consoleErrCount: consoleErrs.length, textLen: bodyText.length, heroProducers };
 }
 
 // RESULT_FILE: the scheduled runner (business-ops/scripts/apex-live-render-cron.sh)
@@ -373,7 +420,24 @@ if (process.argv.includes("--selftest")) {
     if (!pass) fail++;
     console.log(`${pass ? "PASS" : "FAIL"}  expectHit=${String(c.expectHit).padEnd(5)} got=${String(hit).padEnd(5)}  ${c.name}${hit ? "  -> " + JSON.stringify(hits[0].token) : ""}`);
   }
-  console.log(fail ? `\n❌ selftest FAILED: ${fail}/${cases.length} case(s)` : `\n✅ selftest PASSED: ${cases.length}/${cases.length} — placeholder + numeric token detector proven both directions`);
+  // MP-WIB-HERO-FEED: prove countHeroProducers both directions, no browser — the
+  // SAME function probe() runs on live DOM. Collapse -> 0 is the state that must
+  // page; a legitimate board counts its distinct producers through the component's
+  // seamless-loop doubling; ordinary prose with "closed" must not trip.
+  const heroCases = [
+    { name: "hero collapsed to carrier-only (feed drained -> DEFECT)", text: "Our agents write with\nAmerican National\n|\nOur agents write with\nMutual of Omaha", expect: 0 },
+    { name: "one live producer rendered", text: "🔥\nEDWIN\nclosed\n$39,867\nALP", expect: 1 },
+    { name: "full board (2 distinct, ticker-doubled -> still 2)", text: "🔥\nEDWIN\nclosed\n$39,867\nALP\n🔥\nJONTAY\nclosed\n$13,751\nALP\n".repeat(2), expect: 2 },
+    { name: "anti-FP: prose 'closed' + a '$' figure is NOT a deal item", text: "Our office is closed on Sundays. We invest $5,000 in every new agent.", expect: 0 },
+  ];
+  for (const c of heroCases) {
+    const got = countHeroProducers(c.text);
+    const pass = got === c.expect;
+    if (!pass) fail++;
+    console.log(`${pass ? "PASS" : "FAIL"}  hero expect=${c.expect} got=${got}  ${c.name}`);
+  }
+  const total = cases.length + heroCases.length;
+  console.log(fail ? `\n❌ selftest FAILED: ${fail}/${total} case(s)` : `\n✅ selftest PASSED: ${total}/${total} — placeholder + numeric token + hero-feed detectors proven both directions`);
   process.exit(fail ? 1 : 0);
 }
 
@@ -434,16 +498,37 @@ if (process.argv.includes("--selftest")) {
   // a pass. It is reported with the never-ran measurements, which is what it is.
   for (const r of navFailed) unavailable.push({ label: r.label, route: r.route, reason: "navigation failed twice: " + r.navErr });
   const measured = results.filter((r) => !r.navErr);
-  const verdict = defective.length ? "DEFECT" : (unavailable.length ? "CLEAN_PARTIAL" : "CLEAN");
+
+  // MP-WIB-HERO-FEED cross-leg assertion: the homepage hero must render at least
+  // MIN_HERO_PRODUCERS live producers on at LEAST ONE measured leg. Taking the
+  // max across legs (not every leg) is the anti-flake guarantee — a single slow
+  // RPC on one engine cannot false-red while the other legs show the board; only
+  // a genuine feed-wide collapse (empty on all 3) trips it. If the homepage was
+  // not measured on any leg (all home legs nav-failed), homeLegs is empty and
+  // this is skipped — that state is already carried by legsNotRun / UNKNOWN, not
+  // laundered into a hero defect.
+  const crossLegDefects = [];
+  const homeLegs = measured.filter((r) => r.route === "/" && typeof r.heroProducers === "number");
+  const bestHero = homeLegs.length ? Math.max(...homeLegs.map((r) => r.heroProducers)) : null;
+  if (homeLegs.length && bestHero < MIN_HERO_PRODUCERS) {
+    crossLegDefects.push(
+      `[all legs /] homepage hero production ticker rendered ${bestHero} live producer(s) ` +
+      `(need >= ${MIN_HERO_PRODUCERS}) — the landing_deal_highlights 30-day window has drained, ` +
+      `the public RPC failed, or the anon key is dead; the site's primary "Numbers not slogans" ` +
+      `social proof collapsed to a carrier-only bar while every broken-token / white-screen assertion stayed green`);
+  }
+
+  const verdict = (defective.length || crossLegDefects.length) ? "DEFECT" : (unavailable.length ? "CLEAN_PARTIAL" : "CLEAN");
   const legsRun = [...new Set(measured.map((r) => r.label))].join(", ");
   const routesRun = [...new Set(measured.map((r) => r.route))].join(", ");
-  record({ verdict, base: BASE, legsRun, routesRun, legsNotRun: unavailable,
-    defects: defective.flatMap((r) => r.defects.map((d) => `[${r.label} ${r.route}] ${d}`)) });
-  console.log(JSON.stringify({ verdict, base: BASE, legsRun, routesRun,
+  record({ verdict, base: BASE, legsRun, routesRun, legsNotRun: unavailable, heroProducers: bestHero,
+    defects: [...defective.flatMap((r) => r.defects.map((d) => `[${r.label} ${r.route}] ${d}`)), ...crossLegDefects] });
+  console.log(JSON.stringify({ verdict, base: BASE, legsRun, routesRun, heroProducers: bestHero,
     legsNotRun: unavailable, results }, null, 2));
-  if (defective.length) {
+  if (defective.length || crossLegDefects.length) {
     console.error("\nRENDERED INTEGRITY DEFECTS:");
     for (const r of defective) for (const d of r.defects) console.error(`  [${r.label} ${r.route}] ${d}`);
+    for (const d of crossLegDefects) console.error(`  ${d}`);
     process.exit(1);
   }
   if (unavailable.length) {
@@ -455,5 +540,6 @@ if (process.argv.includes("--selftest")) {
     console.error(`   remedy: npx playwright install ${engines.join(" ")}`);
     process.exit(3);
   }
-  console.log(`\n✅ live render integrity CLEAN — ${BASE} on [${legsRun}] × [${routesRun}]: no broken tokens, no mobile overflow, every leg on the engine it is named for.`);
+  console.log(`\n✅ live render integrity CLEAN — ${BASE} on [${legsRun}] × [${routesRun}]: no broken tokens, no mobile overflow, every leg on the engine it is named for` +
+    (bestHero !== null ? `, hero production ticker shows ${bestHero} live producer(s)` : ``) + `.`);
 })();

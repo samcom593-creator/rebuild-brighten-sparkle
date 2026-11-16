@@ -277,6 +277,71 @@ function countHeroProducers(text) {
 // visible without paging. Raise MIN_HERO_PRODUCERS to tighten.
 const MIN_HERO_PRODUCERS = Number(process.env.MIN_HERO_PRODUCERS || 1);
 
+// MP-WIB-FUNNEL-CANONICAL (2026-11-16, Website Integrity Bot, Check #3/SEO).
+// The per-route self-referencing canonical is injected CLIENT-SIDE by
+// src/components/seo/RouteCanonical.tsx — Googlebot renders JS and honors the
+// rendered <link rel="canonical">, so the raw-HTML homepage canonical that
+// every SPA route serves is corrected only after hydration. Two guards already
+// touch canonical, and both leave the money pages uncovered:
+//   - check-canonical-url.mjs proves the fix is WIRED IN SOURCE (static, no DOM).
+//   - careers-jobposting-render.mjs proves the RENDERED canonical, but only on
+//     the /careers/* cluster (hub + 10 state pages).
+// Nothing opened a browser to prove the rendered canonical on the funnel routes
+// a visitor actually converts on (/apply, /vsl, /get-licensed, /storefront,
+// /links, ...). If RouteCanonical silently regressed there — a refactor drops
+// it, a lazy-route mount race, a second head-manager overwrites it — those pages
+// declare the HOMEPAGE as their canonical again, Google dedups them onto "/",
+// and the whole recruiting/lead funnel falls out of the index, while
+// check-canonical-url stays green (the source is still wired) and the
+// /careers guard stays green (its own subtree is fine). Verified live
+// 2026-11-16: all 11 funnel routes rendered the correct self-canonical
+// (count=1 each), so this LOCKS a currently-correct surface, it does not fix a
+// live leak. The live count is always in the result so a change is visible.
+//
+// ORIGIN is the FIXED prod origin RouteCanonical emits (never window.location);
+// check-canonical-url.mjs Rule A asserts it equals index.html's canonical host,
+// so a preview render that (correctly) injects the prod-origin canonical grades
+// as a pass, and a RouteCanonical that wrongly read window.location.origin and
+// leaked a *.vercel.app canonical into a crawled preview grades as a defect.
+const CANONICAL_ORIGIN = "https://apex-financial.org";
+// /careers and /careers/<slug> rendered canonical is owned by
+// careers-jobposting-render.mjs. This guard does NOT re-assert it — single
+// ownership keeps the two from drifting into a he-said-she-said on one operand.
+const canonicalOwnedElsewhere = (route) => route === "/careers" || route.startsWith("/careers/");
+
+// Mirrors RouteCanonical.canonicalHref: origin + pathname only, a trailing slash
+// collapsed except on root, root is the bare origin (no slash). The probe's
+// ROUTES carry no query/hash, so this is the full normalization they need.
+function expectedCanonical(route) {
+  let path = route || "/";
+  if (path.length > 1 && path.endsWith("/")) path = path.slice(0, -1);
+  return path === "/" ? CANONICAL_ORIGIN : `${CANONICAL_ORIGIN}${path}`;
+}
+
+// Pure grader — the SAME function probe() runs on the live rendered DOM and the
+// --selftest exercises with zero network. Returns a (possibly empty) defect list.
+function gradeCanonical(route, { canonical, canonicalCount }) {
+  const defects = [];
+  const want = expectedCanonical(route);
+  if (canonicalCount === 0) {
+    defects.push(
+      `no <link rel="canonical"> in the rendered DOM — RouteCanonical did not mount on this route, so a crawler ` +
+      `falls back to index.html's static HOMEPAGE canonical and this funnel page de-indexes onto "/"`);
+    return defects; // canonical value is meaningless when none rendered
+  }
+  if (canonicalCount > 1) {
+    defects.push(
+      `${canonicalCount} <link rel="canonical"> tags rendered — crawlers ignore a page that declares multiple ` +
+      `canonicals, dropping this route's self-canonical and re-opening the dedup leak`);
+  }
+  if (canonical !== want) {
+    defects.push(
+      `rendered canonical is ${JSON.stringify(canonical)}, expected self-URL ${JSON.stringify(want)} — ` +
+      `RouteCanonical regressed and this funnel page points Google at a different URL (dedup/de-index leak)`);
+  }
+  return defects;
+}
+
 // MP-529: a leg is (engine, viewport), never (viewport, user-agent string).
 //
 // Until this wave the "mobile" leg was a CHROMIUM context handed an iPhone
@@ -360,6 +425,16 @@ async function probe(browser, leg, route) {
   // it, so this never mistakes a page that simply has no ticker for a collapse.
   const heroProducers = route === "/" ? countHeroProducers(bodyText) : undefined;
 
+  // MP-WIB-FUNNEL-CANONICAL: read the client-injected self-canonical from the
+  // RENDERED DOM (not raw HTML — the fix is JS). Must happen before ctx.close().
+  // /careers/* is owned by careers-jobposting-render.mjs, so it is skipped here.
+  let canonicalDefects = [];
+  if (!canonicalOwnedElsewhere(route)) {
+    const canonical = await pg.getAttribute('link[rel="canonical"]', "href").catch(() => null);
+    const canonicalCount = await pg.$$eval('link[rel="canonical"]', (els) => els.length).catch(() => 0);
+    canonicalDefects = gradeCanonical(route, { canonical, canonicalCount });
+  }
+
   const routeSlug = route === "/" ? "home" : route.replace(/[^a-z0-9]+/gi, "_").replace(/^_|_$/g, "");
   await pg.screenshot({ path: `/tmp/apex_render_${label}_${routeSlug}.png` }).catch(() => {});
   await ctx.close();
@@ -375,6 +450,7 @@ async function probe(browser, leg, route) {
   // hard page errors (React crash / unhandled) count; console warnings do not.
   const hardErrs = consoleErrs.filter((e) => /PAGEERROR|Minified React error|is not defined|Cannot read/i.test(e));
   for (const e of hardErrs) defects.push(`page error: ${e}`);
+  for (const d of canonicalDefects) defects.push(d);
 
   return { label, route, engineVendor: vendor, ok: defects.length === 0, status, overflowPx: overflow,
            defects, consoleErrCount: consoleErrs.length, textLen: bodyText.length, heroProducers };
@@ -436,8 +512,30 @@ if (process.argv.includes("--selftest")) {
     if (!pass) fail++;
     console.log(`${pass ? "PASS" : "FAIL"}  hero expect=${c.expect} got=${got}  ${c.name}`);
   }
-  const total = cases.length + heroCases.length;
-  console.log(fail ? `\n❌ selftest FAILED: ${fail}/${total} case(s)` : `\n✅ selftest PASSED: ${total}/${total} — placeholder + numeric token + hero-feed detectors proven both directions`);
+  // MP-WIB-FUNNEL-CANONICAL: prove gradeCanonical both directions, no browser —
+  // the SAME grader probe() runs on the live rendered DOM. A funnel page still
+  // pointing at the homepage (or carrying zero/duplicate canonicals, or a
+  // preview-host origin) is the de-index state that must page; a self-referencing
+  // canonical on the fixed prod origin must pass.
+  const canonicalCases = [
+    { name: "self-canonical on /apply (correct)", route: "/apply", dom: { canonical: "https://apex-financial.org/apply", canonicalCount: 1 }, expectDefect: false },
+    { name: "root is the bare prod origin (correct)", route: "/", dom: { canonical: "https://apex-financial.org", canonicalCount: 1 }, expectDefect: false },
+    { name: "deep self-canonical /get-licensed (correct)", route: "/get-licensed", dom: { canonical: "https://apex-financial.org/get-licensed", canonicalCount: 1 }, expectDefect: false },
+    { name: "REGRESSION: /vsl still declares the homepage (de-index leak)", route: "/vsl", dom: { canonical: "https://apex-financial.org", canonicalCount: 1 }, expectDefect: true },
+    { name: "REGRESSION: RouteCanonical never mounted — 0 canonical tags", route: "/storefront", dom: { canonical: null, canonicalCount: 0 }, expectDefect: true },
+    { name: "REGRESSION: two canonicals rendered (crawler ignores both)", route: "/links", dom: { canonical: "https://apex-financial.org/links", canonicalCount: 2 }, expectDefect: true },
+    { name: "REGRESSION: preview-host leak — canonical on a *.vercel.app origin", route: "/apply", dom: { canonical: "https://preview-abc123.vercel.app/apply", canonicalCount: 1 }, expectDefect: true },
+    { name: "anti-FP: trailing slash collapses /apply/ -> /apply (correct)", route: "/apply/", dom: { canonical: "https://apex-financial.org/apply", canonicalCount: 1 }, expectDefect: false },
+  ];
+  for (const c of canonicalCases) {
+    const defs = gradeCanonical(c.route, c.dom);
+    const got = defs.length > 0;
+    const pass = got === c.expectDefect;
+    if (!pass) fail++;
+    console.log(`${pass ? "PASS" : "FAIL"}  canon expectDefect=${String(c.expectDefect).padEnd(5)} got=${String(got).padEnd(5)}  ${c.name}${got ? "  -> " + JSON.stringify(defs[0].slice(0, 54)) : ""}`);
+  }
+  const total = cases.length + heroCases.length + canonicalCases.length;
+  console.log(fail ? `\n❌ selftest FAILED: ${fail}/${total} case(s)` : `\n✅ selftest PASSED: ${total}/${total} — placeholder + numeric token + hero-feed + funnel-canonical detectors proven both directions`);
   process.exit(fail ? 1 : 0);
 }
 

@@ -1761,7 +1761,7 @@ export default function BookOfBusiness() {
                     value={sourceFilter}
                     onValueChange={(v) => setSource(v as any)}
                   >
-                    <SelectTrigger className="h-10 text-xs sm:h-9">
+                    <SelectTrigger aria-label="Source" className="h-10 text-xs sm:h-9">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1777,7 +1777,7 @@ export default function BookOfBusiness() {
                     value={stageFilter}
                     onValueChange={(v) => setStage(v as any)}
                   >
-                    <SelectTrigger className="h-10 text-xs sm:h-9">
+                    <SelectTrigger aria-label="Stage" className="h-10 text-xs sm:h-9">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>

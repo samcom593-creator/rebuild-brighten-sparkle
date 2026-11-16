@@ -392,7 +392,7 @@ export function CallCenterFilters({
                     {filter.label}
                   </label>
                   <Select value={filter.value} onValueChange={filter.onChange}>
-                    <SelectTrigger className="bg-background/50 border-border hover:border-teal-500/40 transition-colors">
+                    <SelectTrigger aria-label={filter.label} className="bg-background/50 border-border hover:border-teal-500/40 transition-colors">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="max-h-[300px]">

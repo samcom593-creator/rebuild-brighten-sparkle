@@ -148,7 +148,7 @@ export function AvatarUpload({ userId, currentAvatarUrl, fullName, onAvatarChang
           {uploading ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Uploading...</>) : (<><Camera className="h-4 w-4 mr-2" />{currentAvatarUrl ? "Change Photo" : "Upload Photo"}</>)}
         </Button>
         {currentAvatarUrl && (
-          <Button type="button" variant="ghost" size="sm" onClick={handleDelete} disabled={deleting} className="text-destructive hover:text-destructive">
+          <Button type="button" variant="ghost" size="sm" onClick={handleDelete} disabled={deleting} aria-label={deleting ? "Removing profile photo" : "Remove profile photo"} className="text-destructive hover:text-destructive">
             {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
           </Button>
         )}

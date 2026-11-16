@@ -152,7 +152,7 @@ export function BookAuditPanel() {
           <Button variant="outline" size="sm" onClick={exportCsv} disabled={!filtered.length}>
             <Download className="mr-1.5 h-4 w-4" /> Export {filtered.length ? `(${filtered.length})` : ""}
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+          <Button variant="ghost" size="sm" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-label={open ? "Hide flagged policies" : "Show flagged policies"}>
             {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </Button>
         </div>

@@ -1013,6 +1013,16 @@ if git diff --cached --name-only | grep -qE '^(src/.*\.tsx|scripts/check-control
   npm run --silent check:control-labels || exit 1
 fi
 
+# ---------- check-disclosure-button-labels (a11y, MP-WIB-DISCLOSURE 2026-11-16) ----------
+# Trigger: any tsx or the guard itself. An icon-only <Button aria-expanded> (a lone
+# chevron disclosure toggle, no text, no aria-label) is a WCAG 4.1.2 button-name
+# critical that slips past icon-button-labels (not size="icon") and control-labels
+# (not SelectTrigger/Switch). Baseline 0.
+if git diff --cached --name-only | grep -qE '^(src/.*\.tsx|scripts/check-disclosure-button-labels\.mjs)$'; then
+  echo "[pre-commit] tsx staged — running check:disclosure-button-labels…"
+  npm run --silent check:disclosure-button-labels || exit 1
+fi
+
 # ---------- check-book-freshness-operand (MP-462, 2026-09-07) ----------
 # Trigger: anything that reads v_agentlink_book_freshness, plus the guard.
 # Cheap (filesystem only, no compiler). Catches at commit time what verify:core

@@ -115,7 +115,24 @@ const OVERFLOW_TOLERANCE_PX = 2; // sub-pixel rounding is not a defect
 // live prod across all 3 legs (desktop-blink + mobile-blink + real Apple WebKit:
 // 200 / 0 overflow / 0 broken tokens / 0 console errors / no soft-404) BEFORE
 // widening, so the guard is not born red.
-const ROUTES = (process.env.ROUTES || "/,/apply,/vsl,/schedule-call,/get-licensed,/storefront,/links")
+//
+// MP-WIB-FUNNEL-DELTA-RENDER (2026-11-16): reconciled this probe's route set
+// against the mobile-overflow WIDTH guard (18 routes) and widened to the public,
+// un-gated conversion surfaces that had width coverage but ZERO rendered-
+// correctness coverage. Added: /unlicensed-overview (the larger unlicensed-
+// recruit population's overview page), /leads + /get-leads (the lead-BUY money
+// pages, both <LeadsLanding/> — kept as two entries because a route-config edit
+// can white-screen one URL's mount while the other renders, the exact client-
+// render-collapse class this probe exists to catch), and /contact. All four are
+// static copy (0 RPC/data deps) so the live risk is a crash/white-screen, not a
+// NaN. Proven CLEAN on live prod across all 3 legs (desktop-blink + mobile-blink
+// + real Apple WebKit: 200 / 0 overflow / 0 broken tokens / 0 console errors /
+// no soft-404) BEFORE widening, so the guard is not born red. DELIBERATELY
+// EXCLUDED: /start-contracting (LegacyWorkspaceRedirect -> /dashboard/
+// contracting-profile, a ProtectedRoute; a logged-out probe renders the login
+// shell = false coverage, the /purchase-leads pattern) and /seminar
+// (LegacyWorkspaceRedirect -> /apply, already guarded, covered transitively).
+const ROUTES = (process.env.ROUTES || "/,/apply,/vsl,/schedule-call,/get-licensed,/storefront,/links,/unlicensed-overview,/leads,/get-leads,/contact")
   .split(",").map((r) => r.trim()).filter(Boolean)
   .map((r) => (r === "/" ? "/" : "/" + r.replace(/^\/+|\/+$/g, "")));
 

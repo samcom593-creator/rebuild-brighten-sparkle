@@ -155,6 +155,29 @@ function pathOf(url) {
 
 const noSlash = (p) => (p && p.length > 1 && p.endsWith("/") ? p.slice(0, -1) : p);
 
+// Rule E operand: the core public recruiting-funnel routes that MUST stay in the
+// sitemap. Rule C stops the sitemap pointing at pages that do not exist, and Rule
+// D makes every /careers state discoverable — but NOTHING stopped a hand-edit of
+// public/sitemap.xml from silently DROPPING a core funnel page. Losing /apply or
+// /vsl from the sitemap orphans the single highest-$ SEO surface from Google's
+// discovery, and Rule C stays green because it only grades the entries that
+// REMAIN. This list pins the funnel: each entry must be a real declared <Route>
+// (so the list can't require a page that no longer ships) AND carry a <loc>.
+// Deliberately NOT the full public surface — /storefront (Stripe checkout), /links
+// (link-in-bio hub), /get-leads + /dialer (duplicate render of /leads), and
+// /apply/success/* (post-conversion) are intentionally excluded from the sitemap,
+// so listing them here would be wrong. A NEW funnel page gets added here by whoever
+// ships it — the same single-source contract STATE_CAREER_SLUGS has for /careers.
+export const REQUIRED_SITEMAP_ROUTES = [
+  "/",
+  "/apply",
+  "/get-licensed",
+  "/vsl",
+  "/schedule-call",
+  "/leads",
+  "/contact",
+];
+
 // ── the audit (pure: strings in, failures out) ──────────────────────────────
 
 export function audit({ indexHtml, appTsx, rcTsx, sitemapXml, stateLandingTsx }) {
@@ -265,6 +288,25 @@ export function audit({ indexHtml, appTsx, rcTsx, sitemapXml, stateLandingTsx })
     }
   }
 
+  // ── Rule E: core funnel routes must be declared AND in the sitemap ──
+  // Guards the DROP direction Rule C is structurally blind to (it only grades the
+  // <loc>s that survive). Each required route must still be a real <Route> and
+  // must still carry a <loc>; a hand-edit that deletes either turns CI red.
+  {
+    const routes = routePaths(appCode);
+    const normRoutes = [...routes].map(noSlash);
+    const haveLoc = new Set(locPaths); // normalized paths that parsed (from Rule C)
+    for (const req of REQUIRED_SITEMAP_ROUTES) {
+      const r = noSlash(req);
+      if (routes.size > 0 && !normRoutes.some((rt) => routePatternMatches(rt, r))) {
+        fail.push(`REQUIRED_SITEMAP_ROUTES lists "${req}" but App.tsx declares no matching <Route> — the required-funnel list has rotted (route renamed/removed). Fix the list or restore the route.`);
+      }
+      if (locs.length > 0 && !haveLoc.has(r)) {
+        fail.push(`sitemap.xml: core funnel route "${req}" has no <loc> — it is dropped from crawler discovery, deindexing a highest-$ SEO surface. Restore it in public/sitemap.xml.`);
+      }
+    }
+  }
+
   return fail;
 }
 
@@ -276,14 +318,18 @@ function selftest() {
     appTsx:
       'import { RouteCanonical } from "@/components/seo/RouteCanonical";\n' +
       "<BrowserRouter>\n  <RouteCanonical />\n" +
-      '  <Route path="/" />\n  <Route path="/apply" />\n  <Route path="/vsl" />\n' +
-      '  <Route path="/careers/:state" />\n  <Route path="*" />\n' +
+      '  <Route path="/" />\n  <Route path="/apply" />\n  <Route path="/get-licensed" />\n' +
+      '  <Route path="/vsl" />\n  <Route path="/schedule-call" />\n  <Route path="/leads" />\n' +
+      '  <Route path="/contact" />\n  <Route path="/careers/:state" />\n  <Route path="*" />\n' +
       "</BrowserRouter>",
     rcTsx:
       'export const PROD_ORIGIN = "https://apex-financial.org";\n' +
       'useLocation(); link.setAttribute("rel", "canonical");',
     sitemapXml:
       "<loc>https://apex-financial.org/</loc><loc>https://apex-financial.org/apply</loc>" +
+      "<loc>https://apex-financial.org/get-licensed</loc><loc>https://apex-financial.org/vsl</loc>" +
+      "<loc>https://apex-financial.org/schedule-call</loc><loc>https://apex-financial.org/leads</loc>" +
+      "<loc>https://apex-financial.org/contact</loc>" +
       "<loc>https://apex-financial.org/careers/florida</loc><loc>https://apex-financial.org/careers/texas</loc>",
     stateLandingTsx: 'const STATES = [{ slug: "florida" }, { slug: "texas" }];',
   };
@@ -334,6 +380,19 @@ function selftest() {
     // Rule D fail-loud: the slug source cannot be found.
     ["state slug source unparseable", { ...GOOD, stateLandingTsx: "// STATES moved away" }, 1],
     ["state slug operand missing", { ...GOOD, stateLandingTsx: undefined }, 1],
+    // Rule E(loc): a core funnel route dropped from the sitemap (route still ships)
+    // — the exact drop Rule C is blind to, because /vsl still matches a <Route>.
+    ["core funnel route dropped from sitemap", {
+      ...GOOD,
+      sitemapXml: GOOD.sitemapXml.replace("<loc>https://apex-financial.org/vsl</loc>", ""),
+    }, 1],
+    // Rule E(declared): a required route no longer declared (and gone from sitemap)
+    // — Rule C stays silent with no <loc>, so only Rule E catches the rot.
+    ["required funnel route no longer declared", {
+      ...GOOD,
+      appTsx: GOOD.appTsx.replace('<Route path="/contact" />\n  ', ""),
+      sitemapXml: GOOD.sitemapXml.replace("<loc>https://apex-financial.org/contact</loc>", ""),
+    }, 1],
   ];
 
   let ok = true;
@@ -380,5 +439,5 @@ if (process.argv.includes("--selftest")) {
     for (const f of failures) console.error(`   • ${f}`);
     process.exit(1);
   }
-  console.log("✅ check:canonical-url OK — index.html has one canonical on the prod origin; RouteCanonical is mounted inside the router and self-referencing; every sitemap <loc> matches a real route (literal or :param) on the canonical domain; every /careers/<slug> is a real state and every state page is in the sitemap.");
+  console.log(`✅ check:canonical-url OK — index.html has one canonical on the prod origin; RouteCanonical is mounted inside the router and self-referencing; every sitemap <loc> matches a real route (literal or :param) on the canonical domain; every /careers/<slug> is a real state and every state page is in the sitemap; every core funnel route [${REQUIRED_SITEMAP_ROUTES.join(", ")}] is still declared and still carries a <loc>.`);
 }

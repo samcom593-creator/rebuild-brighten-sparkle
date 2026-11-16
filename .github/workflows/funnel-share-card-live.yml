@@ -1,0 +1,71 @@
+# Is the SHARE CARD on the sell4daddy.com funnel hub + 3 keyword-CTA doors still
+# ALIVE on the live edge? (MP-WIB-FUNNEL-SHARE-CARD-LIVE)
+#
+# sell4daddy.com is the HUB bio link in @sell4daddy's TikTok (84.4K) + Instagram
+# profiles — the clickable path off 100% of Sam's short-form audience — and its
+# /team, /body, /build doors are where every keyword-CTA lead lands. Every time
+# that link is pasted into a DM, iMessage, WhatsApp, Discord, LinkedIn or X, the
+# preview crawler (none run JS) reads the SERVED HTML's og:image + twitter:image
+# and renders that image as the card: the first impression of the #1-traffic
+# funnel entry Sam owns.
+#
+# apex-financial.org's share card has share-card-live; the sell4daddy pages are
+# only proven ALIVE by lead-magnet-cta-live, which never reads the og:image — so
+# the card can go dead while the page stays green. sell4daddy.com is a SEPARATE
+# Vercel project outside this repo's deploy pipeline; a dropped/renamed/purged OG
+# jpg kills the card on the highest-traffic entry and nothing in this repo would
+# know. This guard reads each surface's LIVE-served og:image/twitter:image and
+# proves it serves real image/* bytes (not a 200 HTML/error shell — the
+# 465-InsuraCloud masquerade, cross-domain).
+#
+# Deliberately a SCHEDULE, not a commit gate. It grades a LIVE edge response, so
+# wiring the over-the-wire probe into verify:core would block every commit on a
+# condition only a redeploy (on a DIFFERENT project) can clear. The pure
+# classifier + derivation + verdict wiring IS gated every commit via
+# check:funnel-share-card-live-selftest in verify:core; only the live probe runs
+# here. A push that touches the guard/workflow re-runs it immediately.
+#
+# Needs no secrets: the share cards are public static files.
+#
+# Can't cry wolf (check-funnel-share-card-live.mjs exit contract):
+#   exit 1 DEFECT        -> a surface's card genuinely dead/masquerading w/ egress up: FAIL (red, Sam sees it)
+#   exit 3 UNRESOLVED    -> transient 5xx/timeout/DNS, or a surface page itself down: warning only, run stays green
+#   exit 0 CLEAN/UNKNOWN -> all cards alive, or egress itself down (not trusted): green
+name: funnel-share-card-live
+
+on:
+  schedule:
+    - cron: "42 14 * * *" # daily ~07:42 Phoenix, offset from share-card-live (14:22) + lead-magnet-cta-live; GH schedules drift (p90 ~40min, MP-304)
+  workflow_dispatch:
+  push:
+    paths:
+      - "scripts/check-funnel-share-card-live.mjs"
+      - "src/lib/brand.ts"
+      - ".github/workflows/funnel-share-card-live.yml"
+
+jobs:
+  funnel-share-card-live:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      # Prove the detector's own alive/dead/unresolved + derivation + control-
+      # gating logic is intact BEFORE trusting its live verdict (deterministic).
+      - name: Selftest funnel-share-card detector (fixtures, both directions)
+        run: npm run check:funnel-share-card-live-selftest
+      # Live probe. Only a real DEFECT (a card gone/masquerading, egress up)
+      # fails the run; a transient UNRESOLVED (exit 3) warns without reddening it.
+      - name: Probe live funnel share-card (og:image/twitter:image) liveness
+        run: |
+          node scripts/check-funnel-share-card-live.mjs; code=$?
+          if [ "$code" = "3" ]; then
+            echo "::warning::funnel-share-card UNRESOLVED — neither proved alive nor dead (transient edge 5xx/timeout/DNS, or a surface page itself down). Not failing; re-run to confirm."
+            exit 0
+          fi
+          exit $code
+      - name: Post failure summary
+        if: failure()
+        run: |
+          echo "::warning::funnel-share-card-live FAILED — either the detector selftest regressed (the guard's own logic, not the site), OR a sell4daddy.com funnel surface's social-share card (og:image/twitter:image) is DEAD on the live edge: every share/DM/paste of that bio-link or door URL previews a broken/blank card on the #1-traffic funnel entry (84.4K TikTok + IG @sell4daddy). Fix: restore/redeploy the OG image on the sell4daddy Vercel project (it lives OUTSIDE this repo). See the step output above for the exact dead surface + URL + status."

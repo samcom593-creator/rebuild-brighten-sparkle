@@ -99,7 +99,23 @@ const OVERFLOW_TOLERANCE_PX = 2; // sub-pixel rounding is not a defect
 // closed hours earlier. Proven CLEAN on live prod across all 3 legs (desktop-blink
 // + mobile-blink + real Apple WebKit: 200 / 0 overflow / 0 broken tokens / 0
 // console errors / no soft-404) BEFORE widening, so the guard is not born red.
-const ROUTES = (process.env.ROUTES || "/,/apply,/vsl,/schedule-call,/get-licensed,/storefront")
+//
+// MP-WIB-LINKS-RENDER (2026-11-16): widened to /links, the link-in-bio page
+// where 100% of Sam's social-bio traffic converges — IG @sell4daddy, TikTok
+// @sellfordaddy (~84K), YouTube @sell4daddy, Snap samueljameshq all point here,
+// and it fans out to the three money paths (/apply, Elite Circle waitlist,
+// /schedule-call). It is a lazy-loaded SPA route, so a bad route-config change
+// or a broken import white-screens it while route-smoke's fetch-200 (SPA shell)
+// and every source/data guard stay green — the exact client-render-collapse
+// class /careers and /storefront proved real. Its mobile WIDTH was guarded by
+// mobile-overflow.mjs hours earlier (commit 14b767c3), but rendered CORRECTNESS
+// (white-screen / broken token / soft-404) on the single highest-traffic public
+// conversion surface Sam owns was covered by NOTHING. The copy is static (no RPC
+// prices), so the live risk is a crash/white-screen, not a NaN. Proven CLEAN on
+// live prod across all 3 legs (desktop-blink + mobile-blink + real Apple WebKit:
+// 200 / 0 overflow / 0 broken tokens / 0 console errors / no soft-404) BEFORE
+// widening, so the guard is not born red.
+const ROUTES = (process.env.ROUTES || "/,/apply,/vsl,/schedule-call,/get-licensed,/storefront,/links")
   .split(",").map((r) => r.trim()).filter(Boolean)
   .map((r) => (r === "/" ? "/" : "/" + r.replace(/^\/+|\/+$/g, "")));
 

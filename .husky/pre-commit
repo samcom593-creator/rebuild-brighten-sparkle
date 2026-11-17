@@ -53,14 +53,15 @@ if match '^(vite\.config\.ts|public/manifest\.webmanifest|src/config/brand\.ts|s
 fi
 
 # ---------- check-index-brand (2026-11-10, Website Integrity Bot) ----------
-# Trigger: index.html (the surface), the brand source of truth, or the script
+# Trigger: index.html (the surface), the brand source of truth, the /links bio
+# hub (the SECOND public "follow" surface, added 2026-11-17), or the script
 # itself. twitter:site read "@APEXFinancial" for a month post-Galaxy because the
 # src/-only brand ratchet is blind to index.html — same blind spot as the PWA
 # manifest and the Calendly event name. Checks user-facing <title>/<meta> VALUES
 # only; never touches the domain apex-financial.org or the inline cache-bust/theme
-# storage keys.
-if match '^(index\.html|src/config/brand\.ts|scripts/check-index-brand\.mjs)$'; then
-  echo "[pre-commit] index.html/brand file staged — running check:index-brand…"
+# storage keys. Also scans LinksPage.tsx for retired/drifted social handles.
+if match '^(index\.html|src/config/brand\.ts|src/pages/LinksPage\.tsx|scripts/check-index-brand\.mjs)$'; then
+  echo "[pre-commit] index.html/brand/bio-hub file staged — running check:index-brand…"
   node scripts/check-index-brand.mjs
 fi
 

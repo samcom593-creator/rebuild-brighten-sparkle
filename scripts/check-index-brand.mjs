@@ -46,6 +46,24 @@
  *     embedUrl, sameAs) are skipped, so the apex-financial.org domain and the
  *     apex-vsl.mp4 storage filename never trip it.
  *
+ * THE BIO-HUB HALF (added 2026-11-17, Website Integrity Bot)
+ * index.html's sameAs is NOT the only public "follow Samuel James" surface.
+ * src/pages/LinksPage.tsx renders apex-financial.org/links — the link-in-bio hub
+ * every TikTok/IG/YouTube bio points at (the #1-traffic social destination) — and
+ * it hardcodes the SAME four profile URLs as a SECOND, independent copy. When
+ * @theprincejamez was retired it was fixed in LinksPage on 2026-09-28 and the
+ * sameAs block kept the dead handle for ~7 weeks (caught by NEGATIVE-SOCIAL
+ * above, 2026-11-16): the two surfaces already proved they drift. A denylist that
+ * scans only index.html leaves the bio hub free to rot the next time a handle
+ * dies. This pass (1) runs the retired-handle denylist over the bio-hub hrefs
+ * too, and (2) asserts per-platform PARITY between the bio hub and the sameAs
+ * entity graph, so a LIVE handle updated on one surface can never silently rot on
+ * the other. It reads the socialLinks array's href VALUES, never the raw file —
+ * LinksPage's own "@theprincejamez is dead" COMMENT would false-red a raw scan
+ * (the scan-your-own-comment class, MP-277). The internal posting-account roster
+ * (src/lib/brand.ts, admin-only, carries the private @rant4daddy + a null sales
+ * handle) is deliberately a different set and is NOT compared here.
+ *
  * WHAT THIS GUARD DELIBERATELY DOES NOT TOUCH
  *   - The domain `apex-financial.org` (og:url, canonical, asset URLs). The
  *     domain legitimately stays Apex post-rebrand (memory: "domain/legal-pages/
@@ -194,6 +212,7 @@ const LD_BRAND_TYPES = new Set([
 const RETIRED_LD = /apex/i;
 
 let sawOrgBrand = false;
+const sameAsUrls = []; // collected for the bio-hub parity pass below
 function walkLd(node) {
   if (Array.isArray(node)) {
     for (const n of node) walkLd(n);
@@ -214,6 +233,9 @@ function walkLd(node) {
   }
   // NEGATIVE: no human-readable text field carries the retired brand token.
   for (const [k, v] of Object.entries(node)) {
+    if (k === "sameAs" && Array.isArray(v)) {
+      for (const u of v) if (typeof u === "string") sameAsUrls.push(u);
+    }
     if (typeof v === "string") {
       if (LD_TEXT_KEYS.has(k) && RETIRED_LD.test(v)) {
         die(
@@ -286,8 +308,94 @@ for (const { re, note } of RETIRED_HANDLES) {
   }
 }
 
+// --- 4. the /links bio hub — the SECOND public "follow" surface ------------
+// See "THE BIO-HUB HALF" in the header. LinksPage.tsx renders
+// apex-financial.org/links and hardcodes the same four profile URLs the sameAs
+// block carries. Extract the socialLinks array's href VALUES (never the raw
+// file — line ~23 carries a "@theprincejamez is dead" comment a raw denylist
+// scan would false-red on).
+const LINKS = join(ROOT, "src/pages/LinksPage.tsx");
+const linksSrc = read(LINKS, "LinksPage.tsx bio hub");
+const socialBlock = (linksSrc.match(/const\s+socialLinks\s*=\s*\[([\s\S]*?)\]\s*;/) || [])[1];
+if (!socialBlock) {
+  die(
+    "could not find the socialLinks array in src/pages/LinksPage.tsx — the /links " +
+      "bio hub's public social links moved or were renamed; a guard that can't find " +
+      "its operand is not green (the 465 fake-success rows).",
+  );
+}
+const linksHandles = [...socialBlock.matchAll(/href:\s*"([^"]+)"/g)].map((m) => m[1]);
+if (linksHandles.length === 0) {
+  die("the socialLinks array in src/pages/LinksPage.tsx has no href values — extraction broke.");
+}
+
+// (a) retired-handle denylist — the SAME list, now over the bio-hub hrefs too.
+for (const href of linksHandles) {
+  for (const { re, note } of RETIRED_HANDLES) {
+    if (re.test(href)) {
+      die(
+        `src/pages/LinksPage.tsx (apex-financial.org/links bio hub) still links the ` +
+          `RETIRED social handle "${href}" (${note}). This is the link-in-bio page every ` +
+          `social profile points at; a dead handle here sends the #1 traffic source to a ` +
+          `profile that no longer exists. Replace it with the canonical handle from ` +
+          `system_settings.social_* and keep index.html sameAs in sync.`,
+      );
+    }
+  }
+}
+
+// (b) cross-surface PARITY — a platform present on BOTH surfaces must carry the
+// SAME profile URL. Catches the drift a denylist can't: a LIVE handle updated on
+// one surface and not the other. Both files are in the same commit, so this is
+// static, CI-safe, and never a DB/snapshot dependency; it fires only when the two
+// public copies actually disagree. Intentional asymmetry (a platform on one
+// surface but not the other) is allowed.
+if (sameAsUrls.length === 0) {
+  die(
+    "index.html JSON-LD carries no sameAs profile URLs — the official-profiles " +
+      "entity graph is gone, so bio-hub parity cannot be verified; a guard that " +
+      "can't find its operand is not green.",
+  );
+}
+const SOCIAL_HOSTS = [
+  "instagram.com", "tiktok.com", "youtube.com", "snapchat.com",
+  "twitter.com", "x.com", "facebook.com", "linkedin.com",
+];
+const normHandle = (u) =>
+  u.toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/+$/, "");
+function byHost(urls) {
+  const m = new Map();
+  for (const u of urls) {
+    const n = normHandle(u);
+    const host = SOCIAL_HOSTS.find((h) => n.startsWith(h));
+    if (!host) continue;
+    if (!m.has(host)) m.set(host, new Set());
+    m.get(host).add(n);
+  }
+  return m;
+}
+const hubByHost = byHost(linksHandles);
+const ldByHost = byHost(sameAsUrls);
+for (const [host, hubSet] of hubByHost) {
+  const ldSet = ldByHost.get(host);
+  if (!ldSet) continue; // present only on the bio hub — allowed
+  const onlyHub = [...hubSet].filter((x) => !ldSet.has(x));
+  const onlyLd = [...ldSet].filter((x) => !hubSet.has(x));
+  if (onlyHub.length || onlyLd.length) {
+    die(
+      `the ${host} profile DRIFTED between the two public "follow Samuel James" ` +
+        `surfaces: the /links bio hub (LinksPage.tsx) links [${[...hubSet].join(", ")}] ` +
+        `but index.html JSON-LD sameAs lists [${[...ldSet].join(", ")}]. A crawler, an ` +
+        `AI answer and a human visitor must all land on one account — update both to the ` +
+        `canonical handle from system_settings.social_*.`,
+    );
+  }
+}
+
 console.log(
   `✅ check:index-brand OK — index.html head + JSON-LD carry brand "${platform}"; ` +
     `no retired "APEX" brand token in any user-facing <title>/<meta> value or ` +
-    `structured-data text field; no retired social handle in any sameAs/URL.`,
+    `structured-data text field; no retired social handle in index.html sameAs or ` +
+    `the /links bio hub (${linksHandles.length} hrefs); the ${hubByHost.size} shared ` +
+    `social platform(s) match byte-for-byte across both public "follow" surfaces.`,
 );

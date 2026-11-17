@@ -42,7 +42,7 @@ name: jsonld-asset-live
 
 on:
   schedule:
-    - cron: "37 14 * * *" # daily ~07:37 Phoenix, offset from share-card-live/vsl-media/brand-static-live; GH schedules drift (p90 ~40min, MP-304)
+    - cron: "38 14 * * *" # daily ~07:38 Phoenix. Unique daily minute (was :37, collided with crawl-entrypoints-live which this comment never checked — see MP-WIB-CRON-COLLISION). Neighbors: brand-static :34, crawl-entrypoints :37, lead-magnet :41, robots :42. Also off vantage-production-sync's hourly :07/:22/:37/:52. Uniqueness enforced by check:cron-collision. GH schedules drift (p90 ~40min, MP-304)
   workflow_dispatch:
   push:
     paths:

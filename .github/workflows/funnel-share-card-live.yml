@@ -35,7 +35,7 @@ name: funnel-share-card-live
 
 on:
   schedule:
-    - cron: "42 14 * * *" # daily ~07:42 Phoenix, offset from share-card-live (14:22) + lead-magnet-cta-live; GH schedules drift (p90 ~40min, MP-304)
+    - cron: "44 14 * * *" # daily ~07:44 Phoenix. Unique daily minute (was :42, collided with robots-indexable-live — see MP-WIB-CRON-COLLISION). Neighbors: crawl-entrypoints :37, jsonld :38, lead-magnet :41, robots :42, hero-carrier :52. Also off vantage-production-sync's hourly :07/:22/:37/:52. Uniqueness enforced by check:cron-collision. GH schedules drift (p90 ~40min, MP-304)
   workflow_dispatch:
   push:
     paths:

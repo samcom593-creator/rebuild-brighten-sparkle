@@ -80,6 +80,9 @@ export const KEYWORD_BY_KEY: Record<Keyword, (typeof KEYWORDS)[number]> = Object
 // its own nurture ladder (see BrandGrowthPanels "Glow-Up Ladder").
 export const LANDING_DOORS: { key: string; door: string; url: string }[] = [
   { key: "GLOWUP", door: "The 30-Day Glow-Up", url: "https://sell4daddy.com/glowup" },
+  { key: "AGENCY", door: "Build Your Agency (landing)", url: "https://sell4daddy.com/agency" },
+  { key: "FITNESS", door: "The Standard Body (landing)", url: "https://sell4daddy.com/fitness" },
+  { key: "MENTORSHIP", door: "Mentorship", url: "https://sell4daddy.com/mentorship" },
 ];
 export const LANDING_DOOR_BY_KEY: Record<string, (typeof LANDING_DOORS)[number]> = Object.fromEntries(LANDING_DOORS.map((d) => [d.key, d]));
 

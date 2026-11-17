@@ -71,6 +71,18 @@ export const KEYWORDS: { key: Keyword; door: string; url: string; reply: string;
 ];
 export const KEYWORD_BY_KEY: Record<Keyword, (typeof KEYWORDS)[number]> = Object.fromEntries(KEYWORDS.map((k) => [k.key, k])) as Record<Keyword, (typeof KEYWORDS)[number]>;
 
+// Public sell4daddy funnel LANDING pages that are not keyword-CTA reply doors
+// (no inbound classifier entry) but ARE live-edge watched. Single source of
+// truth for both the product (components link here) and the two live-edge
+// guards (check-lead-magnet-cta-live + check-funnel-share-card-live, via
+// scripts/lib/funnel-doors-parse.mjs) so a door can never be live in the UI yet
+// invisible to the guards. GLOWUP = The 30-Day Glow-Up lead magnet, which has
+// its own nurture ladder (see BrandGrowthPanels "Glow-Up Ladder").
+export const LANDING_DOORS: { key: string; door: string; url: string }[] = [
+  { key: "GLOWUP", door: "The 30-Day Glow-Up", url: "https://sell4daddy.com/glowup" },
+];
+export const LANDING_DOOR_BY_KEY: Record<string, (typeof LANDING_DOORS)[number]> = Object.fromEntries(LANDING_DOORS.map((d) => [d.key, d]));
+
 /**
  * The keyword a message is asking for. The typed word wins; otherwise the bot's own tier/intent label
  * decides. Returns null when nothing points at a door, so an unrelated comment is never forced into one.

@@ -81,6 +81,7 @@ import http from "node:http";
 import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseFunnelDoors } from "./lib/funnel-doors-parse.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const BRAND_SOURCE = process.env.FUNNEL_SHARE_CARD_BRAND_SOURCE || resolve(__dirname, "../src/lib/brand.ts");
@@ -88,28 +89,15 @@ const CONTROL = process.env.FUNNEL_SHARE_CARD_CONTROL_URL || "https://www.google
 const TIMEOUT_MS = Number(process.env.FUNNEL_SHARE_CARD_TIMEOUT_MS || 25000);
 
 // ---- derive the surface set from source (pure string parsing for --selftest) -
-// Reuse the exact KEYWORDS parse as check-lead-magnet-cta-live.mjs, then add the
-// origin root of those doors as the HUB. Returns { surfaces, parseError }.
+// The doors are KEYWORDS (TEAM/BODY/BUILD) ∪ LANDING_DOORS (GLOWUP) in
+// src/lib/brand.ts, via the shared parser scripts/lib/funnel-doors-parse.mjs —
+// the SAME detector check-lead-magnet-cta-live.mjs uses, so the share-card guard
+// and the page-liveness guard can never watch different surfaces. The HUB is the
+// origin root of those doors (follows the brand if it ever moves hosts). Returns
+// { surfaces, parseError }.
 function parseSurfaces(brandSrc) {
-  const src = String(brandSrc || "");
-  const anchor = src.indexOf("KEYWORDS");
-  if (anchor < 0) return { surfaces: [], parseError: "no KEYWORDS declaration found in brand source" };
-  const tail = src.slice(anchor);
-  const closeIdx = tail.indexOf("];");
-  const block = closeIdx >= 0 ? tail.slice(0, closeIdx) : tail;
-  const doors = [];
-  const seen = new Set();
-  const entryRe = /key:\s*["']([A-Z0-9_]+)["'][\s\S]*?\burl:\s*["'](https?:\/\/[^"']+)["']/g;
-  let m;
-  while ((m = entryRe.exec(block))) {
-    const key = m[1];
-    const url = m[2].replace(/[.,;]+$/, "");
-    if (seen.has(url)) continue;
-    seen.add(url);
-    doors.push({ key, url, label: `${key} door (${url})` });
-  }
-  if (!doors.length) return { surfaces: [], parseError: "KEYWORDS array found but no key/url door pairs parsed — brand.ts shape changed; refusing to assert any card dead" };
-  // HUB = the origin root of the doors (follows the brand if it ever moves hosts).
+  const { doors, parseError } = parseFunnelDoors(brandSrc);
+  if (parseError) return { surfaces: [], parseError };
   let hubOrigin;
   try { hubOrigin = new URL(doors[0].url).origin + "/"; }
   catch (e) { return { surfaces: [], parseError: `door url not parseable as origin: ${e.message}` }; }
@@ -319,11 +307,19 @@ export const KEYWORDS: {}[] = [
   { key: "BUILD", door: "Build Your Agency", url: "https://sell4daddy.com/build", tone: "royal", reply: "z" },
 ];`;
   const { surfaces, parseError } = parseSurfaces(brandFixture);
-  ok(!parseError && surfaces.length === 4, `parse -> 4 surfaces (hub + 3 doors), got ${surfaces.length}${parseError ? " err:" + parseError : ""}`);
+  ok(!parseError && surfaces.length === 4, `parse (KEYWORDS only) -> 4 surfaces (hub + 3 doors), got ${surfaces.length}${parseError ? " err:" + parseError : ""}`);
   ok(surfaces[0].key === "HUB" && surfaces[0].url === "https://sell4daddy.com/", "first surface is HUB at door origin root");
   ok(surfaces.some((s) => s.key === "TEAM" && s.url === "https://sell4daddy.com/team"), "TEAM door derived");
   ok(parseSurfaces("no keywords here").parseError !== null, "missing KEYWORDS -> parseError (refuse to assert)");
   ok(parseSurfaces("const KEYWORDS = [];").parseError !== null, "empty KEYWORDS -> parseError (refuse to assert)");
+  // LANDING_DOORS (GLOWUP) joins the watched surface set: hub + 3 keyword doors + glowup.
+  const withLanding = brandFixture + `
+export const LANDING_DOORS: { key: string; door: string; url: string }[] = [
+  { key: "GLOWUP", door: "The 30-Day Glow-Up", url: "https://sell4daddy.com/glowup" },
+];`;
+  const landed = parseSurfaces(withLanding);
+  ok(!landed.parseError && landed.surfaces.length === 5, `parse (KEYWORDS + LANDING_DOORS) -> 5 surfaces (hub + 3 + glowup), got ${landed.surfaces.length}`);
+  ok(landed.surfaces.some((s) => s.key === "GLOWUP" && s.url === "https://sell4daddy.com/glowup"), "GLOWUP landing door's card is watched");
 
   // 3. parseCardImages: og:image + twitter:image, dedupe, relative resolution.
   const html1 = `<meta property="og:image" content="https://sell4daddy.com/assets/og/home.jpg"><meta name="twitter:image" content="https://sell4daddy.com/assets/og/home.jpg">`;

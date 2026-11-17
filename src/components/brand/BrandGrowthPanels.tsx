@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TonePill } from "@/components/ui/delight/ToneBubble";
 import { useConfirm } from "@/hooks/useConfirm";
-import { accountLabel, fmtNum, pillarLabel } from "@/lib/brand";
+import { accountLabel, fmtNum, pillarLabel, LANDING_DOOR_BY_KEY } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 
 export interface AttributedPost { card_id: string; title: string; url: string | null; account: string | null; pillar: string | null; hook: string | null; leads: number; applications: number }
@@ -101,7 +101,7 @@ export function GlowUpPanel({ stats, onChanged }: { stats: GlowUpStats | undefin
       <div className="rounded-xl border border-border/60 bg-card p-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-[15px]"><span className="font-bold tabular-nums">{fmtNum(stats?.leads_7d ?? null)}</span> leads in the last 7 days · <span className="font-bold tabular-nums">{fmtNum(stats?.leads_total ?? null)}</span> all time</p>
-          <a href="https://sell4daddy.com/glowup" target="_blank" rel="noopener noreferrer" className="text-[15px] font-semibold underline underline-offset-4">Open the page</a>
+          <a href={LANDING_DOOR_BY_KEY.GLOWUP.url} target="_blank" rel="noopener noreferrer" className="text-[15px] font-semibold underline underline-offset-4">Open the page</a>
         </div>
         <div className="mt-2 flex flex-wrap gap-2">
           {Object.entries(STAGES).map(([k, label]) => <TonePill key={k} tone="gold">{k}. {label}: {fmtNum(stats?.by_stage?.[k] ?? 0)}</TonePill>)}

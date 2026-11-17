@@ -65,6 +65,7 @@ import http from "node:http";
 import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseFunnelDoors } from "./lib/funnel-doors-parse.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const BRAND_SOURCE = process.env.LEAD_MAGNET_BRAND_SOURCE || resolve(__dirname, "../src/lib/brand.ts");
@@ -112,30 +113,14 @@ function classify({ networkError, status, body }) {
 }
 
 // ---- derive the door set from source (pure string parsing for --selftest) ---
-// Extract the https://sell4daddy.com/... (or any http(s)) urls declared inside
-// the KEYWORDS = [ ... ] array in src/lib/brand.ts. Returns { doors, parseError }.
+// The watched doors are KEYWORDS (TEAM/BODY/BUILD) ∪ LANDING_DOORS (GLOWUP) in
+// src/lib/brand.ts, via the shared parser scripts/lib/funnel-doors-parse.mjs —
+// the SAME detector check-funnel-share-card-live.mjs uses, so the page-liveness
+// guard and the share-card guard can never watch different surfaces. Returns
+// { doors, parseError }; parseError is set only when the required KEYWORDS array
+// is missing/empty (refuse to assert any door dead off a broken parse).
 function parseDoors(brandSrc) {
-  const src = String(brandSrc || "");
-  const anchor = src.indexOf("KEYWORDS");
-  if (anchor < 0) return { doors: [], parseError: "no KEYWORDS declaration found in brand source" };
-  // slice from KEYWORDS to the first "];" after it (the array close)
-  const tail = src.slice(anchor);
-  const closeIdx = tail.indexOf("];");
-  const block = closeIdx >= 0 ? tail.slice(0, closeIdx) : tail;
-  const doors = [];
-  const seen = new Set();
-  // match: key: "TEAM", ... url: "https://..."  — pull key+url pairs
-  const entryRe = /key:\s*["']([A-Z0-9_]+)["'][\s\S]*?\burl:\s*["'](https?:\/\/[^"']+)["']/g;
-  let m;
-  while ((m = entryRe.exec(block))) {
-    const key = m[1];
-    const url = m[2].replace(/[.,;]+$/, "");
-    if (seen.has(url)) continue;
-    seen.add(url);
-    doors.push({ key, url, label: `${key} door (${url})` });
-  }
-  if (!doors.length) return { doors: [], parseError: "KEYWORDS array found but no key/url door pairs parsed — brand.ts shape changed; refusing to assert any door dead" };
-  return { doors, parseError: null };
+  return parseFunnelDoors(brandSrc);
 }
 
 // ---- probes ---------------------------------------------------------------
@@ -217,16 +202,26 @@ export const KEYWORDS: { key: Keyword; door: string; url: string }[] = [
 ];
 export const SOMETHING_ELSE = [{ url: "https://not-a-door.example/x" }];`;
   const parsed = parseDoors(brandFixture);
-  ok(parsed.parseError === null && parsed.doors.length === 3, "parse -> exactly 3 doors (ignores urls outside KEYWORDS)");
+  ok(parsed.parseError === null && parsed.doors.length === 3, "parse (KEYWORDS only, no LANDING_DOORS) -> exactly 3 doors");
   ok(parsed.doors[0].key === "TEAM" && parsed.doors[0].url === "https://sell4daddy.com/team", "parse -> TEAM url (reply-string dup de-duped, not double-counted)");
   ok(parsed.doors.some((d) => d.url === "https://sell4daddy.com/build"), "parse -> BUILD url");
   ok(!parsed.doors.some((d) => d.url.includes("not-a-door")), "parse ignores urls outside the KEYWORDS array");
   ok(parseDoors("export const NOPE = 1;").parseError !== null, "no KEYWORDS -> parseError (never asserts dead)");
   ok(parseDoors("export const KEYWORDS = [];").parseError !== null, "empty KEYWORDS -> parseError (shape changed, refuse to assert)");
+  // LANDING_DOORS (GLOWUP) is unioned with KEYWORDS, deduped by url. A brand.ts
+  // without LANDING_DOORS stays at 3 (benign absence); with it, /glowup is watched.
+  const withLanding = brandFixture + `
+export const LANDING_DOORS: { key: string; door: string; url: string }[] = [
+  { key: "GLOWUP", door: "The 30-Day Glow-Up", url: "https://sell4daddy.com/glowup" },
+];`;
+  const parsedL = parseDoors(withLanding);
+  ok(parsedL.parseError === null && parsedL.doors.length === 4, `parse (KEYWORDS + LANDING_DOORS) -> 4 doors, got ${parsedL.doors.length}`);
+  ok(parsedL.doors.some((d) => d.key === "GLOWUP" && d.url === "https://sell4daddy.com/glowup"), "parse -> GLOWUP landing door watched");
   // parses the REAL brand.ts if present (proves it stays in sync with source)
   try {
     const realDoors = parseDoors(readFileSync(BRAND_SOURCE, "utf8"));
     ok(realDoors.parseError === null && realDoors.doors.length >= 1, `parse real brand.ts -> ${realDoors.doors.length} live door(s)`);
+    ok(realDoors.doors.some((d) => d.url === "https://sell4daddy.com/glowup"), "real brand.ts -> /glowup is in the watched door set");
   } catch { ok(true, "real brand.ts not readable in this context (skipped)"); }
 
   // 3. End-to-end probeDoor against a local server (faithful fetch pipeline).

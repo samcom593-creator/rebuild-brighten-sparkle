@@ -3,7 +3,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 // request time so the pin pinned nothing underneath; same WORKER_ERROR class
 // and same fix as submit-contracting-intake (63fcf739).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
-import { CONTRACTING_PROFILE_URL, NOT_CONTRACTED_YET } from "../_shared/contracting-profile.ts";
+import { CONTRACTING_PROFILE_URL, MGN_CONTRACTING_URL, NOT_CONTRACTED_YET } from "../_shared/contracting-profile.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
 import { readSlackInviteUrl } from "../_shared/slack-invite.ts";
 
@@ -164,6 +164,11 @@ const handler = async (req: Request): Promise<Response> => {
         <p>Add your NPN number, first name, last name, email address, and resident state. Our team uses this to coordinate the carrier portal steps and track Combine, AFLAC, GTO, and Ethos on your profile. ${NOT_CONTRACTED_YET}</p>
         <a href="${contractingLink || CONTRACTING_PROFILE_URL}" class="button">Complete contracting profile →</a>
       </div>
+      <div class="step">
+        <h3><span class="step-number">5</span> Start Carrier Contracting in the MGN Agent Hub</h3>
+        <p>Carrier contracting runs through the MGN Agent Hub. Set up your account and complete each carrier there; your team confirms them on your profile as they land.</p>
+        <a href="${MGN_CONTRACTING_URL}" class="button">Open the MGN Agent Hub →</a>
+      </div>
       ` : `
       <div class="step">
         <h3><span class="step-number">2</span> Set Up Your Galaxy Account</h3>
@@ -178,7 +183,7 @@ const handler = async (req: Request): Promise<Response> => {
       `}
 
       <div class="step">
-        <h3><span class="step-number">${isLicensed ? '5' : '4'}</span> ${isLicensed ? 'Complete Online Training' : 'Complete the Licensing Roadmap'}</h3>
+        <h3><span class="step-number">${isLicensed ? '6' : '4'}</span> ${isLicensed ? 'Complete Online Training' : 'Complete the Licensing Roadmap'}</h3>
         <p>${isLicensed ? 'Finish the onboarding, script, objections, ReadyMode, pipeline, deal-posting, and underwriting walkthroughs before launch.' : 'Update course, exam, fingerprints, and license milestones as they happen. After your license posts, add your NPN and book onboarding.'}</p>
         <a href="${isLicensed ? finalCourseLink : PORTAL_LINK}" class="button">${isLicensed ? 'Start Training' : 'Open My Roadmap'} →</a>
       </div>

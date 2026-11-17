@@ -1,13 +1,17 @@
 /**
- * The contracting profile link and the one email that asks for it.
+ * The contracting links and the one email that asks for them.
  *
- * Carrier contracting now happens by hand in each carrier's own portal. The only thing the website asks an agent for is
- * five profile fields, on a signed-in page where their details are already filled in. There is no spreadsheet, no
- * private channel and no desk behind it, and nothing here claims a carrier has been contacted.
+ * Carrier contracting runs through the MGN Agent Hub (Sam, 2026-11-17: "we're no longer contracting out of the
+ * Galaxy link, we're contracting out of the MGN link"). The only thing the website itself asks an agent for is five
+ * profile fields — contracting questions, never documents — on a signed-in page where their details are already
+ * filled in. There is no spreadsheet, no private channel and no desk behind it, and nothing here claims a carrier
+ * has been contacted.
  *
  * Keep the wording in this file the single source: the welcome email, the licensing email and any later message import
- * it, so the instruction cannot drift between them.
+ * it, so the instruction cannot drift between them. MGN_CONTRACTING_URL must stay equal to CONTRACTING_LINK_URL in
+ * src/lib/contractingLinks.ts (the vitest contract pins them together).
  */
+export const MGN_CONTRACTING_URL = "https://mgnagenthub.com/dashboard";
 export const CONTRACTING_PROFILE_URL = "https://apex-financial.org/dashboard/contracting-profile";
 
 /** The sign-off the existing welcome emails already use. */
@@ -23,7 +27,9 @@ export function contractingProfileEmailText(firstName: string, link: string = CO
   return [
     `Hi ${name},`,
     "",
-    "Please complete your contracting profile with your NPN number, first name, last name, email address, and resident state.",
+    `Carrier contracting runs through the MGN Agent Hub. Start here: ${MGN_CONTRACTING_URL}`,
+    "",
+    "Then complete your contracting profile with your NPN number, first name, last name, email address, and resident state.",
     "",
     `Complete contracting profile: ${link}`,
     "",
@@ -41,7 +47,8 @@ const esc = (s: string): string => s.replace(/&/g, "&amp;").replace(/</g, "&lt;"
 export function contractingProfileEmailHtml(firstName: string, link: string = CONTRACTING_PROFILE_URL): string {
   const name = esc(firstName.trim() || "there");
   return `<p>Hi ${name},</p>
-<p>Please complete your contracting profile with your NPN number, first name, last name, email address, and resident state.</p>
+<p>Carrier contracting runs through the MGN Agent Hub. <a href="${esc(MGN_CONTRACTING_URL)}">Start contracting in the MGN Agent Hub</a></p>
+<p>Then complete your contracting profile with your NPN number, first name, last name, email address, and resident state.</p>
 <p><a href="${esc(link)}">Complete contracting profile</a></p>
 <p>Our team will use this information to coordinate the carrier portal steps and track Combine, AFLAC, GTO, and Ethos on your profile.</p>
 <p>${NOT_CONTRACTED_YET}</p>

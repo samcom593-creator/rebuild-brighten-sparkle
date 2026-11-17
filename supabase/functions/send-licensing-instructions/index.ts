@@ -6,7 +6,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { logFunctionError, writeAudit } from "../_shared/audit.ts";
 import { SCHEDULING_LINKS } from "../_shared/apex.ts";
-import { CONTRACTING_PROFILE_URL, NOT_CONTRACTED_YET } from "../_shared/contracting-profile.ts";
+import { CONTRACTING_PROFILE_URL, MGN_CONTRACTING_URL, NOT_CONTRACTED_YET } from "../_shared/contracting-profile.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
 import { escapeHtml } from "../_shared/notify-caller-policy.ts";
 import { isDepartedAgent } from "../_shared/departed.ts";
@@ -196,7 +196,8 @@ const handler = async (req: Request): Promise<Response> => {
               ${buildStepCard("2", "Book Your Onboarding Call", "Book your 30-minute onboarding call to lock in your first-week plan.", SCHEDULING_LINKS.licensed, "Book My Call →", "#667eea", "102, 126, 234")}
               ${buildStepCard("3", "Set Up Your Galaxy Account", "Open the portal, sign in with your email, confirm your profile, and use the live roadmap as your source of truth.", PORTAL_LINK, "Open My Account &amp; Roadmap →", "#14b8a6", "20, 184, 166")}
               ${buildStepCard("4", "Complete Your Contracting Profile", `Add your NPN number, first name, last name, email address, and resident state. Our team uses this to coordinate the carrier portal steps and track Combine, AFLAC, GTO, and Ethos on your profile. ${NOT_CONTRACTED_YET}`, CONTRACTING_LINK, "Complete contracting profile →", "#f59e0b", "245, 158, 11")}
-              ${buildStepCard("5", "Finish Online Training", "Complete onboarding, scripts, objections, ReadyMode, pipeline, deal-posting, and underwriting training before launch.", TRAINING_LINK, "Start Training →", "#4CAF50", "76, 175, 80")}
+              ${buildStepCard("5", "Start Carrier Contracting in the MGN Agent Hub", "Carrier contracting runs through the MGN Agent Hub. Set up your account and complete each carrier there; your team confirms them on your profile as they land.", MGN_CONTRACTING_URL, "Open the MGN Agent Hub →", "#D4AF37", "212, 175, 55")}
+              ${buildStepCard("6", "Finish Online Training", "Complete onboarding, scripts, objections, ReadyMode, pipeline, deal-posting, and underwriting training before launch.", TRAINING_LINK, "Start Training →", "#4CAF50", "76, 175, 80")}
             </td>
           </tr>
           <tr>

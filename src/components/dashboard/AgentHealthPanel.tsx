@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { CheckCircle2, Circle, Hash, KeyRound } from "lucide-react";
-import { CONTRACTING_PROFILE_URL } from "@/lib/contractingLinks";
+import { CONTRACTING_LINK_URL } from "@/lib/contractingLinks";
 
-const CONTRACTING_LINK = CONTRACTING_PROFILE_URL;
+const CONTRACTING_LINK = CONTRACTING_LINK_URL;
 
 // Compact agent health for the profile drawer: placement (placing vs falling off),
 // access (Discord / portal login), and pre-licensing progress. The Slack invite line left with the

@@ -2,10 +2,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
-  CONTRACTING_PROFILE_SUBJECT, CONTRACTING_PROFILE_URL as EDGE_URL, CONTRACTING_TEAM_NAME, NOT_CONTRACTED_YET,
+  CONTRACTING_PROFILE_SUBJECT, CONTRACTING_PROFILE_URL as EDGE_URL, CONTRACTING_TEAM_NAME,
+  MGN_CONTRACTING_URL as EDGE_MGN_URL, NOT_CONTRACTED_YET,
   contractingProfileEmailHtml, contractingProfileEmailText,
 } from "../../../supabase/functions/_shared/contracting-profile";
-import { CONTRACTING_PROFILE_URL as APP_URL } from "@/lib/contractingLinks";
+import { CONTRACTING_LINK_URL, CONTRACTING_PROFILE_URL as APP_URL, MGN_CONTRACTING_URL } from "@/lib/contractingLinks";
 
 const root = path.resolve(__dirname, "../../..");
 const read = (f: string) => fs.readFileSync(path.join(root, f), "utf8");
@@ -24,11 +25,13 @@ describe("the contracting profile email", () => {
     expect(CONTRACTING_PROFILE_SUBJECT).toBe("Complete your contracting profile");
   });
 
-  it("has the exact body: the five fields, the four carriers in order, the link, the not-contracted-yet sentence and the team sign-off", () => {
+  it("has the exact body: the MGN hub first, the five fields, the four carriers in order, the links, the not-contracted-yet sentence and the team sign-off", () => {
     expect(contractingProfileEmailText("Ana")).toBe([
       "Hi Ana,",
       "",
-      "Please complete your contracting profile with your NPN number, first name, last name, email address, and resident state.",
+      `Carrier contracting runs through the MGN Agent Hub. Start here: ${EDGE_MGN_URL}`,
+      "",
+      "Then complete your contracting profile with your NPN number, first name, last name, email address, and resident state.",
       "",
       `Complete contracting profile: ${EDGE_URL}`,
       "",
@@ -41,15 +44,19 @@ describe("the contracting profile email", () => {
     ].join("\n"));
   });
 
-  it("uses one link, and it is the same link the app uses", () => {
+  it("uses two links, each the same link the app uses: the MGN hub for contracting, the profile page for the five fields", () => {
     expect(EDGE_URL).toBe(APP_URL);
     expect(new URL(EDGE_URL).pathname).toBe("/dashboard/contracting-profile");
+    expect(EDGE_MGN_URL).toBe(MGN_CONTRACTING_URL);
+    expect(CONTRACTING_LINK_URL).toBe(MGN_CONTRACTING_URL);
+    expect(new URL(EDGE_MGN_URL).host).toBe("mgnagenthub.com");
   });
 
-  it("the HTML version carries the same words, one link with the exact label, and escapes the name", () => {
+  it("the HTML version carries the same words, the two links with exact labels, and escapes the name", () => {
     const html = contractingProfileEmailHtml('<b>Ana</b> & "Co"');
     expect(html).toContain("Hi &lt;b&gt;Ana&lt;/b&gt; &amp; &quot;Co&quot;,");
-    expect(html.match(/<a /g)).toHaveLength(1);
+    expect(html.match(/<a /g)).toHaveLength(2);
+    expect(html).toContain(`<a href="${EDGE_MGN_URL}">Start contracting in the MGN Agent Hub</a>`);
     expect(html).toContain(`<a href="${EDGE_URL}">Complete contracting profile</a>`);
     expect(html).toContain(NOT_CONTRACTED_YET);
     expect(html).toContain(CONTRACTING_TEAM_NAME);

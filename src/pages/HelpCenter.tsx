@@ -27,7 +27,7 @@ const FAQ: FaqItem[] = [
   { category: "Getting Started", q: "I just got hired. What's the very first thing I do?",
     a: "1) Schedule your prelicensing course immediately. 2) Pass your state exam (most people do it in 14 days if serious). 3) The day you're licensed, your manager onboards you, runs your carrier contracts, and gives you your first lead block. Until you're licensed you can't write business, so don't waste days." },
   { category: "Getting Started", q: "Where do I find my carrier contracting links?",
-    a: "Complete your contracting profile at /dashboard/contracting-profile with your NPN number, first and last name, email and resident state. Your team then confirms Combine, AFLAC, GTO and Ethos with you. If a carrier link is missing, open the Support Desk tab on this page." },
+    a: "Carrier contracting runs through the MGN Agent Hub at mgnagenthub.com/dashboard — set up your account there and complete each carrier. Also complete your contracting profile at /dashboard/contracting-profile with your NPN number, first and last name, email and resident state so your team can confirm Combine, AFLAC, GTO and Ethos with you. If something is missing, open the Support Desk tab on this page." },
   { category: "Getting Started", q: "What's the agent code on my profile?",
     a: "Your agent code is your internal identifier across recruiting, contracting, production, and reporting. You can see it on /dashboard/profile." },
 

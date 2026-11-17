@@ -674,8 +674,9 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // One contracting path only: the signed-in "Complete your contracting profile" page. Carrier contracting itself
-    // is tracked by hand on the agent's profile; there is no manager-specific URL.
+    // The profile-intake link only: the signed-in "Complete your contracting profile" page (five contracting
+    // questions). Carrier contracting itself runs through the MGN Agent Hub — welcome-new-agent carries that link
+    // (MGN_CONTRACTING_URL) in its own step card. There is no manager-specific URL.
     const contractingLink = CONTRACTING_PROFILE_URL;
 
     // wave-p1j (audit L151): the previous fire-and-forget `.catch(console.log)`

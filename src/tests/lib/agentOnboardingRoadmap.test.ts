@@ -32,19 +32,15 @@ describe("agent onboarding roadmap", () => {
     expect(roadmap).toContain('table: "messaging_identity_links"');
     expect(roadmap).toContain('table: "interview_events"');
     expect(roadmap).toContain('table: "onboarding_progress"');
-    expect(roadmap).toContain('table: "agent_documents"');
   });
 
-  it("keeps every required launch milestone visible", () => {
+  it("keeps every required launch milestone visible, and contracting asks contracting questions only (no document steps)", () => {
     for (const step of [
       "Confirm your account and profile",
       "Finish licensing and confirm your NPN",
       "Contracting profile",
       "Book your onboarding call",
-      "Upload license and identity documents",
-      "Secure and upload E&O coverage",
-      "Prepare EFT documentation",
-      "Carrier appointments",
+      "Carrier contracting",
       "Complete every onboarding module",
       "Get ReadyMode field-ready",
       "Post your first deal",
@@ -52,6 +48,18 @@ describe("agent onboarding roadmap", () => {
       expect(roadmap).toContain(step);
     }
     expect(roadmap).toContain('label: `Join the ${BRAND.shortName} Slack`');
+    // Sam, 2026-11-17: contracting runs through the MGN Agent Hub and must not require content/document
+    // asks — no driver's license or ID upload, no E&O certificate, no voided check, no document vault step.
+    expect(roadmap).toContain("CONTRACTING_LINK_URL");
+    for (const retired of [
+      "Upload license and identity documents",
+      "Secure and upload E&O coverage",
+      "Prepare EFT documentation",
+      'table: "agent_documents"',
+      "contracting-documents",
+    ]) {
+      expect(roadmap).not.toContain(retired);
+    }
   });
 
   it("returns trained agents to the launch dashboard instead of skipping the roadmap", () => {

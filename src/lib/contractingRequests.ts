@@ -4,6 +4,7 @@
  * module only reads, formats and exports. Nothing here invents a value.
  */
 import { supabase } from "@/integrations/supabase/client";
+import { CONTRACTING_LINK_URL } from "@/lib/contractingLinks";
 
 /** The destination's headers, in order. The export and the sheet sync both refuse to deviate from these. */
 export const CONTRACTING_HEADERS = [
@@ -238,7 +239,7 @@ export function followupText(r: Pick<CallRow, "followup">, nowMs: number = Date.
 }
 
 export function contractingLink(): string {
-  return `${typeof window !== "undefined" ? window.location.origin : "https://apex-financial.org"}/dashboard/contracting-profile`;
+  return CONTRACTING_LINK_URL;
 }
 
 /** The text the Text button pre-fills. First name only; a record whose name is a raw email gets "there". */

@@ -36,7 +36,6 @@ export type RequirementKey =
   | "npn_comp_missing"
   | "intake_missing"
   | "intake_review"
-  | "documents_missing"
   | "carrier_pending"
   | "carrier_none"
   | "training_not_started"
@@ -191,7 +190,6 @@ export const REQUIREMENT_TRACK: Record<RequirementKey, Track> = {
   npn_comp_missing: "licensing",
   intake_missing: "contracting",
   intake_review: "contracting",
-  documents_missing: "contracting",
   carrier_pending: "contracting",
   carrier_none: "contracting",
   training_not_started: "training",
@@ -219,7 +217,6 @@ export const REQUIREMENT_PREREQUISITES: Record<RequirementKey, readonly Prerequi
   npn_comp_missing: ["licensed"],
   intake_missing: ["licensed", "not_producing"],
   intake_review: ["licensed", "not_producing"],
-  documents_missing: ["licensed", "not_producing"],
   carrier_pending: ["licensed", "intake_accepted", "not_producing"],
   carrier_none: ["licensed", "intake_accepted", "not_producing"],
   training_not_started: ["training_catalog"],
@@ -428,19 +425,9 @@ export function deriveExceptions(f: OnboardingFacts, now: Date = new Date()): On
         }));
       }
     }
-    const missingDocs = [f.eo_on_file === true ? null : "E&O certificate", f.eft_on_file === true ? null : "EFT (direct deposit)"].filter(Boolean);
-    if (missingDocs.length > 0) {
-      out.push(mk(f, "documents_missing", {
-        label: `${missingDocs.join(" and ")} not on file`,
-        why: "Carriers will not appoint without E&O and direct-deposit details.",
-        ownerKind: "contracting",
-        waitingSince: licensedSince,
-        waitingBasis: "since licensed",
-        nextAction: `Collect the ${missingDocs.join(" and ")}.`,
-        resolution: { kind: "open_contracting" },
-        blocking: true,
-      }));
-    }
+    // No documents_missing exception any more (Sam, 2026-11-17): carrier contracting runs through the MGN
+    // Agent Hub, and anything a carrier needs (E&O, EFT, ID) the carrier's own portal collects. Contracting
+    // here asks contracting questions only, so a missing upload is not a block and never queues a hire.
     // Carrier authorization. Training never satisfies this; an accepted intake
     // never satisfies this. A first deal is evidence a carrier appointed them.
     if (f.contracting_started === true && !carrierActive) {

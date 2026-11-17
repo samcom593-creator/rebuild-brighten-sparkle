@@ -14,6 +14,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { CONTRACTING_LINK_URL } from "@/lib/contractingLinks";
 import { ContractingIntakeAdmin } from "@/components/contracting/ContractingIntakeAdmin";
 import { ContractingRequestsBoard } from "@/components/contracting/ContractingRequestsBoard";
 import { ContractingReviewWorkspace } from "@/components/contracting-review/ContractingReviewWorkspace";
@@ -293,19 +294,18 @@ function ContractDocuments() {
 /* ───────────────────────── Shared pieces ───────────────────────── */
 
 /**
- * The contracting link. One link for everyone: it opens the signed-in "Complete your contracting profile" page, where the
- * person's own details are prefilled and they add the rest. Staff type no name and no email to make it, and it works the
- * same for every agent. Copying it sends nothing.
+ * The contracting link. One link for everyone: the MGN Agent Hub, where carrier contracting actually happens now
+ * (2026-11-17, replacing the Galaxy profile link as the link we hand out). It works the same for every agent and
+ * copying it sends nothing. The five-field profile intake still exists for our own tracking; see ContractingProfile.
  */
 function ContractingLinkCard({ copyLink, copiedId }: { copyLink: (id: string, url: string) => Promise<void>; copiedId: string | null }) {
-  const origin = typeof window !== "undefined" ? window.location.origin : "https://apex-financial.org";
-  const url = `${origin}/dashboard/contracting-profile`;
+  const url = CONTRACTING_LINK_URL;
   return (
     <GlassCard className="p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0 sm:flex-1">
           <h2 className="text-sm font-semibold text-foreground">Contracting link</h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">Send this to any agent. They sign in, check the details we already have, and add their NPN, name, email and resident state. You type nothing.</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">Send this to any agent. It opens the MGN Agent Hub, where they contract with each carrier. You type nothing.</p>
         </div>
         <Button size="sm" variant="outline" className="h-10" onClick={() => copyLink("contracting-profile-link", url)}>
           {copiedId === "contracting-profile-link"

@@ -148,11 +148,10 @@ describe("onboarding exception derivation", () => {
     expect(keys(facts({ has_account: false }))).toContain("account_missing");
   });
 
-  it("documents name exactly what is missing", () => {
-    const e = deriveExceptions(facts({ first_deal_at: null, eo_on_file: false, eft_on_file: true }), NOW).find((x) => x.key === "documents_missing");
-    expect(e?.label).toBe("E&O certificate not on file");
-    const both = deriveExceptions(facts({ first_deal_at: null, eo_on_file: false, eft_on_file: false }), NOW).find((x) => x.key === "documents_missing");
-    expect(both?.label).toBe("E&O certificate and EFT (direct deposit) not on file");
+  it("missing documents never queue a hire: contracting asks contracting questions only (Sam, 2026-11-17)", () => {
+    // Carrier contracting runs through the MGN Agent Hub; E&O / EFT / ID are the carrier portal's to collect.
+    const ks = keys(facts({ first_deal_at: null, eo_on_file: false, eft_on_file: false }));
+    expect(ks).not.toContain("documents_missing");
     // A producer already wrote business through a carrier: not queued as a block.
     expect(keys(facts({ eo_on_file: false, eft_on_file: false, contracting_started: false, intake_status: null }))
       .filter((k) => REQUIREMENT_TRACK[k] === "contracting")).toEqual([]);

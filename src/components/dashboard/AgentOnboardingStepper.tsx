@@ -10,7 +10,6 @@ import {
   FileCheck2,
   GraduationCap,
   Headphones,
-  Landmark,
   LockKeyhole,
   MessageSquare,
   RefreshCw,
@@ -33,7 +32,7 @@ import { TRAINING_ROUTES } from "@/lib/trainingRoutes";
 import { cn } from "@/lib/utils";
 import { useRealtimeTable } from "@/shared/realtime/useRealtimeTable";
 
-import { CONTRACTING_PROFILE_PATH } from "@/lib/contractingLinks";
+import { CONTRACTING_LINK_URL, CONTRACTING_PROFILE_PATH } from "@/lib/contractingLinks";
 type StepStatus = "complete" | "current" | "available" | "locked";
 
 interface OnboardingStep {
@@ -74,7 +73,6 @@ interface LaunchDetails {
     avatar_url: string | null;
     photo_url: string | null;
   } | null;
-  documents: Array<{ kind: string; status: string }>;
 }
 
 const STEP_ICONS = {
@@ -83,9 +81,6 @@ const STEP_ICONS = {
   license: ShieldCheck,
   intake: FileCheck2,
   call: CalendarCheck2,
-  identity_documents: FileCheck2,
-  eo: ShieldCheck,
-  eft: Landmark,
   carriers: Building2,
   training: GraduationCap,
   dialer: Headphones,
@@ -118,7 +113,6 @@ function buildCompleteLaunchSteps(
   const source = new Map(roadmap.steps.map((step) => [step.key, step]));
   const agent = details?.agent;
   const profile = details?.profile;
-  const documents = details?.documents ?? [];
   const licensed = agent?.license_status === "licensed" || roadmap.path === "licensed";
   const profileReady = Boolean(
     profile?.full_name?.trim()
@@ -137,23 +131,6 @@ function buildCompleteLaunchSteps(
   const callBooked = originalContracting?.status === "complete"
     || originalContracting?.label.toLowerCase().includes("finish contracting");
   const intakeReceived = localIntakeReceipt || originalContracting?.status === "complete";
-  const approvedLicense = documents.some((doc) => doc.kind === "license" && doc.status === "approved");
-  const approvedId = documents.some((doc) => doc.kind === "id" && doc.status === "approved");
-  const submittedIdentityDocuments = documents.some(
-    (doc) => ["license", "id"].includes(doc.kind) && doc.status === "submitted",
-  );
-  const identityDocumentsReady = approvedLicense && approvedId;
-  const approvedEo = documents.some((doc) => doc.kind === "eo_certificate" && doc.status === "approved");
-  const submittedEo = documents.some((doc) => doc.kind === "eo_certificate" && doc.status === "submitted");
-  const eoExpiry = agent?.eo_expires_at?.trim();
-  const eoExpiryTime = eoExpiry
-    ? new Date(eoExpiry.length === 10 ? `${eoExpiry}T23:59:59` : eoExpiry).getTime()
-    : Number.NaN;
-  const eoExpired = Number.isFinite(eoExpiryTime) && eoExpiryTime < Date.now();
-  const eoCurrent = !eoExpired && (Boolean(agent?.eo_certificate_url) || approvedEo);
-  const approvedEft = documents.some((doc) => doc.kind === "voided_check" && doc.status === "approved");
-  const submittedEft = documents.some((doc) => doc.kind === "voided_check" && doc.status === "submitted");
-  const eftReady = Boolean(agent?.eft_ready) || approvedEft;
   const carriersReady = Boolean(agent?.contracted_at);
 
   const steps: OnboardingStep[] = [
@@ -210,52 +187,14 @@ function buildCompleteLaunchSteps(
       action_url: callBooked || !licensed ? null : SCHEDULING_LINKS.onboarding,
     },
     {
-      key: "identity_documents",
-      label: "Upload license and identity documents",
-      detail: identityDocumentsReady
-        ? "Your license and identity documents are approved in the private document vault."
-        : submittedIdentityDocuments
-          ? "One or more identity documents are uploaded and waiting for review."
-          : "Upload your insurance license and government-issued ID privately for appointment verification.",
-      status: identityDocumentsReady ? "complete" : licensed ? "available" : "locked",
-      action_label: identityDocumentsReady || !licensed ? null : "Open private documents",
-      action_url: identityDocumentsReady || !licensed ? null : "/dashboard/profile#contracting-documents",
-    },
-    {
-      key: "eo",
-      label: "Secure and upload E&O coverage",
-      detail: eoCurrent
-        ? "An approved E&O certificate is on file."
-        : eoExpired
-          ? "The E&O certificate on file has expired. Replace it before carrier appointment work continues."
-        : submittedEo
-          ? "Your E&O certificate is uploaded and waiting for review."
-          : "Purchase active errors-and-omissions coverage if needed, then upload the certificate privately.",
-      status: eoCurrent ? "complete" : licensed ? "available" : "locked",
-      action_label: eoCurrent || !licensed ? null : (submittedEo ? "View documents" : "Open E&O and documents"),
-      action_url: eoCurrent || !licensed ? null : "/dashboard/profile#contracting-documents",
-    },
-    {
-      key: "eft",
-      label: "Prepare EFT documentation",
-      detail: eftReady
-        ? "EFT readiness is confirmed."
-        : submittedEft
-          ? "Your voided check or bank letter is uploaded and waiting for review."
-          : "Upload a voided check or bank letter privately. Enter account and routing numbers only inside carrier portals.",
-      status: eftReady ? "complete" : licensed ? "available" : "locked",
-      action_label: eftReady || !licensed ? null : "Upload EFT document",
-      action_url: eftReady || !licensed ? null : "/dashboard/profile#contracting-documents",
-    },
-    {
       key: "carriers",
-      label: "Carrier appointments",
+      label: "Carrier contracting",
       detail: carriersReady
         ? "Carrier contracting is recorded and your producer setup is active."
-        : "We coordinate carrier-specific forms, signatures, EFT, and appointment requirements after your OneLink intake.",
+        : "Carrier contracting runs through the MGN Agent Hub. Open it, set up your account, and complete each carrier there; your team confirms them on your profile as they land.",
       status: carriersReady ? "complete" : licensed ? "available" : "locked",
-      action_label: carriersReady || !licensed ? null : "Book your onboarding call",
-      action_url: carriersReady || !licensed ? null : SCHEDULING_LINKS.onboarding,
+      action_label: carriersReady || !licensed ? null : "Open the MGN Agent Hub",
+      action_url: carriersReady || !licensed ? null : CONTRACTING_LINK_URL,
     },
     {
       key: "training",
@@ -371,20 +310,11 @@ export function AgentOnboardingStepper({ agentId }: { agentId: string }) {
         : agent?.user_id
           ? supabase.from("profiles").select("full_name,email,phone,state,avatar_url,photo_url").eq("user_id", agent.user_id).maybeSingle()
           : Promise.resolve({ data: null, error: null });
-      const [profileResult, documentsResult] = await Promise.all([
-        profileQuery,
-        supabase
-          .from("agent_documents" as never)
-          .select("kind,status")
-          .eq("agent_id", agentId),
-      ]);
+      const profileResult = await profileQuery;
 
       return {
         agent,
         profile: profileResult.error ? null : profileResult.data,
-        documents: documentsResult.error
-          ? []
-          : (documentsResult.data ?? []) as unknown as Array<{ kind: string; status: string }>,
       };
     },
     staleTime: 15_000,
@@ -395,7 +325,6 @@ export function AgentOnboardingStepper({ agentId }: { agentId: string }) {
     void queryClient.invalidateQueries({ queryKey: detailsKey });
   };
   useRealtimeTable({ table: "agents", filter: `id=eq.${agentId}`, channelSuffix: `roadmap-agent-${agentId}` }, refresh);
-  useRealtimeTable({ table: "agent_documents", filter: `agent_id=eq.${agentId}`, channelSuffix: `roadmap-documents-${agentId}` }, refresh);
   useRealtimeTable({ table: "onboarding_progress", filter: `agent_id=eq.${agentId}`, channelSuffix: `roadmap-training-${agentId}` }, refresh);
   useRealtimeTable({ table: "interview_events", filter: `agent_id=eq.${agentId}`, channelSuffix: `roadmap-call-${agentId}` }, refresh);
   useRealtimeTable({ table: "messaging_identity_links", filter: `agent_id=eq.${agentId}`, channelSuffix: `roadmap-slack-${agentId}` }, refresh);

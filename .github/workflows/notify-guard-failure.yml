@@ -44,6 +44,7 @@ on:
       - brand-static-live
       - crawl-entrypoints-live
       - edge-boot
+      - font-preload-live
       - funnel-capture
       - funnel-share-card-live
       - hero-carrier-count-live

@@ -1,0 +1,81 @@
+# Is the brand FONT the live <head> PRELOADS still ALIVE on the edge? (MP-WIB-FONT-PRELOAD-LIVE)
+#
+# The served index.html head carries `<link rel="preload" as="font"
+# href="/fonts/hanken-grotesk.woff2" crossorigin>` — the brand typeface, fetched
+# at render-blocking priority so the first paint is in the Brand-Bible-locked face.
+# The woff2 is a fixed-name static under /fonts/ (OUTSIDE Vite's content-hashed
+# build), so a deploy that drops it, a rename that ships the <link> but not the
+# renamed file, or a fonts/ path repoint kills the typeface for EVERY page at once.
+# The browser silently swaps to the system sans-serif: no error, a 200 shell, and
+# the whole site renders in the wrong font. Typography is a locked brand element
+# (Brand Bible Ch 6; drift is 🔴) and a sitewide fallback is the most visible brand
+# break there is — yet invisible to any check that only watches the shell's status.
+#
+# THE SOURCE/LIVE SPLIT THIS CLOSES. check-brand-static-live parses the head's
+# <link rel=icon / apple-touch-icon / manifest> and probes the favicon / apple-
+# touch / pwa-icon chain + manifest icons — it does NOT parse rel=preload / as=font,
+# so the typeface is a different head tag it never reads. check-jsonld-asset-live
+# probes same-origin JSON-LD media (the logo); a font is not a JSON-LD asset. The
+# bundle guards watch the hashed JS/CSS; the preloaded font is a head-declared root
+# static, neither. The preloaded brand FONT was the one render-critical head asset
+# with no from-head liveness guard. This is that guard.
+#
+# vercel.json's catch-all rewrite EXEMPTS /fonts/, so a missing font today returns a
+# real 404 text/plain (measured on prod 2026-11-17), not the 200-text/html SPA
+# shell. But the exemption is one config line — drop `fonts/` from the negative
+# lookahead and a missing font falls through to the shell and 200s text/html (the
+# 465-InsuraCloud masquerade, proven on this origin for root statics). A status
+# check reads that as success; check-font-preload-live.mjs does not — a live font
+# must serve 200/206 AND a font/* content-type. That discriminator survives a
+# future fonts/ un-exemption.
+#
+# Deliberately a SCHEDULE, not a commit gate. It grades a LIVE edge response (and
+# derives its font set from the live served HTML head), so wiring the over-the-wire
+# probe into verify:core would block every commit on a condition only a redeploy
+# can clear. The pure classifier + extractor IS gated every commit via
+# check:font-preload-live-selftest in verify:core; only the live probe runs here.
+# A push that touches the guard/workflow re-runs it immediately.
+#
+# Needs no secrets: index.html and the font are public.
+#
+# Can't cry wolf (check-font-preload-live.mjs exit contract):
+#   exit 1 DEFECT        -> font genuinely gone/masquerading w/ egress proven up: FAIL (red, Sam sees it)
+#   exit 3 UNRESOLVED    -> transient 5xx/timeout (index fetch OR font probe): warning only, run stays green
+#   exit 0 CLEAN/UNKNOWN -> alive, or egress itself down (not trusted): green
+name: font-preload-live
+
+on:
+  schedule:
+    - cron: "17 15 * * *" # daily ~08:17 Phoenix, offset from jsonld-asset-live/share-card-live/brand-static-live; GH schedules drift (p90 ~40min, MP-304)
+  workflow_dispatch:
+  push:
+    paths:
+      - "scripts/check-font-preload-live.mjs"
+      - ".github/workflows/font-preload-live.yml"
+
+jobs:
+  font-preload-live:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      # Prove the detector's own classifier + head preload-font extractor + control
+      # gating are intact BEFORE trusting its live verdict (deterministic, local).
+      - name: Selftest font-preload detector (fixtures, both directions)
+        run: npm run check:font-preload-live-selftest
+      # Live probe. Only a real DEFECT (font gone/masquerading, egress up) fails the
+      # run; a transient UNRESOLVED (exit 3) warns without reddening it.
+      - name: Probe live preloaded-font liveness
+        run: |
+          node scripts/check-font-preload-live.mjs; code=$?
+          if [ "$code" = "3" ]; then
+            echo "::warning::font-preload UNRESOLVED — neither proved alive nor dead (transient edge 5xx/timeout). Not failing; re-run to confirm."
+            exit 0
+          fi
+          exit $code
+      - name: Post failure summary
+        if: failure()
+        run: |
+          echo "::warning::font-preload-live FAILED — either the detector selftest regressed (the guard's own classifier/extractor, not the site), OR the brand font the live <head> preloads is DEAD: the woff2 is missing from the live deploy (dropped / renamed / fonts-path repointed) and the edge serves a 404 or the SPA HTML shell in its place, so every page first-paints in the system fallback font — a sitewide locked-typography brand break. Fix: restore the referenced woff2 (a root static under public/fonts/) or repoint the preload <link>, and redeploy. See the step output above for the exact URL + status."

@@ -47,6 +47,7 @@ on:
       - funnel-capture
       - funnel-share-card-live
       - hero-carrier-count-live
+      - jsonld-asset-live
       - lead-magnet-cta-live
       - robots-indexable-live
       - share-card-live

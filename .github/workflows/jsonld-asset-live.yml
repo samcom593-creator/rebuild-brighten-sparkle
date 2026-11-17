@@ -1,0 +1,77 @@
+# Are the media assets the LIVE JSON-LD references still ALIVE on the edge? (MP-WIB-JSONLD-ASSET-LIVE)
+#
+# The served index.html carries JSON-LD (schema.org) that Google rich results,
+# the Knowledge Panel, and AI-search / GEO engines (ChatGPT, Perplexity, Claude,
+# Gemini) read to build the "Galaxy Financial" entity card. Those blocks reference
+# image/media assets by URL — the Organization `logo` (pwa-512x512.png) chief
+# among them. The logo is a fixed-name root static OUTSIDE Vite's content-hashed
+# build, so a deploy that drops it — or a JSON-LD edit that repoints the logo to a
+# new file while shipping the reference but not the PNG — kills the entity image
+# for every AI/search surface, silently.
+#
+# THE SOURCE/LIVE SPLIT THIS CLOSES. check-index-brand (commit gate) walks the
+# SOURCE index.html JSON-LD but DELIBERATELY SKIPS url/logo/contentUrl/thumbnailUrl
+# (check-index-brand.mjs:45-47 — path fields, not brand text), so it never asserts
+# the logo URL is present, let alone alive; it reads from disk, never over the wire.
+# check-brand-static-live probes pwa-512x512.png only via the MANIFEST icons[]
+# chain, so the logo is alive today COINCIDENTALLY — repoint the JSON-LD logo to a
+# URL not in the manifest and nothing watches it. check-vsl-media-live owns the
+# cross-origin (supabase) VideoObject media; this guard scopes to SAME-ORIGIN
+# assets, so the two partition the JSON-LD media set cleanly without overlap.
+#
+# vercel.json's catch-all rewrite exempts only /api,/assets,/fonts,/img, so a
+# dropped root .png falls through to the SPA shell and the edge answers 200
+# text/html (the 465-InsuraCloud masquerade, proven on prod 2026-11-12). A status
+# check reads that as success; check-jsonld-asset-live.mjs does not — a live asset
+# must serve 200/206 AND image/* or video/*.
+#
+# Deliberately a SCHEDULE, not a commit gate. It grades a LIVE edge response (and
+# derives its object set from the live served HTML), so wiring the over-the-wire
+# probe into verify:core would block every commit on a condition only a redeploy
+# can clear. The pure classifier + extractor IS gated every commit via
+# check:jsonld-asset-live-selftest in verify:core; only the live probe runs here.
+# A push that touches the guard/workflow re-runs it immediately.
+#
+# Needs no secrets: index.html and the logo are public.
+#
+# Can't cry wolf (check-jsonld-asset-live.mjs exit contract):
+#   exit 1 DEFECT        -> asset genuinely gone/masquerading w/ egress proven up: FAIL (red, Sam sees it)
+#   exit 3 UNRESOLVED    -> transient 5xx/timeout (index fetch OR asset probe): warning only, run stays green
+#   exit 0 CLEAN/UNKNOWN -> alive, or egress itself down (not trusted): green
+name: jsonld-asset-live
+
+on:
+  schedule:
+    - cron: "37 14 * * *" # daily ~07:37 Phoenix, offset from share-card-live/vsl-media/brand-static-live; GH schedules drift (p90 ~40min, MP-304)
+  workflow_dispatch:
+  push:
+    paths:
+      - "scripts/check-jsonld-asset-live.mjs"
+      - ".github/workflows/jsonld-asset-live.yml"
+
+jobs:
+  jsonld-asset-live:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      # Prove the detector's own classifier + same-origin extractor + control
+      # gating are intact BEFORE trusting its live verdict (deterministic, local).
+      - name: Selftest jsonld-asset detector (fixtures, both directions)
+        run: npm run check:jsonld-asset-live-selftest
+      # Live probe. Only a real DEFECT (asset gone/masquerading, egress up) fails
+      # the run; a transient UNRESOLVED (exit 3) warns without reddening it.
+      - name: Probe live JSON-LD asset liveness
+        run: |
+          node scripts/check-jsonld-asset-live.mjs; code=$?
+          if [ "$code" = "3" ]; then
+            echo "::warning::jsonld-asset UNRESOLVED — neither proved alive nor dead (transient edge 5xx/timeout). Not failing; re-run to confirm."
+            exit 0
+          fi
+          exit $code
+      - name: Post failure summary
+        if: failure()
+        run: |
+          echo "::warning::jsonld-asset-live FAILED — either the detector selftest regressed (the guard's own classifier/extractor, not the site), OR a media asset the live structured data references is DEAD: the Organization logo (or another same-origin JSON-LD asset) is missing from the live deploy and the SPA catch-all is serving the HTML shell in its place, so Google rich results / Knowledge Panel / AI-search render the brand entity card with a broken/absent image. Fix: restore the referenced root static (e.g. public/pwa-512x512.png) and redeploy. See the step output above for the exact URL + status."

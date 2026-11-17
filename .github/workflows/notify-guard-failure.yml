@@ -1,0 +1,87 @@
+name: notify-guard-failure
+# WHY THIS EXISTS (MP-WIB-GUARD-PAGING, 2026-11-17). This repo runs ~12 SCHEDULED
+# live-surface guards every day — robots-indexable-live, funnel-share-card-live,
+# lead-magnet-cta-live, vsl-media, hero-carrier-count-live, share-card-live,
+# brand-static-live, crawl-entrypoints-live, apply-form-render, edge-boot,
+# funnel-capture, and the Vantage production sync. Each one opens a browser or
+# fetches the LIVE public funnel to catch drift BETWEEN deploys: a dead sell4daddy
+# door (160K+ social followers stranded one click from the funnel), the funnel
+# deindexed by a noindex header set from the Vercel dashboard, a broken og:image
+# on the #1-traffic bio link, a Hero carrier number that contradicts the number
+# the same page renders, a 404'd VSL video.
+#
+# When one of those FAILED, its only trace was a red X in the GitHub Actions tab
+# plus an `echo "::warning::"` annotation. Sam runs the business from his phone and
+# the entire APEX alert stack is ntfy — external-cron-backup.yml was the ONLY
+# workflow in the repo that ever pushed to his phone. A guard whose failure reaches
+# no phone is a silent guard: it fires on schedule, catches the money defect, and
+# the finding dies in a tab nobody opens. The guards were honest; their output had
+# no exit to the one human who needs it.
+#
+# This workflow is the single phone-exit for all of them. `workflow_run` fires when
+# any listed guard completes ON THE DEFAULT BRANCH (exactly when they run against
+# prod — scheduled + push-to-main); on conclusion `failure` or `timed_out` it POSTs
+# ONE priority-5 ntfy push that names the guard and links one-tap to the run. One
+# file, zero edits to the 12 working guards (so this change cannot break a guard
+# that is currently passing).
+#
+# scripts/check-guard-failure-paging.mjs is the persistence guard: it asserts that
+# every SILENT scheduled workflow (schedule trigger, no ntfy of its own) is named in
+# the `workflows:` list below, and that no name here is stale. A future scheduled
+# guard therefore cannot ship without a phone exit — the whole point of closing this
+# blind spot once instead of per-guard forever.
+#
+# NOT a success channel and never silences a guard: it only pages on failure, it
+# adds nothing to any guard's own red/green, and if it is itself removed or
+# mis-wired the persistence guard goes red in verify:core on the next push.
+
+on:
+  workflow_run:
+    # Match by workflow `name:` (not filename). Keep in sync with every SILENT
+    # scheduled guard — check:guard-failure-paging enforces this list is complete.
+    workflows:
+      - apply-form-render
+      - brand-static-live
+      - crawl-entrypoints-live
+      - edge-boot
+      - funnel-capture
+      - funnel-share-card-live
+      - hero-carrier-count-live
+      - lead-magnet-cta-live
+      - robots-indexable-live
+      - share-card-live
+      - Vantage production sync
+      - vsl-media
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  page:
+    # Only a genuine guard failure pages. success/cancelled/skipped/neutral do not
+    # reach the phone — a page that fires on a clean run is the false-alarm disease
+    # (36 false pages/day, MP-407) that trains Sam to ignore the one loud channel.
+    if: >-
+      ${{ github.event.workflow_run.conclusion == 'failure' ||
+          github.event.workflow_run.conclusion == 'timed_out' }}
+    runs-on: ubuntu-latest
+    env:
+      # Same plaintext topic external-cron-backup.yml uses — the channel every
+      # APEX critical already lands on. Not a secret (it is a write-only ntfy topic).
+      NTFY: https://ntfy.sh/sams-agent-yrkv9kbqp9e987nb
+    steps:
+      - name: Page Sam's phone — a daily live-surface guard failed
+        # Dynamic values go through env, never interpolated into the shell command,
+        # so a workflow name can never break out of the string (GH-recommended).
+        env:
+          WF_NAME: ${{ github.event.workflow_run.name }}
+          WF_CONCL: ${{ github.event.workflow_run.conclusion }}
+          WF_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          WF_URL: ${{ github.event.workflow_run.html_url }}
+        run: |
+          curl -sS -X POST "$NTFY" \
+            -H "Title: Website guard FAILED: $WF_NAME" \
+            -H "Priority: 5" \
+            -H "Tags: rotating_light" \
+            -d "$WF_NAME came back $WF_CONCL on $WF_BRANCH. A daily guard on the LIVE public funnel caught a defect (dead door / deindex / broken share card / bad number / 404 media). Open the run: $WF_URL"

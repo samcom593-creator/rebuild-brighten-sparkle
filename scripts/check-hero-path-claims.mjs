@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { stripComments } from "./lib/strip-comments.mjs";
 
 // Persistence-mandate guard — HeroSection path-card claim consistency.
@@ -403,4 +404,7 @@ function main() {
   process.exit(1);
 }
 
-main();
+// Run as a CLI only when invoked directly. Imported (e.g. by
+// check-hero-carrier-count-live.mjs, which reuses deriveCanonical as the single
+// frontend-canonical parser — no detector dup) this stays side-effect free.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();

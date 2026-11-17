@@ -1,0 +1,75 @@
+# Does the Hero's hardcoded carrier count still match the LIVE number the page
+# renders? (MP-WIB-HERO-CARRIER-LIVE)
+#
+# HeroSection hardcodes "22 carriers" (×2) while CareerPathwaySection renders the
+# live landing_live_stats().carriers_partnered in three visible spots ("Contract
+# with up to ${carriers} carriers", "${carriers} carrier partners", the "Carrier
+# Partners" stat tile). carriers_partnered = greatest(count(active carriers), 22)
+# and the book is at 21 active and GROWING (3 carriers added 2026-09-01). The day
+# it crosses 22, CareerPathwaySection shows 23 while the Hero says 22 — a same-
+# page numeric contradiction on the #1 recruiting conversion surface. The static
+# check:hero-path-claims keeps the FRONTEND literals internally consistent but
+# never reaches the network (its own header says so), so this drift ships green.
+#
+# This guard reads the frontend canonical via the ONE shared parser
+# (deriveCanonical, imported from check-hero-path-claims — no detector dup) and
+# compares it to the number landing_live_stats() ACTUALLY RETURNS, read with the
+# PUBLIC anon key extracted from the live deployed bundle (the exact key the page
+# ships — a stale on-disk .env can't mask a rotation; MP-300). It compares
+# against the RPC's returned (floored) value — what the page renders — not the
+# raw carrier count, so it respects the deliberate greatest(count,22) floor and
+# only fires on a genuine cross-surface render disagreement.
+#
+# Deliberately a SCHEDULE, not a commit gate. It grades a LIVE edge + DB value;
+# wiring the over-the-wire probe into verify:core would block every commit on a
+# condition only a redeploy / a DB change can clear. The pure
+# extract/parse/verdict + e2e fetch logic IS gated every commit via
+# check:hero-carrier-count-live-selftest in verify:core; only the live probe runs
+# here. A push that touches the guard/workflow re-runs it immediately.
+#
+# Needs no secrets: the anon key is public (shipped in the SPA bundle).
+#
+# Can't cry wolf (check-hero-carrier-count-live.mjs exit contract):
+#   exit 1 DEFECT        -> a CLEAN authoritative RPC read disagrees with the Hero: FAIL (red, Sam sees it)
+#   exit 3 UNRESOLVED    -> site/bundle/RPC transient (5xx/timeout/DNS/non-JSON) w/ egress up, or canonical underivable: warning, green
+#   exit 0 CLEAN/UNKNOWN -> counts agree, or egress itself down (not trusted): green
+name: hero-carrier-count-live
+
+on:
+  schedule:
+    - cron: "52 14 * * *" # daily ~07:52 Phoenix, offset from funnel-share-card-live (14:42) + robots-indexable-live; GH schedules drift (p90 ~40min, MP-304)
+  workflow_dispatch:
+  push:
+    paths:
+      - "scripts/check-hero-carrier-count-live.mjs"
+      - "scripts/check-hero-path-claims.mjs"
+      - "src/components/landing/HeroSection.tsx"
+      - ".github/workflows/hero-carrier-count-live.yml"
+
+jobs:
+  hero-carrier-count-live:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      # Prove the detector's extract/parse/verdict + e2e fetch logic is intact
+      # BEFORE trusting its live verdict (deterministic, offline).
+      - name: Selftest hero-carrier-count detector (fixtures + local e2e, both directions)
+        run: npm run check:hero-carrier-count-live-selftest
+      # Live probe. Only a real DEFECT (an authoritative RPC read that disagrees
+      # with the Hero, egress up) fails the run; a transient UNRESOLVED (exit 3)
+      # warns without reddening it.
+      - name: Probe live Hero carrier count vs landing_live_stats()
+        run: |
+          node scripts/check-hero-carrier-count-live.mjs; code=$?
+          if [ "$code" = "3" ]; then
+            echo "::warning::hero-carrier-count UNRESOLVED — could not get an authoritative landing_live_stats() read (transient site/bundle/RPC 5xx/timeout/DNS/non-JSON) or the frontend canonical was underivable. Not failing; re-run to confirm."
+            exit 0
+          fi
+          exit $code
+      - name: Post failure summary
+        if: failure()
+        run: |
+          echo "::warning::hero-carrier-count-live FAILED — either the detector selftest regressed (the guard's own logic, not the site), OR the carrier book crossed the floor: landing_live_stats().carriers_partnered now differs from HeroSection's hardcoded count, so CareerPathwaySection renders one number while the Hero stat pill + partnerPaths prose render another — a same-page numeric contradiction on the public recruiting funnel. Fix: update HeroSection carriers[] + the \"N carriers\" stat + \"Direct lines with N top carriers\" (and index.html meta if it restates it) to the live count; check:hero-path-claims re-locks every frontend surface to it. See the step output above for the exact counts."

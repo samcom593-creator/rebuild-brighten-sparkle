@@ -22,12 +22,12 @@ export const CONTRACTING_PROFILE_SUBJECT = "Complete your contracting profile";
 /** One sentence the screen and every email repeat, so nobody reads "submitted" as "contracted". */
 export const NOT_CONTRACTED_YET = "Submitting your information does not mean carrier contracting is complete.";
 
-export function contractingProfileEmailText(firstName: string, link: string = CONTRACTING_PROFILE_URL): string {
+export function contractingProfileEmailText(firstName: string, link: string = CONTRACTING_PROFILE_URL, mgnLink: string = MGN_CONTRACTING_URL): string {
   const name = firstName.trim() || "there";
   return [
     `Hi ${name},`,
     "",
-    `Carrier contracting runs through the MGN Agent Hub. Start here: ${MGN_CONTRACTING_URL}`,
+    `Carrier contracting runs through the MGN Agent Hub. Start here: ${mgnLink}`,
     "",
     "Then complete your contracting profile with your NPN number, first name, last name, email address, and resident state.",
     "",
@@ -44,10 +44,10 @@ export function contractingProfileEmailText(firstName: string, link: string = CO
 
 const esc = (s: string): string => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-export function contractingProfileEmailHtml(firstName: string, link: string = CONTRACTING_PROFILE_URL): string {
+export function contractingProfileEmailHtml(firstName: string, link: string = CONTRACTING_PROFILE_URL, mgnLink: string = MGN_CONTRACTING_URL): string {
   const name = esc(firstName.trim() || "there");
   return `<p>Hi ${name},</p>
-<p>Carrier contracting runs through the MGN Agent Hub. <a href="${esc(MGN_CONTRACTING_URL)}">Start contracting in the MGN Agent Hub</a></p>
+<p>Carrier contracting runs through the MGN Agent Hub. <a href="${esc(mgnLink)}">Start contracting in the MGN Agent Hub</a></p>
 <p>Then complete your contracting profile with your NPN number, first name, last name, email address, and resident state.</p>
 <p><a href="${esc(link)}">Complete contracting profile</a></p>
 <p>Our team will use this information to coordinate the carrier portal steps and track Combine, AFLAC, GTO, and Ethos on your profile.</p>

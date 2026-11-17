@@ -148483,9 +148483,12 @@ export type Database = {
           agents: number | null
           alp_12mo: number | null
           carrier: string | null
-          days_dormant: number | null
+          feed_dark_days: number | null
+          feed_last_live: string | null
           last_written: string | null
+          naive_days_dormant: number | null
           policies_12mo: number | null
+          quiet_days_before_freeze: number | null
           recorded_as: string | null
           verdict: string | null
         }

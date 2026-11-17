@@ -73,8 +73,43 @@ export default function AgentHealthPanel({ agentId }: Props) {
   });
 
 
+  // Per-agent MGN link (2026-11-17): null means the shared hub URL. The column is
+  // SELECT-granted to authenticated; RLS decides which rows this viewer can see.
+  const mgn = useQuery<{ mgn_link: string | null } | null>({
+    queryKey: ["agent-mgn-link", agentId],
+    queryFn: async () => {
+      const { data, error } = await looseSupabase
+        .from<{ mgn_link: string | null }>("agents")
+        .select("mgn_link")
+        .eq("id", agentId)
+        .maybeSingle();
+      if (error) throw error;
+      return data ?? null;
+    },
+  });
+  const agentMgnLink = mgn.data?.mgn_link?.trim() || "";
+  const [mgnDraft, setMgnDraft] = useState<string | null>(null);
+  const saveMgn = useMutation({
+    mutationFn: async (value: string) => {
+      const trimmed = value.trim();
+      const { error } = await looseSupabase
+        .from<{ mgn_link: string | null }>("agents")
+        .update({ mgn_link: trimmed || null })
+        .eq("id", agentId);
+      if (error) throw error;
+      return trimmed;
+    },
+    onSuccess: () => {
+      setMgnDraft(null);
+      toast.success("MGN link saved");
+      void qc.invalidateQueries({ queryKey: ["agent-mgn-link", agentId] });
+    },
+    onError: (e: Error) => toast.error(`Not saved: ${e.message}`),
+  });
+
   const copyLink = () => {
-    const link = CONTRACTING_LINK; // one generic link for everyone; staff type no name or email
+    // The agent's own MGN link when one is set; the shared hub link for everyone else.
+    const link = agentMgnLink || CONTRACTING_LINK;
     navigator.clipboard?.writeText(link).then(() => toast.success("Contracting link copied"), () => toast.error("Copy failed"));
   };
   // WP7: Slack replaced Discord (retired 2026-10-05). has_discord_access was
@@ -170,12 +205,28 @@ export default function AgentHealthPanel({ agentId }: Props) {
         </div>
       </Card>
 
-      {/* Contracting link. Carrier confirmations and the placement level live on the review (ContractingStanding
-          below); comp is never shown here. */}
+      {/* Contracting link. Copies this agent's own MGN link when one is set, else the shared MGN hub link.
+          Carrier confirmations and the placement level live on the review (ContractingStanding below);
+          comp is never shown here. */}
       <Card className="p-3">
         <div className="flex items-center justify-between gap-3">
-          <span className="text-sm font-semibold">Contracting link</span>
+          <span className="text-sm font-semibold">Contracting link {agentMgnLink ? <span className="font-normal text-muted-foreground">(agent's own MGN link)</span> : null}</span>
           <Button size="sm" variant="outline" className="h-8 px-3 text-xs" onClick={copyLink}>Copy contracting link</Button>
+        </div>
+        <div className="mt-2 flex items-center gap-2">
+          <input
+            className="h-8 flex-1 rounded-md border border-border bg-background px-2 text-xs"
+            placeholder="Agent's own MGN link — blank uses the shared hub link"
+            value={mgnDraft ?? agentMgnLink}
+            onChange={(e) => setMgnDraft(e.target.value)}
+            aria-label="Agent's own MGN contracting link"
+          />
+          {mgnDraft !== null && mgnDraft.trim() !== agentMgnLink && (
+            <Button size="sm" variant="outline" className="h-8 px-3 text-xs" disabled={saveMgn.isPending}
+              onClick={() => saveMgn.mutate(mgnDraft)}>
+              {saveMgn.isPending ? "Saving…" : "Save"}
+            </Button>
+          )}
         </div>
       </Card>
 

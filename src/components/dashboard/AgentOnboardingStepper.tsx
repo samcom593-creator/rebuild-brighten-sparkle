@@ -64,6 +64,8 @@ interface LaunchDetails {
     eo_certificate_url: string | null;
     eo_expires_at: string | null;
     contracted_at: string | null;
+    first_deal_at: string | null;
+    mgn_link: string | null;
   } | null;
   profile: {
     full_name: string | null;
@@ -131,7 +133,10 @@ function buildCompleteLaunchSteps(
   const callBooked = originalContracting?.status === "complete"
     || originalContracting?.label.toLowerCase().includes("finish contracting");
   const intakeReceived = localIntakeReceipt || originalContracting?.status === "complete";
-  const carriersReady = Boolean(agent?.contracted_at);
+  // A posted deal proves a carrier appointed this agent, whether or not the contracted_at
+  // stamp was ever set by hand — measured 2026-11-17: 16 producing agents had a NULL stamp
+  // and saw this step as incomplete on their own roadmap.
+  const carriersReady = Boolean(agent?.contracted_at) || Boolean(agent?.first_deal_at);
 
   const steps: OnboardingStep[] = [
     {
@@ -194,7 +199,8 @@ function buildCompleteLaunchSteps(
         : "Carrier contracting runs through the MGN Agent Hub. Open it, set up your account, and complete each carrier there; your team confirms them on your profile as they land.",
       status: carriersReady ? "complete" : licensed ? "available" : "locked",
       action_label: carriersReady || !licensed ? null : "Open the MGN Agent Hub",
-      action_url: carriersReady || !licensed ? null : CONTRACTING_LINK_URL,
+      // The agent's own MGN link when the team has set one on their record; the shared hub otherwise.
+      action_url: carriersReady || !licensed ? null : (agent?.mgn_link?.trim() || CONTRACTING_LINK_URL),
     },
     {
       key: "training",

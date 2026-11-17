@@ -3,6 +3,13 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { BRAND_FROM, BRAND_REPLY_TO } from "../_shared/email.ts";
+import {
+  CONTRACTING_PROFILE_SUBJECT,
+  MGN_CONTRACTING_URL,
+  contractingProfileEmailHtml,
+  contractingProfileEmailText,
+} from "../_shared/contracting-profile.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -53,7 +60,7 @@ Deno.serve(async (req) => {
 
     const { data: agent } = await supabase
       .from("agents")
-      .select("id, profile:profiles!agents_profile_id_fkey(email, full_name)")
+      .select("id, mgn_link, profile:profiles!agents_profile_id_fkey(email, full_name)")
       .eq("id", agent_id)
       .maybeSingle();
 
@@ -65,8 +72,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    const msg = MESSAGES[reason] || MESSAGES.check_in;
-
     const resendKey = Deno.env.get("RESEND_API_KEY");
     if (!resendKey) {
       return new Response(JSON.stringify({ error: "RESEND_API_KEY missing" }), {
@@ -74,18 +79,41 @@ Deno.serve(async (req) => {
       });
     }
     const resend = gateResend(new Resend(resendKey));
-    await resend.emails.send({
-      from: "Galaxy Financial <notifications@apex-financial.org>",
-      to: [email],
-      subject: msg.subject,
-      html: `<p>Hi ${profile?.full_name || ""},</p><p>${msg.body}</p><p>— Galaxy Team</p>`,
-    });
+
+    // finish_contracting: the full MGN-first contracting email (the shared, test-pinned wording),
+    // with the agent's own MGN link when the team has set one. Everything else keeps MESSAGES.
+    let subject: string;
+    let template: string;
+    if (reason === "finish_contracting") {
+      const first = (profile?.full_name ?? "").trim().split(/\s+/)[0] ?? "";
+      const mgnLink = ((agent as { mgn_link?: string | null })?.mgn_link ?? "").trim() || MGN_CONTRACTING_URL;
+      subject = CONTRACTING_PROFILE_SUBJECT;
+      template = "contracting_nudge";
+      await resend.emails.send({
+        from: BRAND_FROM,
+        reply_to: BRAND_REPLY_TO,
+        to: [email],
+        subject,
+        text: contractingProfileEmailText(first, undefined, mgnLink),
+        html: contractingProfileEmailHtml(first, undefined, mgnLink),
+      });
+    } else {
+      const msg = MESSAGES[reason] || MESSAGES.check_in;
+      subject = msg.subject;
+      template = "agent_nudge";
+      await resend.emails.send({
+        from: "Galaxy Financial <notifications@apex-financial.org>",
+        to: [email],
+        subject,
+        html: `<p>Hi ${profile?.full_name || ""},</p><p>${msg.body}</p><p>— Galaxy Team</p>`,
+      });
+    }
 
     await supabase.from("email_delivery_log").insert({
-      template: "agent_nudge",
+      template,
       recipient_email: email,
       agent_id,
-      subject: msg.subject,
+      subject,
       status: "sent",
       sent_at: new Date().toISOString(),
     });

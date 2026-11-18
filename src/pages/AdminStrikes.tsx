@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { QueryState } from "@/components/ui/query-state";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -109,7 +110,10 @@ export default function AdminStrikes() {
     qc.invalidateQueries({ queryKey: ["strike-trend"] });
   });
 
-  const { data: strikes = [], isLoading } = useQuery({
+  // Whole-object (no destructure default): a dead v_agent_strikes must render as
+  // an error, never a plausible empty "clear board". Same for the summary that
+  // drives the stat tiles — a false 0 "active / flagged" is a conduct lie Sam acts on.
+  const strikesQuery = useQuery({
     queryKey: ["admin-strikes", statusFilter, severityFilter],
     queryFn: async () => {
       let q: any = supabase
@@ -123,8 +127,10 @@ export default function AdminStrikes() {
       return (data ?? []) as StrikeRow[];
     },
   });
+  const strikes = strikesQuery.data ?? [];
+  const strikesErrored = strikesQuery.isError && strikesQuery.data === undefined;
 
-  const { data: summary = [] } = useQuery({
+  const summaryQuery = useQuery({
     queryKey: ["strike-summary"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -134,8 +140,10 @@ export default function AdminStrikes() {
       return (data ?? []) as unknown as SummaryRow[];
     },
   });
+  const summary = (summaryQuery.data ?? []) as SummaryRow[];
+  const summaryErrored = summaryQuery.isError && summaryQuery.data === undefined;
 
-  const { data: trend = [] } = useQuery({
+  const trendQuery = useQuery({
     queryKey: ["strike-trend"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -145,6 +153,7 @@ export default function AdminStrikes() {
       return (data ?? []) as unknown as TrendRow[];
     },
   });
+  const trend = (trendQuery.data ?? []) as TrendRow[];
 
   const filtered = useMemo(() => {
     if (!search.trim()) return strikes;
@@ -243,7 +252,7 @@ export default function AdminStrikes() {
             <GlassCard variant="subtle" className="p-4 flex items-center justify-between">
               <div>
                 <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold">{s.label}</p>
-                <p className={`text-3xl font-bold tabular-nums ${s.color} mt-1`}>{s.value}</p>
+                <p className={`text-3xl font-bold tabular-nums ${s.color} mt-1`}>{summaryErrored ? "—" : s.value}</p>
               </div>
               <s.icon className={`h-8 w-8 ${s.color} opacity-60`} />
             </GlassCard>
@@ -261,6 +270,9 @@ export default function AdminStrikes() {
             </div>
             <BarChart3 className="h-5 w-5 text-muted-foreground" />
           </div>
+          {trendQuery.isError && trendQuery.data === undefined ? (
+            <QueryState compact status="error" label="the 30-day trend" error={trendQuery.error} onRetry={() => void trendQuery.refetch()} className="py-16" />
+          ) : (
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={trend}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border)/0.3)" />
@@ -277,6 +289,7 @@ export default function AdminStrikes() {
               <Bar dataKey="terminal" stackId="a" fill="hsl(0 80% 35%)" name="Terminal" />
             </BarChart>
           </ResponsiveContainer>
+          )}
         </GlassCard>
 
         <GlassCard variant="subtle" className="p-4 lg:col-span-1">
@@ -287,7 +300,9 @@ export default function AdminStrikes() {
             </div>
             <Flame className="h-5 w-5 text-rose-400 opacity-70" />
           </div>
-          {summary.filter((s) => s.active_count > 0).length === 0 ? (
+          {summaryErrored ? (
+            <QueryState compact status="error" label="the strike summary" error={summaryQuery.error} onRetry={() => void summaryQuery.refetch()} className="py-6" />
+          ) : summary.filter((s) => s.active_count > 0).length === 0 ? (
             <p className="text-sm text-muted-foreground py-6 text-center">Nobody on the wrong side. 🟢</p>
           ) : (
             <ul className="space-y-2 max-h-[200px] overflow-y-auto scrollbar-custom pr-1">
@@ -352,7 +367,9 @@ export default function AdminStrikes() {
       </GlassCard>
 
       {/* Strike list */}
-      {isLoading ? (
+      {strikesErrored ? (
+        <QueryState status="error" label="strikes" error={strikesQuery.error} onRetry={() => void strikesQuery.refetch()} />
+      ) : strikesQuery.isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
             /* stable-key-allow:skeleton — fixed-length loading placeholder */
@@ -562,7 +579,9 @@ function IssueStrikeDialog({ open, onOpenChange }: IssueDialogProps) {
   const [templateSlug, setTemplateSlug] = useState<string>("__custom__");
   const [submitting, setSubmitting] = useState(false);
 
-  const { data: templates = [] } = useQuery({
+  // Dialog option/search feeds: whole-object, honest empty. A dead feed shows an
+  // inline error (below) rather than a "No matches" that reads as "no agents exist".
+  const templatesQuery = useQuery({
     queryKey: ["strike-templates"],
     enabled: open,
     queryFn: async () => {
@@ -574,8 +593,9 @@ function IssueStrikeDialog({ open, onOpenChange }: IssueDialogProps) {
       return (data ?? []) as unknown as Template[];
     },
   });
+  const templates = (templatesQuery.data ?? []) as Template[];
 
-  const { data: agents = [] } = useQuery({
+  const agentsQuery = useQuery({
     queryKey: ["agents-search-strike", agentSearch],
     enabled: open,
     queryFn: async () => {
@@ -592,6 +612,7 @@ function IssueStrikeDialog({ open, onOpenChange }: IssueDialogProps) {
       return data ?? [];
     },
   });
+  const agents = agentsQuery.data ?? [];
 
   function applyTemplate(slug: string) {
     setTemplateSlug(slug);
@@ -684,7 +705,10 @@ function IssueStrikeDialog({ open, onOpenChange }: IssueDialogProps) {
               className="mt-1"
             />
             <div className="max-h-32 overflow-y-auto mt-2 rounded-md border border-border/60">
-              {agents.length === 0 && <p className="p-2 text-xs text-muted-foreground">No matches.</p>}
+              {agentsQuery.isError && (
+                <p className="p-2 text-xs text-destructive">Couldn't load agents — retry to search.</p>
+              )}
+              {!agentsQuery.isError && agents.length === 0 && <p className="p-2 text-xs text-muted-foreground">No matches.</p>}
               {agents.map((a: any) => (
                 <button
                   key={a.agent_id}
@@ -806,7 +830,7 @@ interface DrillProps {
   onClose: () => void;
 }
 function AgentDrillSheet({ agentId, summary, onClose }: DrillProps) {
-  const { data: agentStrikes = [], isLoading } = useQuery({
+  const agentStrikesQuery = useQuery({
     queryKey: ["agent-strikes-drill", agentId],
     enabled: !!agentId,
     queryFn: async () => {
@@ -815,9 +839,12 @@ function AgentDrillSheet({ agentId, summary, onClose }: DrillProps) {
         .eq("agent_id", agentId!)
         .order("issued_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as StrikeRow[];
+      return (data ?? []) as unknown as StrikeRow[];
     },
   });
+  const agentStrikes = agentStrikesQuery.data ?? [];
+  const isLoading = agentStrikesQuery.isLoading;
+  const agentStrikesErrored = agentStrikesQuery.isError && agentStrikesQuery.data === undefined;
 
   return (
     <Sheet open={!!agentId} onOpenChange={(o) => !o && onClose()}>
@@ -849,8 +876,11 @@ function AgentDrillSheet({ agentId, summary, onClose }: DrillProps) {
           </div>
         )}
         <div className="mt-4 space-y-2">
+          {agentStrikesErrored && (
+            <QueryState compact status="error" label="this agent's strikes" error={agentStrikesQuery.error} onRetry={() => void agentStrikesQuery.refetch()} />
+          )}
           {isLoading && <div className="h-16 rounded-lg skeleton-shimmer" />}
-          {!isLoading && agentStrikes.length === 0 && (
+          {!isLoading && !agentStrikesErrored && agentStrikes.length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-6">No strikes on file.</p>
           )}
           {agentStrikes.map((s) => {

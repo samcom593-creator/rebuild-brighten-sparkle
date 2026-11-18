@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { UserCog, Plus, Trash2, Loader2 } from "lucide-react";
+import { QueryState } from "@/components/ui/query-state";
 import { toast } from "sonner";
 import {
   Select,
@@ -31,21 +32,24 @@ export function LicensingDelegateSection({ applicationId }: Props) {
   const [notes, setNotes] = useState("");
   const [adding, setAdding] = useState(false);
 
-  // Available delegates (admins + managers)
-  const { data: candidates = [] } = useQuery({
+  // Available delegates (admins + managers). Whole-object + throw-on-error: the
+  // queryFns used to swallow .error and return [], so a dead feed read as "none".
+  const candidatesQuery = useQuery({
     queryKey: ["delegate-candidates"],
     staleTime: 60_000,
     queryFn: async () => {
-      const { data: roles } = await supabase
+      const { data: roles, error: rolesError } = await supabase
         .from("user_roles")
         .select("user_id")
         .in("role", ["admin", "manager"] as any);
+      if (rolesError) throw rolesError;
       const userIds = [...new Set((roles || []).map((r: any) => r.user_id))];
       if (!userIds.length) return [] as DelegateOption[];
-      const { data: profiles } = await supabase
+      const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select("user_id, full_name, email")
         .in("user_id", userIds);
+      if (profilesError) throw profilesError;
       return (profiles || []).map((p: any) => ({
         user_id: p.user_id,
         full_name: p.full_name || p.email,
@@ -53,21 +57,26 @@ export function LicensingDelegateSection({ applicationId }: Props) {
       })) as DelegateOption[];
     },
   });
+  const candidates = candidatesQuery.data ?? [];
 
   // Existing delegates for this application
-  const { data: delegates = [], isLoading } = useQuery({
+  const delegatesQuery = useQuery({
     queryKey: ["licensing-delegates", applicationId],
     enabled: !!applicationId,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("licensing_delegates")
         .select("*")
         .eq("application_id", applicationId)
         .eq("is_active", true)
         .order("assigned_at", { ascending: false });
+      if (error) throw error;
       return data || [];
     },
   });
+  const delegates = delegatesQuery.data ?? [];
+  const isLoading = delegatesQuery.isLoading;
+  const delegatesErrored = delegatesQuery.isError && delegatesQuery.data === undefined;
 
   const handleAdd = async () => {
     if (!selectedDelegate) return;
@@ -112,7 +121,9 @@ export function LicensingDelegateSection({ applicationId }: Props) {
         Licensing Delegates
       </Label>
 
-      {isLoading ? (
+      {delegatesErrored ? (
+        <QueryState compact status="error" label="delegates" error={delegatesQuery.error} onRetry={() => void delegatesQuery.refetch()} />
+      ) : isLoading ? (
         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
       ) : delegates.length > 0 ? (
         <div className="space-y-1.5">
@@ -152,6 +163,9 @@ export function LicensingDelegateSection({ applicationId }: Props) {
             ))}
           </SelectContent>
         </Select>
+        {candidatesQuery.isError && (
+          <p className="text-xs text-destructive">Couldn't load admins/managers — retry to assign.</p>
+        )}
         <Input
           value={notes}
           onChange={(e) => setNotes(e.target.value)}

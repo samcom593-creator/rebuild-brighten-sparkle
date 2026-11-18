@@ -20,6 +20,7 @@ import {
 import { toast } from "sonner";
 import { formatDistanceToNow, format } from "date-fns";
 import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
+import { QueryState } from "@/components/ui/query-state";
 import { contactLinkProps, phoneHref, smsHref } from "@/lib/phone";
 
 interface InactiveEntry {
@@ -81,7 +82,10 @@ export default function InactiveAgents() {
 
   const canAccess = isAdmin || isManager;
 
-  const { data: entries = [], isLoading } = useQuery({
+  // Whole-object + throw-on-error: the queryFn used to swallow .error and return
+  // [], so a dead inactive_agent_queue rendered "everyone's active" + 0 tiles — a
+  // retention lie (producer churn is the agency's core problem).
+  const entriesQuery = useQuery({
     queryKey: ["inactive-queue", statusFilter],
     queryFn: async (): Promise<InactiveEntry[]> => {
       let q = supabase.from("inactive_agent_queue" as any).select("*");
@@ -89,21 +93,21 @@ export default function InactiveAgents() {
       // severity is filtered client-side (below) so the stat tiles stay stable
       // instead of collapsing to the filtered subset.
       const { data, error } = await q.order("days_inactive", { ascending: false });
-      if (error) {
-        console.error(error);
-        return [];
-      }
+      if (error) throw error;
       return (data as any) ?? [];
     },
     enabled: canAccess,
   });
+  const entries = entriesQuery.data ?? [];
+  const isLoading = entriesQuery.isLoading;
+  const entriesErrored = entriesQuery.isError && entriesQuery.data === undefined;
 
   const sortedAgentIds = useMemo(
     () => [...entries.map((e) => e.agent_id)].sort(),
     [entries],
   );
 
-  const { data: agentInfo = [] } = useQuery({
+  const agentInfoQuery = useQuery({
     queryKey: ["inactive-agents-info", sortedAgentIds],
     queryFn: async (): Promise<AgentInfo[]> => {
       if (entries.length === 0) return [];
@@ -135,11 +139,12 @@ export default function InactiveAgents() {
     },
     enabled: entries.length > 0,
   });
+  const agentInfo = agentInfoQuery.data ?? [];
 
   const agentMap = useMemo(() => new Map(agentInfo.map((a) => [a.id, a])), [agentInfo]);
 
   // PL-063: deal count per inactive agent for CRM segmentation.
-  const { data: dealCounts = {} } = useQuery({
+  const dealCountsQuery = useQuery({
     queryKey: ["inactive-agents-deal-counts", sortedAgentIds],
     queryFn: async (): Promise<Record<string, number>> => {
       if (entries.length === 0) return {};
@@ -156,6 +161,7 @@ export default function InactiveAgents() {
     },
     enabled: entries.length > 0,
   });
+  const dealCounts = dealCountsQuery.data ?? {};
 
   const segmentCounts = useMemo(() => {
     let neverSold = 0, atLeastOne = 0, onlyOne = 0;
@@ -299,21 +305,36 @@ export default function InactiveAgents() {
     return <PageLoadingSkeleton variant="list" />;
   }
 
+  const recoveryHeader = (
+    <PageHeader
+      accent="rose"
+      eyebrow="Admin · Recovery"
+      eyebrowIcon={<UserX className="h-3 w-3" />}
+      title="Inactive Agent Recovery"
+      subtitle="Find, re-engage, or re-route agents who've gone quiet. Severity color-coded by how long since last activity."
+      actions={
+        <Button onClick={runScan} disabled={scanning}>
+          <RefreshCw className={scanning ? "h-4 w-4 mr-1.5 animate-spin" : "h-4 w-4 mr-1.5"} />
+          {scanning ? "Scanning..." : "Run Inactivity Scan"}
+        </Button>
+      }
+    />
+  );
+
+  // A failed read is never "everyone's active". Replace the whole body (tiles,
+  // segments, list) with the error so no 0 on the page reads as a clean queue.
+  if (entriesErrored) {
+    return (
+      <div className="space-y-6 p-4 md:p-6 page-enter">
+        {recoveryHeader}
+        <QueryState status="error" label="the recovery queue" error={entriesQuery.error} onRetry={() => void entriesQuery.refetch()} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 p-4 md:p-6 page-enter">
-      <PageHeader
-        accent="rose"
-        eyebrow="Admin · Recovery"
-        eyebrowIcon={<UserX className="h-3 w-3" />}
-        title="Inactive Agent Recovery"
-        subtitle="Find, re-engage, or re-route agents who've gone quiet. Severity color-coded by how long since last activity."
-        actions={
-          <Button onClick={runScan} disabled={scanning}>
-            <RefreshCw className={scanning ? "h-4 w-4 mr-1.5 animate-spin" : "h-4 w-4 mr-1.5"} />
-            {scanning ? "Scanning..." : "Run Inactivity Scan"}
-          </Button>
-        }
-      />
+      {recoveryHeader}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <button

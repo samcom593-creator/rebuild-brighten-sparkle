@@ -10,6 +10,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { QueryState } from "@/components/ui/query-state";
 import {
   Shield, CheckCircle2, AlertTriangle, Flame, ShieldAlert, Skull,
   Mail, BadgeCheck, Link as LinkIcon,
@@ -57,7 +58,9 @@ export default function MyStrikes() {
     },
   });
 
-  const { data: strikes = [], isLoading } = useQuery({
+  // Whole-object: a dead v_agent_strikes must never render as "Clear" standing
+  // with confetti — that tells an agent their record is clean when the feed died.
+  const strikesQuery = useQuery({
     queryKey: ["my-strikes", agentRow?.id],
     enabled: !!agentRow?.id,
     queryFn: async () => {
@@ -70,6 +73,8 @@ export default function MyStrikes() {
       return (data ?? []) as any[];
     },
   });
+  const strikes = strikesQuery.data ?? [];
+  const isLoading = strikesQuery.isLoading;
 
   useRealtimeTable(
     { table: "agent_strikes", channelSuffix: "self", filter: agentRow?.id ? `agent_id=eq.${agentRow.id}` : undefined, enabled: !!agentRow?.id },
@@ -115,6 +120,22 @@ export default function MyStrikes() {
     if (error) { toast.error(`Ack failed: ${error.message}`); return; }
     toast.success("Acknowledged — your manager can see you've read it");
     qc.invalidateQueries({ queryKey: ["my-strikes", agentRow?.id] });
+  }
+
+  // A failed read is never a clear record. Show the error instead of the hero.
+  if (strikesQuery.isError && strikesQuery.data === undefined) {
+    return (
+      <div className="page-enter px-4 sm:px-6 pb-24">
+        <PageHeader
+          eyebrow="Conduct"
+          eyebrowIcon={<Shield className="h-3 w-3" />}
+          title="My Strikes"
+          subtitle="Your conduct record. Strikes track missed commitments, complaints, or quality issues."
+          accent="rose"
+        />
+        <QueryState status="error" label="your strikes" error={strikesQuery.error} onRetry={() => void strikesQuery.refetch()} />
+      </div>
+    );
   }
 
   return (

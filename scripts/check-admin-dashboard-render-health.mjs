@@ -75,6 +75,12 @@ const MANIFEST = [
   "src/pages/admin/UnlicensedAll.tsx",           // unlicensed queue — a dead v_unlicensed_all rendered "No unlicensed record matches" (pile clear) + totals 0; mp257Kpis queryFn SWALLOWED its error → false 0/0 recovered/suppressed
   "src/pages/XcelPipeline.tsx",                  // paid pre-licensing students — a dead v_xcel_pipeline rendered Total 0, every state tile 0, "No students"
   "src/pages/PrelicensingManager.tsx",           // pre-licensing manager board — a dead applications feed rendered "0 agents" + a green ✓ "No applicants match" (a cheerful lie the pipeline is empty)
+  // Retention/strikes cluster (MP-WIB-ADMIN-RENDER-HEALTH wave 5, 2026-11-18).
+  // A dead conduct feed renders a clear record; a dead churn feed renders "everyone's active".
+  "src/pages/AdminStrikes.tsx",                  // conduct desk — a dead v_strike_summary rendered 0 active/flagged tiles + "Nobody on the wrong side 🟢"; dead v_agent_strikes rendered a "Clear board"
+  "src/pages/InactiveAgents.tsx",                // retention queue — the queryFn SWALLOWED its error and rendered "everyone's active" + 0 severity tiles (producer churn is the agency's core problem)
+  "src/pages/MyStrikes.tsx",                     // agent-facing conduct record — a dead v_agent_strikes rendered "Clear" standing + confetti, telling an agent they're clean when the feed died
+  "src/components/dashboard/LicensingDelegateSection.tsx", // applicant-detail delegate panel — BOTH queryFns SWALLOWED .error and rendered "No delegates assigned"
 ];
 
 const ERROR_SIGNALS = ["isError", "isLoadingError", "status", "error"];

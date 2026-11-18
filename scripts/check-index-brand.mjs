@@ -125,6 +125,21 @@ for (const tag of indexSrc.match(/<meta\b[^>]*>/gi) || []) {
 // Anchor fields: if these are absent, extraction broke — never report green.
 if (!found.has("__title__")) die("no <title> found in index.html — guard cannot find its operand");
 if (!found.has("og:title")) die("no og:title <meta> found in index.html — guard cannot find its operand");
+// og:site_name is a MANDATORY anchor (promoted 2026-11-18, Website Integrity Bot):
+// its ABSENCE is itself the leak. Without it every social/LinkedIn/iMessage/Slack
+// unfurl attributes the share card to the bare host "apex-financial.org" — the
+// STALE pre-rebrand brand string (the domain legitimately stays Apex; the agency is
+// Galaxy) — instead of the current brand. It sat absent and silently green because
+// every BRAND_TEXT field is optional (`continue` if absent); this makes the one that
+// names the source on every share impossible to drop unnoticed. POSITIVE/NEGATIVE
+// below then force its value to carry the current brand and never the retired token.
+if (!found.has("og:site_name"))
+  die(
+    'no og:site_name <meta> found in index.html — every social/LinkedIn/iMessage/' +
+      'Slack unfurl of a shared link would attribute the card to the bare host ' +
+      '"apex-financial.org" (the stale pre-rebrand brand) instead of the current ' +
+      'brand. Add <meta property="og:site_name" content="<brand> Financial" />.',
+  );
 
 // Brand-name text fields: must NAME the brand, so must carry platformName.
 const BRAND_TEXT = [
@@ -394,6 +409,7 @@ for (const [host, hubSet] of hubByHost) {
 
 console.log(
   `✅ check:index-brand OK — index.html head + JSON-LD carry brand "${platform}"; ` +
+    `og:site_name present (names the source on every social unfurl); ` +
     `no retired "APEX" brand token in any user-facing <title>/<meta> value or ` +
     `structured-data text field; no retired social handle in index.html sameAs or ` +
     `the /links bio hub (${linksHandles.length} hrefs); the ${hubByHost.size} shared ` +

@@ -105,6 +105,12 @@
     <meta property="og:url" content="https://apex-financial.org" />
     <meta property="og:title" content="Galaxy Financial — Build Your Empire" />
     <meta property="og:description" content="Uncapped commissions. Warm leads. Free training. Start your application at Galaxy Financial." />
+    <!-- og:site_name: without it, every social/LinkedIn/iMessage/Slack unfurl of a
+         shared link attributes the card to the bare host "apex-financial.org" — the
+         STALE pre-rebrand brand string (domain stays Apex on purpose; the agency is
+         Galaxy). This names the source "Galaxy Financial" on every share. Matches the
+         JSON-LD Organization.name byte-for-byte. Mandatory in check:index-brand. -->
+    <meta property="og:site_name" content="Galaxy Financial" />
     <meta property="og:image" content="https://apex-financial.org/galaxy-recruit-og.jpg" />
     <meta property="og:image:type" content="image/jpeg" />
     <meta property="og:image:width" content="1200" />

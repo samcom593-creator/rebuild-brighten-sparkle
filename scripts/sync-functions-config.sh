@@ -278,6 +278,11 @@ PUBLIC_ALLOWLIST=(
   "ig-trial-reel-publish"
   # reactivation-send (2026-11-12): pg_cron caller, x-reactivation-key compared in constant time in-handler.
   "reactivation-send"
+  # contracting-nudge-sweep (MP-CONTRACTING-MGN-LINK, 2026-11-17): daily pg_cron caller presents the
+  # vault apex_bot_token (not a JWT), verified in-handler; already verify_jwt=false in config.toml and
+  # reviewed public by the security guard. Listed here so a lost stanza can never flip it to
+  # verify_jwt=true and silently kill the nudge sweep — the MP-491 sixteen-day death.
+  "contracting-nudge-sweep"
 )
 
 is_public() {

@@ -1761,6 +1761,7 @@
       "manager_track_flagged_at",
       "manual_followup_sent_at",
       "monday_status",
+      "motivation",
       "msclkid",
       "next_action",
       "next_action_at",
@@ -9423,6 +9424,21 @@
       "last_status",
       "time_since_last_run"
     ],
+    "v_cfo_dark_feed_only_producers": [
+      "agent_id",
+      "agent_name",
+      "agent_status",
+      "cohort",
+      "dark_alp_90d",
+      "dark_deals_90d",
+      "dark_origin",
+      "data_caveat",
+      "days_since_last_write",
+      "is_inactive",
+      "last_dark_write",
+      "license_status",
+      "native_alp_60d"
+    ],
     "v_cfo_dup_charge_watch": [
       "anomalies",
       "as_of",
@@ -9430,6 +9446,21 @@
       "name_mismatch_count",
       "unlinked_count",
       "unusual_amount_count"
+    ],
+    "v_cfo_faller_dark_feed_overlap": [
+      "agent_id",
+      "dark_feed_alp_90d",
+      "dark_feed_deals_90d",
+      "dark_origin",
+      "data_caveat",
+      "display_name",
+      "native_alp_30d",
+      "native_alp_prior_30d",
+      "native_verdict",
+      "origin_days_dark",
+      "origin_last_reported",
+      "origin_verdict",
+      "producer_last_dark_write"
     ],
     "v_cfo_ghost_ap_verdict": [
       "as_of",
@@ -9464,6 +9495,22 @@
       "oldest_paid_at",
       "stuck_count",
       "verdict"
+    ],
+    "v_cfo_mentorship_inbound_bridge": [
+      "draft_reply",
+      "handle",
+      "id",
+      "intent",
+      "lane",
+      "mentorship_product_price_usd",
+      "message",
+      "platform",
+      "social_tagged_value_usd",
+      "status",
+      "stripe_link",
+      "tier",
+      "ts",
+      "worked"
     ],
     "v_cfo_native_payment_reconciliation": [
       "alp_gross_written",

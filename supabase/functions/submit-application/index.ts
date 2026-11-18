@@ -272,6 +272,10 @@ const FullSubmitApplicationSchema = z.object({
   licensedStates: z.array(z.string().min(2).max(50)).optional().nullable(),
 
   availability: z.string().min(1).max(500),
+  // The client requires this (min 25 chars) and hard-blocks submit on it; the server stays
+  // lenient (optional) so the quick-qualify path and any cached older client bundle — which
+  // never send motivation — keep submitting successfully. Capped generously; it is free text.
+  motivation: z.string().max(5000).optional().nullable(),
   referralSource: z.string().max(500).optional().nullable(),
   customReferrer: z.string().trim().max(120).optional().nullable(),
   
@@ -1366,6 +1370,7 @@ const handler = async (req: Request): Promise<Response> => {
 
       desired_income: null,
       availability: data.availability,
+      motivation: data.motivation ?? null,
       referral_source: data.referralSource ?? (data.utmMedium === "paid_social" ? "paid_social" : data.source ?? null),
       referral_source_detail: data.utmCampaign ?? data.utmContent ?? data.utmSource ?? null,
       source: data.source ?? null,

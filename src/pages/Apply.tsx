@@ -945,6 +945,7 @@ export default function Apply() {
             emailTypoConfirmed: emailTypoConfirmedRef.current || undefined,
 
             availability: data.availability,
+            motivation: data.motivation,
             referralSource: data.referralSource,
             customReferrer:
               selectedReferrer === "other" && customReferrer.trim()

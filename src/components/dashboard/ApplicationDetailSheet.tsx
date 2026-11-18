@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import {
   Phone, Mail, Instagram, MapPin, FileText,
   Building2, GraduationCap, Calendar, CheckCircle, Pencil, X, Loader2,
-  KeyRound, Send, RefreshCw, UserPlus,
+  KeyRound, Send, RefreshCw, UserPlus, Quote,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
@@ -471,6 +471,24 @@ export function ApplicationDetailSheet({
                         </div>
                       )}
                     </div>
+                  </div>
+                </>
+              )}
+
+              {/* Motivation — the applicant's own words on why they want to join.
+                  Required at submit (min 25 chars); the highest-signal line a
+                  recruiter reads when deciding who to call first. */}
+              {app.motivation && (
+                <>
+                  <Separator />
+                  <div className="space-y-2.5">
+                    <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-2">
+                      <Quote className="h-3.5 w-3.5" />
+                      Why They Want To Join
+                    </h4>
+                    <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed bg-muted/30 rounded-lg p-3">
+                      {app.motivation}
+                    </p>
                   </div>
                 </>
               )}

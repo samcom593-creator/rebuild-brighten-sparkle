@@ -37785,6 +37785,7 @@ export type Database = {
           manager_track_flagged_at: string | null
           manual_followup_sent_at: string | null
           monday_status: string | null
+          motivation: string | null
           msclkid: string | null
           next_action: string | null
           next_action_at: string | null
@@ -37952,6 +37953,7 @@ export type Database = {
           manager_track_flagged_at?: string | null
           manual_followup_sent_at?: string | null
           monday_status?: string | null
+          motivation?: string | null
           msclkid?: string | null
           next_action?: string | null
           next_action_at?: string | null
@@ -38119,6 +38121,7 @@ export type Database = {
           manager_track_flagged_at?: string | null
           manual_followup_sent_at?: string | null
           monday_status?: string | null
+          motivation?: string | null
           msclkid?: string | null
           next_action?: string | null
           next_action_at?: string | null

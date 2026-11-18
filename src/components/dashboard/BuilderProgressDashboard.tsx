@@ -6,6 +6,7 @@ import { Crown, TrendingUp, Activity, AlertTriangle, Users, ArrowRight, Sparkles
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { QueryState } from "@/components/ui/query-state";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -67,7 +68,7 @@ function daysAgo(iso: string | null): string {
 }
 
 export function BuilderProgressDashboard() {
-  const { data: rows = [], isLoading } = useQuery({
+  const { data: rows = [], isLoading, isError, error, refetch } = useQuery({
     queryKey: ["sam-builders-dashboard"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -122,6 +123,24 @@ export function BuilderProgressDashboard() {
           <CardTitle className="text-base font-semibold">My builders</CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground">Loading…</CardContent>
+      </Card>
+    );
+  }
+
+  // A dead v_sam_builders_dashboard read must NOT render "No direct recruits
+  // yet" — that false empty is a lie on Sam's primary front-dashboard widget.
+  // Surface the failure with Retry so a down feed reads as down, not as zero.
+  if (isError) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <Crown className="h-4 w-4 text-amber-500" /> My builders
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <QueryState status="error" label="your builders" error={error} onRetry={() => void refetch()} />
+        </CardContent>
       </Card>
     );
   }

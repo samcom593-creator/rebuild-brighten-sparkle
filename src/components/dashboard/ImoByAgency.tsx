@@ -57,7 +57,10 @@ export function ImoByAgency({
   const phoenixToday = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Phoenix", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
   const apiStart = start?.slice(0, 10) ?? `${phoenixToday.slice(0, 7)}-01`;
   const apiEnd = end?.slice(0, 10) ?? phoenixToday;
-  const { data: vantageDays = [] } = useQuery({
+  // Whole-object (no `data = []` destructure default): the Agent Cloud detail
+  // disclosure keyed off vantageDays.length, so a dead snapshots read silently
+  // omitted the Vantage breakdown. vantageQuery.isError now surfaces it.
+  const vantageQuery = useQuery({
     enabled: isAdmin,
     queryKey: ["vantage-api-production", apiStart, apiEnd],
     staleTime: 60_000,
@@ -74,6 +77,7 @@ export function ImoByAgency({
       return (data ?? []) as unknown as VantageDay[];
     },
   });
+  const vantageDays = vantageQuery.data ?? [];
   const vantageApi = summarizeVantageDays(vantageDays);
   const imoQuery = useQuery({
     enabled: isAdmin,
@@ -143,7 +147,11 @@ export function ImoByAgency({
   // producers excluded from the roster (e.g. external Ayro placeholders). Shown, never summed in.
   const excStart = start?.slice(0, 10) ?? `${phoenixToday.slice(0, 7)}-01`;
   const excEnd = end?.slice(0, 10) ?? new Date(Date.parse(`${phoenixToday}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
-  const { data: exceptions = [] } = useQuery({
+  // Whole-object (no `data = []` default): the "Not counted in the agency
+  // totals" note is gated on exceptions.length, so a dead
+  // production_attribution_exceptions read silently hid attribution gaps.
+  // exceptionsQuery.isError now surfaces the failure instead.
+  const exceptionsQuery = useQuery({
     enabled: Boolean(isAdmin),
     queryKey: ["production-attribution-exceptions", excStart, excEnd],
     staleTime: 60_000,
@@ -153,6 +161,7 @@ export function ImoByAgency({
       return (data ?? []) as unknown as Array<{ kind: string; policies: number; alp: number; largest_label: string; largest_alp: number }>;
     },
   });
+  const exceptions = exceptionsQuery.data ?? [];
 
   // Second half of the gate: render nothing at all for a non-admin. The
   // disabled query above already prevents the fetch; this makes sure no
@@ -225,6 +234,11 @@ export function ImoByAgency({
                   Your override: {fmt(ovrOf(a))} {exactWindow ? "this window" : "MTD"}
                 </p>
               )}
+              {a.agency === "Vantage Financial" && vantageQuery.isError && (
+                <p className="mt-2 text-[12px] text-destructive" role="alert">
+                  Agent Cloud detail did not load. The agency total above still stands.
+                </p>
+              )}
               {a.agency === "Vantage Financial" && vantageDays.length > 0 && (
                 <details className="mt-2 text-xs text-muted-foreground">
                   <summary className="cursor-pointer rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
@@ -246,6 +260,11 @@ export function ImoByAgency({
           ))}
         </CardContent>
       </Card>
+      {exceptionsQuery.isError && (
+        <div className="mt-2 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive" role="alert">
+          Attribution exceptions did not load — production outside the agency totals can't be shown right now.
+        </div>
+      )}
       {exceptions.length > 0 && (
         <div className="mt-2 space-y-1 rounded-md border border-dashed border-border px-3 py-2 text-xs text-muted-foreground" role="note">
           <p className="font-semibold text-foreground">Not counted in the agency totals</p>

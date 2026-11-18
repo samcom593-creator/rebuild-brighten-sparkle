@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryState } from "@/components/ui/query-state";
 import { cn } from "@/lib/utils";
 
 // Sam: "make it easier to check downlines or agencies production, or producers
@@ -30,7 +31,11 @@ const PULSE_STYLE: Record<string, { label: string; cls: string }> = {
 export function ProducerPulse() {
   const [openLeg, setOpenLeg] = useState<string | null>(null);
 
-  const { data: legs = [], isLoading } = useQuery({
+  // Whole-object queries (no `data = []` destructure default): a dead feed
+  // defaulting to [] with no error handle is exactly how this card used to
+  // VANISH on a down v_leg_production (legs.length === 0 → return null), so a
+  // dead production feed read as a quiet day. Error is now surfaced, not hidden.
+  const legsQuery = useQuery({
     queryKey: ["leg-production"],
     staleTime: 120_000,
     queryFn: async () => {
@@ -39,8 +44,9 @@ export function ProducerPulse() {
       return (data ?? []) as unknown as Leg[];
     },
   });
+  const legs = legsQuery.data ?? [];
 
-  const { data: people = [] } = useQuery({
+  const peopleQuery = useQuery({
     queryKey: ["producer-pulse", openLeg],
     enabled: openLeg !== null,
     staleTime: 120_000,
@@ -53,8 +59,18 @@ export function ProducerPulse() {
       return (data ?? []) as unknown as Pulse[];
     },
   });
+  const people = peopleQuery.data ?? [];
 
-  if (isLoading) return <Skeleton className="h-44 rounded-lg" />;
+  if (legsQuery.isLoading) return <Skeleton className="h-44 rounded-lg" />;
+  if (legsQuery.isError) {
+    return (
+      <Card>
+        <CardContent className="p-4">
+          <QueryState status="error" label="producer pulse" error={legsQuery.error} onRetry={() => void legsQuery.refetch()} compact />
+        </CardContent>
+      </Card>
+    );
+  }
   if (legs.length === 0) return null;
 
   return (
@@ -91,8 +107,14 @@ export function ProducerPulse() {
 
                 {open && (
                   <div className="border-t border-border">
-                    {people.length === 0 ? (
-                      <p className="px-3 py-4 text-center text-xs text-muted-foreground">Loading producers…</p>
+                    {peopleQuery.isError ? (
+                      <div className="px-3 py-3">
+                        <QueryState status="error" label="producers" error={peopleQuery.error} onRetry={() => void peopleQuery.refetch()} compact />
+                      </div>
+                    ) : people.length === 0 ? (
+                      <p className="px-3 py-4 text-center text-xs text-muted-foreground">
+                        {peopleQuery.isPending ? "Loading producers…" : "No producers in this leg."}
+                      </p>
                     ) : (
                       <table className="w-full text-sm">
                         <tbody className="divide-y divide-border">

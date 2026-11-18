@@ -60,6 +60,10 @@ const MANIFEST = [
   "src/pages/DashboardToday.tsx",        // the one-screen money daily-driver (revenue + CFO snapshot)
   "src/pages/DashboardCommandCenter.tsx",// the admin command center (production stats, roster money)
   "src/pages/admin/RecruitFunnel.tsx",   // month-by-month recruiting conversion
+  // Production-dashboard cluster (MP-WIB-ADMIN-RENDER-HEALTH wave 2, 2026-11-18).
+  "src/components/dashboard/ProducerPulse.tsx",          // per-leg production pulse — dead v_leg_production used to VANISH the whole card
+  "src/components/dashboard/BuilderProgressDashboard.tsx",// Sam's primary widget — dead feed rendered "No direct recruits yet"
+  "src/components/dashboard/ImoByAgency.tsx",            // IMO/agency ALP + owner override — dead secondary feeds silently dropped attribution exceptions
 ];
 
 const ERROR_SIGNALS = ["isError", "isLoadingError", "status", "error"];

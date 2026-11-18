@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { QueryState } from "@/components/ui/query-state";
 import {
   Zap, CheckCircle2, AlertTriangle, XCircle, Clock, Play, RefreshCw, Search, Activity,
 } from "lucide-react";
@@ -140,13 +141,18 @@ export default function AutomationHealth() {
     refetchInterval: 300_000,
   });
 
-  const { data: runs = [] } = useQuery({
+  // MP-WIB-ADMIN-RENDER-HEALTH-3: this read swallowed its error and defaulted to
+  // [], so a dead automation_run_log rendered "No runs logged yet. Jobs will
+  // appear here once cron fires them" — a believable all-quiet when the feed had
+  // died. Throw + surface, matching the cronJobs spine above it.
+  const { data: runs = [], isError: runsError, error: runsErr, refetch: refetchRuns } = useQuery({
     queryKey: ["automation-runs"],
     queryFn: async (): Promise<RunLogRow[]> => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("automation_run_log" as any).select("id,job_name,triggered_at,status,http_status,error,duration_ms,completed_at")
         .order("triggered_at", { ascending: false })
         .limit(100);
+      if (error) throw error;
       return (data as any) ?? [];
     },
     enabled: isAdmin,
@@ -385,7 +391,11 @@ export default function AutomationHealth() {
         </TabsContent>
 
         <TabsContent value="runs" className="space-y-1">
-          {runs.length === 0 ? (
+          {runsError ? (
+            <Card><CardContent className="p-8">
+              <QueryState status="error" label="the automation run log" error={runsErr} onRetry={() => void refetchRuns()} />
+            </CardContent></Card>
+          ) : runs.length === 0 ? (
             <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">
               No runs logged yet. Jobs will appear here once cron fires them (or you trigger manually).
             </CardContent></Card>

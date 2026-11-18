@@ -64,6 +64,12 @@ const MANIFEST = [
   "src/components/dashboard/ProducerPulse.tsx",          // per-leg production pulse — dead v_leg_production used to VANISH the whole card
   "src/components/dashboard/BuilderProgressDashboard.tsx",// Sam's primary widget — dead feed rendered "No direct recruits yet"
   "src/components/dashboard/ImoByAgency.tsx",            // IMO/agency ALP + owner override — dead secondary feeds silently dropped attribution exceptions
+  // Money/ops daily-driver cluster (MP-WIB-ADMIN-RENDER-HEALTH wave 3, 2026-11-18).
+  "src/components/admin/InsuraCloudOutbox.tsx",  // deal→InsuraCloud sync — dead feeds rendered "Synced 0 · Pending 0 · Errored 0" (an all-clear outbox) and vanished both error lists; queryFns also swallowed the error
+  "src/pages/LeadManager.tsx",                   // lead spend desk — dead RPCs rendered empty pools, empty closers board and "Nothing dropped yet"
+  "src/pages/AutomationHealth.tsx",              // cron/automation health — a dead automation_run_log rendered "No runs logged yet" (the queryFn swallowed its error)
+  "src/pages/HiringPipeline.tsx",                // recruiting kanban — a dead applications feed rendered an empty board, every stage reading 0
+  "src/pages/AgentManagement.tsx",               // roster + production — a dead agents read rendered "no agents" as fact (the queryFn swallowed its error)
 ];
 
 const ERROR_SIGNALS = ["isError", "isLoadingError", "status", "error"];

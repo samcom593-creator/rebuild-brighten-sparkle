@@ -20,6 +20,7 @@ import { differenceInDays, format } from "date-fns";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
+import { QueryState } from "@/components/ui/query-state";
 import { formatPhoneDisplay as formatPhoneDisplayLib, phoneHref, smsHref, contactLinkProps } from "@/lib/phone";
 
 /**
@@ -114,7 +115,11 @@ export default function HiringPipeline() {
     return () => { supabase.removeChannel(channel); };
   }, [qc]);
 
-  const { data: apps = [], isLoading, refetch } = useQuery({
+  // MP-WIB-ADMIN-RENDER-HEALTH-3: the queryFn threw on a failed read, but `apps`
+  // defaulted to [] with no error handle, so a dead applications feed rendered an
+  // empty board — every recruiting stage reading 0, a calm "nobody in the
+  // pipeline" at the moment the feed had died. Carry the error and surface it.
+  const { data: apps = [], isLoading, isError, error, refetch } = useQuery({
     queryKey: ["hiring-pipeline-v2", isAdmin ? "admin" : "manager"],
     queryFn: async () => {
       // Admin: see everyone. Manager: scope to their full downline (their
@@ -349,6 +354,14 @@ export default function HiringPipeline() {
 
   if (isLoading) {
     return <PageLoadingSkeleton variant="dashboard" />;
+  }
+
+  if (isError) {
+    return (
+      <div className="min-h-screen bg-background p-4 md:p-6 max-w-[1680px] mx-auto">
+        <QueryState status="error" label="the hiring pipeline" error={error} onRetry={() => void refetch()} />
+      </div>
+    );
   }
 
   return (

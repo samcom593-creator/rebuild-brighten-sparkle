@@ -13,6 +13,7 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/ui/page-header";
+import { QueryState } from "@/components/ui/query-state";
 import { cn } from "@/lib/utils";
 import { TIER_STYLE, flagBadges, tierLegendFor } from "@/lib/leadBundles";
 import { formatTimeAgo } from "@/lib/dateUtils";
@@ -372,7 +373,12 @@ export default function LeadManager() {
   // was ~2.8s live) cached for 10 minutes — this is what
   // made the page FEEL slow: it used to fire four counts calls (~5.7s of DB
   // work, marketing scanned twice) on every single visit.
-  const { data: totals = {} } = useQuery<Record<string, { total: number; by_tier: Record<string, number> }>>({
+  // MP-WIB-ADMIN-RENDER-HEALTH-3: the pool tiles / closers board / recent drops
+  // each defaulted `data` with no error signal, so a dead RPC rendered empty
+  // pools, an empty leaderboard and "Nothing dropped yet" — a calm, all-quiet
+  // lead desk at the moment the feed had died. The queryFns already threw; these
+  // now carry the error handle and the sections surface it.
+  const totalsQuery = useQuery<Record<string, { total: number; by_tier: Record<string, number> }>>({
     queryKey: ["lead-pool-tiles"],
     queryFn: async () => {
       const { data, error } = await rpc("lead_pool_tiles");
@@ -382,6 +388,7 @@ export default function LeadManager() {
     staleTime: 10 * 60_000,
     gcTime: 30 * 60_000,
   });
+  const totals = totalsQuery.data ?? {};
 
   const { data: counts, isFetching } = useQuery<PoolCounts>({
     queryKey: ["lead-pool", pool, debouncedFilters],
@@ -430,7 +437,7 @@ export default function LeadManager() {
   // internal-nav-href-allow:auth-recovery — a dead/stale session needs a full app reboot, not an in-SPA nav that keeps the broken client in memory.
   const goLogin = () => window.location.assign("/login");
 
-  const { data: recent = [] } = useQuery<RecentBundle[]>({
+  const recentQuery = useQuery<RecentBundle[]>({
     queryKey: ["lead-bundles-recent"],
     queryFn: async () => {
       const { data, error } = await rpc("lead_bundle_recent", { p_limit: 50 });
@@ -439,8 +446,9 @@ export default function LeadManager() {
     },
     staleTime: 15_000,
   });
+  const recent = recentQuery.data ?? [];
 
-  const { data: closers = [] } = useQuery<Closer[]>({
+  const closersQuery = useQuery<Closer[]>({
     queryKey: ["lead-closers"],
     queryFn: async () => {
       const { data, error } = await rpc("lead_closers_leaderboard");
@@ -449,6 +457,7 @@ export default function LeadManager() {
     },
     staleTime: 30_000,
   });
+  const closers = closersQuery.data ?? [];
 
   const dropCount = Math.min(limit, counts?.total ?? 0);
 
@@ -539,6 +548,9 @@ export default function LeadManager() {
           );
         })}
       </div>
+      {totalsQuery.isError && (
+        <QueryState status="error" label="lead pool totals" error={totalsQuery.error} onRetry={() => void totalsQuery.refetch()} compact />
+      )}
 
       {/* FILTER + PREVIEW */}
       <Card>
@@ -766,7 +778,9 @@ export default function LeadManager() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {closers.length === 0 ? (
+          {closersQuery.isError ? (
+            <QueryState status="error" label="the closers leaderboard" error={closersQuery.error} onRetry={() => void closersQuery.refetch()} compact />
+          ) : closers.length === 0 ? (
             <p className="text-sm text-muted-foreground">No closes yet. Drop some packs and the leaderboard lights up as agents sell.</p>
           ) : (
             <div className="space-y-1.5">
@@ -807,7 +821,9 @@ export default function LeadManager() {
             {notWorkedOnly ? "Show all drops" : `Not worked yet${notWorked.length ? ` (${notWorked.length})` : ""}`}
           </Button>
         </div>
-        {recent.length === 0 ? (
+        {recentQuery.isError ? (
+          <Card><CardContent className="p-6"><QueryState status="error" label="recent drops" error={recentQuery.error} onRetry={() => void recentQuery.refetch()} compact /></CardContent></Card>
+        ) : recent.length === 0 ? (
           <Card><CardContent className="p-6 text-center text-sm text-muted-foreground">Nothing dropped yet. Build a pack above and it shows up here.</CardContent></Card>
         ) : notWorkedOnly && shown.length === 0 ? (
           <Card><CardContent className="p-6 text-center text-sm text-muted-foreground">Every dropped pack has been touched — nobody's sitting on their leads right now.</CardContent></Card>

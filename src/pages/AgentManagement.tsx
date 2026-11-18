@@ -8,6 +8,7 @@ import { useMyDownline } from "@/hooks/useMyDownline";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
+import { QueryState } from "@/components/ui/query-state";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -119,7 +120,7 @@ export default function AgentManagement() {
   const [quickEditId, setQuickEditId] = useState<string | null>(null);
   const portalLogins = usePortalLoginSender();
 
-  const { data: rows = [], isLoading } = useQuery({
+  const { data: rows = [], isLoading, isError, error, refetch } = useQuery({
     queryKey: ["agent-mgmt-rows", isAdmin, downlineIds.join(",")],
     queryFn: async (): Promise<AgentRow[]> => {
       let agentQ = supabase
@@ -140,7 +141,11 @@ export default function AgentManagement() {
         }
       }
 
-      const { data: agents } = await agentQ;
+      // MP-WIB-ADMIN-RENDER-HEALTH-3: a dead agents read swallowed its error and
+      // defaulted the whole roster to empty — "no agents" rendered as fact at the
+      // moment the feed had died. Throw so the page surfaces the failure.
+      const { data: agents, error: agentsError } = await agentQ;
+      if (agentsError) throw agentsError;
 
       const userIds = (agents || []).map((a: any) => a.user_id).filter(Boolean);
       const { data: roles } = userIds.length
@@ -451,6 +456,10 @@ export default function AgentManagement() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {[...Array(9)].map((_, i) => /* stable-key-allow:skeleton */ <div key={i} className="h-32 rounded-md bg-muted/20 animate-pulse" />)}
         </div>
+      ) : isError ? (
+        <Card><CardContent className="p-8">
+          <QueryState status="error" label="the agent roster" error={error} onRetry={() => void refetch()} />
+        </CardContent></Card>
       ) : filtered.length === 0 ? (
         <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">
           No agents match this filter. Try clearing search or changing stage.

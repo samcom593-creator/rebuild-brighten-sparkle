@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { AlertCircle, RefreshCw, Loader2, Cloud, CheckCircle2, Users } from "lucide-react";
+import { QueryState } from "@/components/ui/query-state";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
@@ -38,7 +39,12 @@ export function InsuraCloudOutbox() {
     if (error) toast.error(error.message); else toast.success(`Auto-push ${v ? "enabled" : "disabled"}`);
   };
 
-  const { data: stats, refetch: refetchStats } = useQuery({
+  // MP-WIB-ADMIN-RENDER-HEALTH-3: every feed below threw silently on a dead read
+  // and rendered a believable zero — the deal→InsuraCloud sync lie. The stat
+  // cards read "Synced 0 · Pending 0 · Errored 0" (an all-clear, nothing-queued
+  // outbox) and both lists simply vanished. Each queryFn now throws on .error and
+  // the component surfaces the failure instead of a calm, false 0.
+  const statsQuery = useQuery({
     queryKey: ["insuracloud-outbox-stats"],
     queryFn: async () => {
       const [pendingRes, errorsRes, syncedRes, mapping] = await Promise.all([
@@ -53,6 +59,9 @@ export function InsuraCloudOutbox() {
       ]);
       const carriersRes = await supabase.from("carriers" as any).select("id", { count: "exact", head: true })
         .eq("is_active", true).is("insuracloud_carrier_id", null);
+      for (const r of [pendingRes, errorsRes, syncedRes, mapping, carriersRes]) {
+        if (r.error) throw r.error;
+      }
       return {
         pending: pendingRes.count ?? 0,
         errors: errorsRes.count ?? 0,
@@ -63,28 +72,35 @@ export function InsuraCloudOutbox() {
     },
     refetchInterval: 300_000,
   });
+  const stats = statsQuery.data;
+  const refetchStats = statsQuery.refetch;
 
-  const { data: recentErrors = [], refetch: refetchErrors } = useQuery({
+  const recentErrorsQuery = useQuery({
     queryKey: ["insuracloud-recent-errors"],
     queryFn: async () => {
-      const { data } = await supabase.from("deals" as any)
+      const { data, error } = await supabase.from("deals" as any)
         .select("id, policy_number, client_first_name, client_last_name, insuracloud_sync_error, created_at, agent_id")
         .not("insuracloud_sync_error", "is", null)
         .is("synced_to_insuracloud_at", null)
         .order("created_at", { ascending: false })
         .limit(10);
+      if (error) throw error;
       return (data as any) || [];
     },
   });
+  const recentErrors = recentErrorsQuery.data ?? [];
+  const refetchErrors = recentErrorsQuery.refetch;
 
-  const { data: backfillHistory = [] } = useQuery({
+  const backfillQuery = useQuery({
     queryKey: ["insuracloud-backfill-history"],
     queryFn: async () => {
-      const { data } = await supabase.from("insuracloud_backfill_log" as any)
+      const { data, error } = await supabase.from("insuracloud_backfill_log" as any)
         .select("*").order("ran_at", { ascending: false }).limit(5);
+      if (error) throw error;
       return (data as any) || [];
     },
   });
+  const backfillHistory = backfillQuery.data ?? [];
 
   const sweepNow = async () => {
     setSweeping(true);
@@ -117,6 +133,11 @@ export function InsuraCloudOutbox() {
 
   return (
     <div className="space-y-4">
+      {statsQuery.isError ? (
+        <Card><CardContent className="p-4">
+          <QueryState status="error" label="the InsuraCloud outbox" error={statsQuery.error} onRetry={() => void refetchStats()} />
+        </CardContent></Card>
+      ) : (
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {[
           { label: "Synced", value: stats?.synced ?? 0, icon: CheckCircle2, color: "text-emerald-400" },
@@ -134,6 +155,7 @@ export function InsuraCloudOutbox() {
           </CardContent></Card>
         ))}
       </div>
+      )}
 
       <Card>
         <CardHeader className="pb-2">
@@ -162,7 +184,13 @@ export function InsuraCloudOutbox() {
         </CardContent>
       </Card>
 
-      {recentErrors.length > 0 && (
+      {recentErrorsQuery.isError && (
+        <Card><CardContent className="p-4">
+          <QueryState status="error" label="recent sync errors" error={recentErrorsQuery.error} onRetry={() => void refetchErrors()} compact />
+        </CardContent></Card>
+      )}
+
+      {!recentErrorsQuery.isError && recentErrors.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2 text-orange-400">
@@ -185,7 +213,13 @@ export function InsuraCloudOutbox() {
         </Card>
       )}
 
-      {backfillHistory.length > 0 && (
+      {backfillQuery.isError && (
+        <Card><CardContent className="p-4">
+          <QueryState status="error" label="recent backfills" error={backfillQuery.error} onRetry={() => void backfillQuery.refetch()} compact />
+        </CardContent></Card>
+      )}
+
+      {!backfillQuery.isError && backfillHistory.length > 0 && (
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Recent backfills</CardTitle></CardHeader>
           <CardContent className="p-0">

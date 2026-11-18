@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { GlassCard } from "@/components/ui/glass-card";
+import { QueryState } from "@/components/ui/query-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -88,7 +89,7 @@ export default function PrelicensingManager() {
     },
   });
 
-  const { data: apps = [], isLoading, refetch } = useQuery({
+  const { data: apps = [], isLoading, isError, error, refetch } = useQuery({
     queryKey: ["prelicensing-apps", user?.id, currentAgentId, isAdmin, isManager],
     queryFn: async () => {
       let q = supabase
@@ -270,6 +271,9 @@ export default function PrelicensingManager() {
           </>
         }
       />
+      {isError ? (
+        <GlassCard className="p-4"><QueryState status="error" label="the pre-licensing pipeline" error={error} onRetry={() => void refetch()} /></GlassCard>
+      ) : (<>
       {/* Stage buckets — click to filter */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
         <button
@@ -497,6 +501,7 @@ export default function PrelicensingManager() {
           )}
         </GlassCard>
       )}
+      </>)}
     </div>
   );
 }

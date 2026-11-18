@@ -32,6 +32,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
 import { GlassCard } from "@/components/ui/glass-card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { QueryState } from "@/components/ui/query-state";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -180,7 +181,7 @@ export default function UnlicensedAll() {
   // the first N; "Show more" reveals the rest. Selection/batch still use `filtered`.
   const [visibleCount, setVisibleCount] = useState(100);
 
-  const { data: rows = [], isLoading } = useQuery<UnlicensedRow[]>({
+  const { data: rows = [], isLoading, isError, error, refetch } = useQuery<UnlicensedRow[]>({
     queryKey: ["v_unlicensed_all"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -193,7 +194,10 @@ export default function UnlicensedAll() {
     refetchInterval: 300_000,
   });
 
-  const { data: xcelRows = [] } = useQuery<XcelProgressRow[]>({
+  // Secondary enrichment — merged into rows by email for the XCEL badges. A dead
+  // feed degrades to "no badges", not a false headline number, so whole-object
+  // (data ?? []) drops the destructure-default without a decorative error handle.
+  const xcelQuery = useQuery<XcelProgressRow[]>({
     queryKey: ["v_xcel_person_progress"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -204,8 +208,12 @@ export default function UnlicensedAll() {
     },
     staleTime: 60_000,
   });
+  const xcelRows = xcelQuery.data ?? [];
 
-  const { data: vas = [] } = useQuery<VaOption[]>({
+  // VA/manager options for the assignment dropdowns — a dead feed degrades to an
+  // empty option list (the dropdowns already say "No managers/VAs"), not a false
+  // business number, so whole-object drops the default without a fake handle.
+  const vasQuery = useQuery<VaOption[]>({
     queryKey: ["vas_and_managers"],
     queryFn: async () => {
       const { data: roleRows, error } = await supabase
@@ -244,6 +252,7 @@ export default function UnlicensedAll() {
     },
     staleTime: 5 * 60_000,
   });
+  const vas = vasQuery.data ?? [];
 
   const assignVa = useMutation({
     mutationFn: async ({ row, vaId }: { row: UnlicensedRow; vaId: string }) => {
@@ -363,22 +372,28 @@ export default function UnlicensedAll() {
   }, [rows]);
 
   // MP-257: 7-day recovered + suppressed counters. Real fields only; 0 shown as 0.
-  const { data: mp257Kpis = { recovered: 0, suppressed: 0 } } = useQuery({
+  const { data: mp257Kpis = { recovered: 0, suppressed: 0 }, isError: kpiError } = useQuery({
     queryKey: ["mp257_kpis"],
     queryFn: async () => {
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-      const { count: recoveredCount } = await supabase
+      // These two numbers are read, not options — a dead count must surface as an
+      // error, never a false 0. .select(count) with head:true returns the error in
+      // { error }, so throw it instead of swallowing it into `?? 0` (the MP-273
+      // error-discard that turned the recovered/suppressed tiles into a quiet lie).
+      const { count: recoveredCount, error: recErr } = await supabase
         .from("applications")
         .select("id", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE)
         .eq("license_status", "licensed")
         .gte("licensed_at", sevenDaysAgo);
+      if (recErr) throw recErr;
 
-      const { count: appSuppressed } = await supabase
+      const { count: appSuppressed, error: supErr } = await supabase
         .from("applications")
         .select("id", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE)
         .not("terminated_at", "is", null)
         .gte("terminated_at", sevenDaysAgo);
+      if (supErr) throw supErr;
 
       return {
         recovered: recoveredCount ?? 0,
@@ -586,6 +601,11 @@ export default function UnlicensedAll() {
         subtitle="Every applicant without a license. Route to a VA, work the ghosted 30d+ pile daily."
       />
 
+      {isError ? (
+        <GlassCard className="p-4">
+          <QueryState status="error" label="the unlicensed queue" error={error} onRetry={() => void refetch()} />
+        </GlassCard>
+      ) : (<>
       {/* MP-257: Start VA Recovery Batch CTA */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <p className="min-w-0 text-xs leading-relaxed text-muted-foreground">
@@ -617,8 +637,8 @@ export default function UnlicensedAll() {
           <TotalTile label="Ghosted 30d+" value={totals.ghosted} icon={<Ghost className="h-4 w-4" />} tone="text-rose-600 dark:text-rose-400" emphasis />
           <TotalTile label="Assigned" value={totals.assigned} icon={<UserCheck className="h-4 w-4" />} tone="text-emerald-600 dark:text-emerald-400" />
           <TotalTile label="Unassigned" value={totals.unassigned} icon={<UserMinus className="h-4 w-4" />} tone="text-amber-600 dark:text-amber-400" />
-          <TotalTile label="Recovered · 7d" value={mp257Kpis.recovered} icon={<Trophy className="h-4 w-4" />} tone="text-emerald-600 dark:text-emerald-400" hint="Applications licensed in last 7 days" />
-          <TotalTile label="Suppressed · 7d" value={mp257Kpis.suppressed} icon={<ShieldOff className="h-4 w-4" />} tone="text-rose-600 dark:text-rose-400" hint="Applications terminated in last 7 days" />
+          <TotalTile label="Recovered · 7d" value={mp257Kpis.recovered} errored={kpiError} icon={<Trophy className="h-4 w-4" />} tone="text-emerald-600 dark:text-emerald-400" hint={kpiError ? "Count unavailable — the feed failed to load" : "Applications licensed in last 7 days"} />
+          <TotalTile label="Suppressed · 7d" value={mp257Kpis.suppressed} errored={kpiError} icon={<ShieldOff className="h-4 w-4" />} tone="text-rose-600 dark:text-rose-400" hint={kpiError ? "Count unavailable — the feed failed to load" : "Applications terminated in last 7 days"} />
         </div>
       </GlassCard>
 
@@ -1121,6 +1141,7 @@ export default function UnlicensedAll() {
           </div>
         )}
       </GlassCard>
+      </>)}
 
       <RecoveryBatchDrawer
         open={batchOpen}
@@ -1150,6 +1171,7 @@ function TotalTile({
   tone,
   hint,
   emphasis,
+  errored,
 }: {
   label: string;
   value: number;
@@ -1158,6 +1180,8 @@ function TotalTile({
   hint?: string;
   /** Border-only tint for the tile that is itself in a bad state. */
   emphasis?: boolean;
+  /** The feed behind this number failed — show "—", never a false 0. */
+  errored?: boolean;
 }) {
   return (
     <div
@@ -1171,7 +1195,9 @@ function TotalTile({
         <span className="min-w-0 truncate text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{label}</span>
         <span className="shrink-0 text-muted-foreground">{icon}</span>
       </div>
-      <div className={cn("mt-2 text-2xl font-bold leading-none tabular-nums", tone)}>{value.toLocaleString()}</div>
+      <div className={cn("mt-2 text-2xl font-bold leading-none tabular-nums", errored ? "text-muted-foreground" : tone)}>
+        {errored ? "—" : value.toLocaleString()}
+      </div>
     </div>
   );
 }

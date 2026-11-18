@@ -70,6 +70,11 @@ const MANIFEST = [
   "src/pages/AutomationHealth.tsx",              // cron/automation health — a dead automation_run_log rendered "No runs logged yet" (the queryFn swallowed its error)
   "src/pages/HiringPipeline.tsx",                // recruiting kanban — a dead applications feed rendered an empty board, every stage reading 0
   "src/pages/AgentManagement.tsx",               // roster + production — a dead agents read rendered "no agents" as fact (the queryFn swallowed its error)
+  // Licensing-pipeline cluster (MP-WIB-ADMIN-RENDER-HEALTH wave 4, 2026-11-18).
+  // Unlicensed/pre-licensing producers can't write business; a false "clear" here hides the recruiting→income funnel stalling.
+  "src/pages/admin/UnlicensedAll.tsx",           // unlicensed queue — a dead v_unlicensed_all rendered "No unlicensed record matches" (pile clear) + totals 0; mp257Kpis queryFn SWALLOWED its error → false 0/0 recovered/suppressed
+  "src/pages/XcelPipeline.tsx",                  // paid pre-licensing students — a dead v_xcel_pipeline rendered Total 0, every state tile 0, "No students"
+  "src/pages/PrelicensingManager.tsx",           // pre-licensing manager board — a dead applications feed rendered "0 agents" + a green ✓ "No applicants match" (a cheerful lie the pipeline is empty)
 ];
 
 const ERROR_SIGNALS = ["isError", "isLoadingError", "status", "error"];

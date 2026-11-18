@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/glass-card";
+import { QueryState } from "@/components/ui/query-state";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -46,7 +47,7 @@ export default function XcelPipeline() {
   const [filter, setFilter] = useState<"all" | Row["xcel_state"]>("all");
   const [search, setSearch] = useState("");
 
-  const { data: rows = [], refetch, isFetching } = useQuery({
+  const { data: rows = [], refetch, isFetching, isError, error } = useQuery({
     queryKey: ["v_xcel_pipeline"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -92,6 +93,9 @@ export default function XcelPipeline() {
         }
       />
 
+      {isError ? (
+        <QueryState status="error" label="the Xcel pipeline" error={error} onRetry={() => void refetch()} />
+      ) : (<>
       {/* State chips */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <button
@@ -222,6 +226,7 @@ export default function XcelPipeline() {
           })}
         </div>
       </GlassCard>
+      </>)}
 
       <p className="text-xs text-muted-foreground">
         Source: <code>v_xcel_pipeline</code> · refreshed when Mac launchd <code>com.samjames.xcel-applicant-sync</code> fires.

@@ -150,7 +150,25 @@ const OVERFLOW_TOLERANCE_PX = 2; // sub-pixel rounding is not a defect
 // not born red. After this, the two funnel guards' public-route coverage is fully
 // reconciled (mobile-overflow WIDTH set is a superset only by the /schedule-call
 // redirect asymmetry, which is intentional).
-const ROUTES = (process.env.ROUTES || "/,/apply,/vsl,/schedule-call,/get-licensed,/storefront,/links,/unlicensed-overview,/leads,/get-leads,/contact,/careers,/careers/florida,/careers/texas")
+//
+// MP-WIB-LEGAL-RENDER (2026-11-18): the two funnel guards reconcile against EACH
+// OTHER, never against the live SITEMAP — so the delta nobody checked was the 4
+// legal/compliance routes the sitemap PUBLISHES as indexable but no render guard
+// touches: /privacy, /terms, /disclosures, /data-deletion. All four are React
+// routes (<Privacy/> <Terms/> <Disclosures/> <DataDeletion/> in App.tsx, NOT
+// static html), so a bad import or a dropped lazy chunk white-screens them while
+// route-smoke's fetch-200 (SPA shell) stays green and Google keeps indexing the
+// empty page. /data-deletion is the URL Meta's app review requires to be live;
+// a dead one is platform risk to the IG lead pipeline, with nothing watching it.
+// Static copy (0 RPC/data deps) so the live risk is a crash/white-screen, not a
+// NaN. Proven CLEAN on live prod across all 3 legs (desktop-blink + mobile-blink
+// + real Apple WebKit: 200 / 0 overflow / 0 broken tokens / 0 console errors /
+// real content textLen 680-3382, not a login/404 shell) BEFORE widening, so the
+// guard is not born red. After this, the render set is reconciled against the
+// SITEMAP too — the only indexable paths it still omits are the 8 non-sampled
+// /careers/<state> pages (templated StateCareerLanding, 2 sampled + the
+// careers-state-consistency guard covers all 10).
+const ROUTES = (process.env.ROUTES || "/,/apply,/vsl,/schedule-call,/get-licensed,/storefront,/links,/unlicensed-overview,/leads,/get-leads,/contact,/careers,/careers/florida,/careers/texas,/privacy,/terms,/disclosures,/data-deletion")
   .split(",").map((r) => r.trim()).filter(Boolean)
   .map((r) => (r === "/" ? "/" : "/" + r.replace(/^\/+|\/+$/g, "")));
 

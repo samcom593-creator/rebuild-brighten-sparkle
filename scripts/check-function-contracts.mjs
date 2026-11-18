@@ -426,6 +426,11 @@ const PUBLIC_ALLOWLIST = new Set([
   "apex-morning-brief",
   "apex-weekly-report",
   "generate-monthly-awards",
+  // contracting-nudge-sweep (MP-CONTRACTING-MGN-LINK, 2026-11-17): pg_cron daily, apex_bot_token
+  // bearer (not a JWT). Handler compares the presented Authorization bearer against
+  // SERVICE_ROLE / APEX_BOT_TOKEN in constant time before any read or send. Twin of the other
+  // *-nudge-sweep cron senders; verify_jwt=false, self-gated.
+  "contracting-nudge-sweep",
   "licensing-stage-nudge",
   "notify-missed-dialer",
   "notify-module-progress",
@@ -691,6 +696,7 @@ const PUBLIC_CONTRACT = {
   "notify-top-performer": "in_handler_gate",
   "notify-training-reminder": "in_handler_gate",
   "nudge-unworked-applications": "in_handler_gate",
+  "contracting-nudge-sweep": "in_handler_gate",
   "run-licensing-checkups": "in_handler_gate",
   "send-course-hurry-emails": "in_handler_gate",
   "send-daily-checkin-prompt": "in_handler_gate",

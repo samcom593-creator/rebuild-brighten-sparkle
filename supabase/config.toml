@@ -842,3 +842,10 @@ verify_jwt = true
 # (service key or signed-in admin) and then refuses every signed-in user except the owner.
 [functions.owner-daily-overview]
 verify_jwt = false
+
+# contracting-nudge-sweep (MP-CONTRACTING-MGN-LINK, 2026-11-17): pg_cron daily calls it with the
+# apex_bot_token bearer, which is not a JWT. The handler compares the presented Authorization bearer
+# against SERVICE_ROLE / APEX_BOT_TOKEN in constant time before any read or send. Twin of
+# onboarding-nudge-sweep; verify_jwt must stay false or the gateway pre-rejects the cron caller.
+[functions.contracting-nudge-sweep]
+verify_jwt = false

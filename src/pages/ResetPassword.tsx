@@ -46,7 +46,9 @@ export default function ResetPassword() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password.length < 6) { toast.error("Password must be at least 6 characters"); return; }
+    // 8, matching Settings > Security. Sign-in still accepts 6 so older
+    // passwords keep working; only a NEW password has to meet the bar.
+    if (password.length < 8) { toast.error("Password must be at least 8 characters"); return; }
     if (password !== confirm) { toast.error("Passwords don't match"); return; }
     setSubmitting(true);
     try {
@@ -123,7 +125,7 @@ export default function ResetPassword() {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
                     className="pl-10 bg-input"
-                    minLength={6}
+                    minLength={8}
                     autoFocus
                   />
                 </div>
@@ -140,7 +142,7 @@ export default function ResetPassword() {
                     onChange={(e) => setConfirm(e.target.value)}
                     placeholder="••••••••"
                     className="pl-10 bg-input"
-                    minLength={6}
+                    minLength={8}
                   />
                 </div>
               </div>

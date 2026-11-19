@@ -249,4 +249,37 @@ describe("useAuth — auth state events", () => {
       });
     }).not.toThrow();
   });
+
+  // 2026-11-18: recovery used to hard-redirect to /dashboard/settings?recovery=true.
+  // Settings never read that flag, so a reset link landed on the PROFILE tab under
+  // the profile-photo pop-up, and the redirect also fired on /reset-password itself,
+  // so the purpose-built page was unreachable. The owner could not reset his own
+  // password. These two cases pin the destination and the no-loop guard.
+  describe("PASSWORD_RECOVERY destination", () => {
+    const realLocation = window.location;
+    const setLocation = (pathname: string) => {
+      const fake = { pathname, href: `https://apex-financial.org${pathname}` };
+      Object.defineProperty(window, "location", { configurable: true, writable: true, value: fake });
+      return fake;
+    };
+    afterEach(() => {
+      Object.defineProperty(window, "location", { configurable: true, writable: true, value: realLocation });
+    });
+
+    it("sends a recovery session to /reset-password, not the settings profile tab", async () => {
+      render(<AuthProvider><TestConsumer /></AuthProvider>);
+      await waitFor(() => expect(screen.getByTestId("loading").textContent).toBe("ready"));
+      const loc = setLocation("/dashboard/settings");
+      act(() => { authStateCallback?.("PASSWORD_RECOVERY", makeSession()); });
+      expect(loc.href).toBe("/reset-password");
+    });
+
+    it("does not redirect again once already on /reset-password", async () => {
+      render(<AuthProvider><TestConsumer /></AuthProvider>);
+      await waitFor(() => expect(screen.getByTestId("loading").textContent).toBe("ready"));
+      const loc = setLocation("/reset-password");
+      act(() => { authStateCallback?.("PASSWORD_RECOVERY", makeSession()); });
+      expect(loc.href).toBe("https://apex-financial.org/reset-password");
+    });
+  });
 });

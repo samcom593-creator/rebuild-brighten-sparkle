@@ -52,8 +52,12 @@ export default function Login() {
   const [linkLoading, setLinkLoading] = useState(false);
 
   const onSubmit = async (data: LoginFormData) => {
+    // The button disables while loading, but Enter in the password field
+    // still submits the form, so one sign-in went out as two password
+    // requests (auth logs, 2026-11-18: pairs 0.6-0.9s apart on every try).
+    if (isLoading) return;
     setIsLoading(true);
-    
+
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email: data.email,
@@ -111,7 +115,13 @@ export default function Login() {
     } catch (error: any) {
       console.error("Login error:", error);
       playSound("error");
-      toast.error(error.message || "Failed to sign in");
+      // "Invalid login credentials" for 4 seconds told a locked-out owner
+      // nothing about what to do next. Say what it means and where the fix is.
+      if (error?.code === "invalid_credentials" || /invalid login credentials/i.test(error?.message ?? "")) {
+        toast.error("That email and password don't match. Tap “Forgot password?” below to set a new one.", { duration: 10000 });
+      } else {
+        toast.error(error.message || "Failed to sign in");
+      }
     } finally {
       setIsLoading(false);
     }

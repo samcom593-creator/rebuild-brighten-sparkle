@@ -232,9 +232,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // (useQuery subscribers, useAuth state, session refs) needs to
           // hard-reset from the fresh recovery session. useNavigate() would
           // preserve the pre-recovery React tree and race the auth reinit.
+          //
+          // Destination is /reset-password, the one page built for this: a
+          // single "set new password" form. It used to be
+          // /dashboard/settings?recovery=true, and Settings never read that
+          // flag, so a reset link dropped the person on their PROFILE tab
+          // under the profile-photo pop-up with no prompt to set anything.
+          // It also overrode /reset-password itself, so the purpose-built page
+          // was unreachable. Already-sent emails still point at the old URL;
+          // this handler fires on that page too and forwards them here.
           if (event === "PASSWORD_RECOVERY") {
-            if (import.meta.env.DEV) console.log("PASSWORD_RECOVERY event detected, redirecting to settings");
-            window.location.href = "/dashboard/settings?recovery=true"; // internal-nav-href-allow: auth-state-change requires cache invalidation
+            if (window.location.pathname === "/reset-password") return;
+            window.location.href = "/reset-password"; // internal-nav-href-allow: auth-state-change requires cache invalidation
             return;
           }
 

@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Card } from "@/components/ui/card";
+import { QueryState } from "@/components/ui/query-state";
 import { Switch } from "@/components/ui/switch";
 import { Loader2, Shield, ChevronLeft } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -27,32 +28,35 @@ export default function AdminBoardAccess() {
   const qc = useQueryClient();
   const [savingKey, setSavingKey] = useState<string | null>(null);
 
-  const { data: managers = [], isLoading } = useQuery({
+  const { data: managers = [], isLoading, isError, error: managersError, refetch } = useQuery({
     queryKey: ["admin-managers-list"],
     queryFn: async () => {
-      const { data: roles } = await supabase
+      const { data: roles, error: rolesError } = await supabase
         .from("user_roles")
         .select("user_id")
         .eq("role", "manager");
+      if (rolesError) throw rolesError;
       const ids = (roles ?? []).map((r: any) => r.user_id);
       if (ids.length === 0) return [];
-      const { data: profs } = await supabase
+      const { data: profs, error: profsError } = await supabase
         .from("profiles")
         .select("user_id, full_name, email, avatar_url")
         .in("user_id", ids)
         .order("full_name");
+      if (profsError) throw profsError;
       return profs ?? [];
     },
     enabled: isAdmin,
     staleTime: 60_000,
   });
 
-  const { data: grants = [] } = useQuery({
+  const { data: grants } = useQuery({
     queryKey: ["board-grants-all"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("manager_board_grants")
         .select("manager_user_id, board_key");
+      if (error) throw error;
       return data ?? [];
     },
     enabled: isAdmin,
@@ -60,7 +64,7 @@ export default function AdminBoardAccess() {
   });
 
   const isGranted = (managerId: string, boardKey: string) =>
-    grants.some((g: any) => g.manager_user_id === managerId && g.board_key === boardKey);
+    (grants ?? []).some((g: any) => g.manager_user_id === managerId && g.board_key === boardKey);
 
   async function toggleGrant(managerId: string, boardKey: string, currentlyGranted: boolean) {
     const cellKey = `${managerId}:${boardKey}`;
@@ -109,6 +113,8 @@ export default function AdminBoardAccess() {
 
       {isLoading ? (
         <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+      ) : isError ? (
+        <QueryState status="error" label="the managers list" error={managersError} onRetry={() => void refetch()} />
       ) : managers.length === 0 ? (
         <Card className="p-8 text-center text-muted-foreground">No managers yet.</Card>
       ) : (

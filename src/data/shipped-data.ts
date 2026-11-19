@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "Three admin pages now tell the truth when their data is down instead of quietly showing an empty, reassuring screen. Hire-routing no longer paints a confident 'who handles each hire' board (or a false 'coverage gaps' warning) off a dead feed; the integrations page stops reporting your bot token as 'NOT CONFIGURED' — and offering to mint a new one over the live one — when it merely failed to load; and the manager board-access grid stops reading 'No managers yet' when the roster feed is down.",
+    detail:
+      "MP-WIB-ADMIN-RENDER-HEALTH-9 — HiringManagerAssignments, admin/IntegrationsSettings, AdminBoardAccess: each had a query that swallowed its error and defaulted data, rendering a believable all-clear off a dead feed. The recruiting-ops + infra-config cluster, the highest-value of the remaining tail. Primary feeds (assignments / bot-token + Discord-webhook / managers) now throw instead of swallowing, take isError/error/refetch and render <QueryState error> with Retry (the Activate-token button is disabled on error so a false 'NOT CONFIGURED' can't overwrite a live token). Secondary feeds (the manager picker, the grant toggles) moved to whole-object reads. Added all three to the render-health MANIFEST (now 30 money/pipeline daily-drivers held at zero silent-zero feeds). Proven: scanner selftest 10/10, regression splice RED then GREEN on all three, tsc 0 new errors.",
+    commit: "mp-wib-render-health-9",
+  },
+  {
+    ts: "today",
+    label:
       "The onboarding tracker now tells the truth when its data is down instead of quietly showing an empty board. If the feed that tracks where every new agent is in onboarding ever fails to load, the page shows 'couldn't load — this is not an all-clear' with a Retry, so nobody reads a stalled hire as 'nobody pending, all caught up'.",
     detail:
       "MP-WIB-ADMIN-RENDER-HEALTH-8 — GettingStarted.tsx: the getting_started_progress query swallowed its error and defaulted to [], so a dead feed rendered an empty tracker / 'No agents match'. queryFn now throws, the page takes isError/error/refetch and renders <QueryState error> with Retry. Four secondary feeds (community invite links, AHL-exempt flag, activation facts, agent names) moved to whole-object reads so they stop masking a failure as a benign default. Added to the render-health MANIFEST (now 27 money/pipeline daily-drivers held at zero silent-zero feeds). Proven: scanner selftest 10/10, regression splice RED at :202 then GREEN, tsc 0 new errors.",

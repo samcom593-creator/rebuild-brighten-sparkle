@@ -95,6 +95,12 @@ const MANIFEST = [
   // fake-success class this page exists to catch (bounces/failures hidden).
   "src/pages/EmailDeliveryLog.tsx",              // email delivery log — the queryFn SWALLOWED .error, so a dead email_delivery_log read rendered Total 0 · Sent 0 · Bounced 0 · Failed 0 + "No email logs" (a believable all-clear on the one page that exists to surface delivery failures)
   "src/pages/GettingStarted.tsx",                // onboarding tracker (recruiting→income funnel) — the progress queryFn SWALLOWED .error, so a dead getting_started_progress read rendered an empty board / "No agents match" — a false "nobody pending, all caught up" at the exact moment a hire could be stalled with the feed down
+  // Recruiting-ops + infra-config cluster (MP-WIB-ADMIN-RENDER-HEALTH wave 9, 2026-11-19).
+  // The highest-$ of the remaining tail: hire-routing (recruiting funnel) and the
+  // integration credentials the bots/alerts run on.
+  "src/pages/HiringManagerAssignments.tsx",      // hire-routing desk — the assignments queryFn SWALLOWED .error, so a dead hiring_manager_assignments read rendered a confident routing board + a false "Coverage gaps detected" amber card off an empty feed (new hires silently route to nobody). eligibleManagers is the Assign-dialog picker (secondary, whole-object)
+  "src/pages/admin/IntegrationsSettings.tsx",    // bot-token + Discord-webhook config — BOTH queryFns SWALLOWED .error; a dead system_settings read rendered "⚠ NOT CONFIGURED" with an "Activate Bot Access" button that MINTS A NEW TOKEN over the live one (every bot breaks), and "Discord not configured yet" over a working webhook. Activate is now disabled on isError
+  "src/pages/AdminBoardAccess.tsx",              // manager board-access grid — the managers queryFn SWALLOWED both inner reads' errors, so a dead user_roles/profiles read rendered "No managers yet" (an empty access board); grants is the per-cell toggle overlay (secondary, whole-object)
 ];
 
 const ERROR_SIGNALS = ["isError", "isLoadingError", "status", "error"];

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { QueryState } from "@/components/ui/query-state";
 import { Label } from "@/components/ui/label";
 import {
   MessageSquare, CheckCircle, XCircle, Loader2, Save, Zap,
@@ -191,14 +192,15 @@ function BotSqlSection() {
   const qc = useQueryClient();
   const [visible, setVisible] = useState(false);
 
-  const { data: currentToken = "", isLoading } = useQuery<string>({
+  const { data: currentToken = "", isLoading, isError, error: tokenError, refetch } = useQuery<string>({
     queryKey: ["system_settings", "apex_bot_token"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("system_settings" as any)
         .select("value")
         .eq("key", "apex_bot_token")
         .maybeSingle();
+      if (error) throw error;
       return (data as any)?.value ?? "";
     },
   });
@@ -264,7 +266,7 @@ function BotSqlSection() {
               ? "border-emerald-500/50 text-emerald-300 bg-emerald-500/20 shadow-sm shadow-emerald-500/20"
               : "border-amber-500/50 text-amber-300 bg-amber-500/20",
           )}>
-            {isLoading ? "…" : currentToken ? "● ACTIVE" : "⚠ NOT CONFIGURED"}
+            {isLoading ? "…" : isError ? "⚠ COULD NOT LOAD" : currentToken ? "● ACTIVE" : "⚠ NOT CONFIGURED"}
           </Badge>
         </div>
         <CardDescription className="text-sm mt-3 leading-relaxed">
@@ -282,6 +284,16 @@ function BotSqlSection() {
             </Button>
           </div>
         </div>
+
+        {isError && (
+          <QueryState
+            compact
+            status="error"
+            label="the bot token"
+            error={tokenError}
+            onRetry={() => void refetch()}
+          />
+        )}
 
         {currentToken && (
           <div className="space-y-1.5">
@@ -308,7 +320,7 @@ function BotSqlSection() {
 
         <div className="flex flex-wrap gap-2 pt-1">
           <Button size="sm" className="h-8 text-xs gap-1.5"
-            disabled={activate.isPending}
+            disabled={activate.isPending || isError}
             onClick={() => activate.mutate()}>
             {activate.isPending
               ? <Loader2 className="h-3 w-3 animate-spin" />
@@ -340,15 +352,16 @@ export default function IntegrationsSettings() {
   const [testStatus, setTestStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
   const [testMsg, setTestMsg] = useState("");
 
-  const { data: currentWebhook = "", isLoading } = useQuery<string>({
+  const { data: currentWebhook = "", isLoading, isError, error: webhookError, refetch } = useQuery<string>({
     queryKey: ["system_settings", DISCORD_KEY],
     enabled: !!isAdmin,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("system_settings" as any)
         .select("value")
         .eq("key", DISCORD_KEY)
         .maybeSingle();
+      if (error) throw error;
       const val = (data as any)?.value ?? "";
       if (!webhookDraft) setWebhookDraft(val);
       return val;
@@ -459,7 +472,7 @@ export default function IntegrationsSettings() {
                     : "border-amber-500/30 text-amber-400 bg-amber-500/10"
                 )}
               >
-                {currentWebhook ? "Configured" : "Not configured"}
+                {isError ? "Could not load" : currentWebhook ? "Configured" : "Not configured"}
               </Badge>
             </div>
           </div>
@@ -521,7 +534,15 @@ export default function IntegrationsSettings() {
             )}
           </div>
 
-          {!webhookActive && (
+          {isError ? (
+            <QueryState
+              compact
+              status="error"
+              label="the Discord webhook"
+              error={webhookError}
+              onRetry={() => void refetch()}
+            />
+          ) : !webhookActive && (
             <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-300 space-y-1">
               <p className="font-medium">Discord not configured yet</p>
               <p>Enter the webhook URL above, then click Save. Or run the SQL setup below.</p>

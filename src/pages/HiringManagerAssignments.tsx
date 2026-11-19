@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/ui/page-header";
+import { QueryState } from "@/components/ui/query-state";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -84,7 +85,12 @@ export default function HiringManagerAssignments() {
   const [priority, setPriority] = useState(1);
   const [notes, setNotes] = useState("");
 
-  const { data: assignments = [] } = useQuery({
+  const {
+    data: assignments = [],
+    isError,
+    error: assignmentsError,
+    refetch,
+  } = useQuery({
     queryKey: ["hiring-manager-assignments"],
     queryFn: async (): Promise<Assignment[]> => {
       const { data, error } = await supabase
@@ -92,15 +98,12 @@ export default function HiringManagerAssignments() {
         .select("*")
         .order("scope")
         .order("priority");
-      if (error) {
-        console.error(error);
-        return [];
-      }
+      if (error) throw error;
       return (data as any) ?? [];
     },
   });
 
-  const { data: eligibleManagers = [] } = useQuery({
+  const { data: eligibleManagers } = useQuery({
     queryKey: ["eligible-hiring-managers"],
     queryFn: async (): Promise<ManagerOption[]> => {
       const { data: roles } = await supabase
@@ -130,7 +133,7 @@ export default function HiringManagerAssignments() {
       toast.error("Pick a manager");
       return;
     }
-    const manager = eligibleManagers.find((m) => m.user_id === selectedUserId);
+    const manager = (eligibleManagers ?? []).find((m) => m.user_id === selectedUserId);
     if (!manager) {
       toast.error("Invalid manager");
       return;
@@ -197,6 +200,26 @@ export default function HiringManagerAssignments() {
     (s) => !byScope[s]?.some((a) => a.is_active),
   );
 
+  if (isError) {
+    return (
+      <div className="space-y-6 p-4 md:p-6 page-enter max-w-6xl mx-auto">
+        <PageHeader
+          accent="cyan"
+          eyebrow="Admin · Routing"
+          eyebrowIcon={<UserCog className="h-3 w-3" />}
+          title="Hiring Manager Routing"
+          subtitle="Assign who handles each type of incoming hire — by licensed/unlicensed, state, lead source, or carrier."
+        />
+        <QueryState
+          status="error"
+          label="hiring manager routing"
+          error={assignmentsError}
+          onRetry={() => void refetch()}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 p-4 md:p-6 page-enter max-w-6xl mx-auto">
       <PageHeader
@@ -225,7 +248,7 @@ export default function HiringManagerAssignments() {
                     <SelectValue placeholder="Select a manager..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {eligibleManagers.map((m) => (
+                    {(eligibleManagers ?? []).map((m) => (
                       <SelectItem key={m.user_id} value={m.user_id}>
                         {m.full_name} · {m.email}
                       </SelectItem>

@@ -97,7 +97,7 @@ describe("MobileBottomNav · applicant ladder (F26)", () => {
     for (const label of ["Home", "Get licensed", "Training", "Support desk"]) {
       expect(tab(label)).toBeTruthy();
     }
-    for (const label of ["Numbers", "Book", "Pipeline", "Profile"]) {
+    for (const label of ["Numbers", "Book", "Pipeline", "Leads", "Profile"]) {
       expect(tab(label)).toBeNull();
     }
     expect(activeTabLabel()).toBe("Home");
@@ -143,7 +143,7 @@ describe("MobileBottomNav · section tones (colour layer, 2026-10-28)", () => {
     ["manager", "/dashboard/training/library", "Training", "warm"],
     ["recruiter", "/dashboard/settings/notifications", "Settings", "slate"],
     ["agent", "/dashboard/agent-pipeline", "Pipeline", "good"],
-    ["agent", "/dashboard/profile", "Profile", "slate"],
+    ["agent", "/dashboard/my-leads", "Leads", "good"],
   ])("as %s on %s, the active %s tab's bubble is %s and no other tab is tinted", (mode, url, label, tone) => {
     asMode(mode);
     renderNav(url);

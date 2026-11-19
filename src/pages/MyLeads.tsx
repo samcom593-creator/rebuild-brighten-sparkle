@@ -3,9 +3,9 @@
 // my_lead_bundles() returns only the caller's live leads in bundles they hold, with the dialer's do-not-call numbers
 // already removed. One tap records what happened (lead_bundle_item_set). Do not call takes the Call link away for
 // good, and the number never goes into another bundle.
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, Inbox, Info, Phone, PhoneCall, Mic, Check, Trophy, X } from "lucide-react";
+import { ChevronDown, Inbox, Info, Phone, PhoneCall, Mic, Check, Search, Trophy, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -76,6 +76,22 @@ const SHOW: ReadonlyArray<{ key: Show; label: string }> = [
   { key: "done", label: "Done" },
   { key: "all", label: "All" },
 ];
+// To call, in the order that makes money (2026-11-19). Measured that day: 656 leads were in agents' hands and 420
+// had never been touched, while the list drew every lead with all eight result buttons open (two leads to a phone
+// screen, 17,000px for a 44-lead pack). People who asked for a call back or booked a time come first, then leads
+// nobody has called, then the no-answers to retry. The sort is stable, so the server's order holds inside each step.
+const CALL_ORDER: Record<string, number> = { callback: 0, appointment: 0, new: 1, no_answer: 2 };
+const callRank = (status: string) => CALL_ORDER[status] ?? 3;
+const digits = (v: string) => v.replace(/\D/g, "");
+function matchesSearch(l: Pick<MyLead, "first_name" | "last_name" | "phone10" | "state">, needle: string): boolean {
+  const q = needle.trim().toLowerCase();
+  if (!q) return true;
+  const name = [l.first_name, l.last_name].filter(Boolean).join(" ").toLowerCase();
+  const qDigits = digits(q);
+  return name.includes(q) || (l.state ?? "").toLowerCase() === q || (qDigits.length >= 3 && l.phone10.includes(qDigits));
+}
+/** Above this many leads the list gets a search box. */
+const SEARCH_FROM = 8;
 const shortDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "");
 
 // ---- Full client file (Sam, 2026-11-09: "they need to be able to see all
@@ -194,6 +210,12 @@ export default function MyLeads() {
   const [workBundle, setWorkBundle] = useState<string | null>(null);
   // list rows whose full client file is expanded
   const [detailOpen, setDetailOpen] = useState<Set<string>>(new Set());
+  // The one lead whose result buttons are showing. null = the first lead in view (so the page opens ready to
+  // work), "" = the agent closed it. Every other lead is a single line until it is opened or its number is tapped.
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const orderRef = useRef<string[]>([]);
+  const openRef = useRef<string | null>(null);
   const set = useMutation({
     mutationFn: async ({ item, status }: { item: string; status: string }) => {
       // lead_bundle_item_log is the superset of item_set: same status + note, plus
@@ -209,6 +231,11 @@ export default function MyLeads() {
       toast.success(`Marked ${leadStatusLabel(v.status).toLowerCase()}.`);
       setNotes((n) => ({ ...n, [v.item]: "" }));
       setRecordingFor((cur) => (cur === v.item ? null : cur));
+      // A result on the open lead opens the next one down, so a pack is worked without scrolling or hunting.
+      if (openRef.current === v.item) {
+        const at = orderRef.current.indexOf(v.item);
+        setActiveId(at >= 0 ? orderRef.current[at + 1] ?? null : null);
+      }
       void qc.invalidateQueries({ queryKey: ["my-leads"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -220,7 +247,13 @@ export default function MyLeads() {
   // leads stay under "All" so a call made at 6:58 can still be logged.
   const inView = (r: MyLead, s: Show) => s === "all" || (s === "open" ? isOpenLead(r.status) && callableNow(r) : !isOpenLead(r.status));
   const count = (s: Show) => rows.filter((r) => inView(r, s)).length;
-  const visible = rows.filter((r) => inView(r, show));
+  const inShow = rows.filter((r) => inView(r, show));
+  const matched = inShow.filter((r) => matchesSearch(r, search));
+  const visible = show === "open" ? [...matched].sort((a, b) => callRank(a.status) - callRank(b.status)) : matched;
+  const openId = activeId === "" ? null : visible.some((r) => r.item_id === activeId) ? activeId : visible[0]?.item_id ?? null;
+  orderRef.current = visible.map((r) => r.item_id);
+  openRef.current = openId;
+  const callbacksDue = rows.filter((r) => (r.status === "callback" || r.status === "appointment") && callableNow(r)).length;
   const closedOpen = rows.filter((r) => isOpenLead(r.status) && !callableNow(r));
   const groups: Array<{ id: string; name: string; note: string | null; format: string; leads: MyLead[] }> = [];
   for (const r of visible) {
@@ -236,6 +269,11 @@ export default function MyLeads() {
           <span className="inline-flex items-center gap-1.5 font-semibold">
             <Trophy className="h-4 w-4 text-primary" /> You: {myWorked} worked · {mySold} sold
           </span>
+          {callbacksDue > 0 && (
+            <Badge variant="outline" className="border-primary/40 bg-primary/10 font-normal text-primary" data-testid="callbacks-due">
+              {callbacksDue} waiting on your call back, listed first
+            </Badge>
+          )}
           <span className="text-muted-foreground">
             Work a lead: <b className="text-foreground">1.</b> Call · <b className="text-foreground">2.</b> Record what happened · <b className="text-foreground">3.</b> Tap the result
           </span>
@@ -264,17 +302,23 @@ export default function MyLeads() {
               <Button key={s.key} type="button" size="sm" variant={show === s.key ? "default" : "outline"} onClick={() => setShow(s.key)}>{s.label} ({count(s.key)})</Button>
             ))}
           </div>
+          {rows.length > SEARCH_FROM && (
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Find a lead by name, phone or state" className="h-10 pl-9" aria-label="Find a lead" data-testid="lead-search" />
+            </div>
+          )}
           {groups.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nothing in this view.</p>
+            <p className="text-sm text-muted-foreground">{search.trim() ? `No lead in this view matches “${search.trim()}”.` : "Nothing in this view."}</p>
           ) : (
             groups.map((g) => (
               <GlassCard key={g.id} className="p-0">
                 <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
                   <div>
-                    <p className="text-sm font-semibold">
+                    <div className="text-sm font-semibold">
                       {g.name} <Badge variant="outline" className="ml-1 font-normal">{formatLabel(g.format)}</Badge>
                       <span className="ml-2 text-xs font-normal text-muted-foreground">{g.leads.length} lead{g.leads.length === 1 ? "" : "s"}</span>
-                    </p>
+                    </div>
                     {g.note && <p className="mt-1 text-xs italic text-amber-300/90">“{g.note}”</p>}
                   </div>
                   {(() => {
@@ -290,9 +334,12 @@ export default function MyLeads() {
                   {g.leads.map((l) => {
                     const hoursOpen = callableNow(l);
                     const href = canDial(l.status) && hoursOpen ? phoneHref(l.phone10) : null;
+                    const open = openId === l.item_id;
+                    const leadName = [l.first_name, l.last_name].filter(Boolean).join(" ") || "Name not on file";
                     return (
-                      <li key={l.item_id} className="space-y-2 px-4 py-3">
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <li key={l.item_id} className={cn("px-4 py-2.5", open && "bg-muted/20")} data-testid="lead-row" data-open={open ? "true" : "false"}>
+                        <div className="flex items-start gap-1">
+                        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 py-1.5">
                           <span className="font-medium">
                             {[l.first_name, l.last_name].filter(Boolean).join(" ") || "Name not on file"}
                             {(l.age || l.state) && (
@@ -303,22 +350,43 @@ export default function MyLeads() {
                           </span>
                           {href ? (
                             // PKG2: the tap is the dial record now that the dialer is canceled; never blocks the call
-                            <a href={href} {...contactLinkProps(href)} onClick={dialTapHandler(l.item_id)} data-testid="lead-call-link" className="inline-flex items-center gap-1 font-medium text-primary hover:underline"><Phone className="h-3.5 w-3.5" />{formatPhoneDisplay(l.phone10)}</a>
+                            <a href={href} {...contactLinkProps(href)} onClick={() => { setActiveId(l.item_id); dialTapHandler(l.item_id)(); }} data-testid="lead-call-link" className="inline-flex min-h-[32px] items-center gap-1 font-medium text-primary hover:underline"><Phone className="h-3.5 w-3.5" />{formatPhoneDisplay(l.phone10)}</a>
                           ) : (
                             <span className="text-muted-foreground">
                               {formatPhoneDisplay(l.phone10)} · {canDial(l.status) && !hoursOpen ? `calling hours closed, opens ${opensLabel(l.callable_at)}` : "do not call"}
                             </span>
                           )}
-                          <TierBadge tier={l.quality_tier} pool={(l.attrs as Record<string, unknown> | null)?.pool as string | undefined} />
+                          {/* A closed row carries the tier as a plain label; the tappable badge that explains the tiers is a
+                              44px touch target and doubled the row's height, so it shows once the lead is open. */}
+                          {open ? (
+                            <TierBadge tier={l.quality_tier} pool={(l.attrs as Record<string, unknown> | null)?.pool as string | undefined} />
+                          ) : (
+                            <Badge variant="outline" className={cn("font-normal", TIER_STYLE[l.quality_tier ?? ""] ?? "")}>{tierLabel(l.quality_tier)}</Badge>
+                          )}
                           <span className="text-muted-foreground">{leadStatusLabel(l.status)}{l.status_note ? `: ${l.status_note}` : ""}</span>
+                        </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setActiveId(open ? "" : l.item_id)}
+                            aria-expanded={open}
+                            aria-label={open ? `Close ${leadName}` : `Open ${leadName}`}
+                            data-testid="lead-toggle"
+                            className="h-11 w-11 shrink-0 text-muted-foreground"
+                          >
+                            <ChevronDown className={cn("h-5 w-5 transition-transform", open && "rotate-180")} />
+                          </Button>
+                        </div>
+                        {open && (
+                        <div className="space-y-2 pb-1.5 pt-1" data-testid="lead-panel">
                           <button
                             type="button"
                             onClick={() => setDetailOpen((s) => { const n = new Set(s); if (n.has(l.item_id)) n.delete(l.item_id); else n.add(l.item_id); return n; })}
-                            className="inline-flex items-center gap-0.5 text-xs text-primary hover:underline"
+                            className="inline-flex min-h-[32px] items-center gap-0.5 text-xs text-primary hover:underline"
                           >
                             Full info <ChevronDown className={cn("h-3 w-3 transition-transform", detailOpen.has(l.item_id) && "rotate-180")} />
                           </button>
-                        </div>
                         {detailOpen.has(l.item_id) && (
                           <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
                             <LeadDetailGrid itemId={l.item_id} />
@@ -363,6 +431,8 @@ export default function MyLeads() {
                             />
                           )}
                         </div>
+                        </div>
+                        )}
                       </li>
                     );
                   })}

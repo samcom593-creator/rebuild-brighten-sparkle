@@ -1,6 +1,6 @@
 import type { ElementType } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { BarChart3, Briefcase, CalendarClock, Home, LayoutDashboard, Library, Settings, User, Users } from "lucide-react";
+import { BarChart3, Briefcase, CalendarClock, Home, Inbox, LayoutDashboard, Library, Settings, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/useAuth";
@@ -36,12 +36,15 @@ interface BottomNavItem {
 // 2026-10-06: every ladder points at the canonical path the desktop sidebar
 // uses (agentCloudNavigation.ts), so the active tab, breadcrumb and favorites
 // agree, and each ladder offers only pages its mode's route guard admits.
+// Leads took Profile's place (2026-11-19). Thirty days of page views from signed-in agents: My Leads 475 views by
+// 15 people, the second most-used screen in the app after Home, and it had no tab; Profile had 58 and is one tap
+// away in the menu. Book and Pipeline keep the third and fourth slots they have always had.
 const agentNavItems: BottomNavItem[] = [
   { path: "/dashboard",                 icon: Home,       label: "Home" },
-  { path: "/numbers",                   icon: BarChart3,  label: "Numbers" },
+  { path: "/dashboard/my-leads",        icon: Inbox,      label: "Leads" },
   { path: "/dashboard/production",      icon: Briefcase,  label: "Book" },
   { path: "/dashboard/agent-pipeline",  icon: Users,      label: "Pipeline" },
-  { path: "/dashboard/profile",         icon: User,       label: "Profile" },
+  { path: "/numbers",                   icon: BarChart3,  label: "Numbers" },
 ];
 
 const adminNavItems: BottomNavItem[] = [

@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "My Leads is now built for working a pack from your phone. Each lead is one line with a tap-to-call number, only the lead you are on shows the result buttons, and recording a result opens the next lead. People waiting on a call back are listed first, big packs can be searched, and Leads has its own tab at the bottom of the phone screen.",
+    detail:
+      "MP-BEST-1. Measured 2026-11-19: 656 leads in agents' hands, 420 never touched; the list drew all eight result buttons on every lead (17,198px for a 44-lead pack on a phone, now 5,496px). MyLeads.tsx: one open lead, auto-advance, call back and appointment first then never-called then no-answer, search above eight leads. MobileBottomNav: Leads replaces Profile for agents (My Leads 475 views by 15 people in 30 days, Profile 58). 8 new tests.",
+    commit: "mp-best-1-leads-work-loop",
+  },
+  {
+    ts: "today",
+    label:
       "Three admin pages now tell the truth when their data is down instead of quietly showing an empty, reassuring screen. Hire-routing no longer paints a confident 'who handles each hire' board (or a false 'coverage gaps' warning) off a dead feed; the integrations page stops reporting your bot token as 'NOT CONFIGURED' — and offering to mint a new one over the live one — when it merely failed to load; and the manager board-access grid stops reading 'No managers yet' when the roster feed is down.",
     detail:
       "MP-WIB-ADMIN-RENDER-HEALTH-9 — HiringManagerAssignments, admin/IntegrationsSettings, AdminBoardAccess: each had a query that swallowed its error and defaulted data, rendering a believable all-clear off a dead feed. The recruiting-ops + infra-config cluster, the highest-value of the remaining tail. Primary feeds (assignments / bot-token + Discord-webhook / managers) now throw instead of swallowing, take isError/error/refetch and render <QueryState error> with Retry (the Activate-token button is disabled on error so a false 'NOT CONFIGURED' can't overwrite a live token). Secondary feeds (the manager picker, the grant toggles) moved to whole-object reads. Added all three to the render-health MANIFEST (now 30 money/pipeline daily-drivers held at zero silent-zero feeds). Proven: scanner selftest 10/10, regression splice RED then GREEN on all three, tsc 0 new errors.",

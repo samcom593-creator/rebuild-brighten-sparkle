@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "The call sheet (Team menu) now lists every agent who has been onboarded, not only Ethos contract holders. The order is fixed: Ethos contract holders first, then agents who hold active carrier contracts, then licensed agents, then everyone else. Each card shows the group, the carriers they are contracted with, and what they have sold. Leaders now also see their AgentLink downline.",
+    detail:
+      "MP-ETHOS-CALLSHEET part 3. 320 people for the owner (was 88): 89 on the Ethos export, 174 more from agent records in this app, 58 more who exist only on the AgentLink roster; 290 have a phone number. Call now: 63 Ethos, 46 carrier-contracted, 76 licensed, 62 not licensed yet. Anyone with a deal in the last 30 days sits under Already selling. ethos_callsheet_sync_roster() runs hourly so a new agent record reaches the sheet without anyone loading it; a person who leaves the Ethos export stays on the sheet as a non-Ethos agent. Same two tables, same scoping function, no role granted. The AgentLink roster is the stored pull from Oct 10: the live session was expired at ship time. 18 tests.",
+    commit: "mp-ethos-callsheet-all-agents",
+  },
+  {
+    ts: "today",
+    label:
       "New page: Ethos call sheet (Team menu). It lists everyone who holds the Ethos contract with their phone number, how long they have been with us, what they have produced, and any chargebacks owed. Tap the number to call, then tap what happened. People who wrote Ethos business that did not stick are at the top. Leaders see the people under them; the owner sees everyone.",
     detail:
       "MP-ETHOS-CALLSHEET. Source is the Ethos portal's hierarchy performance export (89 people on the first load); phone, email and sub-agency come from the Ethos signup sheet, time with us from the agent record, application or portal date. 86 of 89 have a number (the AgentLink agent roster filled four the Ethos sheet lacked); the other 3 take one typed in on the card. ethos_callsheet_people + ethos_callsheet_calls (RLS on, no policies) behind four definer functions: ethos_call_sheet (owner all, active leader own hierarchy plus the Ethos sub-agency they head, anyone else nothing), ethos_call_sheet_log, ethos_call_sheet_set_phone, ethos_call_sheet_import (owner loads a newer export from the page). No app role was granted or changed. 14 new tests.",

@@ -39,6 +39,7 @@ import { formatTimeAgo, getBusinessDayKey } from "@/lib/dateUtils";
 import { formatPhoneDisplay, startPhoneCall, startSmsThread } from "@/lib/phone";
 import {
   FIRST_SEEN_SOURCE_LABEL,
+  GROUP_LABEL,
   LANES,
   OUTCOME_LABEL,
   REASON_LABEL,
@@ -46,12 +47,14 @@ import {
   SPOKE_OUTCOMES,
   callAngle,
   formatDollars,
+  groupOf,
   laneOf,
   monthYear,
   parseEthosExport,
   shortDate,
   sortForLane,
   tenureLabel,
+  type CallGroup,
   type CallLaneFilter,
   type CallOutcome,
   type DropOffReason,
@@ -90,12 +93,13 @@ interface SpokeForm {
 }
 
 export default function EthosCallSheet() {
-  usePageTitle("Ethos call sheet");
+  usePageTitle("Call sheet");
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [lane, setLane] = useState<CallLaneFilter>("call_now");
   const [search, setSearch] = useState("");
   const [leader, setLeader] = useState<string>("all");
+  const [group, setGroup] = useState<"all" | CallGroup>("all");
   const [busy, setBusy] = useState<string | null>(null);
   const [spoke, setSpoke] = useState<SpokeForm | null>(null);
   const [phoneDraft, setPhoneDraft] = useState<{ id: string; value: string } | null>(null);
@@ -148,8 +152,19 @@ export default function EthosCallSheet() {
     return out;
   }, [scoped]);
 
+  const laneRows = useMemo(
+    () => (lane === "all" ? scoped : scoped.filter((r) => laneOf(r) === lane)),
+    [scoped, lane],
+  );
+
+  const groupCounts = useMemo(() => {
+    const out: Record<CallGroup, number> = { 1: 0, 2: 0, 3: 0, 4: 0 };
+    for (const r of laneRows) out[groupOf(r)] += 1;
+    return out;
+  }, [laneRows]);
+
   const visible = useMemo(() => {
-    const inLane = lane === "all" ? scoped : scoped.filter((r) => laneOf(r) === lane);
+    const inLane = group === "all" ? laneRows : laneRows.filter((r) => groupOf(r) === group);
     const q = search.trim().toLowerCase();
     const matched = q
       ? inLane.filter((r) =>
@@ -160,7 +175,7 @@ export default function EthosCallSheet() {
           || (r.manager_name ?? "").toLowerCase().includes(q))
       : inLane;
     return sortForLane(matched, lane);
-  }, [scoped, lane, search]);
+  }, [laneRows, group, lane, search]);
 
   const withPhone = useMemo(() => scoped.filter((r) => r.phone).length, [scoped]);
   const laneHint = LANES.find((l) => l.key === lane)?.hint ?? "";
@@ -260,12 +275,12 @@ export default function EthosCallSheet() {
     <div className="page-enter mx-auto w-full max-w-6xl space-y-5 px-4 pb-24 sm:px-6">
       <PageHeader
         eyebrowIcon={<PhoneCall className="h-4 w-4" />}
-        eyebrow="Contracted and ready to sell"
-        title="Ethos call sheet"
+        eyebrow="Ethos first, then contracted, then licensed"
+        title="Call sheet"
         subtitle={
           seesAll
-            ? "Everyone who holds the Ethos contract. Call, find out why they stopped, and log what happened."
-            : "The people under you who hold the Ethos contract. Call, find out why they stopped, and log what happened."
+            ? "Every agent who has been onboarded. Call, find out why they stopped, and log what happened."
+            : "Every onboarded agent under you. Call, find out why they stopped, and log what happened."
         }
         accent="emerald"
         actions={
@@ -310,7 +325,7 @@ export default function EthosCallSheet() {
               placeholder="Search name, phone, email or NPN"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              aria-label="Search the Ethos call sheet"
+              aria-label="Search the call sheet"
               className="h-10 pl-9 sm:h-9"
             />
           </div>
@@ -346,6 +361,33 @@ export default function EthosCallSheet() {
               )}
             >
               {l.label} <span className="tabular-nums opacity-80">{laneCounts[l.key]}</span>
+            </button>
+          ))}
+        </div>
+        <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Who to show">
+          <button
+            type="button"
+            onClick={() => setGroup("all")}
+            aria-pressed={group === "all"}
+            className={cn(
+              "rounded-full border px-3 py-1 text-[13px] font-medium focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
+              group === "all" ? "border-foreground bg-foreground text-background" : "border-border bg-card text-muted-foreground hover:bg-muted",
+            )}
+          >
+            All groups <span className="tabular-nums opacity-80">{laneRows.length}</span>
+          </button>
+          {([1, 2, 3, 4] as CallGroup[]).map((g) => (
+            <button
+              key={g}
+              type="button"
+              onClick={() => setGroup(g)}
+              aria-pressed={group === g}
+              className={cn(
+                "rounded-full border px-3 py-1 text-[13px] font-medium focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
+                group === g ? "border-foreground bg-foreground text-background" : "border-border bg-card text-muted-foreground hover:bg-muted",
+              )}
+            >
+              {g}. {GROUP_LABEL[g]} <span className="tabular-nums opacity-80">{groupCounts[g]}</span>
             </button>
           ))}
         </div>
@@ -395,8 +437,8 @@ export default function EthosCallSheet() {
           <EmptyState
             icon={<Users className="h-7 w-7" />}
             variant="default"
-            title="Nobody under you is on the Ethos export yet"
-            description="This sheet lists people in your hierarchy who hold the Ethos contract. When someone under you is contracted with Ethos, they show up here with their number."
+            title="Nobody under you is on the sheet yet"
+            description="This sheet lists every onboarded agent in your hierarchy. When someone is placed under you, they show up here with their number."
           />
         )}
 
@@ -412,6 +454,8 @@ export default function EthosCallSheet() {
         <ul className="space-y-2">
           {visible.map((r) => {
             const angle = callAngle(r);
+            const callGroup = groupOf(r);
+            const carriers = r.active_carriers ?? [];
             const tenure = tenureLabel(r.first_seen_on);
             const chargeback = Number(r.chargeback_total) || 0;
             const personalChargeback = Number(r.chargeback_personal) || 0;
@@ -428,6 +472,18 @@ export default function EthosCallSheet() {
                   <div className="min-w-0">
                     <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                       <span className="text-base font-semibold text-foreground">{r.full_name}</span>
+                      <span
+                        className={cn(
+                          "shrink-0 rounded-sm border px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide",
+                          callGroup === 1
+                            ? "border-primary/50 bg-primary/10 text-foreground"
+                            : callGroup === 4
+                              ? "border-amber-500/35 text-amber-600 dark:text-amber-400"
+                              : "border-emerald-500/35 text-emerald-600 dark:text-emerald-400",
+                        )}
+                      >
+                        {GROUP_LABEL[callGroup]}
+                      </span>
                       {r.manager_name && (
                         <span className="shrink-0 rounded-sm border border-border px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                           Under {r.manager_name}
@@ -545,14 +601,31 @@ export default function EthosCallSheet() {
                 </div>
 
                 <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-5">
-                  <Stat label="Ethos issued" value={formatDollars(r.issued_premium)} />
-                  <Stat label="Ethos in force" value={formatDollars(r.inforce_premium)} />
-                  <Stat
-                    label="Chargebacks owed"
-                    value={chargeback > 0 ? formatDollars(chargeback) : "None"}
-                    tone={chargeback > 0 ? "rose" : undefined}
-                    detail={chargeback > 0 && personalChargeback !== chargeback ? `${formatDollars(personalChargeback)} personal` : undefined}
-                  />
+                  {r.on_ethos ? (
+                    <>
+                      <Stat label="Ethos issued" value={formatDollars(r.issued_premium)} />
+                      <Stat label="Ethos in force" value={formatDollars(r.inforce_premium)} />
+                      <Stat
+                        label="Chargebacks owed"
+                        value={chargeback > 0 ? formatDollars(chargeback) : "None"}
+                        tone={chargeback > 0 ? "rose" : undefined}
+                        detail={chargeback > 0 && personalChargeback !== chargeback ? `${formatDollars(personalChargeback)} personal` : undefined}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <Stat label="Ethos contract" value="Not yet" />
+                      <Stat
+                        label="Carrier contracts"
+                        value={r.contracts_total > 0 ? `${r.contracts_active} active of ${r.contracts_total}` : "None on file"}
+                      />
+                      <Stat
+                        label="Active carriers"
+                        value={carriers.length > 0 ? carriers.slice(0, 3).join(", ") : "None"}
+                        detail={carriers.length > 3 ? `and ${carriers.length - 3} more` : undefined}
+                      />
+                    </>
+                  )}
                   <Stat
                     label="Sold in this app"
                     value={r.in_app ? formatDollars(appAp) : "No account"}

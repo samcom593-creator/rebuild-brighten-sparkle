@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   callAngle,
+  groupOf,
   laneOf,
   parseEthosExport,
   sortForLane,
@@ -30,6 +31,12 @@ function person(overrides: Partial<EthosCallSheetRow> = {}): EthosCallSheetRow {
     chargeback_total: null,
     chargeback_personal: null,
     snapshot_on: "2026-11-19",
+    on_ethos: true,
+    contracts_total: 0,
+    contracts_active: 0,
+    active_carriers: null,
+    al_last_active_at: null,
+    stage: null,
     in_app: false,
     standing: null,
     license: null,
@@ -57,6 +64,11 @@ describe("laneOf", () => {
 
   it("keeps someone with Ethos premium in force out of the call list until they are called", () => {
     expect(laneOf(person({ issued_premium: 918, inforce_premium: 918 }))).toBe("selling");
+  });
+
+  it("treats a deal in the last 30 days as already selling, with or without Ethos premium", () => {
+    expect(laneOf(person({ on_ethos: false, deals_30d: 2 }))).toBe("selling");
+    expect(laneOf(person({ on_ethos: false, deals_30d: 0 }))).toBe("call_now");
   });
 
   it("sets a terminated person apart instead of asking for a call", () => {
@@ -96,7 +108,42 @@ describe("callAngle", () => {
   });
 });
 
+describe("groupOf", () => {
+  it("puts Ethos first, then carrier contracts, then licensed, then everyone else", () => {
+    expect(groupOf(person({ on_ethos: true }))).toBe(1);
+    expect(groupOf(person({ on_ethos: true, contracts_active: 9 }))).toBe(1);
+    expect(groupOf(person({ on_ethos: false, contracts_active: 3 }))).toBe(2);
+    expect(groupOf(person({ on_ethos: false, license: "licensed" }))).toBe(3);
+    expect(groupOf(person({ on_ethos: false, license: "unlicensed" }))).toBe(4);
+    expect(groupOf(person({ on_ethos: false }))).toBe(4);
+  });
+
+  it("words the reason to call by group", () => {
+    expect(callAngle(person({ on_ethos: false, contracts_active: 1, lifetime_ap: 8000 }), NOW).text).toBe("1 active carrier contract, sold $8,000 here");
+    expect(callAngle(person({ on_ethos: false, contracts_active: 4 }), NOW).text).toBe("4 active carrier contracts, never sold here");
+    expect(callAngle(person({ on_ethos: false, license: "licensed" }), NOW).text).toBe("Licensed, no active carrier contract, never sold here");
+    expect(callAngle(person({ on_ethos: false }), NOW).text).toBe("Not licensed yet");
+  });
+});
+
 describe("sortForLane", () => {
+  it("never lets a carrier-contracted or licensed agent outrank an Ethos contract holder", () => {
+    const rows = [
+      person({ full_name: "Unlicensed", on_ethos: false }),
+      person({ full_name: "Licensed producer", on_ethos: false, license: "licensed", lifetime_ap: 90000 }),
+      person({ full_name: "Contracted producer", on_ethos: false, contracts_active: 6, lifetime_ap: 50000 }),
+      person({ full_name: "Ethos never sold" }),
+      person({ full_name: "Ethos wrote", issued_premium: 1142.4 }),
+    ];
+    expect(sortForLane(rows, "call_now", NOW).map((r) => r.full_name)).toEqual([
+      "Ethos wrote",
+      "Ethos never sold",
+      "Contracted producer",
+      "Licensed producer",
+      "Unlicensed",
+    ]);
+  });
+
   it("orders the call list easiest pick first", () => {
     const rows = [
       person({ full_name: "Silent" }),

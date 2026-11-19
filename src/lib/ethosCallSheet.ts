@@ -86,10 +86,19 @@ export interface EthosCallSheetRow {
   chargeback_total: number | null;
   chargeback_personal: number | null;
   snapshot_on: string;
+  /** True when the person is on the Ethos hierarchy export, which means they hold the Ethos contract. */
+  on_ethos: boolean;
+  /** Carrier contracts on the AgentLink roster: every contract on file, and the ones that are active. */
+  contracts_total: number;
+  contracts_active: number;
+  active_carriers: string[] | null;
+  al_last_active_at: string | null;
   in_app: boolean;
   /** The person's standing in this app: active, inactive or terminated. Null when they have no record here. */
   standing: string | null;
   license: string | null;
+  /** Onboarding stage on the agent record, when there is one. */
+  stage: string | null;
   has_login: boolean | null;
   last_sign_in_at: string | null;
   lifetime_ap: number | null;
@@ -114,21 +123,46 @@ export type CallLane = "call_now" | "follow_up" | "coming_back" | "needs_action"
 export type CallLaneFilter = CallLane | "all";
 
 export const LANES: { key: CallLaneFilter; label: string; hint: string }[] = [
-  { key: "call_now", label: "Call now", hint: "Has the contract, nothing in force, nobody has called yet." },
+  { key: "call_now", label: "Call now", hint: "Not selling right now and nobody has called yet. Ethos contract holders come first, then agents with carrier contracts, then licensed agents." },
   { key: "follow_up", label: "Follow up", hint: "Tried or asked for a call back. Not resolved yet." },
   { key: "coming_back", label: "Coming back", hint: "Said yes. Get them selling." },
   { key: "needs_action", label: "Needs action", hint: "Wants in but is blocked, or the number is wrong." },
   { key: "closed", label: "Not interested", hint: "Spoke to them and they are done." },
-  { key: "selling", label: "Already selling", hint: "Has Ethos premium in force." },
-  { key: "left", label: "Left the agency", hint: "Marked terminated in this app. Still holds the Ethos contract." },
-  { key: "all", label: "Everyone", hint: "Every person on the export you can see." },
+  { key: "selling", label: "Already selling", hint: "Has Ethos premium in force or posted a deal in the last 30 days." },
+  { key: "left", label: "Left the agency", hint: "Marked terminated in this app." },
+  { key: "all", label: "Everyone", hint: "Every person on the sheet you can see." },
 ];
 
 /**
- * One lane per person. What was said on the last call wins; with no call yet, a person who left sits apart,
- * a person with Ethos premium in force is already selling, and everyone else is a call to make now.
+ * Who to call first (Sam, 2026-11-19: "it has to prioritize Ethos ... agents who already have contracts,
+ * and then from there, licensed agents").
+ *   1  holds the Ethos contract
+ *   2  holds at least one active carrier contract
+ *   3  licensed
+ *   4  onboarded, not licensed yet
  */
-export function laneOf(row: Pick<EthosCallSheetRow, "last_outcome" | "standing" | "inforce_premium">): CallLane {
+export type CallGroup = 1 | 2 | 3 | 4;
+
+export const GROUP_LABEL: Record<CallGroup, string> = {
+  1: "Ethos contract",
+  2: "Carrier contracts",
+  3: "Licensed",
+  4: "Not licensed yet",
+};
+
+export function groupOf(row: Pick<EthosCallSheetRow, "on_ethos" | "contracts_active" | "license">): CallGroup {
+  if (row.on_ethos) return 1;
+  if (Number(row.contracts_active) > 0) return 2;
+  if (row.license === "licensed") return 3;
+  return 4;
+}
+
+/**
+ * One lane per person. What was said on the last call wins; with no call yet, a person who left sits apart,
+ * a person with Ethos premium in force or a deal in the last 30 days is already selling, and everyone else
+ * is a call to make now.
+ */
+export function laneOf(row: Pick<EthosCallSheetRow, "last_outcome" | "standing" | "inforce_premium" | "deals_30d">): CallLane {
   switch (row.last_outcome) {
     case "not_interested":
       return "closed";
@@ -146,7 +180,7 @@ export function laneOf(row: Pick<EthosCallSheetRow, "last_outcome" | "standing" 
       break;
   }
   if (row.standing === "terminated") return "left";
-  if (Number(row.inforce_premium) > 0) return "selling";
+  if (Number(row.inforce_premium) > 0 || Number(row.deals_30d) > 0) return "selling";
   return "call_now";
 }
 
@@ -176,12 +210,30 @@ export interface CallAngle {
  *   4  holds the contract and has never sold
  */
 export function callAngle(
-  row: Pick<EthosCallSheetRow, "issued_premium" | "inforce_premium" | "lifetime_ap" | "last_sign_in_at">,
+  row: Pick<
+    EthosCallSheetRow,
+    "issued_premium" | "inforce_premium" | "lifetime_ap" | "last_sign_in_at" | "on_ethos" | "contracts_active" | "license"
+  >,
   now: number = Date.now(),
 ): CallAngle {
   const issued = Number(row.issued_premium) || 0;
   const inforce = Number(row.inforce_premium) || 0;
   const appAp = Number(row.lifetime_ap) || 0;
+  const group = groupOf(row);
+  if (group !== 1) {
+    const recent = row.last_sign_in_at ? (daysBetween(row.last_sign_in_at, now) ?? 999) <= 30 : false;
+    const active = Number(row.contracts_active) || 0;
+    const lead =
+      group === 2
+        ? `${active} active carrier ${active === 1 ? "contract" : "contracts"}`
+        : group === 3
+          ? "Licensed, no active carrier contract"
+          : "Not licensed yet";
+    if (group === 4) return { tier: 4, text: lead };
+    if (appAp > 0) return { tier: 1, text: `${lead}, sold ${formatDollars(appAp)} here` };
+    if (recent) return { tier: 2, text: `${lead}, signed in this month, never sold here` };
+    return { tier: 3, text: `${lead}, never sold here` };
+  }
   if (issued > 0 && inforce <= 0) {
     return { tier: 1, text: `Wrote ${formatDollars(issued)} on Ethos, none of it in force` };
   }
@@ -207,7 +259,8 @@ function timeOrZero(iso: string | null | undefined): number {
 /**
  * The order to work a lane in.
  *   follow up   a call back that is due comes first (earliest date), then the oldest attempt
- *   otherwise   easiest pick first, then most recent sign-in, then newest to the team, then name
+ *   otherwise   Ethos contract holders, then carrier-contracted, then licensed, then the rest; inside each
+ *               group the easiest pick first, then most recent sign-in, then newest to the team, then name
  */
 export function sortForLane(rows: EthosCallSheetRow[], lane: CallLaneFilter, now: number = Date.now()): EthosCallSheetRow[] {
   const copy = [...rows];
@@ -220,6 +273,9 @@ export function sortForLane(rows: EthosCallSheetRow[], lane: CallLaneFilter, now
     });
   }
   return copy.sort((a, b) => {
+    const ga = groupOf(a);
+    const gb = groupOf(b);
+    if (ga !== gb) return ga - gb;
     const ta = callAngle(a, now).tier;
     const tb = callAngle(b, now).tier;
     if (ta !== tb) return ta - tb;

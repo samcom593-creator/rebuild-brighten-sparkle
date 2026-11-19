@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
 
@@ -70,7 +70,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Rate limiting. The RPC is the single source of truth for the rule; it is
     // called inline rather than through _shared/rateLimit.ts on purpose, because
-    // that module imports supabase-js@2.45.0 and this function imports @2, and a
+    // that module imports supabase-js@2.45.0 and this function imports @2.90.1, and a
     // second SDK copy in one bundle is the MP-273 boot-death class.
     //
     // Two buckets, because they bound different damage:
@@ -246,7 +246,7 @@ const handler = async (req: Request): Promise<Response> => {
       type: "recovery",
       email: normalizedEmail,
       options: {
-        redirectTo: `${BASE_URL}/dashboard/settings`,
+        redirectTo: `${BASE_URL}/reset-password`,
       },
     });
 
@@ -260,10 +260,13 @@ const handler = async (req: Request): Promise<Response> => {
     let recoveryUrl = linkData?.properties?.action_link;
     
     if (recoveryUrl) {
-      // Replace the default redirect in action_link to point to our settings page with recovery flag
+      // Land on /reset-password, the one-screen "set new password" page. This used to be
+      // /dashboard/settings?recovery=true, which Settings never read: the link opened the
+      // PROFILE tab under the photo pop-up and nothing asked for a password (2026-11-18,
+      // the owner was locked out by it). useAuth still forwards links already sent there.
       try {
         const url = new URL(recoveryUrl);
-        url.searchParams.set("redirect_to", `${BASE_URL}/dashboard/settings?recovery=true`);
+        url.searchParams.set("redirect_to", `${BASE_URL}/reset-password`);
         recoveryUrl = url.toString();
       } catch {
         // If URL parsing fails, use action_link as-is
@@ -272,7 +275,7 @@ const handler = async (req: Request): Promise<Response> => {
     } else {
       // Fallback: if action_link is not available, build a basic one
       console.warn("action_link not available from generateLink, using fallback");
-      recoveryUrl = `${SUPABASE_URL}/auth/v1/verify?type=recovery&token=${linkData?.properties?.hashed_token}&redirect_to=${encodeURIComponent(`${BASE_URL}/dashboard/settings?recovery=true`)}`;
+      recoveryUrl = `${SUPABASE_URL}/auth/v1/verify?type=recovery&token=${linkData?.properties?.hashed_token}&redirect_to=${encodeURIComponent(`${BASE_URL}/reset-password`)}`;
     }
 
     // Look up name for personalization

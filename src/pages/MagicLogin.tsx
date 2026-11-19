@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { homeForRoles } from "@/lib/homeForRoles";
 import { Loader2, AlertCircle, CheckCircle, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +37,24 @@ export default function MagicLogin() {
 
     verifyAndLogin(token);
   }, [searchParams]);
+
+  // A generic "portal" link used to land EVERYONE in the agent portal, admins
+  // included, so the owner signing in by link ended up outside his dashboard.
+  // Route it by role exactly like a password sign-in. Explicit destinations
+  // (numbers, course, leads) stay as minted.
+  const landingFor = async (dest: string): Promise<string> => {
+    if (dest !== "agent-portal") return dest;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return dest;
+      const { data: roles, error: rolesError } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
+      if (rolesError) throw rolesError;
+      return homeForRoles((roles ?? []).map((r) => r.role as string), dest);
+    } catch (err) {
+      console.warn("magic-login: role lookup failed, using the agent portal", err);
+      return dest;
+    }
+  };
 
   const verifyAndLogin = async (token: string) => {
     try {
@@ -103,8 +122,10 @@ export default function MagicLogin() {
               
               if (!retryVerifyError) {
                 // Retry succeeded
+                const home = await landingFor(dest);
+                setDestination(home);
                 setState("success");
-                setTimeout(() => navigate(`/${dest}`, { replace: true }), 500);
+                setTimeout(() => navigate(`/${home}`, { replace: true }), 500);
                 return;
               }
             }
@@ -118,12 +139,14 @@ export default function MagicLogin() {
           return;
         }
 
-        // Success! Navigate to destination
+        // Success! Navigate to destination (by role for a generic portal link)
+        const home = await landingFor(dest);
+        setDestination(home);
         setState("success");
-        
+
         // Small delay for UX then navigate
         setTimeout(() => {
-          navigate(`/${dest}`, { replace: true });
+          navigate(`/${home}`, { replace: true });
         }, 500);
         return;
       }

@@ -348,7 +348,7 @@ export default function MyLeads() {
                           </span>
                           {href ? (
                             // PKG2: the tap is the dial record now that the dialer is canceled; never blocks the call
-                            <a href={href} {...contactLinkProps(href)} onClick={() => { setActiveId(l.item_id); dialTapHandler(l.item_id)(); }} data-testid="lead-call-link" className="inline-flex min-h-[32px] items-center gap-1 font-medium text-primary hover:underline"><Phone className="h-3.5 w-3.5" />{formatPhoneDisplay(l.phone10)}</a>
+                            <a href={href} {...contactLinkProps(href)} onClick={dialTapHandler(l.item_id)} onClickCapture={() => setActiveId(l.item_id)} data-testid="lead-call-link" className="inline-flex min-h-[32px] items-center gap-1 font-medium text-primary hover:underline"><Phone className="h-3.5 w-3.5" />{formatPhoneDisplay(l.phone10)}</a>
                           ) : (
                             <span className="text-muted-foreground">
                               {formatPhoneDisplay(l.phone10)} · {canDial(l.status) && !hoursOpen ? `calling hours closed, opens ${opensLabel(l.callable_at)}` : "do not call"}

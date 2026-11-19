@@ -24,6 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
+import { PlatformPulsePanel } from "@/components/dashboard/PlatformPulsePanel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -313,6 +314,9 @@ export default function BusinessAnalytics() {
           </div>
         }
       />
+
+      {/* MP-BEST-2: who is really using the platform. Renders for admins only; nothing for a manager. */}
+      <PlatformPulsePanel />
 
       {/* KPI STAT ROW · Production · Policies · Producers · Growth. Leads the page
           per the AC Reports composition; every value is live from

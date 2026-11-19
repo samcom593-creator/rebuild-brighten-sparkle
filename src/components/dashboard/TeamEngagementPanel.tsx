@@ -15,7 +15,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
  * know how to help them… if they logged into their account, etc."
  *
  * Backed by the admin-only RPC admin_team_engagement(): the one place that puts an
- * agent's LOGIN truth (auth.users.last_sign_in_at) next to which onboarding emails
+ * agent's last-seen truth (newest page view from a real browser, sign-in time only when no
+ * page view is on record; 2026-11-19, the sign-in clock understated 27 people) next to which onboarding emails
  * were actually SENT (Slack invite / course / get-licensed), whether the one-tap portal
  * link was sent and used, and course-module progress. Non-admins get zero rows, so
  * this renders nothing for them rather than an empty table that looks like data.
@@ -63,7 +64,7 @@ const FILTERS: { key: FilterKey; label: string; hint: string; test: (r: Row) => 
   { key: "all", label: "All", hint: "Every non-terminated agent", test: () => true },
   { key: "never_logged_in", label: "Never logged in", hint: "Has an account, has never signed in", test: (r) => r.has_login && !r.last_sign_in_at },
   { key: "no_login", label: "No account", hint: "No auth user attached — cannot log in at all", test: (r) => !r.has_login },
-  { key: "silent_7d", label: "Silent 7d+", hint: "Logged in before, not in the last 7 days", test: (r) => !!r.last_sign_in_at && (r.days_since_login ?? 0) >= 7 },
+  { key: "silent_7d", label: "Silent 7d+", hint: "Has used the app before, not in the last 7 days", test: (r) => !!r.last_sign_in_at && (r.days_since_login ?? 0) >= 7 },
   { key: "licensed_no_discord", label: "Licensed, no Slack invite", hint: "Licensed but the Slack invite email was never sent (its queue kind is still named 'discord')", test: (r) => r.license_status === "licensed" && !r.discord_sent_at },
   { key: "portal_unused", label: "Portal link unused", hint: "Got the one-tap login email, never used it, never signed in", test: (r) => !!r.portal_email_last_sent_at && !r.portal_link_used_at && !r.last_sign_in_at },
   { key: "no_course_progress", label: "Course, no progress", hint: "Enrolled in the course, zero modules completed", test: (r) => r.has_training_course && (r.modules_completed ?? 0) === 0 },
@@ -195,7 +196,7 @@ export function TeamEngagementPanel({ defaultOpen = false }: {
                     <TableHead>Agent</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Hired</TableHead>
-                    <TableHead>Last login</TableHead>
+                    <TableHead>Last seen</TableHead>
                     <TableHead>Portal link</TableHead>
                     <TableHead>Slack</TableHead>
                     <TableHead>Course</TableHead>

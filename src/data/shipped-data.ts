@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "Reports now opens with a Platform pulse: who really uses the platform, who logs in without selling yet, who is holding leads they have never called, which screens get opened and how fast they load. The team panel's \"silent\" count now reads real activity instead of the last sign-in, so people who stay signed in stop showing as gone.",
+    detail:
+      "MP-BEST-2. admin_platform_pulse() (admin only, cached 5 minutes, no dollar figures) reads page views from real browsers; test sessions and admin accounts are excluded. At ship: 77 active agents, 10 posted a deal in 30 days and all 10 use the platform, 12 log in without selling, 55 did neither; 420 of 656 handed-out leads never called. admin_team_engagement() last seen = newest real page view (sign-in understated 27 people; Silent 7d+ 79 to 72). 9 new tests.",
+    commit: "mp-best-2-platform-pulse",
+  },
+  {
+    ts: "today",
+    label:
       "My Leads is now built for working a pack from your phone. Each lead is one line with a tap-to-call number, only the lead you are on shows the result buttons, and recording a result opens the next lead. People waiting on a call back are listed first, big packs can be searched, and Leads has its own tab at the bottom of the phone screen.",
     detail:
       "MP-BEST-1. Measured 2026-11-19: 656 leads in agents' hands, 420 never touched; the list drew all eight result buttons on every lead (17,198px for a 44-lead pack on a phone, now 5,496px). MyLeads.tsx: one open lead, auto-advance, call back and appointment first then never-called then no-answer, search above eight leads. MobileBottomNav: Leads replaces Profile for agents (My Leads 475 views by 15 people in 30 days, Profile 58). 8 new tests.",

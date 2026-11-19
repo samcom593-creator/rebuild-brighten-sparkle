@@ -85,6 +85,22 @@
         "raw": "p_student_id uuid, p_application_id uuid DEFAULT NULL::uuid, p_agent_id uuid DEFAULT NULL::uuid"
       }
     ],
+    "admin_platform_pulse": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "admin_platform_pulse_compute": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "admin_reassign_application_owner": [
       {
         "all": [

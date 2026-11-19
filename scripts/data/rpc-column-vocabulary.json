@@ -12,6 +12,8 @@
     "admin_configure_integration": "jsonb",
     "admin_enqueue_onboarding_call": "jsonb",
     "admin_link_xcel_student": "jsonb",
+    "admin_platform_pulse": "jsonb",
+    "admin_platform_pulse_compute": "jsonb",
     "admin_reassign_application_owner": "void",
     "admin_release_dialer_seat": "jsonb",
     "admin_review_course_proof": "jsonb",

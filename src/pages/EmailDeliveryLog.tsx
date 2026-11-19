@@ -61,14 +61,20 @@ export default function EmailDeliveryLog() {
   const [templateFilter, setTemplateFilter] = useState("all");
   const [visibleCount, setVisibleCount] = useState(100);
 
-  const { data: logs = [], isLoading } = useQuery({
+  const { data: logs = [], isLoading, isError, error } = useQuery({
     queryKey: ["email-delivery-log"],
     queryFn: async (): Promise<LogEntry[]> => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("email_delivery_log" as any)
         .select("*")
         .order("created_at", { ascending: false })
         .limit(500);
+      // A delivery LOG that renders a dead feed as an empty "all clear" is the
+      // exact fake-success this page exists to catch — a failed read would
+      // otherwise show Total 0 · Bounced 0 · Failed 0 (bounces/failures hidden).
+      // Throw so the query enters its error state and the UI says the feed is
+      // down, never a believable zero on a read that never answered.
+      if (error) throw error;
       return ((data as any) ?? []) as LogEntry[];
     },
   });
@@ -178,6 +184,32 @@ export default function EmailDeliveryLog() {
         }
       />
 
+      {isError ? (
+        <Card className="border-red-500/40">
+          <CardContent className="p-8 text-center space-y-2">
+            <AlertCircle className="mx-auto h-6 w-6 text-red-400" />
+            <p className="text-sm font-medium text-red-400">
+              Delivery log feed is unavailable
+            </p>
+            <p className="mx-auto max-w-md text-xs text-muted-foreground">
+              This is NOT an all-clear — the email_delivery_log read failed, so
+              bounce and failure counts can't be shown. A dead feed must never
+              render as 0 problems.
+              {error instanceof Error ? ` (${error.message})` : ""}
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() =>
+                queryClient.invalidateQueries({ queryKey: ["email-delivery-log"] })
+              }
+            >
+              <RefreshCw className="mr-1.5 h-4 w-4" /> Retry
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <button
           onClick={() => setStatusFilter("all")}
@@ -326,6 +358,8 @@ export default function EmailDeliveryLog() {
             </div>
           )}
         </div>
+      )}
+        </>
       )}
     </div>
   );

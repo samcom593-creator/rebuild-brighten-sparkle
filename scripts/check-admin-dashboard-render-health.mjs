@@ -90,6 +90,10 @@ const MANIFEST = [
   "src/pages/AdminMissingAlLink.tsx",            // production-attribution gap — a dead v_agents_missing_al_link rendered "Every active agent has an AgentLink link" (hides commission attribution holes)
   "src/pages/ManagerNextStepBoard.tsx",          // manager pipeline board — a dead v_next_step_manager_board rendered "No active people in your downline" (a false empty downline)
   "src/pages/admin/CompTiersSettings.tsx",       // comp-tier money config — the queryFn SWALLOWED both reads' errors, so a dead v_agents_full rendered an empty comp editor (looked like "no agents to pay")
+  // Notifications/delivery cluster (MP-WIB-ADMIN-RENDER-HEALTH wave 7, 2026-11-19).
+  // A delivery LOG rendering a dead feed as an empty all-clear is the exact
+  // fake-success class this page exists to catch (bounces/failures hidden).
+  "src/pages/EmailDeliveryLog.tsx",              // email delivery log — the queryFn SWALLOWED .error, so a dead email_delivery_log read rendered Total 0 · Sent 0 · Bounced 0 · Failed 0 + "No email logs" (a believable all-clear on the one page that exists to surface delivery failures)
 ];
 
 const ERROR_SIGNALS = ["isError", "isLoadingError", "status", "error"];

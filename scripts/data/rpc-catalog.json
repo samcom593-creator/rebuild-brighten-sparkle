@@ -2859,6 +2859,58 @@
         "raw": ""
       }
     ],
+    "ethos_call_sheet": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "ethos_call_sheet_import": [
+      {
+        "all": [
+          "p_rows",
+          "p_snapshot_on"
+        ],
+        "required": [
+          "p_rows"
+        ],
+        "unnamed": false,
+        "raw": "p_rows jsonb, p_snapshot_on date DEFAULT CURRENT_DATE"
+      }
+    ],
+    "ethos_call_sheet_log": [
+      {
+        "all": [
+          "p_follow_up_on",
+          "p_note",
+          "p_outcome",
+          "p_person_id",
+          "p_reason"
+        ],
+        "required": [
+          "p_outcome",
+          "p_person_id"
+        ],
+        "unnamed": false,
+        "raw": "p_person_id uuid, p_outcome text, p_reason text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_follow_up_on date DEFAULT NULL::date"
+      }
+    ],
+    "ethos_call_sheet_set_phone": [
+      {
+        "all": [
+          "p_person_id",
+          "p_phone"
+        ],
+        "required": [
+          "p_person_id",
+          "p_phone"
+        ],
+        "unnamed": false,
+        "raw": "p_person_id uuid, p_phone text"
+      }
+    ],
     "ethos_paste_rows_approved": [
       {
         "all": [],

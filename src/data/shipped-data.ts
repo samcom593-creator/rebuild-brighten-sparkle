@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "New page: Ethos call sheet (Team menu). It lists everyone who holds the Ethos contract with their phone number, how long they have been with us, what they have produced, and any chargebacks owed. Tap the number to call, then tap what happened. People who wrote Ethos business that did not stick are at the top. Leaders see the people under them; the owner sees everyone.",
+    detail:
+      "MP-ETHOS-CALLSHEET. Source is the Ethos portal's hierarchy performance export (89 people on the first load); phone, email and sub-agency come from the Ethos signup sheet, time with us from the agent record, application or portal date. 82 of 89 have a number; the other 7 take one typed in on the card. ethos_callsheet_people + ethos_callsheet_calls (RLS on, no policies) behind four definer functions: ethos_call_sheet (owner all, active leader own hierarchy plus the Ethos sub-agency they head, anyone else nothing), ethos_call_sheet_log, ethos_call_sheet_set_phone, ethos_call_sheet_import (owner loads a newer export from the page). No app role was granted or changed. 14 new tests.",
+    commit: "mp-ethos-callsheet",
+  },
+  {
+    ts: "today",
+    label:
       "Two surfaces where a blank screen used to mean 'nothing here' now say when they actually failed to load. Your documents (license, E&O, ID, contracting forms) will say 'couldn't load — refresh before assuming nothing is on file' instead of a reassuring 'Nothing uploaded yet' when the feed is down, and the call-transcript history does the same instead of a quiet 'No transcripts yet'.",
     detail:
       "MP-WIB-ADMIN-RENDER-HEALTH-11 — the compliance + sales-QA cluster. AgentDocuments.tsx destructured `data: docs = []` with isLoading but no error signal, so a dead agent_documents read rendered 'Nothing uploaded yet.' — a false 'this producer has no license on file' an upline would act on. CallTranscriptsSection.tsx was the worse variant: the queryFn swallowed `.error` (`const { data } = await q`), so React Query never saw the failure and a dead call_transcripts read rendered 'No transcripts yet' as a success — now throws on error, takes isError, and shows a load-error line. Both added to the render-health MANIFEST (now 33 held at zero silent-zero feeds). Proven: scanner selftest 10/10, census offenders 11→9 (remaining 9 all training/course/leaderboard, lowest-$), esbuild parse clean.",

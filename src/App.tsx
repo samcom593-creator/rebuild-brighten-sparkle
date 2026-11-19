@@ -156,6 +156,7 @@ const DashboardToday = lazy(() => import("./pages/DashboardToday"));
 const OnboardingLadder = lazy(() => import("./pages/OnboardingLadder"));
 const AdminProducerTrends = lazy(() => import("./pages/AdminProducerTrends"));
 const LicensedInbox = lazy(() => import("./pages/LicensedInbox"));
+const EthosCallSheet = lazy(() => import("./pages/EthosCallSheet"));
 const ApexTrainingEntry = lazy(() => import("./pages/ApexTrainingEntry"));
 const ClientDetail = lazy(() => import("./pages/ClientDetail"));
 const ScheduleCall = lazy(() => import("./pages/ScheduleCall"));
@@ -585,6 +586,8 @@ const App = () => (
                         the roster to self + recursive downline; staff keep their
                         agency-wide operating view. */}
                     <Route path="/dashboard/team" element={<ProtectedRoute><DashboardCRM /></ProtectedRoute>} />
+                    {/* MP-ETHOS-CALLSHEET: any signed-in agent may open it; ethos_call_sheet() decides whose rows they get (owner: all, leader: own hierarchy, anyone else: none). */}
+                    <Route path="/dashboard/ethos-call-sheet" element={<ProtectedRoute><EthosCallSheet /></ProtectedRoute>} />
                   <Route path="/dashboard/recruiting-links" element={<ProtectedRoute requireAdmin><RecruitingLinks /></ProtectedRoute>} />
                   {/* §11: the Content page (approval queue + invite list) is the Launch Board's Queue tab now. Single hop. */}
                   <Route path="/dashboard/content" element={<LegacyWorkspaceRedirect to="/dashboard/launch-board?tab=queue" />} />

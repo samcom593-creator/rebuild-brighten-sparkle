@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "Fixed a manager's projected income so it reads true before the month starts. It now splits the goal into personal vs team production from your real trailing history, instead of treating the whole goal as your own writing when there's no production in the new month yet.",
+    detail:
+      "MP-303.2 \u2014 fn_goal_scorecard derives the personal/downline split from trailing-120d production mix, not the current (empty, for an upcoming month) period. Chudi read $510k (whole 600k goal at 85% as if all personal); true is ~$233k (73% of his tree is downline, override nets out). Obi/Kyros/solo managers unchanged. Sam's override at goal is unaffected by the split ($1,091,250) \u2014 it's team goal \u00d7 his spread over the manager. Stable whether the period is upcoming or live.",
+    commit: "mp-303-income-split",
+  },
+  {
+    ts: "today",
+    label:
       "Your goals are set for December, and every portal now spells out exactly what it takes to hit them \u2014 how many deals, at your real average premium, per week and per selling day, plus how many agents you still need to recruit. The manager board and each portal auto-roll to the live goal month, and show a 'starts soon' plan until the month begins.",
     detail:
       "MP-303.1 \u2014 moved the whiteboard goals to December (dropped the duplicate November seed that read everyone as 'behind' on a goal never set for Nov). fn_goal_scorecard / fn_owner_goal_board auto-resolve to the active goal period and now return a breakdown: avg_deal_size (the tree's own trailing-120d average, agency $1,640 fallback), deals_to_goal, deals_remaining, deals_per_week, deals_per_day, ap_per_day over the remaining business days, plus recruits_needed and ap_per_recruit. New 'upcoming' state for a period that hasn't started. Verified live as Sam: December resolves, Chudi 600k = 369 deals at $1,627 = 80/wk, 16/day over 23 selling days; Obi needs 12 agents at $25k each.",

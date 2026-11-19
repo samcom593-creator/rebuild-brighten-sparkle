@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { DollarSign, Save } from "lucide-react";
 import { toast } from "sonner";
+import { QueryState } from "@/components/ui/query-state";
 
 interface AgentComp {
   id: string;
@@ -22,7 +23,7 @@ export default function CompTiersSettings() {
   const queryClient = useQueryClient();
   const [edits, setEdits] = useState<Record<string, Partial<AgentComp>>>({});
 
-  const { data: agents = [], isLoading } = useQuery({
+  const { data: agents = [], isLoading, isError, error, refetch } = useQuery({
     queryKey: ["comp-tiers"],
     queryFn: async (): Promise<AgentComp[]> => {
       // PL-075: show only active agents — Sam: "I see a bunch of agents
@@ -31,14 +32,16 @@ export default function CompTiersSettings() {
       // is_inactive=false (system-flagged inactive — 36 rows leak through
       // without this), and status='active' (enum truth). Legacy data had
       // combinations of all three that needed explicit gating.
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("v_agents_full")
         .select("id, display_name, contract_percentage, override_rate, insuracloud_user_id, user_id, profile:profiles!agents_profile_id_fkey(full_name)")
         .eq("is_deactivated", false)
         .eq("is_inactive", false)
         .eq("status", "active")
         .order("display_name");
+      if (error) throw error;
       const rolesRes = await supabase.from("user_roles").select("user_id, role");
+      if (rolesRes.error) throw rolesRes.error;
       const roleMap = new Map((rolesRes.data || []).map((r: any) => [r.user_id, r.role]));
       return (data || []).map((a: any) => ({
         id: a.id,
@@ -89,6 +92,9 @@ export default function CompTiersSettings() {
           <CardTitle className="text-sm">All agents</CardTitle>
         </CardHeader>
         <CardContent className="space-y-1">
+          {isError && (
+            <QueryState status="error" label="comp tiers" error={error} onRetry={() => void refetch()} />
+          )}
           {isLoading && [...Array(6)].map((_, i) => /* stable-key-allow:skeleton */ <div key={i} className="h-14 rounded bg-muted/20 animate-pulse" />)}
           {agents.map(agent => {
             const edit = edits[agent.id] || {};

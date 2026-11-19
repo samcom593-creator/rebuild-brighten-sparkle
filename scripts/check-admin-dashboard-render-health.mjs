@@ -81,6 +81,15 @@ const MANIFEST = [
   "src/pages/InactiveAgents.tsx",                // retention queue — the queryFn SWALLOWED its error and rendered "everyone's active" + 0 severity tiles (producer churn is the agency's core problem)
   "src/pages/MyStrikes.tsx",                     // agent-facing conduct record — a dead v_agent_strikes rendered "Clear" standing + confetti, telling an agent they're clean when the feed died
   "src/components/dashboard/LicensingDelegateSection.tsx", // applicant-detail delegate panel — BOTH queryFns SWALLOWED .error and rendered "No delegates assigned"
+  // Money/production-ops cluster (MP-WIB-ADMIN-RENDER-HEALTH wave 6, 2026-11-19).
+  // The 23:29 "lower-$ tail" framing missed these — they are the money/production
+  // path, not training/course. A dead feed here hides the recruiting→income funnel.
+  "src/components/deals/DealEntryForm.tsx",      // the deal-entry money path — the carriers queryFn SWALLOWED .error, so a dead carriers read rendered an empty dropdown (looked like "no carriers exist") with no signal the feed was down
+  "src/pages/AdminStuckPool.tsx",                // stuck lead-spend recovery — a dead v_next_step_stuck_pool rendered "No stalled people match these filters. 🎉" (an all-clear while the pool feed was dead)
+  "src/pages/AdminPolicyLeads.tsx",              // policy-review inbound leads — a dead phc_admin_leads rendered "No policy-review leads yet" (a false empty funnel)
+  "src/pages/AdminMissingAlLink.tsx",            // production-attribution gap — a dead v_agents_missing_al_link rendered "Every active agent has an AgentLink link" (hides commission attribution holes)
+  "src/pages/ManagerNextStepBoard.tsx",          // manager pipeline board — a dead v_next_step_manager_board rendered "No active people in your downline" (a false empty downline)
+  "src/pages/admin/CompTiersSettings.tsx",       // comp-tier money config — the queryFn SWALLOWED both reads' errors, so a dead v_agents_full rendered an empty comp editor (looked like "no agents to pay")
 ];
 
 const ERROR_SIGNALS = ["isError", "isLoadingError", "status", "error"];

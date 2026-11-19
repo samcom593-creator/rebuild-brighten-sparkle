@@ -9,6 +9,7 @@ import { AlertTriangle, Compass, MessageSquare, ArrowRight } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { QueryState } from "@/components/ui/query-state";
 
 type StuckRow = {
   person_type: "applicant" | "agent";
@@ -44,7 +45,7 @@ export default function AdminStuckPool() {
   const [stageFilter, setStageFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
 
-  const { data: rows = [], isLoading, refetch } = useQuery<StuckRow[]>({
+  const { data: rows = [], isLoading, isError, error, refetch } = useQuery<StuckRow[]>({
     queryKey: ["next-step-stuck-pool"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -159,7 +160,9 @@ export default function AdminStuckPool() {
           </div>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {isError ? (
+            <QueryState status="error" label="the stuck pool" error={error} onRetry={() => void refetch()} />
+          ) : isLoading ? (
             <div className="py-10 text-center text-muted-foreground">Loading stuck pool...</div>
           ) : filtered.length === 0 ? (
             <div className="py-10 text-center text-emerald-400">

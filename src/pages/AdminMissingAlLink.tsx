@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { QueryState } from "@/components/ui/query-state";
 
 interface SuggestedMatch {
   al_user_id: number;
@@ -35,7 +36,7 @@ export default function AdminMissingAlLink() {
   const qc = useQueryClient();
   const [linkingId, setLinkingId] = useState<string | null>(null);
 
-  const { data: rows = [], isLoading } = useQuery<Row[]>({
+  const { data: rows = [], isLoading, isError, error, refetch } = useQuery<Row[]>({
     queryKey: ["v_agents_missing_al_link"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -78,7 +79,11 @@ export default function AdminMissingAlLink() {
 
       {isLoading && <div className="text-sm text-muted-foreground">Loading…</div>}
 
-      {!isLoading && rows.length === 0 && (
+      {isError && (
+        <QueryState status="error" label="agents missing an AgentLink id" error={error} onRetry={() => void refetch()} />
+      )}
+
+      {!isLoading && !isError && rows.length === 0 && (
         <Card>
           <CardContent className="p-6 text-center text-sm text-muted-foreground">
             <Check className="h-5 w-5 text-emerald-500 mx-auto mb-2" />

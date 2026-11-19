@@ -8,6 +8,7 @@ import { AlertTriangle, Compass, Filter } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { QueryState } from "@/components/ui/query-state";
 
 type PersonRef = {
   application_id: string | null;
@@ -40,7 +41,7 @@ export default function ManagerNextStepBoard() {
   const managerId = isAdmin && overrideManager ? overrideManager : user?.id ?? null;
   const [stalledOnly, setStalledOnly] = useState(false);
 
-  const { data: rows = [], isLoading } = useQuery<BoardRow[]>({
+  const { data: rows = [], isLoading, isError, error, refetch } = useQuery<BoardRow[]>({
     queryKey: ["next-step-manager-board", managerId],
     enabled: !!managerId,
     queryFn: async () => {
@@ -90,7 +91,9 @@ export default function ManagerNextStepBoard() {
         </div>
       </div>
 
-      {isLoading ? (
+      {isError ? (
+        <QueryState status="error" label="your downline board" error={error} onRetry={() => void refetch()} />
+      ) : isLoading ? (
         <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
           {[0, 1, 2, 3, 4, 5].map((i) => (
             /* stable-key-allow:skeleton */

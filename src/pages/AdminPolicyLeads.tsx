@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Phone, Mail, ExternalLink, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { contactLinkProps, phoneHref } from "@/lib/phone";
+import { QueryState } from "@/components/ui/query-state";
 
 /**
  * Policy Help Center — consumer leads, surfaced inside the APEX admin so Sam
@@ -60,7 +61,7 @@ export default function AdminPolicyLeads() {
     refetchInterval: 300_000,
   });
 
-  const { data: leads = [], isLoading } = useQuery<PhcLead[]>({
+  const { data: leads = [], isLoading, isError, error, refetch } = useQuery<PhcLead[]>({
     queryKey: ["phc-leads"],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("phc_admin_leads");
@@ -125,7 +126,9 @@ export default function AdminPolicyLeads() {
         className="max-w-md"
       />
 
-      {isLoading ? (
+      {isError ? (
+        <QueryState status="error" label="policy leads" error={error} onRetry={() => void refetch()} />
+      ) : isLoading ? (
         <p className="text-sm text-muted-foreground">Loading leads…</p>
       ) : filtered.length === 0 ? (
         <Card>

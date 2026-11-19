@@ -16,6 +16,7 @@ import { DollarSign, Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { celebrateDeal } from "@/lib/gameFx";
 import { normalizePolicyNumber, sanitizePolicyInput } from "@/lib/policyNumber";
+import { QueryState } from "@/components/ui/query-state";
 
 interface Carrier { id: string; name: string }
 
@@ -57,10 +58,11 @@ export function DealEntryForm({ onSaved }: { onSaved?: () => void }) {
   const [form, setForm] = useState<DealForm>(blank);
   const [saving, setSaving] = useState(false);
 
-  const { data: carriers = [] } = useQuery({
+  const { data: carriers = [], isError: carriersError, error: carriersErr, refetch: refetchCarriers } = useQuery({
     queryKey: ["carriers"],
     queryFn: async (): Promise<Carrier[]> => {
-      const { data } = await supabase.from("carriers" as any).select("id, name").eq("is_active", true).order("name");
+      const { data, error } = await supabase.from("carriers" as any).select("id, name").eq("is_active", true).order("name");
+      if (error) throw error;
       return (data as any) || [];
     },
     staleTime: Infinity,
@@ -176,12 +178,16 @@ export function DealEntryForm({ onSaved }: { onSaved?: () => void }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <Label className="text-xs">Carrier</Label>
-            <Select value={form.carrier_id} onValueChange={v => set("carrier_id", v)}>
-              <SelectTrigger><SelectValue placeholder="Select carrier" /></SelectTrigger>
-              <SelectContent>
-                {carriers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            {carriersError ? (
+              <QueryState status="error" compact label="carriers" error={carriersErr} onRetry={() => void refetchCarriers()} />
+            ) : (
+              <Select value={form.carrier_id} onValueChange={v => set("carrier_id", v)}>
+                <SelectTrigger><SelectValue placeholder="Select carrier" /></SelectTrigger>
+                <SelectContent>
+                  {carriers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            )}
           </div>
           <div>
             <Label className="text-xs">Product Sold *</Label>

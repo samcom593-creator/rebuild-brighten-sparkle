@@ -21,7 +21,7 @@ export function CallTranscriptsSection({ applicationId, agentId }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const { data: transcripts = [], isLoading } = useQuery({
+  const { data: transcripts = [], isLoading, isError } = useQuery({
     queryKey: ["call-transcripts", applicationId, agentId],
     enabled: !!(applicationId || agentId),
     queryFn: async () => {
@@ -32,7 +32,11 @@ export function CallTranscriptsSection({ applicationId, agentId }: Props) {
         .limit(20);
       if (applicationId) q = q.eq("application_id", applicationId);
       else if (agentId) q = q.eq("agent_id", agentId);
-      const { data } = await q;
+      // A failed read must reject so the UI can distinguish "no calls logged"
+      // from "the feed died" — discarding `error` renders a dead feed as the
+      // believable "No transcripts yet" (the silent-zero class).
+      const { data, error } = await q;
+      if (error) throw error;
       return data || [];
     },
   });
@@ -100,6 +104,8 @@ export function CallTranscriptsSection({ applicationId, agentId }: Props) {
 
       {isLoading ? (
         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+      ) : isError ? (
+        <p className="text-xs text-destructive italic">Couldn&apos;t load call transcripts — this is a load error, not an empty history.</p>
       ) : transcripts.length > 0 ? (
         <div className="space-y-1.5">
           {transcripts.map((t: any) => {

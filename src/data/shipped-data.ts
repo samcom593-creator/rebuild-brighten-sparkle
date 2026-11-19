@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "Two surfaces where a blank screen used to mean 'nothing here' now say when they actually failed to load. Your documents (license, E&O, ID, contracting forms) will say 'couldn't load — refresh before assuming nothing is on file' instead of a reassuring 'Nothing uploaded yet' when the feed is down, and the call-transcript history does the same instead of a quiet 'No transcripts yet'.",
+    detail:
+      "MP-WIB-ADMIN-RENDER-HEALTH-11 — the compliance + sales-QA cluster. AgentDocuments.tsx destructured `data: docs = []` with isLoading but no error signal, so a dead agent_documents read rendered 'Nothing uploaded yet.' — a false 'this producer has no license on file' an upline would act on. CallTranscriptsSection.tsx was the worse variant: the queryFn swallowed `.error` (`const { data } = await q`), so React Query never saw the failure and a dead call_transcripts read rendered 'No transcripts yet' as a success — now throws on error, takes isError, and shows a load-error line. Both added to the render-health MANIFEST (now 33 held at zero silent-zero feeds). Proven: scanner selftest 10/10, census offenders 11→9 (remaining 9 all training/course/leaderboard, lowest-$), esbuild parse clean.",
+    commit: "mp-wib-render-health-11",
+  },
+  {
+    ts: "today",
+    label:
       "The notification log now tells the truth when its feed is down instead of showing a reassuring '0 failed' all-clear. If the log that surfaces every push / SMS / email delivery can't load, the page shows 'couldn't load — this is not an all-clear' with Retry, instead of a 0-today / 0-failed stat band and an empty table that would read as 'nothing bounced, all delivered'.",
     detail:
       "MP-WIB-ADMIN-RENDER-HEALTH-10 — NotificationHub.tsx: the queryFn already threw on error, but the page destructured `data: logs = []` with no error signal, so a dead v_notification_log_with_role read rendered the stat band as 0 today / 0 failed and an empty log table — a believable all-clear on the one page that exists to catch delivery failures (the same class as EmailDeliveryLog, wave 7). Now takes isError/error/refetch; both the stat band and the log table render <QueryState error> with Retry. Added to the render-health MANIFEST (now 31 money/pipeline daily-drivers held at zero silent-zero feeds). Proven: scanner selftest 10/10, NotificationHub offenders 2→0, esbuild parse clean.",

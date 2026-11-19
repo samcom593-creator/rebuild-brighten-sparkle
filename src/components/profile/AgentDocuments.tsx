@@ -60,7 +60,7 @@ export function AgentDocuments({ agentId }: { agentId: string | null }) {
   const [linkUrl, setLinkUrl] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const { data: docs = [], isLoading } = useQuery({
+  const { data: docs = [], isLoading, isError } = useQuery({
     queryKey: ["agent-documents", agentId],
     enabled: Boolean(agentId),
     queryFn: async () => {
@@ -210,6 +210,10 @@ export function AgentDocuments({ agentId }: { agentId: string | null }) {
         <div className="space-y-2">
           {isLoading ? (
             <div className="h-16 animate-pulse rounded-md bg-muted/30" />
+          ) : isError ? (
+            <p className="text-sm text-destructive">
+              Couldn&apos;t load documents. This is a load error, not an empty folder — refresh before assuming nothing is on file.
+            </p>
           ) : docs.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nothing uploaded yet.</p>
           ) : (

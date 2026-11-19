@@ -105,6 +105,11 @@ const MANIFEST = [
   // A delivery LOG rendering a dead feed as an empty all-clear is the exact
   // fake-success class this guard exists for — same as EmailDeliveryLog (wave 7).
   "src/pages/NotificationHub.tsx",               // notification delivery log — the queryFn THREW on error, but the page destructured `data: logs = []` with NO error signal, so a dead v_notification_log_with_role read rendered the NotificationStats band as 0 today / 0 failed and an empty log table — a believable all-clear on the one page that exists to surface push/SMS/email delivery failures. Now takes isError/error/refetch; the stat band and the log table both render <QueryState error> with Retry instead of a fake 0
+  // Compliance + sales-QA cluster (MP-WIB-ADMIN-RENDER-HEALTH wave 11, 2026-11-19).
+  // Not pipeline boards, but surfaces where a false empty is a business lie Sam
+  // or an upline acts on: "no license/E&O on file" and "no call QA history".
+  "src/components/profile/AgentDocuments.tsx",   // producer compliance docs (license, E&O, voided check, ID, contracting forms) — destructured `data: docs = []` with isLoading but NO error signal, so a dead agent_documents read rendered "Nothing uploaded yet." — a false "this producer has no license on file" that an upline would act on. Now takes isError and renders a load-error line before the empty state
+  "src/components/dashboard/CallTranscriptsSection.tsx", // call-QA transcripts — the WORSE variant: the queryFn SWALLOWED .error (`const { data } = await q`), so React Query never saw the failure and a dead call_transcripts read rendered "No transcripts yet" as a success. Now throws on error + takes isError + renders a load-error line
 ];
 
 const ERROR_SIGNALS = ["isError", "isLoadingError", "status", "error"];

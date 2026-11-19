@@ -24,7 +24,15 @@ const TRACKED_FILES = [
   "src/components/landing/CareerPathwaySection.tsx",
   "src/components/landing/HeroSection.tsx",
   "src/components/landing/RecentHiresTicker.tsx",
-  "src/pages/Landing.tsx",
+  // 2026-11-19 (MP-WIB-TRUTH-FLOOR-INDEX): was "src/pages/Landing.tsx", which has
+  // not existed in this repo for months — the public "/" route component was
+  // renamed to src/pages/Index.tsx (App.tsx:447 <Route path="/" element={<Index/>} />),
+  // the ONLY page that composes the landing/ stat surfaces. The dead entry
+  // scanned nothing, printed a forever-NOTE, and — because pre-commit builds its
+  // trigger regex from --list-tracked — meant editing the real landing ROOT never
+  // fired this guard. Index.tsx carries no `??`-fallback today, so tracking it
+  // stays green AND covers the single most-likely future hero-stat-fallback site.
+  "src/pages/Index.tsx",
   // 2026-08-02: Apply.tsx is the highest-intent conversion page and was the ONE
   // public surface missing here — it shipped a stale `?? 104` active-agent floor
   // while the DB said 41, and this guard never saw it. Track it.

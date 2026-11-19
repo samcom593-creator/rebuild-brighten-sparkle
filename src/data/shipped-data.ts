@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "The dialer seats now look after themselves. Every 10 minutes the system checks who holds a ReadyMode seat, signs out sessions that were left open with the window closed, and locks the dialer login of anyone who has been banned or terminated on the platform. Reports shows who is holding a seat, whether they are dialing, and what the automation did.",
+    detail:
+      "MP-SEATS-1. ReadyMode has 4 concurrent dialing seats and had 34 live logins; 10 belonged to people already banned on the platform (one in the Admin group) and were moved to ReadyMode's Deleted Users, verified. readymode_seat_snapshots + readymode_seat_actions + fn_readymode_accounts_to_lock (rule in SQL) + admin_dialer_seats(); seat step runs inside the local call-log puller. Only sessions ReadyMode itself marks inactive are signed out, so nobody is cut off mid-call. DialerSeatsPanel on Reports. 9 new tests.",
+    commit: "mp-seats-1-dialer-seat-automation",
+  },
+  {
+    ts: "today",
+    label:
       "Home now opens with your leads. If you are holding leads that still need a call, the first thing on Home says how many, names the ones waiting on a call back, and takes you straight to them. The \"what happens next\" card also stops showing impossible numbers like \"Stage 19 / 18\" and \"106% progress\".",
     detail:
       "MP-BEST-3. LeadsWaitingCard on the agent, agency owner and manager Home (shared fetcher and query key with My Leads in src/lib/myLeads.ts; renders nothing with no open leads). v_next_step_candidate hardcoded 18 stages and counted 60 retired email-template rows as stages ahead: 103 people read over 100% (12 at 106%, 91 at 550%). Ladder now read from the table (19), percent capped, row guard and every other column byte-identical. 7 new tests.",

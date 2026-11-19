@@ -1,6 +1,6 @@
 {
   "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
-  "_generated_at": "2026-11-19T11:26:22Z",
+  "_generated_at": "2026-11-19T17:20:28Z",
   "_project_ref": "xrzweoneiieddzxogewk",
   "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
   "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -10,6 +10,7 @@
     "acknowledge_strike": "agent_strikes",
     "admin_assign_dialer_seat": "jsonb",
     "admin_configure_integration": "jsonb",
+    "admin_dialer_seats": "jsonb",
     "admin_enqueue_onboarding_call": "jsonb",
     "admin_link_xcel_student": "jsonb",
     "admin_platform_pulse": "jsonb",
@@ -47,6 +48,7 @@
     "apex_admin_home_dashboard": "jsonb",
     "apex_admin_home_dashboard_uncached": "jsonb",
     "apex_admin_operations_snapshot": "jsonb",
+    "apex_admin_operations_snapshot_compute": "jsonb",
     "apex_admin_operations_snapshot_uncached": "jsonb",
     "apex_agent_book": "jsonb",
     "apex_agent_onboarding_roadmap": "jsonb",
@@ -56,9 +58,11 @@
     "apex_contracts_summary": "jsonb",
     "apex_daily_briefing": "json",
     "apex_dashboard_summary": "jsonb",
+    "apex_dashboard_summary_uncached": "jsonb",
     "apex_has_any_role": "boolean",
     "apex_home_dashboard": "jsonb",
     "apex_is_admin": "boolean",
+    "apex_ops_snapshot_prewarm": "integer",
     "apex_provision_licensed_applicant": "jsonb",
     "apex_records_and_bounties": "jsonb",
     "apex_render_plaque": "text",
@@ -1011,6 +1015,7 @@
         "course",
         "discord",
         "get_licensed",
+        "headless",
         "public",
         "terminated"
       ]
@@ -1022,6 +1027,7 @@
         "course",
         "discord",
         "get_licensed",
+        "headless",
         "public",
         "terminated"
       ]
@@ -1033,6 +1039,7 @@
         "course",
         "discord",
         "get_licensed",
+        "headless",
         "public",
         "terminated"
       ]
@@ -1044,6 +1051,7 @@
         "course",
         "discord",
         "get_licensed",
+        "headless",
         "public",
         "terminated"
       ]
@@ -1055,6 +1063,7 @@
         "course",
         "discord",
         "get_licensed",
+        "headless",
         "public",
         "terminated"
       ]
@@ -1068,6 +1077,7 @@
         "course",
         "discord",
         "get_licensed",
+        "headless",
         "public",
         "terminated"
       ]
@@ -1082,6 +1092,7 @@
         "course",
         "discord",
         "get_licensed",
+        "headless",
         "public",
         "terminated"
       ]
@@ -1093,6 +1104,7 @@
         "course",
         "discord",
         "get_licensed",
+        "headless",
         "public",
         "terminated"
       ]
@@ -1104,6 +1116,7 @@
         "course",
         "discord",
         "get_licensed",
+        "headless",
         "public",
         "terminated"
       ]
@@ -1117,6 +1130,7 @@
         "course",
         "discord",
         "get_licensed",
+        "headless",
         "public",
         "terminated"
       ]
@@ -1128,6 +1142,7 @@
         "course",
         "discord",
         "get_licensed",
+        "headless",
         "public",
         "terminated"
       ]
@@ -1139,6 +1154,7 @@
         "course",
         "discord",
         "get_licensed",
+        "headless",
         "public",
         "terminated"
       ]
@@ -1150,6 +1166,7 @@
         "course",
         "discord",
         "get_licensed",
+        "headless",
         "public",
         "terminated"
       ]
@@ -1163,6 +1180,7 @@
         "course",
         "discord",
         "get_licensed",
+        "headless",
         "public",
         "terminated"
       ]
@@ -1174,6 +1192,7 @@
         "course",
         "discord",
         "get_licensed",
+        "headless",
         "public",
         "terminated"
       ]
@@ -1185,6 +1204,7 @@
         "course",
         "discord",
         "get_licensed",
+        "headless",
         "public",
         "terminated"
       ]
@@ -1196,6 +1216,7 @@
         "course",
         "discord",
         "get_licensed",
+        "headless",
         "public",
         "terminated"
       ]
@@ -1209,6 +1230,7 @@
         "course",
         "discord",
         "get_licensed",
+        "headless",
         "public",
         "terminated"
       ]
@@ -1222,6 +1244,7 @@
         "course",
         "discord",
         "get_licensed",
+        "headless",
         "public",
         "terminated"
       ]
@@ -1233,6 +1256,7 @@
         "course",
         "discord",
         "get_licensed",
+        "headless",
         "public",
         "terminated"
       ]
@@ -1244,6 +1268,7 @@
         "course",
         "discord",
         "get_licensed",
+        "headless",
         "public",
         "terminated"
       ]
@@ -1257,6 +1282,7 @@
         "course",
         "discord",
         "get_licensed",
+        "headless",
         "public",
         "terminated"
       ]
@@ -1270,6 +1296,7 @@
         "course",
         "discord",
         "get_licensed",
+        "headless",
         "public",
         "terminated"
       ]
@@ -1283,6 +1310,7 @@
         "course",
         "discord",
         "get_licensed",
+        "headless",
         "public",
         "terminated"
       ]
@@ -12022,6 +12050,62 @@
         "complained",
         "public",
         "reactivation_incident_ack"
+      ]
+    },
+    "fn_readymode_accounts_to_lock.agent_id": {
+      "candidates": [
+        "readymode_agent_aliases.agent_id"
+      ],
+      "body_literals": [
+        "agent",
+        "deactivated",
+        "login banned",
+        "name",
+        "open suspension",
+        "public",
+        "terminated",
+        "uid"
+      ]
+    },
+    "fn_readymode_accounts_to_lock.reason": {
+      "candidates": [
+        "agent_access_suspensions.reason"
+      ],
+      "body_literals": [
+        "agent",
+        "deactivated",
+        "login banned",
+        "name",
+        "open suspension",
+        "public",
+        "terminated",
+        "uid"
+      ]
+    },
+    "fn_readymode_accounts_to_lock.rm_name": {
+      "candidates": [],
+      "body_literals": [
+        "agent",
+        "deactivated",
+        "login banned",
+        "name",
+        "open suspension",
+        "public",
+        "terminated",
+        "uid"
+      ]
+    },
+    "fn_readymode_accounts_to_lock.rm_user_id": {
+      "candidates": [],
+      "body_literals": [
+        "agent",
+        "deactivated",
+        "login banned",
+        "name",
+        "open suspension",
+        "public",
+        "terminated",
+        "uid"
       ]
     },
     "fn_reconcile_first_deal_at.agent_id": {

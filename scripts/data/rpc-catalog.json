@@ -59,6 +59,14 @@
         "raw": "p_key text, p_value text"
       }
     ],
+    "admin_dialer_seats": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "admin_enqueue_onboarding_call": [
       {
         "all": [
@@ -568,6 +576,14 @@
         "raw": ""
       }
     ],
+    "apex_admin_operations_snapshot_compute": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "apex_admin_operations_snapshot_uncached": [
       {
         "all": [],
@@ -701,6 +717,14 @@
         "raw": ""
       }
     ],
+    "apex_dashboard_summary_uncached": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "apex_has_any_role": [
       {
         "all": [
@@ -726,6 +750,14 @@
       }
     ],
     "apex_is_admin": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "apex_ops_snapshot_prewarm": [
       {
         "all": [],
         "required": [],
@@ -6292,6 +6324,18 @@
         ],
         "unnamed": false,
         "raw": "p_application_id uuid"
+      }
+    ],
+    "fn_readymode_accounts_to_lock": [
+      {
+        "all": [
+          "p_accounts"
+        ],
+        "required": [
+          "p_accounts"
+        ],
+        "unnamed": false,
+        "raw": "p_accounts jsonb"
       }
     ],
     "fn_readymode_ingest": [

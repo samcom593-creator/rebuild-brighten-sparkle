@@ -65,9 +65,12 @@ export function NextStepCard({ application_id, agent_id, compact = false }: Prop
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <Badge variant={isUrgent ? "destructive" : "secondary"} className="text-[11px] uppercase tracking-wider">
-                  Stage {row.order_index} / {row.total_stages}
-                </Badge>
+                {/* Off the ladder (closed) there is no "stage 99 of 19" to show; the stage name beside it says where they are. */}
+                {row.order_index <= row.total_stages && (
+                  <Badge variant={isUrgent ? "destructive" : "secondary"} className="text-[11px] uppercase tracking-wider">
+                    Stage {row.order_index} / {row.total_stages}
+                  </Badge>
+                )}
                 {isUrgent && <AlertTriangle className="h-3.5 w-3.5 text-rose-400" />}
                 <span className="text-[12px] text-muted-foreground uppercase tracking-wider">{row.stage_display_name}</span>
               </div>

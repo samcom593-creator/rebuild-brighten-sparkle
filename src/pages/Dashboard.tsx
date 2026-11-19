@@ -90,6 +90,7 @@ import { cn } from "@/lib/utils";
 import { ReferralLinkCard } from "@/components/dashboard/ReferralLinkCard";
 import { AgentCloudHome } from "@/components/dashboard/AgentCloudHome";
 import { ScopedProductionScoreboard } from "@/components/dashboard/ScopedProductionScoreboard";
+import { LeadsWaitingCard } from "@/components/dashboard/LeadsWaitingCard";
 import { APPLICATION_RECORD_TYPE } from "@/shared/api/applicationRecordType";
 import { TeamLookupError } from "@/components/shared/TeamLookupError";
 
@@ -1071,7 +1072,8 @@ export default function Dashboard() {
             <Badge variant="outline">Previewing Agent View from {actualRole}</Badge>
           </div>
         )}
-        <div className="px-4 pt-4 sm:px-6">
+        <div className="space-y-4 px-4 pt-4 sm:px-6">
+          <LeadsWaitingCard />
           <ScopedProductionScoreboard />
         </div>
         <Suspense fallback={<PageLoadingSkeleton />}>
@@ -1092,7 +1094,8 @@ export default function Dashboard() {
             <Badge variant="outline">Previewing Agency Owner View from {actualRole}</Badge>
           </div>
         )}
-        <div className="px-4 pt-4 sm:px-6">
+        <div className="space-y-4 px-4 pt-4 sm:px-6">
+          <LeadsWaitingCard />
           <ScopedProductionScoreboard />
         </div>
         <Suspense fallback={<PageLoadingSkeleton />}>
@@ -1110,7 +1113,8 @@ export default function Dashboard() {
             <Badge variant="outline">Previewing Manager View from {actualRole}</Badge>
           </div>
         )}
-        <div className="px-4 pt-4 sm:px-6">
+        <div className="space-y-4 px-4 pt-4 sm:px-6">
+          <LeadsWaitingCard />
           <ScopedProductionScoreboard />
         </div>
         <Suspense fallback={<PageLoadingSkeleton />}>

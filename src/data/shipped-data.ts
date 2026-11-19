@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "Home now opens with your leads. If you are holding leads that still need a call, the first thing on Home says how many, names the ones waiting on a call back, and takes you straight to them. The \"what happens next\" card also stops showing impossible numbers like \"Stage 19 / 18\" and \"106% progress\".",
+    detail:
+      "MP-BEST-3. LeadsWaitingCard on the agent, agency owner and manager Home (shared fetcher and query key with My Leads in src/lib/myLeads.ts; renders nothing with no open leads). v_next_step_candidate hardcoded 18 stages and counted 60 retired email-template rows as stages ahead: 103 people read over 100% (12 at 106%, 91 at 550%). Ladder now read from the table (19), percent capped, row guard and every other column byte-identical. 7 new tests.",
+    commit: "mp-best-3-home-leads-and-ladder",
+  },
+  {
+    ts: "today",
+    label:
       "Reports now opens with a Platform pulse: who really uses the platform, who logs in without selling yet, who is holding leads they have never called, which screens get opened and how fast they load. The team panel's \"silent\" count now reads real activity instead of the last sign-in, so people who stay signed in stop showing as gone.",
     detail:
       "MP-BEST-2. admin_platform_pulse() (admin only, cached 5 minutes, no dollar figures) reads page views from real browsers; test sessions and admin accounts are excluded. At ship: 77 active agents, 10 posted a deal in 30 days and all 10 use the platform, 12 log in without selling, 55 did neither; 420 of 656 handed-out leads never called. admin_team_engagement() last seen = newest real page view (sign-in understated 27 people; Silent 7d+ 79 to 72). 9 new tests.",

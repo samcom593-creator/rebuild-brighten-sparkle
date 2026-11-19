@@ -21,6 +21,7 @@ import { contactLinkProps, formatPhoneDisplay, phoneHref } from "@/lib/phone";
 import { dispositionLabel } from "@/lib/readymodeDispositions";
 import { LEAD_STATUS_BUTTONS, TIER_STYLE, canDial, flagBadges, formatLabel, isOpenLead, leadStatusLabel, tierLabel, tierLegendFor } from "@/lib/leadBundles";
 import { dialTapHandler } from "@/lib/leadDialTap";
+import { MY_LEADS_QUERY_KEY, fetchMyLeads } from "@/lib/myLeads";
 import { cn } from "@/lib/utils";
 import { CallCenterVoiceRecorder } from "@/components/callcenter/CallCenterVoiceRecorder";
 
@@ -190,16 +191,13 @@ function TierBadge({ tier, pool }: { tier: string | null; pool: string | null | 
   );
 }
 
-async function fetchMine(): Promise<MyLead[]> {
-  const { data, error } = await supabase.rpc("my_lead_bundles" as never);
-  if (error) throw new Error(error.message);
-  return (Array.isArray(data) ? data : []) as MyLead[];
-}
+// One fetcher and one query key with the Home card (src/lib/myLeads.ts), so the two never disagree.
+const fetchMine = () => fetchMyLeads<MyLead>();
 
 export default function MyLeads() {
   usePageTitle("My Leads");
   const qc = useQueryClient();
-  const q = useQuery({ queryKey: ["my-leads"], queryFn: fetchMine, staleTime: 30_000 });
+  const q = useQuery({ queryKey: MY_LEADS_QUERY_KEY, queryFn: fetchMine, staleTime: 30_000 });
   const [show, setShow] = useState<Show>("open");
   const [notes, setNotes] = useState<Record<string, string>>({});
   // the one lead whose recorder is open, and per-lead saved recording paths
@@ -236,7 +234,7 @@ export default function MyLeads() {
         const at = orderRef.current.indexOf(v.item);
         setActiveId(at >= 0 ? orderRef.current[at + 1] ?? null : null);
       }
-      void qc.invalidateQueries({ queryKey: ["my-leads"] });
+      void qc.invalidateQueries({ queryKey: MY_LEADS_QUERY_KEY });
     },
     onError: (e: Error) => toast.error(e.message),
   });

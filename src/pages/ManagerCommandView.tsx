@@ -15,6 +15,8 @@ import { formatDistanceToNowStrict } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useMyDownline } from "@/hooks/useMyDownline";
+import { useAgentIdentity } from "@/hooks/useAgentIdentity";
+import { GoalTrackerCard } from "@/components/dashboard/GoalTrackerCard";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -54,6 +56,7 @@ export default function ManagerCommandView() {
   usePageTitle("Manager Command · Galaxy");
   const { user } = useAuth();
   const { data: downlineIds = [] } = useMyDownline();
+  const { agentId: myAgentId } = useAgentIdentity();
 
   // Downline production this month (from AgentLink truth)
   const downlineProd = useQuery({
@@ -162,6 +165,9 @@ export default function ManagerCommandView() {
       <TeamLookupError />
 
       <MyReferralLinkCard />
+
+      {/* MP-303: this manager's own production goal + projected income. */}
+      <GoalTrackerCard agentId={myAgentId} />
 
       <ManagerPostCounter />
 

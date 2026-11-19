@@ -54,6 +54,7 @@ vi.mock("@/components/dashboard/HomeConversions", () => ({
   SellingAgentsTile: () => <div data-testid="selling-agents" />,
 }));
 vi.mock("@/components/dashboard/NeedsAttention", () => ({ NeedsAttention: () => <div data-testid="needs-attention" /> }));
+vi.mock("@/components/dashboard/ManagerGoalBoard", () => ({ ManagerGoalBoard: () => <div data-testid="manager-goal-board" /> }));
 vi.mock("@/components/dashboard/OperationsCommandCenter", () => ({ OperationsCommandCenter: () => <div data-testid="ops" /> }));
 vi.mock("@/components/dashboard/HomeOperationsSummary", () => ({ HomeOperationsSummary: () => <div data-testid="ops-summary" /> }));
 vi.mock("@/components/dashboard/RecordsAndBounties", () => ({ RecordsAndBounties: () => <div data-testid="records" /> }));

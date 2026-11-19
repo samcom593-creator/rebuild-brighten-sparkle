@@ -12,6 +12,9 @@ import { JoinYourTeam } from "@/components/dashboard/JoinYourTeam";
 import { HomeOperationsSummary } from "@/components/dashboard/HomeOperationsSummary";
 import { RecordsAndBounties } from "@/components/dashboard/RecordsAndBounties";
 import { ScopedProductionScoreboard } from "@/components/dashboard/ScopedProductionScoreboard";
+const ManagerGoalBoard = lazy(() =>
+  import("@/components/dashboard/ManagerGoalBoard").then((m) => ({ default: m.ManagerGoalBoard })),
+);
 import { HomeConversions, SellingAgentsTile } from "@/components/dashboard/HomeConversions";
 import { OperationsCommandCenter } from "@/components/dashboard/OperationsCommandCenter";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
@@ -175,6 +178,13 @@ export function AgentCloudHome() {
       {/* MP-302: people waiting on a decision, between what happened and the production board. */}
       {isAdmin && <NeedsAttention />}
       <ScopedProductionScoreboard control={{ period, throughDate, customStart, hideControls: isAdmin, onPeriodChange: setPeriod, onThroughDateChange: setThroughDate }} />
+
+      {/* MP-303: manager goal tracker — each manager vs goal + Sam's projected override. */}
+      {isAdmin && (
+        <Suspense fallback={null}>
+          <ManagerGoalBoard />
+        </Suspense>
+      )}
 
       {/* OVERHAUL-home: the all-time Ayro Financial production block that sat here is off
           Home (Sam: remove the all-time production section). Its numbers are unchanged and

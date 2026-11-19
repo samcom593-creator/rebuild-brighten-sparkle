@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "Every manager and agent portal now shows your goal, where you are, how fast you have to grow to stay on track, and what you'll earn if you hit it. Your Home shows every manager's track at once \u2014 their production vs goal, their team vs their recruiting goal, their projected income, and your override income from each, with a running total.",
+    detail:
+      "MP-303 \u2014 goal engine from the 11 whiteboard goals. New team_goals table (seeded Nov + Dec), fn_goal_scorecard (one person's pace + projected income) and fn_owner_goal_board (every manager + your override + totals). Money is the production scoreboard's first-hop override model to the dollar: your income from a manager = their ALP goal \u00d7 (your 125% \u2212 their contract)/100. Production reads the live canonical source, not the retired book. GoalTrackerCard on the agent and manager home; ManagerGoalBoard on your Home. Verified live: Nov team goal $2.2M, your override at goal $1.09M. Guard test pins the money model so it can't drift back to seller-comp.",
+    commit: "mp-303-goals",
+  },
+  {
+    ts: "today",
+    label:
       "The password-reset email now opens the \"Set new password\" screen directly, instead of loading your dashboard first and bouncing you over. And \"Email me a sign-in link\" now drops admins and managers on their dashboard. It used to put everyone, the owner included, in the agent portal.",
     detail:
       "MP-WIB-LOGIN-RECOVERY-2 — follow-up to the reset fix. send-password-reset built its link to /dashboard/settings?recovery=true (both generateLink redirectTo and the action_link override), so every reset email loaded the dashboard shell before useAuth forwarded it; now /reset-password, and the SDK import moves from the unpinned @2 to @2.90.1, the version proven booting in 70 functions (MP-273 class; only one supabase-js copy in the bundle). MagicLogin: a generic 'portal' token landed every role in /agent-portal; it now resolves the signed-in user's roles through homeForRoles(), the same order Login.tsx uses (va_manager > admin/manager > va > agent portal), and keeps explicit destinations (numbers, course, leads) as minted. A failed role lookup falls back to the agent portal, never to an error. 5 unit tests on the routing.",

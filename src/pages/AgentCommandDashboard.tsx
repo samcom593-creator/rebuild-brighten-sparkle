@@ -31,6 +31,7 @@ import { HireStageSelect } from "@/components/hires/HireStageControl";
 import { AGENT_NAME_FALLBACK } from "@/shared/api/agentDisplayNames";
 import { ensureCurrentAgentRecord } from "@/lib/ensureCurrentAgentRecord";
 import { useAuth } from "@/hooks/useAuth";
+import { GoalTrackerCard } from "@/components/dashboard/GoalTrackerCard";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -402,6 +403,9 @@ export default function AgentCommandDashboard() {
       />
 
       {/* ── 4 KPI TILES ───────────────────────────────────────── */}
+      {/* MP-303: this agent's production goal + pace + projected income. */}
+      <GoalTrackerCard agentId={agentId} />
+
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <KpiTile
           icon={DollarSign}

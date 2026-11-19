@@ -3516,6 +3516,14 @@
         "raw": ""
       }
     ],
+    "fn_brand_youtube_stats_refresh": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "fn_bridge_hh_hire_to_apex": [
       {
         "all": [],
@@ -4570,6 +4578,22 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "fn_goal_scorecard": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_period_end",
+          "p_period_start"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_period_end",
+          "p_period_start"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_period_start date, p_period_end date"
       }
     ],
     "fn_grant_starter_packs": [
@@ -5749,6 +5773,20 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "fn_owner_goal_board": [
+      {
+        "all": [
+          "p_period_end",
+          "p_period_start"
+        ],
+        "required": [
+          "p_period_end",
+          "p_period_start"
+        ],
+        "unnamed": false,
+        "raw": "p_period_start date, p_period_end date"
       }
     ],
     "fn_perf_bot_run": [
@@ -11244,6 +11282,14 @@
       }
     ],
     "tg_sam_daily_tasks_touch": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "tg_team_goals_touch": [
       {
         "all": [],
         "required": [],

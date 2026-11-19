@@ -29264,6 +29264,7 @@ export type Database = {
           manager_id: string | null
           max_recruits: number | null
           metadata: Json | null
+          mgn_link: string | null
           next_action_due_at: string | null
           next_action_text: string | null
           next_step_due_at: string | null
@@ -29377,6 +29378,7 @@ export type Database = {
           manager_id?: string | null
           max_recruits?: number | null
           metadata?: Json | null
+          mgn_link?: string | null
           next_action_due_at?: string | null
           next_action_text?: string | null
           next_step_due_at?: string | null
@@ -29490,6 +29492,7 @@ export type Database = {
           manager_id?: string | null
           max_recruits?: number | null
           metadata?: Json | null
+          mgn_link?: string | null
           next_action_due_at?: string | null
           next_action_text?: string | null
           next_step_due_at?: string | null
@@ -117781,6 +117784,8 @@ export type Database = {
           intent: string | null
           message: string | null
           notes: string | null
+          owner_reply_captured_at: string | null
+          owner_reply_text: string | null
           platform: string
           source_url: string | null
           status: string
@@ -117797,6 +117802,8 @@ export type Database = {
           intent?: string | null
           message?: string | null
           notes?: string | null
+          owner_reply_captured_at?: string | null
+          owner_reply_text?: string | null
           platform: string
           source_url?: string | null
           status?: string
@@ -117813,6 +117820,8 @@ export type Database = {
           intent?: string | null
           message?: string | null
           notes?: string | null
+          owner_reply_captured_at?: string | null
+          owner_reply_text?: string | null
           platform?: string
           source_url?: string | null
           status?: string
@@ -119286,6 +119295,639 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      team_goals: {
+        Row: {
+          agent_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          income_goal: number | null
+          label: string | null
+          notes: string | null
+          period_end: string
+          period_start: string
+          personal_ap_goal: number
+          recruit_goal: number
+          subject_name: string | null
+          team_ap_goal: number
+          updated_at: string
+        }
+        Insert: {
+          agent_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          income_goal?: number | null
+          label?: string | null
+          notes?: string | null
+          period_end: string
+          period_start: string
+          personal_ap_goal?: number
+          recruit_goal?: number
+          subject_name?: string | null
+          team_ap_goal?: number
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          income_goal?: number | null
+          label?: string | null
+          notes?: string | null
+          period_end?: string
+          period_start?: string
+          personal_ap_goal?: number
+          recruit_goal?: number
+          subject_name?: string | null
+          team_ap_goal?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "mv_agent_truth"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_admin_applicant_overview"
+            referencedColumns: ["became_agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_20k_target_leaderboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_account_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_activation_state"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_canonical_map"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_command_center"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_crm_active"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_dialer_state"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicate_candidates"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicates"
+            referencedColumns: ["canonical_agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicates"
+            referencedColumns: ["dup_agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_manager_conflicts"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_monthly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_owner_truth"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_quality_score"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_skool_membership"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_status_contradictions"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_training_stage"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_with_downline_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_full"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_al_link"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_al_user_id"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_numbers_today"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_needs_attention"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_onboarding_status"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_apex_roster"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_builder_operating_dashboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_cfo_unprovisioned_producer"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_channel_deprovision_needed"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracted_at_backfill_due"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_audit"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_carrier_cases"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_reconciliation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_worklist"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_ethos_agent_updates"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_ethos_paste_rows"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_first_deal_reconcile_backlog"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_activity"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_launch_board"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_notification_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hired_licensed_missing_course"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hired_unlicensed_review"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_kj_seminar_control"
+            referencedColumns: ["converted_agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_license_data_conflicts"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_command_center"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_command_center"
+            referencedColumns: ["manager_agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_departure_orphan_risk"
+            referencedColumns: ["manager_agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_new_hire_showup"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_new_hires_activation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_newhire_needs_portal_login"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_newhire_never_signed_in_staged"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_numbers_reminder_audience"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_offboarding_preservation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_call_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_integrity"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_sequence"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_paid_applicants"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_pulse"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_reactivation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_trend_alert"
+            referencedColumns: ["producer_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producers_missing_license"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_active_no_first_sale"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_hired_no_onboarding"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_licensed_inactive"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_activations_alp"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_hires"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_reclaimable_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recruiter_bounty_candidates"
+            referencedColumns: ["recruited_agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recruiter_pipeline"
+            referencedColumns: ["recruiter_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_sam_builders_dashboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_scripts_packet_staged"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_slack_invite_eligibility"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_strike_summary"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_top_legs_excl_sam"
+            referencedColumns: ["manager_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_training_required_completion"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "team_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_unsendable_contacts"
+            referencedColumns: ["agent_id"]
+          },
+        ]
       }
       team_memberships: {
         Row: {
@@ -149161,6 +149803,8 @@ export type Database = {
           active_appointments: string | null
           agent_name: string | null
           alp_at_dead: number | null
+          feed_dark_days: number | null
+          feed_last_live: string | null
           policies_already_there: number | null
           policies_at_dead: number | null
           readiness: string | null
@@ -149231,6 +149875,24 @@ export type Database = {
         }
         Relationships: []
       }
+      v_cfo_dark_feed_only_producers: {
+        Row: {
+          agent_id: string | null
+          agent_name: string | null
+          agent_status: Database["public"]["Enums"]["agent_status"] | null
+          cohort: string | null
+          dark_alp_90d: number | null
+          dark_deals_90d: number | null
+          dark_origin: string | null
+          data_caveat: string | null
+          days_since_last_write: number | null
+          is_inactive: boolean | null
+          last_dark_write: string | null
+          license_status: Database["public"]["Enums"]["license_status"] | null
+          native_alp_60d: number | null
+        }
+        Relationships: []
+      }
       v_cfo_dup_charge_watch: {
         Row: {
           anomalies: Json | null
@@ -149239,6 +149901,24 @@ export type Database = {
           name_mismatch_count: number | null
           unlinked_count: number | null
           unusual_amount_count: number | null
+        }
+        Relationships: []
+      }
+      v_cfo_faller_dark_feed_overlap: {
+        Row: {
+          agent_id: string | null
+          dark_feed_alp_90d: number | null
+          dark_feed_deals_90d: number | null
+          dark_origin: string | null
+          data_caveat: string | null
+          display_name: string | null
+          native_alp_30d: number | null
+          native_alp_prior_30d: number | null
+          native_verdict: string | null
+          origin_days_dark: number | null
+          origin_last_reported: string | null
+          origin_verdict: string | null
+          producer_last_dark_write: string | null
         }
         Relationships: []
       }
@@ -149285,6 +149965,101 @@ export type Database = {
         }
         Relationships: []
       }
+      v_cfo_mentorship_inbound_bridge: {
+        Row: {
+          draft_reply: string | null
+          handle: string | null
+          id: number | null
+          intent: string | null
+          lane: string | null
+          mentorship_product_price_usd: number | null
+          message: string | null
+          platform: string | null
+          social_tagged_value_usd: number | null
+          status: string | null
+          stripe_link: string | null
+          tier: string | null
+          ts: string | null
+          worked: boolean | null
+        }
+        Insert: {
+          draft_reply?: string | null
+          handle?: string | null
+          id?: number | null
+          intent?: string | null
+          lane?: never
+          mentorship_product_price_usd?: never
+          message?: string | null
+          platform?: string | null
+          social_tagged_value_usd?: number | null
+          status?: string | null
+          stripe_link?: string | null
+          tier?: string | null
+          ts?: string | null
+          worked?: never
+        }
+        Update: {
+          draft_reply?: string | null
+          handle?: string | null
+          id?: number | null
+          intent?: string | null
+          lane?: never
+          mentorship_product_price_usd?: never
+          message?: string | null
+          platform?: string | null
+          social_tagged_value_usd?: number | null
+          status?: string | null
+          stripe_link?: string | null
+          tier?: string | null
+          ts?: string | null
+          worked?: never
+        }
+        Relationships: []
+      }
+      v_cfo_native_payment_reconciliation: {
+        Row: {
+          alp_gross_written: number | null
+          as_of: string | null
+          data_caveat: string | null
+          fell_off_alp: number | null
+          fell_off_n: number | null
+          inp_aging_46_60_n: number | null
+          inp_over_60d_alp: number | null
+          inp_over_60d_n: number | null
+          issued_unpaid_alp: number | null
+          issued_unpaid_n: number | null
+          native_deals: number | null
+          oldest_unpaid_days: number | null
+          other_n: number | null
+          paid_alp: number | null
+          paid_n: number | null
+          pct_status_progressed: number | null
+          pct_touched_after_create: number | null
+          underwriting_alp: number | null
+          underwriting_n: number | null
+        }
+        Relationships: []
+      }
+      v_cfo_native_producer_falloff: {
+        Row: {
+          agent_id: string | null
+          alp_30d: number | null
+          alp_prior_30d: number | null
+          data_caveat: string | null
+          days_since_write: number | null
+          deals_30d: number | null
+          deals_prior_30d: number | null
+          delta_alp: number | null
+          display_name: string | null
+          falloff_verdict: string | null
+          has_login: boolean | null
+          last_native_write: string | null
+          license_status: Database["public"]["Enums"]["license_status"] | null
+          pct_change: number | null
+          roster_status: Database["public"]["Enums"]["agent_status"] | null
+        }
+        Relationships: []
+      }
       v_cfo_placeholder_policy_chase: {
         Row: {
           agent_name: string | null
@@ -149298,6 +150073,46 @@ export type Database = {
           likely_unsubmitted: boolean | null
           origin: string | null
           posted_date: string | null
+        }
+        Relationships: []
+      }
+      v_cfo_producer_comp_provenance: {
+        Row: {
+          agent_id: string | null
+          agent_name: string | null
+          alp: number | null
+          comp_class: string | null
+          comp_current: number | null
+          comp_delta_if_switched: number | null
+          comp_if_data_derived: number | null
+          data_derived_pct: number | null
+          n_deals: number | null
+          provenance: string | null
+          resolved_pct: number | null
+        }
+        Relationships: []
+      }
+      v_cfo_reactivation_targets: {
+        Row: {
+          active_total: number | null
+          agent_code: string | null
+          alp_ever: number | null
+          as_of: string | null
+          days_cold: number | null
+          display_name: string | null
+          feed_dark_only: number | null
+          idle_total: number | null
+          last_native_date: string | null
+          native_alp: number | null
+          native_cold: number | null
+          native_deals: number | null
+          never_produced: number | null
+          onboarding_stage:
+            | Database["public"]["Enums"]["onboarding_stage"]
+            | null
+          priority: string | null
+          status: Database["public"]["Enums"]["agent_status"] | null
+          what_this_means: string | null
         }
         Relationships: []
       }
@@ -150036,13 +150851,16 @@ export type Database = {
           carrier: string | null
           client_name: string | null
           contract_pct: number | null
+          days_stale: number | null
           deal_key: string | null
           effective_date: string | null
           est_clawback_exposure: number | null
+          freshness_verdict: string | null
           manager: string | null
           months_in_force: number | null
           policy_number: string | null
           priority: number | null
+          source_snapshot_at: string | null
           status: string | null
           what_this_means: string | null
         }
@@ -151332,6 +152150,20 @@ export type Database = {
             referencedColumns: ["agent_id"]
           },
         ]
+      }
+      v_commission_recovery_verdict: {
+        Row: {
+          as_of: string | null
+          days_since_last_import: number | null
+          gap_policies: number | null
+          newest_effective_date: string | null
+          newest_imported_at: string | null
+          recovery_emails_ever_sent: number | null
+          recovery_responses_ever: number | null
+          total_policies: number | null
+          verdict: string | null
+        }
+        Relationships: []
       }
       v_conduct_command_center: {
         Row: {
@@ -187380,6 +188212,7 @@ export type Database = {
           drafts_pending_today: number | null
           drafts_shipped_today: number | null
           drafts_today: number | null
+          followers_stale_note: string | null
           generated_at: string | null
           goals: Json | null
           inbound: Json | null
@@ -187392,6 +188225,7 @@ export type Database = {
           today_pack: Json | null
           top_hooks: Json | null
           total_followers: number | null
+          total_followers_live: number | null
         }
         Relationships: []
       }
@@ -187399,7 +188233,10 @@ export type Database = {
         Row: {
           dead_platforms: number | null
           goal: number | null
+          pct_to_goal_best_known: number | null
           pct_to_goal_live: number | null
+          stale_breakdown: string | null
+          stale_followers: number | null
           stale_or_dead_platforms: string | null
           total_followers_all: number | null
           total_followers_live: number | null
@@ -187502,6 +188339,54 @@ export type Database = {
           handle?: string | null
           id?: number | null
           platform?: string | null
+          status?: string | null
+          tier?: string | null
+          ts?: string | null
+        }
+        Relationships: []
+      }
+      v_social_bot_live_reply_dead_cta: {
+        Row: {
+          comment_pk: string | null
+          conversion_value_usd: number | null
+          handle: string | null
+          id: number | null
+          intent: string | null
+          leak_reason: string | null
+          owner_reply_captured_at: string | null
+          owner_reply_text: string | null
+          platform: string | null
+          source_url: string | null
+          status: string | null
+          tier: string | null
+          ts: string | null
+        }
+        Insert: {
+          comment_pk?: string | null
+          conversion_value_usd?: number | null
+          handle?: string | null
+          id?: number | null
+          intent?: string | null
+          leak_reason?: never
+          owner_reply_captured_at?: string | null
+          owner_reply_text?: string | null
+          platform?: string | null
+          source_url?: string | null
+          status?: string | null
+          tier?: string | null
+          ts?: string | null
+        }
+        Update: {
+          comment_pk?: string | null
+          conversion_value_usd?: number | null
+          handle?: string | null
+          id?: number | null
+          intent?: string | null
+          leak_reason?: never
+          owner_reply_captured_at?: string | null
+          owner_reply_text?: string | null
+          platform?: string | null
+          source_url?: string | null
           status?: string | null
           tier?: string | null
           ts?: string | null
@@ -194836,6 +195721,7 @@ export type Database = {
           manager_track_flagged_at: string | null
           manual_followup_sent_at: string | null
           monday_status: string | null
+          motivation: string | null
           msclkid: string | null
           next_action: string | null
           next_action_at: string | null
@@ -195292,6 +196178,14 @@ export type Database = {
         Args: { p_intake_id: string }
         Returns: number
       }
+      fn_goal_scorecard: {
+        Args: {
+          p_agent_id: string
+          p_period_end: string
+          p_period_start: string
+        }
+        Returns: Json
+      }
       fn_grant_starter_packs: {
         Args: { p_dry_run?: boolean; p_limit?: number }
         Returns: {
@@ -195489,6 +196383,10 @@ export type Database = {
       fn_onboarding_contracting_stalled_alert: {
         Args: never
         Returns: undefined
+      }
+      fn_owner_goal_board: {
+        Args: { p_period_end: string; p_period_start: string }
+        Returns: Json
       }
       fn_perf_bot_run: { Args: never; Returns: Json }
       fn_policy_number_grade: { Args: { p: string }; Returns: string }
@@ -195988,6 +196886,26 @@ export type Database = {
         Args: { p_end: string; p_start: string }
         Returns: Json
       }
+      licensed_prospects: {
+        Args: never
+        Returns: {
+          came_from: string
+          city: string
+          created_at: string
+          email: string
+          first_name: string
+          id: string
+          last_contacted_at: string
+          last_name: string
+          license_status: string
+          nipr_verified: boolean
+          npn: string
+          phone: string
+          record_status: string
+          records: number
+          state: string
+        }[]
+      }
       list_abandoned_partial_applications: {
         Args: never
         Returns: {
@@ -196242,6 +197160,8 @@ export type Database = {
           training_started: boolean
         }[]
       }
+      owner_overview_settings: { Args: never; Returns: Json }
+      owner_system_overview: { Args: never; Returns: Json }
       perf_bot_core: {
         Args: { p_floor: number; p_target: number }
         Returns: Json
@@ -196793,6 +197713,14 @@ export type Database = {
           p_expected_status?: string
           p_note?: string
           p_to_status: string
+        }
+        Returns: Json
+      }
+      set_owner_overview_settings: {
+        Args: {
+          p_enabled?: boolean
+          p_mute_enabled?: boolean
+          p_time_az?: string
         }
         Returns: Json
       }

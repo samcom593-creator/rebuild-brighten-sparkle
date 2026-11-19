@@ -101,6 +101,10 @@ const MANIFEST = [
   "src/pages/HiringManagerAssignments.tsx",      // hire-routing desk — the assignments queryFn SWALLOWED .error, so a dead hiring_manager_assignments read rendered a confident routing board + a false "Coverage gaps detected" amber card off an empty feed (new hires silently route to nobody). eligibleManagers is the Assign-dialog picker (secondary, whole-object)
   "src/pages/admin/IntegrationsSettings.tsx",    // bot-token + Discord-webhook config — BOTH queryFns SWALLOWED .error; a dead system_settings read rendered "⚠ NOT CONFIGURED" with an "Activate Bot Access" button that MINTS A NEW TOKEN over the live one (every bot breaks), and "Discord not configured yet" over a working webhook. Activate is now disabled on isError
   "src/pages/AdminBoardAccess.tsx",              // manager board-access grid — the managers queryFn SWALLOWED both inner reads' errors, so a dead user_roles/profiles read rendered "No managers yet" (an empty access board); grants is the per-cell toggle overlay (secondary, whole-object)
+  // Delivery-log cluster (MP-WIB-ADMIN-RENDER-HEALTH wave 10, 2026-11-19).
+  // A delivery LOG rendering a dead feed as an empty all-clear is the exact
+  // fake-success class this guard exists for — same as EmailDeliveryLog (wave 7).
+  "src/pages/NotificationHub.tsx",               // notification delivery log — the queryFn THREW on error, but the page destructured `data: logs = []` with NO error signal, so a dead v_notification_log_with_role read rendered the NotificationStats band as 0 today / 0 failed and an empty log table — a believable all-clear on the one page that exists to surface push/SMS/email delivery failures. Now takes isError/error/refetch; the stat band and the log table both render <QueryState error> with Retry instead of a fake 0
 ];
 
 const ERROR_SIGNALS = ["isError", "isLoadingError", "status", "error"];

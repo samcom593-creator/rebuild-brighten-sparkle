@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeEdge } from "@/lib/edgeInvoke";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { QueryState } from "@/components/ui/query-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1396,7 +1397,7 @@ export default function NotificationHub() {
   // Section 10: role-scoped recipient filter (admin/manager/agent) backed by
   // v_notification_log_with_role (LEFT JOIN user_roles via recipient_user_id).
   const [roleFilter, setRoleFilter] = useState<string>("all");
-  const { data: logs = [], isLoading } = useQuery({
+  const { data: logs = [], isLoading, isError: logsIsError, error: logsError, refetch: refetchLogs } = useQuery({
     queryKey: ["notification-logs", showArchived, roleFilter],
     queryFn: async () => {
       let q = supabase
@@ -1501,10 +1502,16 @@ export default function NotificationHub() {
         <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-primary opacity-5 " />
       </motion.div>
 
-      <NotificationStats logs={logs} onFilterChannel={(ch) => {
-        setChannelFilter(ch);
-        setActiveTab("logs");
-      }} />
+      {/* A dead v_notification_log_with_role read must never render 0-today / 0-failed
+          as a believable all-clear on the page that exists to surface delivery failures. */}
+      {logsIsError ? (
+        <QueryState status="error" label="the notification log" error={logsError} onRetry={() => void refetchLogs()} />
+      ) : (
+        <NotificationStats logs={logs} onFilterChannel={(ch) => {
+          setChannelFilter(ch);
+          setActiveTab("logs");
+        }} />
+      )}
 
       <Tabs value={activeTab} onValueChange={(v) => {
         playSound("click");
@@ -1576,6 +1583,8 @@ export default function NotificationHub() {
                 <Skeleton key={i} className="h-12 w-full rounded-lg" />
               ))}
             </div>
+          ) : logsIsError ? (
+            <QueryState status="error" label="the notification log" error={logsError} onRetry={() => void refetchLogs()} />
           ) : (
             <NotificationLogTable logs={logs} search={search} channelFilter={channelFilter} statusFilter={statusFilter} onRefresh={handleRefresh} />
           )}

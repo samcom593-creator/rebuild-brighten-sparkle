@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "The notification log now tells the truth when its feed is down instead of showing a reassuring '0 failed' all-clear. If the log that surfaces every push / SMS / email delivery can't load, the page shows 'couldn't load — this is not an all-clear' with Retry, instead of a 0-today / 0-failed stat band and an empty table that would read as 'nothing bounced, all delivered'.",
+    detail:
+      "MP-WIB-ADMIN-RENDER-HEALTH-10 — NotificationHub.tsx: the queryFn already threw on error, but the page destructured `data: logs = []` with no error signal, so a dead v_notification_log_with_role read rendered the stat band as 0 today / 0 failed and an empty log table — a believable all-clear on the one page that exists to catch delivery failures (the same class as EmailDeliveryLog, wave 7). Now takes isError/error/refetch; both the stat band and the log table render <QueryState error> with Retry. Added to the render-health MANIFEST (now 31 money/pipeline daily-drivers held at zero silent-zero feeds). Proven: scanner selftest 10/10, NotificationHub offenders 2→0, esbuild parse clean.",
+    commit: "mp-wib-render-health-10",
+  },
+  {
+    ts: "today",
+    label:
       "The dialer seats now look after themselves. Every 10 minutes the system checks who holds a ReadyMode seat, signs out sessions that were left open with the window closed, and locks the dialer login of anyone who has been banned or terminated on the platform. Reports shows who is holding a seat, whether they are dialing, and what the automation did.",
     detail:
       "MP-SEATS-1. ReadyMode has 4 concurrent dialing seats and had 34 live logins; 10 belonged to people already banned on the platform (one in the Admin group) and were moved to ReadyMode's Deleted Users, verified. readymode_seat_snapshots + readymode_seat_actions + fn_readymode_accounts_to_lock (rule in SQL) + admin_dialer_seats(); seat step runs inside the local call-log puller. Only sessions ReadyMode itself marks inactive are signed out, so nobody is cut off mid-call. DialerSeatsPanel on Reports. 9 new tests.",
@@ -41,7 +49,7 @@ export const SHIPPED: ShippedItem[] = [
       "My Leads is now built for working a pack from your phone. Each lead is one line with a tap-to-call number, only the lead you are on shows the result buttons, and recording a result opens the next lead. People waiting on a call back are listed first, big packs can be searched, and Leads has its own tab at the bottom of the phone screen.",
     detail:
       "MP-BEST-1. Measured 2026-11-19: 656 leads in agents' hands, 420 never touched; the list drew all eight result buttons on every lead (17,198px for a 44-lead pack on a phone, now 5,496px). MyLeads.tsx: one open lead, auto-advance, call back and appointment first then never-called then no-answer, search above eight leads. MobileBottomNav: Leads replaces Profile for agents (My Leads 475 views by 15 people in 30 days, Profile 58). 8 new tests.",
-    commit: "mp-best-1-leads-work-loop",
+    commit: "mp-best-1-leads-work-loop"
   },
   {
     ts: "today",

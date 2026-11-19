@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "The onboarding tracker now tells the truth when its data is down instead of quietly showing an empty board. If the feed that tracks where every new agent is in onboarding ever fails to load, the page shows 'couldn't load — this is not an all-clear' with a Retry, so nobody reads a stalled hire as 'nobody pending, all caught up'.",
+    detail:
+      "MP-WIB-ADMIN-RENDER-HEALTH-8 — GettingStarted.tsx: the getting_started_progress query swallowed its error and defaulted to [], so a dead feed rendered an empty tracker / 'No agents match'. queryFn now throws, the page takes isError/error/refetch and renders <QueryState error> with Retry. Four secondary feeds (community invite links, AHL-exempt flag, activation facts, agent names) moved to whole-object reads so they stop masking a failure as a benign default. Added to the render-health MANIFEST (now 27 money/pipeline daily-drivers held at zero silent-zero feeds). Proven: scanner selftest 10/10, regression splice RED at :202 then GREEN, tsc 0 new errors.",
+    commit: "mp-wib-render-health-8",
+  },
+  {
+    ts: "today",
+    label:
       "Fixed a manager's projected income so it reads true before the month starts. It now splits the goal into personal vs team production from your real trailing history, instead of treating the whole goal as your own writing when there's no production in the new month yet.",
     detail:
       "MP-303.2 \u2014 fn_goal_scorecard derives the personal/downline split from trailing-120d production mix, not the current (empty, for an upcoming month) period. Chudi read $510k (whole 600k goal at 85% as if all personal); true is ~$233k (73% of his tree is downline, override nets out). Obi/Kyros/solo managers unchanged. Sam's override at goal is unaffected by the split ($1,091,250) \u2014 it's team goal \u00d7 his spread over the manager. Stable whether the period is upcoming or live.",

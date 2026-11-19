@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
+import { QueryState } from "@/components/ui/query-state";
 import { contactLinkProps, phoneHref, smsHref } from "@/lib/phone";
 
 import { CONTRACTING_PROFILE_PATH } from "@/lib/contractingLinks";
@@ -130,7 +131,7 @@ export default function GettingStarted() {
   // onboarding email sends, so the checklist link and the emailed link cannot
   // drift apart. Non-admins can read these: the RLS policy on system_settings
   // filters anything matching secret|token|cookie|password|_key.
-  const { data: communityLinks = { slack: "", discord: "" } } = useQuery({
+  const { data: communityLinks } = useQuery({
     queryKey: ["community-invite-links"],
     staleTime: 10 * 60_000,
     queryFn: async () => {
@@ -155,7 +156,7 @@ export default function GettingStarted() {
   });
 
   // Hierarchies that don't carry American Home Life (OB / Chudi) skip the AHL bubbles.
-  const { data: ahlExempt = false } = useQuery({
+  const { data: ahlExempt } = useQuery({
     queryKey: ["ahl-exempt", user?.id],
     enabled: !!user?.id && !canViewAll,
     staleTime: 10 * 60_000,
@@ -165,7 +166,7 @@ export default function GettingStarted() {
     },
   });
 
-  const { data: facts = null } = useQuery({
+  const { data: facts } = useQuery({
     queryKey: ["my-activation-state", user?.id],
     enabled: !!user?.id && !canViewAll,
     staleTime: 60_000,
@@ -183,22 +184,22 @@ export default function GettingStarted() {
     },
   });
 
-  const { data: progressRows = [], isLoading } = useQuery({
+  const { data: progressRows = [], isLoading, isError, error: progressError, refetch } = useQuery({
     queryKey: ["getting-started-progress", canViewAll, myAgentId],
     queryFn: async (): Promise<ProgressRow[]> => {
       let q = supabase.from("getting_started_progress" as any).select("*");
       if (!canViewAll && myAgentId) q = q.eq("agent_id", myAgentId);
       const { data, error } = await q.order("last_activity_at", { ascending: false });
-      if (error) {
-        console.error(error);
-        return [];
-      }
+      // A dead onboarding feed must surface as an error, never as an empty board.
+      // Swallowing this made "0 agents in onboarding / nothing pending" — a quiet
+      // all-clear at the exact moment a hire could be stalled with the feed down.
+      if (error) throw error;
       return (data as any) ?? [];
     },
     enabled: canViewAll || !!myAgentId,
   });
 
-  const { data: agents = [] } = useQuery({
+  const { data: agents } = useQuery({
     queryKey: ["getting-started-agents", progressRows.map((p) => p.agent_id).join(",")],
     queryFn: async (): Promise<AgentData[]> => {
       if (progressRows.length === 0) return [];
@@ -220,7 +221,7 @@ export default function GettingStarted() {
     enabled: progressRows.length > 0,
   });
 
-  const agentMap = useMemo(() => new Map(agents.map((a) => [a.id, a])), [agents]);
+  const agentMap = useMemo(() => new Map((agents ?? []).map((a) => [a.id, a])), [agents]);
 
   const filtered = useMemo(() => {
     const now = Date.now();
@@ -299,6 +300,23 @@ export default function GettingStarted() {
   };
 
   if (isLoading) return <PageLoadingSkeleton variant="list" />;
+
+  // A dead feed is NOT an empty onboarding pipeline — show the failure, not a
+  // false "nobody pending / all caught up", which is the one lie that would make
+  // Sam (or an agent) stop chasing a stalled hire.
+  if (isError) {
+    return (
+      <div className="space-y-6 p-4 md:p-6 page-enter">
+        <PageHeader
+          eyebrow="Onboarding · Getting Started"
+          eyebrowIcon={<Rocket className="h-3 w-3" />}
+          title="Getting Started Tracker"
+          subtitle="Post-signup onboarding progress for every agent."
+        />
+        <QueryState status="error" label="the onboarding tracker" error={progressError} onRetry={() => void refetch()} />
+      </div>
+    );
+  }
 
   // Agent self-view
   if (!canViewAll && progressRows.length === 1) {
@@ -396,7 +414,7 @@ export default function GettingStarted() {
                   )}
                   {"settingKey" in step && !isDone(step.key) && (
                     <div className="mt-1 flex flex-wrap gap-3">
-                      {communityLinks.slack && (
+                      {communityLinks?.slack && (
                         <a className="text-[12px] font-medium text-primary underline-offset-2 hover:underline"
                            href={communityLinks.slack} target="_blank" rel="noopener noreferrer">Open Slack invite</a>
                       )}

@@ -94,6 +94,7 @@ const MANIFEST = [
   // A delivery LOG rendering a dead feed as an empty all-clear is the exact
   // fake-success class this page exists to catch (bounces/failures hidden).
   "src/pages/EmailDeliveryLog.tsx",              // email delivery log — the queryFn SWALLOWED .error, so a dead email_delivery_log read rendered Total 0 · Sent 0 · Bounced 0 · Failed 0 + "No email logs" (a believable all-clear on the one page that exists to surface delivery failures)
+  "src/pages/GettingStarted.tsx",                // onboarding tracker (recruiting→income funnel) — the progress queryFn SWALLOWED .error, so a dead getting_started_progress read rendered an empty board / "No agents match" — a false "nobody pending, all caught up" at the exact moment a hire could be stalled with the feed down
 ];
 
 const ERROR_SIGNALS = ["isError", "isLoadingError", "status", "error"];

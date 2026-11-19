@@ -37,6 +37,7 @@ function person(overrides: Partial<EthosCallSheetRow> = {}): EthosCallSheetRow {
     active_carriers: null,
     al_last_active_at: null,
     stage: null,
+    license_step: null,
     in_app: false,
     standing: null,
     license: null,
@@ -122,14 +123,26 @@ describe("groupOf", () => {
     expect(callAngle(person({ on_ethos: false, contracts_active: 1, lifetime_ap: 8000 }), NOW).text).toBe("1 active carrier contract, sold $8,000 here");
     expect(callAngle(person({ on_ethos: false, contracts_active: 4 }), NOW).text).toBe("4 active carrier contracts, never sold here");
     expect(callAngle(person({ on_ethos: false, license: "licensed" }), NOW).text).toBe("Licensed, no active carrier contract, never sold here");
-    expect(callAngle(person({ on_ethos: false }), NOW).text).toBe("Not licensed yet");
+    expect(callAngle(person({ on_ethos: false }), NOW).text).toBe("Finishing their license");
+  });
+
+  it("says which finishing step of licensing a person is on, closest to a license first", () => {
+    const waiting = callAngle(person({ on_ethos: false, license_step: "waiting_on_license" }), NOW);
+    const passed = callAngle(person({ on_ethos: false, license_step: "passed_test" }), NOW);
+    const booked = callAngle(person({ on_ethos: false, license_step: "test_scheduled" }), NOW);
+    const course = callAngle(person({ on_ethos: false, license_step: "finished_course" }), NOW);
+    expect(waiting.text).toBe("Waiting on the license to be issued");
+    expect(passed.text).toBe("Passed the exam, license not issued yet");
+    expect(booked.text).toBe("Exam is scheduled");
+    expect(course.text).toBe("Finished the course, exam still to pass");
+    expect([waiting.tier, passed.tier, booked.tier, course.tier]).toEqual([1, 2, 3, 4]);
   });
 });
 
 describe("sortForLane", () => {
   it("never lets a carrier-contracted or licensed agent outrank an Ethos contract holder", () => {
     const rows = [
-      person({ full_name: "Unlicensed", on_ethos: false }),
+      person({ full_name: "Finishing", on_ethos: false, license_step: "passed_test" }),
       person({ full_name: "Licensed producer", on_ethos: false, license: "licensed", lifetime_ap: 90000 }),
       person({ full_name: "Contracted producer", on_ethos: false, contracts_active: 6, lifetime_ap: 50000 }),
       person({ full_name: "Ethos never sold" }),
@@ -140,7 +153,7 @@ describe("sortForLane", () => {
       "Ethos never sold",
       "Contracted producer",
       "Licensed producer",
-      "Unlicensed",
+      "Finishing",
     ]);
   });
 

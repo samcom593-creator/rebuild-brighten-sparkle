@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "The call sheet now shows only people who can sell or are about to: Ethos contract holders first, then agents with carrier contracts, then licensed agents, then anyone on a finishing step of getting licensed, with the step named on the card. Unlicensed people who have not finished the course are off the sheet, and so are placeholder and staff records.",
+    detail:
+      "MP-ETHOS-CALLSHEET parts 5 and 6. ethos_call_sheet() returns a person only when they hold the Ethos contract, hold an active carrier contract, are licensed, or are on a finishing step (finished the course, exam booked or taken, fingerprints, waiting on the license; read from the agent record or the application it came from). Anyone already called stays in view. Nobody is deleted: a person who gets licensed later appears on their own. Owner sheet 298 to 249 people, Call now 223 to 178 (63 Ethos, 45 carrier contracts, 69 licensed, 1 finishing). 12 placeholder, test and staff records were also taken off by the hourly roster sync. 19 tests.",
+    commit: "mp-ethos-callsheet-licensed-only",
+  },
+  {
+    ts: "today",
+    label:
       "The call sheet (Team menu) now lists every agent who has been onboarded, not only Ethos contract holders. The order is fixed: Ethos contract holders first, then agents who hold active carrier contracts, then licensed agents, then everyone else. Each card shows the group, the carriers they are contracted with, and what they have sold. Leaders now also see their AgentLink downline.",
     detail:
       "MP-ETHOS-CALLSHEET part 3. 320 people for the owner (was 88): 89 on the Ethos export, 174 more from agent records in this app, 58 more who exist only on the AgentLink roster; 290 have a phone number. Call now: 63 Ethos, 46 carrier-contracted, 76 licensed, 62 not licensed yet. Anyone with a deal in the last 30 days sits under Already selling. ethos_callsheet_sync_roster() runs hourly so a new agent record reaches the sheet without anyone loading it; a person who leaves the Ethos export stays on the sheet as a non-Ethos agent. Same two tables, same scoping function, no role granted. The AgentLink roster is the stored pull from Oct 10: the live session was expired at ship time. 18 tests.",

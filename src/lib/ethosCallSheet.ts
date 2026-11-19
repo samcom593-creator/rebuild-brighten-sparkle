@@ -99,6 +99,8 @@ export interface EthosCallSheetRow {
   license: string | null;
   /** Onboarding stage on the agent record, when there is one. */
   stage: string | null;
+  /** The finishing step of licensing this person is on, when they are not licensed yet. */
+  license_step: string | null;
   has_login: boolean | null;
   last_sign_in_at: string | null;
   lifetime_ap: number | null;
@@ -123,7 +125,7 @@ export type CallLane = "call_now" | "follow_up" | "coming_back" | "needs_action"
 export type CallLaneFilter = CallLane | "all";
 
 export const LANES: { key: CallLaneFilter; label: string; hint: string }[] = [
-  { key: "call_now", label: "Call now", hint: "Not selling right now and nobody has called yet. Ethos contract holders come first, then agents with carrier contracts, then licensed agents." },
+  { key: "call_now", label: "Call now", hint: "Not selling right now and nobody has called yet. Ethos contract holders come first, then agents with carrier contracts, then licensed agents, then people finishing their license." },
   { key: "follow_up", label: "Follow up", hint: "Tried or asked for a call back. Not resolved yet." },
   { key: "coming_back", label: "Coming back", hint: "Said yes. Get them selling." },
   { key: "needs_action", label: "Needs action", hint: "Wants in but is blocked, or the number is wrong." },
@@ -139,7 +141,9 @@ export const LANES: { key: CallLaneFilter; label: string; hint: string }[] = [
  *   1  holds the Ethos contract
  *   2  holds at least one active carrier contract
  *   3  licensed
- *   4  onboarded, not licensed yet
+ *   4  on a finishing step of getting licensed
+ * Sam, later the same day: "we only want people who have their license or on the finishing steps of their
+ * license." ethos_call_sheet() returns nobody else, so group 4 is the finishing-step people.
  */
 export type CallGroup = 1 | 2 | 3 | 4;
 
@@ -147,7 +151,33 @@ export const GROUP_LABEL: Record<CallGroup, string> = {
   1: "Ethos contract",
   2: "Carrier contracts",
   3: "Licensed",
-  4: "Not licensed yet",
+  4: "Finishing license",
+};
+
+/** The finishing steps of licensing, worded for the card. Keys are the licensing-progress values. */
+export const LICENSE_STEP_LABEL: Record<string, string> = {
+  waiting_on_license: "Waiting on the license to be issued",
+  fingerprints_done: "Fingerprints done, waiting on the license",
+  waiting_fingerprints: "Passed the exam, waiting on fingerprints",
+  passed_test: "Passed the exam, license not issued yet",
+  exam_passed: "Passed the exam, license not issued yet",
+  pending: "License pending",
+  test_scheduled: "Exam is scheduled",
+  failed_test: "Failed the exam, needs a retake",
+  finished_course: "Finished the course, exam still to pass",
+};
+
+/** How close a finishing step is to a license: 1 is closest. */
+const LICENSE_STEP_TIER: Record<string, 1 | 2 | 3 | 4> = {
+  waiting_on_license: 1,
+  fingerprints_done: 1,
+  waiting_fingerprints: 2,
+  passed_test: 2,
+  exam_passed: 2,
+  pending: 2,
+  test_scheduled: 3,
+  failed_test: 4,
+  finished_course: 4,
 };
 
 export function groupOf(row: Pick<EthosCallSheetRow, "on_ethos" | "contracts_active" | "license">): CallGroup {
@@ -212,7 +242,14 @@ export interface CallAngle {
 export function callAngle(
   row: Pick<
     EthosCallSheetRow,
-    "issued_premium" | "inforce_premium" | "lifetime_ap" | "last_sign_in_at" | "on_ethos" | "contracts_active" | "license"
+    | "issued_premium"
+    | "inforce_premium"
+    | "lifetime_ap"
+    | "last_sign_in_at"
+    | "on_ethos"
+    | "contracts_active"
+    | "license"
+    | "license_step"
   >,
   now: number = Date.now(),
 ): CallAngle {
@@ -226,10 +263,11 @@ export function callAngle(
     const lead =
       group === 2
         ? `${active} active carrier ${active === 1 ? "contract" : "contracts"}`
-        : group === 3
-          ? "Licensed, no active carrier contract"
-          : "Not licensed yet";
-    if (group === 4) return { tier: 4, text: lead };
+        : "Licensed, no active carrier contract";
+    if (group === 4) {
+      const step = row.license_step ?? "";
+      return { tier: LICENSE_STEP_TIER[step] ?? 4, text: LICENSE_STEP_LABEL[step] ?? "Finishing their license" };
+    }
     if (appAp > 0) return { tier: 1, text: `${lead}, sold ${formatDollars(appAp)} here` };
     if (recent) return { tier: 2, text: `${lead}, signed in this month, never sold here` };
     return { tier: 3, text: `${lead}, never sold here` };
@@ -259,7 +297,7 @@ function timeOrZero(iso: string | null | undefined): number {
 /**
  * The order to work a lane in.
  *   follow up   a call back that is due comes first (earliest date), then the oldest attempt
- *   otherwise   Ethos contract holders, then carrier-contracted, then licensed, then the rest; inside each
+ *   otherwise   Ethos contract holders, then carrier-contracted, then licensed, then finishing a license; inside each
  *               group the easiest pick first, then most recent sign-in, then newest to the team, then name
  */
 export function sortForLane(rows: EthosCallSheetRow[], lane: CallLaneFilter, now: number = Date.now()): EthosCallSheetRow[] {

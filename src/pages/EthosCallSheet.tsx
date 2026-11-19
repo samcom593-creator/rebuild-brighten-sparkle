@@ -279,8 +279,8 @@ export default function EthosCallSheet() {
         title="Call sheet"
         subtitle={
           seesAll
-            ? "Every agent who has been onboarded. Call, find out why they stopped, and log what happened."
-            : "Every onboarded agent under you. Call, find out why they stopped, and log what happened."
+            ? "Licensed agents and people finishing their license. Call, find out why they stopped, and log what happened."
+            : "Licensed agents under you and people finishing their license. Call, find out why they stopped, and log what happened."
         }
         accent="emerald"
         actions={
@@ -438,7 +438,7 @@ export default function EthosCallSheet() {
             icon={<Users className="h-7 w-7" />}
             variant="default"
             title="Nobody under you is on the sheet yet"
-            description="This sheet lists every onboarded agent in your hierarchy. When someone is placed under you, they show up here with their number."
+            description="This sheet lists the licensed agents in your hierarchy and anyone finishing their license. When someone under you qualifies, they show up here with their number."
           />
         )}
 

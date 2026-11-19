@@ -4588,12 +4588,10 @@
           "p_period_start"
         ],
         "required": [
-          "p_agent_id",
-          "p_period_end",
-          "p_period_start"
+          "p_agent_id"
         ],
         "unnamed": false,
-        "raw": "p_agent_id uuid, p_period_start date, p_period_end date"
+        "raw": "p_agent_id uuid, p_period_start date DEFAULT NULL::date, p_period_end date DEFAULT NULL::date"
       }
     ],
     "fn_grant_starter_packs": [
@@ -5781,12 +5779,9 @@
           "p_period_end",
           "p_period_start"
         ],
-        "required": [
-          "p_period_end",
-          "p_period_start"
-        ],
+        "required": [],
         "unnamed": false,
-        "raw": "p_period_start date, p_period_end date"
+        "raw": "p_period_start date DEFAULT NULL::date, p_period_end date DEFAULT NULL::date"
       }
     ],
     "fn_perf_bot_run": [

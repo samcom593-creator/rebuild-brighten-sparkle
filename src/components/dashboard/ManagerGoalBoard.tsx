@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,13 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Target, ExternalLink } from "lucide-react";
 import type { GoalScorecard } from "./GoalTrackerCard";
 
-// MP-303 — Sam's manager track board. Every manager's goal, pace, their projected
-// income, and Sam's projected override from their tree, plus totals. One read of
-// fn_owner_goal_board; the money model is the scoreboard's first-hop override (MP-328).
+// MP-303 — Sam's manager track board. Every manager's goal, what it takes to hit
+// it, their projected income, and Sam's projected override from their tree, plus
+// totals. One read of fn_owner_goal_board (first-hop override money, MP-328); the
+// period auto-resolves to the active goal (currently December).
 
 type Board = {
+  period_label: string;
   period_start: string;
-  period_end: string;
   managers: (GoalScorecard & { unmatched?: boolean })[];
   total_team_goal: number;
   total_team_actual: number;
@@ -25,34 +25,29 @@ type Board = {
   error?: string;
 };
 
-const money = (n: number | null | undefined) =>
-  n == null ? "—" : `$${Math.round(n).toLocaleString()}`;
-
-function phoenixMonth() {
-  const now = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Phoenix" }));
-  const y = now.getFullYear(), m = now.getMonth();
-  const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  return { start: iso(new Date(y, m, 1)), end: iso(new Date(y, m + 1, 0)), label: new Date(y, m, 1).toLocaleString("en-US", { month: "long", year: "numeric" }) };
-}
+const money = (n: number | null | undefined) => (n == null ? "—" : `$${Math.round(n).toLocaleString()}`);
 
 const STATUS: Record<string, string> = {
   ahead: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30",
   on_track: "bg-sky-500/15 text-sky-600 border-sky-500/30",
   behind: "bg-amber-500/15 text-amber-600 border-amber-500/30",
+  upcoming: "bg-primary/15 text-primary border-primary/30",
+  hit: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30",
+  missed: "bg-rose-500/15 text-rose-600 border-rose-500/30",
   no_goal: "bg-muted text-muted-foreground border-border",
   unmatched: "bg-muted text-muted-foreground border-dashed border-border",
 };
 const STATUS_LABEL: Record<string, string> = {
-  ahead: "Ahead", on_track: "On track", behind: "Behind", no_goal: "No goal", unmatched: "Not in roster",
+  ahead: "Ahead", on_track: "On track", behind: "Behind", upcoming: "Starts soon",
+  hit: "Hit", missed: "Short", no_goal: "No goal", unmatched: "Not in roster",
 };
 
 export function ManagerGoalBoard() {
-  const p = useMemo(() => phoenixMonth(), []);
   const q = useQuery({
-    queryKey: ["owner-goal-board", p.start, p.end],
+    queryKey: ["owner-goal-board"],
     staleTime: 2 * 60_000,
     queryFn: async (): Promise<Board | null> => {
-      const { data, error } = await supabase.rpc("fn_owner_goal_board", { p_period_start: p.start, p_period_end: p.end });
+      const { data, error } = await supabase.rpc("fn_owner_goal_board", {});
       if (error) throw error;
       const b = data as unknown as Board;
       if (b?.error) return null;
@@ -74,9 +69,7 @@ export function ManagerGoalBoard() {
     return (
       <Card>
         <CardHeader><CardTitle className="text-base flex items-center gap-2"><Target className="h-4 w-4" /> Manager goal tracker</CardTitle></CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          No manager goals set for {p.label} yet.
-        </CardContent>
+        <CardContent className="text-sm text-muted-foreground">No manager goals set yet.</CardContent>
       </Card>
     );
   }
@@ -85,7 +78,7 @@ export function ManagerGoalBoard() {
     <Card className="overflow-hidden">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-base flex items-center gap-2"><Target className="h-4 w-4 text-primary" /> Manager goal tracker · {p.label}</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2"><Target className="h-4 w-4 text-primary" /> Manager goal tracker · {b.period_label}</CardTitle>
           <Button asChild variant="ghost" size="sm" className="h-7 text-xs">
             <a href="https://mgnagenthub.com/downlines" target="_blank" rel="noopener noreferrer">Contracting <ExternalLink className="ml-1 h-3 w-3" /></a>
           </Button>
@@ -116,6 +109,12 @@ export function ManagerGoalBoard() {
                     <span className="text-muted-foreground text-xs">of {money(m.team_ap_goal)}{m.pace_pct != null ? ` · ${m.pace_pct}% pace` : ""}</span>
                   </div>
                   <Progress value={pct} className="h-1.5 mt-1" />
+                  {/* the plan */}
+                  <div className="mt-1.5 text-[11px] text-muted-foreground">
+                    Needs <span className="text-foreground font-medium">{m.deals_per_week ?? "—"} deals/wk</span> ({m.deals_per_day ?? "—"}/day at {money(m.avg_deal_size)})
+                    {m.recruit_goal ? <> · <span className="text-foreground font-medium">{m.recruits_needed} more agents</span></> : null}
+                    {m.biz_days_remaining != null ? ` · ${m.biz_days_remaining} selling days` : ""}
+                  </div>
                   <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
                     <div>
                       <div className="text-muted-foreground">Team</div>

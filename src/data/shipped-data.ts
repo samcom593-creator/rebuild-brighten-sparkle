@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "Your goals are set for December, and every portal now spells out exactly what it takes to hit them \u2014 how many deals, at your real average premium, per week and per selling day, plus how many agents you still need to recruit. The manager board and each portal auto-roll to the live goal month, and show a 'starts soon' plan until the month begins.",
+    detail:
+      "MP-303.1 \u2014 moved the whiteboard goals to December (dropped the duplicate November seed that read everyone as 'behind' on a goal never set for Nov). fn_goal_scorecard / fn_owner_goal_board auto-resolve to the active goal period and now return a breakdown: avg_deal_size (the tree's own trailing-120d average, agency $1,640 fallback), deals_to_goal, deals_remaining, deals_per_week, deals_per_day, ap_per_day over the remaining business days, plus recruits_needed and ap_per_recruit. New 'upcoming' state for a period that hasn't started. Verified live as Sam: December resolves, Chudi 600k = 369 deals at $1,627 = 80/wk, 16/day over 23 selling days; Obi needs 12 agents at $25k each.",
+    commit: "mp-303-dec-breakdown",
+  },
+  {
+    ts: "today",
+    label:
       "Every manager and agent portal now shows your goal, where you are, how fast you have to grow to stay on track, and what you'll earn if you hit it. Your Home shows every manager's track at once \u2014 their production vs goal, their team vs their recruiting goal, their projected income, and your override income from each, with a running total.",
     detail:
       "MP-303 \u2014 goal engine from the 11 whiteboard goals. New team_goals table (seeded Nov + Dec), fn_goal_scorecard (one person's pace + projected income) and fn_owner_goal_board (every manager + your override + totals). Money is the production scoreboard's first-hop override model to the dollar: your income from a manager = their ALP goal \u00d7 (your 125% \u2212 their contract)/100. Production reads the live canonical source, not the retired book. GoalTrackerCard on the agent and manager home; ManagerGoalBoard on your Home. Verified live: Nov team goal $2.2M, your override at goal $1.09M. Guard test pins the money model so it can't drift back to seller-comp.",

@@ -196181,8 +196181,8 @@ export type Database = {
       fn_goal_scorecard: {
         Args: {
           p_agent_id: string
-          p_period_end: string
-          p_period_start: string
+          p_period_end?: string
+          p_period_start?: string
         }
         Returns: Json
       }
@@ -196385,7 +196385,7 @@ export type Database = {
         Returns: undefined
       }
       fn_owner_goal_board: {
-        Args: { p_period_end: string; p_period_start: string }
+        Args: { p_period_end?: string; p_period_start?: string }
         Returns: Json
       }
       fn_perf_bot_run: { Args: never; Returns: Json }

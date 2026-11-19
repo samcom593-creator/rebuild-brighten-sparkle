@@ -10,7 +10,7 @@ import { resolve } from "node:path";
 // bug (two surfaces disagreeing on income) returns. This pins the text of the
 // shipped migration the same way financesLayeredOverride.test.ts pins Finances.
 
-const MIG = resolve(__dirname, "../../../supabase/migrations/20261119020000_team_goals_engine.sql");
+const MIG = resolve(__dirname, "../../../supabase/migrations/20261119030000_goal_period_and_breakdown.sql");
 
 describe("goal engine money model (first-hop override, MP-328)", () => {
   const sql = readFileSync(MIG, "utf8");

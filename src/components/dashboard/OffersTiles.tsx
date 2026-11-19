@@ -18,10 +18,14 @@ type Sku = {
   blurb: string;
   Icon: React.ComponentType<any>;
   accent: string; // tailwind color
-  /** Direct Stripe Payment Link URL — bypasses the create-lead-checkout
-   *  edge function (which currently 500s with `client.auth.getClaims is
-   *  not a function` because the deployed SDK is older than the source).
-   *  Sam: "click and pay links don't work" — fix is the direct link. */
+  /** Direct Stripe Payment Link URL — when present, the tile opens Stripe
+   *  Checkout directly and never depends on an edge function or a signed-in
+   *  session. (Historical note: an earlier create-lead-checkout build 500'd
+   *  at `client.auth.getClaims is not a function`. That function was rebuilt
+   *  on 2026-09-16 (MP-548) onto a shared auth wrapper and now returns a
+   *  clean 401 for a bad/absent token — verified live 2026-11-19 — so that
+   *  crash is gone. SKUs without a paymentLink route through that edge
+   *  function, which requires the admin's signed-in session.) */
   paymentLink?: string;
 };
 
@@ -57,7 +61,13 @@ export function OffersTiles() {
       if (!url) throw new Error("no checkout URL");
       window.open(url, "_blank", "noopener");
     } catch (e: any) {
-      toast.error("Checkout for this SKU is being wired up — DM Sam to buy directly.");
+      // Don't dress a real checkout failure up as "being wired up" — on this
+      // click-to-pay surface that benign line hides a dead money path from the
+      // admin (the same silent-failure class the render-health guards drain).
+      // Surface the actual reason so a genuinely broken SKU is visible, not masked.
+      const reason =
+        e?.message ?? e?.error?.message ?? (typeof e === "string" ? e : "unknown error");
+      toast.error(`Checkout failed for ${sku.name}: ${reason}. Buy directly via DM while this is looked at.`);
     } finally {
       setBusy(null);
     }

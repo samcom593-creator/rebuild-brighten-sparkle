@@ -30,6 +30,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "The click-to-pay offers on your dashboard no longer lie about why a payment did not go through. If a tile without a direct Stripe link hits an error, it now shows the real reason instead of a reassuring 'this is being wired up — DM Sam to buy directly', so a genuinely dead checkout is visible to you instead of hidden. Also corrected a two-month-old code note that still called the checkout function broken: it was rebuilt on Sep 16 and now answers cleanly.",
+    detail:
+      "MP-WIB-OFFERS-CHECKOUT-TRUTH — OffersTiles.tsx (admin click-to-pay, 7 SKUs). The catch block reported every failure (edge-fn down, Stripe error, network) as the benign 'being wired up — DM Sam' line — the same silent-failure / dead-feed-as-benign class the render-health waves drain, but on a money action: a dead SKU was indistinguishable from a transient blip. Now surfaces the actual error (e.message ?? e.error.message) while keeping the direct-DM fallback. Separately, the Sku.paymentLink doc comment still asserted create-lead-checkout '500s with client.auth.getClaims is not a function'; that function was rebuilt 2026-09-16 (MP-548) onto a shared auth wrapper and returns a clean 401 for a bad token — verified live 2026-11-19 (HTTP 401 AUTH_ERROR, not a 500) — so the comment was corrected. The two revenue links on this surface (Gold/Platinum buy.stripe.com) stay guarded for liveness + price parity by the CFO stripe-link-hygiene daemon. No behavior change beyond the error message; esbuild parse clean, SHIPPED count parity held.",
+    commit: "mp-wib-offers-checkout-truth",
+  },
+  {
+    ts: "today",
+    label:
       "Two surfaces where a blank screen used to mean 'nothing here' now say when they actually failed to load. Your documents (license, E&O, ID, contracting forms) will say 'couldn't load — refresh before assuming nothing is on file' instead of a reassuring 'Nothing uploaded yet' when the feed is down, and the call-transcript history does the same instead of a quiet 'No transcripts yet'.",
     detail:
       "MP-WIB-ADMIN-RENDER-HEALTH-11 — the compliance + sales-QA cluster. AgentDocuments.tsx destructured `data: docs = []` with isLoading but no error signal, so a dead agent_documents read rendered 'Nothing uploaded yet.' — a false 'this producer has no license on file' an upline would act on. CallTranscriptsSection.tsx was the worse variant: the queryFn swallowed `.error` (`const { data } = await q`), so React Query never saw the failure and a dead call_transcripts read rendered 'No transcripts yet' as a success — now throws on error, takes isError, and shows a load-error line. Both added to the render-health MANIFEST (now 33 held at zero silent-zero feeds). Proven: scanner selftest 10/10, census offenders 11→9 (remaining 9 all training/course/leaderboard, lowest-$), esbuild parse clean.",

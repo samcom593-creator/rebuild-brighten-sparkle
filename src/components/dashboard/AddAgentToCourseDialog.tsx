@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { UserPlus, Search, Check, Loader2 } from "lucide-react";
+import { UserPlus, Search, Check, Loader2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -37,14 +37,18 @@ export function AddAgentToCourseDialog({ onSuccess }: AddAgentToCourseDialogProp
 
   // Fetch agents eligible for course enrollment
   // (in onboarding stage, not already in training_online, not deactivated)
-  const { data: eligibleAgents = [], isLoading } = useQuery({
+  const { data: eligibleAgents = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["eligible-agents-for-course"],
     queryFn: async () => {
-      // Get agents not yet enrolled
-      const { data: agents } = await supabase
+      // Get agents not yet enrolled. UNSWALLOW every read: a dead agents/profiles/
+      // progress feed must THROW so isError fires and the picker surfaces a load
+      // error — never render "No eligible agents found" (a false "nobody to enroll"
+      // while the roster feed was down). Same fake-success class the course pages hit.
+      const { data: agents, error: agentsError } = await supabase
         .from("agents")
         .select("id, user_id, onboarding_stage, has_training_course, display_name")
         .eq("is_deactivated", false);
+      if (agentsError) throw agentsError;
 
       if (!agents?.length) return [];
 
@@ -53,11 +57,12 @@ export function AddAgentToCourseDialog({ onSuccess }: AddAgentToCourseDialogProp
       
       const profileMap: Record<string, { full_name: string; email: string }> = {};
       if (userIds.length > 0) {
-        const { data: profiles } = await supabase
+        const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
           .select("user_id, full_name, email")
           .in("user_id", userIds);
-        
+        if (profilesError) throw profilesError;
+
         if (profiles) {
           for (const p of profiles) {
             if (p.user_id) profileMap[p.user_id] = { full_name: p.full_name || "", email: p.email || "" };
@@ -66,10 +71,11 @@ export function AddAgentToCourseDialog({ onSuccess }: AddAgentToCourseDialogProp
       }
 
       // Get agents that already have progress
-      const { data: existingProgress } = await supabase
+      const { data: existingProgress, error: progressError } = await supabase
         .from("onboarding_progress")
         .select("agent_id");
-      
+      if (progressError) throw progressError;
+
       const enrolledIds = new Set((existingProgress || []).map(p => p.agent_id));
 
       return agents
@@ -235,6 +241,15 @@ export function AddAgentToCourseDialog({ onSuccess }: AddAgentToCourseDialogProp
             {isLoading ? (
               <div className="flex items-center justify-center h-full">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : isError ? (
+              <div className="flex flex-col items-center justify-center h-full px-4 text-center text-muted-foreground">
+                <AlertTriangle className="h-8 w-8 mb-2 text-amber-500" />
+                <p className="text-sm font-medium text-foreground">Couldn’t load eligible agents</p>
+                <p className="text-xs">This is a load error, not an empty roster — try again.</p>
+                <Button variant="outline" size="sm" className="mt-3" onClick={() => refetch()}>
+                  Retry
+                </Button>
               </div>
             ) : filteredAgents.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-muted-foreground">

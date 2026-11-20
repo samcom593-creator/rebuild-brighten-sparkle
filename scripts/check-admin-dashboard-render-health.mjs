@@ -142,6 +142,36 @@ const MANIFEST = [
   // empty state. Pinned so the swallow + silent-empty can never return.
   "src/pages/CourseContent.tsx",                  // agent-facing course curriculum — dead onboarding_modules/_questions feed must surface as a load error, never "No Course Modules" (blocks a licensed agent's training)
   "src/components/admin/CourseContentViewer.tsx", // admin course-content preview dialog — same feed, same twin fix; dead read must never render "No course modules found" as fact
+  // MP-WIB-ADMIN-RENDER-HEALTH wave 15 (2026-11-20). The enroll dialog on the Course
+  // Progress page was the WORSE variant of the same class: `data: eligibleAgents = []`
+  // defaulted with NO error signal AND the queryFn SWALLOWED all three reads
+  // (`const { data: agents } = await …`), so a dead agents/profiles/onboarding_progress
+  // read rendered "No eligible agents found · No active agents available" — a false
+  // "nobody to enroll" while the roster feed was down. Now every read THROWS, the
+  // destructure takes isError, and the picker renders a load-error with Retry before
+  // the empty state. Pinned so the swallow + silent-empty can never return.
+  "src/components/dashboard/AddAgentToCourseDialog.tsx", // course-enroll picker — dead roster feed must surface a load error, never "No eligible agents found"
+];
+
+// ── PRIMARY_FEED_MANIFEST: the SCANNER-BLIND downstream-coalesce variant ──
+// offenders() (above) only fires on a destructure that DEFAULTS data (`data = []`)
+// — because repo-wide, a bare `const { data } = useQuery()` yields `undefined` on
+// error, which is not a convincing 0. But a feed can launder that undefined into a
+// convincing empty AFTER the destructure: CourseProgress did
+//   const { data: scoped, isLoading, refetch } = useQuery(…);   // no default, no isError
+//   const agentProgress = scoped?.agents ?? [];                 // <- the lie is HERE
+// so a dead my_course_progress() RPC → scoped undefined → agentProgress [] → the
+// table renders "No agents match this filter": a false "nobody is on the course" at
+// the exact moment the feed died (MP-WIB-ADMIN-RENDER-HEALTH wave 15, 2026-11-20).
+//
+// A repo-wide version of this rule is UNSAFE — 5 money/pipeline MANIFEST files above
+// legitimately coalesce a SECONDARY/whole-object picker result to [] (the Assign
+// manager picker, the board-access per-cell toggle overlay, activeProducerIds, …)
+// and were deliberately classified benign in their waves. So offendersCoalesce()
+// runs ONLY over this second CURATED list, where the coalesced query drives a
+// DECEPTIVE PRIMARY empty-state, and is held at ZERO.
+const PRIMARY_FEED_MANIFEST = [
+  "src/pages/CourseProgress.tsx", // course-progress monitor — scoped?.agents ?? [] feeds the primary table + "No agents match this filter"
 ];
 
 const ERROR_SIGNALS = ["isError", "isLoadingError", "status", "error"];
@@ -205,6 +235,51 @@ export function offenders(src) {
   return out;
 }
 
+// `data` is extracted (with or without a default), capturing the alias it's bound
+// to: `data` → "data", `data: scoped` → "scoped". Null if the destructure has no
+// `data` key at all.
+const DATA_ALIAS_RE = /(^|[^\w$])data\s*(?::\s*([A-Za-z_$][\w$]*))?/;
+
+/**
+ * The SCANNER-BLIND variant: a `useQuery`/`useSuspenseQuery` destructure that takes
+ * NO error signal, whose `data` alias is later coalesced to an empty collection
+ * (`alias ?? []` / `alias ?? {}`, incl. `alias?.x ?? []`). That `?? []` manufactures
+ * a convincing empty from the undefined-on-error, which a primary feed then renders
+ * as a believable all-clear. Returns [{ line, body }]. Pure; comments blanked first.
+ * Run ONLY over PRIMARY_FEED_MANIFEST — see the note on that list for why repo-wide
+ * is unsafe.
+ */
+export function offendersCoalesce(src) {
+  const code = stripComments(src);
+  const out = [];
+  const openRe = /\bconst\s*\{/g;
+  let m;
+  while ((m = openRe.exec(code))) {
+    const open = code.indexOf("{", m.index);
+    if (open < 0) continue;
+    const close = matchBrace(code, open);
+    if (close < 0) continue;
+    const after = code.slice(close + 1);
+    if (!/^\s*=\s*(useQuery|useSuspenseQuery)\s*[<(]/.test(after)) continue;
+    const body = code.slice(open + 1, close);
+    if (ERROR_SIGNAL_RE.test(body)) continue; // takes an error signal → not deceptive
+    const am = body.match(DATA_ALIAS_RE);
+    if (!am) continue; // no data key in this destructure
+    const alias = am[2] || "data";
+    // the alias coalesced to an empty collection downstream (small window spans
+    // `scoped?.agents ?? []`): the move that turns undefined-on-error into a fake 0.
+    // The lookbehind requires the alias STANDALONE — never a `.property` access, so
+    // a row's own field (`row.modules ?? {}`) can't be mistaken for the query alias
+    // `modules`.
+    const coalesce = new RegExp(`(?<![\\w$.])${alias}\\b[\\w$.?\\[\\]'"\\s]{0,40}?\\?\\?\\s*[\\[{]`);
+    if (coalesce.test(code)) {
+      const line = code.slice(0, m.index).split("\n").length;
+      out.push({ line, body: body.replace(/\s+/g, " ").trim().slice(0, 90) });
+    }
+  }
+  return out;
+}
+
 // ── selftest: prove the scanner both directions, NO fs ──
 function selftest() {
   let pass = 0, total = 0;
@@ -252,6 +327,42 @@ function selftest() {
   const NOT_QUERY = `const { data = [], foo } = someObject;`;
   ok(offenders(NOT_QUERY).length === 0, "a non-useQuery destructure is out of scope");
 
+  // ── offendersCoalesce: the scanner-blind downstream-?? variant ──
+
+  // THE BUG: no default, no error signal, alias coalesced to [] downstream (CourseProgress shape).
+  const COAL_BUG = `const { data: scoped, isLoading, refetch } = useQuery({ queryKey: ["x"] });\nconst agentProgress = scoped?.agents ?? [];`;
+  ok(offendersCoalesce(COAL_BUG).length === 1, "COALESCE BUG: scoped?.x ?? [] with no error signal → 1 offender");
+  ok(offenders(COAL_BUG).length === 0, "COALESCE BUG is INVISIBLE to offenders() (no data default) — proves why the 2nd detector exists");
+
+  // FIX via taking isError in the same braces.
+  const COAL_FIX = `const { data: scoped, isLoading, isError, refetch } = useQuery({ queryKey: ["x"] });\nconst agentProgress = scoped?.agents ?? [];`;
+  ok(offendersCoalesce(COAL_FIX).length === 0, "COALESCE FIX (isError present) → clean");
+
+  // Plain-data alias coalesced to [] with no error → still caught.
+  const COAL_PLAIN = `const { data, isLoading } = useQuery({ queryKey: ["x"] });\nconst rows = data ?? [];`;
+  ok(offendersCoalesce(COAL_PLAIN).length === 1, "COALESCE: plain data ?? [] with no error → 1 offender");
+
+  // Object coalesce (?? {}) is the same class.
+  const COAL_OBJ = `const { data: cfg, isLoading } = useQuery({ queryKey: ["x"] });\nconst c = cfg ?? {};`;
+  ok(offendersCoalesce(COAL_OBJ).length === 1, "COALESCE: alias ?? {} with no error → 1 offender");
+
+  // NO downstream coalesce → not deceptive (undefined stays undefined; no fake 0 manufactured).
+  const COAL_NONE = `const { data: scoped, isLoading } = useQuery({ queryKey: ["x"] });\nreturn scoped?.agents;`;
+  ok(offendersCoalesce(COAL_NONE).length === 0, "no downstream ?? [] → not an offender (undefined is not a convincing 0)");
+
+  // NOT a query: a plain object destructure coalesced downstream is out of scope.
+  const COAL_NOTQ = `const { data: scoped } = someObject;\nconst rows = scoped ?? [];`;
+  ok(offendersCoalesce(COAL_NOTQ).length === 0, "a non-useQuery destructure is out of scope for the coalesce detector");
+
+  // A DIFFERENT variable that merely contains the alias as a substring must not match (word boundary).
+  const COAL_WB = `const { data: scope, isLoading } = useQuery({ queryKey: ["x"] });\nconst scopedList = buildScopedList() ?? [];`;
+  ok(offendersCoalesce(COAL_WB).length === 0, "word-boundary: `scopedList ?? []` does not match alias `scope`");
+
+  // A `.property` access that shares the alias's name is NOT the query alias
+  // (the real CourseProgress false positive: alias `modules`, unrelated `row.modules ?? {}`).
+  const COAL_DOT = `const { data: modules = [], isLoading } = useQuery({ queryKey: ["x"] });\nfor (const v of Object.entries(row.modules ?? {})) {}`;
+  ok(offendersCoalesce(COAL_DOT).length === 0, "`.property` access (row.modules ?? {}) is not the query alias `modules`");
+
   console.log(`\ncheck:admin-dashboard-render-health --selftest — ${pass}/${total} assertions pass (both directions).`);
   if (pass !== total) { console.error("SELFTEST FAILED — the render-health scanner is wrong."); process.exit(1); }
   process.exit(0);
@@ -282,12 +393,39 @@ if (invokedDirectly) {
       report.push({ rel, hits });
     }
   }
+  // Second pass: the scanner-blind downstream-coalesce variant, over the curated
+  // PRIMARY_FEED_MANIFEST only. "could not read" is exit 2, never a quiet pass.
+  const coalReport = [];
+  for (const rel of PRIMARY_FEED_MANIFEST) {
+    let src;
+    try {
+      src = readFileSync(resolve(REPO, rel), "utf8");
+    } catch (e) {
+      console.error(`check:admin-dashboard-render-health — COULD NOT READ ${rel}: ${e.message}`);
+      console.error("  A primary-feed daily-driver in PRIMARY_FEED_MANIFEST is missing or was renamed.");
+      process.exit(2);
+    }
+    const hits = offendersCoalesce(src);
+    if (hits.length) { bad += hits.length; coalReport.push({ rel, hits }); }
+  }
+
   if (bad) {
-    console.error(`check:admin-dashboard-render-health — ${bad} money/pipeline feed(s) render a dead read as a healthy zero:`);
-    for (const { rel, hits } of report) {
-      for (const h of hits) {
-        console.error(`  🔴 ${rel}:${h.line} — { ${h.body} }`);
-        console.error(`        defaults data but takes no error signal (${ERROR_SIGNALS.join("/")}).`);
+    if (report.length) {
+      console.error(`check:admin-dashboard-render-health — ${report.reduce((n, r) => n + r.hits.length, 0)} money/pipeline feed(s) render a dead read as a healthy zero:`);
+      for (const { rel, hits } of report) {
+        for (const h of hits) {
+          console.error(`  🔴 ${rel}:${h.line} — { ${h.body} }`);
+          console.error(`        defaults data but takes no error signal (${ERROR_SIGNALS.join("/")}).`);
+        }
+      }
+    }
+    if (coalReport.length) {
+      console.error(`check:admin-dashboard-render-health — ${coalReport.reduce((n, r) => n + r.hits.length, 0)} primary feed(s) coalesce a dead read to an empty all-clear (scanner-blind variant):`);
+      for (const { rel, hits } of coalReport) {
+        for (const h of hits) {
+          console.error(`  🔴 ${rel}:${h.line} — { ${h.body} }`);
+          console.error(`        data alias is coalesced to [] / {} downstream but the destructure takes no error signal.`);
+        }
       }
     }
     console.error("  A failed read on these surfaces must show an error with Retry, not 0 / empty.");
@@ -295,6 +433,6 @@ if (invokedDirectly) {
     console.error("  error signal and render it. See src/pages/AdminFunnelHealth.tsx for the pattern.");
     process.exit(1);
   }
-  console.log(`check:admin-dashboard-render-health — OK: ${MANIFEST.length} money/pipeline daily-drivers surface query errors (0 silent-zero feeds).`);
+  console.log(`check:admin-dashboard-render-health — OK: ${MANIFEST.length} money/pipeline daily-drivers + ${PRIMARY_FEED_MANIFEST.length} primary-feed coalesce surface(s) surface query errors (0 silent-zero feeds).`);
   process.exit(0);
 }

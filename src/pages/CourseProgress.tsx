@@ -183,7 +183,7 @@ export default function CourseProgress() {
   // April 0 of 108, so a VA's whole view of the company was people who had all
   // done nothing. my_course_progress() returns the roster and its progress
   // together, so a short list now means a small scope and 0% means 0%.
-  const { data: scoped, isLoading, refetch } = useQuery({
+  const { data: scoped, isLoading, isError, refetch } = useQuery({
     queryKey: ["course-progress-full"],
     staleTime: 60_000,
     queryFn: async (): Promise<ScopedProgress> => {
@@ -564,6 +564,23 @@ export default function CourseProgress() {
           {isLoading ? (
             <div className="flex items-center justify-center h-48">
               <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : isError ? (
+            // A dead my_course_progress() RPC must NOT render as "No agents match
+            // this filter" — that is a false "nobody is on the course" at the exact
+            // moment the feed died. MP-365's whole point is that an empty table
+            // means a small scope, never a dead read; surface the load error.
+            <div className="text-center py-12">
+              <AlertTriangle className="h-10 w-10 mx-auto mb-3 text-amber-500" />
+              <p className="font-medium">Course progress didn’t load</p>
+              <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+                This is a load error, not an empty roster. Nobody has been cleared off the course — the
+                feed just didn’t respond.
+              </p>
+              <Button variant="outline" size="sm" className="mt-4 gap-1.5" onClick={() => refetch()}>
+                <RefreshCw className="h-3.5 w-3.5" />
+                Retry
+              </Button>
             </div>
           ) : filteredAgents.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">

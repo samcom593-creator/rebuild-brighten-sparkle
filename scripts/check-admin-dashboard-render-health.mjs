@@ -172,6 +172,21 @@ const MANIFEST = [
 // DECEPTIVE PRIMARY empty-state, and is held at ZERO.
 const PRIMARY_FEED_MANIFEST = [
   "src/pages/CourseProgress.tsx", // course-progress monitor — scoped?.agents ?? [] feeds the primary table + "No agents match this filter"
+  // MP-WIB-ADMIN-RENDER-HEALTH wave 16 (2026-11-20). ManagerDashboard — the manager
+  // money/pipeline daily-driver (/dashboard/admin/manager, "one screen for the manager
+  // who runs the room") — was in NEITHER manifest and had the silent-zero bug on ALL
+  // THREE tabs. Every useQuery destructured `data` with NO error signal and coalesced
+  // it `?? []` downstream, so a dead feed read as a believable zero the scanner-blind
+  // way: ProductionTab rendered "$ ALP submitted (30d): $0 · Deals closed: 0 · Active
+  // producers: 0" (the team wrote nothing) off a dead deals feed; RecruitingTab rendered
+  // 0/0/0/0/0 ("pipeline all caught up") off a dead applications feed; LicensingTab
+  // rendered every stage tile 0 ("nobody in licensing"). Each tab now early-returns
+  // <QueryState error> on its primary feed (deals/applications-pipeline/pre), the
+  // secondary agents name-map takes isError + renders a graceful "names unavailable,
+  // figures unaffected" notice, and the recent-hires card gets an error branch (was a
+  // perpetual skeleton on error). Pinned so the coalesce-without-error-signal can never
+  // return to the manager's money board.
+  "src/pages/admin/ManagerDashboard.tsx", // manager money/pipeline command — deals/pipeline/pre coalesced ?? [] feed the primary stat tiles + "$0 ALP" money lie
 ];
 
 const ERROR_SIGNALS = ["isError", "isLoadingError", "status", "error"];

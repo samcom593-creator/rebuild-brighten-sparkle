@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryState } from "@/components/ui/query-state";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Users, GraduationCap, TrendingUp, AlertOctagon, CheckCircle2, Clock, DollarSign, Crown,
@@ -48,7 +49,7 @@ type AgentLite = { id: string; display_name: string | null };
 
 /* ============================================================ */
 function RecruitingTab() {
-  const { data: pipeline } = useQuery({
+  const { data: pipeline, isError: pipelineError, error: pipelineErr, refetch: refetchPipeline } = useQuery({
     queryKey: ["mgr_pipeline_30d"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -61,7 +62,7 @@ function RecruitingTab() {
     },
   });
 
-  const { data: agents } = useQuery({
+  const { data: agents, isError: agentsError } = useQuery({
     queryKey: ["agents_lite"],
     queryFn: async () => {
       const { data, error } = await supabase.from("agents").select("id, display_name").order("display_name");
@@ -70,6 +71,13 @@ function RecruitingTab() {
     },
     staleTime: 5 * 60_000,
   });
+
+  // A dead applications feed must NOT render as "pipeline all caught up" (0/0/0):
+  // the stat tiles below compute from `pipeline ?? []`, so a failed read would
+  // read as a believable empty funnel. Surface the error instead.
+  if (pipelineError) {
+    return <QueryState status="error" label="the recruiting pipeline" error={pipelineErr} onRetry={() => void refetchPipeline()} />;
+  }
 
   const agentMap = new Map((agents ?? []).map(a => [a.id, a.display_name]));
   const rows = pipeline ?? [];
@@ -84,6 +92,7 @@ function RecruitingTab() {
 
   return (
     <div className="space-y-4">
+      {agentsError && <NameMapNotice />}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <StatTile label="Apps last 24h" value={last24h} color="text-emerald-300" />
         <StatTile label="Stage=new no contact" value={noContact} color="text-rose-300" />
@@ -123,7 +132,7 @@ function RecruitingTab() {
 
 /* ============================================================ */
 function LicensingTab() {
-  const { data: hires } = useQuery({
+  const { data: hires, isError: hiresError, error: hiresErr, refetch: refetchHires } = useQuery({
     queryKey: ["mgr_recent_hires"],
     queryFn: async () => {
       const { data, error } = await supabase.from("v_recent_hires").select("*").limit(20);
@@ -132,7 +141,7 @@ function LicensingTab() {
     },
   });
 
-  const { data: pre } = useQuery({
+  const { data: pre, isError: preError, error: preErr, refetch: refetchPre } = useQuery({
     queryKey: ["mgr_prelicense_pipeline"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -143,6 +152,12 @@ function LicensingTab() {
       return data as Array<{ status: string }>;
     },
   });
+
+  // A dead applications feed must NOT render the licensing stage tiles as 0/0/0/0
+  // ("nobody in licensing") — that is a believable empty where the read failed.
+  if (preError) {
+    return <QueryState status="error" label="the licensing pipeline" error={preErr} onRetry={() => void refetchPre()} />;
+  }
 
   const stageCount = (s: string) => (pre ?? []).filter(r => r.status === s).length;
 
@@ -169,7 +184,8 @@ function LicensingTab() {
       <Card>
         <CardHeader><CardTitle className="text-base flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-400" /> Recent hires (last 20)</CardTitle></CardHeader>
         <CardContent className="p-0">
-          {!hires ? <div className="p-6"><Skeleton className="h-40 w-full" /></div> :
+          {hiresError ? <div className="p-4"><QueryState status="error" label="recent hires" error={hiresErr} onRetry={() => void refetchHires()} /></div> :
+           !hires ? <div className="p-6"><Skeleton className="h-40 w-full" /></div> :
             <ul className="divide-y divide-white/5">{hires.map((h, i) => (
               <li key={`${h.hired_at ?? h.created_at ?? i}-${h.full_name ?? h.first_name ?? "unknown"}`} className="flex items-center justify-between p-3 text-sm">
                 <span>{h.full_name ?? h.first_name ?? "—"}{h.state ? <span className="text-slate-600 dark:text-slate-300 ml-2">· {h.state}</span> : null}</span>
@@ -184,7 +200,7 @@ function LicensingTab() {
 
 /* ============================================================ */
 function ProductionTab() {
-  const { data: deals } = useQuery({
+  const { data: deals, isError: dealsError, error: dealsErr, refetch: refetchDeals } = useQuery({
     queryKey: ["mgr_deals_30d"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -198,6 +214,25 @@ function ProductionTab() {
     },
   });
 
+  // Secondary name-map. Declared before the error gate below so every hook runs
+  // on every render (Rules of Hooks) regardless of the deals feed's state.
+  const { data: agents, isError: agentsError } = useQuery({
+    queryKey: ["agents_lite"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("agents").select("id, display_name").order("display_name");
+      if (error) throw error;
+      return data as AgentLite[];
+    },
+    staleTime: 5 * 60_000,
+  });
+
+  // The money tab. A dead deals feed must NOT render "$ ALP submitted (30d): $0 ·
+  // Deals closed: 0 · Active producers: 0" — a false "the team wrote nothing this
+  // month" a manager would act on. Surface the read error with Retry instead.
+  if (dealsError) {
+    return <QueryState status="error" label="production (deals)" error={dealsErr} onRetry={() => void refetchDeals()} />;
+  }
+
   const closed = (deals ?? []).filter(d => d.status === "closed_won" || d.status === "submitted" || d.status === "paid");
   const monthAmt = closed.reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
   const byAgent: Record<string, { count: number; amount: number }> = {};
@@ -208,20 +243,11 @@ function ProductionTab() {
     byAgent[d.agent_id].amount += Number(d.amount) || 0;
   });
   const top = Object.entries(byAgent).sort((a, b) => b[1].amount - a[1].amount).slice(0, 10);
-
-  const { data: agents } = useQuery({
-    queryKey: ["agents_lite"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("agents").select("id, display_name").order("display_name");
-      if (error) throw error;
-      return data as AgentLite[];
-    },
-    staleTime: 5 * 60_000,
-  });
   const agentMap = new Map((agents ?? []).map(a => [a.id, a.display_name]));
 
   return (
     <div className="space-y-4">
+      {agentsError && <NameMapNotice />}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatTile label="Deals closed (30d)" value={closed.length} color="text-emerald-300" />
         <StatTile label="$ ALP submitted (30d)" value={`$${Math.round(monthAmt).toLocaleString()}`} color="text-emerald-300" />
@@ -267,6 +293,19 @@ function ProductionTab() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+/* ============================================================ */
+// A dead agents name-map must degrade honestly, not silently: the tiles and
+// $ figures do not depend on it, so names fall back to "—"/id and this line
+// says so rather than letting the failure vanish.
+function NameMapNotice() {
+  return (
+    <p role="status" className="flex items-center gap-1.5 text-xs text-amber-400/80">
+      <AlertOctagon className="h-3.5 w-3.5 flex-shrink-0" aria-hidden />
+      Agent names couldn’t load — showing IDs. The figures below are read separately and are unaffected.
+    </p>
   );
 }
 

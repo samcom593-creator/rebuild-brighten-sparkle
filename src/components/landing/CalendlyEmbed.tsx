@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Phone, Mail, MessageSquare, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -8,17 +8,36 @@ interface CalendlyEmbedProps {
 }
 
 /**
- * 2026-04-29: Sam's Calendly accounts (sam-com593, apexlifeadvisors) are
- * currently 404 — every embed showed a broken "page not found" iframe and
- * applicants who got that far in the funnel hit a dead end.
+ * Graceful embed for the most literal money action on the site — a licensed
+ * applicant booking the hire call. If booking can't render, the applicant must
+ * never hit a silent dead end; this component always has a phone/email fallback.
  *
- * Strategy: try to load the embed in a HEAD request first. If the URL
- * resolves to a Calendly 404, render a graceful fallback with phone +
- * email + iMessage CTAs so applicants can still convert manually until
- * Sam restores the Calendly accounts.
+ * Two independent failure classes, two owners:
+ *
+ *  1. Dead/renamed SLUG (Calendly 404) — owned SERVER-SIDE by the daily
+ *     check-calendly-brand.sh guard (launchd com.samjames.apex.website-calendly-brand),
+ *     which reads Calendly's event_types API. A cross-origin `fetch(..., {mode:
+ *     "no-cors"})` HERE resolves opaque on ANY status including 404, so the
+ *     client literally cannot read a dead-slug status — the HEAD probe below only
+ *     catches a TOTAL network/DNS failure, not a 404.
+ *
+ *  2. The widget SCRIPT never loads — uBlock/corporate filter lists routinely
+ *     block assets.calendly.com, and CDNs hiccup. This is invisible to the
+ *     server-side guard and to the headless live-render guard (no adblocker), so
+ *     without the onerror + post-load mount watchdog below, the inline-widget
+ *     div would sit as an empty 700px box with no CTA and no fallback. That case
+ *     now routes to the same manual-contact fallback.
  */
+
+// Generous on purpose: the watchdog starts only AFTER the script's load event,
+// so it is independent of connection speed. Long enough that a slow iframe
+// injection is never mistaken for a failure; short enough that a real block
+// surfaces the manual-contact fallback while the applicant is still on the page.
+export const WIDGET_MOUNT_WATCHDOG_MS = 12000;
+
 export function CalendlyEmbed({ url, className = "" }: CalendlyEmbedProps) {
   const [reachable, setReachable] = useState<boolean | null>(null);
+  const widgetRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -37,11 +56,30 @@ export function CalendlyEmbed({ url, className = "" }: CalendlyEmbedProps) {
 
   useEffect(() => {
     if (reachable !== true) return;
+    let cancelled = false;
+    let watchdog: ReturnType<typeof setTimeout> | undefined;
     const script = document.createElement("script");
     script.src = "https://assets.calendly.com/assets/external/widget.js";
     script.async = true;
+    // Blocked by an adblocker / corporate filter, CDN down, or script 404 → the
+    // error event fires and we route to the phone/email fallback instead of
+    // leaving an empty booking box.
+    script.onerror = () => { if (!cancelled) setReachable(false); };
+    // Script loaded (200): Calendly injects its iframe into .calendly-inline-widget
+    // on load. If nothing mounted within the watchdog window, init was blocked or
+    // failed mid-flight — fall back rather than show a permanently empty box.
+    script.onload = () => {
+      watchdog = setTimeout(() => {
+        if (cancelled) return;
+        if (!widgetRef.current || widgetRef.current.childElementCount === 0) {
+          setReachable(false);
+        }
+      }, WIDGET_MOUNT_WATCHDOG_MS);
+    };
     document.body.appendChild(script);
     return () => {
+      cancelled = true;
+      if (watchdog) clearTimeout(watchdog);
       const existing = document.querySelector('script[src="https://assets.calendly.com/assets/external/widget.js"]');
       if (existing) existing.remove();
     };
@@ -87,6 +125,7 @@ export function CalendlyEmbed({ url, className = "" }: CalendlyEmbedProps) {
   // populates once it loads.
   return (
     <div
+      ref={widgetRef}
       className={`calendly-inline-widget ${className}`}
       data-url={url}
       style={{ minWidth: "320px", height: "700px" }}

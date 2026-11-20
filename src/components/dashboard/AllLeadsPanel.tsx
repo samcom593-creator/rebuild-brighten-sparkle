@@ -87,10 +87,19 @@ export function AllLeadsPanel() {
   const fetchAllLeads = async () => {
     setLoading(true);
     try {
-      // Fetch all applications
+      // Fetch all applications.
+      // MP-WIB-SELECT-STAR-ALLLEADS: project to only the 12 columns this panel
+      // renders. `applications` has 159 columns — select("*") shipped all of
+      // them × every row to the browser on every Command Center mount, incl.
+      // free-text/JSON (motivation, notes, attribution_json, owner_alert_meta)
+      // and PII the panel never shows (consent_ip_address, nipr_data,
+      // nipr_number, fingerprints, resume_url). The raw row is discarded after
+      // the .map() below, so narrowing is zero-behavior-change.
       const { data: applications, error } = await supabase
         .from("applications")
-        .select("*")
+        .select(
+          "id, first_name, last_name, email, phone, city, state, status, license_status, assigned_agent_id, created_at, terminated_at",
+        )
         .order("created_at", { ascending: false });
 
       if (error) throw error;

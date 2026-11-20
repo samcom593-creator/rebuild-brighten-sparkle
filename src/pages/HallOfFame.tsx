@@ -17,7 +17,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   Crown, Trophy, Users, Target, Sparkles, Search, Share2, Calendar,
-  DollarSign, Award, X, Copy, Medal,
+  DollarSign, Award, X, Copy, Medal, AlertTriangle,
 } from "lucide-react";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
@@ -142,7 +142,7 @@ export default function HallOfFame() {
   const [openPlaque, setOpenPlaque] = useState<Plaque | null>(null);
 
   // ── Plaques (last 240 awarded, filtered client-side) ────────────────────
-  const { data: plaques = [], isLoading: loadingPlaques } = useQuery({
+  const { data: plaques = [], isLoading: loadingPlaques, isError: plaquesError } = useQuery({
     queryKey: ["hof-plaques"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -200,7 +200,7 @@ export default function HallOfFame() {
 
   // ── Top earners (top 10 by plaque count, server-side aggregation
   // via a small subquery in JS since we already loaded all rows above) ───
-  const { data: topEarners = [], isLoading: loadingTop } = useQuery({
+  const { data: topEarners = [], isLoading: loadingTop, isError: topError } = useQuery({
     queryKey: ["hof-top-earners"],
     queryFn: async () => {
       // Get every plaque (cap 1000) and aggregate client-side, joining
@@ -303,6 +303,13 @@ export default function HallOfFame() {
             {/* stable-key-allow:skeleton-static-array */}
             {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-44 w-full" />)}
           </div>
+        ) : topError ? (
+          <EmptyState
+            variant="warning"
+            icon={<AlertTriangle className="h-7 w-7" />}
+            title="The leaderboard didn't load"
+            description="This is a load error, not an empty board — the standings couldn't be read. Refresh in a moment."
+          />
         ) : podium.length === 0 ? (
           <EmptyState icon={<Trophy className="h-7 w-7" />} title="No plaques awarded yet" />
         ) : (
@@ -443,6 +450,13 @@ export default function HallOfFame() {
           {/* stable-key-allow:skeleton-static-array */}
           {Array.from({ length: 10 }).map((_, i) => <Skeleton key={i} className="aspect-[3/4] w-full" />)}
         </div>
+      ) : plaquesError ? (
+        <EmptyState
+          variant="warning"
+          icon={<AlertTriangle className="h-7 w-7" />}
+          title="The plaque wall didn't load"
+          description="This is a load error, not an empty wall — the awards couldn't be read. Refresh in a moment."
+        />
       ) : filteredPlaques.length === 0 ? (
         <EmptyState
           icon={<Trophy className="h-7 w-7" />}

@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "The Hall of Fame leaderboard can no longer tell your agents that nobody is winning when the data just failed to load. If the awards feed breaks, the podium and the plaque wall now say 'didn't load — refresh', instead of showing an empty board that reads like no one has earned anything.",
+    detail:
+      "HallOfFame.tsx had two live cases of the silent-zero bug: the podium (top earners) and the plaque wall each read their feed as `data = []` with a loading flag but no error flag, so a dead plaque_awards read rendered 'No plaques awarded yet' / 'No plaques match these filters' — a recognition wall telling every agent nobody has won, at the exact moment the feed died. Both queries now take an error signal and render an honest load-error state (gated BEFORE the empty state). Same fake-success class as the AdminFunnelHealth board (MP-WIB-ADMIN-RENDER-HEALTH) and the 465 InsuraCloud rows. Pinned HallOfFame into scripts/check-admin-dashboard-render-health.mjs (now 37 surfaces) so the silent-empty can never come back; guard proven both directions (clean exit 0, flags HallOfFame:145 when the error signal is removed, exit 1).",
+    commit: "mp-wib-admin-render-health-13",
+  },
+  {
+    ts: "today",
+    label:
       "Took the founder photo Sam pulled off the homepage back in September off the server too. It was removed from the page in September but the image file itself was still live on our site — anyone with the link could still pull it up. The file is gone now, and a new check blocks it from ever coming back.",
     detail:
       "The 2026-09-08 change (commit 3e58b71b) removed the founder-credit image from the homepage hero but left the three image files in public/img/, so Vite kept copying them into the deploy and /img/founder-headshot-{88,132}.* stayed publicly fetchable (verified HTTP 200 on prod 2026-11-20, 73 days later). Deleted the files (recoverable in git history) so the next deploy 404s them, and added scripts/check-removed-founder-photo.mjs — wired into verify:core and pre-commit — which fails the build if that exact rejected set reappears. The filenames are pinned, not globbed, so a future approved professional headshot ships under a new filename and passes. The hero still shows the SJ monogram until Sam provides a professional headshot.",

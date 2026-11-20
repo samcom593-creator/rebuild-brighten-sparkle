@@ -119,6 +119,15 @@ const MANIFEST = [
   "src/pages/EthosCallSheet.tsx",                 // producer call sheet (drives retention/reactivation calls = money) — queryFn throws on error + bad-shape, isError renders "This list is missing, not empty. Nobody has been cleared." Empty state is gated on !isError. A dead ethos_call_sheet RPC must never render as an empty "nobody to call" sheet.
   "src/components/dashboard/ManagerGoalBoard.tsx",// MP-303 manager track board (team goal, projected income, Sam's first-hop override $) — queryFn `if (error) throw error`, q.isError renders "Couldn't load the goal board right now." (not a silent $0). A dead fn_owner_goal_board must never render empty/zero income as fact.
   "src/components/dashboard/GoalTrackerCard.tsx", // MP-303 one-person goal + projected income card (projected_mgr_income/total_income/sam_override $) — queryFn `if (error) throw error`, q.isError branch. A dead fn_goal_scorecard must never render a false $0/no-goal all-clear.
+  // MP-WIB-ADMIN-RENDER-HEALTH wave 13 (2026-11-20). The HallOfFame leaderboard
+  // had two LIVE instances of the AdminFunnelHealth bug the deferred-census missed:
+  // `data: plaques = []` and `data: topEarners = []` each took isLoading but NO
+  // error signal, so a dead plaque_awards read rendered the podium as "No plaques
+  // awarded yet" and the wall as "No plaques match these filters" — a recognition
+  // board telling every agent nobody is winning at the exact moment the feed died.
+  // Both now take isError + render an honest "didn't load" warning before the empty
+  // state. Pinned so the silent-empty can never return to the production leaderboard.
+  "src/pages/HallOfFame.tsx",                     // plaque/top-earner recognition leaderboard — plaques + topEarners destructures now take isError; podium + plaque wall render a load-error EmptyState (variant=warning) gated BEFORE the "empty board" state. A dead plaque_awards feed must never render as "nobody has won anything yet".
 ];
 
 const ERROR_SIGNALS = ["isError", "isLoadingError", "status", "error"];

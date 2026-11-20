@@ -44,7 +44,7 @@ export default function Storefront() {
   }, [paid]);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-card text-white">
+    <div className="min-h-screen bg-white dark:bg-card text-foreground">
       <header className="border-b border-slate-200 dark:border-border/60">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 font-bold">

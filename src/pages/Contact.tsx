@@ -8,7 +8,7 @@ export default function Contact() {
   usePageTitle("Contact Galaxy Financial");
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0A0A0A] px-4 py-16 text-white">
+    <div className="min-h-screen bg-white dark:bg-[#0A0A0A] px-4 py-16 text-foreground">
       <div className="mx-auto max-w-4xl space-y-8">
         <div className="space-y-3 text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-teal-300">Galaxy Financial</p>
@@ -43,7 +43,7 @@ export default function Contact() {
             </p>
             <a
               href="mailto:info@kingofsales.net"
-              className="mt-5 inline-flex w-full items-center justify-center rounded-md border border-slate-200 dark:border-border bg-slate-50 dark:bg-muted px-4 py-2.5 text-sm font-medium text-white transition hover:border-teal-400 hover:text-teal-300"
+              className="mt-5 inline-flex w-full items-center justify-center rounded-md border border-slate-200 dark:border-border bg-slate-50 dark:bg-muted px-4 py-2.5 text-sm font-medium text-foreground transition hover:border-teal-400 hover:text-teal-300"
             >
               info@kingofsales.net
             </a>
@@ -59,7 +59,7 @@ export default function Contact() {
             </p>
             <a
               href="tel:+14697676068"
-              className="mt-5 inline-flex w-full items-center justify-center rounded-md border border-slate-200 dark:border-border bg-slate-50 dark:bg-muted px-4 py-2.5 text-sm font-medium text-white transition hover:border-teal-400 hover:text-teal-300"
+              className="mt-5 inline-flex w-full items-center justify-center rounded-md border border-slate-200 dark:border-border bg-slate-50 dark:bg-muted px-4 py-2.5 text-sm font-medium text-foreground transition hover:border-teal-400 hover:text-teal-300"
             >
               (469) 767-6068
             </a>

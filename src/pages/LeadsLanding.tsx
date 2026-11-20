@@ -47,7 +47,7 @@ export default function LeadsLanding() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-8">
-              <Button asChild size="lg" className="bg-white dark:bg-card hover:from-teal-600 hover:to-teal-700 text-white border-0">
+              <Button asChild size="lg" className="bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white border-0">
                 <Link to="/apply" className="gap-2">
                   Get Started <ArrowRight className="h-5 w-5" />
                 </Link>
@@ -180,7 +180,7 @@ export default function LeadsLanding() {
           <p className="text-xl text-slate-600 dark:text-slate-300 mb-8">
             Apply now to join the team and start receiving daily warm leads. Get licensed first if you aren't yet. We walk you through the costs before you buy anything.
           </p>
-          <Button asChild size="lg" className="bg-white dark:bg-card hover:from-teal-600 hover:to-teal-700 text-white border-0">
+          <Button asChild size="lg" className="bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white border-0">
             <Link to="/apply" className="gap-2">
               Apply Now <ArrowRight className="h-5 w-5" />
             </Link>

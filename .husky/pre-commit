@@ -790,6 +790,22 @@ if match '^(src/.*\.(tsx|jsx)$|scripts/check-stale-key-in-list\.mjs$)'; then
   node scripts/check-stale-key-in-list.mjs
 fi
 
+# ---------- check-contrast-white-on-white (website-integrity-bot, 2026-11-20) ----------
+# Trigger: any src/ tsx|jsx or the script itself. Class-of-fix — light/dark
+# migration footgun: an element with base `bg-white` + base `text-white`
+# (neither variant-prefixed) is white-on-white in LIGHT mode. Ships hidden
+# because the default theme is dark (index.html class="dark"); the moment a
+# user toggles light (ThemeToggle/TopBar persist it) every inheriting heading
+# / label / CTA on that element vanishes. Fixed 3 public cash surfaces
+# (Storefront, Contact, LeadsLanding) at launch; baselined @ 14 (admin chips /
+# avatars / rank badges). Pay-down = swap `text-foreground` for the hardcoded
+# `text-white` and lower BASELINE. Same fake-success class as the 465
+# InsuraCloud rows: green in the tested mode, broken in a supported one.
+if match '^(src/.*\.(tsx|jsx)$|scripts/check-contrast-white-on-white\.mjs$)'; then
+  echo "[pre-commit] Contrast-affecting file staged — running check:contrast-white-on-white…"
+  node scripts/check-contrast-white-on-white.mjs
+fi
+
 # ---------- check-relative-time-guard (wave-negtime-1, 2026-07-21) ----------
 # Trigger: any src/ ts|tsx|js|jsx or the script itself. Class-of-fix ratchet
 # closing the negative-time render bug. f97f721d (DashboardCRM getTimeAgo)

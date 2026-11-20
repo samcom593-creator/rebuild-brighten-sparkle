@@ -110,6 +110,15 @@ const MANIFEST = [
   // or an upline acts on: "no license/E&O on file" and "no call QA history".
   "src/components/profile/AgentDocuments.tsx",   // producer compliance docs (license, E&O, voided check, ID, contracting forms) — destructured `data: docs = []` with isLoading but NO error signal, so a dead agent_documents read rendered "Nothing uploaded yet." — a false "this producer has no license on file" that an upline would act on. Now takes isError and renders a load-error line before the empty state
   "src/components/dashboard/CallTranscriptsSection.tsx", // call-QA transcripts — the WORSE variant: the queryFn SWALLOWED .error (`const { data } = await q`), so React Query never saw the failure and a dead call_transcripts read rendered "No transcripts yet" as a success. Now throws on error + takes isError + renders a load-error line
+  // New money-surface cluster (MP-WIB-ADMIN-RENDER-HEALTH wave 12, 2026-11-20).
+  // These shipped AFTER wave-11's full sweep (EthosCallSheet parts 1-6 + MP-303
+  // goal tracker) and are render-health-clean today — but were UNPINNED, so a
+  // future edit could silently reintroduce a dead-feed-as-empty-all-clear on a
+  // $-bearing producer/manager surface with nothing to catch it. Pinned to lock
+  // their current correct error handling (throw-on-error + isError branch) forever.
+  "src/pages/EthosCallSheet.tsx",                 // producer call sheet (drives retention/reactivation calls = money) — queryFn throws on error + bad-shape, isError renders "This list is missing, not empty. Nobody has been cleared." Empty state is gated on !isError. A dead ethos_call_sheet RPC must never render as an empty "nobody to call" sheet.
+  "src/components/dashboard/ManagerGoalBoard.tsx",// MP-303 manager track board (team goal, projected income, Sam's first-hop override $) — queryFn `if (error) throw error`, q.isError renders "Couldn't load the goal board right now." (not a silent $0). A dead fn_owner_goal_board must never render empty/zero income as fact.
+  "src/components/dashboard/GoalTrackerCard.tsx", // MP-303 one-person goal + projected income card (projected_mgr_income/total_income/sam_override $) — queryFn `if (error) throw error`, q.isError branch. A dead fn_goal_scorecard must never render a false $0/no-goal all-clear.
 ];
 
 const ERROR_SIGNALS = ["isError", "isLoadingError", "status", "error"];

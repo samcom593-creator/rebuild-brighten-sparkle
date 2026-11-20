@@ -14,6 +14,7 @@ import {
   ArrowLeft,
   Play,
   Loader2,
+  AlertTriangle,
 } from "lucide-react";
 
 import { GlassCard } from "@/components/ui/glass-card";
@@ -73,37 +74,33 @@ export default function CourseContent() {
   // conditional early returns below or React will throw "Rendered more
   // hooks than during the previous render" and white-screen /course-content.
   // Fetch modules
-  const { data: modules = [], isLoading: loadingModules } = useQuery({
+  // MP-WIB-ADMIN-RENDER-HEALTH wave 14: the queryFn must THROW on a failed read,
+  // not swallow it into `[]`. A caught-and-returned-[] made React Query see a
+  // success, so a dead onboarding_modules feed rendered the "No Course Modules —
+  // content will appear once configured" empty state: a believable "not built
+  // yet" lie told to a licensed agent who needs this course to start writing
+  // business. Now the error surfaces as isError and the UI says so (see below).
+  const { data: modules = [], isLoading: loadingModules, isError: modulesError, refetch: refetchModules } = useQuery({
     queryKey: ["course-modules-full-page"],
     queryFn: async () => {
-      try {
-        const { data, error } = await supabase
-          .from("onboarding_modules").select("id, title, description, video_url, order_index, pass_threshold, is_active")
-          .eq("is_active", true)
-          .order("order_index");
-        if (error) throw error;
-        return (data || []) as CourseModule[];
-      } catch (err) {
-        console.error("Failed to load course modules:", err);
-        return [] as CourseModule[];
-      }
+      const { data, error } = await supabase
+        .from("onboarding_modules").select("id, title, description, video_url, order_index, pass_threshold, is_active")
+        .eq("is_active", true)
+        .order("order_index");
+      if (error) throw error;
+      return (data || []) as CourseModule[];
     },
   });
 
   // Fetch questions
-  const { data: questions = [], isLoading: loadingQuestions } = useQuery({
+  const { data: questions = [], isLoading: loadingQuestions, isError: questionsError } = useQuery({
     queryKey: ["course-questions-full-page"],
     queryFn: async () => {
-      try {
-        const { data, error } = await supabase
-          .from("onboarding_questions").select("id, module_id, question, options, correct_answer, explanation, order_index")
-          .order("order_index");
-        if (error) throw error;
-        return (data || []) as CourseQuestion[];
-      } catch (err) {
-        console.error("Failed to load course questions:", err);
-        return [] as CourseQuestion[];
-      }
+      const { data, error } = await supabase
+        .from("onboarding_questions").select("id, module_id, question, options, correct_answer, explanation, order_index")
+        .order("order_index");
+      if (error) throw error;
+      return (data || []) as CourseQuestion[];
     },
   });
 
@@ -194,6 +191,18 @@ export default function CourseContent() {
               <div key={i} className="h-20 rounded-lg bg-muted/50 animate-pulse" />
             ))}
           </div>
+        ) : (modulesError || questionsError) ? (
+          <GlassCard className="p-12 text-center">
+            <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-amber-500" />
+            <h2 className="text-xl font-semibold mb-2">Course content didn’t load</h2>
+            <p className="text-muted-foreground mb-4">
+              This is a load error, not an empty course. The curriculum is still there — the feed just
+              didn’t respond. Try again.
+            </p>
+            <Button variant="outline" size="sm" onClick={() => refetchModules()}>
+              Retry
+            </Button>
+          </GlassCard>
         ) : modules.length === 0 ? (
           <GlassCard className="p-12 text-center">
             <BookOpen className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />

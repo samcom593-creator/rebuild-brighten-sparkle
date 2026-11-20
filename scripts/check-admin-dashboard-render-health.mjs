@@ -128,6 +128,20 @@ const MANIFEST = [
   // Both now take isError + render an honest "didn't load" warning before the empty
   // state. Pinned so the silent-empty can never return to the production leaderboard.
   "src/pages/HallOfFame.tsx",                     // plaque/top-earner recognition leaderboard — plaques + topEarners destructures now take isError; podium + plaque wall render a load-error EmptyState (variant=warning) gated BEFORE the "empty board" state. A dead plaque_awards feed must never render as "nobody has won anything yet".
+  // Course-curriculum cluster (MP-WIB-ADMIN-RENDER-HEALTH wave 14, 2026-11-20).
+  // The deferred training/course tail: both surfaces render the SAME onboarding
+  // feed and the SAME lie. The queryFns SWALLOWED the read error (CourseContent
+  // via try/catch→[], CourseContentViewer via `const { data } = await`), so a
+  // dead onboarding_modules read rendered "No Course Modules — content will
+  // appear once configured" / "No course modules found": a believable "the
+  // course isn't built yet" told to a licensed recruit who needs this course to
+  // start writing business (CourseContent is agent-facing, gates the
+  // recruiting→income funnel) and to an admin reviewing the curriculum. Both
+  // queryFns now THROW on error, both destructures take isError, and both render
+  // an honest "Course content didn't load" state with Retry, gated BEFORE the
+  // empty state. Pinned so the swallow + silent-empty can never return.
+  "src/pages/CourseContent.tsx",                  // agent-facing course curriculum — dead onboarding_modules/_questions feed must surface as a load error, never "No Course Modules" (blocks a licensed agent's training)
+  "src/components/admin/CourseContentViewer.tsx", // admin course-content preview dialog — same feed, same twin fix; dead read must never render "No course modules found" as fact
 ];
 
 const ERROR_SIGNALS = ["isError", "isLoadingError", "status", "error"];

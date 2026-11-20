@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "The training course pages can no longer tell a new agent the course doesn't exist when the data just failed to load. If the curriculum feed breaks, the agent's course page and the admin content viewer now say the content didn't load and offer a Retry, instead of 'No Course Modules', which reads like the course was never built.",
+    detail:
+      "CourseContent.tsx (agent-facing) and CourseContentViewer.tsx (admin preview) read the same onboarding_modules/onboarding_questions feed, and both hid the read error: CourseContent caught it and returned [], the viewer discarded it with `const { data } = await`. React Query saw a success either way, so a dead feed rendered the empty 'not configured yet' state. For a licensed recruit this is the course that lets them start writing business, so a false 'no modules' stalls the recruiting-to-income funnel. Both queryFns now throw on error, both destructures take an error signal, and both render an honest 'Course content didn't load' state with Retry, gated before the empty state. Same fake-success class as the HallOfFame leaderboard (wave 13) and the 465 InsuraCloud rows. Pinned both into scripts/check-admin-dashboard-render-health.mjs (now 39 surfaces); guard proven both directions (clean exit 0; reverting the error signal re-flags both files, exit 1).",
+    commit: "mp-wib-admin-render-health-14",
+  },
+  {
+    ts: "today",
+    label:
       "The Hall of Fame leaderboard can no longer tell your agents that nobody is winning when the data just failed to load. If the awards feed breaks, the podium and the plaque wall now say 'didn't load — refresh', instead of showing an empty board that reads like no one has earned anything.",
     detail:
       "HallOfFame.tsx had two live cases of the silent-zero bug: the podium (top earners) and the plaque wall each read their feed as `data = []` with a loading flag but no error flag, so a dead plaque_awards read rendered 'No plaques awarded yet' / 'No plaques match these filters' — a recognition wall telling every agent nobody has won, at the exact moment the feed died. Both queries now take an error signal and render an honest load-error state (gated BEFORE the empty state). Same fake-success class as the AdminFunnelHealth board (MP-WIB-ADMIN-RENDER-HEALTH) and the 465 InsuraCloud rows. Pinned HallOfFame into scripts/check-admin-dashboard-render-health.mjs (now 37 surfaces) so the silent-empty can never come back; guard proven both directions (clean exit 0, flags HallOfFame:145 when the error signal is removed, exit 1).",

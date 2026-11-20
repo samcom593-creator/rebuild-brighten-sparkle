@@ -10,6 +10,7 @@ import {
   ChevronRight,
   ExternalLink,
   Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -50,28 +51,34 @@ interface CourseContentViewerProps {
 export function CourseContentViewer({ open, onClose }: CourseContentViewerProps) {
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
 
-  // Fetch modules
-  const { data: modules = [], isLoading: loadingModules } = useQuery({
+  // MP-WIB-ADMIN-RENDER-HEALTH wave 14: `const { data } = await` discarded the
+  // read error, so a dead onboarding_modules feed rendered "No course modules
+  // found" — a false "the course isn't built" that an admin reviewing the
+  // curriculum would act on. Throw on error so isError fires and the UI says the
+  // feed failed, not that the course is empty.
+  const { data: modules = [], isLoading: loadingModules, isError: modulesError, refetch: refetchModules } = useQuery({
     queryKey: ["course-modules-full"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("onboarding_modules")
         .select("*")
         .eq("is_active", true)
         .order("order_index");
+      if (error) throw error;
       return (data || []) as Module[];
     },
     enabled: open,
   });
 
   // Fetch questions
-  const { data: questions = [], isLoading: loadingQuestions } = useQuery({
+  const { data: questions = [], isLoading: loadingQuestions, isError: questionsError } = useQuery({
     queryKey: ["course-questions-full"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("onboarding_questions")
         .select("*")
         .order("order_index");
+      if (error) throw error;
       return (data || []) as Question[];
     },
     enabled: open,
@@ -119,6 +126,17 @@ export function CourseContentViewer({ open, onClose }: CourseContentViewerProps)
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : (modulesError || questionsError) ? (
+          <div className="text-center py-12">
+            <AlertTriangle className="h-10 w-10 mx-auto mb-3 text-amber-500" />
+            <p className="font-medium">Course content didn’t load</p>
+            <p className="text-sm text-muted-foreground mt-1 mb-4">
+              This is a load error, not an empty course. Try again.
+            </p>
+            <Button variant="outline" size="sm" onClick={() => refetchModules()}>
+              Retry
+            </Button>
           </div>
         ) : modules.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">

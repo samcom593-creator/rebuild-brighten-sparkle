@@ -32,6 +32,16 @@ if match '^(index\.html|src/components/landing/HeroSection\.tsx|scripts/check-vs
   node scripts/check-vsl-sync.mjs
 fi
 
+# ---------- check-public-theme-pin (MP-WIB-PUBLIC-THEME-PIN 2026-11-20) ----------
+# The public funnel/brand surface must stay pinned to the brand dark theme in
+# index.html's inline bootstrap — light mode is a known-broken admin-only toggle
+# (136 WCAG contrast failures on `/` in light). Trigger: index.html / the script.
+if match '^(index\.html|scripts/check-public-theme-pin\.mjs)$'; then
+  echo "[pre-commit] index.html/theme-pin staged — running check:public-theme-pin…"
+  node scripts/check-public-theme-pin.mjs
+  node scripts/check-public-theme-pin.mjs --selftest >/dev/null
+fi
+
 # ---------- check-private-surfaces (SEC-PRIVATE-SURFACES 2026-11-11) ----------
 # Sam's DMs / iMessages / camera library pages must stay Sam-only. A manager nav tab +
 # allowManagers route put his DMs on someone else's screen. Trigger: nav, routes, the script.

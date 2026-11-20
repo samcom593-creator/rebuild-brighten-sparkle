@@ -76,8 +76,22 @@
         var root = document.documentElement;
         var t = null;
         try { t = localStorage.getItem('apex:theme:v2'); } catch (e) {}
+        // Public marketing / funnel / brand surfaces are ALWAYS the brand dark
+        // theme (#0A0A0A), regardless of a persisted light preference. Light
+        // mode is a deliberately-kept ADMIN-only toggle (TopBar inside
+        // AuthenticatedShell) whose tokens are known-broken — measured
+        // 2026-11-20 at 136 WCAG contrast failures on `/` in light (invisible
+        // headlines + CTAs). A cold prospect never has a stored preference, so
+        // this is a no-op for them (already dark); it enforces the brand
+        // invariant for any internal user who toggled light and then opened a
+        // public page, and makes "public site is the dark brand" structurally
+        // true. The app shell still honors the toggle — this only pins the
+        // public conversion/brand routes. Guard: scripts/check-public-theme-pin.mjs.
+        var PUBLIC_DARK = /^\/(apply|vsl|schedule-call|get-licensed|leads|get-leads|dialer|contact|storefront|careers)(\/|$)/;
+        var p = location.pathname;
+        var forceDark = p === '/' || PUBLIC_DARK.test(p);
         root.classList.remove('light', 'dark');
-        root.classList.add(t === 'light' ? 'light' : 'dark');
+        root.classList.add(t === 'light' && !forceDark ? 'light' : 'dark');
       })();
     </script>
     <meta charset="UTF-8" />

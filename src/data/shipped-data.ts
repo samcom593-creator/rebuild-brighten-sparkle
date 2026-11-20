@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "Took the founder photo Sam pulled off the homepage back in September off the server too. It was removed from the page in September but the image file itself was still live on our site — anyone with the link could still pull it up. The file is gone now, and a new check blocks it from ever coming back.",
+    detail:
+      "The 2026-09-08 change (commit 3e58b71b) removed the founder-credit image from the homepage hero but left the three image files in public/img/, so Vite kept copying them into the deploy and /img/founder-headshot-{88,132}.* stayed publicly fetchable (verified HTTP 200 on prod 2026-11-20, 73 days later). Deleted the files (recoverable in git history) so the next deploy 404s them, and added scripts/check-removed-founder-photo.mjs — wired into verify:core and pre-commit — which fails the build if that exact rejected set reappears. The filenames are pinned, not globbed, so a future approved professional headshot ships under a new filename and passes. The hero still shows the SJ monogram until Sam provides a professional headshot.",
+    commit: "mp-wib-founder-photo-depublish",
+  },
+  {
+    ts: "today",
+    label:
       "The call sheet now shows only people who can sell or are about to: Ethos contract holders first, then agents with carrier contracts, then licensed agents, then anyone on a finishing step of getting licensed, with the step named on the card. Unlicensed people who have not finished the course are off the sheet, and so are placeholder and staff records.",
     detail:
       "MP-ETHOS-CALLSHEET parts 5 and 6. ethos_call_sheet() returns a person only when they hold the Ethos contract, hold an active carrier contract, are licensed, or are on a finishing step (finished the course, exam booked or taken, fingerprints, waiting on the license; read from the agent record or the application it came from). Anyone already called stays in view. Nobody is deleted: a person who gets licensed later appears on their own. Owner sheet 298 to 249 people, Call now 223 to 178 (63 Ethos, 45 carrier contracts, 69 licensed, 1 finishing). 12 placeholder, test and staff records were also taken off by the hourly roster sync. 19 tests.",

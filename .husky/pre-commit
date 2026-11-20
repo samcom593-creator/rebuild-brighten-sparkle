@@ -1074,3 +1074,14 @@ if match '^(index\.html|src/App\.tsx|src/components/seo/RouteCanonical\.tsx|publ
   echo "[pre-commit] canonical/sitemap file staged — running check:canonical-url…"
   node scripts/check-canonical-url.mjs && node scripts/check-canonical-url.mjs --selftest || exit 1
 fi
+
+# ---------- check-removed-founder-photo (2026-11-20, Website Integrity Bot) ----------
+# Trigger: anything added under public/img/ or the script itself. The shirtless
+# founder photo Sam ordered off the public surface on 2026-09-08 (3e58b71b) was
+# still shipping as orphaned public/img/founder-headshot-* files (HTTP 200 on prod
+# 73 days later). Guard fails if that exact rejected set reappears; a NEW approved
+# headshot uses a new hash-suffixed filename and passes. <1s.
+if match '^(public/img/.*|scripts/check-removed-founder-photo\.mjs)$'; then
+  echo "[pre-commit] public/img change staged — running check:removed-founder-photo…"
+  node scripts/check-removed-founder-photo.mjs && node scripts/check-removed-founder-photo.mjs --selftest || exit 1
+fi

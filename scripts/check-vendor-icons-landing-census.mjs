@@ -84,15 +84,39 @@ const LANDING_FILES = [
   "src/components/landing/StickyMobileCTA.tsx",
   // App-level lazy that fires on every route including `/`
   "src/components/SupabaseHealthBanner.tsx",
+  // MP-WIB-EAGER-CHROME-ICONS (2026-11-21): App.tsx EAGER (non-lazy) chrome.
+  // These are not landing components and don't "render on /", but they sit on
+  // the ENTRY's eager static import graph — so index.html modulepreloads their
+  // chunk on every cold homepage load, putting their lucide icons on the cold
+  // critical path exactly like landing icons. The wave-46 census only covered
+  // files that render on `/`, so this whole class was invisible: ErrorBoundary
+  // (alert-triangle shim), DemoModeBanner (eye-off) and AccessDeniedPanel
+  // (shield-alert) pulled the full ~17 KB gz vendor-icons blob onto every cold
+  // load. Keep in sync with App.tsx's eager (non-lazy) local imports.
+  "src/components/ErrorBoundary.tsx",
+  "src/components/DemoModeBanner.tsx",
+  "src/components/AccessDeniedPanel.tsx",
+  "src/components/ui/scroll-to-top.tsx",
 ];
 
 // ---------- step 3: PascalCase → kebab-case ----------
 // Mirrors lucide-react's icon-file naming. E.g. "ArrowRight" → "arrow-right",
-// "Building2" → "building-2", "HeartHandshake" → "heart-handshake",
-// "AlertTriangle" → "triangle-alert" (special rename in lucide v0.350+).
-const LUCIDE_RENAMES = {
-  AlertTriangle: "triangle-alert",
-};
+// "Building2" → "building-2", "HeartHandshake" → "heart-handshake".
+//
+// MP-WIB-EAGER-CHROME-ICONS (2026-11-21): AlertTriangle USED to be renamed
+// here to "triangle-alert". That was wrong for CHUNKING: lucide ships
+// AlertTriangle as a re-export SHIM file (alert-triangle.js → triangle-
+// alert.js), and rollup's manualChunks `test` runs against the RESOLVED
+// module path — the shim file alert-triangle.js, not its body. Collapsing the
+// import to "triangle-alert" made step 4 require only the body (already in the
+// regex) and never check the shim, so SupabaseHealthBanner AND ErrorBoundary
+// both imported AlertTriangle and silently dropped alert-triangle.js into
+// vendor-icons while this census reported clean. Removed the rename so the
+// import resolves to its own file name ("alert-triangle"); step 4's
+// resolveShim() then also requires the body ("triangle-alert"). Both must be
+// in the regex or the commit fails. Map kept (empty) for genuine future
+// renames.
+const LUCIDE_RENAMES = {};
 function pascalToKebab(name) {
   if (LUCIDE_RENAMES[name]) return LUCIDE_RENAMES[name];
   return name

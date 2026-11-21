@@ -461,10 +461,22 @@ export default defineConfig(({ mode }) => ({
             // Defense: wave-47 pre-commit guard catches direct lucide imports
             // but doesn't follow re-export shims — wave-48 manually adds the
             // 3 known shims; wave-49 will automate shim resolution.
+            // MP-WIB-EAGER-CHROME-ICONS (2026-11-21): the wave-47 census only
+            // audited files that RENDER on `/` (Index + landing kids). But the
+            // modulepreload graph in index.html is the ENTRY's eager static
+            // import graph — App.tsx eagerly imports app-chrome that is NOT a
+            // landing component yet still sits on the cold critical path:
+            // ErrorBoundary (alert-triangle — the AlertTriangle *alias* shim →
+            // triangle-alert body, the exact shim-drift wave-48/49 warned of),
+            // DemoModeBanner (eye-off), AccessDeniedPanel (shield-alert). Those
+            // 3 icons fell into vendor-icons, so the full 17.2 KB gz lucide blob
+            // was modulepreloaded on every cold homepage load. Added the 3 names
+            // here AND extended the census LANDING_FILES to cover the eager
+            // chrome so the class can't silently re-open.
             {
               name: "vendor-icons-landing",
               priority: 75,
-              test: "[\\\\/]node_modules[\\\\/]lucide-react[\\\\/]dist[\\\\/]esm[\\\\/]icons[\\\\/](arrow-right|award|badge-check|bar-chart-3|book-open|bot|building-2|calendar|chart-column|check|check-circle-2|chevron-down|chevron-up|circle-check|clipboard-check|clock|cloud|compass|crown|dollar-sign|file-check|file-check-2|file-pen-line|file-signature|file-text|graduation-cap|headphones|heart|heart-handshake|home|house|instagram|mail|map-pin|menu|message-circle|mouse-pointer-click|network|phone|play|quote|refresh-cw|repeat-2|route|search|shield|smartphone|sparkles|target|trending-up|triangle-alert|trophy|user-plus|users|users-round|workflow|x|zap)\\.js$",
+              test: "[\\\\/]node_modules[\\\\/]lucide-react[\\\\/]dist[\\\\/]esm[\\\\/]icons[\\\\/](alert-triangle|arrow-right|award|badge-check|bar-chart-3|book-open|bot|building-2|calendar|chart-column|check|check-circle-2|chevron-down|chevron-up|circle-check|clipboard-check|clock|cloud|compass|crown|dollar-sign|eye-off|file-check|file-check-2|file-pen-line|file-signature|file-text|graduation-cap|headphones|heart|heart-handshake|home|house|instagram|mail|map-pin|menu|message-circle|mouse-pointer-click|network|phone|play|quote|refresh-cw|repeat-2|route|search|shield|shield-alert|smartphone|sparkles|target|trending-up|triangle-alert|trophy|user-plus|users|users-round|workflow|x|zap)\\.js$",
             },
             {
               name: "vendor-icons",

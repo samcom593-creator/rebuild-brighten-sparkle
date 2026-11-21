@@ -282,6 +282,13 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       // documents, audit) are reachable from its "Earlier records" row, as history and reference.
       { label: "Contracting", href: "/dashboard/contracting", icon: FileSearch, adminOnly: true },
       { label: "Import", href: "/dashboard/import", icon: Import, adminOnly: true },
+      // MP-WIB-ADMIN-NAV-ORPHANS: two requireAdmin owner surfaces were live routes with
+      // ZERO path in the desktop sidebar or Cmd+K — reachable only by typing the URL.
+      // Agent Duplicates is the identity-merge surface apex-doctor Check #14 mails Sam
+      // weekly; Strikes is the agent-conduct surface Sam named a primary admin goal. Both
+      // are pinned navigable by check:admin-route-navigable so this can't silently regress.
+      { label: "Agent Duplicates", href: "/admin/agent-duplicates", icon: IdCard, adminOnly: true },
+      { label: "Strikes", href: "/dashboard/strikes", icon: Shield, adminOnly: true },
       // MP-302: subscriptions, integrations and what is owed, in one place.
       { label: "System", href: "/dashboard/system-health", icon: Activity, adminOnly: true, samOnly: true },
       { label: "Calendar", href: "/dashboard/calendar", icon: CalendarDays, adminOnly: true },

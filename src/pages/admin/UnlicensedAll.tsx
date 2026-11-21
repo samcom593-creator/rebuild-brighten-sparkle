@@ -47,6 +47,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { concurrentMap } from "@/lib/concurrentMap";
 import { format } from "date-fns";
 import { RecoveryBatchDrawer, type RecoveryBatchRow } from "@/components/unlicensed/RecoveryBatchDrawer";
 import { SuppressionDialog, type SuppressionTarget } from "@/components/unlicensed/SuppressionDialog";
@@ -554,36 +555,34 @@ export default function UnlicensedAll() {
       return;
     }
     setBulkRunning(true);
-    let ok = 0;
-    let fail = 0;
-    for (const r of targets) {
-      try {
-        if (action === "assign_va") {
-          const { error } = await supabase.rpc("unified_assign_va" as any, {
-            p_id: r.id, p_va_user_id: bulkVaId, p_source: r.source,
-          });
-          if (error) throw error;
-        } else if (action === "mark_contacted") {
-          const { error } = await supabase.rpc("unified_mark_contacted" as any, {
-            p_id: r.id, p_source: r.source,
-          });
-          if (error) throw error;
-        } else if (action === "schedule" && bulkFollowUp) {
-          const iso = bulkFollowUp.toISOString();
-          const table = r.source === "applied" ? "applications" : "aged_leads";
-          const { error } = await supabase
-            .from(table as any)
-            .update({ next_action_due_at: iso } as any)
-            .eq("id", r.id);
-          if (error) throw error;
-        }
-        ok++;
-      } catch (e) {
-        fail++;
-        // Continue on failure so a single row does not block the rest.
-        // Failures surface in the final toast summary.
+    // Each target is a distinct application/aged_lead row, so run the per-row
+    // writes with a small concurrency cap rather than one serial await per row
+    // (a full-queue selection was N sequential round-trips). Per-row tolerance
+    // is preserved — a single failed row never blocks the rest; failures surface
+    // in the final toast summary.
+    const settled = await concurrentMap(targets, 8, async (r) => {
+      if (action === "assign_va") {
+        const { error } = await supabase.rpc("unified_assign_va" as any, {
+          p_id: r.id, p_va_user_id: bulkVaId, p_source: r.source,
+        });
+        if (error) throw error;
+      } else if (action === "mark_contacted") {
+        const { error } = await supabase.rpc("unified_mark_contacted" as any, {
+          p_id: r.id, p_source: r.source,
+        });
+        if (error) throw error;
+      } else if (action === "schedule" && bulkFollowUp) {
+        const iso = bulkFollowUp.toISOString();
+        const table = r.source === "applied" ? "applications" : "aged_leads";
+        const { error } = await supabase
+          .from(table as any)
+          .update({ next_action_due_at: iso } as any)
+          .eq("id", r.id);
+        if (error) throw error;
       }
-    }
+    });
+    const ok = settled.filter((s) => s.ok).length;
+    const fail = settled.length - ok;
     setBulkRunning(false);
     qc.invalidateQueries({ queryKey: ["v_unlicensed_all"] });
     qc.invalidateQueries({ queryKey: ["mp257_kpis"] });

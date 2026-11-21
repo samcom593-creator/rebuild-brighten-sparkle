@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetailSheet";
 import { cn } from "@/lib/utils";
+import { concurrentMap } from "@/lib/concurrentMap";
 import { toast } from "sonner";
 import { formatPhoneDisplay as formatPhoneDisplayLib, contactLinkProps, phoneHref, smsHref } from "@/lib/phone";
 
@@ -982,24 +983,21 @@ export default function RecoveryQueue() {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
     setBulkRunning(true);
-    let ok = 0;
-    let fail = 0;
     const toastId = toast.loading(`Applying to ${ids.length}...`);
-    for (const id of ids) {
-      try {
-        if (action === "contacted") {
-          const { error } = await supabase.rpc("unified_mark_contacted" as any, { p_id: id, p_source: "applied" });
-          if (error) throw error;
-        } else if (action === "phone_bad") {
-          const { error } = await supabase.rpc("unified_mark_phone_bad" as any, { p_id: id, p_source: "applied", p_reason: "user_marked_bad" });
-          if (error) throw error;
-        }
-        ok++;
-      } catch {
-        // empty-catch-allow:bulk-per-row-tolerant-continue
-        fail++;
+    // Each RPC hits a distinct application row — no lock contention — so run
+    // them with a small concurrency cap instead of one-at-a-time. Per-row
+    // tolerance (one bad row never aborts the batch) is preserved by concurrentMap.
+    const settled = await concurrentMap(ids, 8, async (id) => {
+      if (action === "contacted") {
+        const { error } = await supabase.rpc("unified_mark_contacted" as any, { p_id: id, p_source: "applied" });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.rpc("unified_mark_phone_bad" as any, { p_id: id, p_source: "applied", p_reason: "user_marked_bad" });
+        if (error) throw error;
       }
-    }
+    });
+    const ok = settled.filter((s) => s.ok).length;
+    const fail = settled.length - ok;
     setBulkRunning(false);
     toast.dismiss(toastId);
     if (fail === 0) toast.success(`Updated ${ok}`);
@@ -1012,21 +1010,16 @@ export default function RecoveryQueue() {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
     setBulkRunning(true);
-    let ok = 0;
-    let fail = 0;
     const toastId = toast.loading(`Advancing ${ids.length}...`);
-    for (const id of ids) {
-      try {
-        const { error } = await supabase.rpc("unified_set_license_progress" as any, {
-          p_id: id, p_progress: stage, p_source: "applied",
-        });
-        if (error) throw error;
-        ok++;
-      } catch {
-        // empty-catch-allow:bulk-per-row-tolerant-continue
-        fail++;
-      }
-    }
+    // Distinct row per id → safe to run concurrently with a cap (see runBulk).
+    const settled = await concurrentMap(ids, 8, async (id) => {
+      const { error } = await supabase.rpc("unified_set_license_progress" as any, {
+        p_id: id, p_progress: stage, p_source: "applied",
+      });
+      if (error) throw error;
+    });
+    const ok = settled.filter((s) => s.ok).length;
+    const fail = settled.length - ok;
     setBulkRunning(false);
     toast.dismiss(toastId);
     if (fail === 0) toast.success(`Advanced ${ok}`);

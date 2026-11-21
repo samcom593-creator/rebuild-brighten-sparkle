@@ -537,7 +537,16 @@ async function probe(browser, leg, route) {
 import { writeFileSync } from "node:fs";
 const RESULT_FILE = process.env.RESULT_FILE || "";
 const _err = console.error;
-function record(obj) { if (RESULT_FILE) { try { writeFileSync(RESULT_FILE, JSON.stringify(obj)); } catch (e) { _err("RESULT_FILE write failed: " + e); } } }
+// Stamp `ts` on EVERY written marker (centralised here, the sole RESULT_FILE
+// writer, so no current or future verdict path can emit a timeless marker). The
+// marker is the single source of truth the cron runner reads to decide whether
+// to page Sam about a broken public funnel; without a ts a reader cannot tell a
+// fresh CLEAN from one left behind by a dead probe (this script's own header
+// records it ran "by nothing, graded by nothing" for WEEKS before anyone
+// noticed). The three sibling site-health markers (landing-feeds /
+// submit-application / applicant-magic-link) already carry ts; this one didn't.
+// `...obj` last would let a caller override ts, but none pass one.
+function record(obj) { if (RESULT_FILE) { try { writeFileSync(RESULT_FILE, JSON.stringify({ ts: new Date().toISOString(), ...obj })); } catch (e) { _err("RESULT_FILE write failed: " + e); } } }
 
 // --selftest: prove the token detector in BOTH directions with zero rendering
 // (no browser, no network), so it can run anywhere and never flakes. It calls

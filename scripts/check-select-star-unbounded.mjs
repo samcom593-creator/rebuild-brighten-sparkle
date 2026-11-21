@@ -50,6 +50,28 @@ import path from "node:path";
 //   the baseline's whole job is to tolerate the stable ones and fail only on
 //   a NEW one. (e.g. AgentPipeline.tsx builds its filter on a reassigned var.)
 //
+//   REVIEWED — stable full-row FPs, do NOT re-chase as "paydown" (MP-WIB,
+//   2026-11-21, measured live vs the DB + the component's own row interface):
+//   The three REAL over-fetch leaks are already shipped — AllLeadsPanel
+//   (applications 159->12 cols, ebc7ec9c), DeletedLeadsVault (deleted_leads,
+//   e4567f30), GettingStarted (getting_started_progress 30->22, free-text
+//   `notes` dropped, 76037721). The two WIDEST remaining baselined keys were
+//   measured and are genuine full-row surfaces, NOT paydown targets:
+//     - LaunchBoard.tsx::content_cards — 28 of 33 cols ARE the live `Card`
+//       model (all free-text + the `brief` jsonb), inline-edited and
+//       round-tripped via .update(...).select("*"); only 5 tiny scalars are
+//       discarded (created_by/created_at/updated_at/published_confirmed_by/
+//       status_changed_at). (Bounded future win if ever needed: lazy-load
+//       `brief`+heavy free-text per-card-on-open; deferred — tiny byte return.)
+//     - InactiveAgents.tsx::inactive_agent_queue — 16 of 19 cols ARE the live
+//       `InactiveEntry` model (all 3 free-text: reason/recovery_notes/
+//       resolution); only 3 tiny scalars discarded (resolved_by/created_at/
+//       updated_at). Recovery-console view.
+//   Every other live baselined key is low-payload (<40 rows, <=16 narrow cols)
+//   or 0-row prevention-only (content_access/content_library/
+//   candidate_smart_goals). Projecting any of them drops only tiny scalars for
+//   ~no bytes and risks the CRUD round-trip = a marginal finding; don't.
+//
 //   Table name that is a variable / template literal -> `unprovable`: reported
 //   as its own verdict, never silently counted safe, never counted a hit.
 //

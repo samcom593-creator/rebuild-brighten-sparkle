@@ -53,12 +53,8 @@ interface DeletedLead {
   last_name: string | null;
   email: string;
   phone: string | null;
-  city: string | null;
-  state: string | null;
   license_status: string | null;
   deleted_at: string;
-  reason: string | null;
-  original_data: any;
 }
 
 export default function DeletedLeadsVault() {
@@ -76,9 +72,15 @@ export default function DeletedLeadsVault() {
   const fetchDeletedLeads = async () => {
     setLoading(true);
     try {
+      // Project to the columns the table renders. The full-row snapshot
+      // (`original_data`, a jsonb blob) is the heaviest column and is only
+      // needed when an aged lead is restored, so it is loaded lazily per-row
+      // in handleRestore — never for every row at list time. deleted_leads is
+      // an append-only archive that only grows, so pulling every column of
+      // every row (incl. PII never shown) would get heavier forever.
       const { data, error } = await supabase
         .from("deleted_leads")
-        .select("*")
+        .select("id, original_id, source, first_name, last_name, email, phone, license_status, deleted_at")
         .order("deleted_at", { ascending: false });
 
       if (error) throw error;
@@ -109,8 +111,17 @@ export default function DeletedLeadsVault() {
 
         if (error) throw error;
       } else if (lead.source === "aged_leads") {
-        // Re-insert the aged lead
-        const originalData = lead.original_data;
+        // Re-insert the aged lead. Fetch the full-row snapshot for just this
+        // one row (kept out of the list query so the vault stays light as the
+        // archive grows).
+        const { data: snap, error: snapErr } = await supabase
+          .from("deleted_leads")
+          .select("original_data")
+          .eq("id", lead.id)
+          .maybeSingle();
+        if (snapErr) throw snapErr;
+        const originalData = (snap?.original_data ?? null) as any;
+        if (!originalData) throw new Error("Original lead data is missing; cannot restore this lead.");
         const { error } = await supabase.from("aged_leads").insert({
           id: lead.original_id,
           first_name: originalData.first_name,

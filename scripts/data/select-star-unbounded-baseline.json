@@ -1,6 +1,6 @@
 {
   "_why": "Floor for check-select-star-unbounded.mjs, keyed per file::table so a regression in one file cannot be offset by a pay-down in another (MP-356). No line numbers: they shift under unrelated edits. See the guard header.",
-  "total": 16,
+  "total": 15,
   "sites": {
     "src/components/admin/CourseContentViewer.tsx::onboarding_questions": 1,
     "src/components/dashboard/AgentTaskManager.tsx::agent_tasks": 1,
@@ -12,7 +12,6 @@
     "src/pages/ContentLibrary.tsx::content_library": 1,
     "src/pages/ContentQueue.tsx::content_access": 1,
     "src/pages/ContentQueue.tsx::content_queue": 1,
-    "src/pages/DeletedLeadsVault.tsx::deleted_leads": 1,
     "src/pages/GettingStarted.tsx::getting_started_progress": 1,
     "src/pages/HiringManagerAssignments.tsx::hiring_manager_assignments": 1,
     "src/pages/InactiveAgents.tsx::inactive_agent_queue": 1,

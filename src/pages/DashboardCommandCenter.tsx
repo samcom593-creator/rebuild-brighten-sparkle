@@ -175,7 +175,10 @@ export default function DashboardCommandCenter() {
     queryKey: ["command-center-managers"],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke("get-active-managers");
-      if (error) return [];
+      // A dead get-active-managers must not read as "no managers" in the
+      // reassignment menu (MP-273 error-discard). Throw so the query retries and
+      // goes isError, instead of silently returning an empty roster of managers.
+      if (error) throw error;
       return (data?.managers as { id: string; name: string }[]) || [];
     },
     staleTime: 300000,
@@ -523,7 +526,16 @@ export default function DashboardCommandCenter() {
   //   counts as live only when the agent has a submitted/active deal posted in
   //   the last 10 days. Agent-row status and onboarding stage do not count.
   // Returns string[] so TanStack Query can serialize the cache correctly (Set is not JSON-serializable)
-  const { data: activeProducerIds } = useQuery({
+  // MP-WIB-COMMAND-CENTER-PRODUCER-TRUTH: this read backs the Live Agents and
+  // Producers headline KPIs. Until this wave it swallowed dealsRes.error — the
+  // `deals` read could fail and `(dealsRes.data || [])` returned an empty set,
+  // so the roster command center rendered Live Agents: 0 / Producers: 0 while
+  // the roster itself (agentsData) loaded fine. The page's own error gate only
+  // fires when agentsData fails, so a dead `deals` feed read as a true, quiet
+  // "no producers today" — the same fake-$0 class as the landing counter, the
+  // hero ticker, and the CFO snapshot. Now it throws, so the query goes isError
+  // (and retries), and the tiles fall back to "—" instead of a plausible 0.
+  const activeProducerQuery = useQuery({
     queryKey: ["live-agent-set-v2", LIVE_AGENT_DEAL_WINDOW_DAYS],
     staleTime: 120_000,
     refetchInterval: 300_000,
@@ -533,22 +545,29 @@ export default function DashboardCommandCenter() {
         .or(liveDealWindowOr(getLiveAgentCutoffIso()))
         .in("status", DEAL_TRUTH_STATUS_FILTER)
         .limit(2500);
+      if (dealsRes.error) throw dealsRes.error;
+      if (!Array.isArray(dealsRes.data)) throw new Error("The live-producer deals read returned no result set.");
 
       const ids = new Set<string>();
-      for (const r of (dealsRes.data || []) as any[]) {
+      for (const r of dealsRes.data as { agent_id: string | null }[]) {
         if (r.agent_id) ids.add(r.agent_id);
       }
       return Array.from(ids);
     },
   });
 
-  const activeProducerSet = useMemo(() => new Set(activeProducerIds ?? []), [activeProducerIds]);
+  const activeProducerSet = useMemo(() => new Set(activeProducerQuery.data ?? []), [activeProducerQuery.data]);
 
   const summaryStats = useMemo(() => {
-    if (!agentsData) return { totalAlp: 0, activeAgents: 0, producers: 0, weakPerformers: 0, totalDeals: 0 };
+    if (!agentsData) return { totalAlp: 0, activeAgents: null as number | null, producers: null as number | null, weakPerformers: 0, totalDeals: 0 };
 
-    const activeAgents = agentsData.filter((a) => !a.isDeactivated && !a.isInactive && activeProducerSet.has(a.id));
-    const producers = activeAgents;
+    // Live Agents / Producers depend on the live-producer deals read. When that
+    // read has not SUCCEEDED the count is unknown (null -> "—"), never a 0 that
+    // reads as "no producers" while the feed is merely dead. A successful read
+    // of an empty producer set is a real 0 and is shown as 0.
+    const liveCount = activeProducerQuery.isSuccess
+      ? agentsData.filter((a) => !a.isDeactivated && !a.isInactive && activeProducerSet.has(a.id)).length
+      : null;
 
     const dayOfWeek = new Date().getDay();
     const isThursdayOrLater = dayOfWeek >= 4 || dayOfWeek === 0;
@@ -561,12 +580,12 @@ export default function DashboardCommandCenter() {
 
     return {
       totalAlp: agentsData.reduce((sum, a) => sum + a.totalAlp, 0),
-      activeAgents: activeAgents.length,
-      producers: producers.length,
+      activeAgents: liveCount,
+      producers: liveCount,
       weakPerformers: weak.length,
       totalDeals: agentsData.reduce((sum, a) => sum + a.totalDeals, 0),
     };
-  }, [agentsData, activeProducerSet]);
+  }, [agentsData, activeProducerSet, activeProducerQuery.isSuccess]);
 
   const agentsForPopup = useMemo(
     () => (agentsData || []).map((agent) => ({
@@ -693,7 +712,7 @@ export default function DashboardCommandCenter() {
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Live Agents</p>
-                    <p className="text-2xl font-bold">{summaryStats.activeAgents}</p>
+                    <p className="text-2xl font-bold">{summaryStats.activeAgents ?? "—"}</p>
                   </div>
                 </div>
               </CardContent>
@@ -743,7 +762,7 @@ export default function DashboardCommandCenter() {
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Producers</p>
-                        <p className="text-2xl font-bold">{summaryStats.producers}</p>
+                        <p className="text-2xl font-bold">{summaryStats.producers ?? "—"}</p>
                       </div>
                     </div>
                   </CardContent>

@@ -330,8 +330,11 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
   //   - $1.2M income in first year (founder milestone supplied by Sam)
   //   - 70%-145% commission range (Hero stat pill + this page line 224)
   // active_agents + carriers stay live via landing_live_stats() RPC.
-  // The check:landing-marketing-claims guard locks future $NNNM+/NNNK+
-  // placeholders out of landing/* surfaces.
+  // The check:landing-marketing-claims guard locks future $NNNM+/NNNK+ AND
+  // decimal-magnitude ($N.NM/$N.NK) placeholders out of landing/* surfaces.
+  // The "$1.2M" below is the one allowlisted founder figure (MP-WIB-DECIMAL-
+  // EARNINGS 2026-11-21 closed the decimal seam — before that, the decimal
+  // replacement this wave chose was invisible to the guard it cited).
   const stats = [
     { value: "$1.2M", label: "First-Year Income" },
     { value: "70%–145%", label: "Commission Range" },

@@ -129,6 +129,13 @@ const ALLOW_LIST = new Set([
   // per existing $100K+ ALLOW_LIST precedent + Sam's known top-producer
   // record. Bare "$120K+" without that bounded context still gets flagged.
   "$120K+",
+  // MP-WIB-DECIMAL-EARNINGS (2026-11-21): founder milestone supplied by Sam
+  // (CareerPathwaySection.tsx:330 comment, wave-105+ 2026-06-20). Rendered on
+  // the Hero founder credit (HeroSection.tsx) + the CareerPathway "First-Year
+  // Income" stat tile (×2). The ONE authorized decimal-magnitude earnings
+  // figure; any OTHER "$N.NM/$N.NK" on a landing surface now fails until
+  // justified here.
+  "$1.2M",
 ]);
 
 // Marketing-claim patterns that look like fabricated lifetime/aggregate metrics.
@@ -157,6 +164,22 @@ const SUSPECT_PATTERNS = [
   // with bare "NNN+" instead of K/M suffix. Word-paired to avoid
   // catching innocuous numeric-plus uses ("3+ years", "2+ kids").
   /(?<![$\d])\d{2,4}\+\s+(Successful|Top|Elite|Active|Licensed|Producing|Closing|Verified|Qualified)\s+(Agents?|Producers?|Closers?|Recruits?|Hires?)\b/gi,
+  // MP-WIB-DECIMAL-EARNINGS (2026-11-21): every $-magnitude pattern above
+  // requires a trailing "+" (the aggregate "$150M+" shape) or a spelled-out
+  // magnitude ("$12 Million"). A DECIMAL abbreviated claim -- "$1.2M income in
+  // first year" -- carries neither, so it was invisible to this guard on the
+  // #1 recruiting surface. CareerPathwaySection.tsx:326-334 even shipped "$1.2M"
+  // as the brand-safe REPLACEMENT for the killed "$150M+" placeholder under a
+  // comment asserting "this guard locks future placeholders out" -- but the
+  // replacement it chose was precisely the shape the guard could not see, so a
+  // future wave could inflate it to "$2.5M" / add "$5.0M earned" and nothing
+  // would fire. Unqualified personal-earnings figures on an insurance-recruiting
+  // page are FTC/state-insurance regulator-visible (same risk class as the
+  // social frame-risk guard). Decimals only: integer round claims like "$5K" /
+  // "$10K" stay deliberately permitted (bounded aspirational pace, see the
+  // $\d{2,}K\+ comment above). Sam's one authorized figure "$1.2M" is in
+  // ALLOW_LIST.
+  /\$\d+\.\d+[KMB]\b/g,     // $1.2M / $5.0K / $2.5B (decimal, no "+")
 ];
 
 // Wave-2 (2026-06-20): superlative + puff-word patterns. Same brand-truth

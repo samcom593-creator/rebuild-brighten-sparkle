@@ -72,6 +72,23 @@ const CHECKLIST_STEPS = [
   { key: "closed_first_deal", label: "Closed first deal", stage: "producing", href: "/dashboard/agent-pipeline" },
 ] as const;
 
+// MP-WIB-SELECT-STAR-PAYDOWN: the admin/manager board reads EVERY row (237 today
+// and grow-forever); the old select("*") pulled all 30 columns to render ~22. The
+// 8 extras are never shown — stage_entered_at, stalled_alert_sent_at, created_at,
+// updated_at, joined_whatsapp, contracted_with_carriers,
+// contracting_stalled_alerted_at, and the free-text `notes` column (internal
+// onboarding notes) that this page never renders. Project to exactly what the UI
+// reads, built FROM the checklist so the two can't drift: add a step above and its
+// column joins the select automatically. The agent self-view (row-scoped by
+// agent_id) shares this query and the same key set, so it stays correct too.
+const PROGRESS_COLUMNS = [
+  "id",
+  "agent_id",
+  "current_stage",
+  "last_activity_at",
+  ...CHECKLIST_STEPS.map((s) => s.key),
+].join(", ");
+
 // WP6 (2026-11-10): the facts the system already records, from the own-row RPC
 // public.my_activation_state(). Nothing wrote these checkboxes automatically
 // (completed_profile 1 of 233 rows, received_license 1 while 180 were licensed),
@@ -187,7 +204,7 @@ export default function GettingStarted() {
   const { data: progressRows = [], isLoading, isError, error: progressError, refetch } = useQuery({
     queryKey: ["getting-started-progress", canViewAll, myAgentId],
     queryFn: async (): Promise<ProgressRow[]> => {
-      let q = supabase.from("getting_started_progress" as any).select("*");
+      let q = supabase.from("getting_started_progress" as any).select(PROGRESS_COLUMNS);
       if (!canViewAll && myAgentId) q = q.eq("agent_id", myAgentId);
       const { data, error } = await q.order("last_activity_at", { ascending: false });
       // A dead onboarding feed must surface as an error, never as an empty board.

@@ -247,6 +247,23 @@ export default function Apply() {
   const sourceParam = searchParams.get("source")?.trim().toLowerCase() ?? "";
   const utmMediumParam = searchParams.get("utm_medium")?.trim().toLowerCase() ?? "";
   const isQuickQualifyTraffic = sourceParam === "ad" || utmMediumParam === "paid_social";
+  // MP-WIB-PARTNER-PATH-CAPTURE (2026-11-21): the landing hero's three partner-
+  // path cards each append ?track=<agency-builder|licensed-producer> so a recruit
+  // self-declares which audience they are BEFORE they reach the form — and
+  // "agency builder" (wants to scale a downline = override income) is the single
+  // highest-value recruit type. That self-selection fired only into client
+  // analytics (hero_partner_path_click) and was dropped the instant they
+  // submitted: the same emitted-but-never-persisted class as the `motivation`
+  // field (check-apply-field-parity, 2026-11-18). licenseStatus can't recover it
+  // — a builder and a solo producer are both "licensed". Captured here and
+  // threaded into attribution_json (open jsonb, first-write-wins) so the
+  // call-priority view can read partnerPath per applicant. Normalized to a short
+  // slug so a hand-edited ?track= can't inject arbitrary text into the blob.
+  const partnerPath = (searchParams.get("track") ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "")
+    .slice(0, 40);
   const [referrerId, setReferrerId] = useState<string | null>(null);
   const [referrerName, setReferrerName] = useState<string | null>(null);
   // F01 acceptance: an unknown, deactivated or uncheckable ?ref= code is said out
@@ -762,7 +779,14 @@ export default function Apply() {
       firstTouchAt: attribution.firstTouchAt,
       firstLandingUrl: attribution.firstLandingUrl,
       firstReferrer: attribution.firstReferrer,
-      attributionJson: attribution.attributionJson,
+      // Fold the hero partner-path self-selection into the audit blob when
+      // present. attribution_json is an open jsonb (submit-application:181,219),
+      // so this reaches the applicant row with no schema change and no new
+      // column. Only set when non-empty so direct /apply visits don't write a
+      // null key.
+      attributionJson: partnerPath
+        ? { ...attribution.attributionJson, partnerPath }
+        : attribution.attributionJson,
       landingUrl: attribution.landingUrl,
     };
   };

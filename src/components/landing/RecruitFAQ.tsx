@@ -92,12 +92,12 @@ export function RecruitFAQ() {
           })}
         </div>
       </div>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
-        "@context": "https://schema.org",
-        "@type": "FAQPage",
-        "mainEntity": FAQ.map(f => ({ "@type": "Question", "name": f.q,
-          "acceptedAnswer": { "@type": "Answer", "text": f.a }})),
-      }) }} />
+      {/* FAQPage JSON-LD is served STATICALLY from index.html (byte-matched to
+          the FAQ array above by scripts/check-faq-schema-static.mjs). This
+          component is lazy + client-only, so a <script> injected here is
+          invisible to non-JS crawlers (GPTBot/ClaudeBot/PerplexityBot/Gemini) —
+          exactly the GEO/AI-search audience the FAQ is written for. Edit the FAQ
+          copy above and the matching block in index.html together. */}
     </section>
   );
 }

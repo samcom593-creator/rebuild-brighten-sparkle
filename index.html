@@ -203,9 +203,15 @@
          (imported from main.tsx). If a vendor's env var is missing at build,
          that vendor stays dark — nothing throws. Wired 2026-05-24. -->
 
-    <!-- Structured data: Organization + VideoObject for SERP + AI Overview eligibility -->
+    <!-- Structured data: Organization + VideoObject + FAQPage for SERP + AI Overview
+         eligibility. The FAQPage is byte-matched to src/components/landing/RecruitFAQ.tsx
+         by check:faq-schema-static — RecruitFAQ (a lazy, client-only component) renders
+         the visible accordion; this static block is its SERVED mirror so non-JS crawlers
+         (GPTBot, ClaudeBot, PerplexityBot, Gemini) actually read the Q&As. Edit the copy
+         in RecruitFAQ.tsx and this block together or the guard fails the build. -->
     <script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"Galaxy Financial","url":"https://apex-financial.org","logo":"https://apex-financial.org/pwa-512x512.png","sameAs":["https://instagram.com/sell4daddy","https://youtube.com/@sell4daddy","https://tiktok.com/@sellfordaddy","https://www.snapchat.com/add/samueljameshq"],"founder":{"@type":"Person","name":"Samuel James"}}</script>
     <script type="application/ld+json">{"@context":"https://schema.org","@type":"VideoObject","name":"Why Producers Build With Galaxy","description":"The complete Galaxy Financial walkthrough: producer paths, training, contracting, and live production operations.","thumbnailUrl":"https://xrzweoneiieddzxogewk.supabase.co/storage/v1/object/public/training-videos/vsl/2026-09-02/apex-vsl-poster.jpg","uploadDate":"2026-09-02","duration":"PT5M46S","contentUrl":"https://xrzweoneiieddzxogewk.supabase.co/storage/v1/object/public/training-videos/vsl/2026-09-02/apex-vsl.mp4","embedUrl":"https://apex-financial.org/vsl"}</script>
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Who should book directly with Samuel James?","acceptedAnswer":{"@type":"Answer","text":"Samuel's calendar is reserved for licensed leaders with five or more agents, or at least $50,000 in monthly production. Everyone else gets routed to the right onboarding strategist first."}},{"@type":"Question","name":"What if I'm already licensed?","acceptedAnswer":{"@type":"Answer","text":"Licensed agents move faster. We verify your license, review your carrier fit, and map out the cleanest path to write business through Galaxy."}},{"@type":"Question","name":"Do I really not pay for leads?","acceptedAnswer":{"@type":"Answer","text":"There is no upfront lead bill in the recruiting flow. Lead access is tied to activity, follow-up, and production so serious agents get prioritized."}},{"@type":"Question","name":"What's my realistic income in month 1, 6, 12?","acceptedAnswer":{"@type":"Answer","text":"Income depends on licensing speed, calls, appointments, and consistency. The dashboard tracks production so expectations stay tied to real activity instead of hype."}},{"@type":"Question","name":"Can I keep my job while I get licensed?","acceptedAnswer":{"@type":"Answer","text":"Yes. Pre-licensing fast-track is 4–6 weeks part-time. Most agents are still at the day job when they write their first 5 policies."}}]}</script>
 </head>
 
   <body>

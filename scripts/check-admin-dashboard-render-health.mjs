@@ -151,6 +151,18 @@ const MANIFEST = [
   // destructure takes isError, and the picker renders a load-error with Retry before
   // the empty state. Pinned so the swallow + silent-empty can never return.
   "src/components/dashboard/AddAgentToCourseDialog.tsx", // course-enroll picker — dead roster feed must surface a load error, never "No eligible agents found"
+  // Recruiting-ops hire-routing (MP-WIB-ADMIN-RENDER-HEALTH wave 16, 2026-11-21).
+  // Same class as wave 9's HiringManagerAssignments/AdminBoardAccess: the shared
+  // manager-reassign picker. The destructure defaulted `data: managers = []` with
+  // NO error signal AND both inner reads SWALLOWED their error (the first discarded
+  // `.error` entirely → on a dead agents read the list collapsed to Sam-only; the
+  // second did `toast + return []` → the outer query succeeded empty and the picker
+  // rendered a confident "No managers"). Either way an admin reassigns a new hire to
+  // the wrong manager / nobody at the moment the feed died, and the hire goes cold
+  // (recruiting→activation funnel). Both reads now THROW, the destructure takes
+  // isError + refetch, and the picker renders a "Couldn't load managers · Retry"
+  // load error gated BEFORE the "No managers" empty state.
+  "src/components/agents/ReassignManagerButton.tsx", // manager-reassign picker — dead agents feed must surface a load error, never "No managers" / a silent Sam-only list
 ];
 
 // ── PRIMARY_FEED_MANIFEST: the SCANNER-BLIND downstream-coalesce variant ──

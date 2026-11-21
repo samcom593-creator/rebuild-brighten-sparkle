@@ -56,17 +56,22 @@ export function ReassignManagerButton({
   const [filter, setFilter] = useState("");
   const qc = useQueryClient();
 
-  const { data: managers = [], isLoading } = useQuery<ManagerOption[]>({
+  const { data: managers = [], isLoading, isError, refetch } = useQuery<ManagerOption[]>({
     queryKey: ["reassign-manager-options"],
     enabled: open,
     queryFn: async () => {
       // Anyone who manages at least one active agent OR who is the canonical
       // Sam + any active flagged manager_track row.
-      const { data: managersWithReports } = await (supabase as any)
+      const { data: managersWithReports, error: reportsError } = await (supabase as any)
         .from("agents")
         .select("manager_id")
         .not("manager_id", "is", null)
         .eq("is_deactivated", false);
+      // A dead agents read must NOT silently collapse the picker to Sam-only — an
+      // admin would then reassign a new hire to Sam (or fail to find the real
+      // manager) believing no other manager exists, and the hire routes to the
+      // wrong person and goes cold. Throw so React Query goes isError.
+      if (reportsError) throw reportsError;
       const managerIds = Array.from(
         new Set(((managersWithReports as any[]) ?? []).map((r) => r.manager_id).filter(Boolean)),
       );
@@ -78,10 +83,10 @@ export function ReassignManagerButton({
         .select("id, display_name, agent_code")
         .in("id", managerIds)
         .eq("is_deactivated", false);
-      if (error) {
-        toast.error(`Manager list failed: ${error.message?.slice(0, 80)}`);
-        return [];
-      }
+      // Same contract: a failed read is a load error, not an empty manager list.
+      // The old `toast + return []` made the outer query succeed with [], so the
+      // picker rendered a confident "No managers" while the feed was down.
+      if (error) throw error;
       return ((agents as any[]) ?? [])
         .map((a) => ({ id: a.id, name: a.display_name?.trim() || a.agent_code || "—" }))
         .sort((a, b) => a.name.localeCompare(b.name));
@@ -164,6 +169,24 @@ export function ReassignManagerButton({
         <div className="max-h-64 overflow-y-auto">
           {isLoading ? (
             <div className="px-3 py-4 text-center text-xs text-muted-foreground">Loading…</div>
+          ) : isError ? (
+            // A dead manager feed must NOT read as "No managers" — that is a false
+            // "there is nobody to assign this hire to" at the exact moment the feed
+            // died. Surface the load error so nobody reassigns off an empty list.
+            <div className="px-3 py-4 text-center">
+              <p className="text-xs font-medium text-amber-600">Couldn’t load managers</p>
+              <p className="mx-auto mt-0.5 max-w-[200px] text-[11px] text-muted-foreground">
+                This is a load error, not an empty list — don’t reassign off it.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2 h-7 gap-1.5 text-xs"
+                onClick={() => refetch()}
+              >
+                Retry
+              </Button>
+            </div>
           ) : filtered.length === 0 ? (
             <div className="px-3 py-4 text-center text-xs text-muted-foreground">No managers</div>
           ) : (

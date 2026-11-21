@@ -150,7 +150,17 @@ export default function Agencies() {
           const windowAp = rows.reduce((s, r) => s + Number(r.ap || 0), 0);
           const windowPolicies = rows.reduce((s, r) => s + Number(r.policies || 0), 0);
           const noLogin = producers.filter((r) => !r.has_login).length;
-          const ovr = t ? (period === "30d" ? t.est_owner_override_30d : t.est_owner_override_mtd) : null;
+          // v_imo_by_agency computes the owner-override estimate only for MTD and 30d
+          // (and all-time). There is NO last-month override bucket, so the "Last month"
+          // tab has no period-matched operand — show nothing rather than render this
+          // month's partial override beside last month's production. An exhaustive
+          // Record<Period> means a future period cannot silently fall through to MTD.
+          const overrideByPeriod: Record<Period, number | null> = {
+            mtd: t?.est_owner_override_mtd ?? null,
+            "30d": t?.est_owner_override_30d ?? null,
+            last_month: null,
+          };
+          const ovr = overrideByPeriod[period];
           return (
             <section key={name} className="rounded-2xl border border-border bg-card">
               <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border p-4 sm:p-5">
@@ -170,9 +180,9 @@ export default function Agencies() {
                     <div className="text-xl font-extrabold tabular-nums text-foreground">{money(windowAp)}</div>
                     <div className="text-[11.5px] uppercase tracking-[0.09em] text-muted-foreground">{window.label} · {windowPolicies} policies</div>
                   </div>
-                  {(t?.owner_override_pct ?? 0) > 0 && (
+                  {ovr != null && (t?.owner_override_pct ?? 0) > 0 && (
                     <div>
-                      <div className="text-xl font-extrabold tabular-nums text-primary">{money(Number(ovr ?? 0))}</div>
+                      <div className="text-xl font-extrabold tabular-nums text-primary">{money(ovr)}</div>
                       <div className="text-[11.5px] uppercase tracking-[0.09em] text-muted-foreground">your override · {t?.owner_override_pct}%</div>
                     </div>
                   )}

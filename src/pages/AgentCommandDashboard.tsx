@@ -1706,7 +1706,11 @@ function AgencyCommandView() {
         .select("producer_id, display_name, current_week_alp, current_week_deals, alp_1w_ago, alp_2w_ago, alp_3_weeks_ago, delta_pct, direction, currently_dropping")
         .order("current_week_alp", { ascending: false })
         .limit(50);
-      if (error) return [] as any[];
+      // Throw, never swallow to []: a dead producer-trend feed must surface as
+      // isError (honest "couldn't load") not an empty board that reads "0 producers
+      // dropping" — a false all-clear on a RISK surface. Swallowing also hid the
+      // failure from queryCache.onError (function_errors observability).
+      if (error) throw error;
       const rows = (data ?? []) as unknown as Array<{
         producer_id: string;
         display_name: string | null;
@@ -1755,7 +1759,10 @@ function AgencyCommandView() {
         .from("v_manager_hierarchy_mtd" as any)
         .select("manager_id, manager_name, team_size, team_alp_mtd, team_deals_mtd, producing_team_mtd")
         .order("team_alp_mtd", { ascending: false });
-      if (error) return [] as any[];
+      // Throw, never swallow to []: a dead manager-hierarchy feed must surface as
+      // isError (honest "couldn't load") not an empty table that reads as "no team
+      // production". Swallowing also hid the failure from function_errors.
+      if (error) throw error;
       return (data ?? []) as unknown as Array<{
         manager_id: string;
         manager_name: string | null;
@@ -2973,7 +2980,9 @@ function AgencyCommandView() {
             <TrendingDown className="h-4 w-4 text-rose-500" />
             <h3 className="text-14 font-bold text-slate-100">Producer Risk Board</h3>
             <Badge variant="outline" className="text-11 border-rose-500/50 bg-rose-500/10 text-rose-500">
-              {fmtNum(riskRows.filter((r) => r.currently_dropping).length)} dropping
+              {producerRisk.isError
+                ? "feed error"
+                : `${fmtNum(riskRows.filter((r) => r.currently_dropping).length)} dropping`}
             </Badge>
           </div>
           <Button asChild variant="ghost" size="sm">
@@ -2982,8 +2991,17 @@ function AgencyCommandView() {
         </div>
         {producerRisk.isLoading ? (
           <div className="space-y-1.5">{Array.from({ length: 6 }).map((_, i) => /* stable-key-allow:skeleton-loop */ <Skeleton key={i} className="h-8 w-full" />)}</div>
+        ) : producerRisk.isError ? (
+          <EmptyState
+            variant="warning"
+            icon={<TrendingDown className="h-6 w-6" />}
+            title="Couldn't load producer risk"
+            description="The producer-trend feed failed to load. This is a data error, not an all-clear — the board below is not current."
+            actions={<Button variant="outline" size="sm" onClick={() => producerRisk.refetch()}>Retry</Button>}
+          />
         ) : riskRows.length === 0 ? (
           <EmptyState
+            variant="success"
             icon={<TrendingDown className="h-6 w-6" />}
             title="No producer risk detected"
             description="v_producer_trend_alert returned zero rows."
@@ -3112,6 +3130,14 @@ function AgencyCommandView() {
         </div>
         {managerAccountability.isLoading ? (
           <div className="space-y-1.5">{Array.from({ length: 4 }).map((_, i) => /* stable-key-allow:skeleton-loop */ <Skeleton key={i} className="h-8 w-full" />)}</div>
+        ) : managerAccountability.isError ? (
+          <EmptyState
+            variant="warning"
+            icon={<Users className="h-6 w-6" />}
+            title="Couldn't load manager roll-up"
+            description="The manager-hierarchy feed failed to load. This is a data error, not an empty team."
+            actions={<Button variant="outline" size="sm" onClick={() => managerAccountability.refetch()}>Retry</Button>}
+          />
         ) : mgrRows.length === 0 ? (
           <EmptyState
             icon={<Users className="h-6 w-6" />}

@@ -30,6 +30,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { GlassCard } from "@/components/ui/glass-card";
 import { supabase } from "@/integrations/supabase/client";
+import { concurrentMap } from "@/lib/concurrentMap";
 import { toast } from "sonner";
 // perf/site-wide-optimization (2026-08-06): AgedLeadEmailPreview statically
 // imported `sanitize-html`, which drags htmlparser2 + the `entities` package
@@ -368,22 +369,36 @@ export const AgedLeadImporter = forwardRef<HTMLDivElement, AgedLeadImporterProps
       let bannedCount = 0;
 
       try {
-        // Check each lead against the ban list
+        // Check each lead against the ban list. These are independent,
+        // read-only RPCs (distinct keys, no lock contention), so run them with a
+        // bounded concurrency cap instead of one serial round-trip per lead — a
+        // 200-row CSV was ~200 sequential ban checks (~30s) before the insert
+        // even began. The cap stops an unbounded Promise.all from exhausting the
+        // PostgREST connection pool.
         const leadsToCheck = validLeads;
         const unbannedLeads: ParsedLead[] = [];
 
-        for (const lead of leadsToCheck) {
+        const banChecks = await concurrentMap(leadsToCheck, 8, async (lead) => {
           const { data: isBanned } = await supabase.rpc("check_banned_prospect" as any, {
             p_email: lead.email || null,
             p_phone: lead.phone || null,
             p_first_name: lead.first_name || null,
             p_last_name: lead.last_name || null,
           });
+          return !!isBanned;
+        });
 
-          if (isBanned) {
+        // Preserve the old serial loop's semantics exactly: it ignored the RPC's
+        // `error` field, so a Postgres-level failure left `isBanned` undefined
+        // and the lead was imported (fail-open); a transport-level rejection
+        // propagated to the outer catch and aborted the whole import.
+        for (let i = 0; i < banChecks.length; i++) {
+          const res = banChecks[i];
+          if (!res.ok) throw res.error;
+          if (res.value) {
             bannedCount++;
           } else {
-            unbannedLeads.push(lead);
+            unbannedLeads.push(leadsToCheck[i]);
           }
         }
 

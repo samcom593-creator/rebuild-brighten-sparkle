@@ -71,6 +71,18 @@ const APPLICANT_FUNNEL_NUMERIC_GLOBS = [
   "src/pages/GetLicensed.tsx",
   "src/pages/UnlicensedOverview.tsx",
   "src/pages/ApplicationStatus.tsx",
+  // MP-WIB-SCHEDULE-CALL-CLAIMS (2026-11-22): /schedule-call is a PUBLIC
+  // (unauthenticated, App.tsx:504) post-apply booking surface for the
+  // licensed-agent interview + Samuel James strategy call — the conversion
+  // step right after Apply. It shipped two claims outside every guard:
+  // "Unlimited warm leads daily" (the exact "Unlimited leads" puff killed on
+  // LeadsLanding/PurchaseLeads, but the "warm" modifier slipped the Unlimited
+  // pattern) and "$10K+ starting income" (an unqualified guaranteed-starting-pay
+  // framing on a commission-only role; the canonical truthful label everywhere
+  // else is "first-year monthly pace"). Both rewritten this wave; scoping the
+  // page NUMERIC + SUPERLATIVE so neither can re-ship or inflate ("$5.0M
+  // starting income" / "Unlimited income") on a regulator-visible public page.
+  "src/pages/ScheduleCall.tsx",
 ];
 
 // Superlative SUPERLATIVE_PATTERNS scope — public landing + every other
@@ -125,6 +137,11 @@ const SUPERLATIVE_TRACKED_GLOBS = [
   // to SUPERLATIVE + extending Wave-5 pattern to catch "average X <filler>
   // writes/produces/earns" separated by up to 3 modifier words.
   "src/pages/UnlicensedOverview.tsx",
+  // MP-WIB-SCHEDULE-CALL-CLAIMS (2026-11-22): public /schedule-call booking
+  // surface — see the APPLICANT_FUNNEL_NUMERIC_GLOBS note above. In SUPERLATIVE
+  // scope so the "Unlimited <modifier> leads/income" puff it shipped stays
+  // locked out now that the Unlimited pattern tolerates modifier words.
+  "src/pages/ScheduleCall.tsx",
 ];
 
 // Files exempt from the guard. Add new entries here with a one-line
@@ -148,6 +165,13 @@ const ALLOW_LIST = new Set([
   // "first $10K month", FAQ "real shot at $10,000 months"). Bounded
   // aspirational claim, not aggregate metric.
   "$10K+",
+  // MP-WIB-SCHEDULE-CALL-CLAIMS (2026-11-22): /schedule-call gates the
+  // Samuel James strategy call to agency leaders — "Reserved for 5+ agents or
+  // $50K+ monthly production" (ScheduleCall.tsx:158). This is an ELIGIBILITY
+  // THRESHOLD describing who qualifies for the call, not an earnings promise to
+  // the prospect, so it is authorized like the other bounded-context figures
+  // here. "$50K+" appears on no other scoped surface, so this is scoped to it.
+  "$50K+",
   // Wave-5 (2026-06-22): /careers/:state hero + JSON-LD claim. Top-producer
   // historical comp, contextualized in copy as "top first-year producers
   // have written $120K+ in commissions" (not as average/typical). Defensible
@@ -218,7 +242,13 @@ const SUPERLATIVE_PATTERNS = [
   /\bBest[\-\s]in[\-\s]class\b/gi,
   /\b#\s*1\s+(agency|recruiter|recruiters|carrier|carriers|producer|producers|team|teams|imo|trainer|trainers|closer|closers)\b/gi,
   /\bNumber\s+(?:one|1)\s+(agency|recruiter|recruiters|carrier|carriers|producer|producers|team|teams|imo|closer|closers)\b/gi,
-  /\bUnlimited\s+(leads|earning|earnings|income|incomes|commission|commissions|payouts|policies|callbacks|appointments)\b/gi,
+  // MP-WIB-SCHEDULE-CALL-CLAIMS (2026-11-22): the base shape required the
+  // puff noun IMMEDIATELY after "Unlimited", so "Unlimited warm leads daily"
+  // (ScheduleCall.tsx) slipped it — the "warm" modifier broke the match, the
+  // exact hole wave-7 already fixed on the team-average pattern below. Tolerate
+  // up to 3 contiguous modifier words (non-greedy, whitespace-bounded so it
+  // can't cross a sentence break) between "Unlimited" and the noun.
+  /\bUnlimited\s+(?:\w+\s+){0,3}?(leads|earning|earnings|income|incomes|commission|commissions|payouts|policies|callbacks|appointments)\b/gi,
   /\b7[-\s]?figure(?:s)?\s+(income|earning|earnings|potential|year|month|months|salary|deal|deals|producer|producers)\b/gi,
   /\b6[-\s]?figure(?:s)?\s+(income|earning|earnings|potential|year|month|months|salary|deal|deals|producer|producers)\b/gi,
   // `guaranteed` only as a positive-claim noun pairing — skips disclaimers

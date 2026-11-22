@@ -144,7 +144,7 @@ const buildPhases = (carriers: number): Phase[] => [
     steps: [
       {
         icon: Target,
-        title: "Start Working Unlimited Warm Leads",
+        title: "Start Working Our Warm-Lead Pool",
         description: "Pull from our warm-lead pool. Pick a pack, dial, close. They asked for the appointment — you take it.",
         benefit: "✓ Exclusive warm leads",
       },

@@ -101,7 +101,7 @@ export function CalendlyEmbed({ url, className = "" }: CalendlyEmbedProps) {
             </a>
           </Button>
           <Button asChild size="lg" variant="outline" className="gap-2">
-            <a href="sms:+14697676068?body=Hey%20Sam%2C%20I'd%20like%20to%20book%20a%20call%20about%20APEX." aria-label="Text Sam">
+            <a href="sms:+14697676068?body=Hey%20Sam%2C%20I'd%20like%20to%20book%20a%20call%20about%20Galaxy." aria-label="Text Sam">
               <MessageSquare className="h-4 w-4" /> Text
             </a>
           </Button>

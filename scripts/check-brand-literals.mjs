@@ -91,7 +91,19 @@ const BASELINE = 21;
 const EXEMPT = new Set(["src/config/brand.ts", "src/data/shipped-data.ts"]);
 /** Test files never ship to a user, so brand literals in them block nothing. */
 const IS_TEST = /(\.test\.tsx?$|\.spec\.tsx?$|__tests__\/|^src\/tests\/)/;
-const PATTERN = /\bAPEX\b|\bApex\b/g;
+// A literal reaches a user's SCREEN even when it is percent-encoded inside a
+// URL — the sms:/mailto: body a prospect sees pre-filled in their Messages or
+// mail app. A plain \b left boundary is BLIND to those: in
+// `...book%20a%20call%20about%20APEX.` the hex digit of %20 sits directly before
+// APEX (0 and A are both word chars), so \bAPEX\b never fires. CalendlyEmbed.tsx
+// carried exactly that dead-brand burn on the public booking fallback card,
+// invisible to this ratchet for the entire rebrand, until MP-WIB-CALENDLY-SMS-
+// BRAND fixed it in the SAME commit that added this %NN branch. Treat a
+// percent-encoding as a valid left boundary so an encoded brand literal counts
+// like any other rendered one. BASELINE held at 21: this measurement change
+// newly sees exactly one literal (CalendlyEmbed) and that literal was removed in
+// the same commit — a scanner that got more accurate, not debt shrinking.
+const PATTERN = /(?:\b|%[0-9A-Fa-f]{2})(?:APEX|Apex)\b/g;
 
 /** Tracked + staged .ts/.tsx under src/. Excludes other workers' untracked files. */
 function trackedSourceFiles() {

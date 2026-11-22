@@ -7,7 +7,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import apexIcon from "@/assets/apex-icon.png";
+import galaxyIcon from "@/assets/galaxy-icon.png";
 import type { User } from "@supabase/supabase-js";
 
 interface Profile {
@@ -110,7 +110,7 @@ export function AccountLinkForm({ user, profile, onSuccess, onLogout }: AccountL
         <GlassCard className="p-8">
           <div className="relative mb-6">
             <img 
-              src={apexIcon} 
+              src={galaxyIcon} 
               alt="Galaxy" 
               className="h-16 w-16 mx-auto"
             />

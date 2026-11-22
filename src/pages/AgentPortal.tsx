@@ -67,7 +67,7 @@ import { cn } from "@/lib/utils";
 import { getBusinessDayBounds, getTodayPST } from "@/lib/dateUtils";
 import { getCloseRate, getMetricBounds, sumAnnualPremium } from "@/lib/metricTruth";
 import { DEAL_TRUTH_STATUS_FILTER } from "@/lib/dealTruth";
-import apexIcon from "@/assets/apex-icon.png";
+import galaxyIcon from "@/assets/galaxy-icon.png";
 import { ProductionForecast } from "@/components/dashboard/ProductionForecast";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 
@@ -402,7 +402,7 @@ export default function AgentPortal() {
         >
           <div className="relative">
             <img 
-              src={apexIcon} 
+              src={galaxyIcon} 
               alt="Galaxy" 
               className="h-12 w-12 mx-auto mb-4 animate-pulse"
             />
@@ -428,7 +428,7 @@ export default function AgentPortal() {
           <GlassCard className="p-8">
             <div className="relative mb-6">
               <img 
-                src={apexIcon} 
+                src={galaxyIcon} 
                 alt="Galaxy" 
                 className="h-16 w-16 mx-auto"
               />
@@ -750,7 +750,7 @@ export default function AgentPortal() {
             {/* Direct Portal Link */}
             <GlassCard className="p-4 overflow-hidden">
               <div className="flex items-center gap-3 mb-4">
-                <img src={apexIcon} alt="Galaxy" className="h-10 w-10 rounded-md shadow-lg shrink-0" />
+                <img src={galaxyIcon} alt="Galaxy" className="h-10 w-10 rounded-md shadow-lg shrink-0" />
                 <div className="min-w-0">
                   <h3 className="font-semibold">Agent Portal</h3>
                   <p className="text-xs text-muted-foreground truncate">
@@ -762,7 +762,7 @@ export default function AgentPortal() {
               {/* Branded Preview Card */}
               <div className="bg-primary/[0.06] border border-border/50 rounded-md p-4 mb-4">
                 <div className="flex items-center gap-3">
-                  <img src={apexIcon} alt="Galaxy" className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg shrink-0" />
+                  <img src={galaxyIcon} alt="Galaxy" className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm">Agent Portal</p>
                     <p className="text-xs text-muted-foreground truncate">apex-financial.org/agent-portal</p>

@@ -236,7 +236,7 @@ export default defineConfig(({ mode }) => ({
           "assets/index-*.{js,css}",
           "assets/rolldown-runtime-*.js",
           "assets/vendor-{router,react,react-dom,icons-landing}-*.js",
-          "assets/apex-icon-*.{js,png}",
+          "assets/galaxy-icon-*.{js,png}",
           "assets/client-*.js",
           "fonts/*.woff2",
           "img/hero-poster-*.jpg",

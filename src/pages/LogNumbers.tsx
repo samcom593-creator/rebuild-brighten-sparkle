@@ -26,7 +26,7 @@ import { cn } from "@/lib/utils";
 import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration";
 import { BubbleStatInput } from "@/components/dashboard/BubbleStatInput";
 import { GradientButton } from "@/components/ui/gradient-button";
-import apexIcon from "@/assets/apex-icon.png";
+import galaxyIcon from "@/assets/galaxy-icon.png";
 
 interface MatchedAgent {
   id: string;
@@ -258,7 +258,7 @@ export default function LogNumbers() {
       >
         <div className="text-center mb-6">
           <motion.img 
-            src={apexIcon} 
+            src={galaxyIcon} 
             alt="Galaxy" 
             className="h-16 w-16 mx-auto mb-3 rounded-md shadow-lg"
             initial={{ scale: 0, rotate: -10 }}

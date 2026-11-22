@@ -13,7 +13,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import apexIcon from "@/assets/apex-icon.png";
+import galaxyIcon from "@/assets/galaxy-icon.png";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { track } from "@/lib/analytics";
 import { resolveBrand } from "@/config/brand";
@@ -298,7 +298,7 @@ export default function AgentNumbersLogin() {
             <div className="relative">
               <div className="absolute inset-0 bg-primary/20 rounded-md blur-xl" />
               <img 
-                src={apexIcon} 
+                src={galaxyIcon} 
                 alt="Galaxy" 
                 className="h-16 w-16 rounded-md relative z-10 shadow-lg shadow-primary/20" 
               />

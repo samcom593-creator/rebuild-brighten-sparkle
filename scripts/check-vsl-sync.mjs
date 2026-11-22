@@ -32,7 +32,7 @@ if (!baseMatch) {
 const mediaBase = baseMatch[1];
 const release = mediaBase.slice(mediaBase.lastIndexOf("/") + 1);
 const videoUrl = `${mediaBase}/apex-vsl.mp4`;
-const posterUrl = `${mediaBase}/apex-vsl-poster.jpg`;
+const posterUrl = `${mediaBase}/galaxy-vsl-poster.jpg`;
 const checks = [
   ["homepage video source", hero, "VSL_VIDEO.src"],
   ["homepage video poster", hero, "VSL_VIDEO.poster"],
@@ -52,7 +52,7 @@ const drift = checks
 // <video poster> is a no-cors fetch, so a crossorigin preload is never
 // consumed and the poster is requested twice.
 const markup = index.replace(/<!--[\s\S]*?-->/g, "");
-if (/<link\b[^>]*apex-vsl-poster/i.test(markup)) {
+if (/<link\b[^>]*galaxy-vsl-poster/i.test(markup)) {
   drift.push("  - poster preload: static <link> for the poster found; it must be route-scoped (/ and /vsl only)");
 }
 const preloadScript = (markup.match(/<script>[\s\S]*?<\/script>/g) || []).find((s) => s.includes(posterUrl));

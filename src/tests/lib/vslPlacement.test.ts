@@ -17,7 +17,7 @@ describe("public APEX VSL placement", () => {
     expect(VSL_VIDEO.src).toBe(
       "https://xrzweoneiieddzxogewk.supabase.co/storage/v1/object/public/training-videos/vsl/2026-09-02/apex-vsl.mp4",
     );
-    expect(VSL_VIDEO.poster).toMatch(/\/apex-vsl-poster\.jpg$/);
+    expect(VSL_VIDEO.poster).toMatch(/\/galaxy-vsl-poster\.jpg$/);
   });
 
   it("derives the label from the measured duration so the two cannot drift", () => {

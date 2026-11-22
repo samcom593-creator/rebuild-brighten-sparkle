@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,9 +44,32 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export function ManagerGoalBoard() {
+  // WIB Check #6/#8 (MP-WIB-GOAL-BOARD-DEFER): fn_owner_goal_board is a ≈3.9s
+  // server RPC (7 managers × ~40 canonical-production scans, recomputed live).
+  // This card is admin-only and sits far below the fold on the Home screen, yet
+  // it used to fire on mount — holding the whole page's network-idle open ~3s
+  // past when every above-the-fold card was already done (measured: /dashboard
+  // settled at 5.5s vs a 2.3s next-slowest pole). Defer the fetch until the card
+  // scrolls near the viewport so it stays OFF the initial page-load burst. On an
+  // environment without IntersectionObserver, start in view (today's behaviour).
+  const ref = useRef<HTMLDivElement>(null);
+  const [inView, setInView] = useState(typeof IntersectionObserver === "undefined");
+  useEffect(() => {
+    if (inView) return;
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (entries) => { if (entries.some((e) => e.isIntersecting)) { setInView(true); io.disconnect(); } },
+      { rootMargin: "300px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [inView]);
+
   const q = useQuery({
     queryKey: ["owner-goal-board"],
     staleTime: 2 * 60_000,
+    enabled: inView,
     queryFn: async (): Promise<Board | null> => {
       const { data, error } = await supabase.rpc("fn_owner_goal_board", {});
       if (error) throw error;
@@ -55,7 +79,10 @@ export function ManagerGoalBoard() {
     },
   });
 
-  if (q.isLoading) return <Skeleton className="h-64 w-full rounded-xl" />;
+  // isPending covers both the pre-view idle state (enabled:false) and the
+  // in-flight fetch; the ref must stay mounted through both so the observer can
+  // fire. Cached data (react-query, 2min) renders instantly with no refetch.
+  if (q.isPending) return <div ref={ref}><Skeleton className="h-64 w-full rounded-xl" /></div>;
   if (q.isError) {
     return (
       <Card>

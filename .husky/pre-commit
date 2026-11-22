@@ -564,15 +564,22 @@ if match "$_LTF_PAT"; then
 fi
 
 # ---------- check-landing-marketing-claims (2026-06-20) ----------
-# Trigger: any landing surface, the Index/Landing pages, or the guard script.
-# Companion to check-landing-truth-floor: that one catches `??` fallbacks
-# clamping landing_live_stats truth upward; this one catches hardcoded
-# fake-success marketing claims ($150M+ Premium Generated / 166K+ Lead Volume)
-# that came from a gpt-engineer 2026-01-10 placeholder seed and shipped on
-# the public CareerPathwaySection for 5 months with zero source. Allow-list
-# carries the brand-canon claims ($1M+, $300K+, $100K+) Sam has authorized.
-# Cost when fired: ~30ms (21 surfaces scanned).
-if match '^(src/components/landing/.*\.(tsx?|jsx?)$|src/pages/(Landing|Index)\.tsx$|scripts/check-landing-marketing-claims\.mjs$)'; then
+# Trigger: any landing surface, the Index/Landing pages, the full applicant
+# funnel (Apply / ApplySuccess* / GetLicensed / UnlicensedOverview /
+# ApplicationStatus / LeadsLanding / StateCareerLanding / CareersIndex /
+# PurchaseLeads), or the guard script. Companion to check-landing-truth-floor:
+# that one catches `??` fallbacks clamping landing_live_stats truth upward; this
+# one catches hardcoded fake-success marketing claims ($150M+ Premium Generated /
+# 166K+ Lead Volume) that came from a gpt-engineer 2026-01-10 placeholder seed
+# and shipped on the public CareerPathwaySection for 5 months with zero source.
+# MP-WIB-APPLY-EARNINGS-NUMERIC (2026-11-22): the trigger glob was narrower than
+# the guard's own scan scope — editing Apply.tsx (which renders "$1.2M income in
+# first year") or any funnel page never fired the guard pre-commit, so an
+# inflated earnings figure only tripped at CI. Widened the pages alternation to
+# the guard's real surface set. Allow-list carries the brand-canon claims
+# ($1M+, $300K+, $100K+, $1.2M) Sam has authorized.
+# Cost when fired: ~40ms (33 surfaces scanned).
+if match '^(src/components/landing/.*\.(tsx?|jsx?)$|src/pages/(Landing|Index|LeadsLanding|StateCareerLanding|CareersIndex|Apply|ApplySuccess|ApplySuccessLicensed|ApplySuccessUnlicensed|GetLicensed|UnlicensedOverview|ApplicationStatus|PurchaseLeads)\.tsx$|scripts/check-landing-marketing-claims\.mjs$)'; then
   echo "[pre-commit] Landing-marketing-claim file staged — running check:landing-marketing-claims…"
   node scripts/check-landing-marketing-claims.mjs
 fi

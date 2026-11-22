@@ -48,6 +48,31 @@ const NUMERIC_TRACKED_GLOBS = [
   "src/pages/CareersIndex.tsx",
 ];
 
+// MP-WIB-APPLY-EARNINGS-NUMERIC (2026-11-22): the applicant funnel was in
+// SUPERLATIVE scope ONLY, so the NUMERIC $N.NM decimal earnings pattern never
+// scanned it — yet Apply.tsx:1133 renders the hardcoded literal
+// "Founder · $1.2M income in first year" (identical to HeroSection.tsx:291,
+// which IS numeric-scoped). MP-WIB-DECIMAL-EARNINGS (154407b6) found the Hero +
+// CareerPathway instances of the founder figure but missed this one, because
+// Apply.tsx lived only in SUPERLATIVE_TRACKED_GLOBS. The applicant funnel is the
+// #1 recruiting conversion surface; an unqualified first-year personal-earnings
+// figure here is the same FTC/state-insurance regulator liability the guard was
+// built for. A node probe (2026-11-22) confirmed Apply.tsx is the ONLY one of
+// these pages with a decimal claim today ($1.2M, already in ALLOW_LIST) — the
+// rest are clean, so promoting the whole funnel to NUMERIC is green-safe now and
+// locks every surface against the founder line being copy-pasted-then-inflated.
+// (ApplicationConfirmationV2 is already numeric-covered via the
+// "src/components/landing" directory glob above, so it is NOT re-listed here.)
+const APPLICANT_FUNNEL_NUMERIC_GLOBS = [
+  "src/pages/Apply.tsx",
+  "src/pages/ApplySuccess.tsx",
+  "src/pages/ApplySuccessLicensed.tsx",
+  "src/pages/ApplySuccessUnlicensed.tsx",
+  "src/pages/GetLicensed.tsx",
+  "src/pages/UnlicensedOverview.tsx",
+  "src/pages/ApplicationStatus.tsx",
+];
+
 // Superlative SUPERLATIVE_PATTERNS scope — public landing + every other
 // surface where puff copy (Unlimited / Highest / 7-figure / world-class)
 // reads as fake-success marketing. Extended 2026-06-20 wave-3 after finding
@@ -276,7 +301,7 @@ function fileList(globs) {
     .filter((p) => !EXCLUDE_FILES.has(p));
 }
 
-const NUMERIC_FILES = fileList(NUMERIC_TRACKED_GLOBS);
+const NUMERIC_FILES = fileList([...NUMERIC_TRACKED_GLOBS, ...APPLICANT_FUNNEL_NUMERIC_GLOBS]);
 const SUPERLATIVE_FILES = fileList(SUPERLATIVE_TRACKED_GLOBS);
 const TOTAL_FILES = new Set([...NUMERIC_FILES, ...SUPERLATIVE_FILES]).size;
 

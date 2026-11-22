@@ -31,8 +31,19 @@ function vslSyncCheckPlugin() {
       }
       const mediaBase = baseMatch[1];
       const release = mediaBase.slice(mediaBase.lastIndexOf("/") + 1);
-      const videoUrl = `${mediaBase}/apex-vsl.mp4`;
-      const posterUrl = `${mediaBase}/apex-vsl-poster.jpg`;
+      // Derive the video + poster filenames from VSL_VIDEO itself so the
+      // single-source-of-truth contract in vslMedia.ts actually holds: a
+      // re-cut or rebrand that renames the object (e.g. apex-* -> galaxy-*)
+      // is one edit there, not a second hardcode here that silently drifts.
+      const videoFileMatch = media.match(/\bsrc:\s*`\$\{VSL_MEDIA_BASE\}\/([^`]+)`/);
+      const posterFileMatch = media.match(/\bposter:\s*`\$\{VSL_MEDIA_BASE\}\/([^`]+)`/);
+      if (!videoFileMatch || !posterFileMatch) {
+        throw new Error(
+          "[apex-vsl-sync-check] could not derive video/poster filenames from VSL_VIDEO in src/lib/vslMedia.ts."
+        );
+      }
+      const videoUrl = `${mediaBase}/${videoFileMatch[1]}`;
+      const posterUrl = `${mediaBase}/${posterFileMatch[1]}`;
       const checks: Array<{ label: string; source: string; expected: string }> = [
         { label: "homepage video source", source: hero, expected: "VSL_VIDEO.src" },
         { label: "homepage video poster", source: hero, expected: "VSL_VIDEO.poster" },

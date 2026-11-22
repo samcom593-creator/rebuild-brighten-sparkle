@@ -7,8 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Loader2, Users, GitBranch, Search } from "lucide-react";
 
 // Sam-feedback 2026-06-01: track who recruited who. When Sam hires under a manager,
-// surface that hierarchy + the manager's downline production. Reads from
-// v_agent_with_downline_production.
+// surface that hierarchy + the manager's downline production. Reads through the
+// admin-gated RPC get_team_downline_production() (SECURITY DEFINER + apex_is_admin()
+// gate). A direct .from("v_agent_with_downline_production") 403s every caller — the
+// view is security_invoker over agents + v_team_hierarchy, which authenticated can't
+// read — and flipping it to a definer view would leak every manager's downline
+// production to every agent (no uid filter). The RPC is the only safe read path
+// (MP-WIB-TEAM-HIERARCHY-RPC).
 
 type Row = {
   agent_id: string;
@@ -34,14 +39,14 @@ export function TeamHierarchyWidget() {
   const [search, setSearch] = useState("");
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["v_agent_with_downline_production"],
+    queryKey: ["get_team_downline_production"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("v_agent_with_downline_production")
-        .select("*")
-        .order("team_ap_mtd", { ascending: false });
+      // Admin-gated RPC — ordering (team_ap_mtd DESC) is applied server-side.
+      const { data, error } = await supabase.rpc(
+        "get_team_downline_production" as never,
+      );
       if (error) throw error;
-      return (data ?? []) as Row[];
+      return (data ?? []) as unknown as Row[];
     },
     refetchInterval: 300_000,
     staleTime: 60_000,
@@ -62,11 +67,10 @@ export function TeamHierarchyWidget() {
     );
   }
 
-  // Feed-error, never a fake all-clear. v_agent_with_downline_production is a
-  // security_invoker view over agents + v_team_hierarchy; if that read fails the
-  // owner must see "unavailable", not "0 recruiters / $0 team MTD / No recruiters
-  // yet" — a confident zero on a producing team is the fake-success lie this card
-  // would otherwise tell on the command center (MP-WIB-TEAM-HIERARCHY-RENDER-HEALTH).
+  // Feed-error, never a fake all-clear. If the admin-gated RPC read fails the owner
+  // must see "unavailable", not "0 recruiters / $0 team MTD / No recruiters yet" — a
+  // confident zero on a producing team is the fake-success lie this card would
+  // otherwise tell on the command center (MP-WIB-TEAM-HIERARCHY-RENDER-HEALTH).
   if (isError) {
     return (
       <Card>

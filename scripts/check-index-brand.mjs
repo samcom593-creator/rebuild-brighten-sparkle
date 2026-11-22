@@ -187,6 +187,41 @@ for (const key of [...BRAND_TEXT, ...HANDLE_FIELDS]) {
   }
 }
 
+// --- Rule NEGATIVE-SHARE-IMAGE: the social share-card IMAGE must not be a ---
+//     retired-brand-named asset.
+// The share-card image (og:image / twitter:image) is a URL, so the brand-text
+// passes above deliberately skip it — but its VALUE is the single picture every
+// LinkedIn / iMessage / Slack / X unfurl of a recruiting link renders, at the
+// exact moment a recruit decides. CI cannot OCR the pixels (the burned-brand
+// class the VSL/onboarding posters live in), but it CAN forbid pointing the card
+// at a file whose own NAME still carries the retired brand. Found 2026-11-22:
+// public/apex-daily-numbers-og.png (the pre-rebrand og:image, wave-57) lingered
+// as a live, URL-reachable orphan after the Nov-3 swap to galaxy-recruit-og.jpg;
+// a future edit could silently repoint the card back at it and every <meta> would
+// stay green because this is a URL field. Delete-the-orphan fixes the instance;
+// this closes the class. Domain stripped first (apex-financial.org legitimately
+// stays Apex) so only the PATH/basename is tested — galaxy-recruit-og.jpg passes,
+// anything named apex-*.{png,jpg} fails. Denylist-free: it fires on the retired
+// token in the path, so it is born-green after the orphan delete and can never
+// false-red a correctly-named Galaxy asset.
+const SHARE_IMAGE_FIELDS = ["og:image", "og:image:secure_url", "twitter:image"];
+for (const key of SHARE_IMAGE_FIELDS) {
+  if (!found.has(key)) continue;
+  const val = found.get(key);
+  let path = val;
+  for (const re of ALLOWED_DOMAINS) path = path.replace(re, "");
+  if (RETIRED.test(path)) {
+    die(
+      `index.html ${key} = "${val}" points the social share-card image at a file whose ` +
+        `name still carries the retired brand token "APEX". This is the picture every ` +
+        `LinkedIn/iMessage/Slack/X unfurl renders; CI cannot read the pixels, so a ` +
+        `retired-brand FILENAME is the only CI-visible signal the card itself is off-brand. ` +
+        `Point it at a current-brand asset (e.g. galaxy-recruit-og.jpg). (The domain ` +
+        `apex-financial.org is allowlisted; only the path/filename triggers this.)`,
+    );
+  }
+}
+
 // --- 3. structured-data (JSON-LD) brand identity ---------------------------
 // Google rich results and AI-search (GEO) engines read the Organization name
 // from <script type="application/ld+json"> blocks, NOT from <meta>. Those

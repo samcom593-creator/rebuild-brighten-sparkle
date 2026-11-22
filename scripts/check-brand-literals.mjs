@@ -103,7 +103,24 @@ const IS_TEST = /(\.test\.tsx?$|\.spec\.tsx?$|__tests__\/|^src\/tests\/)/;
 // like any other rendered one. BASELINE held at 21: this measurement change
 // newly sees exactly one literal (CalendlyEmbed) and that literal was removed in
 // the same commit — a scanner that got more accurate, not debt shrinking.
-const PATTERN = /(?:\b|%[0-9A-Fa-f]{2})(?:APEX|Apex)\b/g;
+//
+// The SAME blind spot exists one escape over. A brand literal welded to a string
+// escape sequence is invisible to a plain \b for the identical reason: in a
+// multiline body `"...we'll help.\n\nAPEX Financial"` the source text carries the
+// two chars backslash+n, and that trailing `n` sits directly before APEX (both
+// word chars), so \bAPEX never fires. PrelicensingManager.tsx's bulk licensing
+// email signed the dead brand that way — a sign-off a real applicant reads, under
+// a subject + body that already say "Galaxy" — invisible to this ratchet for the
+// entire rebrand until MP-WIB-PRELICENSE-EMAIL-BRAND fixed it in the SAME commit
+// that added this escape branch. Only the WHITESPACE escapes [nrt] count as a
+// boundary, NOT a broad \\[a-zA-Z]: a regex literal like /\bAPEX\b/ (src/lib/
+// brand.ts:100 classifies inbound recruiting-intent messages) welds `b` before
+// APEX the same way, and that is a matcher, never a rendered brand string — a
+// broad escape class would count it as debt it is not. BASELINE held at 21: this
+// branch newly sees exactly one literal (PrelicensingManager) and that literal
+// was removed in the same commit — a scanner that got more accurate, not debt
+// shrinking.
+const PATTERN = /(?:\b|%[0-9A-Fa-f]{2}|\\[nrt])(?:APEX|Apex)\b/g;
 
 /** Tracked + staged .ts/.tsx under src/. Excludes other workers' untracked files. */
 function trackedSourceFiles() {

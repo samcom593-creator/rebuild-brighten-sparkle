@@ -210,7 +210,7 @@ export default function PrelicensingManager() {
       "1. Start your pre-licensing course (we'll send the link).\n" +
       "2. Finish the course and pass the state exam.\n" +
       "3. Book your onboarding call once you're licensed.\n\n" +
-      "Reply here if you're stuck on any step and we'll help.\n\nAPEX Financial"
+      "Reply here if you're stuck on any step and we'll help.\n\nGalaxy Financial"
     );
     window.location.href = `mailto:?bcc=${emails}&subject=${subject}&body=${body}`;
     toast.success(`Opening licensing email for ${picks.length}`);

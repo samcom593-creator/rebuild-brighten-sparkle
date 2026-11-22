@@ -23,8 +23,11 @@ describe("new-agent onboarding video placement", () => {
 
   it("releases the canonical hosted media", () => {
     const media = read("src/lib/onboardingMedia.ts");
+    // .mp4 is still apex-branded on purpose: the brand is burned into the title
+    // card/outro and needs a source re-render (content-lane), not a rename.
     expect(media).toContain("apex-new-agent-onboarding.mp4");
-    expect(media).toContain("apex-new-agent-onboarding-poster.jpg");
+    // Poster was re-rendered Apex->Galaxy (1ae152ae) and is live (200, image/jpeg).
+    expect(media).toContain("galaxy-new-agent-onboarding-poster.jpg");
     expect(media).toMatch(/ready:\s*true/);
   });
 

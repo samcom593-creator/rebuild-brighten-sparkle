@@ -44,26 +44,45 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export function ManagerGoalBoard() {
-  // WIB Check #6/#8 (MP-WIB-GOAL-BOARD-DEFER): fn_owner_goal_board is a ≈3.9s
-  // server RPC (7 managers × ~40 canonical-production scans, recomputed live).
-  // This card is admin-only and sits far below the fold on the Home screen, yet
-  // it used to fire on mount — holding the whole page's network-idle open ~3s
-  // past when every above-the-fold card was already done (measured: /dashboard
-  // settled at 5.5s vs a 2.3s next-slowest pole). Defer the fetch until the card
-  // scrolls near the viewport so it stays OFF the initial page-load burst. On an
-  // environment without IntersectionObserver, start in view (today's behaviour).
+  // WIB Check #6/#8 (MP-WIB-GOAL-BOARD-DEFER-FIX, supersedes MP-WIB-GOAL-BOARD-
+  // DEFER / 7966a814): fn_owner_goal_board is a ≈3.9s server RPC (7 managers ×
+  // ~40 canonical-production scans, recomputed live). This card is admin-only
+  // and sits below the fold on Home, so it should never fetch on the initial
+  // page-load burst. The first defer attempt armed an IntersectionObserver AT
+  // MOUNT — but at mount the WHOLE Home page is skeletons and short, so this
+  // below-fold card momentarily sits inside the viewport and the observer's
+  // first synthetic callback reports it visible. It fired anyway (prod waterfall:
+  // the RPC started at +1174ms, right as the lazy chunk mounted, and held
+  // network-idle open to 6.8s).
+  //
+  // Fix: don't measure visibility against the mount-time collapsed layout. Arm
+  // the scroll observer only AFTER the above-the-fold burst has settled
+  // (SETTLE_MS, past the ~2.8s first network-idle measured without this RPC), by
+  // which point real content has pushed this card to its true below-the-fold
+  // position. Because the observer cannot fire before SETTLE_MS, the RPC is off
+  // the first-screen critical path by construction — the KPI win is independent
+  // of scroll position and viewport geometry, not a guess about where the card
+  // lands. A no-scroll load never fetches it; a scroll fetches it then; the
+  // backstop guarantees an owner who never scrolls still gets the board, well
+  // after the first screen has settled. No IntersectionObserver -> eager (SSR).
   const ref = useRef<HTMLDivElement>(null);
   const [inView, setInView] = useState(typeof IntersectionObserver === "undefined");
   useEffect(() => {
     if (inView) return;
-    const el = ref.current;
-    if (!el) return;
-    const io = new IntersectionObserver(
-      (entries) => { if (entries.some((e) => e.isIntersecting)) { setInView(true); io.disconnect(); } },
-      { rootMargin: "300px" },
-    );
-    io.observe(el);
-    return () => io.disconnect();
+    const SETTLE_MS = 3000;   // > the ~2.8s first network-idle (burst end + 500ms)
+    const BACKSTOP_MS = 12000; // non-scroller still gets the board, off critical path
+    let io: IntersectionObserver | null = null;
+    const arm = window.setTimeout(() => {
+      const el = ref.current;
+      if (!el) { setInView(true); return; }
+      io = new IntersectionObserver(
+        (entries) => { if (entries.some((e) => e.isIntersecting)) { setInView(true); io?.disconnect(); } },
+        { rootMargin: "300px" },
+      );
+      io.observe(el);
+    }, SETTLE_MS);
+    const backstop = window.setTimeout(() => setInView(true), BACKSTOP_MS);
+    return () => { window.clearTimeout(arm); window.clearTimeout(backstop); io?.disconnect(); };
   }, [inView]);
 
   const q = useQuery({

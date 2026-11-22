@@ -22,6 +22,11 @@
  *      StateCareerLanding). It maps STATES into /careers/<slug> links, so a new
  *      state lights up on the hub automatically and can never be orphaned from
  *      it — the hub↔leaves analogue of Rule D's sitemap↔leaves parity.
+ *   D  the hub renders NO hardcoded "<N> states" count. Every count (the badge,
+ *      the subhead, AND the SEO meta description Google shows in the snippet)
+ *      must derive from STATES.length. Rule C only proves the visible link list
+ *      is data-driven; it is blind to copy/SEO strings, which is how the
+ *      2026-11-22 meta-description leak ("across 10 states") survived it.
  *
  * Usage:
  *   node scripts/check-careers-hub.mjs            # check the repo
@@ -81,6 +86,31 @@ export function hubIsDataDriven(indexSrc) {
   return importsStates && mapsStates && linksState;
 }
 
+/**
+ * Every "<N> states" count the hub renders — the <h1>/subhead, the "N states
+ * hiring" badge, AND the SEO <meta name="description"> that Google shows in the
+ * search snippet — must derive from STATES.length, never a hardcoded digit.
+ *
+ * The 2026-11-22 leak: the visible subhead + badge already used {STATES.length},
+ * but the meta description literal said "across 10 states". hubIsDataDriven only
+ * proves the VISIBLE LINK LIST is data-driven; it is blind to copy/SEO strings.
+ * So the day an 11th state is added, the live page says "11 states" while the
+ * Google snippet still says "10 states" — a public claim split on the highest-
+ * intent recruiting SERP, exactly the drift this guard family's own failure
+ * message warns about ("silently drifts ... when an 11th state is added").
+ *
+ * Returns the hardcoded offenders (e.g. ["across 10 states"]); [] when clean.
+ * A derived count renders as "${STATES.length} states" in source — never a raw
+ * digit before "states" — so the rule is: no /\b\d+\s+states\b/ literal. (A
+ * legitimate future "50 states"/"all states" nationwide line must still derive
+ * or be reworded; forcing derivation is the whole point.)
+ */
+export function hubCountLiterals(indexSrc) {
+  const out = [];
+  for (const m of indexSrc.matchAll(/\b\d+\s+states\b/gi)) out.push(m[0]);
+  return out;
+}
+
 /** Collect failures given the three source strings. */
 export function audit({ appSrc, sitemapXml, indexSrc }) {
   const fail = [];
@@ -97,6 +127,12 @@ export function audit({ appSrc, sitemapXml, indexSrc }) {
   if (!hubIsDataDriven(indexSrc)) {
     fail.push(
       "src/pages/CareersIndex.tsx: the hub is not rendered data-driven from STATES (import { STATES } from './StateCareerLanding' + STATES.map + a /careers/${slug} link). A hardcoded list silently drifts from the state pages when an 11th state is added.",
+    );
+  }
+  const countLits = hubCountLiterals(indexSrc);
+  if (countLits.length) {
+    fail.push(
+      `src/pages/CareersIndex.tsx: hardcoded state-count literal(s) [${countLits.join(", ")}] — the count must derive from STATES.length (render as "\${STATES.length} states"), or the SEO meta description / copy drifts from the live page the day an 11th state is added. Google's search snippet would say the old number while the page shows the new one.`,
     );
   }
   return fail;
@@ -132,7 +168,12 @@ function selftest() {
     ["not data-driven", { appSrc: goodApp, sitemapXml: goodMap, indexSrc: '<Link to="/careers/florida">Florida</Link>' }, 1],
     // C: imports STATES + maps but links nothing (broken template)
     ["maps but no state link", { appSrc: goodApp, sitemapXml: goodMap, indexSrc: 'import { STATES } from "./StateCareerLanding";\n{STATES.map((s) => (<span>{s.name}</span>))}' }, 1],
-    // all three broken at once
+    // D: a hardcoded state-count literal in the copy/SEO (the 2026-11-22 leak:
+    // meta description said "across 10 states" while the page used STATES.length)
+    ["hardcoded state count", { appSrc: goodApp, sitemapXml: goodMap, indexSrc: goodIndex + '\nconst desc = "hiring across 10 states.";' }, 1],
+    // D: the DERIVED count ("${STATES.length} states") must pass clean
+    ["derived state count passes", { appSrc: goodApp, sitemapXml: goodMap, indexSrc: goodIndex + '\nconst desc = "hiring across ${STATES.length} states.";' }, 0],
+    // all three structural rules broken at once (no count literal present -> 3, not 4)
     ["all broken", { appSrc: '<Route path="*" element={<NotFound />} />', sitemapXml: "<urlset></urlset>", indexSrc: "export default function X(){return null;}" }, 3],
   ];
 
@@ -154,6 +195,9 @@ function selftest() {
     ["sitemapAdvertisesHub false on leaves only", sitemapAdvertisesHub('<loc>https://apex-financial.org/careers/florida</loc>') === false],
     ["hubIsDataDriven true", hubIsDataDriven(goodIndex) === true],
     ["hubIsDataDriven false on hardcoded", hubIsDataDriven('<Link to="/careers/florida" />') === false],
+    ["hubCountLiterals catches a hardcoded '10 states'", hubCountLiterals("hiring across 10 states.").length === 1],
+    ["hubCountLiterals clean on derived '${STATES.length} states'", hubCountLiterals("hiring across ${STATES.length} states.").length === 0],
+    ["hubCountLiterals clean on no count at all", hubCountLiterals(goodIndex).length === 0],
   ];
   let invOk = 0;
   for (const [label, ok] of invariants) {

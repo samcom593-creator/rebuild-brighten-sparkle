@@ -55,8 +55,12 @@ export default function CareersIndex() {
       return { el, created };
     };
 
+    // State count derives from STATES (the single source of truth) so the SEO
+    // meta description — what Google shows in the search snippet — can never
+    // drift from the on-page copy (lines below) the day an 11th state is added.
+    // A hardcoded "N states" here is forbidden by check-careers-hub.mjs Rule D.
     const desc =
-      "Galaxy Financial is hiring licensed and unlicensed life insurance agents across 10 states. Work remotely, A-rated carriers, lead supply, no cold-calling. 1099 contractor, commission only. Top first-year producers have written $120K+ in commissions.";
+      `Galaxy Financial is hiring licensed and unlicensed life insurance agents across ${STATES.length} states. Work remotely, A-rated carriers, lead supply, no cold-calling. 1099 contractor, commission only. Top first-year producers have written $120K+ in commissions.`;
     const url = "https://apex-financial.org/careers";
     const created = [
       setMeta("description", desc),

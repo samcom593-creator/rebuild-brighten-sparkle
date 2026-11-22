@@ -199,6 +199,21 @@ const PRIMARY_FEED_MANIFEST = [
   // perpetual skeleton on error). Pinned so the coalesce-without-error-signal can never
   // return to the manager's money board.
   "src/pages/admin/ManagerDashboard.tsx", // manager money/pipeline command — deals/pipeline/pre coalesced ?? [] feed the primary stat tiles + "$0 ALP" money lie
+  // MP-WIB-TEAM-HIERARCHY-RENDER-HEALTH (2026-11-22). TeamHierarchyWidget renders on
+  // DashboardCommandCenter (already in MANIFEST) but the useQuery lives in this
+  // SUB-COMPONENT, which the page-level scan never saw — a MANIFEST page's primary
+  // card carrying the exact bug. It destructured `const { data, isLoading }` (no
+  // error signal) and coalesced `data ?? []` downstream, so a dead
+  // v_agent_with_downline_production read → data undefined → rows [] → recruiters []
+  // → the card rendered "0 recruiters · 0 total downline · $0 team MTD" + "No
+  // recruiters yet": a confident zero on the owner's command center while the team
+  // is producing. PROVEN LIVE (logged-in probe): the view 403s every authenticated
+  // user today — it's security_invoker=true but reads `agents` + `v_team_hierarchy`,
+  // neither of which grants SELECT to authenticated, so the invoker chain is
+  // permission-denied. The backend grant/RLS fix is a separate (data-exposure-
+  // sensitive) task; this closes the UI lie so the owner sees "unavailable", not $0.
+  // Now takes isError + early-returns a feed-error card gated before the empty state.
+  "src/components/dashboard/TeamHierarchyWidget.tsx", // command-center team-hierarchy card — data ?? [] with no error signal rendered "$0 team MTD / No recruiters yet" on a live 403
 ];
 
 const ERROR_SIGNALS = ["isError", "isLoadingError", "status", "error"];

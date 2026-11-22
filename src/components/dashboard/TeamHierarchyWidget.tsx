@@ -33,7 +33,7 @@ const fmtMoney = (n: number) =>
 export function TeamHierarchyWidget() {
   const [search, setSearch] = useState("");
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ["v_agent_with_downline_production"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -57,6 +57,27 @@ export function TeamHierarchyWidget() {
         </CardHeader>
         <CardContent className="flex items-center justify-center py-8">
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Feed-error, never a fake all-clear. v_agent_with_downline_production is a
+  // security_invoker view over agents + v_team_hierarchy; if that read fails the
+  // owner must see "unavailable", not "0 recruiters / $0 team MTD / No recruiters
+  // yet" — a confident zero on a producing team is the fake-success lie this card
+  // would otherwise tell on the command center (MP-WIB-TEAM-HIERARCHY-RENDER-HEALTH).
+  if (isError) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <GitBranch className="h-5 w-5" /> Team Hierarchy + Downline Production
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="py-6 text-sm text-rose-500">
+          Team hierarchy + downline production is temporarily unavailable. This is a
+          feed error, not an empty team — don't read it as "$0 team production."
         </CardContent>
       </Card>
     );

@@ -12,7 +12,7 @@ import { toast } from "sonner";
  * Self-service form → logs a deletion request; we process within 30 days.
  */
 export default function DataDeletion() {
-  usePageTitle("Delete My Data · APEX Financial");
+  usePageTitle("Delete My Data · Galaxy Financial");
   const [email, setEmail] = useState("");
   const [reason, setReason] = useState("");
   const [submitted, setSubmitted] = useState(false);
@@ -46,7 +46,7 @@ export default function DataDeletion() {
           <div>
             <h1 className="apex-headline text-3xl md:text-4xl font-bold">Data Deletion</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Request removal of your personal data from APEX Financial.
+              Request removal of your personal data from Galaxy Financial.
             </p>
           </div>
         </div>
@@ -88,7 +88,7 @@ export default function DataDeletion() {
                 className="h-11"
               />
               <p className="text-[12px] text-muted-foreground mt-1">
-                Use the email you originally submitted to APEX.
+                Use the email you originally submitted to Galaxy.
               </p>
             </div>
 

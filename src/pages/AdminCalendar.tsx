@@ -85,7 +85,7 @@ function formatHour(h: number) {
 }
 
 function generateICS(blocks: CalendarBlock[], dateStr: string) {
-  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//APEX//Calendar//EN"];
+  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Galaxy//Calendar//EN"];
   blocks.forEach(b => {
     const d = dateStr.replace(/-/g, "");
     const sh = String(b.start_hour).padStart(2, "0");

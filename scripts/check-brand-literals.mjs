@@ -85,7 +85,9 @@ const SRC = join(ROOT, "src");
 // (1) and src/pages/TermsOfService.tsx (5), were deleted in the Grow redesign: /privacy-policy and
 // /terms-of-service now redirect to the public pages, which already carry the same text through the
 // brand config. No component was edited to move this count; six literals left with the two files.
-const BASELINE = 21;
+// 2026-11-24 — 21 → 17. DataDeletion.tsx (3) and AdminCalendar.tsx PRODID (1) now say Galaxy
+// (Galaxy copy sweep). What's left is the legal-entity line and CONTENT_ACCOUNTS, kept on purpose.
+const BASELINE = 17;
 // shipped-data.ts: a record of what shipped, under whatever name the agency had at the time. Prose,
 // not a brand slot. See the 2026-10-11 note above.
 const EXEMPT = new Set(["src/config/brand.ts", "src/data/shipped-data.ts"]);

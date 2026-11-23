@@ -257,6 +257,23 @@ const PRIMARY_FEED_MANIFEST = [
   "src/components/dashboard/Target20kPaceWidget.tsx", // command-center $20K pace board — data ?? [] with no error signal rendered "$0 team MTD · 0 hit $20K · No production data yet this month" on a dead v_agent_20k_target_leaderboard view
 ];
 
+// ── NEGATION_PRIMARY_MANIFEST: the deceptive-truthiness (!alias) variant ──
+// A feed can launder undefined-on-error through a BOOLEAN sentinel instead of a
+// `?? []` coalesce — invisible to BOTH detectors above. UpcomingChargebackCard
+// (MP-WIB-ADMIN-RENDER-HEALTH wave 20, 2026-11-23) did:
+//   const { data, isLoading } = useQuery<ChargeRollupRow | null>(…);  // no isError
+//   const isClean = !data || data.total_charges === 0;                 // <- the lie
+// so a dead v_agent_charge_rollup read → data undefined → `!data` true → the card
+// rendered the authoritative green "Clean — no flags · No chargebacks against you"
+// to a producer whose commissions a chargeback directly hits, on the agent command
+// dashboard (/agent-portal + /agent-dashboard). offenders() can't see it (no data
+// default) and offendersCoalesce() can't see it (no `?? []`). offendersNegation()
+// runs ONLY over this curated list — a repo-wide `!alias` rule would flag benign
+// enabled/loading guards (`enabled: !!x`, `if (!rows) …`). Held at ZERO.
+const NEGATION_PRIMARY_MANIFEST = [
+  "src/components/dashboard/AgentPeerAndChargebackCards.tsx", // agent command dashboard chargeback ledger — `!data` read a dead v_agent_charge_rollup as a confident green "Clean — no flags"
+];
+
 const ERROR_SIGNALS = ["isError", "isLoadingError", "status", "error"];
 
 // ── pure core (no fs / no network; every branch driven by --selftest) ──
@@ -363,6 +380,46 @@ export function offendersCoalesce(src) {
   return out;
 }
 
+/**
+ * The DECEPTIVE-TRUTHINESS variant: a `useQuery`/`useSuspenseQuery` destructure
+ * that takes NO error signal, whose `data` alias is negated downstream (`!alias`)
+ * — treating undefined-on-error as a boolean clean/empty sentinel. That `!alias`
+ * manufactures a convincing all-clear from the undefined-on-error, which a primary
+ * card then renders as a believable "clean". Returns [{ line, body }]. Pure;
+ * comments blanked first. Run ONLY over NEGATION_PRIMARY_MANIFEST — a repo-wide
+ * `!alias` rule would flag benign enabled/loading guards.
+ */
+export function offendersNegation(src) {
+  const code = stripComments(src);
+  const out = [];
+  const openRe = /\bconst\s*\{/g;
+  let m;
+  while ((m = openRe.exec(code))) {
+    const open = code.indexOf("{", m.index);
+    if (open < 0) continue;
+    const close = matchBrace(code, open);
+    if (close < 0) continue;
+    const after = code.slice(close + 1);
+    if (!/^\s*=\s*(useQuery|useSuspenseQuery)\s*[<(]/.test(after)) continue;
+    const body = code.slice(open + 1, close);
+    if (ERROR_SIGNAL_RE.test(body)) continue; // takes an error signal → not deceptive
+    const am = body.match(DATA_ALIAS_RE);
+    if (!am) continue;
+    const alias = am[2] || "data";
+    // `!alias` as a STANDALONE negation downstream: the char before `!` is not
+    // another `!` (so `!!alias` boolean-casts are excluded) nor word/dot (so it is
+    // a real negation, not a member chain), and `alias` is whole-word and not a
+    // `.property` of a different object (`!row.alias` won't match). Allows `!alias`,
+    // `!alias?.x`, `!alias ||` — undefined-on-error read as a clean/empty sentinel.
+    const neg = new RegExp(`(?<![!\\w$.])!\\s*${alias}(?![\\w$.])`);
+    if (neg.test(code)) {
+      const line = code.slice(0, m.index).split("\n").length;
+      out.push({ line, body: body.replace(/\s+/g, " ").trim().slice(0, 90) });
+    }
+  }
+  return out;
+}
+
 // ── selftest: prove the scanner both directions, NO fs ──
 function selftest() {
   let pass = 0, total = 0;
@@ -446,6 +503,42 @@ function selftest() {
   const COAL_DOT = `const { data: modules = [], isLoading } = useQuery({ queryKey: ["x"] });\nfor (const v of Object.entries(row.modules ?? {})) {}`;
   ok(offendersCoalesce(COAL_DOT).length === 0, "`.property` access (row.modules ?? {}) is not the query alias `modules`");
 
+  // ── offendersNegation: the deceptive-truthiness (!alias) variant ──
+
+  // THE BUG: no error signal, data negated downstream as a clean sentinel (UpcomingChargebackCard shape).
+  const NEG_BUG = `const { data, isLoading } = useQuery<Row | null>({ queryKey: ["x"] });\nconst isClean = !data || data.total === 0;`;
+  ok(offendersNegation(NEG_BUG).length === 1, "NEGATION BUG: !data with no error signal → 1 offender");
+  ok(offendersCoalesce(NEG_BUG).length === 0, "NEGATION BUG is INVISIBLE to offendersCoalesce (no ?? []) — proves why the 3rd detector exists");
+  ok(offenders(NEG_BUG).length === 0, "NEGATION BUG is INVISIBLE to offenders (no data default)");
+
+  // FIX via taking isError in the same braces.
+  const NEG_FIX = `const { data, isLoading, isError } = useQuery<Row | null>({ queryKey: ["x"] });\nconst isClean = !data || data.total === 0;`;
+  ok(offendersNegation(NEG_FIX).length === 0, "NEGATION FIX (isError present) → clean");
+
+  // aliased data negated (`if (!rollup) …`).
+  const NEG_ALIAS = `const { data: rollup, isLoading } = useQuery({ queryKey: ["x"] });\nif (!rollup) return null;`;
+  ok(offendersNegation(NEG_ALIAS).length === 1, "NEGATION: aliased !rollup with no error → 1 offender");
+
+  // optional-chained negation (`!data?.x`) is the same deceptive sentinel.
+  const NEG_OPT = `const { data, isLoading } = useQuery({ queryKey: ["x"] });\nconst empty = !data?.rows;`;
+  ok(offendersNegation(NEG_OPT).length === 1, "NEGATION: !data?.x with no error → 1 offender");
+
+  // double-negation (!!data, boolean cast / enabled guard) is NOT the deceptive case.
+  const NEG_DOUBLE = `const { data, isLoading } = useQuery({ queryKey: ["x"] });\nconst ready = !!data;`;
+  ok(offendersNegation(NEG_DOUBLE).length === 0, "!!data (boolean cast) is not the deceptive negation");
+
+  // a longer identifier that starts with the alias must not match (word boundary).
+  const NEG_WB = `const { data, isLoading } = useQuery({ queryKey: ["x"] });\nif (!dataReady) return null;`;
+  ok(offendersNegation(NEG_WB).length === 0, "word-boundary: !dataReady does not match alias data");
+
+  // negating a DIFFERENT object's member that shares the name is not the query alias.
+  const NEG_MEMBER = `const { data: rollup, isLoading } = useQuery({ queryKey: ["x"] });\nif (!row.rollup) return null;`;
+  ok(offendersNegation(NEG_MEMBER).length === 0, "member access !row.rollup is not the query alias rollup");
+
+  // NOT a query: a plain destructure negated downstream is out of scope.
+  const NEG_NOTQ = `const { data } = someObject;\nconst isClean = !data;`;
+  ok(offendersNegation(NEG_NOTQ).length === 0, "a non-useQuery destructure is out of scope for the negation detector");
+
   console.log(`\ncheck:admin-dashboard-render-health --selftest — ${pass}/${total} assertions pass (both directions).`);
   if (pass !== total) { console.error("SELFTEST FAILED — the render-health scanner is wrong."); process.exit(1); }
   process.exit(0);
@@ -492,6 +585,22 @@ if (invokedDirectly) {
     if (hits.length) { bad += hits.length; coalReport.push({ rel, hits }); }
   }
 
+  // Third pass: the deceptive-truthiness (!alias) variant, over the curated
+  // NEGATION_PRIMARY_MANIFEST only. "could not read" is exit 2, never a quiet pass.
+  const negReport = [];
+  for (const rel of NEGATION_PRIMARY_MANIFEST) {
+    let src;
+    try {
+      src = readFileSync(resolve(REPO, rel), "utf8");
+    } catch (e) {
+      console.error(`check:admin-dashboard-render-health — COULD NOT READ ${rel}: ${e.message}`);
+      console.error("  A primary-feed daily-driver in NEGATION_PRIMARY_MANIFEST is missing or was renamed.");
+      process.exit(2);
+    }
+    const hits = offendersNegation(src);
+    if (hits.length) { bad += hits.length; negReport.push({ rel, hits }); }
+  }
+
   if (bad) {
     if (report.length) {
       console.error(`check:admin-dashboard-render-health — ${report.reduce((n, r) => n + r.hits.length, 0)} money/pipeline feed(s) render a dead read as a healthy zero:`);
@@ -511,11 +620,20 @@ if (invokedDirectly) {
         }
       }
     }
+    if (negReport.length) {
+      console.error(`check:admin-dashboard-render-health — ${negReport.reduce((n, r) => n + r.hits.length, 0)} primary feed(s) negate a dead read into a clean/empty sentinel (!alias variant):`);
+      for (const { rel, hits } of negReport) {
+        for (const h of hits) {
+          console.error(`  🔴 ${rel}:${h.line} — { ${h.body} }`);
+          console.error(`        data alias is negated (!alias) downstream but the destructure takes no error signal.`);
+        }
+      }
+    }
     console.error("  A failed read on these surfaces must show an error with Retry, not 0 / empty.");
     console.error("  Fix: route the query through <QueryState {...describeQuery(q)}>, or destructure an");
     console.error("  error signal and render it. See src/pages/AdminFunnelHealth.tsx for the pattern.");
     process.exit(1);
   }
-  console.log(`check:admin-dashboard-render-health — OK: ${MANIFEST.length} money/pipeline daily-drivers + ${PRIMARY_FEED_MANIFEST.length} primary-feed coalesce surface(s) surface query errors (0 silent-zero feeds).`);
+  console.log(`check:admin-dashboard-render-health — OK: ${MANIFEST.length} money/pipeline daily-drivers + ${PRIMARY_FEED_MANIFEST.length} primary-feed coalesce surface(s) + ${NEGATION_PRIMARY_MANIFEST.length} negation-sentinel surface(s) surface query errors (0 silent-zero feeds).`);
   process.exit(0);
 }

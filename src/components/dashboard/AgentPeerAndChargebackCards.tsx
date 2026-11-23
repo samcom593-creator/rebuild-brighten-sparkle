@@ -42,11 +42,16 @@ export function RegionPeerCard({ agentId }: { agentId: string | null }) {
     queryKey: ["region-peer-me", agentId],
     enabled: !!agentId,
     queryFn: async () => {
-      const { data } = await supabase
+      // Throw on a dead read so React Query surfaces me.isError. Swallowing the
+      // error (the old `const { data } = await …`) made a failed agents read
+      // succeed with null → myStates null → the card told the agent to "add your
+      // licensed states" when the feed had merely died.
+      const { data, error } = await supabase
         .from("agents")
         .select("id, license_states")
         .eq("id", agentId!)
         .maybeSingle();
+      if (error) throw error;
       return data as { id: string; license_states: string[] | null } | null;
     },
     staleTime: 5 * 60_000,
@@ -98,12 +103,22 @@ export function RegionPeerCard({ agentId }: { agentId: string | null }) {
 
       {!agentId || me.isLoading ? (
         <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton /* stable-key-allow:skeleton */ key={i} className="h-10 w-full" />)}</div>
+      ) : me.isError ? (
+        <p className="text-sm text-rose-400/90 py-3 text-center">
+          Couldn't load your region right now — feed error, not an empty market.
+          <button type="button" onClick={() => me.refetch()} className="underline underline-offset-2 ml-1 hover:text-foreground">Retry</button>
+        </p>
       ) : !myStates || myStates.length === 0 ? (
         <p className="text-sm text-muted-foreground py-3 text-center">
           Add your licensed states to your agent profile to see who you're up against in your market.
         </p>
       ) : peers.isLoading ? (
         <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton /* stable-key-allow:skeleton */ key={i} className="h-10 w-full" />)}</div>
+      ) : peers.isError ? (
+        <p className="text-sm text-rose-400/90 py-3 text-center">
+          Couldn't load peers right now — feed error, not an empty region.
+          <button type="button" onClick={() => peers.refetch()} className="underline underline-offset-2 ml-1 hover:text-foreground">Retry</button>
+        </p>
       ) : (peers.data?.length ?? 0) === 0 ? (
         <p className="text-sm text-muted-foreground py-3 text-center">No peers found in your region yet.</p>
       ) : (
@@ -157,7 +172,7 @@ interface ChargeRollupRow {
 }
 
 export function UpcomingChargebackCard({ agentId }: { agentId: string | null }) {
-  const { data, isLoading } = useQuery<ChargeRollupRow | null>({
+  const { data, isLoading, isError, refetch } = useQuery<ChargeRollupRow | null>({
     queryKey: ["agent-charge-rollup", agentId],
     enabled: !!agentId,
     queryFn: async () => {
@@ -171,6 +186,28 @@ export function UpcomingChargebackCard({ agentId }: { agentId: string | null }) 
     },
     staleTime: 5 * 60_000,
   });
+
+  // A dead v_agent_charge_rollup read makes `data` undefined, which `isClean`
+  // below reads as "no charges on file" → a confident green "Clean — no flags".
+  // That is a money lie: an agent's chargebacks hit their commissions, and a
+  // dead feed is NOT a clean ledger. Gate the whole card on isError FIRST so a
+  // feed error never renders as a clean record.
+  if (isError) {
+    return (
+      <GlassCard className="p-4 border-l-2 border-rose-500/60">
+        <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold flex items-center gap-1.5">
+          <ShieldAlert className="h-3 w-3 text-rose-400" /> Chargeback ledger
+        </p>
+        <h3 className="text-lg font-bold mt-1">Ledger didn't load</h3>
+        <p className="text-sm text-muted-foreground mt-2">
+          Your chargeback ledger couldn't be read right now. This is a feed error — not a clean record. Don't read it as "no chargebacks."
+          <button type="button" onClick={() => refetch()} className="underline underline-offset-2 ml-1 hover:text-foreground">
+            Retry
+          </button>
+        </p>
+      </GlassCard>
+    );
+  }
 
   const billed = Number(data?.total_billed_usd ?? 0);
   const flagged = Number(data?.flagged_charges ?? 0);

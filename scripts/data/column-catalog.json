@@ -2492,6 +2492,28 @@
       "note",
       "root_agent_id"
     ],
+    "carrier_live_metrics": [
+      "at_risk_count",
+      "carrier",
+      "chargeback_count",
+      "chargeback_total",
+      "downline_count",
+      "inforce_premium",
+      "issued_premium",
+      "last_30d_premium",
+      "personal_debt",
+      "placement_rate",
+      "policies_30d",
+      "policies_7d",
+      "policies_total",
+      "prev_30d_premium",
+      "pulled_at",
+      "raw",
+      "rolled_up_debt",
+      "snapshot_on",
+      "total_outstanding_debt",
+      "ytd_premium"
+    ],
     "carrier_policies": [
       "agent_id",
       "agent_match_method",
@@ -4100,6 +4122,83 @@
       "source_row_numbers",
       "updated_at"
     ],
+    "ethos_callsheet_calls": [
+      "created_at",
+      "follow_up_on",
+      "id",
+      "logged_by",
+      "logged_by_agent_id",
+      "logged_by_name",
+      "note",
+      "outcome",
+      "person_id",
+      "reason"
+    ],
+    "ethos_callsheet_people": [
+      "agent_id",
+      "agent_match",
+      "al_last_active_at",
+      "al_user_id",
+      "carriers",
+      "chargeback_personal",
+      "chargeback_total",
+      "comp_level",
+      "contracts_active",
+      "contracts_total",
+      "created_at",
+      "email",
+      "first_seen_on",
+      "first_seen_source",
+      "full_name",
+      "id",
+      "in_latest_snapshot",
+      "inforce_premium",
+      "issued_premium",
+      "license",
+      "name_key",
+      "npn",
+      "on_ethos",
+      "persistency_13m",
+      "persistency_4m",
+      "persistency_7m",
+      "person_key",
+      "phone",
+      "snapshot_on",
+      "sub_agency",
+      "sub_agency_agent_id",
+      "updated_at"
+    ],
+    "ethos_live_policies": [
+      "amount",
+      "chargeback_date",
+      "comp_bucket",
+      "id",
+      "invoice_date",
+      "paid_to",
+      "paid_to_code",
+      "payment_type",
+      "policy_id",
+      "policy_number",
+      "pulled_at",
+      "snapshot_on",
+      "state_of_issue"
+    ],
+    "ethos_live_production": [
+      "agent_name",
+      "has_subagents",
+      "inforce_issued_premium",
+      "issued_annual_premium",
+      "npn",
+      "on_advanced_pay",
+      "outstanding_chargeback",
+      "parent_agent_name",
+      "partner_id",
+      "persistency_m13",
+      "persistency_m4",
+      "persistency_m7",
+      "pulled_at",
+      "snapshot_on"
+    ],
     "ethos_roster": [
       "advance",
       "comment",
@@ -4415,6 +4514,12 @@
       "key_shape",
       "key_value",
       "seed_source"
+    ],
+    "identity_repair_log": [
+      "before_state",
+      "id",
+      "note",
+      "repaired_at"
     ],
     "ig_comment_events": [
       "comment_id",
@@ -5544,6 +5649,16 @@
       "source_relation",
       "timezone",
       "updated_at"
+    ],
+    "monday_rollcall_marks": [
+      "agent_id",
+      "created_at",
+      "id",
+      "mark",
+      "marked_by",
+      "marked_by_name",
+      "monday",
+      "note"
     ],
     "monday_starter_notifications": [
       "created_at",
@@ -6697,6 +6812,31 @@
       "source_url",
       "storage_path"
     ],
+    "readymode_seat_actions": [
+      "action",
+      "agent_id",
+      "at",
+      "detail",
+      "dry_run",
+      "id",
+      "ok",
+      "reason",
+      "rm_account",
+      "rm_name",
+      "rm_user_id"
+    ],
+    "readymode_seat_snapshots": [
+      "accounts",
+      "admin_assigned",
+      "admin_remaining",
+      "admin_total",
+      "agent_assigned",
+      "agent_remaining",
+      "agent_total",
+      "claims",
+      "id",
+      "taken_at"
+    ],
     "readymode_sync_log": [
       "error_message",
       "finished_at",
@@ -7339,6 +7479,22 @@
       "created_at",
       "id",
       "user_id"
+    ],
+    "team_goals": [
+      "agent_id",
+      "created_at",
+      "created_by",
+      "id",
+      "income_goal",
+      "label",
+      "notes",
+      "period_end",
+      "period_start",
+      "personal_ap_goal",
+      "recruit_goal",
+      "subject_name",
+      "team_ap_goal",
+      "updated_at"
     ],
     "team_memberships": [
       "agent_id",
@@ -9370,6 +9526,14 @@
       "readiness",
       "suggested_carrier"
     ],
+    "v_carrier_unaccounted": [
+      "carrier",
+      "comp_amount",
+      "invoice_date",
+      "paid_to",
+      "policy_number",
+      "state_of_issue"
+    ],
     "v_ceo_command_center": [
       "active_agents",
       "ap_30d",
@@ -10279,6 +10443,16 @@
       "last_sign_in_at",
       "statuses",
       "user_id"
+    ],
+    "v_dialer_client_suppression": [
+      "client_name",
+      "dead_policies",
+      "live_from",
+      "live_policies",
+      "live_statuses",
+      "phone10",
+      "sources",
+      "verdict"
     ],
     "v_dialer_unattributed": [
       "calls_30d",
@@ -12805,9 +12979,12 @@
     "v_production_origin_freshness": [
       "alp_30d",
       "alp_prior_30d",
+      "blind_30d",
+      "blind_deals_30d",
       "days_dark",
       "deals_30d",
       "deals_prior_30d",
+      "is_retired",
       "last_posted",
       "origin",
       "verdict"
@@ -12823,7 +13000,9 @@
       "measured_at",
       "native_alp_30d",
       "native_alp_prior_30d",
+      "native_baseline_monthly_avg",
       "native_pct_change",
+      "native_vs_baseline_pct",
       "pct_of_drop_from_dead_feeds",
       "verdict"
     ],
@@ -13146,6 +13325,7 @@
       "viewname"
     ],
     "v_readymode_ingest_health": [
+      "calls_7d",
       "current_mode",
       "ingest_24h",
       "ingest_total",
@@ -13153,9 +13333,11 @@
       "last_error_at",
       "last_heartbeat_at",
       "last_ingest_at",
+      "live_last_import_at",
       "pull_enabled",
       "seconds_since_heartbeat",
       "seconds_since_last_ingest",
+      "seconds_since_live_import",
       "status",
       "webhook_enabled"
     ],
@@ -14805,6 +14987,23 @@
       "matched_by",
       "producer_name",
       "updated_at"
+    ],
+    "win_post_queue": [
+      "agent_id",
+      "agent_name",
+      "decided_at",
+      "decided_by",
+      "detected_at",
+      "event_date",
+      "event_key",
+      "id",
+      "kind",
+      "note",
+      "payload",
+      "posted_at",
+      "status",
+      "tier",
+      "trophy"
     ],
     "xcel_events": [
       "address_1",

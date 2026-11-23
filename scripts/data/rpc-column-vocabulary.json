@@ -939,6 +939,8 @@
   "webhook_health_check": "jsonb",
   "weekly_xcel_progress_emails": "jsonb",
   "win_post_feed": "jsonb",
+  "win_post_queue_board": "jsonb",
+  "win_post_queue_decide": "jsonb",
   "word_similarity": "real",
   "word_similarity_commutator_op": "boolean",
   "word_similarity_dist_commutator_op": "real",

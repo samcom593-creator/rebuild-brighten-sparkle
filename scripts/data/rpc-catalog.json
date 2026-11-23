@@ -7240,6 +7240,27 @@
         "raw": "p smallint[]"
       }
     ],
+    "fn_win_post_detect": [
+      {
+        "all": [
+          "p_days",
+          "p_notify"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_days integer DEFAULT 14, p_notify boolean DEFAULT true"
+      }
+    ],
+    "fn_win_post_feed_compute": [
+      {
+        "all": [
+          "p_days"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_days integer DEFAULT 14"
+      }
+    ],
     "fn_work_weekdays_on": [
       {
         "all": [
@@ -12192,6 +12213,29 @@
         "required": [],
         "unnamed": false,
         "raw": "p_days integer DEFAULT 14"
+      }
+    ],
+    "win_post_queue_board": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "win_post_queue_decide": [
+      {
+        "all": [
+          "p_action",
+          "p_id",
+          "p_note"
+        ],
+        "required": [
+          "p_action",
+          "p_id"
+        ],
+        "unnamed": false,
+        "raw": "p_id uuid, p_action text, p_note text DEFAULT NULL::text"
       }
     ],
     "word_similarity": [

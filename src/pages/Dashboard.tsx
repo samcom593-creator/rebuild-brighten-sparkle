@@ -1,5 +1,7 @@
 import { lazy, Suspense, useMemo, useState, type ElementType, type ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { usePageTitle } from "@/hooks/usePageTitle";
+import { APEX_BRAND } from "@/config/brand";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -933,6 +935,7 @@ function ExecutiveDashboard({
 }
 
 export default function Dashboard() {
+  usePageTitle(`Dashboard ${APEX_BRAND.titleSuffix}`);
   const { user, isLoading, isAdmin, isVaManager, isVa } = useAuth();
   const { effectiveRole, actualRole, isPreviewing, previewRole } = useRolePreview();
   const shouldRenderDefaultAdminCommand = isAdmin && !previewRole && effectiveRole === "admin";

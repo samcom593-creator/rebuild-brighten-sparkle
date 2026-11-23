@@ -1,4 +1,5 @@
-import { Suspense, lazy, useEffect, useRef } from "react";
+import { Suspense, lazy, useEffect, useLayoutEffect, useRef } from "react";
+import { APEX_BRAND } from "@/config/brand";
 import { Outlet } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -168,6 +169,18 @@ function useGlobalSessionRefresh() {
 
 export function AuthenticatedShell() {
   useGlobalSessionRefresh();
+  // Default tab title for every signed-in page. Without it, any /dashboard/*
+  // page that doesn't call usePageTitle kept index.html's public recruiting
+  // title ("Galaxy Financial — Start Your Career in Insurance Sales").
+  // Layout effects all run before passive ones, so a page's own
+  // usePageTitle (useEffect) still wins and restores to this on unmount.
+  useLayoutEffect(() => {
+    const previous = document.title;
+    document.title = APEX_BRAND.productName;
+    return () => {
+      document.title = previous;
+    };
+  }, []);
   return (
     <ProtectedRoute>
       <MotionConfig reducedMotion="user">

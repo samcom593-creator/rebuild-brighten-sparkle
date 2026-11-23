@@ -197998,6 +197998,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      win_post_feed: { Args: { p_days?: number }; Returns: Json }
 
     }
     Enums: {

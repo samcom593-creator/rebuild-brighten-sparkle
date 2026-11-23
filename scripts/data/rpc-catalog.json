@@ -2911,6 +2911,46 @@
         "raw": "p_person_id uuid, p_phone text"
       }
     ],
+    "ethos_callsheet_resolve": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "ethos_callsheet_resolve_core": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "ethos_callsheet_sync_roster": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "ethos_callsheet_sync_roster_core": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "ethos_callsheet_visible_ids": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "ethos_paste_rows_approved": [
       {
         "all": [],
@@ -3037,6 +3077,18 @@
         "raw": ""
       }
     ],
+    "fn_agent_interview_state": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
     "fn_agent_is_placeholder": [
       {
         "all": [
@@ -3074,6 +3126,18 @@
       }
     ],
     "fn_agent_is_suspended": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
+    "fn_agent_lead_states": [
       {
         "all": [
           "p_agent_id"
@@ -4694,6 +4758,18 @@
         "raw": "p_agent_id uuid, p_period_start date DEFAULT NULL::date, p_period_end date DEFAULT NULL::date"
       }
     ],
+    "fn_grant_morning_leads": [
+      {
+        "all": [
+          "p_dry_run",
+          "p_limit",
+          "p_only_agent"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_dry_run boolean DEFAULT true, p_limit integer DEFAULT 10, p_only_agent uuid DEFAULT NULL::uuid"
+      }
+    ],
     "fn_grant_starter_packs": [
       {
         "all": [
@@ -5157,6 +5233,16 @@
         "raw": "p license_progress"
       }
     ],
+    "fn_license_state_ask_sweep": [
+      {
+        "all": [
+          "p_dry_run"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_dry_run boolean DEFAULT true"
+      }
+    ],
     "fn_licensed_activation_population": [
       {
         "all": [],
@@ -5402,6 +5488,57 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "fn_morning_lead_candidates": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_morning_leads_announce": [
+      {
+        "all": [
+          "p_dry_run",
+          "p_only_agent"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_dry_run boolean DEFAULT true, p_only_agent uuid DEFAULT NULL::uuid"
+      }
+    ],
+    "fn_morning_leads_cron": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_morning_leads_grant_one": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
+    "fn_my_leads_state_gate": [
+      {
+        "all": [
+          "p_user_id"
+        ],
+        "required": [
+          "p_user_id"
+        ],
+        "unnamed": false,
+        "raw": "p_user_id uuid"
       }
     ],
     "fn_new_hire_flow_claim": [
@@ -7484,6 +7621,14 @@
         ],
         "unnamed": false,
         "raw": "p_partial_id uuid"
+      }
+    ],
+    "get_team_downline_production": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
       }
     ],
     "get_weekly_leaderboard": [
@@ -9586,6 +9731,24 @@
         ],
         "unnamed": false,
         "raw": "p_start date, p_end date"
+      }
+    ],
+    "reconcile_native_deal_payment": [
+      {
+        "all": [
+          "p_deal_id",
+          "p_expected_version",
+          "p_outcome",
+          "p_reason"
+        ],
+        "required": [
+          "p_deal_id",
+          "p_expected_version",
+          "p_outcome",
+          "p_reason"
+        ],
+        "unnamed": false,
+        "raw": "p_deal_id uuid, p_outcome text, p_reason text, p_expected_version integer"
       }
     ],
     "record_apex_licensed_disposition": [
@@ -12019,6 +12182,16 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "win_post_feed": [
+      {
+        "all": [
+          "p_days"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_days integer DEFAULT 14"
       }
     ],
     "word_similarity": [

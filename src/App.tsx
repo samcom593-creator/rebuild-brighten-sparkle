@@ -195,6 +195,7 @@ const InterviewRecovery = lazy(() => import("./pages/InterviewRecovery"));
 const ProducerReactivation = lazy(() => import("./pages/ProducerReactivation"));
 const AdminBoardAccess = lazy(() => import("./pages/AdminBoardAccess"));
 const AwardGraphics = lazy(() => import("./pages/AwardGraphics"));
+const WinPostStudio = lazy(() => import("./pages/WinPostStudio"));
 const ApplicantCheckin = lazy(() => import("./pages/ApplicantCheckin"));
 const AgentFlow = lazy(() => import("./pages/AgentFlow"));
 const InboxPage = lazy(() => import("./pages/InboxPage"));
@@ -531,7 +532,11 @@ const App = () => (
                   <Route path="/agent-flow" element={<AgentFlow />} />
                   {/* /awards exposes Instagram-ready award graphics generation.
                       Admin-only — was publicly accessible. */}
-                  <Route path="/awards" element={<ProtectedRoute requireAdmin><AwardGraphics /></ProtectedRoute>} />
+                  {/* MP-WIN-POSTS: /awards is the Win Post Studio (approved Galaxy card
+                      design, code-decided trophies, tap-to-save PNGs). The old SVG
+                      generator stays reachable at /awards/legacy. */}
+                  <Route path="/awards" element={<ProtectedRoute requireAdmin><WinPostStudio /></ProtectedRoute>} />
+                  <Route path="/awards/legacy" element={<ProtectedRoute requireAdmin><AwardGraphics /></ProtectedRoute>} />
                   {/* Public plaque share — no auth required */}
                   <Route path="/plaque/:slug" element={<PlaqueShare />} />
                   {/* 2026-06-16 Sam directive: short recruiting links.

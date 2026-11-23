@@ -271,6 +271,20 @@ const PRIMARY_FEED_MANIFEST = [
   // sub-query error) and every panel early-returns a shared VaultFeedError card gated
   // BEFORE any empty/zero state, so a dead mirror can never read as an empty book.
   "src/pages/AgentLinkVault.tsx", // admin data-recovery vault — Promise.all `.count ?? 0` + list `?? []` with no error signal rendered "0 policies / 0 clients / empty book" on a dead agentlink_* feed
+  // MP-WIB-ADMIN-RENDER-HEALTH wave 22 (2026-11-23). LicensingTracker
+  // (/admin/licensing-tracker) is the 8-stage licensing pipeline board — the
+  // recruiting→income funnel, where a student who can't pass their exam can't
+  // write business. BOTH tabs carried the scanner-blind bug. KanbanTab
+  // destructured `const { data: rows, isLoading }` (no error signal); a dead
+  // v_licensing_kanban view (queryFn throws → rows undefined) hit
+  // `(rows ?? []).forEach` → byStage all-empty → every one of the 8 stage cards
+  // rendered Badge "0" and "—": the WHOLE pipeline read as empty ("nobody
+  // enrolled, nobody booked, nobody stalled") while the feed merely died.
+  // StalledTab is pinned in NEGATION_PRIMARY_MANIFEST for its `!rows?.length`
+  // all-clear. Both now take isError + early-return a rose feed-error card with
+  // Retry, gated BEFORE the kanban/empty render, so the fake "empty licensing
+  // pipeline" can never render on an error.
+  "src/pages/admin/LicensingTracker.tsx", // licensing pipeline kanban — `(rows ?? []).forEach` with no error signal rendered all 8 stage cards "0 / —" on a dead v_licensing_kanban view
 ];
 
 // ── NEGATION_PRIMARY_MANIFEST: the deceptive-truthiness (!alias) variant ──
@@ -294,6 +308,16 @@ const NEGATION_PRIMARY_MANIFEST = [
   // is pinned in BOTH manifests: the negation detector guards the `!data` path and
   // the coalesce detector guards the five list panels' `?? []`. Held at ZERO on both.
   "src/pages/AgentLinkVault.tsx", // admin data-recovery vault — `!data` + `?? []` across 6 panels read a dead agentlink_* feed as an empty book
+  // MP-WIB-ADMIN-RENDER-HEALTH wave 22 (2026-11-23). LicensingTracker's StalledTab
+  // — see the full doctrine in PRIMARY_FEED_MANIFEST above. It destructured
+  // `const { data: rows, isLoading }` (no error signal); a dead v_licensing_stalled
+  // view (queryFn throws → rows undefined) hit `!rows?.length` → true → the card
+  // rendered the AUTHORITATIVE "No stalled students. Either the pipeline is clean
+  // or no students have crossed SLA thresholds yet." — a confident "SLA board is
+  // clean" telling Sam nobody has gone cold at the exact moment the feed died. Now
+  // takes isError + early-returns a rose feed-error card with Retry, gated BEFORE
+  // the `!rows?.length` all-clear.
+  "src/pages/admin/LicensingTracker.tsx", // licensing stalled-SLA board — `!rows?.length` with no error signal rendered "No stalled students. Either the pipeline is clean…" on a dead v_licensing_stalled view
 ];
 
 const ERROR_SIGNALS = ["isError", "isLoadingError", "status", "error"];

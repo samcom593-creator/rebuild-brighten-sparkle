@@ -11,7 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  GraduationCap, Clock, CheckCircle2, XCircle, AlertOctagon, ArrowRight,
+  GraduationCap, Clock, CheckCircle2, XCircle, AlertOctagon, ArrowRight, AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -53,7 +53,7 @@ const STAGES: { key: Stage; label: string; color: string }[] = [
 /* ============================================================ */
 function KanbanTab() {
   const qc = useQueryClient();
-  const { data: rows, isLoading } = useQuery({
+  const { data: rows, isLoading, isError, refetch } = useQuery({
     queryKey: ["licensing_kanban"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -90,6 +90,34 @@ function KanbanTab() {
   }, [rows]);
 
   if (isLoading) return <Card><CardContent className="p-6"><Skeleton className="h-64 w-full" /></CardContent></Card>;
+
+  if (isError) {
+    // Feed error, never a fake "nobody is in licensing". A dead v_licensing_kanban
+    // view (queryFn throws → rows undefined → (rows ?? []).forEach → every stage
+    // card reads "0" and "—") would otherwise render the WHOLE 8-stage pipeline as
+    // empty: a confident "nobody enrolled, nobody stalled, nobody booked" at the
+    // exact moment the feed merely died. The licensing pipeline is the
+    // recruiting→income funnel; a false "empty board" hides students who can't yet
+    // write business. The 465-InsuraCloud fake-success class; surface the error
+    // instead (MP-WIB-ADMIN-RENDER-HEALTH).
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="rounded-lg border border-rose-500/30 bg-rose-500/5 p-4 text-sm text-rose-600 dark:text-rose-400 flex items-start gap-2">
+            <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+            <div className="space-y-2">
+              <p>
+                The licensing kanban is temporarily unavailable. This is a feed
+                error, not an empty pipeline — don't read it as "nobody is in
+                licensing."
+              </p>
+              <Button size="sm" variant="outline" onClick={() => refetch()}>Retry</Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="overflow-x-auto pb-2">
@@ -140,7 +168,7 @@ function KanbanTab() {
 
 /* ============================================================ */
 function StalledTab() {
-  const { data: rows, isLoading } = useQuery({
+  const { data: rows, isLoading, isError, refetch } = useQuery({
     queryKey: ["licensing_stalled"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -153,6 +181,34 @@ function StalledTab() {
   });
 
   if (isLoading) return <Card><CardContent className="p-6"><Skeleton className="h-40 w-full" /></CardContent></Card>;
+
+  if (isError) {
+    // Feed error, never a fake "pipeline is clean". A dead v_licensing_stalled
+    // view (queryFn throws → rows undefined → !rows?.length true) would otherwise
+    // render the AUTHORITATIVE "No stalled students. Either the pipeline is clean
+    // or no students have crossed SLA thresholds yet." — a confident all-clear
+    // telling Sam the licensing SLA board is clean at the exact moment the feed
+    // merely died, so SLA-breached students who've gone cold stay invisible. The
+    // 465-InsuraCloud fake-success class; surface the error instead
+    // (MP-WIB-ADMIN-RENDER-HEALTH).
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="rounded-lg border border-rose-500/30 bg-rose-500/5 p-4 text-sm text-rose-600 dark:text-rose-400 flex items-start gap-2">
+            <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+            <div className="space-y-2">
+              <p>
+                The stalled-students list is temporarily unavailable. This is a
+                feed error, not a clean pipeline — don't read it as "nobody has
+                breached SLA."
+              </p>
+              <Button size="sm" variant="outline" onClick={() => refetch()}>Retry</Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>

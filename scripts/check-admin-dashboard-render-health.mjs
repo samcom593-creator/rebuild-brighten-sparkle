@@ -285,6 +285,29 @@ const PRIMARY_FEED_MANIFEST = [
   // Retry, gated BEFORE the kanban/empty render, so the fake "empty licensing
   // pipeline" can never render on an error.
   "src/pages/admin/LicensingTracker.tsx", // licensing pipeline kanban — `(rows ?? []).forEach` with no error signal rendered all 8 stage cards "0 / —" on a dead v_licensing_kanban view
+  // MP-WIB-ADMIN-RENDER-HEALTH wave 23 (2026-11-23). Two live admin/recruiting
+  // surfaces carrying the scanner-blind coalesce bug, both named in the wave-22
+  // pivot census. UnclaimedLeads (/dashboard/admin/unclaimed, requireAdmin) is the
+  // FULL-PAGE companion to UnclaimedLeadsCommandCard (pinned wave 18) — its own
+  // subtitle calls unclaimed apps "the biggest single funnel leak." It destructured
+  // `const { data: apps, isLoading }` (no error signal); its queryFn `if (error)
+  // throw` makes `apps` undefined on a dead `applications` read, and `const rows =
+  // apps ?? []` then rendered every StatTile 0 ("Total stage=new 0") + the table
+  // "No matches." — a confident "every lead is claimed" while the feed had merely
+  // died. The secondary `agents` name-map (also `?? []`) now takes isError +
+  // renders a graceful "names unavailable, counts/rows unaffected" notice (benign
+  // secondary per the ManagerDashboard precedent). Primary feed early-returns a
+  // rose feed-error card gated BEFORE the stats + table.
+  "src/pages/admin/UnclaimedLeads.tsx", // admin unclaimed-leads desk — apps ?? [] with no error signal rendered every StatTile 0 + "No matches." on a dead applications feed
+  // ReferralPipeline (/dashboard/referrals, requireAdmin allowManagers) is the
+  // manager/admin referral board — referrals are a recruiting (= money) channel.
+  // It destructured `const { data, isLoading }` (no error signal); its queryFn
+  // `if (error) throw` makes `data` undefined on a dead v_referral_pipeline read,
+  // which drove BOTH the `data ?? []` grouping coalesce AND the `!data` empty
+  // branch (so it is pinned in BOTH manifests, like AgentLinkVault). Now takes
+  // isError + early-returns a rose feed-error card gated BEFORE the "No referrals
+  // yet." empty state, so a dead referral feed can never read as an empty pipeline.
+  "src/pages/ReferralPipeline.tsx", // manager/admin referral board — data ?? [] + !data with no error signal rendered "No referrals yet." on a dead v_referral_pipeline view
 ];
 
 // ── NEGATION_PRIMARY_MANIFEST: the deceptive-truthiness (!alias) variant ──
@@ -318,6 +341,12 @@ const NEGATION_PRIMARY_MANIFEST = [
   // takes isError + early-returns a rose feed-error card with Retry, gated BEFORE
   // the `!rows?.length` all-clear.
   "src/pages/admin/LicensingTracker.tsx", // licensing stalled-SLA board — `!rows?.length` with no error signal rendered "No stalled students. Either the pipeline is clean…" on a dead v_licensing_stalled view
+  // MP-WIB-ADMIN-RENDER-HEALTH wave 23 (2026-11-23). ReferralPipeline — see the full
+  // doctrine on this file in PRIMARY_FEED_MANIFEST above. Its empty branch is
+  // `if (!data || data.length === 0)`, so the negation detector guards the `!data`
+  // path and the coalesce detector guards the `data ?? []` grouping; pinned in BOTH,
+  // held at ZERO on both. The isError early-return clears both detectors.
+  "src/pages/ReferralPipeline.tsx", // manager/admin referral board — `!data` read a dead v_referral_pipeline as "No referrals yet."
 ];
 
 const ERROR_SIGNALS = ["isError", "isLoadingError", "status", "error"];

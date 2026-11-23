@@ -93,7 +93,7 @@ export default function ReferralPipeline() {
   // role context flipped mid-session.
   const isAuthorized = isAdmin || isManager;
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["referral-pipeline"],
     refetchInterval: 300_000,
     enabled: isAuthorized,
@@ -145,6 +145,33 @@ export default function ReferralPipeline() {
   }
 
   if (isLoading) return <PageLoadingSkeleton />;
+
+  // A dead v_referral_pipeline read must surface as a load error, never as the
+  // believable "No referrals yet." empty state — that false empty reads as "the
+  // team has no referrals in flight" on a recruiting (= money) channel. Gated
+  // BEFORE the `!data` empty branch so the fake empty can never render on error.
+  if (isError) {
+    return (
+      <div className="p-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" /> Referral pipeline
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-center py-12 space-y-3">
+            <div className="flex items-center justify-center gap-2 text-sm text-rose-300">
+              <AlertTriangle className="h-4 w-4" /> The referral pipeline didn't load.
+            </div>
+            <p className="text-xs text-muted-foreground">
+              This is a load error, not an empty pipeline — don't read it as "no referrals." Retry below.
+            </p>
+            <Button variant="outline" size="sm" onClick={() => refetch()}>Retry</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (!data || data.length === 0) {
     return (

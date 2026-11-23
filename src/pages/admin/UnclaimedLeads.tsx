@@ -49,7 +49,7 @@ export default function UnclaimedLeads() {
   const [search, setSearch] = useState("");
   const [visibleCount, setVisibleCount] = useState(100);
 
-  const { data: apps, isLoading } = useQuery({
+  const { data: apps, isLoading, isError, refetch } = useQuery({
     queryKey: ["admin_unclaimed_apps"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -63,7 +63,7 @@ export default function UnclaimedLeads() {
     refetchInterval: 300_000,
   });
 
-  const { data: agents } = useQuery({
+  const { data: agents, isError: agentsError } = useQuery({
     queryKey: ["agents_lite"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -135,6 +135,38 @@ export default function UnclaimedLeads() {
     };
   }, [apps, inactiveAgentIds]);
 
+  // A dead applications feed must surface as a load error, never as a believable
+  // "No matches." + 0 stat tiles — that false empty reads as "every lead is
+  // claimed" on the admin companion to the top-of-dashboard unclaimed-leads leak
+  // card. Gated BEFORE the stats strip + table so the fake 0 can never render.
+  if (isError) {
+    return (
+      <div className="min-h-screen p-4 lg:p-6 max-w-7xl mx-auto space-y-4 ops-surface ops-fade-in">
+        <PageHeader
+          accent="rose"
+          eyebrow="Admin · Unclaimed"
+          eyebrowIcon={<AlertOctagon className="h-3 w-3" />}
+          title="Unclaimed Leads"
+          subtitle="Every applicant currently in stage=new. The longer they sit cold, the deader the lead. Reassign in one click."
+        />
+        <Card className="border-rose-500/30 bg-rose-500/5">
+          <CardContent className="p-6 flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-rose-400 mt-0.5 shrink-0" />
+            <div className="space-y-2">
+              <div className="font-semibold text-rose-200">Unclaimed-leads feed didn't load</div>
+              <div className="text-sm text-muted-foreground">
+                This is a load error, not an empty queue — don't read it as "every lead is claimed." Retry below.
+              </div>
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
+                <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Retry
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen p-4 lg:p-6 max-w-7xl mx-auto space-y-4 ops-surface ops-fade-in">
       <PageHeader
@@ -144,6 +176,14 @@ export default function UnclaimedLeads() {
         title="Unclaimed Leads"
         subtitle="Every applicant currently in stage=new. The longer they sit cold, the deader the lead. Reassign in one click."
       />
+
+      {/* Secondary owner-name feed down: counts/rows below are the live stage=new
+          truth; only owner names + departed/inactive-owner detection are affected. */}
+      {agentsError && (
+        <div className="text-xs text-amber-300/80">
+          Owner names / inactive-owner detection couldn't load — the stage=new counts and rows below are unaffected.
+        </div>
+      )}
 
       {/* Stat strip */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

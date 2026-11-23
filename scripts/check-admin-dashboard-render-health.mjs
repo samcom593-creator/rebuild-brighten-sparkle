@@ -227,6 +227,19 @@ const PRIMARY_FEED_MANIFEST = [
   // unavailable" and the list area early-branches a rose feed-error card gated BEFORE
   // the empty state, so the fake "$0 / no one posted" can never render on an error.
   "src/components/finances/LiveCommissionsLeaderboard.tsx", // command-center money leaderboard — data ?? [] with no error signal rendered "0 producers · $0 estimated / No valid posted production" on a dead leaderboard_board RPC
+  // MP-WIB-ADMIN-RENDER-HEALTH wave 18 (2026-11-23). UnclaimedLeadsCommandCard
+  // renders at the very top of /dashboard (Dashboard.tsx:843) — Sam's first-thing-
+  // every-day surface — and carried the exact scanner-blind bug. It destructured
+  // `const { data, isLoading }` (no error signal); its queryFn `if (error) throw`
+  // makes `data` undefined on a dead v_unclaimed_new_apps view, and the empty state
+  // `if (!data || counts.total === 0)` then rendered the AUTHORITATIVE emerald
+  // "Inbox zero — every new applicant is claimed" — a confident all-clear on the
+  // card its own docstring calls "the biggest single funnel leak" (319 unclaimed,
+  // 285 >14d cold). A dead feed read as "every lead handled" is the 465-InsuraCloud
+  // fake-success lie on the highest-visibility money surface. Now takes isError +
+  // early-returns a rose feed-error card gated BEFORE the inbox-zero branch, so the
+  // fake "every applicant claimed" can never render on an error.
+  "src/components/dashboard/UnclaimedLeadsCommandCard.tsx", // top-of-dashboard unclaimed-leads leak card — data ?? [] with no error signal rendered emerald "Inbox zero — every new applicant is claimed" on a dead v_unclaimed_new_apps view
 ];
 
 const ERROR_SIGNALS = ["isError", "isLoadingError", "status", "error"];

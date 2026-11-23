@@ -68,7 +68,7 @@ export function UnclaimedLeadsCommandCard() {
   const [expanded, setExpanded] = useState(false);
   const [claimingId, setClaimingId] = useState<string | null>(null);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ["v_unclaimed_new_apps"],
     queryFn: async (): Promise<UnclaimedRow[]> => {
       const { data, error } = await supabase
@@ -121,6 +121,25 @@ export function UnclaimedLeadsCommandCard() {
     return (
       <div className="rounded-md border border-amber-500/30 bg-white dark:bg-card p-5 animate-pulse">
         <div className="text-xs text-muted-foreground">Loading unclaimed leads…</div>
+      </div>
+    );
+  }
+
+  // Feed error, never a fake "inbox zero". A dead v_unclaimed_new_apps view
+  // (rename / RLS change / dropped view) makes `data` undefined — which the
+  // emerald "every new applicant is claimed" state below would render as an
+  // authoritative all-clear on the top-of-dashboard card the docstring calls
+  // "the biggest single funnel leak." A confident green over a dead feed is
+  // the 465-InsuraCloud fake-success lie, so error must gate BEFORE the
+  // empty/inbox-zero branch (MP-WIB-ADMIN-RENDER-HEALTH wave 18).
+  if (isError) {
+    return (
+      <div className="rounded-md border border-rose-500/40 bg-rose-500/5 p-5 flex items-center gap-3">
+        <AlertOctagon className="h-5 w-5 text-rose-400 flex-shrink-0" />
+        <div className="flex-1">
+          <div className="text-sm font-semibold text-rose-200">Unclaimed-leads feed unavailable</div>
+          <div className="text-xs text-muted-foreground mt-0.5">This is a feed error, not inbox zero — don't read it as "every new applicant is claimed." Retry shortly or check the console.</div>
+        </div>
       </div>
     );
   }

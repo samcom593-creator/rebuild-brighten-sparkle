@@ -214,6 +214,19 @@ const PRIMARY_FEED_MANIFEST = [
   // sensitive) task; this closes the UI lie so the owner sees "unavailable", not $0.
   // Now takes isError + early-returns a feed-error card gated before the empty state.
   "src/components/dashboard/TeamHierarchyWidget.tsx", // command-center team-hierarchy card — data ?? [] with no error signal rendered "$0 team MTD / No recruiters yet" on a live 403
+  // MP-WIB-ADMIN-RENDER-HEALTH wave 17 (2026-11-23). LiveCommissionsLeaderboard
+  // renders on DashboardCommandCenter (already in MANIFEST) but its useQuery lives
+  // in this SUB-COMPONENT, which the page-level scan never saw — a MANIFEST page's
+  // money card carrying the exact scanner-blind bug (same shape as TeamHierarchyWidget
+  // / ManagerDashboard). It destructured `const { data, isLoading }` (no error signal)
+  // and coalesced `data ?? []` into `rows`, so a dead leaderboard_board RPC → data
+  // undefined → rows [] → the badge rendered "0 producers · $0 estimated" and the body
+  // rendered "No valid posted production exists in this period." — an authoritative
+  // money lie on the agency command center (the agency earned nothing this period)
+  // while the feed had merely died. Now takes isError + the badge shows "production
+  // unavailable" and the list area early-branches a rose feed-error card gated BEFORE
+  // the empty state, so the fake "$0 / no one posted" can never render on an error.
+  "src/components/finances/LiveCommissionsLeaderboard.tsx", // command-center money leaderboard — data ?? [] with no error signal rendered "0 producers · $0 estimated / No valid posted production" on a dead leaderboard_board RPC
 ];
 
 const ERROR_SIGNALS = ["isError", "isLoadingError", "status", "error"];

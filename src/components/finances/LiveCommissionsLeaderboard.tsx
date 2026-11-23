@@ -25,7 +25,7 @@ export function LiveCommissionsLeaderboard() {
   const { user } = useAuth();
   const [period, setPeriod] = useState<Period>("mtd");
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ["finance-truth", "leaderboard", period, user?.id],
     queryFn: async () => {
       const through = new Date().toLocaleDateString("en-CA", { timeZone: "America/Phoenix" });
@@ -73,7 +73,7 @@ export function LiveCommissionsLeaderboard() {
           </TabsList>
         </Tabs>
         <Badge variant="outline" className="text-[11px]">
-          {rows.length} producers · {fmt(totalLive)} estimated
+          {isError ? "production unavailable" : `${rows.length} producers · ${fmt(totalLive)} estimated`}
         </Badge>
       </div>
 
@@ -83,6 +83,15 @@ export function LiveCommissionsLeaderboard() {
             // stable-key-allow:skeleton
             <div key={i} className="h-14 bg-muted animate-pulse rounded-lg" />
           ))}
+        </div>
+      ) : isError ? (
+        // Feed error, never a fake "$0 / no one posted". A dead leaderboard_board
+        // RPC must read as "unavailable", not an authoritative "No valid posted
+        // production exists" — a confident zero on the agency's money board is the
+        // fake-success lie this card would otherwise tell (MP-WIB-ADMIN-RENDER-HEALTH).
+        <div className="rounded-lg border border-rose-500/30 bg-rose-500/5 p-4 text-sm text-rose-600 dark:text-rose-400">
+          Live commissions leaderboard is temporarily unavailable. This is a feed
+          error, not $0 production — don't read it as "no one posted this period."
         </div>
       ) : rows.length === 0 ? (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-amber-600 dark:text-amber-400">

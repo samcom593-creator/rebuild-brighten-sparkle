@@ -854,7 +854,9 @@ begin
       comp_grid_version, approved_by, approved_at, note, evidence_mode, attested_by, attested_at, license_attested, eo_attested, updated_by)
   values (
       v_intake, v_first, v_last, now(), v_uid, coalesce(v_actor_name, 'Galaxy'),
-      v_level, '6 Month Advance', public.fn_ethos_principal_npn(), v_label, v_head,
+      -- Direct Upline's Personal NPN on MGN's "Apex financial / Ethos" sheet is the MANAGER's own NPN (there is no
+      -- sub-agency column to carry the manager); the principal is only the fallback for a manager without one.
+      v_level, '6 Month Advance', coalesce(nullif(regexp_replace(coalesce(v_upline_npn, ''), '\D', '', 'g'), ''), public.fn_ethos_principal_npn()), v_label, v_head,
       'Comp grid as of 7/8/26', coalesce(v_uid, '00000000-0000-0000-0000-000000000000'::uuid), now(),
       'MP-304 ' || v_source || ' by ' || coalesce(v_actor_name, 'service') || coalesce(' · ' || v_reason, ''),
       'attested', v_uid, now(), true, v_eo, v_uid)

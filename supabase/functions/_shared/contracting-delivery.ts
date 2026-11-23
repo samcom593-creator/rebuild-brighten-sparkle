@@ -16,7 +16,9 @@ import {
   columnLetter,
   evaluateSignupGate,
   isPopulatedUpdateRow,
+  parseSheetBoolean,
   planSignupWrite,
+  S,
   signupAgencyRange,
   trimOuter,
   verifyHeaderSignature,
@@ -219,11 +221,45 @@ export async function deliverContractingWorkbook(
 type EthosSheetConfig = {
   sheet_id: string;
   tab?: string;
+  /** "Update Agent" tab title on the MGN layout (Level 8 used UPDATES_TAB). */
+  updates_tab?: string;
+  /**
+   * MP-304 (2026-11-23): "level8" is the original 19-column Level 8 Financial workbook. "mgn" is MGN IMO's
+   * "Apex financial / Ethos" workbook (owner onboarding@mgnimo.com): New Agents A:H in MGN's column order
+   * (first, last, mobile, email, NPN, direct upline's personal NPN, comp level, payment tier) and Update Agent
+   * A:H with a checkbox in H. The upline NPN is the MANAGER's own — there is no sub-agency column.
+   */
+  layout?: "level8" | "mgn";
   principal_npn?: string;
   principal_mobile?: string;
   principal_email?: string;
   direct_upline_npn?: string;
 };
+
+export const MGN_NEW_AGENTS_HEADERS = [
+  "Agent First Name", "Agent Last Name", "Unique Mobile Number", "Unique Email Address",
+  "Personal NPN", "Direct Upline's Personal NPN", "Comp Level", "Payment Tier",
+] as const;
+export const MGN_UPDATE_AGENT_HEADERS = [
+  "First Name (required)", "Last Name (required)", "Personal NPN (required)", "Direct Upline's Personal NPN (if changing)",
+  "Comp Level (if changing)", "Payment Tier (if changing)", "PII Information (if changing)", "Terminate Agent",
+] as const;
+/** MGN's header cells carry line breaks ("Comp Level\n(if changing)"); compare on collapsed whitespace. */
+const normHeader = (v: unknown) => trimOuter(v).replace(/\s+/g, " ");
+export function verifyMgnHeader(expected: readonly string[], row: unknown[] | undefined): { ok: boolean; drift: string[] } {
+  const drift: string[] = [];
+  expected.forEach((h, i) => { if (normHeader(row?.[i]) !== h) drift.push(columnLetter(i)); });
+  return { ok: drift.length === 0, drift };
+}
+const MGN = { FIRST: 0, LAST: 1, MOBILE: 2, EMAIL: 3, NPN: 4, UPLINE: 5, LEVEL: 6, TIER: 7 } as const;
+const MGN_FIRST_DATA_ROW = 2;
+function mgnRange(tab: string, row: number): string { return `${tab}!A${row}:H${row}`; }
+function mgnPopulated(row: unknown[] | undefined, upTo = 7): boolean {
+  if (!row) return false;
+  for (let i = 0; i <= upTo; i++) if (trimOuter(row[i])) return true;
+  return false;
+}
+function digits(v: unknown): string { return String(v ?? "").replace(/[^0-9]/g, ""); }
 
 /**
  * Ethos "Agent Portal Signup" leg — gated, append-once, A:L only.
@@ -278,6 +314,11 @@ export async function deliverEthosSheet(
     ?? ((cred: string, now: number, f: FetchLike) => getAccessToken(JSON.parse(cred), now, f));
   const token = await exchange(deps.googleCredential, deps.now(), deps.fetchImpl);
   const sheets = createSheetsClient(config.sheet_id, token, deps.fetchImpl);
+
+  if (config.layout === "mgn") {
+    const approvalMgn = deps.loadEthosApproval ? await deps.loadEthosApproval(intake) : null;
+    return await deliverMgnNewAgent(intake, approvalMgn, sheets, tab, deps);
+  }
 
   const rows = await sheets.getRange(`${tab}!A:S`);
   const candidate = {
@@ -352,6 +393,72 @@ export async function deliverEthosSheet(
       review_items: gate.review.map((r) => r.code),
     },
     note: "Written to the agency input block only (A:L). Being on the sheet is not Ethos approval; portal and reparenting are reconciled from the sheet sync.",
+  };
+}
+
+/**
+ * MGN "New Agents" (A:H). The gate is the SAME evaluateSignupGate (identity, approval, attested evidence); the
+ * Level 8 sheet-collision scan is replaced by one over MGN's columns. Append-once by NPN; an email or mobile
+ * already on the sheet under another NPN is a person's call. H:… beyond the eight columns is never touched.
+ */
+async function deliverMgnNewAgent(
+  intake: IntakeRow,
+  approval: SignupApproval | null,
+  sheets: ReturnType<typeof createSheetsClient>,
+  tab: string,
+  deps: DeliveryDeps,
+): Promise<DeliveryOutcome> {
+  const rows = await sheets.getRange(`${tab}!A:H`);
+  const hdr = verifyMgnHeader(MGN_NEW_AGENTS_HEADERS, rows[0]);
+  if (!hdr.ok) {
+    return { state: "manual_review", receipt: null, note: `Header drift on the MGN New Agents tab (${hdr.drift.join(", ")}); an admin reconciles the layout.` };
+  }
+  const npn = digits(intake.npn);
+  const email = trimOuter(intake.email).toLowerCase();
+  const mobile = digits(intake.phone_e164).slice(-10);
+  const npnRows: number[] = []; const otherRows: number[] = []; let lastPopulated = MGN_FIRST_DATA_ROW - 1;
+  for (let i = MGN_FIRST_DATA_ROW - 1; i < rows.length; i++) {
+    const r = rows[i] ?? [];
+    if (!mgnPopulated(r)) continue;
+    lastPopulated = i + 1;
+    const rowNpn = digits(r[MGN.NPN]);
+    if (npn && rowNpn === npn) { npnRows.push(i + 1); continue; }
+    if ((email && trimOuter(r[MGN.EMAIL]).toLowerCase() === email) || (mobile && digits(r[MGN.MOBILE]).slice(-10) === mobile)) otherRows.push(i + 1);
+  }
+  if (npnRows.length) {
+    return { state: "delivered", receipt: { provider: "google_sheets", action: "already_present", rows: npnRows, written: false, layout: "mgn" }, note: `NPN already on the MGN New Agents tab (row ${npnRows.join(", ")}); nothing written.` };
+  }
+  if (otherRows.length) {
+    return { state: "manual_review", receipt: null, note: `Held: this email or mobile is on the MGN sheet under a different NPN (row ${otherRows.join(", ")}).` };
+  }
+  const gate = evaluateSignupGate(
+    { first_name: intake.first_name, last_name: intake.last_name, npn: intake.npn, mobile: intake.phone_e164, email: intake.email },
+    approval,
+    { now: deps.now(), sheetRows: null },
+  );
+  if (!gate.ready || !gate.payload) {
+    return { state: "manual_review", receipt: null, note: `Held by the Ethos gate: ${gate.blockers.map((b) => b.code).join(", ") || "payload incomplete"}.` };
+  }
+  const p = gate.payload;
+  const payload: (string | boolean)[] = [p[S.FIRST], p[S.LAST], p[S.MOBILE], p[S.EMAIL], p[S.NPN], p[S.UPLINE], p[S.LEVEL], p[S.ADVANCE]];
+  const target = Math.max(MGN_FIRST_DATA_ROW, lastPopulated + 1);
+  const fresh = await sheets.getRange(mgnRange(tab, target));
+  if (mgnPopulated(fresh[0])) throw new Error(`MGN New Agents row ${target} is no longer empty; refusing to overwrite a concurrent edit`);
+  const receipt = await sheets.updateRange(mgnRange(tab, target), [payload]);
+  const written = (await sheets.getRange(mgnRange(tab, target)))[0] ?? [];
+  const mismatches: string[] = [];
+  payload.forEach((want, c) => {
+    const got = written[c];
+    const same = c === MGN.MOBILE ? digits(got).slice(-10) === digits(want).slice(-10)
+      : c === MGN.EMAIL ? trimOuter(got).toLowerCase() === trimOuter(want).toLowerCase()
+      : trimOuter(got) === trimOuter(want);
+    if (!same) mismatches.push(MGN_NEW_AGENTS_HEADERS[c]);
+  });
+  if (mismatches.length) throw new Error(`MGN read-back mismatch on ${mismatches.join(", ")}`);
+  return {
+    state: "delivered",
+    receipt: { provider: "google_sheets", action: "appended_a_to_h_mgn", updated_range: receipt, row: target, columns: [...MGN_NEW_AGENTS_HEADERS], read_back_verified: true, written: true, review_items: gate.review.map((r) => r.code), layout: "mgn" },
+    note: "Written to MGN's New Agents tab (A:H). Being on the sheet is a request to MGN/Ethos, not their confirmation.",
   };
 }
 
@@ -622,7 +729,7 @@ export async function deliverEthosUpdate(updateId: string, deps: UpdateDeps): Pr
   if (!deps.googleCredential) {
     return { state: "not_configured", receipt: null, note: "No Google service credential. Set the GOOGLE_SERVICE_ACCOUNT_JSON function secret and grant that service account Editor on the Agents sheet." };
   }
-  const config = JSON.parse(rawConfig) as { sheet_id: string; updates_tab?: string };
+  const config = JSON.parse(rawConfig) as EthosSheetConfig;
   const tab = config.updates_tab || UPDATES_TAB.title;
   const u = await deps.loadUpdate(updateId);
 
@@ -641,6 +748,35 @@ export async function deliverEthosUpdate(updateId: string, deps: UpdateDeps): Pr
   const exchange = deps.getToken ?? ((cred: string, now: number, f: FetchLike) => getAccessToken(JSON.parse(cred), now, f));
   const token = await exchange(deps.googleCredential, deps.now(), deps.fetchImpl);
   const sheets = createSheetsClient(config.sheet_id, token, deps.fetchImpl);
+
+  if (config.layout === "mgn") {
+    // MGN "Update Agent": header on row 1, A:G text, H a checkbox (boolean). Rows are pre-filled with FALSE in H,
+    // so "populated" means A..G, never H.
+    const mtab = config.updates_tab || "Update Agent";
+    const mrows = await sheets.getRange(`${mtab}!A:H`);
+    const mh = verifyMgnHeader(MGN_UPDATE_AGENT_HEADERS, mrows[0]);
+    if (!mh.ok) return { state: "manual_review", receipt: null, note: `Header drift on the MGN Update Agent tab (${mh.drift.join(", ")}); an admin reconciles the layout.` };
+    const mp: (string | boolean)[] = [payload[0], payload[1], payload[2], payload[3], payload[4], payload[5], payload[6], u.termination_requested === true];
+    const same = (got: unknown[] | undefined) => mp.every((want, c) => c === 7 ? parseSheetBoolean(got?.[c]) === want : trimOuter(got?.[c]) === trimOuter(want));
+    if (u.sheet_row && (u.status === "attempting" || u.status === "unknown_outcome")) {
+      const prior = mrows[u.sheet_row - 1] ?? [];
+      if (same(prior)) return { state: "delivered", receipt: { provider: "google_sheets", action: "reconciled_prior_write", row: u.sheet_row, layout: "mgn", read_back_verified: true }, note: "A previous attempt had landed; reconciled from the sheet, nothing written again." };
+      if (mgnPopulated(prior, 6)) return { state: "manual_review", receipt: null, note: `Row ${u.sheet_row} was planned for this update but holds different values; a person decides.` };
+    }
+    let mtarget = MGN_FIRST_DATA_ROW;
+    for (let i = MGN_FIRST_DATA_ROW - 1; i < mrows.length; i++) if (mgnPopulated(mrows[i], 6)) mtarget = i + 2;
+    const mfresh = await sheets.getRange(mgnRange(mtab, mtarget));
+    if (mgnPopulated(mfresh[0], 6)) throw new Error(`MGN Update Agent row ${mtarget} is no longer empty; refusing to overwrite a concurrent edit`);
+    await deps.recordPlannedRow(mtarget);
+    const mreceipt = await sheets.updateRange(mgnRange(mtab, mtarget), [mp]);
+    const mwritten = (await sheets.getRange(mgnRange(mtab, mtarget)))[0];
+    if (!same(mwritten)) throw new Error("MGN Update Agent read-back mismatch");
+    return {
+      state: "delivered",
+      receipt: { provider: "google_sheets", action: "appended_a_to_h_mgn", updated_range: mreceipt, row: mtarget, columns: [...MGN_UPDATE_AGENT_HEADERS], read_back_verified: true, review_items: built.review.map((r) => r.code), layout: "mgn" },
+      note: "Written to MGN's Update Agent tab (A:H). Being on the sheet is a request to MGN/Ethos, not their confirmation.",
+    };
+  }
 
   const rows = await sheets.getRange(`${tab}!A:L`);
   const hdr = verifyHeaderSignature(UPDATES_HEADERS, rows[UPDATES_TAB.headerRow - 1]);

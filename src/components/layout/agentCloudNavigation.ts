@@ -7,6 +7,7 @@ import {
   BookOpen,
   BookOpenCheck,
   Building2,
+  ShieldCheck,
   CalendarDays,
   Cloud,
   ContactRound,
@@ -275,6 +276,9 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       { label: "Money Inbox", href: "/dashboard/money-inbox", icon: MessageSquareDollar, adminOnly: true, samOnly: true },
       { label: "Launch Board", href: "/dashboard/launch-board", icon: Megaphone, adminOnly: true, samOnly: true }, // camera library: Sam only
       { label: "Brand Command", href: "/dashboard/admin/brand-command", icon: Crown, adminOnly: true },
+      // Two-carrier daily pull (MP-CARRIER-DAILY): Ethos + Chubb book, chargebacks, and the
+      // policies in a carrier portal the site has not recorded. Owner-only (carrier_command() is is_owner()).
+      { label: "Carrier Command", href: "/dashboard/carrier-command", icon: ShieldCheck, adminOnly: true, samOnly: true },
       // Owner only (MP-302): the route, this entry and the four tables behind the page answer to Sam alone.
       { label: "Social Media Center", href: "/dashboard/admin/social-media-bot", icon: Megaphone, adminOnly: true, samOnly: true },
       { label: "Performance Bot", href: "/dashboard/admin/performance-bot", icon: Gauge, adminOnly: true },

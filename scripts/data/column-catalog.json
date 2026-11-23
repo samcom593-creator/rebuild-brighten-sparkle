@@ -259,6 +259,17 @@
       "checked_by",
       "contract_key"
     ],
+    "agent_contract_level_history": [
+      "agent_id",
+      "changed_at",
+      "id",
+      "new_pct",
+      "new_source",
+      "note",
+      "old_pct",
+      "old_source",
+      "set_by"
+    ],
     "agent_contract_levels": [
       "agent_id",
       "contract_pct",
@@ -2628,6 +2639,16 @@
       "performed_by",
       "refund_amount_cents"
     ],
+    "chubb_live_policies": [
+      "eff_date",
+      "insured",
+      "policy_number",
+      "product",
+      "pulled_at",
+      "snapshot_on",
+      "status",
+      "writing_agent"
+    ],
     "churn_risk_alerts": [
       "action_taken",
       "agent_id",
@@ -3150,6 +3171,31 @@
       "subject_template",
       "updated_at"
     ],
+    "contracting_agent_updates": [
+      "agent_id",
+      "change_advance_tier",
+      "change_comp_level",
+      "change_pii",
+      "change_upline_npn",
+      "created_at",
+      "delivered_at",
+      "first_name",
+      "id",
+      "intake_id",
+      "last_error_redacted",
+      "last_name",
+      "npn",
+      "reason",
+      "receipt",
+      "requested_at",
+      "requested_by",
+      "sheet_row",
+      "status",
+      "termination_authorized_at",
+      "termination_authorized_by",
+      "termination_requested",
+      "updated_at"
+    ],
     "contracting_case_events": [
       "action",
       "actor",
@@ -3247,18 +3293,23 @@
       "approved_sub_agency",
       "approved_sub_agent_head",
       "approved_upline_npn",
+      "attested_at",
+      "attested_by",
       "comp_grid_version",
       "contact_confirmed_at",
       "contact_confirmed_by",
       "created_at",
+      "eo_attested",
       "eo_evidence_ref",
       "eo_expires_at",
       "eo_verified_at",
       "eo_verified_by",
+      "evidence_mode",
       "id",
       "intake_id",
       "legal_first_name",
       "legal_last_name",
+      "license_attested",
       "license_evidence_ref",
       "license_verified_at",
       "license_verified_by",
@@ -3320,11 +3371,14 @@
       "license_status",
       "npn",
       "phone_e164",
+      "request_type",
       "review_reason",
       "source",
       "status",
+      "sub_agency_name",
       "submitted_by",
-      "updated_at"
+      "updated_at",
+      "upline_agent_id"
     ],
     "contracting_legacy_retirements": [
       "expected_state",
@@ -3391,6 +3445,12 @@
       "delivered_at",
       "expired_at",
       "queued_at"
+    ],
+    "contracting_sub_agency_labels": [
+      "label",
+      "manager_agent_id",
+      "updated_at",
+      "updated_by"
     ],
     "contracting_worklist_ack": [
       "acked_at",
@@ -9527,12 +9587,13 @@
       "suggested_carrier"
     ],
     "v_carrier_unaccounted": [
+      "agent",
       "carrier",
       "comp_amount",
-      "invoice_date",
-      "paid_to",
       "policy_number",
-      "state_of_issue"
+      "ref_date",
+      "region",
+      "status"
     ],
     "v_ceo_command_center": [
       "active_agents",
@@ -10143,6 +10204,26 @@
       "verified_by",
       "waiting_on",
       "waiting_on_override"
+    ],
+    "v_contracting_ethos_lane_health": [
+      "active_managers",
+      "credential_missing_seen_7d",
+      "default_advance_setting",
+      "default_comp_pct",
+      "default_level",
+      "managers_with_mgn_link",
+      "measured_at",
+      "sheet_mirror_at",
+      "signup_attempting",
+      "signup_delivered_7d",
+      "signup_manual_review",
+      "signup_not_configured_7d",
+      "signup_queued",
+      "signup_written_7d",
+      "updates_delivered_7d",
+      "updates_needing_attention",
+      "updates_queued",
+      "writes_enabled"
     ],
     "v_contracting_intake_status": [
       "accepted_at",

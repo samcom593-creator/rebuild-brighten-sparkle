@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-11-22T03:54:50Z",
+ "_generated_at": "2026-11-23T22:23:05Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -142,6 +142,7 @@
   "can_work_application": "boolean",
   "can_work_recruiting_application": "boolean",
   "cancel_interview_event": "interview_events",
+  "carrier_command": "jsonb",
   "cc_dispose": "jsonb",
   "cc_dispose_interview": "interview_events",
   "check_banned_prospect": "boolean",
@@ -172,6 +173,7 @@
   "content_queue_guard_update": "trigger",
   "contract_review_history": "jsonb",
   "contract_review_roster": "jsonb",
+  "contracting_actor": "jsonb",
   "contracting_audit_rows": "SETOF v_contracting_audit",
   "contracting_audit_summary_rows": "SETOF v_contracting_audit_summary",
   "contracting_call_list": "jsonb",
@@ -242,6 +244,7 @@
   "fn_agent_ahl_exempt": "boolean",
   "fn_agent_contracting_matched_by_npn": "boolean",
   "fn_agent_deprovision": "trigger",
+  "fn_agent_interview_state": "text",
   "fn_agent_is_placeholder": "boolean",
   "fn_agent_is_roster_excluded": "boolean",
   "fn_agent_is_roster_excluded_live": "boolean",
@@ -310,10 +313,16 @@
   "fn_close_communication_gaps": "jsonb",
   "fn_commission_advance_factor": "numeric",
   "fn_contact_log_stamp_application": "trigger",
+  "fn_contract_link_target": "jsonb",
   "fn_contract_review_events_append_only": "trigger",
   "fn_contract_review_my_agent": "uuid",
   "fn_contract_review_save_profile": "jsonb",
+  "fn_contracting_after_provision": "jsonb",
+  "fn_contracting_caller_agent": "uuid",
   "fn_contracting_case_events_append_only": "trigger",
+  "fn_contracting_comp_cap": "numeric",
+  "fn_contracting_default_comp_pct": "numeric",
+  "fn_contracting_intake_core": "jsonb",
   "fn_contracting_intake_draft": "jsonb",
   "fn_contracting_is_staff": "boolean",
   "fn_contracting_owner_user_id": "uuid",
@@ -323,7 +332,9 @@
   "fn_contracting_request_row": "jsonb",
   "fn_contracting_request_sweep": "jsonb",
   "fn_contracting_required_carriers": "text[]",
+  "fn_contracting_scope_ok": "boolean",
   "fn_contracting_stalled_settle": "jsonb",
+  "fn_contracting_sub_agency_label": "text",
   "fn_course_lane_agent_course_started": "boolean",
   "fn_course_lane_block_reason": "text",
   "fn_course_lane_campaign_touch_ok": "boolean",
@@ -350,6 +361,7 @@
   "fn_default_agent_manager_to_sam": "trigger",
   "fn_default_application_manager_to_sam": "trigger",
   "fn_derive_agent_contracted_at": "trigger",
+  "fn_digits_edit_distance_le1": "boolean",
   "fn_discord_paused": "boolean",
   "fn_edge_auth_header": "text",
   "fn_email_bounce_react": "jsonb",
@@ -357,6 +369,7 @@
   "fn_email_failure_alarm": "jsonb",
   "fn_email_is_sendable": "boolean",
   "fn_email_is_suspended": "boolean",
+  "fn_email_typo_suggestion": "text",
   "fn_emit_bounty_reversed": "trigger",
   "fn_emit_inbox_notification": "uuid",
   "fn_enforce_quiz_attempt_cap": "trigger",
@@ -370,6 +383,7 @@
   "fn_enrich_contracting_intake": "trigger",
   "fn_ensure_contracting_delivery_legs": "integer",
   "fn_ethos_level_for_pct": "text",
+  "fn_ethos_principal_npn": "text",
   "fn_evaluate_personal_records": "integer",
   "fn_evaluate_recruiter_bounties": "integer",
   "fn_exclude_external_placeholder": "trigger",
@@ -407,6 +421,7 @@
   "fn_lead_type_of": "text",
   "fn_license_milestone_emit": "trigger",
   "fn_license_stage_rank": "integer",
+  "fn_license_state_ask_sweep": "jsonb",
   "fn_licensing_readiness": "jsonb",
   "fn_like_escape": "text",
   "fn_link_slack_identity_email_lookup": "jsonb",
@@ -428,6 +443,10 @@
   "fn_missed_opportunity_digest": "jsonb",
   "fn_money_inbox_guard": "trigger",
   "fn_money_inbox_touch": "trigger",
+  "fn_morning_leads_announce": "jsonb",
+  "fn_morning_leads_cron": "jsonb",
+  "fn_morning_leads_grant_one": "jsonb",
+  "fn_my_leads_state_gate": "uuid",
   "fn_new_hire_flow_claim": "jsonb",
   "fn_new_hire_flow_finish": "jsonb",
   "fn_new_hire_flow_retry_sweep": "jsonb",
@@ -571,6 +590,8 @@
   "fn_user_is_suspended": "boolean",
   "fn_user_login_blocked": "boolean",
   "fn_weekdays_valid": "boolean",
+  "fn_win_post_detect": "jsonb",
+  "fn_win_post_feed_compute": "jsonb",
   "fn_work_weekdays_on": "smallint[]",
   "fn_workday_apply": "jsonb",
   "fn_wp3_cutoff": "timestamp with time zone",
@@ -814,6 +835,7 @@
   "set_contract_review_mark": "jsonb",
   "set_contracting_checkin": "jsonb",
   "set_contracting_default_advance": "jsonb",
+  "set_contracting_default_comp_level": "jsonb",
   "set_contracting_followup": "jsonb",
   "set_contracting_followup_config": "jsonb",
   "set_contracting_request_status": "jsonb",
@@ -821,6 +843,7 @@
   "set_hire_license_status": "jsonb",
   "set_limit": "real",
   "set_my_insuracloud_token": "void",
+  "set_my_mgn_link": "jsonb",
   "set_owner_overview_settings": "jsonb",
   "set_recruit_instagram": "jsonb",
   "set_recruit_stage": "jsonb",
@@ -859,6 +882,7 @@
   "submit_apex_deal_ledger_impl": "jsonb",
   "submit_contracting_intake": "jsonb",
   "submit_contracting_request": "jsonb",
+  "submit_downline_contracting": "jsonb",
   "supabase_usage_drain_health": "jsonb",
   "svg_url_encode": "text",
   "sync_automation_status": "jsonb",
@@ -889,6 +913,7 @@
   "trg_ars_enrolled_at": "trigger",
   "trg_auto_dispatch_slack_invite": "trigger",
   "trg_fn_agent_activated_discord": "trigger",
+  "trg_fn_agent_contract_level_history": "trigger",
   "trg_fn_agent_inserted_discord": "trigger",
   "trg_fn_agent_new_hire_flow": "trigger",
   "trg_fn_agentlink_book_announce": "trigger",
@@ -929,6 +954,7 @@
   "unified_mark_contacted": "void",
   "unified_mark_phone_bad": "void",
   "unified_set_license_progress": "void",
+  "update_downline_contracting": "jsonb",
   "update_my_agent_profile": "jsonb",
   "update_scheduled_interviews_updated_at": "trigger",
   "update_updated_at_column": "trigger",
@@ -8115,6 +8141,24 @@
     "unknown"
    ]
   },
+  "fn_agent_lead_states.source": {
+   "candidates": [
+    "agent_contract_profile.source",
+    "applications.source",
+    "contracting_intakes.source"
+   ],
+   "body_literals": [
+    "g",
+    "public"
+   ]
+  },
+  "fn_agent_lead_states.states": {
+   "candidates": [],
+   "body_literals": [
+    "g",
+    "public"
+   ]
+  },
   "fn_agentlink_reap_stuck.oldest_reaped": {
    "candidates": [],
    "body_literals": [
@@ -9963,6 +10007,186 @@
     "reissue-40d-2026-07-22"
    ]
   },
+  "fn_grant_morning_leads.agent_id": {
+   "candidates": [],
+   "body_literals": [
+    "A",
+    "B",
+    "Mon DD",
+    "agent_id",
+    "client_leads",
+    "created",
+    "deferred_limit",
+    "fn_grant_morning_leads",
+    "granted",
+    "granted_by",
+    "items",
+    "lead_age_days",
+    "limit",
+    "morning_batch",
+    "new",
+    "only ",
+    "pool",
+    "public",
+    "skip",
+    "state_source",
+    "states",
+    "tiers",
+    "under_9mo",
+    "up to ",
+    "would_grant"
+   ]
+  },
+  "fn_grant_morning_leads.decision": {
+   "candidates": [],
+   "body_literals": [
+    "A",
+    "B",
+    "Mon DD",
+    "agent_id",
+    "client_leads",
+    "created",
+    "deferred_limit",
+    "fn_grant_morning_leads",
+    "granted",
+    "granted_by",
+    "items",
+    "lead_age_days",
+    "limit",
+    "morning_batch",
+    "new",
+    "only ",
+    "pool",
+    "public",
+    "skip",
+    "state_source",
+    "states",
+    "tiers",
+    "under_9mo",
+    "up to ",
+    "would_grant"
+   ]
+  },
+  "fn_grant_morning_leads.first_name": {
+   "candidates": [],
+   "body_literals": [
+    "A",
+    "B",
+    "Mon DD",
+    "agent_id",
+    "client_leads",
+    "created",
+    "deferred_limit",
+    "fn_grant_morning_leads",
+    "granted",
+    "granted_by",
+    "items",
+    "lead_age_days",
+    "limit",
+    "morning_batch",
+    "new",
+    "only ",
+    "pool",
+    "public",
+    "skip",
+    "state_source",
+    "states",
+    "tiers",
+    "under_9mo",
+    "up to ",
+    "would_grant"
+   ]
+  },
+  "fn_grant_morning_leads.leads_added": {
+   "candidates": [],
+   "body_literals": [
+    "A",
+    "B",
+    "Mon DD",
+    "agent_id",
+    "client_leads",
+    "created",
+    "deferred_limit",
+    "fn_grant_morning_leads",
+    "granted",
+    "granted_by",
+    "items",
+    "lead_age_days",
+    "limit",
+    "morning_batch",
+    "new",
+    "only ",
+    "pool",
+    "public",
+    "skip",
+    "state_source",
+    "states",
+    "tiers",
+    "under_9mo",
+    "up to ",
+    "would_grant"
+   ]
+  },
+  "fn_grant_morning_leads.license_states": {
+   "candidates": [],
+   "body_literals": [
+    "A",
+    "B",
+    "Mon DD",
+    "agent_id",
+    "client_leads",
+    "created",
+    "deferred_limit",
+    "fn_grant_morning_leads",
+    "granted",
+    "granted_by",
+    "items",
+    "lead_age_days",
+    "limit",
+    "morning_batch",
+    "new",
+    "only ",
+    "pool",
+    "public",
+    "skip",
+    "state_source",
+    "states",
+    "tiers",
+    "under_9mo",
+    "up to ",
+    "would_grant"
+   ]
+  },
+  "fn_grant_morning_leads.reason": {
+   "candidates": [],
+   "body_literals": [
+    "A",
+    "B",
+    "Mon DD",
+    "agent_id",
+    "client_leads",
+    "created",
+    "deferred_limit",
+    "fn_grant_morning_leads",
+    "granted",
+    "granted_by",
+    "items",
+    "lead_age_days",
+    "limit",
+    "morning_batch",
+    "new",
+    "only ",
+    "pool",
+    "public",
+    "skip",
+    "state_source",
+    "states",
+    "tiers",
+    "under_9mo",
+    "up to ",
+    "would_grant"
+   ]
+  },
   "fn_grant_starter_packs.agent_id": {
    "candidates": [],
    "body_literals": [
@@ -11238,6 +11462,280 @@
     "public"
    ]
   },
+  "fn_morning_lead_candidates.agent_id": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "admin",
+    "agent",
+    "has_leads",
+    "license_state_unknown",
+    "licensed",
+    "login_banned",
+    "missed",
+    "never",
+    "new",
+    "no_login",
+    "not_interviewed_yet",
+    "public",
+    "ready",
+    "suspended",
+    "there",
+    "upcoming"
+   ]
+  },
+  "fn_morning_lead_candidates.eligible": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "admin",
+    "agent",
+    "has_leads",
+    "license_state_unknown",
+    "licensed",
+    "login_banned",
+    "missed",
+    "never",
+    "new",
+    "no_login",
+    "not_interviewed_yet",
+    "public",
+    "ready",
+    "suspended",
+    "there",
+    "upcoming"
+   ]
+  },
+  "fn_morning_lead_candidates.first_name": {
+   "candidates": [
+    "lead_bundle_items.first_name"
+   ],
+   "body_literals": [
+    "active",
+    "admin",
+    "agent",
+    "has_leads",
+    "license_state_unknown",
+    "licensed",
+    "login_banned",
+    "missed",
+    "never",
+    "new",
+    "no_login",
+    "not_interviewed_yet",
+    "public",
+    "ready",
+    "suspended",
+    "there",
+    "upcoming"
+   ]
+  },
+  "fn_morning_lead_candidates.full_name": {
+   "candidates": [
+    "profiles.full_name"
+   ],
+   "body_literals": [
+    "active",
+    "admin",
+    "agent",
+    "has_leads",
+    "license_state_unknown",
+    "licensed",
+    "login_banned",
+    "missed",
+    "never",
+    "new",
+    "no_login",
+    "not_interviewed_yet",
+    "public",
+    "ready",
+    "suspended",
+    "there",
+    "upcoming"
+   ]
+  },
+  "fn_morning_lead_candidates.last_sign_in_at": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "admin",
+    "agent",
+    "has_leads",
+    "license_state_unknown",
+    "licensed",
+    "login_banned",
+    "missed",
+    "never",
+    "new",
+    "no_login",
+    "not_interviewed_yet",
+    "public",
+    "ready",
+    "suspended",
+    "there",
+    "upcoming"
+   ]
+  },
+  "fn_morning_lead_candidates.license_states": {
+   "candidates": [
+    "agents.license_states"
+   ],
+   "body_literals": [
+    "active",
+    "admin",
+    "agent",
+    "has_leads",
+    "license_state_unknown",
+    "licensed",
+    "login_banned",
+    "missed",
+    "never",
+    "new",
+    "no_login",
+    "not_interviewed_yet",
+    "public",
+    "ready",
+    "suspended",
+    "there",
+    "upcoming"
+   ]
+  },
+  "fn_morning_lead_candidates.live_leads": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "admin",
+    "agent",
+    "has_leads",
+    "license_state_unknown",
+    "licensed",
+    "login_banned",
+    "missed",
+    "never",
+    "new",
+    "no_login",
+    "not_interviewed_yet",
+    "public",
+    "ready",
+    "suspended",
+    "there",
+    "upcoming"
+   ]
+  },
+  "fn_morning_lead_candidates.mode": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "admin",
+    "agent",
+    "has_leads",
+    "license_state_unknown",
+    "licensed",
+    "login_banned",
+    "missed",
+    "never",
+    "new",
+    "no_login",
+    "not_interviewed_yet",
+    "public",
+    "ready",
+    "suspended",
+    "there",
+    "upcoming"
+   ]
+  },
+  "fn_morning_lead_candidates.new_leads": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "admin",
+    "agent",
+    "has_leads",
+    "license_state_unknown",
+    "licensed",
+    "login_banned",
+    "missed",
+    "never",
+    "new",
+    "no_login",
+    "not_interviewed_yet",
+    "public",
+    "ready",
+    "suspended",
+    "there",
+    "upcoming"
+   ]
+  },
+  "fn_morning_lead_candidates.reason": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "admin",
+    "agent",
+    "has_leads",
+    "license_state_unknown",
+    "licensed",
+    "login_banned",
+    "missed",
+    "never",
+    "new",
+    "no_login",
+    "not_interviewed_yet",
+    "public",
+    "ready",
+    "suspended",
+    "there",
+    "upcoming"
+   ]
+  },
+  "fn_morning_lead_candidates.state_source": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "admin",
+    "agent",
+    "has_leads",
+    "license_state_unknown",
+    "licensed",
+    "login_banned",
+    "missed",
+    "never",
+    "new",
+    "no_login",
+    "not_interviewed_yet",
+    "public",
+    "ready",
+    "suspended",
+    "there",
+    "upcoming"
+   ]
+  },
+  "fn_morning_lead_candidates.user_id": {
+   "candidates": [
+    "agents.user_id",
+    "lead_bundle_grants.user_id",
+    "profiles.user_id"
+   ],
+   "body_literals": [
+    "active",
+    "admin",
+    "agent",
+    "has_leads",
+    "license_state_unknown",
+    "licensed",
+    "login_banned",
+    "missed",
+    "never",
+    "new",
+    "no_login",
+    "not_interviewed_yet",
+    "public",
+    "ready",
+    "suspended",
+    "there",
+    "upcoming"
+   ]
+  },
   "fn_next_step_nudge_sweep.queued": {
    "candidates": [],
    "body_literals": [
@@ -11447,6 +11945,65 @@
     "sla_due_at",
     "stall",
     "stall_action"
+   ]
+  },
+  "fn_npn_near_duplicates.display": {
+   "candidates": [],
+   "body_literals": [
+    "agent",
+    "intake",
+    "public",
+    "terminated"
+   ]
+  },
+  "fn_npn_near_duplicates.distance": {
+   "candidates": [],
+   "body_literals": [
+    "agent",
+    "intake",
+    "public",
+    "terminated"
+   ]
+  },
+  "fn_npn_near_duplicates.id": {
+   "candidates": [
+    "agents.id",
+    "contracting_intakes.id"
+   ],
+   "body_literals": [
+    "agent",
+    "intake",
+    "public",
+    "terminated"
+   ]
+  },
+  "fn_npn_near_duplicates.in_scope": {
+   "candidates": [],
+   "body_literals": [
+    "agent",
+    "intake",
+    "public",
+    "terminated"
+   ]
+  },
+  "fn_npn_near_duplicates.kind": {
+   "candidates": [],
+   "body_literals": [
+    "agent",
+    "intake",
+    "public",
+    "terminated"
+   ]
+  },
+  "fn_npn_near_duplicates.npn": {
+   "candidates": [
+    "contracting_intakes.npn"
+   ],
+   "body_literals": [
+    "agent",
+    "intake",
+    "public",
+    "terminated"
    ]
   },
   "fn_numbers_reminder_audience.agent_id": {
@@ -12414,6 +12971,9 @@
     "login_banned",
     "manager",
     "manager_seat",
+    "missed",
+    "never",
+    "not_interviewed_yet",
     "not_signed_in_since_hire",
     "public",
     "ready",
@@ -12421,7 +12981,8 @@
     "starter_pack_already_given",
     "suspended",
     "there",
-    "true"
+    "true",
+    "upcoming"
    ]
   },
   "fn_starter_pack_candidates.days_since_hire": {
@@ -12436,6 +12997,9 @@
     "login_banned",
     "manager",
     "manager_seat",
+    "missed",
+    "never",
+    "not_interviewed_yet",
     "not_signed_in_since_hire",
     "public",
     "ready",
@@ -12443,7 +13007,8 @@
     "starter_pack_already_given",
     "suspended",
     "there",
-    "true"
+    "true",
+    "upcoming"
    ]
   },
   "fn_starter_pack_candidates.eligible": {
@@ -12458,6 +13023,9 @@
     "login_banned",
     "manager",
     "manager_seat",
+    "missed",
+    "never",
+    "not_interviewed_yet",
     "not_signed_in_since_hire",
     "public",
     "ready",
@@ -12465,7 +13033,8 @@
     "starter_pack_already_given",
     "suspended",
     "there",
-    "true"
+    "true",
+    "upcoming"
    ]
   },
   "fn_starter_pack_candidates.first_name": {
@@ -12483,6 +13052,9 @@
     "login_banned",
     "manager",
     "manager_seat",
+    "missed",
+    "never",
+    "not_interviewed_yet",
     "not_signed_in_since_hire",
     "public",
     "ready",
@@ -12490,7 +13062,8 @@
     "starter_pack_already_given",
     "suspended",
     "there",
-    "true"
+    "true",
+    "upcoming"
    ]
   },
   "fn_starter_pack_candidates.hired_at": {
@@ -12505,6 +13078,9 @@
     "login_banned",
     "manager",
     "manager_seat",
+    "missed",
+    "never",
+    "not_interviewed_yet",
     "not_signed_in_since_hire",
     "public",
     "ready",
@@ -12512,7 +13088,8 @@
     "starter_pack_already_given",
     "suspended",
     "there",
-    "true"
+    "true",
+    "upcoming"
    ]
   },
   "fn_starter_pack_candidates.license_states": {
@@ -12529,6 +13106,9 @@
     "login_banned",
     "manager",
     "manager_seat",
+    "missed",
+    "never",
+    "not_interviewed_yet",
     "not_signed_in_since_hire",
     "public",
     "ready",
@@ -12536,7 +13116,8 @@
     "starter_pack_already_given",
     "suspended",
     "there",
-    "true"
+    "true",
+    "upcoming"
    ]
   },
   "fn_starter_pack_candidates.reason": {
@@ -12551,6 +13132,9 @@
     "login_banned",
     "manager",
     "manager_seat",
+    "missed",
+    "never",
+    "not_interviewed_yet",
     "not_signed_in_since_hire",
     "public",
     "ready",
@@ -12558,7 +13142,8 @@
     "starter_pack_already_given",
     "suspended",
     "there",
-    "true"
+    "true",
+    "upcoming"
    ]
   },
   "fn_starter_pack_candidates.state_source": {
@@ -12573,6 +13158,9 @@
     "login_banned",
     "manager",
     "manager_seat",
+    "missed",
+    "never",
+    "not_interviewed_yet",
     "not_signed_in_since_hire",
     "public",
     "ready",
@@ -12580,7 +13168,8 @@
     "starter_pack_already_given",
     "suspended",
     "there",
-    "true"
+    "true",
+    "upcoming"
    ]
   },
   "fn_starter_pack_candidates.user_id": {
@@ -12599,6 +13188,9 @@
     "login_banned",
     "manager",
     "manager_seat",
+    "missed",
+    "never",
+    "not_interviewed_yet",
     "not_signed_in_since_hire",
     "public",
     "ready",
@@ -12606,7 +13198,8 @@
     "starter_pack_already_given",
     "suspended",
     "there",
-    "true"
+    "true",
+    "upcoming"
    ]
   },
   "fn_starter_pack_inventory.age": {
@@ -15551,6 +16144,352 @@
    "body_literals": [
     "active",
     "public"
+   ]
+  },
+  "my_contracting_downlines.agent_id": {
+   "candidates": [
+    "agent_contract_profile.agent_id",
+    "contracting_agent_updates.agent_id",
+    "contracting_intakes.agent_id"
+   ],
+   "body_literals": [
+    "active",
+    "complete",
+    "ethos_sheet",
+    "g",
+    "intake",
+    "intake_only",
+    "public",
+    "terminated"
+   ]
+  },
+  "my_contracting_downlines.agent_status": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "complete",
+    "ethos_sheet",
+    "g",
+    "intake",
+    "intake_only",
+    "public",
+    "terminated"
+   ]
+  },
+  "my_contracting_downlines.comp_pct": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "complete",
+    "ethos_sheet",
+    "g",
+    "intake",
+    "intake_only",
+    "public",
+    "terminated"
+   ]
+  },
+  "my_contracting_downlines.comp_source": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "complete",
+    "ethos_sheet",
+    "g",
+    "intake",
+    "intake_only",
+    "public",
+    "terminated"
+   ]
+  },
+  "my_contracting_downlines.display_name": {
+   "candidates": [
+    "agents.display_name"
+   ],
+   "body_literals": [
+    "active",
+    "complete",
+    "ethos_sheet",
+    "g",
+    "intake",
+    "intake_only",
+    "public",
+    "terminated"
+   ]
+  },
+  "my_contracting_downlines.email": {
+   "candidates": [
+    "agent_contract_profile.email",
+    "contracting_intakes.email",
+    "ethos_sheet_rows.email",
+    "profiles.email"
+   ],
+   "body_literals": [
+    "active",
+    "complete",
+    "ethos_sheet",
+    "g",
+    "intake",
+    "intake_only",
+    "public",
+    "terminated"
+   ]
+  },
+  "my_contracting_downlines.ethos_delivered_at": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "complete",
+    "ethos_sheet",
+    "g",
+    "intake",
+    "intake_only",
+    "public",
+    "terminated"
+   ]
+  },
+  "my_contracting_downlines.ethos_level": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "complete",
+    "ethos_sheet",
+    "g",
+    "intake",
+    "intake_only",
+    "public",
+    "terminated"
+   ]
+  },
+  "my_contracting_downlines.ethos_note": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "complete",
+    "ethos_sheet",
+    "g",
+    "intake",
+    "intake_only",
+    "public",
+    "terminated"
+   ]
+  },
+  "my_contracting_downlines.ethos_state": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "complete",
+    "ethos_sheet",
+    "g",
+    "intake",
+    "intake_only",
+    "public",
+    "terminated"
+   ]
+  },
+  "my_contracting_downlines.first_name": {
+   "candidates": [
+    "agent_contract_profile.first_name",
+    "contracting_agent_updates.first_name",
+    "contracting_intakes.first_name",
+    "ethos_sheet_rows.first_name"
+   ],
+   "body_literals": [
+    "active",
+    "complete",
+    "ethos_sheet",
+    "g",
+    "intake",
+    "intake_only",
+    "public",
+    "terminated"
+   ]
+  },
+  "my_contracting_downlines.intake_id": {
+   "candidates": [
+    "contracting_agent_updates.intake_id",
+    "contracting_intake_deliveries.intake_id"
+   ],
+   "body_literals": [
+    "active",
+    "complete",
+    "ethos_sheet",
+    "g",
+    "intake",
+    "intake_only",
+    "public",
+    "terminated"
+   ]
+  },
+  "my_contracting_downlines.intake_status": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "complete",
+    "ethos_sheet",
+    "g",
+    "intake",
+    "intake_only",
+    "public",
+    "terminated"
+   ]
+  },
+  "my_contracting_downlines.last_name": {
+   "candidates": [
+    "agent_contract_profile.last_name",
+    "contracting_agent_updates.last_name",
+    "contracting_intakes.last_name",
+    "ethos_sheet_rows.last_name"
+   ],
+   "body_literals": [
+    "active",
+    "complete",
+    "ethos_sheet",
+    "g",
+    "intake",
+    "intake_only",
+    "public",
+    "terminated"
+   ]
+  },
+  "my_contracting_downlines.last_update_at": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "complete",
+    "ethos_sheet",
+    "g",
+    "intake",
+    "intake_only",
+    "public",
+    "terminated"
+   ]
+  },
+  "my_contracting_downlines.last_update_status": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "complete",
+    "ethos_sheet",
+    "g",
+    "intake",
+    "intake_only",
+    "public",
+    "terminated"
+   ]
+  },
+  "my_contracting_downlines.manager_id": {
+   "candidates": [
+    "agents.manager_id"
+   ],
+   "body_literals": [
+    "active",
+    "complete",
+    "ethos_sheet",
+    "g",
+    "intake",
+    "intake_only",
+    "public",
+    "terminated"
+   ]
+  },
+  "my_contracting_downlines.manager_name": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "complete",
+    "ethos_sheet",
+    "g",
+    "intake",
+    "intake_only",
+    "public",
+    "terminated"
+   ]
+  },
+  "my_contracting_downlines.npn": {
+   "candidates": [
+    "contracting_agent_updates.npn",
+    "contracting_intakes.npn",
+    "ethos_sheet_rows.npn"
+   ],
+   "body_literals": [
+    "active",
+    "complete",
+    "ethos_sheet",
+    "g",
+    "intake",
+    "intake_only",
+    "public",
+    "terminated"
+   ]
+  },
+  "my_contracting_downlines.on_sheet": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "complete",
+    "ethos_sheet",
+    "g",
+    "intake",
+    "intake_only",
+    "public",
+    "terminated"
+   ]
+  },
+  "my_contracting_downlines.phone": {
+   "candidates": [
+    "profiles.phone"
+   ],
+   "body_literals": [
+    "active",
+    "complete",
+    "ethos_sheet",
+    "g",
+    "intake",
+    "intake_only",
+    "public",
+    "terminated"
+   ]
+  },
+  "my_contracting_downlines.sheet_level": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "complete",
+    "ethos_sheet",
+    "g",
+    "intake",
+    "intake_only",
+    "public",
+    "terminated"
+   ]
+  },
+  "my_contracting_downlines.sheet_row": {
+   "candidates": [
+    "contracting_agent_updates.sheet_row"
+   ],
+   "body_literals": [
+    "active",
+    "complete",
+    "ethos_sheet",
+    "g",
+    "intake",
+    "intake_only",
+    "public",
+    "terminated"
+   ]
+  },
+  "my_contracting_downlines.sheet_sub_agency": {
+   "candidates": [],
+   "body_literals": [
+    "active",
+    "complete",
+    "ethos_sheet",
+    "g",
+    "intake",
+    "intake_only",
+    "public",
+    "terminated"
    ]
   },
   "my_downline_agent_ids.agent_id": {

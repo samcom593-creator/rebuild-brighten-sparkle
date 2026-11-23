@@ -686,6 +686,17 @@ export type SignupApproval = {
   approved_by?: string | null;
   approved_at?: string | null;
   comp_grid_version?: string | null;
+  /**
+   * MP-304 (2026-11-23). 'verified' = staff reviewed NIPR / licence / E&O evidence (the Oct-3 gate).
+   * 'attested' = the manager placing the person on their OWN downline attested licence and E&O. Attested
+   * evidence is reported as review on the receipt — never promoted to verified — and K/L carry exactly what
+   * was attested rather than a hardcoded TRUE.
+   */
+  evidence_mode?: string | null;
+  attested_by?: string | null;
+  attested_at?: string | null;
+  license_attested?: boolean | null;
+  eo_attested?: boolean | null;
 };
 
 export type QueueEntry = { id: string; npn?: string | null; email?: string | null; mobile?: string | null };
@@ -757,11 +768,24 @@ export function evaluateSignupGate(candidate: SignupCandidate, approval: SignupA
     if (looksFormulaLike(value)) blockers.push(finding("formula_like_value", "blocker", label, null, "Value begins with a formula character or contains a line break.", "Re-enter as plain text."));
   }
 
-  // Evidence.
+  // Evidence. Two modes (MP-304): verified by staff, or attested by the manager who owns the downline.
+  // Attested never reads as verified: each attested item is a REVIEW finding carried on the receipt.
   const a = approval ?? {};
-  if (!a.npn_verified_at) blockers.push(finding("npn_not_verified", "blocker", "Agent NPN", "C", "NPN ownership has not been verified.", "Verify against the NIPR individual record (or an authorized provider) and record source, timestamp and reviewer."));
-  if (!a.license_verified_at) blockers.push(finding("license_not_verified", "blocker", "Life Licensed?", "K", "Current life authority has not been verified.", "Verify the applicable life license and record the evidence reference; an NPN alone is not enough."));
-  if (!a.eo_verified_at) blockers.push(finding("eo_not_verified", "blocker", "$1M in E&O coverage?", "L", "E&O coverage has not been verified.", "Review the certificate: name, $1M limit, effective/expiration; record the evidence reference."));
+  const attested = a.evidence_mode === "attested" && !!a.attested_by && !!a.attested_at;
+  if (!a.npn_verified_at) {
+    if (attested) review.push(finding("npn_attested_not_verified", "review", "Agent NPN", "C", "NPN accepted on the manager's attestation; not checked against NIPR.", "Verify against the NIPR individual record at the next review."));
+    else blockers.push(finding("npn_not_verified", "blocker", "Agent NPN", "C", "NPN ownership has not been verified.", "Verify against the NIPR individual record (or an authorized provider) and record source, timestamp and reviewer."));
+  }
+  if (!a.license_verified_at) {
+    if (attested && a.license_attested === true) review.push(finding("license_attested_not_verified", "review", "Life Licensed?", "K", "Life licence attested by the manager; no evidence reference on file.", "Record the licence evidence at the next review."));
+    else if (attested) blockers.push(finding("license_not_attested", "blocker", "Life Licensed?", "K", "The manager did not attest a current life licence.", "Ethos contracts licensed agents only; confirm the licence first."));
+    else blockers.push(finding("license_not_verified", "blocker", "Life Licensed?", "K", "Current life authority has not been verified.", "Verify the applicable life license and record the evidence reference; an NPN alone is not enough."));
+  }
+  if (!a.eo_verified_at) {
+    if (attested && a.eo_attested === true) review.push(finding("eo_attested_not_verified", "review", "$1M in E&O coverage?", "L", "E&O attested by the manager; no certificate on file.", "Collect the certificate before the agent writes business."));
+    else if (attested) review.push(finding("eo_not_attested", "review", "$1M in E&O coverage?", "L", "E&O not attested; column L is written FALSE.", "Collect the certificate before the agent writes business."));
+    else blockers.push(finding("eo_not_verified", "blocker", "$1M in E&O coverage?", "L", "E&O coverage has not been verified.", "Review the certificate: name, $1M limit, effective/expiration; record the evidence reference."));
+  }
   else {
     const exp = parseWhen(a.eo_expires_at ?? null);
     if (exp === null) blockers.push(finding("eo_expiry_unknown", "blocker", "$1M in E&O coverage?", "L", "E&O verified but no expiration recorded.", "Record the certificate's expiration date."));
@@ -821,7 +845,8 @@ export function evaluateSignupGate(candidate: SignupCandidate, approval: SignupA
 
   const ready = blockers.length === 0;
   const payload: SheetCell[] | null = ready && mobile.ok && email.value && npn.digits && level.value && adv.value && subAgency.value
-    ? [first, last, npn.digits, uplineRaw, mobile.display, email.value, level.value, adv.value, subAgency.value, a.approved_sub_agent_head === true, true, true]
+    ? [first, last, npn.digits, uplineRaw, mobile.display, email.value, level.value, adv.value, subAgency.value, a.approved_sub_agent_head === true,
+       !!a.license_verified_at || (attested && a.license_attested === true), !!a.eo_verified_at || (attested && a.eo_attested === true)]
     : null;
   return { ready: ready && payload !== null, blockers, review, payload, sheet };
 }

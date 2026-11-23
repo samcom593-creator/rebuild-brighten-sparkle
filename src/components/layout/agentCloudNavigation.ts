@@ -261,6 +261,8 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       { label: "My Team", href: "/dashboard/team", icon: Users },
       // Leaders call the people under them who hold the Ethos contract; the database scopes the rows (MP-ETHOS-CALLSHEET).
       { label: "Call sheet", href: "/dashboard/ethos-call-sheet", icon: PhoneCall, modes: LEADERS },
+      // MP-304: a leader's Ethos contracting lane — the one link, add/upload downlines, levels, the board.
+      { label: "Downlines & contracting", href: "/dashboard/contracting/downlines", icon: ScrollText, modes: LEADERS },
     ],
   },
 
@@ -488,6 +490,7 @@ const ROUTE_CRUMBS: Record<string, string[]> = {
   // Grow's "Contracting review" (a support-team link to ?view=contracting) shares this path and is listed first, so the
   // path-only walk named My Team "Grow / Contracting review" for everyone (OVERHAUL-myteam, 2026-10-31).
   "/dashboard/team": ["Team", "My Team"],
+  "/dashboard/contracting/downlines": ["Contracting", "Downlines"],
   "/dashboard/contracting/requests": ["Contracting", "Requests"],
   "/dashboard/contracting/history": ["Contracting", "Intake history"],
   "/dashboard/contracting/carriers": ["Contracting", "Carriers"],

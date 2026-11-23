@@ -1807,6 +1807,14 @@
         "raw": "p_id uuid, p_reason text, p_outcome text DEFAULT NULL::text"
       }
     ],
+    "carrier_command": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "cc_dispose": [
       {
         "all": [
@@ -2166,6 +2174,14 @@
       }
     ],
     "contract_review_roster": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "contracting_actor": [
       {
         "all": [],
         "required": [],
@@ -3939,6 +3955,18 @@
         "raw": ""
       }
     ],
+    "fn_contract_link_target": [
+      {
+        "all": [
+          "p_slug"
+        ],
+        "required": [
+          "p_slug"
+        ],
+        "unnamed": false,
+        "raw": "p_slug text"
+      }
+    ],
     "fn_contract_review_events_append_only": [
       {
         "all": [],
@@ -3989,6 +4017,29 @@
         "raw": "p_agent_id uuid, p_npn text, p_first text, p_last text, p_email text, p_state text, p_source text, p_require_all boolean"
       }
     ],
+    "fn_contracting_after_provision": [
+      {
+        "all": [
+          "p_agent",
+          "p_intake",
+          "p_source"
+        ],
+        "required": [
+          "p_agent",
+          "p_intake"
+        ],
+        "unnamed": false,
+        "raw": "p_intake uuid, p_agent uuid, p_source text DEFAULT 'one_link'::text"
+      }
+    ],
+    "fn_contracting_caller_agent": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "fn_contracting_case_events_append_only": [
       {
         "all": [],
@@ -4003,6 +4054,50 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "fn_contracting_comp_cap": [
+      {
+        "all": [
+          "p_caller"
+        ],
+        "required": [
+          "p_caller"
+        ],
+        "unnamed": false,
+        "raw": "p_caller uuid"
+      }
+    ],
+    "fn_contracting_default_comp_pct": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_contracting_intake_core": [
+      {
+        "all": [
+          "p_destinations",
+          "p_email",
+          "p_first_name",
+          "p_last_name",
+          "p_license_status",
+          "p_npn",
+          "p_phone",
+          "p_source",
+          "p_submitted_by"
+        ],
+        "required": [
+          "p_email",
+          "p_first_name",
+          "p_last_name",
+          "p_npn",
+          "p_phone"
+        ],
+        "unnamed": false,
+        "raw": "p_first_name text, p_last_name text, p_email text, p_phone text, p_npn text, p_source text DEFAULT 'apex_contracting_page'::text, p_submitted_by uuid DEFAULT NULL::uuid, p_license_status text DEFAULT 'licensed'::text, p_destinations text[] DEFAULT NULL::text[]"
       }
     ],
     "fn_contracting_intake_draft": [
@@ -4121,6 +4216,18 @@
         "raw": ""
       }
     ],
+    "fn_contracting_scope_ok": [
+      {
+        "all": [
+          "p_agent"
+        ],
+        "required": [
+          "p_agent"
+        ],
+        "unnamed": false,
+        "raw": "p_agent uuid"
+      }
+    ],
     "fn_contracting_stalled_due": [
       {
         "all": [
@@ -4139,6 +4246,18 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "fn_contracting_sub_agency_label": [
+      {
+        "all": [
+          "p_manager"
+        ],
+        "required": [
+          "p_manager"
+        ],
+        "unnamed": false,
+        "raw": "p_manager uuid"
       }
     ],
     "fn_course_lane_agent_course_started": [
@@ -4493,6 +4612,20 @@
         "raw": ""
       }
     ],
+    "fn_digits_edit_distance_le1": [
+      {
+        "all": [
+          "a",
+          "b"
+        ],
+        "required": [
+          "a",
+          "b"
+        ],
+        "unnamed": false,
+        "raw": "a text, b text"
+      }
+    ],
     "fn_discord_paused": [
       {
         "all": [],
@@ -4552,6 +4685,18 @@
       }
     ],
     "fn_email_is_suspended": [
+      {
+        "all": [
+          "p_email"
+        ],
+        "required": [
+          "p_email"
+        ],
+        "unnamed": false,
+        "raw": "p_email text"
+      }
+    ],
+    "fn_email_typo_suggestion": [
       {
         "all": [
           "p_email"
@@ -4707,6 +4852,14 @@
         ],
         "unnamed": false,
         "raw": "pct numeric"
+      }
+    ],
+    "fn_ethos_principal_npn": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
       }
     ],
     "fn_evaluate_personal_records": [
@@ -5898,6 +6051,20 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "fn_npn_near_duplicates": [
+      {
+        "all": [
+          "p_exclude_agent",
+          "p_exclude_intake",
+          "p_npn"
+        ],
+        "required": [
+          "p_npn"
+        ],
+        "unnamed": false,
+        "raw": "p_npn text, p_exclude_agent uuid DEFAULT NULL::uuid, p_exclude_intake uuid DEFAULT NULL::uuid"
       }
     ],
     "fn_npn_plausible": [
@@ -9057,6 +9224,14 @@
         "raw": ""
       }
     ],
+    "my_contracting_downlines": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "my_course_progress": [
       {
         "all": [],
@@ -10827,6 +11002,18 @@
         "raw": "p_value text"
       }
     ],
+    "set_contracting_default_comp_level": [
+      {
+        "all": [
+          "p_value"
+        ],
+        "required": [
+          "p_value"
+        ],
+        "unnamed": false,
+        "raw": "p_value text"
+      }
+    ],
     "set_contracting_followup": [
       {
         "all": [
@@ -10920,6 +11107,18 @@
         ],
         "unnamed": false,
         "raw": "p_token text"
+      }
+    ],
+    "set_my_mgn_link": [
+      {
+        "all": [
+          "p_url"
+        ],
+        "required": [
+          "p_url"
+        ],
+        "unnamed": false,
+        "raw": "p_url text"
       }
     ],
     "set_owner_overview_settings": [
@@ -11417,6 +11616,19 @@
         "raw": "p_agent_id uuid, p_advance text DEFAULT NULL::text"
       }
     ],
+    "submit_downline_contracting": [
+      {
+        "all": [
+          "p",
+          "p_dry_run"
+        ],
+        "required": [
+          "p"
+        ],
+        "unnamed": false,
+        "raw": "p jsonb, p_dry_run boolean DEFAULT true"
+      }
+    ],
     "submit_referral": [
       {
         "all": [
@@ -11739,6 +11951,14 @@
       }
     ],
     "trg_fn_agent_activated_discord": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "trg_fn_agent_contract_level_history": [
       {
         "all": [],
         "required": [],
@@ -12098,6 +12318,18 @@
         ],
         "unnamed": false,
         "raw": "p_id uuid, p_progress text, p_source text"
+      }
+    ],
+    "update_downline_contracting": [
+      {
+        "all": [
+          "p"
+        ],
+        "required": [
+          "p"
+        ],
+        "unnamed": false,
+        "raw": "p jsonb"
       }
     ],
     "update_my_agent_profile": [

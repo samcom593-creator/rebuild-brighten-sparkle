@@ -9,12 +9,21 @@ import type { EthosIntake } from "./ethos.ts";
 import {
   SIGNUP_HEADERS,
   SIGNUP_TAB,
+  UPDATES_AGENCY_COLUMNS,
+  UPDATES_HEADERS,
+  UPDATES_TAB,
+  buildUpdateRequestRow,
+  columnLetter,
   evaluateSignupGate,
+  isPopulatedUpdateRow,
   planSignupWrite,
   signupAgencyRange,
+  trimOuter,
+  verifyHeaderSignature,
   verifySignupReadBack,
   type Principal,
   type SignupApproval,
+  type UpdateRequest,
 } from "./ethos-contract.ts";
 import { createSheetsClient, getAccessToken, type FetchLike } from "./google-sheets.ts";
 
@@ -554,5 +563,117 @@ export async function runContractingDelivery(
     verdict: "delivered",
     state: outcome.state,
     providerMessageId: (outcome.receipt?.message_id as string) ?? undefined,
+  };
+}
+
+// ── Ethos "Agent Updates" leg (MP-304) ────────────────────────────────────────────────────────
+//
+// One row per approved change: A:C identify the agent, D:H carry ONLY the changes. I is the sheet's own
+// column and J:L belong to Ethos; neither is ever written. Unlike the signup leg this is NOT naturally
+// idempotent — a second identical row is a second request — so the planned row number is recorded BEFORE
+// the write, and a retry after an uncertain answer re-reads that exact row instead of appending again.
+
+export type UpdateRow = {
+  id: string;
+  status: string;
+  sheet_row: number | null;
+  npn: string;
+  first_name: string;
+  last_name: string;
+  change_upline_npn: string | null;
+  change_comp_level: string | null;
+  change_advance_tier: string | null;
+  change_pii: string | null;
+  termination_requested: boolean;
+  termination_authorized_by: string | null;
+  termination_authorized_at: string | null;
+};
+
+export type UpdateDeps = {
+  readSetting(key: string): Promise<string | null>;
+  loadUpdate(updateId: string): Promise<UpdateRow>;
+  /** Called with the target row number right before the PUT, so a lost answer can be reconciled. */
+  recordPlannedRow(rowNumber: number): Promise<void>;
+  fetchImpl: FetchLike;
+  googleCredential: string | null;
+  now(): number;
+  getToken?(credential: string, now: number, fetchImpl: FetchLike): Promise<string>;
+};
+
+export function updatesAgencyRange(tabTitle: string, rowNumber: number): string {
+  return `${tabTitle}!A${rowNumber}:${columnLetter(UPDATES_AGENCY_COLUMNS - 1)}${rowNumber}`;
+}
+
+export function verifyUpdateReadBack(written: unknown[] | undefined, payload: (string | boolean)[]): { ok: boolean; mismatches: string[] } {
+  const mismatches: string[] = [];
+  for (let c = 0; c < UPDATES_AGENCY_COLUMNS; c++) {
+    if (trimOuter(written?.[c]) !== trimOuter(payload[c])) mismatches.push(UPDATES_HEADERS[c]);
+  }
+  return { ok: mismatches.length === 0, mismatches };
+}
+
+export async function deliverEthosUpdate(updateId: string, deps: UpdateDeps): Promise<DeliveryOutcome> {
+  const rawConfig = await deps.readSetting("ethos_agents_sheet");
+  if (!rawConfig) return { state: "not_configured", receipt: null, note: "system_settings.ethos_agents_sheet is missing." };
+  const enabled = (await deps.readSetting("ethos_sheet_writes_enabled")) === "true";
+  if (!enabled) {
+    return { state: "not_configured", receipt: null, note: "Automated Ethos sheet writes are OFF (system_settings.ethos_sheet_writes_enabled). The update stays queued." };
+  }
+  if (!deps.googleCredential) {
+    return { state: "not_configured", receipt: null, note: "No Google service credential. Set the GOOGLE_SERVICE_ACCOUNT_JSON function secret and grant that service account Editor on the Agents sheet." };
+  }
+  const config = JSON.parse(rawConfig) as { sheet_id: string; updates_tab?: string };
+  const tab = config.updates_tab || UPDATES_TAB.title;
+  const u = await deps.loadUpdate(updateId);
+
+  const req: UpdateRequest = {
+    first_name: u.first_name, last_name: u.last_name, npn: u.npn,
+    change_upline_npn: u.change_upline_npn, change_comp_level: u.change_comp_level, change_advance_tier: u.change_advance_tier,
+    change_pii_correction: u.change_pii,
+    termination: u.termination_requested ? { requested: true, authorized_by: u.termination_authorized_by, authorized_at: u.termination_authorized_at } : null,
+  };
+  const built = buildUpdateRequestRow(req);
+  if (!built.row) {
+    return { state: "manual_review", receipt: null, note: `Held by the Ethos update gate: ${built.blockers.map((b) => b.code).join(", ") || "row incomplete"}.` };
+  }
+  const payload = built.row;
+
+  const exchange = deps.getToken ?? ((cred: string, now: number, f: FetchLike) => getAccessToken(JSON.parse(cred), now, f));
+  const token = await exchange(deps.googleCredential, deps.now(), deps.fetchImpl);
+  const sheets = createSheetsClient(config.sheet_id, token, deps.fetchImpl);
+
+  const rows = await sheets.getRange(`${tab}!A:L`);
+  const hdr = verifyHeaderSignature(UPDATES_HEADERS, rows[UPDATES_TAB.headerRow - 1]);
+  if (!hdr.ok) {
+    return { state: "manual_review", receipt: null, note: `Header drift on the Agent Updates tab (${hdr.drift.map((d) => d.column).join(", ")}); an admin reconciles the layout.` };
+  }
+
+  // A previous attempt recorded its row and never got to settle: the sheet is the verdict.
+  if (u.sheet_row && (u.status === "attempting" || u.status === "unknown_outcome")) {
+    const prior = rows[u.sheet_row - 1] ?? [];
+    const check = verifyUpdateReadBack(prior, payload);
+    if (check.ok) {
+      return { state: "delivered", receipt: { provider: "google_sheets", action: "reconciled_prior_write", row: u.sheet_row, columns: UPDATES_HEADERS.slice(0, UPDATES_AGENCY_COLUMNS), read_back_verified: true }, note: "A previous attempt had landed; reconciled from the sheet, nothing written again." };
+    }
+    if (isPopulatedUpdateRow(prior)) {
+      return { state: "manual_review", receipt: null, note: `Row ${u.sheet_row} was planned for this update but holds different values; a person decides.` };
+    }
+  }
+
+  let target = UPDATES_TAB.firstDataRow;
+  for (let i = UPDATES_TAB.firstDataRow - 1; i < rows.length; i++) if (isPopulatedUpdateRow(rows[i])) target = i + 2;
+  const fresh = await sheets.getRange(updatesAgencyRange(tab, target));
+  if (isPopulatedUpdateRow(fresh[0])) throw new Error(`Agent Updates row ${target} is no longer empty; refusing to overwrite a concurrent edit`);
+
+  await deps.recordPlannedRow(target);
+  const range = updatesAgencyRange(tab, target);
+  const receipt = await sheets.updateRange(range, [payload]);
+  const written = await sheets.getRange(range);
+  const check = verifyUpdateReadBack(written[0], payload);
+  if (!check.ok) throw new Error(`Agent Updates read-back mismatch on ${check.mismatches.join(", ")}`);
+  return {
+    state: "delivered",
+    receipt: { provider: "google_sheets", action: "appended_a_to_h", updated_range: receipt, row: target, columns: UPDATES_HEADERS.slice(0, UPDATES_AGENCY_COLUMNS), read_back_verified: true, review_items: built.review.map((r) => r.code) },
+    note: "Written to the Agent Updates agency block (A:H). Being on the sheet is a request to Ethos, not Ethos' confirmation.",
   };
 }

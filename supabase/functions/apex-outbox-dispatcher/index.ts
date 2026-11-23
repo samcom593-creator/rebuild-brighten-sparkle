@@ -10,6 +10,8 @@ import {
   FAILURE_OVERWRITABLE_STATES,
   readSettingFromResult,
   runContractingDelivery,
+  deliverEthosUpdate,
+  type DeliveryOutcome,
 } from "../_shared/contracting-delivery.ts";
 import { emailPattern } from "../_shared/like-escape.ts";
 import { resolveOne } from "../_shared/resolve-one.ts";
@@ -862,6 +864,49 @@ async function readSetting(sb: any, key: string): Promise<string | null> {
   return readSettingFromResult(result, key);
 }
 
+// MP-304. Not naturally idempotent (a second row is a second request), so the row is settled from what
+// the sheet actually holds: planned row recorded before the PUT, reconciled on the next tick if the answer
+// was lost. A thrown error leaves the status 'attempting' + sheet_row on purpose — that is the reconcile key.
+async function deliverContractingUpdate(sb: any, event: any): Promise<DispatchResult> {
+  const updateId = event.aggregate_id;
+  const patch = async (p: Record<string, unknown>) => {
+    const { error } = await sb.from("contracting_agent_updates").update({ ...p, updated_at: new Date().toISOString() }).eq("id", updateId);
+    if (error) throw error;
+  };
+  const { data: row, error } = await sb.from("contracting_agent_updates")
+    .select("id, status, sheet_row, npn, first_name, last_name, change_upline_npn, change_comp_level, change_advance_tier, change_pii, termination_requested, termination_authorized_by, termination_authorized_at")
+    .eq("id", updateId).maybeSingle();
+  if (error) throw error;
+  if (!row) return { state: "manual_action_required", manualReason: "update row no longer exists" };
+  if (row.status === "delivered") return { state: "delivered", deliveryConfirmed: true };
+  if (row.status === "manual_review") return { state: "manual_action_required", manualReason: "held for a person" };
+  const prior = row.status;
+  if (prior !== "attempting" && prior !== "unknown_outcome") await patch({ status: "attempting", last_error_redacted: null });
+  let outcome: DeliveryOutcome;
+  try {
+    outcome = await deliverEthosUpdate(updateId, {
+      readSetting: (key) => readSetting(sb, key),
+      loadUpdate: async () => row,
+      recordPlannedRow: (n) => patch({ sheet_row: n }),
+      fetchImpl: fetch,
+      googleCredential: Deno.env.get("GOOGLE_SERVICE_ACCOUNT_JSON") || null,
+      now: () => Date.now(),
+    });
+  } catch (e) {
+    // Keep 'attempting' + sheet_row so the next tick reconciles against the sheet; the outbox retry
+    // budget (attempts < 5) bounds it, after which the row is a dead letter for a person.
+    await patch({ last_error_redacted: redactError(e) });
+    throw e;
+  }
+  const settle: Record<string, unknown> = { status: outcome.state === "accepted" ? "delivered" : outcome.state, last_error_redacted: outcome.note };
+  if (outcome.state === "delivered") { settle.receipt = outcome.receipt; settle.delivered_at = new Date().toISOString(); if (outcome.receipt?.row) settle.sheet_row = outcome.receipt.row; }
+  if (outcome.state === "not_configured") settle.status = "queued";
+  await patch(settle);
+  if (outcome.state === "delivered") return { state: "delivered", deliveryConfirmed: true };
+  if (outcome.state === "not_configured") return { state: "manual_action_required", manualReason: outcome.note ?? "not configured" };
+  return { state: "manual_action_required", manualReason: outcome.note ?? outcome.state };
+}
+
 async function deliverContractingIntake(sb: any, event: any): Promise<DispatchResult> {
   const intakeId = event.aggregate_id;
   const destination = event.destination;
@@ -963,6 +1008,10 @@ async function dispatch(sb: any, event: any): Promise<DispatchResult> {
   }
   if (event.aggregate_type === "contracting_intake") {
     return await deliverContractingIntake(sb, event);
+  }
+  // MP-304: an approved identity/comp change bound for the Ethos "Agent Updates" tab.
+  if (event.aggregate_type === "contracting_update") {
+    return await deliverContractingUpdate(sb, event);
   }
   if (event.destination === "review") return { state: "delivered" };
   if (event.destination === "discord" || event.destination === "discord_subagency") {

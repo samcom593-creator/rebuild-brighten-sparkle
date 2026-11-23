@@ -256,6 +256,8 @@ const CommissionRecovery = lazy(() => import("./pages/admin/CommissionRecovery")
 const Join = lazy(() => import("./pages/Join"));
 const HireLink = lazy(() => import("./pages/HireLink"));
 const JoinLink = lazy(() => import("./pages/JoinLink"));
+const ContractJoin = lazy(() => import("./pages/ContractJoin"));
+const ContractingDownlines = lazy(() => import("./pages/ContractingDownlines"));
 const InviteLinksAdmin = lazy(() => import("./pages/admin/InviteLinks"));
 const RecruitFunnel = lazy(() => import("./pages/admin/RecruitFunnel"));
 const RecoveryQueue = lazy(() => import("./pages/admin/RecoveryQueue"));
@@ -486,6 +488,10 @@ const App = () => (
                       fans out via existing DB triggers (applicant onboarding
                       email for unlicensed; licensed-app alert for licensed). */}
                   <Route path="/join/:token" element={<JoinLink />} />
+                  {/* MP-304: the ONE contracting link a manager sends. Public, slug = manager's ref_slug. Captures
+                      the recruit once (NPN/email/mobile validated by the database), queues the Ethos leg, then hands
+                      the browser to that manager's MGN Agent Hub link (host-allowlisted). */}
+                  <Route path="/contract/:slug" element={<ContractJoin />} />
                   {/* /agent-signup is the canonical recruiting URL referenced from
                       Install.tsx and recruiting CTAs. /join remains the separate
                       combined sign-in / create-account flow used by existing links. */}
@@ -602,6 +608,8 @@ const App = () => (
                     <Route path="/dashboard/contracting" element={<ProtectedRoute requireAdmin><CarrierContracts /></ProtectedRoute>} />
                     {/* The page the contracting email and link open: signed-in, prefilled, writes only the caller's own profile. */}
                     <Route path="/dashboard/contracting-profile" element={<ProtectedRoute><ContractingProfile /></ProtectedRoute>} />
+                    {/* MP-304: a manager's Ethos lane — their one link, add/upload downlines, the board. Scoped in SQL. */}
+                    <Route path="/dashboard/contracting/downlines" element={<ProtectedRoute><ContractingDownlines /></ProtectedRoute>} />
                     {/* The retired process's pages (contracts board, operations, audit, Aflac sends, cases, Ethos sheet) go to the review. */}
                     <Route path="/dashboard/contracting/contracts" element={<LegacyWorkspaceRedirect to="/dashboard/contracting/documents" />} />
                     <Route path="/dashboard/contracting/carriers" element={<ProtectedRoute requireAdmin><CarrierContracts /></ProtectedRoute>} />

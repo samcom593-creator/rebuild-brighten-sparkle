@@ -1,15 +1,15 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-11-12T09:09:35.042Z
-Repository: `/Users/samjames/projects/rbs-owner-os`
+Generated: 2026-11-23T22:26:18.309Z
+Repository: `/Users/samjames/projects/rbs-mp304`
 
 ## Inventory Summary
 
-- Total Local Edge Functions: **257**
-- Configured in `config.toml`: **258**
-- Invoked Edge Functions in Source: **99**
-- Invoked RPC Calls in Source: **289**
-- SQL Functions in Migrations: **985**
+- Total Local Edge Functions: **259**
+- Configured in `config.toml`: **260**
+- Invoked Edge Functions in Source: **101**
+- Invoked RPC Calls in Source: **310**
+- SQL Functions in Migrations: **1051**
 
 ## Edge Function Auth & Verification Contracts
 
@@ -74,6 +74,8 @@ Repository: `/Users/samjames/projects/rbs-owner-os`
 | `content-library` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `content-share` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `content-thumb` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
+| `contracting-downline` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
+| `contracting-nudge-sweep` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `contracting-sheet-csv` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `contracting-sheet-sync` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `create-agent-from-leaderboard` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -281,6 +283,6 @@ applied by hand through bot-sql and never round-tripped into
 `supabase/migrations`, so this directory does not model the deployed database.
 `apex-doctor` queries `pg_proc` and is the authority on deployed state.
 
-- Invoked RPCs: **289**
-- Also declared in this commit's migrations: **281**
+- Invoked RPCs: **310**
+- Also declared in this commit's migrations: **302**
 - Declared only in the database: **8**

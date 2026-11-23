@@ -52,21 +52,27 @@ Deno.serve(async (req) => {
   if (!SUPABASE_URL || !SERVICE_KEY) return errorResponse("Server configuration missing", 503, "NOT_CONFIGURED");
 
   const sb = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
-  const jwt = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
-  const { data: userData, error: userError } = await sb.auth.getUser(jwt);
-  if (userError || !userData?.user) return errorResponse("Sign in required", 401, "UNAUTHORIZED");
-  const { data: roles, error: rolesError } = await sb
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userData.user.id);
-  if (rolesError) return errorResponse("Could not check your role", 503, "ROLE_CHECK_UNAVAILABLE");
-  if (!(roles ?? []).some((r: { role: string }) => STAFF_ROLES.includes(String(r.role)))) {
-    return errorResponse("Contracting staff only", 403, "FORBIDDEN");
+  const jwt = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+  // MP-304: the service role (contracting-downline's manager refresh, a cron) may re-mirror; it reads a
+  // link-reader CSV export and writes only our own snapshot tables, so the service path records no user.
+  let triggeredBy: string | null = null;
+  if (!(SERVICE_KEY && jwt === SERVICE_KEY)) {
+    const { data: userData, error: userError } = await sb.auth.getUser(jwt);
+    if (userError || !userData?.user) return errorResponse("Sign in required", 401, "UNAUTHORIZED");
+    const { data: roles, error: rolesError } = await sb
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userData.user.id);
+    if (rolesError) return errorResponse("Could not check your role", 503, "ROLE_CHECK_UNAVAILABLE");
+    if (!(roles ?? []).some((r: { role: string }) => STAFF_ROLES.includes(String(r.role)))) {
+      return errorResponse("Contracting staff only", 403, "FORBIDDEN");
+    }
+    triggeredBy = userData.user.id;
   }
 
   const { data: snap, error: snapError } = await sb
     .from("ethos_sheet_snapshots")
-    .insert({ status: "pending", source: "public_csv_export", triggered_by: userData.user.id })
+    .insert({ status: "pending", source: "public_csv_export", triggered_by: triggeredBy })
     .select("id, fetched_at")
     .single();
   if (snapError || !snap) return errorResponse(`Could not open a snapshot: ${snapError?.message ?? "unknown"}`, 502, "SNAPSHOT_FAILED");

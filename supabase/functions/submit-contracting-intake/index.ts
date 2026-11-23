@@ -33,13 +33,11 @@ import {
   pickAcceptedFields,
   rateLimitVerdict,
 } from "../_shared/intake-guard.ts";
-import { findAuthUserByEmail, type AuthUserLister } from "../_shared/find-auth-user.ts";
+import { provisionOnboarding, DEFAULT_MANAGER_ID, type LicensePath } from "../_shared/provision-onboarding.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
-import { emailPattern } from "../_shared/like-escape.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const DEFAULT_MANAGER_ID = "7c3c5581-3544-437f-bfe2-91391afb217d";
 
 /**
  * Which onboarding track the submitter is on.
@@ -53,7 +51,7 @@ const DEFAULT_MANAGER_ID = "7c3c5581-3544-437f-bfe2-91391afb217d";
  * Read from the raw body on purpose: the five-field guard discards every other
  * key, and this is a routing flag, not a sixth piece of producer data.
  */
-export type LicensePath = "licensed" | "unlicensed" | "pending";
+export type { LicensePath };
 
 export function licensePathFromBody(body: Record<string, unknown>): LicensePath {
   const raw = String(body.license_status ?? body.licensePath ?? "licensed").trim().toLowerCase();
@@ -127,121 +125,7 @@ async function validateNpnClaim(
     : { ok: false, error: "npn_in_use" };
 }
 
-async function provisionOnboarding(
-  // supabase-js does not carry this project's generated database schema inside
-  // edge functions, so an inferred generic collapses table writes to `never`.
-  // Runtime validation remains in Postgres; keep this boundary SDK-agnostic.
-  sb: any,
-  payload: { first_name: string; last_name: string; email: string; phone: string; npn: string },
-  licensePath: LicensePath,
-) {
-  const email = payload.email.trim().toLowerCase();
-  const fullName = `${payload.first_name.trim()} ${payload.last_name.trim()}`.trim();
-  const authLookup = await findAuthUserByEmail(sb as unknown as AuthUserLister, email);
-  if (!authLookup.exhaustive) throw new Error("account_lookup_incomplete");
 
-  let userId = authLookup.user?.id ?? null;
-  if (!userId) {
-    const { data: created, error } = await sb.auth.admin.createUser({
-      email,
-      email_confirm: true,
-      user_metadata: { full_name: fullName, source: "contracting_one_link" },
-    });
-    if (error || !created.user) throw new Error(error?.message ?? "account_create_failed");
-    userId = created.user.id;
-  }
-
-  const { data: profile, error: profileError } = await sb
-    .from("profiles")
-    .upsert({ user_id: userId, email, phone: payload.phone, full_name: fullName }, { onConflict: "user_id" })
-    .select("id")
-    .single();
-  if (profileError || !profile?.id) throw new Error(profileError?.message ?? "profile_create_failed");
-
-  const { error: roleError } = await sb
-    .from("user_roles")
-    .upsert({ user_id: userId, role: "agent" }, { onConflict: "user_id,role", ignoreDuplicates: true });
-  if (roleError) throw new Error(roleError.message);
-
-  const { data: existing, error: existingError } = await sb
-    .from("agents")
-    .select("id,manager_id,invited_by_manager_id,license_status,onboarding_stage")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  if (existingError) throw new Error(existingError.message);
-
-  let agentId = existing?.id ?? null;
-  const preLicense = licensePath !== "licensed";
-  // A pre-license submission must never regress a producer who is already
-  // licensed on the roster (an unlicensed re-submit from a licensed agent's
-  // email is a mistake, not a downgrade). Licensed submissions always advance.
-  const alreadyLicensed = existing?.license_status === "licensed";
-  const licenseFields = preLicense
-    ? (alreadyLicensed
-      ? {}
-      : {
-        license_status: licensePath,
-        license_progress: "unlicensed",
-        onboarding_stage: existing?.onboarding_stage ?? "pre_licensed",
-      })
-    : {
-      license_status: "licensed",
-      license_progress: "licensed",
-      onboarding_stage: "onboarding",
-      nipr_number: payload.npn,
-      // A typed NPN is a claim, not an official registry verification. A
-      // correction must never inherit the previous number's verified badge.
-      nipr_verified: false,
-      nipr_verified_at: null,
-    };
-  const agentPatch = {
-    user_id: userId,
-    profile_id: profile.id,
-    display_name: fullName,
-    status: "active",
-    ...licenseFields,
-    has_training_course: true,
-    manager_id: existing?.manager_id ?? DEFAULT_MANAGER_ID,
-    invited_by_manager_id: existing?.invited_by_manager_id ?? DEFAULT_MANAGER_ID,
-    start_date: new Date().toISOString().slice(0, 10),
-  };
-
-  if (agentId) {
-    const { error } = await sb.from("agents").update(agentPatch).eq("id", agentId);
-    if (error) throw new Error(error.message);
-  } else {
-    // WP5 provenance (new rows only). Link an application only on a UNIQUE email match no other agent holds.
-    let linkedApplicationId: string | null = null;
-    const { data: appMatches, error: appMatchErr } = await sb
-      .from("applications")
-      .select("id")
-      .ilike("email", emailPattern(email))
-      .or("is_duplicate.is.null,is_duplicate.eq.false")
-      .limit(2);
-    if (!appMatchErr && (appMatches ?? []).length === 1) {
-      const candidate = String((appMatches as Array<{ id: string }>)[0].id);
-      const { data: holder } = await sb.from("agents").select("id").eq("source_application_id", candidate).limit(1);
-      if ((holder ?? []).length === 0) linkedApplicationId = candidate;
-    }
-    const origin = linkedApplicationId ? "application" : "direct_add";
-    const provenance: Record<string, string> = { origin, created_by_path: "submit-contracting-intake" };
-    if (linkedApplicationId) provenance.source_application_match = "unique_email";
-    else provenance.no_application_reason = "contracting intake link (no application on file)";
-    const { data: inserted, error } = await sb.from("agents").insert({
-      ...agentPatch,
-      origin,
-      recruiter_agent_id: agentPatch.invited_by_manager_id,
-      source_application_id: linkedApplicationId,
-      metadata: provenance,
-    }).select("id").single();
-    if (error || !inserted?.id) throw new Error(error?.message ?? "agent_create_failed");
-    agentId = inserted.id;
-  }
-
-  return { agentId };
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });

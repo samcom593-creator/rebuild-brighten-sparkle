@@ -265,6 +265,15 @@ const PUBLIC_ALLOWLIST = new Set([
   // APEX login; controls are the field allowlist, fail-closed rate limiting,
   // a honeypot, and a service-role-only RPC behind it.
   "submit-contracting-intake",
+  // MP-304 (2026-11-23): the ONE contracting link a manager sends (/contract/<slug>). Two public
+  // actions only — `resolve` (read-only: a manager's display name, sub-agency label and the redirect
+  // HOST) and `join` (the stranger's own five fields + licence flag). join is bounded exactly like
+  // submit-contracting-intake: honeypot, fail-closed per-IP limit (8/300s), the slug must resolve to
+  // an ACTIVE manager, every verdict/write lives in the service-role-only submit_downline_contracting
+  // RPC, and the only redirect target is host-allowlisted to mgnagenthub.com in SQL and again in the
+  // handler. Every other action (actor/verdict/submit/update/mgn_link/downlines/refresh_sheet) refuses
+  // without a verified user JWT (getUser) and the RPCs scope rows to that caller's own downline.
+  "contracting-downline",
   // Cron workers use the rotating APEX bot token rather than a Supabase JWT.
   // Both handlers compare that bearer themselves and fail closed; the
   // onboarding worker additionally reserves diagnostics/send-one for the
@@ -760,6 +769,7 @@ const PUBLIC_CONTRACT = {
   // is ceilinged and named rather than merely listed.
   "submit-application": "public_by_design",
   "submit-contracting-intake": "public_by_design",
+  "contracting-downline": "public_by_design",
   "seminar-register": "public_by_design",
   "seminar-confirmation": "public_by_design",
   "manager-signup": "public_by_design",
@@ -806,7 +816,13 @@ const PUBLIC_CONTRACT = {
 // 13 -> 15 (MP-BRAND-ENGINE, 2026-11-12): glowup-lead and proof-wall, both for the public
 // sell4daddy.com site Sam asked for (a lead-magnet form and a consent-gated proof feed). Neither
 // can carry a caller credential, and each is bounded as its contract comment above says.
-const PUBLIC_BY_DESIGN_CEILING = 15;
+// 15 -> 16 (MP-304, 2026-11-23): contracting-downline's `join` — the recruit side of a manager's one
+// contracting link. A recruit has no login by definition, so no credential can exist; the write is the
+// same five fields the already-allowlisted submit-contracting-intake takes, behind the same honeypot
+// and fail-closed limiter, plus a slug that must resolve to an active manager. Not consolidated into
+// submit-contracting-intake because that endpoint's contract is "five fields, no upline": this one
+// binds the upline from the slug and hands the browser to an allow-listed MGN host afterward.
+const PUBLIC_BY_DESIGN_CEILING = 16;
 
 // Neither structure may drift from the other. An allowlist entry with no
 // declared contract would silently keep the old name-is-enough standard, and a

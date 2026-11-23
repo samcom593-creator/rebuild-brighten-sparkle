@@ -5760,6 +5760,42 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_contract_level_history: {
+        Row: {
+          agent_id: string
+          changed_at: string
+          id: number
+          new_pct: number | null
+          new_source: string | null
+          note: string | null
+          old_pct: number | null
+          old_source: string | null
+          set_by: string | null
+        }
+        Insert: {
+          agent_id: string
+          changed_at?: string
+          id?: number
+          new_pct?: number | null
+          new_source?: string | null
+          note?: string | null
+          old_pct?: number | null
+          old_source?: string | null
+          set_by?: string | null
+        }
+        Update: {
+          agent_id?: string
+          changed_at?: string
+          id?: number
+          new_pct?: number | null
+          new_source?: string | null
+          note?: string | null
+          old_pct?: number | null
+          old_source?: string | null
+          set_by?: string | null
+        }
+        Relationships: []
+      }
       agent_contract_levels: {
         Row: {
           agent_id: string
@@ -49202,6 +49238,39 @@ export type Database = {
           },
         ]
       }
+      chubb_live_policies: {
+        Row: {
+          eff_date: string | null
+          insured: string | null
+          policy_number: string
+          product: string | null
+          pulled_at: string
+          snapshot_on: string
+          status: string | null
+          writing_agent: string | null
+        }
+        Insert: {
+          eff_date?: string | null
+          insured?: string | null
+          policy_number: string
+          product?: string | null
+          pulled_at?: string
+          snapshot_on: string
+          status?: string | null
+          writing_agent?: string | null
+        }
+        Update: {
+          eff_date?: string | null
+          insured?: string | null
+          policy_number?: string
+          product?: string | null
+          pulled_at?: string
+          snapshot_on?: string
+          status?: string | null
+          writing_agent?: string | null
+        }
+        Relationships: []
+      }
       churn_risk_alerts: {
         Row: {
           action_taken: string | null
@@ -55437,6 +55506,680 @@ export type Database = {
         }
         Relationships: []
       }
+      contracting_agent_updates: {
+        Row: {
+          agent_id: string | null
+          change_advance_tier: string | null
+          change_comp_level: string | null
+          change_pii: string | null
+          change_upline_npn: string | null
+          created_at: string
+          delivered_at: string | null
+          first_name: string
+          id: string
+          intake_id: string | null
+          last_error_redacted: string | null
+          last_name: string
+          npn: string
+          reason: string | null
+          receipt: Json | null
+          requested_at: string
+          requested_by: string | null
+          sheet_row: number | null
+          status: string
+          termination_authorized_at: string | null
+          termination_authorized_by: string | null
+          termination_requested: boolean
+          updated_at: string
+        }
+        Insert: {
+          agent_id?: string | null
+          change_advance_tier?: string | null
+          change_comp_level?: string | null
+          change_pii?: string | null
+          change_upline_npn?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          first_name: string
+          id?: string
+          intake_id?: string | null
+          last_error_redacted?: string | null
+          last_name: string
+          npn: string
+          reason?: string | null
+          receipt?: Json | null
+          requested_at?: string
+          requested_by?: string | null
+          sheet_row?: number | null
+          status?: string
+          termination_authorized_at?: string | null
+          termination_authorized_by?: string | null
+          termination_requested?: boolean
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string | null
+          change_advance_tier?: string | null
+          change_comp_level?: string | null
+          change_pii?: string | null
+          change_upline_npn?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          first_name?: string
+          id?: string
+          intake_id?: string | null
+          last_error_redacted?: string | null
+          last_name?: string
+          npn?: string
+          reason?: string | null
+          receipt?: Json | null
+          requested_at?: string
+          requested_by?: string | null
+          sheet_row?: number | null
+          status?: string
+          termination_authorized_at?: string | null
+          termination_authorized_by?: string | null
+          termination_requested?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "mv_agent_truth"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_admin_applicant_overview"
+            referencedColumns: ["became_agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_20k_target_leaderboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_account_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_activation_state"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_canonical_map"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_command_center"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_crm_active"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_dialer_state"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicate_candidates"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicates"
+            referencedColumns: ["canonical_agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicates"
+            referencedColumns: ["dup_agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_manager_conflicts"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_monthly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_owner_truth"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_quality_score"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_skool_membership"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_status_contradictions"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_training_stage"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_with_downline_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_full"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_al_link"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_al_user_id"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_numbers_today"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_needs_attention"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_onboarding_status"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_apex_roster"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_builder_operating_dashboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_cfo_unprovisioned_producer"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_channel_deprovision_needed"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracted_at_backfill_due"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_audit"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_carrier_cases"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_reconciliation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_worklist"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_ethos_agent_updates"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_ethos_paste_rows"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_first_deal_reconcile_backlog"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_activity"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_launch_board"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_notification_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hired_licensed_missing_course"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hired_unlicensed_review"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_kj_seminar_control"
+            referencedColumns: ["converted_agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_license_data_conflicts"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_command_center"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_command_center"
+            referencedColumns: ["manager_agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_departure_orphan_risk"
+            referencedColumns: ["manager_agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_new_hire_showup"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_new_hires_activation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_newhire_needs_portal_login"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_newhire_never_signed_in_staged"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_numbers_reminder_audience"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_offboarding_preservation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_call_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_integrity"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_sequence"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_paid_applicants"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_pulse"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_reactivation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_trend_alert"
+            referencedColumns: ["producer_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producers_missing_license"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_active_no_first_sale"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_hired_no_onboarding"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_licensed_inactive"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_activations_alp"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_hires"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_reclaimable_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recruiter_bounty_candidates"
+            referencedColumns: ["recruited_agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recruiter_pipeline"
+            referencedColumns: ["recruiter_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_sam_builders_dashboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_scripts_packet_staged"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_slack_invite_eligibility"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_strike_summary"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_top_legs_excl_sam"
+            referencedColumns: ["manager_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_training_required_completion"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_unsendable_contacts"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_intake_id_fkey"
+            columns: ["intake_id"]
+            isOneToOne: false
+            referencedRelation: "contracting_intakes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracting_agent_updates_intake_id_fkey"
+            columns: ["intake_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_intake_status"
+            referencedColumns: ["intake_id"]
+          },
+        ]
+      }
       contracting_case_events: {
         Row: {
           action: string
@@ -56898,18 +57641,23 @@ export type Database = {
           approved_sub_agency: string | null
           approved_sub_agent_head: boolean | null
           approved_upline_npn: string | null
+          attested_at: string | null
+          attested_by: string | null
           comp_grid_version: string | null
           contact_confirmed_at: string | null
           contact_confirmed_by: string | null
           created_at: string
+          eo_attested: boolean | null
           eo_evidence_ref: string | null
           eo_expires_at: string | null
           eo_verified_at: string | null
           eo_verified_by: string | null
+          evidence_mode: string
           id: string
           intake_id: string | null
           legal_first_name: string | null
           legal_last_name: string | null
+          license_attested: boolean | null
           license_evidence_ref: string | null
           license_verified_at: string | null
           license_verified_by: string | null
@@ -56930,18 +57678,23 @@ export type Database = {
           approved_sub_agency?: string | null
           approved_sub_agent_head?: boolean | null
           approved_upline_npn?: string | null
+          attested_at?: string | null
+          attested_by?: string | null
           comp_grid_version?: string | null
           contact_confirmed_at?: string | null
           contact_confirmed_by?: string | null
           created_at?: string
+          eo_attested?: boolean | null
           eo_evidence_ref?: string | null
           eo_expires_at?: string | null
           eo_verified_at?: string | null
           eo_verified_by?: string | null
+          evidence_mode?: string
           id?: string
           intake_id?: string | null
           legal_first_name?: string | null
           legal_last_name?: string | null
+          license_attested?: boolean | null
           license_evidence_ref?: string | null
           license_verified_at?: string | null
           license_verified_by?: string | null
@@ -56962,18 +57715,23 @@ export type Database = {
           approved_sub_agency?: string | null
           approved_sub_agent_head?: boolean | null
           approved_upline_npn?: string | null
+          attested_at?: string | null
+          attested_by?: string | null
           comp_grid_version?: string | null
           contact_confirmed_at?: string | null
           contact_confirmed_by?: string | null
           created_at?: string
+          eo_attested?: boolean | null
           eo_evidence_ref?: string | null
           eo_expires_at?: string | null
           eo_verified_at?: string | null
           eo_verified_by?: string | null
+          evidence_mode?: string
           id?: string
           intake_id?: string | null
           legal_first_name?: string | null
           legal_last_name?: string | null
+          license_attested?: boolean | null
           license_evidence_ref?: string | null
           license_verified_at?: string | null
           license_verified_by?: string | null
@@ -57566,6 +58324,13 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "v_unsendable_contacts"
             referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_ethos_approvals_attested_by_fkey"
+            columns: ["attested_by"]
+            isOneToOne: false
+            referencedRelation: "v_departed_logins_to_revoke"
+            referencedColumns: ["user_id"]
           },
           {
             foreignKeyName: "contracting_ethos_approvals_intake_id_fkey"
@@ -58298,11 +59063,14 @@ export type Database = {
           license_status: string | null
           npn: string | null
           phone_e164: string
+          request_type: string
           review_reason: string | null
           source: string
           status: string
+          sub_agency_name: string | null
           submitted_by: string | null
           updated_at: string
+          upline_agent_id: string | null
         }
         Insert: {
           agent_id?: string | null
@@ -58325,11 +59093,14 @@ export type Database = {
           license_status?: string | null
           npn?: string | null
           phone_e164: string
+          request_type?: string
           review_reason?: string | null
           source?: string
           status?: string
+          sub_agency_name?: string | null
           submitted_by?: string | null
           updated_at?: string
+          upline_agent_id?: string | null
         }
         Update: {
           agent_id?: string | null
@@ -58352,11 +59123,14 @@ export type Database = {
           license_status?: string | null
           npn?: string | null
           phone_e164?: string
+          request_type?: string
           review_reason?: string | null
           source?: string
           status?: string
+          sub_agency_name?: string | null
           submitted_by?: string | null
           updated_at?: string
+          upline_agent_id?: string | null
         }
         Relationships: [
           {
@@ -58946,6 +59720,587 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_departed_logins_to_revoke"
             referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "mv_agent_truth"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_admin_applicant_overview"
+            referencedColumns: ["became_agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_20k_target_leaderboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_account_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_activation_state"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_canonical_map"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_command_center"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_crm_active"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_dialer_state"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicate_candidates"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicates"
+            referencedColumns: ["canonical_agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_duplicates"
+            referencedColumns: ["dup_agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_manager_conflicts"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_monthly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_owner_truth"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_quality_score"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_skool_membership"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_status_contradictions"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_training_stage"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agent_with_downline_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_full"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_al_link"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_al_user_id"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_missing_numbers_today"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_needs_attention"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_agents_onboarding_status"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_apex_roster"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_builder_operating_dashboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_cfo_unprovisioned_producer"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_channel_deprovision_needed"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracted_at_backfill_due"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_audit"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_carrier_cases"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_reconciliation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_contracting_worklist"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_ethos_agent_updates"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_ethos_paste_rows"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_first_deal_reconcile_backlog"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_activity"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_launch_board"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hire_notification_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hired_licensed_missing_course"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_hired_unlicensed_review"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_kj_seminar_control"
+            referencedColumns: ["converted_agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_license_data_conflicts"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_command_center"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_command_center"
+            referencedColumns: ["manager_agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_manager_departure_orphan_risk"
+            referencedColumns: ["manager_agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_new_hire_showup"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_new_hires_activation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_newhire_needs_portal_login"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_newhire_never_signed_in_staged"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_numbers_reminder_audience"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_offboarding_preservation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_call_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_integrity"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_onboarding_sequence"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_paid_applicants"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_pulse"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_reactivation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producer_trend_alert"
+            referencedColumns: ["producer_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_producers_missing_license"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_active_no_first_sale"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_hired_no_onboarding"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_queue_licensed_inactive"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_activations_alp"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recent_hires"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_reclaimable_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recruiter_bounty_candidates"
+            referencedColumns: ["recruited_agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_recruiter_pipeline"
+            referencedColumns: ["recruiter_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_sam_builders_dashboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_scripts_packet_staged"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_slack_invite_eligibility"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_strike_summary"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_top_legs_excl_sam"
+            referencedColumns: ["manager_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_training_required_completion"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_intakes_upline_agent_id_fkey"
+            columns: ["upline_agent_id"]
+            isOneToOne: false
+            referencedRelation: "v_unsendable_contacts"
+            referencedColumns: ["agent_id"]
           },
         ]
       }
@@ -61507,6 +62862,609 @@ export type Database = {
             foreignKeyName: "contracting_stalled_checkpoints_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "v_unsendable_contacts"
+            referencedColumns: ["agent_id"]
+          },
+        ]
+      }
+      contracting_sub_agency_labels: {
+        Row: {
+          label: string
+          manager_agent_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          label: string
+          manager_agent_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          label?: string
+          manager_agent_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "mv_agent_truth"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_admin_applicant_overview"
+            referencedColumns: ["became_agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_20k_target_leaderboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_account_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_activation_state"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_canonical_map"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_command_center"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_crm_active"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_dialer_state"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_duplicate_candidates"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_duplicates"
+            referencedColumns: ["canonical_agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_duplicates"
+            referencedColumns: ["dup_agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_manager_conflicts"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_monthly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_owner_truth"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_quality_score"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_skool_membership"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_status_contradictions"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_training_stage"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_weekly_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_winback_pool"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agent_with_downline_production"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agents_full"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agents_missing_al_link"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agents_missing_al_user_id"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agents_missing_numbers_today"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agents_needs_attention"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_agents_onboarding_status"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_apex_roster"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_builder_operating_dashboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_cfo_unprovisioned_producer"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_channel_deprovision_needed"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_contracted_at_backfill_due"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_contracting_audit"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_contracting_carrier_cases"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_contracting_reconciliation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_contracting_worklist"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_dormant_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_ethos_agent_updates"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_ethos_paste_rows"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_first_deal_reconcile_backlog"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_hierarchy_unreachable"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_hire_activity"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_hire_launch_board"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_hire_notification_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_hired_licensed_missing_course"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_hired_unlicensed_review"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_kj_seminar_control"
+            referencedColumns: ["converted_agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_license_data_conflicts"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_manager_command_center"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_manager_command_center"
+            referencedColumns: ["manager_agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_manager_departure_orphan_risk"
+            referencedColumns: ["manager_agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_new_hire_showup"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_new_hires_activation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_newhire_needs_portal_login"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_newhire_never_signed_in_staged"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_numbers_reminder_audience"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_offboarding_preservation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_onboarding_call_gaps"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_onboarding_integrity"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_onboarding_sequence"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_paid_applicants"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_producer_pulse"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_producer_reactivation"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_producer_trend_alert"
+            referencedColumns: ["producer_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_producers_missing_license"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_queue_active_no_first_sale"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_queue_hired_no_onboarding"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_queue_licensed_inactive"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_recent_activations_alp"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_recent_hires"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_reclaimable_dialer_seats"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_recruiter_bounty_candidates"
+            referencedColumns: ["recruited_agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_recruiter_pipeline"
+            referencedColumns: ["recruiter_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_sam_builders_dashboard"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_scripts_packet_staged"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_slack_invite_eligibility"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_strike_summary"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_top_legs_excl_sam"
+            referencedColumns: ["manager_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
+            referencedRelation: "v_training_required_completion"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_sub_agency_labels_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: true
             referencedRelation: "v_unsendable_contacts"
             referencedColumns: ["agent_id"]
           },
@@ -152650,12 +154608,13 @@ export type Database = {
       }
       v_carrier_unaccounted: {
         Row: {
+          agent: string | null
           carrier: string | null
           comp_amount: number | null
-          invoice_date: string | null
-          paid_to: string | null
           policy_number: string | null
-          state_of_issue: string | null
+          ref_date: string | null
+          region: string | null
+          status: string | null
         }
         Relationships: []
       }
@@ -155750,6 +157709,29 @@ export type Database = {
             referencedColumns: ["agent_id"]
           },
         ]
+      }
+      v_contracting_ethos_lane_health: {
+        Row: {
+          active_managers: number | null
+          credential_missing_seen_7d: boolean | null
+          default_advance_setting: string | null
+          default_comp_pct: number | null
+          default_level: string | null
+          managers_with_mgn_link: number | null
+          measured_at: string | null
+          sheet_mirror_at: string | null
+          signup_attempting: number | null
+          signup_delivered_7d: number | null
+          signup_manual_review: number | null
+          signup_not_configured_7d: number | null
+          signup_queued: number | null
+          signup_written_7d: number | null
+          updates_delivered_7d: number | null
+          updates_needing_attention: number | null
+          updates_queued: number | null
+          writes_enabled: boolean | null
+        }
+        Relationships: []
       }
       v_contracting_intake_status: {
         Row: {
@@ -199063,6 +201045,7 @@ export type Database = {
         Args: { p_agent_id: string }
         Returns: boolean
       }
+      fn_ethos_level_for_pct: { Args: { pct: number }; Returns: string }
       fn_goal_scorecard: {
         Args: {
           p_agent_id: string
@@ -200901,6 +202884,10 @@ export type Database = {
       }
       submit_contracting_request: {
         Args: { p_advance?: string; p_agent_id: string }
+        Returns: Json
+      }
+      submit_downline_contracting: {
+        Args: { p: Json; p_dry_run?: boolean }
         Returns: Json
       }
       submit_referral: {

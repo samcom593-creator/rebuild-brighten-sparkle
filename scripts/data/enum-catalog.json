@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-enum-catalog.sh (bot_sql -> pg_enum + pg_attribute.atttypid)",
- "_generated_at": "2026-11-12T09:13:36Z",
+ "_generated_at": "2026-11-23T22:23:02Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "A repo guard cannot query prod. This is a snapshot of every enum-typed column in the public schema and the exact member list Postgres will accept for it, so scripts/check-enum-filter-literals.mjs can decide whether a filter or write literal will survive PostgREST's coercion. Enum types are SCHEMA-QUALIFIED because this database has more than one type sharing a bare name. Views are included: a bad literal in a filter against a view column raises the same 22P02 as one against a table. apex-doctor Check #29 re-queries pg_enum weekly and goes red when this snapshot drifts from the live catalog.",
  "_ambiguous_bare_names": {
@@ -51,6 +51,9 @@
   "v_apex_roster": "v",
   "v_applications_real": "v",
   "v_builder_operating_dashboard": "v",
+  "v_cfo_dark_feed_only_producers": "v",
+  "v_cfo_native_producer_falloff": "v",
+  "v_cfo_reactivation_targets": "v",
   "v_cfo_unprovisioned_producer": "v",
   "v_channel_deprovision_needed": "v",
   "v_contracting_audit": "v",
@@ -540,6 +543,12 @@
   "v_builder_operating_dashboard.license_status": "public.license_status",
   "v_builder_operating_dashboard.onboarding_stage": "public.onboarding_stage",
   "v_builder_operating_dashboard.status": "public.agent_status",
+  "v_cfo_dark_feed_only_producers.agent_status": "public.agent_status",
+  "v_cfo_dark_feed_only_producers.license_status": "public.license_status",
+  "v_cfo_native_producer_falloff.license_status": "public.license_status",
+  "v_cfo_native_producer_falloff.roster_status": "public.agent_status",
+  "v_cfo_reactivation_targets.onboarding_stage": "public.onboarding_stage",
+  "v_cfo_reactivation_targets.status": "public.agent_status",
   "v_cfo_unprovisioned_producer.license_status": "public.license_status",
   "v_cfo_unprovisioned_producer.status": "public.agent_status",
   "v_channel_deprovision_needed.status": "public.agent_status",
@@ -1517,6 +1526,27 @@
    ],
    "constraint": "contract_templates_send_method_check"
   },
+  "contracting_agent_updates.change_advance_tier": {
+   "members": [
+    "As Earned",
+    "6 Month Advance",
+    "9 Month Advance"
+   ],
+   "constraint": "contracting_agent_updates_change_advance_tier_check"
+  },
+  "contracting_agent_updates.status": {
+   "members": [
+    "queued",
+    "attempting",
+    "delivered",
+    "manual_review",
+    "failed",
+    "not_configured",
+    "unknown_outcome",
+    "dead_letter"
+   ],
+   "constraint": "contracting_agent_updates_status_check"
+  },
   "contracting_case_events.action": {
    "members": [
     "update",
@@ -1596,6 +1626,13 @@
    ],
    "constraint": "contracting_ethos_approvals_approved_advance_tier_check"
   },
+  "contracting_ethos_approvals.evidence_mode": {
+   "members": [
+    "verified",
+    "attested"
+   ],
+   "constraint": "contracting_ethos_approvals_evidence_mode_check"
+  },
   "contracting_followup_config.clock_basis": {
    "members": [
     "unset",
@@ -1647,6 +1684,13 @@
     "awaiting_license"
    ],
    "constraint": "contracting_intake_deliveries_state_check"
+  },
+  "contracting_intakes.request_type": {
+   "members": [
+    "contracting",
+    "transfer"
+   ],
+   "constraint": "contracting_intakes_request_type_check"
   },
   "contracting_intakes.status": {
    "members": [
@@ -1823,6 +1867,33 @@
    ],
    "constraint": "email_template_families_audience_check"
   },
+  "ethos_callsheet_calls.outcome": {
+   "members": [
+    "no_answer",
+    "voicemail",
+    "texted",
+    "callback",
+    "coming_back",
+    "needs_help",
+    "not_interested",
+    "wrong_number"
+   ],
+   "constraint": "ethos_callsheet_calls_outcome_check"
+  },
+  "ethos_callsheet_calls.reason": {
+   "members": [
+    "no_leads",
+    "other_job",
+    "other_agency",
+    "portal_or_contracting",
+    "no_training",
+    "no_sales",
+    "life",
+    "no_follow_up",
+    "other"
+   ],
+   "constraint": "ethos_callsheet_calls_reason_check"
+  },
   "ethos_sheet_snapshots.status": {
    "members": [
     "pending",
@@ -1861,7 +1932,9 @@
     "starter_pack",
     "contracting_request",
     "recruit_page",
-    "recruit_digest"
+    "recruit_digest",
+    "morning_leads",
+    "license_state_ask"
    ],
    "constraint": "hire_lane_email_outbox_kind_check"
   },
@@ -2326,6 +2399,18 @@
    ],
    "constraint": "messaging_workspace_installations_status_check"
   },
+  "monday_rollcall_marks.mark": {
+   "members": [
+    "confirmed",
+    "no_answer",
+    "texted",
+    "cant_make_it",
+    "showed",
+    "no_show",
+    "interviewed"
+   ],
+   "constraint": "monday_rollcall_marks_mark_check"
+  },
   "monday_starter_notifications.kind": {
    "members": [
     "digest",
@@ -2663,6 +2748,13 @@
    ],
    "constraint": "readymode_grade_feedback_verdict_check"
   },
+  "readymode_seat_actions.action": {
+   "members": [
+    "signout_inactive",
+    "lock_banned_account"
+   ],
+   "constraint": "readymode_seat_actions_action_check"
+  },
   "recruit_sequences.audience": {
    "members": [
     "applicant",
@@ -2920,6 +3012,31 @@
     "withdrawn"
    ],
    "constraint": "transfer_requests_status_check"
+  },
+  "win_post_queue.kind": {
+   "members": [
+    "win",
+    "trophy"
+   ],
+   "constraint": "win_post_queue_kind_check"
+  },
+  "win_post_queue.status": {
+   "members": [
+    "queued",
+    "approved",
+    "held",
+    "posted",
+    "archived"
+   ],
+   "constraint": "win_post_queue_status_check"
+  },
+  "win_post_queue.tier": {
+   "members": [
+    "S",
+    "A",
+    "B"
+   ],
+   "constraint": "win_post_queue_tier_check"
   },
   "xcel_events.kind": {
    "members": [

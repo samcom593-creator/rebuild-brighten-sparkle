@@ -29,9 +29,17 @@
  * WHAT THIS GUARD CHECKS
  * NEGATIVE only: the retired brand's DISPLAY NAME ("Apex Financial") and a small
  * set of recruit-facing prose phrases ("Welcome to Apex", "the Apex family/
- * team/community", "join Apex", "Team Apex") must not appear in any edge-
- * function .ts file. The display name is the precise string BRAND_NAME replaced,
- * so a hit is unambiguously the dead brand a reader would see.
+ * team/community", "join Apex", "Team Apex"), PLUS the email FROM sender-label
+ * display name ("Apex Hiring <…>", "Apex Team <…>") — the brand token an inbox
+ * shows BEFORE the message is opened — must not appear in any edge-function .ts
+ * file. The display name is the precise string BRAND_NAME replaced, so a hit is
+ * unambiguously the dead brand a reader would see. The from-name is the FIRST
+ * surface of all: a recruit reads "Apex Hiring" in their inbox list without
+ * opening a thing, yet its role suffix means the display name "Apex Financial"
+ * and the prose patterns both miss it (and `Team Apex` is not the `from`-name
+ * drift "Apex Team"). It stayed uncovered until MP-WIB-EDGE-FROM-BRAND
+ * (2026-11-23) — the live tree was already 122 Galaxy / 0 Apex from-names, so
+ * this is pure prevention, holding the line the rebrand sweep left clean.
  *
  * WHAT THIS GUARD DELIBERATELY DOES NOT TOUCH (measured: 320 files, 0 hits)
  *   - Comments. Stripped via scripts/lib/strip-comments.mjs (the ONE repo
@@ -80,6 +88,16 @@ const PATS = [
   /\bApex (family|team|community|movement|nation)\b/gi,
   /\bjoin(ing)? Apex\b/gi,
   /\bTeam Apex\b/gi,
+  // Email FROM sender-label display name — the brand token an inbox shows BEFORE
+  // the message is opened. "Apex Financial <…>" is caught above, but role-
+  // suffixed labels (Apex Hiring/Team/Engine/Alerts/Awards) are not, and
+  // `Team Apex` is not the `from`-name drift "Apex Team". Anchored on the
+  // `from:` / `"from":` property so prose ("a note from Apex…") never votes;
+  // covers the "Apex" display form and the old "APEX" tracked wordmark. The
+  // sending DOMAIN (apex-financial.org, lowercase, after @) is blanked by ALLOW
+  // before this runs, so only the display NAME can match. Requires a space +
+  // letter after the brand so "ApexBot"/env-var forms never collide.
+  /\bfrom["'`]?\s*:\s*["'`](?:Apex|APEX)\s+[A-Za-z]/g,
 ];
 // Blanked BEFORE the negative test — intentional Apex surfaces (domain, live IG
 // handle hashtag, env var names, Gmail label). Blank (not delete) to keep byte
@@ -132,6 +150,14 @@ if (process.argv.includes("--selftest")) {
   if (scan(bad).length === 0) fails.push("dead-brand 'Apex Financial' body copy NOT caught");
   const badPhrase = 'const sms = "You just joined the Apex family. Reply STOP to opt out.";';
   if (scan(badPhrase).length === 0) fails.push("'the Apex family' prose NOT caught");
+  // POSITIVE: role-suffixed email FROM sender-labels — missed by both the
+  // display-name and the prose patterns, so each must be caught by the from rule.
+  const badFrom = 'const r = { from: "Apex Hiring <notifications@apex-financial.org>" };';
+  if (scan(badFrom).length === 0) fails.push("'Apex Hiring' FROM sender-label NOT caught");
+  const badFromTeam = 'const r = { from: "Apex Team <notifications@apex-financial.org>" };';
+  if (scan(badFromTeam).length === 0) fails.push("'Apex Team' FROM sender-label NOT caught");
+  const badFromWordmark = 'const r = { "from": "APEX Engine <sam@apex-financial.org>" };';
+  if (scan(badFromWordmark).length === 0) fails.push("'APEX Engine' wordmark FROM NOT caught");
   // NEGATIVE: comment, domain, env var, and intentional IG hashtag must pass
   const okComment = '// Welcome to Apex Financial workspace — verified live 2026-09-07';
   if (scan(okComment).length > 0) fails.push("comment referencing dead brand wrongly flagged");
@@ -143,6 +169,15 @@ if (process.argv.includes("--selftest")) {
   if (scan(okHashtag).length > 0) fails.push("intentional live IG hashtag wrongly flagged");
   const okGalaxy = 'const html = `<p>Welcome to Galaxy Financial — your contract is ready.</p>`;';
   if (scan(okGalaxy).length > 0) fails.push("current brand 'Galaxy Financial' wrongly flagged");
+  // NEGATIVE: current-brand + personal + bare-address FROM labels must all pass.
+  const okFromGalaxy = 'const r = { from: "Galaxy Hiring <notifications@apex-financial.org>" };';
+  if (scan(okFromGalaxy).length > 0) fails.push("current-brand 'Galaxy Hiring' FROM wrongly flagged");
+  const okFromSam = 'const r = { from: "Sam James <alerts@apex-financial.org>" };';
+  if (scan(okFromSam).length > 0) fails.push("personal 'Sam James' FROM wrongly flagged");
+  const okFromAddr = 'const r = { from: "notifications@apex-financial.org" };';
+  if (scan(okFromAddr).length > 0) fails.push("bare-address FROM (no display name) wrongly flagged");
+  const okFromProse = 'const sms = "You will get a note from Apex soon.";';
+  if (scan(okFromProse).length > 0) fails.push("prose 'from Apex' (no colon) wrongly flagged as a FROM label");
   if (fails.length) die("SELFTEST FAILED:\n   - " + fails.join("\n   - "));
   console.log("✅ check:edge-text-brand --selftest OK — positive+negative both proven.");
   process.exit(0);

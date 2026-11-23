@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Download, Share2, Copy, RefreshCw, Trophy, Zap, AlertTriangle, History } from "lucide-react";
 import {
@@ -69,7 +69,6 @@ export default function WinPostStudio() {
   const [days, setDays] = useState(14);
   const [selected, setSelected] = useState<WinPostItem | null>(null);
   const [busy, setBusy] = useState(false);
-  const bigRef = useRef<HTMLCanvasElement>(null);
 
   const { data, isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ["win-post-feed", days],
@@ -92,13 +91,18 @@ export default function WinPostStudio() {
     return [...trophies, ...wins];
   }, [data, filter]);
 
-  // full-res render inside the dialog
-  useEffect(() => {
-    if (!selected) return;
-    const canvas = bigRef.current;
-    if (!canvas) return;
-    void renderCardToCanvas(canvas, selected, 1).catch(() => toast.error("Card failed to render"));
-  }, [selected]);
+  // Full-res render inside the dialog. Callback ref, NOT useEffect + useRef:
+  // Radix portals attach their children one render after `open` flips, so an
+  // effect keyed on `selected` runs while the canvas ref is still null, bails,
+  // and never retries — the dialog stayed black. The callback fires when the
+  // canvas actually lands in the DOM. (Caught by the stubbed render pass.)
+  const renderBig = useCallback(
+    (canvas: HTMLCanvasElement | null) => {
+      if (!canvas || !selected) return;
+      void renderCardToCanvas(canvas, selected, 1).catch(() => toast.error("Card failed to render"));
+    },
+    [selected],
+  );
 
   const handleSave = async (item: WinPostItem) => {
     setBusy(true);
@@ -239,7 +243,7 @@ export default function WinPostStudio() {
             <>
               <div className="flex items-center justify-between pr-8">
                 <div className="min-w-0">
-                  <p className="font-semibold truncate">{selected.agent_name}</p>
+                  <DialogTitle className="font-semibold truncate text-base">{selected.agent_name}</DialogTitle>
                   <p className="text-xs text-muted-foreground">
                     {selected.kind === "trophy" ? (selected.headline ?? "Trophy") : "Agent win"} · {selected.date}
                   </p>
@@ -249,7 +253,7 @@ export default function WinPostStudio() {
                 </Badge>
               </div>
               <div className="overflow-hidden rounded-lg border border-border/60 bg-black">
-                <canvas ref={bigRef} className="block w-full h-auto" />
+                <canvas ref={renderBig} className="block w-full h-auto" />
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <Button onClick={() => handleSave(selected)} disabled={busy}>

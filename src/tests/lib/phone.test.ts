@@ -5,6 +5,8 @@ import {
   normalizePhoneForDial,
   phoneHref,
   smsHref,
+  isRealUsNumber,
+  maskUsPhoneInput,
 } from "@/lib/phone";
 
 describe("phone helpers", () => {
@@ -63,5 +65,33 @@ describe("phone helpers", () => {
     } finally {
       window.matchMedia = originalMatchMedia;
     }
+  });
+});
+
+describe("maskUsPhoneInput: the country code comes off before the ten digits are counted", () => {
+  it("an autofilled +1 number keeps all ten of its own digits", () => {
+    expect(maskUsPhoneInput("+1 (480) 555-0100")).toBe("(480) 555-0100");
+    expect(maskUsPhoneInput("14805550100")).toBe("(480) 555-0100");
+    expect(maskUsPhoneInput("4805550100")).toBe("(480) 555-0100");
+  });
+
+  it("the old rule, ten digits first, still loses the last digit on the same input", () => {
+    const old = (v: string) => v.replace(/\D+/g, "").slice(0, 10);
+    expect(old("+1 (480) 555-0100")).toBe("1480555010");
+  });
+
+  it("masks a number as it is typed and never exceeds ten digits", () => {
+    expect(maskUsPhoneInput("480")).toBe("480");
+    expect(maskUsPhoneInput("48055")).toBe("(480) 55");
+    expect(maskUsPhoneInput("48055501009999")).toBe("(480) 555-0100");
+    expect(maskUsPhoneInput("")).toBe("");
+  });
+
+  it("isRealUsNumber refuses the shape the old mask stored", () => {
+    expect(isRealUsNumber("1480555010")).toBe(false);
+    expect(isRealUsNumber("4805550100")).toBe(true);
+    expect(isRealUsNumber("+1 (480) 555-0100")).toBe(true);
+    expect(isRealUsNumber("")).toBe(false);
+    expect(isRealUsNumber(null)).toBe(false);
   });
 });

@@ -88,6 +88,28 @@ export function formatPhoneDisplay(
     : `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
 }
 
+/**
+ * The "(480) 555-0100" mask for a US phone field as it is typed.
+ *
+ * 2026-11-22: the hire link and the join link each cut the typed digits to ten BEFORE dropping the
+ * country code, so "+1 (480) 555-0100" (what an iPhone autofills) was stored as 1480555010: the 1
+ * kept, the last digit lost, and the result still looked like a phone number. A US area code never
+ * starts with 0 or 1, so a leading 1 is always the country code and comes off first.
+ */
+export function maskUsPhoneInput(value: string): string {
+  const d = value.replace(/\D+/g, "").replace(/^1+/, "").slice(0, 10);
+  if (d.length < 4) return d;
+  if (d.length < 7) return `(${d.slice(0, 3)}) ${d.slice(3)}`;
+  return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
+}
+
+/** True for ten digits a US carrier could route: area code and exchange both start 2 to 9. */
+export function isRealUsNumber(value: string | null | undefined): boolean {
+  const digits = (value ?? "").replace(/\D+/g, "");
+  const ten = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
+  return /^[2-9]\d{2}[2-9]\d{6}$/.test(ten);
+}
+
 export function isDialablePhone(value: string | null | undefined): boolean {
   return normalizePhoneForDial(value) !== null;
 }

@@ -108,7 +108,12 @@ serve(async (req) => {
 
   const token = (body.token || "").trim();
   const full_name = (body.full_name || "").trim();
-  const phone_digits = digitsOnly(body.phone || "");
+  // 2026-11-22: "+1 480 555 0100" arrives as eleven digits. Stored whole it formats as "(148) 055-5010" on every
+  // list; the country code comes off here so the ten digits on file are the ten digits you dial.
+  const phone_raw_digits = digitsOnly(body.phone || "");
+  const phone_digits = phone_raw_digits.length === 11 && phone_raw_digits.startsWith("1")
+    ? phone_raw_digits.slice(1)
+    : phone_raw_digits;
   const email = (body.email || "").trim().toLowerCase();
   let nipr_number = digitsOnly(body.nipr_number || "") || null;
 
@@ -312,6 +317,11 @@ serve(async (req) => {
       ? body.licensed
       : targetRole === "hired_licensed";
   const npnMissingReason = String(body.npn_missing_reason ?? "").trim().slice(0, 300);
+  // MP-MONDAY-ROLLCALL (2026-11-22): the state a licensed hire is licensed in. Before this the hire branch read no
+  // state at all, so agents.license_states stayed null and fn_starter_pack_candidates skipped every hire-link hire
+  // as license_state_unknown. Optional here so a link opened on an older page build still completes the hire.
+  const licenseStateRaw = String(body.state ?? "").trim().toUpperCase();
+  const licenseState = /^[A-Z]{2}$/.test(licenseStateRaw) ? licenseStateRaw : null;
   const npnValid = Boolean(nipr_number && /^\d{5,10}$/.test(nipr_number));
   if (licensed && !npnValid && npnMissingReason.length < 3) {
     return json({ ok: false, error: "npn_required_for_licensed_hire" }, 422);
@@ -631,6 +641,16 @@ serve(async (req) => {
     agentId = inserted.id;
   }
 
+  // Only fills a blank: a hire upgraded in place may already carry a longer list of states set by staff.
+  if (licensed && licenseState) {
+    const { error: stateErr } = await admin
+      .from("agents")
+      .update({ license_states: [licenseState] })
+      .eq("id", agentId)
+      .is("license_states", null);
+    if (stateErr) console.error("license_state_save_failed", stateErr.message);
+  }
+
   // WP5: a licensed hire gets a contracting-profile stub, so the hire clock and the contracting review start from a
   // row instead of "no profile". Never overwrites a profile the agent or staff already saved; never fails the hire.
   if (licensed) {
@@ -641,6 +661,7 @@ serve(async (req) => {
         first_name: parts[0]?.slice(0, 80) ?? null,
         last_name: parts.length > 1 ? parts.slice(1).join(" ").slice(0, 80) : null,
         email,
+        ...(licenseState ? { resident_state: licenseState } : {}),
         source: "magic_hire_link",
       },
       { onConflict: "agent_id", ignoreDuplicates: true },

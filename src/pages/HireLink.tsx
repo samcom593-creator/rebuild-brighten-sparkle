@@ -23,6 +23,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Crown, Loader2, ArrowRight, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { maskUsPhoneInput } from "@/lib/phone";
 import { toast } from "sonner";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -37,6 +38,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { US_STATES } from "@/lib/constants";
 import { loginTokenFromRedirect, signInWithLoginToken } from "@/lib/magicLoginSession";
 import {
   PostSubmitOnboardingVideo,
@@ -72,12 +74,8 @@ interface PrefillResponse {
 
 const BRAND = resolveBrand();
 
-function maskPhone(v: string) {
-  const d = v.replace(/\D+/g, "").slice(0, 10);
-  if (d.length < 4) return d;
-  if (d.length < 7) return `(${d.slice(0, 3)}) ${d.slice(3)}`;
-  return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
-}
+// The shared mask drops a typed or autofilled country code before it counts ten digits (see @/lib/phone).
+const maskPhone = maskUsPhoneInput;
 
 export default function HireLink() {
   usePageTitle("Activate your Galaxy account");
@@ -97,6 +95,9 @@ export default function HireLink() {
   // WP5 (2026-11-10): a licensed hire who cannot find their NPN right now says why instead of being turned away.
   // consume-invite-token records the reason on the agent; the hire clock keeps showing "NPN missing" until one is on file.
   const [npnMissingReason, setNpnMissingReason] = useState("");
+  // MP-MONDAY-ROLLCALL (2026-11-22): the link never asked a licensed hire which state they are licensed in, so the
+  // starter-pack grant had no state to pick leads from and skipped every hire-link hire (3 of 3 that week).
+  const [licenseState, setLicenseState] = useState("");
   const [licensedHire, setLicensedHire] = useState<boolean | null>(null);
   const [lockedLicenseStatus, setLockedLicenseStatus] = useState<"licensed" | "unlicensed" | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -162,9 +163,10 @@ export default function HireLink() {
       // Licensed producers must give the same 5–10 digit NPN accepted by the
       // contracting intake. One validation contract prevents a hire from
       // activating successfully and then failing silently downstream.
-      (licensedHire !== true || /^\d{5,10}$/.test(nipr.replace(/\D+/g, "")) || npnMissingReason.trim().length >= 3)
+      (licensedHire !== true || /^\d{5,10}$/.test(nipr.replace(/\D+/g, "")) || npnMissingReason.trim().length >= 3) &&
+      (licensedHire !== true || licenseState.length === 2)
     );
-  }, [fullName, phone, email, licensedHire, nipr, npnMissingReason]);
+  }, [fullName, phone, email, licensedHire, nipr, npnMissingReason, licenseState]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -183,6 +185,7 @@ export default function HireLink() {
             nipr_number: nipr.trim() || undefined,
             npn_missing_reason: npnMissingReason.trim() || undefined,
             licensed: licensedHire === true,
+            state: licensedHire === true && licenseState ? licenseState : undefined,
           },
         },
       );
@@ -449,6 +452,29 @@ export default function HireLink() {
                     />
                   </div>
                 )}
+              </div>
+            )}
+
+            {licensedHire === true && (
+              <div>
+                <Label htmlFor="hire-license-state" className="text-xs uppercase tracking-wide">
+                  State you are licensed in <span className="text-rose-400">*</span>
+                </Label>
+                <select
+                  id="hire-license-state"
+                  data-testid="hire-license-state"
+                  value={licenseState}
+                  onChange={(e) => setLicenseState(e.target.value)}
+                  className="mt-1 h-11 w-full rounded-md border border-input bg-background px-3 text-base text-foreground focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
+                >
+                  <option value="">Choose your state</option>
+                  {US_STATES.map((st) => (
+                    <option key={st.value} value={st.value}>{st.label}</option>
+                  ))}
+                </select>
+                <p className="mt-1 text-[12px] text-muted-foreground">
+                  Your home state. Your first leads are matched to it.
+                </p>
               </div>
             )}
 

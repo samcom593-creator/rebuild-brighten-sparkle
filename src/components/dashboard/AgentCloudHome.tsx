@@ -24,6 +24,7 @@ import type { HomeData } from "@/lib/homeDashboard";
 import { isDayKey, isScoreboardPeriod, scoreboardWindow, windowLastDay, type ScoreboardPeriod } from "@/lib/scoreboardPeriod";
 import { HomeDateBar } from "@/components/dashboard/HomeDateBar";
 import { NeedsAttention } from "@/components/dashboard/NeedsAttention";
+import { MondayRollCall } from "@/components/dashboard/MondayRollCall";
 
 // F24: the only Recharts consumer on the Home route. Lazy, and rendered only
 // after the "Trend and policy status" disclosure has been opened once, so a
@@ -163,6 +164,9 @@ export function AgentCloudHome() {
       {/* OVERHAUL-home (Sam, 2026-10-28: "Give me better stats and make it easier for me to
           convert"). First on the owner's Home: the funnel from a new application to a first
           deal, every number opening the people it counts. Admin only, like its RPC. */}
+      {/* MP-MONDAY-ROLLCALL (Sam, 2026-11-22: "a very clear list on my first screen I can call").
+          First for the owner: every recent hire, the number to dial, and one tap for the result. */}
+      {isAdmin && <MondayRollCall />}
       {isAdmin && (
         <HomeDateBar
           period={period}

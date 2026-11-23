@@ -204,6 +204,10 @@ serve(async (req: Request) => {
         user_id: userId,
         profile_id: profileId,
         source_application_id: app.id,
+        // MP-MONDAY-ROLLCALL (2026-11-22): this row exists because a licensed applicant opened the course, not
+        // because anyone hired them. fn_agent_interview_state reads this to hold client leads until an interview.
+        origin: "application",
+        metadata: { created_by_path: "self-enroll-course" },
         // Without this, the hire announcement fires with a null name — Slack
         // and Discord delivered "unnamed agent" hires before it was set.
         display_name: `${app.first_name ?? ""} ${app.last_name ?? ""}`.trim() || userEmail,

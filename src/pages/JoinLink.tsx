@@ -27,6 +27,7 @@ import {
   BadgeCheck,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { maskUsPhoneInput } from "@/lib/phone";
 import { toast } from "sonner";
 import { PageSkeleton } from "@/components/ui/page-skeleton";
 import { DEAD_LINK_CODES, acceptanceRefusalMessage, deadLinkMessage } from "@/lib/invitationState";
@@ -56,12 +57,8 @@ interface PrefillResponse {
   prefill?: Prefill;
 }
 
-function maskPhone(v: string) {
-  const d = v.replace(/\D+/g, "").slice(0, 10);
-  if (d.length < 4) return d;
-  if (d.length < 7) return `(${d.slice(0, 3)}) ${d.slice(3)}`;
-  return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
-}
+// The shared mask drops a typed or autofilled country code before it counts ten digits (see @/lib/phone).
+const maskPhone = maskUsPhoneInput;
 
 export default function JoinLink() {
   usePageTitle("Join Galaxy");

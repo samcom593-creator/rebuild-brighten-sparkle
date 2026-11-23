@@ -9187,6 +9187,46 @@
         "raw": "p_day date DEFAULT NULL::date"
       }
     ],
+    "owner_monday_rollcall": [
+      {
+        "all": [
+          "p_monday"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_monday date DEFAULT NULL::date"
+      }
+    ],
+    "owner_monday_rollcall_mark": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_mark",
+          "p_monday",
+          "p_note"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_mark"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_mark text, p_note text DEFAULT NULL::text, p_monday date DEFAULT NULL::date"
+      }
+    ],
+    "owner_monday_rollcall_set_states": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_states"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_states"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_states text[]"
+      }
+    ],
     "owner_overview_settings": [
       {
         "all": [],

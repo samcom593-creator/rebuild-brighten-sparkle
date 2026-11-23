@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
+import { LeadStatePrompt } from "@/components/dashboard/LeadStatePrompt";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -262,6 +263,7 @@ export default function MyLeads() {
   return (
     <div className="space-y-6">
       <PageHeader title="My Leads" subtitle="Leads given to you to work. Call, then tap what happened." />
+      <LeadStatePrompt />
       {rows.length > 0 && (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-border/60 bg-muted/20 p-3 text-sm">
           <span className="inline-flex items-center gap-1.5 font-semibold">

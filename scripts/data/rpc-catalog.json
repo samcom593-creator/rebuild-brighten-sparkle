@@ -8949,6 +8949,26 @@
         "raw": "p_item_id uuid"
       }
     ],
+    "my_leads_set_state": [
+      {
+        "all": [
+          "p_states"
+        ],
+        "required": [
+          "p_states"
+        ],
+        "unnamed": false,
+        "raw": "p_states text[]"
+      }
+    ],
+    "my_leads_state_prompt": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "my_new_hire_showup": [
       {
         "all": [

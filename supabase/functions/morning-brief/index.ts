@@ -13,6 +13,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
+import { buildAppUrl } from "../_shared/apex.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -145,7 +146,7 @@ Let's go. 💥`,
     <li>Active producers this week: <strong>${Object.keys(totals).length}</strong></li>
   </ul>
   <div style="text-align:center;margin:28px 0 8px 0;">
-    <a href="https://apexfinaincial.vercel.app/dashboard/today" style="display:inline-block;background:#22d3a5;color:#030712;font-family:Syne,sans-serif;font-weight:700;padding:14px 28px;border-radius:10px;text-decoration:none;letter-spacing:0.5px;">OPEN TODAY PAGE →</a>
+    <a href="${buildAppUrl("/dashboard/today")}" style="display:inline-block;background:#22d3a5;color:#030712;font-family:Syne,sans-serif;font-weight:700;padding:14px 28px;border-radius:10px;text-decoration:none;letter-spacing:0.5px;">OPEN TODAY PAGE →</a>
   </div>
   <p style="color:#64748b;font-size:11px;text-align:center;margin-top:28px;letter-spacing:2px;">GALAXY FINANCIAL · BUILDING EMPIRES</p>
 </div>

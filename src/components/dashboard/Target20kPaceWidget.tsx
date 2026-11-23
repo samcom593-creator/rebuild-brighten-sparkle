@@ -40,7 +40,7 @@ const fmtMoney = (n: number) =>
   n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
 export function Target20kPaceWidget() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ["v_agent_20k_target_leaderboard"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -65,6 +65,34 @@ export function Target20kPaceWidget() {
         </CardHeader>
         <CardContent className="flex items-center justify-center py-8">
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (isError) {
+    // Feed error, never a fake "$0 team MTD / No production data yet". A dead
+    // v_agent_20k_target_leaderboard view (queryFn throws → data undefined →
+    // rows []) would otherwise render the AUTHORITATIVE "$0 team MTD · 0 hit
+    // $20K · $0 at risk" badges + "No production data yet for this month." —
+    // a confident agency-wide zero on Sam's highest-visibility $20K money board
+    // at the exact moment the feed merely died. The 465-InsuraCloud fake-success
+    // class; surface the error instead (MP-WIB-ADMIN-RENDER-HEALTH).
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Target className="h-5 w-5" /> $20K Pace Board
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-lg border border-rose-500/30 bg-rose-500/5 p-4 text-sm text-rose-600 dark:text-rose-400">
+            <span className="inline-flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" />
+              $20K pace board is temporarily unavailable. This is a feed error,
+              not $0 production — don't read it as "no one posted this month."
+            </span>
+          </div>
         </CardContent>
       </Card>
     );

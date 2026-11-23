@@ -240,6 +240,21 @@ const PRIMARY_FEED_MANIFEST = [
   // early-returns a rose feed-error card gated BEFORE the inbox-zero branch, so the
   // fake "every applicant claimed" can never render on an error.
   "src/components/dashboard/UnclaimedLeadsCommandCard.tsx", // top-of-dashboard unclaimed-leads leak card — data ?? [] with no error signal rendered emerald "Inbox zero — every new applicant is claimed" on a dead v_unclaimed_new_apps view
+  // MP-WIB-ADMIN-RENDER-HEALTH wave 19 (2026-11-23). Target20kPaceWidget renders on
+  // DashboardCommandCenter (already in MANIFEST, line 678) but its useQuery lives in
+  // this SUB-COMPONENT, which the page-level scan never saw — a MANIFEST page's money
+  // card carrying the exact scanner-blind bug (same shape as LiveCommissionsLeaderboard
+  // / TeamHierarchyWidget / UnclaimedLeadsCommandCard). It destructured `const { data,
+  // isLoading }` (no error signal); its queryFn `if (error) throw` makes `data`
+  // undefined on a dead v_agent_20k_target_leaderboard view, and `const rows = data ?? []`
+  // then rendered the AUTHORITATIVE header badges "$0 team MTD · 0 hit $20K · 0 on pace
+  // · $0 at risk" + the empty-state "No production data yet for this month." — a
+  // confident agency-wide zero on Sam's $20K money board (the whole team earned nothing
+  // this month) while the feed had merely died. The 465-InsuraCloud fake-success class
+  // on the highest-visibility money surface. Now takes isError + early-returns a rose
+  // feed-error card gated BEFORE the rows/empty-state, so the fake "$0 team MTD / no
+  // production this month" can never render on an error.
+  "src/components/dashboard/Target20kPaceWidget.tsx", // command-center $20K pace board — data ?? [] with no error signal rendered "$0 team MTD · 0 hit $20K · No production data yet this month" on a dead v_agent_20k_target_leaderboard view
 ];
 
 const ERROR_SIGNALS = ["isError", "isLoadingError", "status", "error"];

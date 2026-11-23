@@ -51,6 +51,8 @@ PUBLIC_ALLOWLIST=(
   "applicant-checkin"
   "get-public-recruiters"
   "submit-contracting-intake"
+
+  "contracting-downline"  # MP-304: the one contracting link (public resolve/join; see check-function-contracts.mjs)
   "numbers-reminder"
   "resend-suppression-sync"   # pg_cron bot bearer; in-handler gate (check-function-contracts.mjs)
   "manager-daily-digest"      # pg_cron job 19 bot bearer; in-handler gate (PL-WIB-DIGEST-GATE)

@@ -1,3 +1,7 @@
+// intentionally-orphan: retired from the Dashboard home in edc2fc5f ("retire duplicate
+// panels, mirror Agent Cloud") and no longer rendered anywhere, but retained because it is
+// pinned in scripts/check-admin-dashboard-render-health.mjs's PRIMARY_FEED_MANIFEST and is a
+// re-mount candidate. To fully retire it, delete this file AND its manifest line together.
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";

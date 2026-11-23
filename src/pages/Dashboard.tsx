@@ -42,36 +42,20 @@ const AgencyOwnerHome = lazy(() => import("@/pages/AgencyOwnerHome"));
 const UnclaimedLeadsCommandCard = lazy(() =>
   import("@/components/dashboard/UnclaimedLeadsCommandCard").then((m) => ({ default: m.UnclaimedLeadsCommandCard })),
 );
-const EarningsEstimateCard = lazy(() =>
-  import("@/components/dashboard/EarningsEstimateCard").then((m) => ({ default: m.EarningsEstimateCard })),
-);
 const XcelStalledCard = lazy(() =>
   import("@/components/dashboard/XcelStalledCard").then((m) => ({ default: m.XcelStalledCard })),
 );
 const LicensedHiresRange = lazy(() =>
   import("@/components/dashboard/LicensedHiresRange").then((m) => ({ default: m.LicensedHiresRange })),
 );
-const ManagerHierarchyMtdPanel = lazy(() =>
-  import("@/components/dashboard/ManagerHierarchyMtdPanel").then((m) => ({ default: m.ManagerHierarchyMtdPanel })),
-);
-const JustHiredPanel = lazy(() =>
-  import("@/components/dashboard/JustHiredPanel").then((m) => ({ default: m.JustHiredPanel })),
-);
-const BuilderProgressDashboard = lazy(() =>
-  import("@/components/dashboard/BuilderProgressDashboard").then((m) => ({ default: m.BuilderProgressDashboard })),
-);
-const CarrierBreakdownCard = lazy(() =>
-  import("@/components/dashboard/CarrierBreakdownCard").then((m) => ({ default: m.CarrierBreakdownCard })),
-);
-const BookTrendCard = lazy(() =>
-  import("@/components/dashboard/CarrierProductionCard").then((m) => ({ default: m.BookTrendCard })),
-);
-// wave-103: WhatShippedTodayBanner is 1126 lines (the SHIPPED receipts array
-// grows on every ship). It accounted for ~150KB of Dashboard.js raw. Lazy-load
-// so the banner shell paints fast and the receipts hydrate in.
-const WhatShippedTodayBanner = lazy(() =>
-  import("@/components/dashboard/WhatShippedTodayBanner").then((m) => ({ default: m.WhatShippedTodayBanner })),
-);
+// edc2fc5f retired 7 duplicate panels from this home (EarningsEstimateCard,
+// ManagerHierarchyMtdPanel, JustHiredPanel, BuilderProgressDashboard,
+// CarrierBreakdownCard, BookTrendCard, WhatShippedTodayBanner); their lazy()
+// declarations sat here unused — never rendered anywhere in the repo — until
+// MP-WIB-DASHBOARD-DEAD-LAZY (2026-11-23) removed them (same unused-import class
+// as the DashboardToday note above). The components still live under
+// src/components/dashboard/ (WhatShippedTodayBanner is maintained but unmounted).
+// Re-add a lazy decl here only if you also render it.
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -923,24 +907,10 @@ function ExecutiveDashboard({
         />
       </div>
 
-      {/* My Builders — Sam's #1 focus (2026-06-03): hold builders, run the line.
-          Shows Sam-direct recruits, their builder tier, onboarding progress,
-          producing flag. Reads v_sam_builders_dashboard. */}
-
-      {/* Manager hierarchy MTD + top producers — replaces the weak "Recent deals"
-          widget per Sam's 2026-05-22 punch ("dashboard literally empty, leaderboard
-          empty, last 8 deals still there, doesn't have pipeline stats"). Reads
-          v_manager_hierarchy_mtd + v_top_producers_mtd — real data only. */}
-
-      {/* Just-hired-direct-to-Sam feed — surfaces last-30d hires routed to Sam
-          (no manager). Sam's 2026-05-22 ask: "Just-hired direct-to-Sam feed". */}
-
-      {/* v9 audit fix 2026-06-10: AgentLink-style carrier breakdown + by-month trend.
-          Two-column grid at desktop, stacked on mobile. */}
-      
-
-      {/* PL-026: removed "Activity And Referrals" 30-day widget per Sam.
-          Recruiting block now spans full width. */}
+      {/* edc2fc5f retired the My Builders / Manager-hierarchy-MTD / Just-hired-direct
+          / carrier-breakdown panels from this home (duplicate of Agent Cloud); their
+          lazy imports were removed 2026-11-23. PL-026 earlier removed the "Activity
+          And Referrals" 30-day widget, so the recruiting block now spans full width. */}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Button asChild variant="outline" className="h-10 justify-between sm:h-9">

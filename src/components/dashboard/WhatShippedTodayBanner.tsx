@@ -3,6 +3,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, ChevronDown, ChevronUp, CheckCircle2, Rocket, Loader2 } from "lucide-react";
 import type { ShippedItem } from "@/data/shipped-data";
 
+// intentionally-orphan: maintained SHIPPED receipts surface — scripts/check-metric-truth.mjs
+// reads its `const SHIPPED_TOTAL` ratchet (enforces it equals the shipped-data entry count),
+// so this file is kept live-tooled. It was unmounted from /dashboard in edc2fc5f ("retire
+// duplicate panels, mirror Agent Cloud"); re-mount it here (lazy) to show the banner again.
+
 /**
  * WhatShippedTodayBanner — pinned to the top of /dashboard so Sam sees
  * explicit proof of what changed.

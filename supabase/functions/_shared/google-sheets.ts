@@ -15,6 +15,28 @@ export type ServiceAccount = {
   token_uri?: string;
 };
 
+/**
+ * MP-304 (2026-11-23): the Ethos workbook is owned by level8financial@gmail.com and Sam is a WRITER without
+ * share rights, so no service account can ever be granted access to it by us. The writes therefore happen as
+ * Sam himself: a user-OAuth credential in the gcloud "authorized_user" shape (client_id, client_secret,
+ * refresh_token). The same GOOGLE_SERVICE_ACCOUNT_JSON secret carries either shape; getAccessToken branches
+ * on `type`. Scope stays spreadsheets-only.
+ */
+export type AuthorizedUser = {
+  type: "authorized_user";
+  client_id: string;
+  client_secret: string;
+  refresh_token: string;
+  token_uri?: string;
+};
+
+export type GoogleCredential = ServiceAccount | AuthorizedUser;
+
+export function isAuthorizedUser(c: unknown): c is AuthorizedUser {
+  const o = c as Record<string, unknown> | null;
+  return !!o && o.type === "authorized_user" && typeof o.client_id === "string" && typeof o.client_secret === "string" && typeof o.refresh_token === "string";
+}
+
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 export type SheetValue = string | number | boolean;
 
@@ -39,10 +61,28 @@ function pemToPkcs8(pem: string): Uint8Array {
 
 /** Sign a service-account assertion and exchange it for an access token. */
 export async function getAccessToken(
-  sa: ServiceAccount,
+  sa: GoogleCredential,
   now: number,
   fetchImpl: FetchLike,
 ): Promise<string> {
+  if (isAuthorizedUser(sa)) {
+    const tokenUri = sa.token_uri ?? "https://oauth2.googleapis.com/token";
+    const res = await fetchImpl(tokenUri, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        client_id: sa.client_id,
+        client_secret: sa.client_secret,
+        refresh_token: sa.refresh_token,
+      }).toString(),
+    });
+    const body = (await res.json().catch(() => ({}))) as { access_token?: string; error?: string; error_description?: string };
+    if (!res.ok || !body.access_token) {
+      throw new Error(`Google token exchange (authorized_user) failed: ${res.status} ${body.error ?? ""} ${body.error_description ?? ""}`.trim());
+    }
+    return body.access_token;
+  }
   const tokenUri = sa.token_uri ?? "https://oauth2.googleapis.com/token";
   const iat = Math.floor(now / 1000);
   const header = b64url(new TextEncoder().encode(JSON.stringify({ alg: "RS256", typ: "JWT" })));

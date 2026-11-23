@@ -271,7 +271,7 @@ function sourceKey(source?: string | null): BookSourceKey {
 
 function sourceLabel(source?: string | null): string {
   const key = sourceKey(source);
-  if (key === "ethos") return "Ethos";
+  if (key === "ethos") return "Ethos (legacy 2019-23 import)";
   return key === "agent_link" ? "AgentLink (imported)" : "Galaxy";
 }
 
@@ -1768,7 +1768,7 @@ export default function BookOfBusiness() {
                       <SelectItem value="all">All</SelectItem>
                       <SelectItem value="apex">Galaxy</SelectItem>
                       <SelectItem value="agent_link">AgentLink (imported)</SelectItem>
-                      <SelectItem value="ethos">Ethos</SelectItem>
+                      <SelectItem value="ethos">Ethos (legacy 2019-23 import)</SelectItem>
                     </SelectContent>
                   </Select>
                 </FilterField>

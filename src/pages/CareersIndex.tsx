@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { GlassCard } from "@/components/ui/glass-card";
 import { JsonLd } from "@/components/landing/JsonLd";
 import { ArrowRight, CheckCircle2, MapPin, DollarSign, Clock } from "lucide-react";
-import { STATES } from "./StateCareerLanding";
+import { STATES, TOP_PRODUCER_EARNINGS } from "./StateCareerLanding";
 
 /**
  * CareersIndex (/careers) — the hub for the 10 per-state recruiting pages.
@@ -60,7 +60,7 @@ export default function CareersIndex() {
     // drift from the on-page copy (lines below) the day an 11th state is added.
     // A hardcoded "N states" here is forbidden by check-careers-hub.mjs Rule D.
     const desc =
-      `Galaxy Financial is hiring licensed and unlicensed life insurance agents across ${STATES.length} states. Work remotely, A-rated carriers, lead supply, no cold-calling. 1099 contractor, commission only. Top first-year producers have written $120K+ in commissions.`;
+      `Galaxy Financial is hiring licensed and unlicensed life insurance agents across ${STATES.length} states. Work remotely, A-rated carriers, lead supply, no cold-calling. 1099 contractor, commission only. Top first-year producers have written ${TOP_PRODUCER_EARNINGS} in commissions.`;
     const url = "https://apex-financial.org/careers";
     const created = [
       setMeta("description", desc),
@@ -109,7 +109,7 @@ export default function CareersIndex() {
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Galaxy Financial is hiring licensed and unlicensed agents across {STATES.length} states.
             Work from home, build your book with our lead system, A-rated carrier appointments, and
-            Sales Academy training — top first-year producers have written $120K+ in commissions.
+            Sales Academy training — top first-year producers have written {TOP_PRODUCER_EARNINGS} in commissions.
             Commission only.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center mt-8">

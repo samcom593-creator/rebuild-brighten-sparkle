@@ -44,6 +44,22 @@ export const STATES: StateConfig[] = [
   { slug: "pennsylvania",  name: "Pennsylvania",   abbr: "PA", region: "Northeast" },
 ];
 
+// Single source of truth for the top-producer earnings figure. It is rendered
+// VERBATIM across FIVE public surfaces in the careers cluster: this page's SEO
+// <meta description>, its Google-for-Jobs JobPosting JSON-LD description, and its
+// visible hero — plus the /careers hub (CareersIndex), which imports this constant
+// for its own SEO meta + hero. All five MUST read the same figure: Google
+// de-indexes a JobPosting rich result whose structured data contradicts the
+// visible page, and a recruit who reads one number in the SERP snippet and another
+// on the page distrusts both — so a figure that drifts between these surfaces is a
+// silent loss of the #1 recruiting channel. Change the figure HERE and all five
+// move together. Guarded two ways: check-careers-hub.mjs Rule E fails the build on
+// any re-literaled "written $N in commissions" copy (a copy that can drift), and
+// check-landing-marketing-claims.mjs requires the figure stay ALLOW_LISTed as a
+// defensible top-producer claim ("$120K+"). The sibling of the STATES.length
+// single-source that killed the "across 10 states" meta-description drift.
+export const TOP_PRODUCER_EARNINGS = "$120K+";
+
 const VALID_BY_SLUG = Object.fromEntries(STATES.map((s) => [s.slug, s]));
 
 export default function StateCareerLanding() {
@@ -101,7 +117,7 @@ export default function StateCareerLanding() {
       return { el, created };
     };
 
-    const desc = `Hiring licensed and unlicensed life insurance agents in ${cfg.name}. Work from home, A-rated carriers, lead supply, no cold-calling. 1099 contractor, commission only. Top first-year producers have written $120K+ in commissions.`;
+    const desc = `Hiring licensed and unlicensed life insurance agents in ${cfg.name}. Work from home, A-rated carriers, lead supply, no cold-calling. 1099 contractor, commission only. Top first-year producers have written ${TOP_PRODUCER_EARNINGS} in commissions.`;
     const url = `https://apex-financial.org/careers/${cfg.slug}`;
 
     const meta1 = setMeta("description", desc);
@@ -134,7 +150,7 @@ export default function StateCareerLanding() {
     "@context": "https://schema.org/",
     "@type": "JobPosting",
     title: `Life Insurance Agent — Remote in ${cfg.name}`,
-    description: `Galaxy Financial is hiring licensed and unlicensed Life Insurance Agents to work remotely from ${cfg.name}. We provide A-rated carrier appointments, lead supply, dialer, CRM, training, and a clear path from licensing to a producing book. 1099 contractor, commission only — earnings are variable. Top first-year producers have written $120K+ in commissions.`,
+    description: `Galaxy Financial is hiring licensed and unlicensed Life Insurance Agents to work remotely from ${cfg.name}. We provide A-rated carrier appointments, lead supply, dialer, CRM, training, and a clear path from licensing to a producing book. 1099 contractor, commission only — earnings are variable. Top first-year producers have written ${TOP_PRODUCER_EARNINGS} in commissions.`,
     datePosted: today,
     validThrough,
     employmentType: "CONTRACTOR",
@@ -184,7 +200,7 @@ export default function StateCareerLanding() {
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Galaxy Financial is hiring licensed and unlicensed agents across {cfg.name}.
             Work remotely. Build your book with our lead system, A-rated carrier appointments,
-            and Sales Academy training — top first-year producers have written $120K+ in
+            and Sales Academy training — top first-year producers have written {TOP_PRODUCER_EARNINGS} in
             commissions. Commission only.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center mt-8">

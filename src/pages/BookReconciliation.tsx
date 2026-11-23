@@ -19,7 +19,7 @@ import {
 import {
   AlertTriangle, BookMarked, Banknote, ShieldAlert, Search, Filter,
   TrendingDown, Upload, RefreshCw, Phone, Mail, ChevronRight, Sparkles,
-  CheckCircle2, XCircle, ListChecks, AlertCircle, Trophy, Users,
+  CheckCircle2, XCircle, ListChecks, AlertCircle, Trophy, Users, FileWarning,
 } from "lucide-react";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
@@ -231,6 +231,20 @@ export default function BookReconciliation() {
     },
   });
 
+  // MP-CARRIER-DAILY: the two-carrier portal reconciliation (Ethos + Chubb) belongs on this
+  // "all in one place" hub. carrier_command() is owner-only; a manager's 42501 is swallowed by
+  // retry:false + the conditional render below, so this stat simply does not appear for them.
+  const carrierUnaccounted = useQuery({
+    queryKey: ["book-recon-carrier-unaccounted"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("carrier_command" as never);
+      if (error) throw error;
+      return data as unknown as { unaccounted_count: number; unaccounted_by_carrier: Record<string, number> };
+    },
+    retry: false,
+    staleTime: 60_000,
+  });
+
   function refreshAll() {
     qc.invalidateQueries({ queryKey: ["book-recon-summary"] });
     qc.invalidateQueries({ queryKey: ["book-recon-rows"] });
@@ -308,7 +322,24 @@ export default function BookReconciliation() {
           color="text-orange-500 dark:text-orange-400"
           loading={lapsed.isLoading || falloff.isLoading}
         />
+        {carrierUnaccounted.data != null && (
+          <BigStat
+            icon={FileWarning}
+            label="Carrier portal · not on-site"
+            value={fmtNum(carrierUnaccounted.data.unaccounted_count)}
+            sub={Object.entries(carrierUnaccounted.data.unaccounted_by_carrier ?? {}).map(([k, v]) => `${k}: ${v}`).join(" · ") || "Ethos + Chubb"}
+            color="text-violet-500 dark:text-violet-400"
+            loading={false}
+          />
+        )}
       </div>
+
+      {carrierUnaccounted.data != null && carrierUnaccounted.data.unaccounted_count > 0 && (
+        <Link to="/dashboard/carrier-command" className="inline-flex items-center gap-1.5 text-sm text-violet-500 hover:underline dark:text-violet-400">
+          <FileWarning className="h-4 w-4" /> Review {fmtNum(carrierUnaccounted.data.unaccounted_count)} unaccounted Ethos + Chubb policies in Carrier Command
+          <ChevronRight className="h-4 w-4" />
+        </Link>
+      )}
 
       {/* ── CARRIER MIX + LEAK ───────────────────────────────────── */}
       <div className="grid gap-3 lg:grid-cols-3">

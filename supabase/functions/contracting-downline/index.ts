@@ -192,7 +192,7 @@ Deno.serve(async (req) => {
     // The intake is committed and queued regardless of whether the login provisioned; say exactly which happened.
     return jsonResponse({
       ok: true, intake_id: verdict.intake_id, agent_id: link.agentId, provisioned: link.linked, provision_error: link.error,
-      delivery: verdict.delivery, level: verdict.level, advance: verdict.advance, manager_name: t.manager_name,
+      delivery: verdict.delivery, level: verdict.level, comp_pct: verdict.comp_pct, advance: verdict.advance, manager_name: t.manager_name,
       redirect_url: redirectUrl,
     });
   }

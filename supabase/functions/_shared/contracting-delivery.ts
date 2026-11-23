@@ -260,6 +260,18 @@ function mgnPopulated(row: unknown[] | undefined, upTo = 7): boolean {
   return false;
 }
 function digits(v: unknown): string { return String(v ?? "").replace(/[^0-9]/g, ""); }
+/**
+ * Sam, 2026-11-23: MGN's sheet carries the comp as a PERCENT ("60%"), never an Ethos level. The Ethos vocabulary
+ * stays internal (the gate and the Level 8 layout speak it); on the MGN layout the intake's own comp_percentage
+ * wins, and a level is converted exactly (Level 12 = 60%, one level per 5 points) only when no percent exists.
+ */
+export function mgnCompPercent(level: unknown, compPct: unknown): string {
+  const n = Number(compPct);
+  if (Number.isFinite(n) && n > 0) return `${Number.isInteger(n) ? n : n.toFixed(1)}%`;
+  const m = /^\s*Level\s+(\d{1,2})\s*$/i.exec(String(level ?? ""));
+  if (m) return `${60 + (Number(m[1]) - 12) * 5}%`;
+  return "60%";
+}
 
 /**
  * Ethos "Agent Portal Signup" leg — gated, append-once, A:L only.
@@ -440,7 +452,7 @@ async function deliverMgnNewAgent(
     return { state: "manual_review", receipt: null, note: `Held by the Ethos gate: ${gate.blockers.map((b) => b.code).join(", ") || "payload incomplete"}.` };
   }
   const p = gate.payload;
-  const payload: (string | boolean)[] = [p[S.FIRST], p[S.LAST], p[S.MOBILE], p[S.EMAIL], p[S.NPN], p[S.UPLINE], p[S.LEVEL], p[S.ADVANCE]];
+  const payload: (string | boolean)[] = [p[S.FIRST], p[S.LAST], p[S.MOBILE], p[S.EMAIL], p[S.NPN], p[S.UPLINE], mgnCompPercent(p[S.LEVEL], (intake as { comp_percentage?: unknown }).comp_percentage), p[S.ADVANCE]];
   const target = Math.max(MGN_FIRST_DATA_ROW, lastPopulated + 1);
   const fresh = await sheets.getRange(mgnRange(tab, target));
   if (mgnPopulated(fresh[0])) throw new Error(`MGN New Agents row ${target} is no longer empty; refusing to overwrite a concurrent edit`);
@@ -756,7 +768,7 @@ export async function deliverEthosUpdate(updateId: string, deps: UpdateDeps): Pr
     const mrows = await sheets.getRange(`${mtab}!A:H`);
     const mh = verifyMgnHeader(MGN_UPDATE_AGENT_HEADERS, mrows[0]);
     if (!mh.ok) return { state: "manual_review", receipt: null, note: `Header drift on the MGN Update Agent tab (${mh.drift.join(", ")}); an admin reconciles the layout.` };
-    const mp: (string | boolean)[] = [payload[0], payload[1], payload[2], payload[3], payload[4], payload[5], payload[6], u.termination_requested === true];
+    const mp: (string | boolean)[] = [payload[0], payload[1], payload[2], payload[3], payload[4] ? mgnCompPercent(payload[4], null) : "", payload[5], payload[6], u.termination_requested === true];
     const same = (got: unknown[] | undefined) => mp.every((want, c) => c === 7 ? parseSheetBoolean(got?.[c]) === want : trimOuter(got?.[c]) === trimOuter(want));
     if (u.sheet_row && (u.status === "attempting" || u.status === "unknown_outcome")) {
       const prior = mrows[u.sheet_row - 1] ?? [];

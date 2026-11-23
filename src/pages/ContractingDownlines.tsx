@@ -13,7 +13,7 @@ import { EmailTypoHint } from "@/components/ui/email-typo-hint";
 import { formatPhoneDisplay, maskUsPhoneInput } from "@/lib/phone";
 import { cn } from "@/lib/utils";
 import {
-  ADVANCE_TIER, ETHOS_LEVELS, MGN_DEFAULT, VERDICT_COPY, contractingDownlines, levelFor, parseGrid,
+  ADVANCE_TIER, ETHOS_LEVELS, MGN_DEFAULT, VERDICT_COPY, contractingDownlines, parseGrid, pctLabel,
   type Actor, type BoardRow, type DownlineRow, type Verdict,
 } from "@/lib/contractingDownlines";
 
@@ -32,7 +32,7 @@ type Field = "first_name" | "last_name" | "email" | "phone" | "npn";
 const EMPTY: Record<Field, string> = { first_name: "", last_name: "", email: "", phone: "", npn: "" };
 
 function levelOptions(cap: number | null | undefined, defaultPct: number) {
-  return ETHOS_LEVELS.filter((l) => cap == null || l.pct <= cap).map((l) => ({ ...l, label: `${l.level} · ${l.pct}%${l.pct === defaultPct ? " (default)" : ""}` }));
+  return ETHOS_LEVELS.filter((l) => cap == null || l.pct <= cap).map((l) => ({ ...l, label: `${l.pct}%${l.pct === defaultPct ? " (default)" : ""}` }));
 }
 
 function VerdictBadge({ v }: { v: Verdict | null | undefined }) {
@@ -99,7 +99,7 @@ export default function ContractingDownlines() {
       const r = await contractingDownlines.submit([oneRow()]);
       const v = r.data?.results?.[0] ?? { ok: false, verdict: "error" as const, message: r.error ?? "Not saved." };
       setOneVerdict(v);
-      if (v.ok) { toast.success(`${one.first_name} ${one.last_name} saved at ${v.level} · ${ADVANCE_TIER}${v.delivery === "queued" ? " · queued for Ethos" : ""}.`); setOne(EMPTY); setOneComp(""); setOneLic(false); setOneEo(false); setOneReason(""); setOneConfirmDown(false); void qc.invalidateQueries({ queryKey: ["contracting-downlines"] }); }
+      if (v.ok) { toast.success(`${one.first_name} ${one.last_name} saved at ${pctLabel(v.comp_pct)} · ${ADVANCE_TIER}${v.delivery === "queued" ? " · queued for Ethos" : ""}.`); setOne(EMPTY); setOneComp(""); setOneLic(false); setOneEo(false); setOneReason(""); setOneConfirmDown(false); void qc.invalidateQueries({ queryKey: ["contracting-downlines"] }); }
       else toast.error(v.message ?? VERDICT_COPY[v.verdict]?.label ?? "Not saved.");
     } finally { setOneBusy(null); }
   };
@@ -158,7 +158,7 @@ export default function ContractingDownlines() {
       if (edit.comp_pct && Number(edit.comp_pct) !== editing.comp_pct) payload.comp_pct = Number(edit.comp_pct);
       if (edit.reason.trim()) payload.reason = edit.reason.trim();
       const r = await contractingDownlines.update(payload);
-      if (r.data?.ok) { toast.success(r.data.queued ? `Saved. Update queued for the Ethos "Agent Updates" tab (${(r.data.changes ?? []).join(", ")}).` : r.data.message ?? "Saved on the roster."); setEditing(null); void qc.invalidateQueries({ queryKey: ["contracting-downlines"] }); }
+      if (r.data?.ok) { toast.success(r.data.queued ? `Saved. Update queued for MGN's "Update Agent" tab (${(r.data.changes ?? []).join(", ")}).` : r.data.message ?? "Saved on the roster."); setEditing(null); void qc.invalidateQueries({ queryKey: ["contracting-downlines"] }); }
       else setEditProblem({ field: r.data?.field ?? "form", text: r.data?.message ?? r.error ?? "Not saved.", suggestion: r.data?.suggestion });
     } finally { setEditBusy(false); }
   };
@@ -174,7 +174,7 @@ export default function ContractingDownlines() {
     <div className="page-enter mx-auto w-full max-w-5xl space-y-6 px-4 pb-24 pt-6 sm:px-6">
       <header className="space-y-1">
         <h1 className="text-xl font-semibold">Downlines &amp; contracting</h1>
-        <p className="text-sm text-muted-foreground">Ethos only. Everyone is {ADVANCE_TIER}; the default level is {actor.default_level} ({actor.default_pct}%){actor.cap_pct != null ? `, and you can set up to ${actor.cap_level} (${actor.cap_pct}%) — your own level` : ""}. Sub-agency on the sheet: <span className="font-medium text-foreground">{actor.sub_agency_label}</span>.</p>
+        <p className="text-sm text-muted-foreground">Ethos only. Everyone is {ADVANCE_TIER}; the default comp is {actor.default_pct}%{actor.cap_pct != null ? `, and you can set up to ${actor.cap_pct}% — your own level` : ""}. Written to MGN&apos;s sheet under <span className="font-medium text-foreground">{actor.sub_agency_label}</span>.</p>
         {!actor.writes_enabled ? <p className="text-xs text-amber-500">Automatic sheet writes are currently off: everything you submit is saved and queued, and goes onto the Ethos sheet the moment writes are switched on.</p> : null}
       </header>
 
@@ -209,8 +209,8 @@ export default function ContractingDownlines() {
           <div className="space-y-1"><Label htmlFor="o-npn">NPN</Label><Input id="o-npn" inputMode="numeric" className="h-11" value={one.npn} onChange={(e) => setOne((s) => ({ ...s, npn: e.target.value.replace(/[^0-9]/g, "").slice(0, 10) }))} /></div>
           <div className="space-y-1"><Label htmlFor="o-type">Request</Label>
             <select id="o-type" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" value={oneType} onChange={(e) => setOneType(e.target.value as "contracting" | "transfer")}><option value="contracting">New contracting</option><option value="transfer">Transfer (already appointed elsewhere)</option></select></div>
-          <div className="space-y-1"><Label htmlFor="o-comp">Comp level</Label>
-            <select id="o-comp" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" value={oneComp} onChange={(e) => setOneComp(e.target.value)}><option value="">Default · {actor.default_level} ({actor.default_pct}%)</option>{options.map((o) => <option key={o.pct} value={o.pct}>{o.label}</option>)}</select></div>
+          <div className="space-y-1"><Label htmlFor="o-comp">Comp</Label>
+            <select id="o-comp" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" value={oneComp} onChange={(e) => setOneComp(e.target.value)}><option value="">Default · {actor.default_pct}%</option>{options.map((o) => <option key={o.pct} value={o.pct}>{o.label}</option>)}</select></div>
           <div className="space-y-1"><Label>Advance</Label><Input readOnly value={ADVANCE_TIER} className="h-11" aria-label="Advance pay tier" /></div>
         </div>
         <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1 h-4 w-4" checked={oneLic} onChange={(e) => setOneLic(e.target.checked)} /><span>I confirm this person holds a current life licence and the NPN is theirs. <span className="text-muted-foreground">(Ethos contracts licensed agents only.)</span></span></label>
@@ -227,7 +227,7 @@ export default function ContractingDownlines() {
             ) : null}
           </div>
         ) : oneVerdict?.ok && oneVerdict.dry_run ? (
-          <p className="flex items-center gap-2 text-sm text-emerald-500"><CheckCircle2 className="h-4 w-4" aria-hidden /> Ready: {oneVerdict.level} · {oneVerdict.advance} · sub-agency {oneVerdict.sub_agency}{oneVerdict.existing_name ? ` · updates ${oneVerdict.existing_name}'s existing record` : ""}.</p>
+          <p className="flex items-center gap-2 text-sm text-emerald-500"><CheckCircle2 className="h-4 w-4" aria-hidden /> Ready: {pctLabel(oneVerdict.comp_pct)} · {oneVerdict.advance} · under {oneVerdict.sub_agency}{oneVerdict.existing_name ? ` · updates ${oneVerdict.existing_name}'s existing record` : ""}.</p>
         ) : null}
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant="outline" className="h-11" disabled={oneBusy !== null} onClick={() => void checkOne()}>{oneBusy === "check" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : "Check"}</Button>
@@ -257,13 +257,13 @@ export default function ContractingDownlines() {
                     <td className="p-2 font-mono">{r.npn}</td>
                     <td className="p-2">{r.email}</td>
                     <td className="p-2 whitespace-nowrap">{r.phone}</td>
-                    <td className="p-2"><select className="h-9 rounded-md border border-input bg-background px-2" value={r.comp_pct ?? ""} onChange={(e) => setRow(key, { comp_pct: e.target.value ? Number(e.target.value) : null })}><option value="">Default</option>{options.map((o) => <option key={o.pct} value={o.pct}>{o.level} · {o.pct}%</option>)}</select></td>
+                    <td className="p-2"><select className="h-9 rounded-md border border-input bg-background px-2" value={r.comp_pct ?? ""} onChange={(e) => setRow(key, { comp_pct: e.target.value ? Number(e.target.value) : null })}><option value="">Default</option>{options.map((o) => <option key={o.pct} value={o.pct}>{o.pct}%</option>)}</select></td>
                     <td className="p-2 min-w-56">
                       <VerdictBadge v={v} />
                       {v && !v.ok ? <p className="mt-1 text-muted-foreground">{v.message}{v.suggestion ? <> · <button type="button" className="underline" onClick={() => setRow(key, { email: v.suggestion as string })}>use {v.suggestion}</button></> : null}</p> : null}
                       {v?.verdict === "would_downgrade_comp" ? (<div className="mt-1 space-y-1"><label className="flex items-center gap-1"><input type="checkbox" className="h-3.5 w-3.5" checked={!!r.confirm_downgrade} onChange={(e) => setRow(key, { confirm_downgrade: e.target.checked })} /> lower {v.current_pct}% → {v.proposed_pct}%</label><Input placeholder="Reason" className="h-8 text-xs" value={r.reason ?? ""} onChange={(e) => setRow(key, { reason: e.target.value })} /></div>) : null}
-                      {v?.ok && v.dry_run ? <p className="mt-1 text-muted-foreground">{v.level} · {v.sub_agency}{v.existing_name ? ` · updates ${v.existing_name}` : ""}</p> : null}
-                      {v?.ok && !v.dry_run ? <p className="mt-1 text-emerald-500">Saved · {v.level}{v.delivery === "queued" ? " · queued for Ethos" : v.delivery === "manual_review" ? " · held for review" : ""}{v.provisioned === false ? " · login not created (see admin)" : ""}</p> : null}
+                      {v?.ok && v.dry_run ? <p className="mt-1 text-muted-foreground">{pctLabel(v.comp_pct)} · {v.sub_agency}{v.existing_name ? ` · updates ${v.existing_name}` : ""}</p> : null}
+                      {v?.ok && !v.dry_run ? <p className="mt-1 text-emerald-500">Saved · {pctLabel(v.comp_pct)}{v.delivery === "queued" ? " · queued for Ethos" : v.delivery === "manual_review" ? " · held for review" : ""}{v.provisioned === false ? " · login not created (see admin)" : ""}</p> : null}
                     </td>
                   </tr>); })}
               </tbody>
@@ -288,13 +288,13 @@ export default function ContractingDownlines() {
         {boardQ.isLoading ? <p className="text-sm text-muted-foreground" role="status">Loading…</p> : boardQ.isError ? <p className="text-sm text-destructive" role="alert">The board did not load. <button type="button" className="underline" onClick={() => void boardQ.refetch()}>Try again</button></p> : !board.length ? <p className="text-sm text-muted-foreground">No downlines yet.</p> : (
           <div className="overflow-x-auto rounded-lg border border-border">
             <table className="w-full text-xs">
-              <thead className="bg-muted/40 text-left"><tr><th className="p-2">Name</th><th className="p-2">NPN</th><th className="p-2">Level</th><th className="p-2">Ethos</th><th className="p-2">Last update</th><th className="p-2"></th></tr></thead>
+              <thead className="bg-muted/40 text-left"><tr><th className="p-2">Name</th><th className="p-2">NPN</th><th className="p-2">Comp</th><th className="p-2">Ethos</th><th className="p-2">Last update</th><th className="p-2"></th></tr></thead>
               <tbody>
                 {board.map((r) => { const st = ethosStateCopy(r); return (
                   <tr key={r.agent_id ?? r.intake_id ?? r.display_name} className="border-t border-border">
                     <td className="p-2 whitespace-nowrap">{r.display_name}{r.agent_status === "intake_only" ? <span className="ml-1 text-amber-500">(no login yet)</span> : null}<div className="text-muted-foreground">{r.email}</div></td>
                     <td className="p-2 font-mono">{r.npn ?? <span className="text-amber-500">missing</span>}</td>
-                    <td className="p-2 whitespace-nowrap">{r.comp_pct != null ? `${levelFor(r.comp_pct)} · ${r.comp_pct}%` : <span className="text-muted-foreground">not set</span>}</td>
+                    <td className="p-2 whitespace-nowrap">{r.comp_pct != null ? `${r.comp_pct}%` : <span className="text-muted-foreground">not set</span>}</td>
                     <td className="p-2"><span className={cn(st.tone === "ok" && "text-emerald-500", st.tone === "warn" && "text-amber-500", st.tone === "muted" && "text-muted-foreground")}>{st.label}</span>{r.ethos_note && st.tone === "warn" ? <div className="text-muted-foreground">{r.ethos_note}</div> : null}</td>
                     <td className="p-2 whitespace-nowrap text-muted-foreground">{r.last_update_status ? `${r.last_update_status}` : "—"}</td>
                     <td className="p-2">{r.agent_id ? <Button type="button" size="sm" variant="outline" className="h-9" onClick={() => openEdit(r)}>Edit</Button> : null}</td>
@@ -313,7 +313,7 @@ export default function ContractingDownlines() {
               <div className="space-y-1"><Label htmlFor="e-email">Email</Label><Input id="e-email" type="email" className="h-11" value={edit.email} onChange={(e) => setEdit((s) => ({ ...s, email: e.target.value }))} /><EmailTypoHint value={edit.email} onAccept={(n) => setEdit((s) => ({ ...s, email: n }))} /></div>
               <div className="space-y-1"><Label htmlFor="e-phone">Mobile</Label><Input id="e-phone" type="tel" className="h-11" value={edit.phone} onChange={(e) => setEdit((s) => ({ ...s, phone: maskUsPhoneInput(e.target.value) }))} /></div>
               <div className="space-y-1"><Label htmlFor="e-npn">NPN</Label><Input id="e-npn" inputMode="numeric" className="h-11" value={edit.npn} onChange={(e) => setEdit((s) => ({ ...s, npn: e.target.value.replace(/[^0-9]/g, "").slice(0, 10) }))} /></div>
-              <div className="space-y-1"><Label htmlFor="e-comp">Comp level</Label><select id="e-comp" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" value={edit.comp_pct} onChange={(e) => setEdit((s) => ({ ...s, comp_pct: e.target.value }))}><option value="">Keep {editing.comp_pct != null ? `${levelFor(editing.comp_pct)} · ${editing.comp_pct}%` : "(not set)"}</option>{options.map((o) => <option key={o.pct} value={o.pct}>{o.label}</option>)}</select></div>
+              <div className="space-y-1"><Label htmlFor="e-comp">Comp</Label><select id="e-comp" className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" value={edit.comp_pct} onChange={(e) => setEdit((s) => ({ ...s, comp_pct: e.target.value }))}><option value="">Keep {editing.comp_pct != null ? `${editing.comp_pct}%` : "(not set)"}</option>{options.map((o) => <option key={o.pct} value={o.pct}>{o.label}</option>)}</select></div>
               <div className="space-y-1 sm:col-span-2"><Label htmlFor="e-reason">Reason</Label><Input id="e-reason" className="h-11" placeholder="Required for a comp change" value={edit.reason} onChange={(e) => setEdit((s) => ({ ...s, reason: e.target.value }))} /></div>
             </div>
             {editProblem ? <p role="alert" className="text-sm text-destructive">{editProblem.text}{editProblem.suggestion ? <> Did you mean <button type="button" className="underline" onClick={() => setEdit((s) => ({ ...s, email: editProblem.suggestion as string }))}>{editProblem.suggestion}</button>?</> : null}</p> : null}

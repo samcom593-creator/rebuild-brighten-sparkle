@@ -1,13 +1,14 @@
 import { describe, expect, test, vi } from "vitest";
-import { deliverEthosSheet, deliverEthosUpdate, MGN_NEW_AGENTS_HEADERS, MGN_UPDATE_AGENT_HEADERS, verifyMgnHeader, type DeliveryDeps, type UpdateDeps, type UpdateRow } from "../../../supabase/functions/_shared/contracting-delivery.ts";
+import { deliverEthosSheet, deliverEthosUpdate, MGN_NEW_AGENTS_HEADERS, MGN_UPDATE_AGENT_HEADERS, mgnCompPercent, verifyMgnHeader, type DeliveryDeps, type UpdateDeps, type UpdateRow } from "../../../supabase/functions/_shared/contracting-delivery.ts";
 
 // MP-304: MGN IMO's "Apex financial / Ethos" workbook. New Agents A:H in MGN's order; Update Agent A:H with a
 // checkbox in H and FALSE pre-filled on every row.
 const CONFIG = JSON.stringify({ sheet_id: "mgn-1", tab: "New Agents", updates_tab: "Update Agent", layout: "mgn", principal_npn: "21346366" });
-const INTAKE = { id: "i-1", first_name: "Nathan", last_name: "Seward", email: "sewardnathan20@gmail.com", phone_e164: "+16086096667", npn: "22372596", status: "accepted" };
+const INTAKE = { id: "i-1", first_name: "Nathan", last_name: "Seward", email: "sewardnathan20@gmail.com", phone_e164: "+16086096667", npn: "22372596", status: "accepted", comp_percentage: 60 };
 const APPROVAL = { evidence_mode: "attested", attested_by: "u", attested_at: "2026-11-23T20:00:00Z", license_attested: true, eo_attested: false, contact_confirmed_at: "2026-11-23T20:00:00Z",
   approved_comp_level: "Level 12", approved_advance_tier: "6 Month Advance", approved_upline_npn: "21679167", approved_sub_agency: "Obiajulu Ifediora", approved_sub_agent_head: false, approved_by: "u", approved_at: "2026-11-23T20:00:00Z" };
-const EXPECTED = ["Nathan", "Seward", "(608) 609-6667", "sewardnathan20@gmail.com", "22372596", "21679167", "Level 12", "6 Month Advance"];
+// Sam, 2026-11-23: MGN's Comp Level column reads a PERCENT, never "Level 12".
+const EXPECTED = ["Nathan", "Seward", "(608) 609-6667", "sewardnathan20@gmail.com", "22372596", "21679167", "60%", "6 Month Advance"];
 const NEW_TAB = [[...MGN_NEW_AGENTS_HEADERS], ["Ada", "Lovelace", "(555) 010-0001", "ada@example.com", "21000002", "21346366", "Level 12", "6 Month Advance"]];
 // MGN's real header cells carry line breaks in E/F/G.
 const UPD_HDR = ["First Name (required)", "Last Name (required)", "Personal NPN (required)", "Direct Upline's Personal NPN (if changing)", "Comp Level\n(if changing)", "Payment Tier\n(if changing)", "PII Information\n(if changing)", "Terminate Agent"];
@@ -31,6 +32,12 @@ function sheets(tabs: Record<string, unknown[][]>) {
 const base = { readSetting: async (k: string) => (k === "ethos_agents_sheet" ? CONFIG : k === "ethos_sheet_writes_enabled" ? "true" : null), googleCredential: "{\"type\":\"authorized_user\",\"client_id\":\"c\",\"client_secret\":\"s\",\"refresh_token\":\"r\"}", now: () => Date.parse("2026-11-23T21:00:00Z"), getToken: async () => "stub" };
 
 describe("MGN New Agents layout (MP-304)", () => {
+  test("comp on MGN is a percent: the intake's own pct wins, a level converts exactly, never a bare level", () => {
+    expect(mgnCompPercent("Level 12", 60)).toBe("60%");
+    expect(mgnCompPercent("Level 14", null)).toBe("70%");
+    expect(mgnCompPercent("Level 17", 85)).toBe("85%");
+    expect(mgnCompPercent(null, null)).toBe("60%");
+  });
   test("header cells with line breaks still match; a renamed column is drift", () => {
     expect(verifyMgnHeader(MGN_UPDATE_AGENT_HEADERS, UPD_HDR).ok).toBe(true);
     expect(verifyMgnHeader(MGN_NEW_AGENTS_HEADERS, ["Agent First Name", "Surname"]).drift).toEqual(["B", "C", "D", "E", "F", "G", "H"]);
@@ -76,7 +83,7 @@ describe("MGN Update Agent layout (MP-304)", () => {
     expect(out.state).toBe("delivered");
     const put = s.calls.find((c) => c.method === "PUT");
     expect(put?.range).toBe("Update Agent!A2:H2");
-    expect((put?.body as { values: unknown[][] }).values[0]).toEqual(["Nathan", "Seward", "22372596", "", "Level 13", "", "", false]);
+    expect((put?.body as { values: unknown[][] }).values[0]).toEqual(["Nathan", "Seward", "22372596", "", "65%", "", "", false]);
     expect(d.planned).toEqual([2]);
   });
   test("a populated row 2 pushes the write to row 3", async () => {
@@ -85,7 +92,7 @@ describe("MGN Update Agent layout (MP-304)", () => {
     expect(out.state).toBe("delivered"); expect(out.receipt?.row).toBe(3);
   });
   test("lost answer with the planned row already holding our values → reconciled, no second write", async () => {
-    const s = sheets({ "Update Agent": [UPD_HDR, ["Nathan", "Seward", "22372596", "", "Level 13", "", "", "FALSE"]] });
+    const s = sheets({ "Update Agent": [UPD_HDR, ["Nathan", "Seward", "22372596", "", "65%", "", "", "FALSE"]] });
     const out = await deliverEthosUpdate("u-1", udeps(s.fetchImpl, { ...ROW, status: "attempting", sheet_row: 2 }));
     expect(out.state).toBe("delivered"); expect(out.receipt?.action).toBe("reconciled_prior_write");
     expect(s.calls.some((c) => c.method === "PUT")).toBe(false);

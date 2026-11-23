@@ -33,7 +33,7 @@ export default function ContractJoin() {
   const [licensed, setLicensed] = useState(true);
   const [problem, setProblem] = useState<{ field: Field | "form"; text: string; suggestion?: string | null } | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState<{ redirect_url?: string; parked?: boolean; manager_name?: string; level?: string; provisioned?: boolean } | null>(null);
+  const [done, setDone] = useState<{ redirect_url?: string; parked?: boolean; manager_name?: string; comp_pct?: number | null; provisioned?: boolean } | null>(null);
   const [countdown, setCountdown] = useState(4);
 
   useEffect(() => {
@@ -82,7 +82,7 @@ export default function ContractJoin() {
         setProblem({ field: (["first_name", "last_name", "email", "phone", "npn"] as string[]).includes(field) ? (field as Field) : "form", text: String(d?.message ?? r.error ?? "Not saved. Try again."), suggestion: d?.suggestion ?? null });
         return;
       }
-      setDone({ redirect_url: d.redirect_url, parked: d.parked, manager_name: d.manager_name, level: d.level, provisioned: d.provisioned });
+      setDone({ redirect_url: d.redirect_url, parked: d.parked, manager_name: d.manager_name, comp_pct: d.comp_pct ?? null, provisioned: d.provisioned });
     } finally { setSubmitting(false); }
   };
 
@@ -115,7 +115,7 @@ export default function ContractJoin() {
             ) : redirectAllowed ? (
               <>
                 <p className="text-sm">Step 2 of 2: finish your carrier contracting at <span className="font-medium">MGN Agent Hub</span>. Taking you there in {countdown}s.</p>
-                {done.level ? <p className="text-xs text-muted-foreground">Submitted at {done.level} · 6 Month Advance. Your manager can adjust the level from Galaxy.</p> : null}
+                {done.comp_pct != null ? <p className="text-xs text-muted-foreground">Submitted at {done.comp_pct}% · 6 Month Advance. Your manager can adjust the comp from Galaxy.</p> : null}
                 <Button className="h-11" onClick={() => window.location.assign(done.redirect_url as string)}>Continue to MGN <ArrowRight className="ml-1 h-4 w-4" aria-hidden /></Button>
               </>
             ) : (

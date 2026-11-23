@@ -7,7 +7,9 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 
+// Sam, 2026-11-23: comp is shown and written as a PERCENT ("60%"); the Ethos "Level N" is internal vocabulary only.
 export const ETHOS_LEVELS: ReadonlyArray<{ pct: number; level: string }> = Array.from({ length: 16 }, (_, i) => ({ pct: 60 + i * 5, level: `Level ${12 + i}` }));
+export const pctLabel = (pct: number | null | undefined): string => (pct == null || !Number.isFinite(Number(pct)) ? "60%" : `${Number(pct)}%`);
 export const ADVANCE_TIER = "6 Month Advance";
 export const MGN_DEFAULT = "https://mgnagenthub.com/dashboard";
 

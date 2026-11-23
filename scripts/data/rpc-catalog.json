@@ -9187,6 +9187,14 @@
         "raw": "p_day date DEFAULT NULL::date"
       }
     ],
+    "owner_licensed_leads_board": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "owner_monday_rollcall": [
       {
         "all": [

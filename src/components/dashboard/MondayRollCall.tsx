@@ -40,6 +40,7 @@ import {
   type RollCallPayload,
   type RollCallRow,
 } from "@/lib/mondayRollCall";
+import { LICENSED_LEADS_QUERY_KEY, leadsReplyLine, type LeadsReply } from "@/lib/licensedLeadsBoard";
 
 type RpcFn<T> = (fn: string, args?: Record<string, unknown>) => Promise<{ data: T | null; error: { message: string } | null }>;
 
@@ -55,7 +56,7 @@ const MARK_TONE: Record<RollCallMark, string> = {
   no_show: "border-rose-500/40 bg-rose-500/10 text-rose-300",
 };
 
-function StateEntry({ row, busy, onSave }: { row: RollCallRow; busy: boolean; onSave: (states: string[]) => void }) {
+export function StateEntry({ row, busy, onSave }: { row: Pick<RollCallRow, "name" | "phone_state_hint">; busy: boolean; onSave: (states: string[]) => void }) {
   const [value, setValue] = useState("");
   const states = parseStates(value);
   return (
@@ -188,10 +189,13 @@ export function MondayRollCall() {
   const write = async (agentId: string, fn: string, args: Record<string, unknown>, done: string) => {
     setBusyId(agentId);
     try {
-      const { error } = await (supabase.rpc as unknown as RpcFn<{ ok: boolean }>)(fn, args);
+      const { data, error } = await (supabase.rpc as unknown as RpcFn<{ ok: boolean; leads?: LeadsReply | null }>)(fn, args);
       if (error) throw new Error(error.message);
-      toast.success(done);
-      await queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+      toast.success(`${done}${leadsReplyLine(data?.leads)}`);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: LICENSED_LEADS_QUERY_KEY }),
+      ]);
     } catch (err) {
       toast.error(errorMessage(err, "That did not save. Try again."));
     } finally {
@@ -260,7 +264,7 @@ export function MondayRollCall() {
                   row.agent_id,
                   "owner_monday_rollcall_set_states",
                   { p_agent_id: row.agent_id, p_states: states },
-                  `${row.name}: ${states.join(", ")} saved. Leads land at the next hourly run.`,
+                  `${row.name}: ${states.join(", ")} saved.`,
                 )}
               />
             ))}

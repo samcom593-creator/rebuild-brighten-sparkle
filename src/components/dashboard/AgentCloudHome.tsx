@@ -25,6 +25,7 @@ import { isDayKey, isScoreboardPeriod, scoreboardWindow, windowLastDay, type Sco
 import { HomeDateBar } from "@/components/dashboard/HomeDateBar";
 import { NeedsAttention } from "@/components/dashboard/NeedsAttention";
 import { MondayRollCall } from "@/components/dashboard/MondayRollCall";
+import { LicensedLeadsBoard } from "@/components/dashboard/LicensedLeadsBoard";
 
 // F24: the only Recharts consumer on the Home route. Lazy, and rendered only
 // after the "Trend and policy status" disclosure has been opened once, so a
@@ -167,6 +168,8 @@ export function AgentCloudHome() {
       {/* MP-MONDAY-ROLLCALL (Sam, 2026-11-22: "a very clear list on my first screen I can call").
           First for the owner: every recent hire, the number to dial, and one tap for the result. */}
       {isAdmin && <MondayRollCall />}
+      {/* MP-MORNING-LEADS (Sam, 2026-11-23: "every person licensed ... everyone must start writing"). */}
+      {isAdmin && <LicensedLeadsBoard />}
       {isAdmin && (
         <HomeDateBar
           period={period}

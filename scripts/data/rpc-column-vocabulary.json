@@ -717,6 +717,7 @@
   "onboarding_funnel_summary_rows": "SETOF v_onboarding_funnel_summary",
   "orphan_deal_audit": "jsonb",
   "owner_daily_overview": "jsonb",
+  "owner_licensed_leads_board": "jsonb",
   "owner_monday_rollcall": "jsonb",
   "owner_monday_rollcall_mark": "jsonb",
   "owner_monday_rollcall_set_states": "jsonb",

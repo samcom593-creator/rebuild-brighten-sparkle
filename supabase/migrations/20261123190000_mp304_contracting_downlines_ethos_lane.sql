@@ -847,6 +847,33 @@ begin
          agent_id = coalesce(agent_id, v_existing), updated_at = now()
    where id = v_intake;
 
+  -- A replay lands on an intake whose Ethos leg may be DORMANT: parked 'not_configured' from the months with no
+  -- credential, or 'delivered' with written=false (a Level-8-era "already present" that says nothing about MGN's
+  -- sheet). The core's ON CONFLICT DO NOTHING keeps those as they are, so a manager's fresh submission would never
+  -- reach the sheet. Revive the leg and its outbox event; a needs_review intake stays held for a person.
+  if (v_core->>'status') <> 'needs_review' then
+    update public.contracting_intake_deliveries d
+       set state = 'queued', last_error_redacted = null, updated_at = now()
+     where d.intake_id = v_intake and d.destination = 'ethos_sheet'
+       and (d.state in ('not_configured', 'failed', 'dead_letter')
+            or (d.state = 'delivered' and coalesce(d.receipt->>'written', '') <> 'true'));
+    if found then
+      -- Never reset an old event: delivery_attempts is keyed on the event, so a reset event collides with the
+      -- attempt it already made (proven live 2026-11-23: 16 revived legs failed on that unique key). Retire the
+      -- old event and queue a FRESH one; one live pending event per leg.
+      update public.outbox_events o
+         set status = 'cancelled_retired', processed_at = now(), locked_at = null, last_error_redacted = 'superseded by a fresh event (MP-304 revive)', updated_at = now()
+       where o.aggregate_type = 'contracting_intake' and o.aggregate_id = v_intake and o.destination = 'ethos_sheet'
+         and o.status in ('failed', 'manual_action_required', 'dead_letter', 'delivered', 'skipped_destination_dead');
+      if not exists (select 1 from public.outbox_events o where o.aggregate_type = 'contracting_intake' and o.aggregate_id = v_intake and o.destination = 'ethos_sheet' and o.status in ('pending', 'processing')) then
+        insert into public.outbox_events (aggregate_type, aggregate_id, event_type, destination, payload, idempotency_key)
+        values ('contracting_intake', v_intake, 'contracting_intake_submitted', 'ethos_sheet',
+                jsonb_build_object('intake_id', v_intake, 'destination', 'ethos_sheet', 'revived', true),
+                'contracting-' || v_intake::text || '-ethos_sheet-r' || extract(epoch from clock_timestamp())::bigint::text);
+      end if;
+    end if;
+  end if;
+
   -- Leadership approval + manager attestation. Verified_at fields are never touched here: attested is attested.
   insert into public.contracting_ethos_approvals (
       intake_id, legal_first_name, legal_last_name, contact_confirmed_at, contact_confirmed_by, owner_name,
@@ -891,7 +918,7 @@ begin
 
   return jsonb_build_object('ok', true, 'verdict', 'ok', 'dry_run', false,
     'intake_id', v_intake, 'agent_id', v_existing, 'replay', v_core->'replay', 'intake_status', v_core->>'status',
-    'delivery', case when (v_core->>'status') = 'needs_review' then 'manual_review' else 'queued' end,
+    'delivery', coalesce((select d.state from public.contracting_intake_deliveries d where d.intake_id = v_intake and d.destination = 'ethos_sheet'), case when (v_core->>'status') = 'needs_review' then 'manual_review' else 'queued' end),
     'upline_id', v_upline, 'upline_name', v_upline_name, 'sub_agency', v_label,
     'comp_pct', v_pct, 'level', v_level, 'advance', '6 Month Advance', 'request_type', v_rt,
     'email', v_email, 'phone', v_phone, 'npn', v_npn, 'review', v_review);

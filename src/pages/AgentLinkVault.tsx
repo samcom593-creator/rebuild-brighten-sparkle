@@ -17,6 +17,7 @@ import {
   Briefcase,
   Search,
   RefreshCw,
+  AlertTriangle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -56,6 +57,38 @@ function matches(haystack: unknown, q: string): boolean {
   return String(haystack ?? "").toLowerCase().includes(q.toLowerCase());
 }
 
+// Shared feed-error state for every panel on this page. This is the agency's
+// DATA-RECOVERY vault — its whole promise (see the page subtitle: "if upstream
+// goes silent, every record still lives here") is that the book survives an
+// AgentLink outage. So a query that ERRORS must never render as an empty book
+// or a confident "0 records" / "$0 ALP": the one surface built to prove the
+// data is safe would become the surface swearing it is gone. That is the exact
+// 465-InsuraCloud fake-success class the render-health guard pins — a dead feed
+// read as a believable zero. Every panel here throws its query error and
+// renders this card BEFORE any empty/zero state.
+function VaultFeedError({ label, onRetry }: { label: string; onRetry?: () => void }) {
+  return (
+    <Card className="rounded-md border border-rose-500/30 bg-gradient-to-br from-rose-500/10 via-rose-500/5 to-transparent">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-sm text-rose-300">
+          <AlertTriangle className="h-4 w-4" /> {label} — feed error, not an empty book
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="text-xs text-muted-foreground space-y-2">
+        <p>
+          This panel could not load from the mirror. The records are not gone — the
+          query failed. Do not read this as 0.
+        </p>
+        {onRetry && (
+          <Button variant="outline" size="sm" onClick={onRetry}>
+            <RefreshCw className="h-3 w-3 mr-1.5" /> Retry
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Overview ──────────────────────────────────────────────────────────────
 // wave-p1p 2026-07-25: every count was `select("id").length`, which PostgREST
 // silently caps at max-rows (default 1000). The tiles below render "Deals",
@@ -85,21 +118,10 @@ function matches(haystack: unknown, q: string): boolean {
 // a "deals" number. Same two-sources-one-surface class as the week-over-week
 // percentage in 48960091.
 function OverviewPanel() {
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["alvault-overview"],
     queryFn: async () => {
-      const [
-        bookLive,
-        bookDead,
-        clientsTotal,
-        contractsTotal,
-        contractsActive,
-        agentsTotal,
-        agentsActive,
-        carriersTotal,
-        truth,
-        vault,
-      ] = await Promise.all([
+      const results = await Promise.all([
         // `not("is_dead","is",true)` is PostgREST for `is_dead IS NOT TRUE` —
         // matches false AND null, exactly the predicate v_agentlink_book_truth
         // uses. `.eq("is_dead", false)` would silently drop the null rows.
@@ -117,6 +139,25 @@ function OverviewPanel() {
           .maybeSingle(),
         supabase.from("agentlink_raw_exports" as any).select("id, endpoint, captured_at").order("captured_at", { ascending: false }).limit(1),
       ]);
+      // Supabase RESOLVES (does not reject) on a query-level error — a dropped
+      // view, renamed column, or RLS change comes back as { count: null, error }.
+      // Without this throw, every `.count ?? 0` below silently became a confident
+      // 0 and the whole book read as wiped. Surface the first error so the query
+      // enters its error state and the panel renders VaultFeedError, not zeros.
+      const firstError = (results as Array<{ error?: unknown }>).find((r) => r?.error)?.error;
+      if (firstError) throw firstError;
+      const [
+        bookLive,
+        bookDead,
+        clientsTotal,
+        contractsTotal,
+        contractsActive,
+        agentsTotal,
+        agentsActive,
+        carriersTotal,
+        truth,
+        vault,
+      ] = results;
       const truthRow = truth.data as { total_annual_premium?: number | string | null } | null;
       const totalAlpRaw = truthRow?.total_annual_premium;
       const totalAlp = totalAlpRaw == null ? null : Number(totalAlpRaw);
@@ -136,6 +177,7 @@ function OverviewPanel() {
     refetchInterval: 300_000,
   });
 
+  if (isError) return <VaultFeedError label="Overview" onRetry={() => refetch()} />;
   if (isLoading || !data) return <PageLoadingSkeleton />;
   // Group cards by domain for visual hierarchy. Each domain gets its own
   // color spectrum so admin can scan in seconds: financial → emerald,
@@ -200,19 +242,21 @@ function OverviewPanel() {
 // ─── Agents ───────────────────────────────────────────────────────────────
 function AgentsPanel() {
   const [q, setQ] = useState("");
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["alvault-agents"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("agentlink_agents" as any)
         .select("insuracloud_user_id, email, first_name, last_name, phone_number, npn_number, account_status, is_producer_active, state, contract_count, team_size, joined_date, last_sign_in_at, ssn_last4, date_of_birth")
         .order("last_name", { ascending: true });
+      if (error) throw error;
       return (data as AnyRow[] | null) ?? [];
     },
   });
   const rows = useMemo(() => (data ?? []).filter((r) =>
     !q || matches(r.email, q) || matches(r.first_name, q) || matches(r.last_name, q) || matches(r.npn_number, q) || matches(r.state, q),
   ), [data, q]);
+  if (isError) return <VaultFeedError label="Agents" onRetry={() => refetch()} />;
   if (isLoading) return <PageLoadingSkeleton />;
   return (
     <div className="space-y-3">
@@ -265,20 +309,22 @@ function AgentsPanel() {
 // ─── Clients ──────────────────────────────────────────────────────────────
 function ClientsPanel() {
   const [q, setQ] = useState("");
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["alvault-clients"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("agentlink_clients" as any)
         .select("insuracloud_pipeline_client_id, first_name, last_name, phone, email, date_of_birth, pipeline_stage, insuracloud_user_id, agent_id")
         .order("last_name", { ascending: true })
         .limit(2000);
+      if (error) throw error;
       return (data as AnyRow[] | null) ?? [];
     },
   });
   const rows = useMemo(() => (data ?? []).filter((r) =>
     !q || matches(r.first_name, q) || matches(r.last_name, q) || matches(r.phone, q) || matches(r.email, q),
   ), [data, q]);
+  if (isError) return <VaultFeedError label="Clients" onRetry={() => refetch()} />;
   if (isLoading) return <PageLoadingSkeleton />;
   return (
     <div className="space-y-3">
@@ -325,20 +371,22 @@ function ClientsPanel() {
 // ─── Contracts ────────────────────────────────────────────────────────────
 function ContractsPanel() {
   const [q, setQ] = useState("");
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["alvault-contracts"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("agentlink_contracts" as any)
         .select("insuracloud_contract_id, writing_number, secondary_writing_number, contract_number, status, commission_level, activated_date, insuracloud_user_id, insuracloud_carrier_id")
         .order("activated_date", { ascending: false, nullsFirst: false })
         .limit(2000);
+      if (error) throw error;
       return (data as AnyRow[] | null) ?? [];
     },
   });
   const rows = useMemo(() => (data ?? []).filter((r) =>
     !q || matches(r.writing_number, q) || matches(r.contract_number, q) || matches(r.commission_level, q),
   ), [data, q]);
+  if (isError) return <VaultFeedError label="Contracts" onRetry={() => refetch()} />;
   if (isLoading) return <PageLoadingSkeleton />;
   return (
     <div className="space-y-3">
@@ -388,13 +436,14 @@ function ContractsPanel() {
 
 // ─── Binary documents (admin) ─────────────────────────────────────────────
 function BinariesPanel() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["alvault-binaries"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("agentlink_binary_docs" as any)
         .select("id, doc_kind, content_type, byte_size, captured_at, agent_id, insuracloud_user_id")
         .order("captured_at", { ascending: false });
+      if (error) throw error;
       return (data as AnyRow[] | null) ?? [];
     },
   });
@@ -415,6 +464,7 @@ function BinariesPanel() {
     a.click();
     URL.revokeObjectURL(url);
   };
+  if (isError) return <VaultFeedError label="Binaries" onRetry={() => refetch()} />;
   if (isLoading) return <PageLoadingSkeleton />;
   return (
     <div className="space-y-3">
@@ -457,17 +507,19 @@ function BinariesPanel() {
 
 // ─── Raw vault ────────────────────────────────────────────────────────────
 function VaultPanel() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["alvault-raw"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("agentlink_raw_exports" as any)
         .select("id, endpoint, upstream_status, row_count, captured_at, sync_run_id")
         .order("captured_at", { ascending: false })
         .limit(500);
+      if (error) throw error;
       return (data as AnyRow[] | null) ?? [];
     },
   });
+  if (isError) return <VaultFeedError label="Raw Vault" onRetry={() => refetch()} />;
   if (isLoading) return <PageLoadingSkeleton />;
   return (
     <div className="space-y-3">

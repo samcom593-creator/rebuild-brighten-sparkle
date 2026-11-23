@@ -255,6 +255,22 @@ const PRIMARY_FEED_MANIFEST = [
   // feed-error card gated BEFORE the rows/empty-state, so the fake "$0 team MTD / no
   // production this month" can never render on an error.
   "src/components/dashboard/Target20kPaceWidget.tsx", // command-center $20K pace board — data ?? [] with no error signal rendered "$0 team MTD · 0 hit $20K · No production data yet this month" on a dead v_agent_20k_target_leaderboard view
+  // MP-WIB-ADMIN-RENDER-HEALTH wave 21 (2026-11-23). AgentLinkVault
+  // (/dashboard/agentlink-vault, admin-only) is the agency's DATA-RECOVERY vault —
+  // its own subtitle promises "if upstream goes silent, every record still lives
+  // here." All SIX of its panels carried the scanner-blind bug, and in a NEW shape:
+  // OverviewPanel's queryFn ran its count/ALP sub-queries inside Promise.all and
+  // read each as `.count ?? 0` WITHOUT surfacing the per-query error — and Supabase
+  // RESOLVES (does not reject) on a query-level error (dropped view, renamed column,
+  // RLS change). So a dead v_agentlink_book_scoped / agentlink_* feed made every
+  // tile silently render "0 policies · 0 clients · 0 contracts · 0 downline agents ·
+  // 0 carriers": the whole book read as WIPED on the one surface built to prove it is
+  // safe. The five list panels (Agents/Clients/Contracts/Binaries/Raw Vault) swallowed
+  // `error` entirely (`const { data } = await supabase…`) → empty table + "0" badges
+  // on a dead feed. Now every queryFn throws its error (Overview throws the first
+  // sub-query error) and every panel early-returns a shared VaultFeedError card gated
+  // BEFORE any empty/zero state, so a dead mirror can never read as an empty book.
+  "src/pages/AgentLinkVault.tsx", // admin data-recovery vault — Promise.all `.count ?? 0` + list `?? []` with no error signal rendered "0 policies / 0 clients / empty book" on a dead agentlink_* feed
 ];
 
 // ── NEGATION_PRIMARY_MANIFEST: the deceptive-truthiness (!alias) variant ──
@@ -272,6 +288,12 @@ const PRIMARY_FEED_MANIFEST = [
 // enabled/loading guards (`enabled: !!x`, `if (!rows) …`). Held at ZERO.
 const NEGATION_PRIMARY_MANIFEST = [
   "src/components/dashboard/AgentPeerAndChargebackCards.tsx", // agent command dashboard chargeback ledger — `!data` read a dead v_agent_charge_rollup as a confident green "Clean — no flags"
+  // MP-WIB-ADMIN-RENDER-HEALTH wave 21 (2026-11-23). AgentLinkVault — see the full
+  // doctrine on this file in PRIMARY_FEED_MANIFEST above. Its OverviewPanel also
+  // negates its query result (`if (isLoading || !data)`) with no error signal, so it
+  // is pinned in BOTH manifests: the negation detector guards the `!data` path and
+  // the coalesce detector guards the five list panels' `?? []`. Held at ZERO on both.
+  "src/pages/AgentLinkVault.tsx", // admin data-recovery vault — `!data` + `?? []` across 6 panels read a dead agentlink_* feed as an empty book
 ];
 
 const ERROR_SIGNALS = ["isError", "isLoadingError", "status", "error"];

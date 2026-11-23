@@ -108,7 +108,7 @@ const chipClass = (active: boolean, extra?: string) => cn(
 );
 const policies = (n: number) => `${n.toLocaleString()} ${n === 1 ? "policy" : "policies"}`;
 
-export default function BookFlips() {
+export default function BookFlips({ embedded = false }: { embedded?: boolean } = {}) {
   const [params, setParams] = useSearchParams();
   const { canView: seesSoldCalls } = useCanViewSoldCalls();
   const carrier = params.get("carrier") || PRIORITY_CARRIERS[0].carrier;
@@ -334,14 +334,16 @@ export default function BookFlips() {
   ) : undefined;
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-4 px-4 pb-24 pt-4 sm:px-6">
-      <PageHeader
-        eyebrow="My Business"
-        icon={<PhoneCall />}
-        tone="good"
-        title="Book Flips"
-        subtitle="Save a policy or rewrite it, best first."
-      />
+    <div className={embedded ? "space-y-4" : "mx-auto w-full max-w-6xl space-y-4 px-4 pb-24 pt-4 sm:px-6"}>
+      {!embedded && (
+        <PageHeader
+          eyebrow="My Business"
+          icon={<PhoneCall />}
+          tone="good"
+          title="Book Flips"
+          subtitle="Save a policy or rewrite it, best first."
+        />
+      )}
 
       <div className="space-y-2">
         <nav ref={carrierNavRef} aria-label="Carrier" className="relative -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">

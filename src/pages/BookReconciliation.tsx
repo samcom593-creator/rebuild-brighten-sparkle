@@ -9,7 +9,8 @@
 //   Quality Score — per-agent quality ranking
 //   Ingest — paste in the carrier portal export
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, lazy, Suspense } from "react";
+const BookFlips = lazy(() => import("./BookFlips"));
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
@@ -418,7 +419,15 @@ export default function BookReconciliation() {
           <TabsTrigger value="falloff" className="gap-1.5"><AlertCircle className="h-3.5 w-3.5" /> Falloff watch <Badge variant="outline" className="ml-1">{falloff.data?.length ?? 0}</Badge></TabsTrigger>
           <TabsTrigger value="quality" className="gap-1.5"><Trophy className="h-3.5 w-3.5" /> Agent quality <Badge variant="outline" className="ml-1">{quality.data?.length ?? 0}</Badge></TabsTrigger>
           <TabsTrigger value="all" className="gap-1.5"><BookMarked className="h-3.5 w-3.5" /> Full book <Badge variant="outline" className="ml-1">{recon.data?.length ?? 0}</Badge></TabsTrigger>
+          <TabsTrigger value="flips" className="gap-1.5"><RefreshCw className="h-3.5 w-3.5" /> Book Flips</TabsTrigger>
         </TabsList>
+
+        {/* BOOK FLIPS (merged in from /dashboard/books so the rewrite worklist lives on the reconciliation hub) */}
+        <TabsContent value="flips" className="mt-4">
+          <Suspense fallback={<SkelList />}>
+            <BookFlips embedded />
+          </Suspense>
+        </TabsContent>
 
         {/* RECOVERY */}
         <TabsContent value="recovery" className="mt-4 space-y-2">

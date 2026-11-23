@@ -1157,7 +1157,8 @@ returns table (
     a.status::text, a.manager_id, coalesce(mp.full_name, m.display_name),
     lvl.pct, lvl.provenance, case when lvl.pct is null then null else public.fn_ethos_level_for_pct(lvl.pct) end,
     ik.status, d.state, d.last_error_redacted, d.delivered_at,
-    (r.row_number is not null), r.comp_level, r.sub_agency, r.row_number,
+    -- on_sheet = WE wrote it to MGN's sheet and read it back (receipt written=true); the Level 8 mirror is history.
+    coalesce((d.receipt->>'written') = 'true', false) or (r.row_number is not null), coalesce((d.receipt->>'layout'), r.comp_level), r.sub_agency, coalesce((d.receipt->>'row')::int, r.row_number),
     upd.status, upd.created_at
   from scope s
   join public.agents a on a.id = s.id and a.status <> 'terminated' and not coalesce(a.is_deactivated, false)

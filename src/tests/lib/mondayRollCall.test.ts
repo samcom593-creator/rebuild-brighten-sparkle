@@ -3,6 +3,8 @@ import {
   hiredLabel,
   interviewLine,
   leadsLine,
+  linkLine,
+  sentLinkNoProduction,
   mondayLabel,
   needsList,
   notInterviewed,
@@ -47,7 +49,7 @@ function row(over: Partial<RollCallRow> = {}): RollCallRow {
 
 describe("mondayRollCall: who to call first", () => {
   it("an interview that was not held outranks everyone, even a newer hire", () => {
-    const missed = row({ agent_id: "m", name: "Missed", how_hired: "self_enrolled", interview_state: "missed", hired_at: "2026-11-01T00:00:00Z", this_week: false });
+    const missed = row({ agent_id: "m", name: "Missed", how_hired: "self_enrolled", interview_state: "missed", interview_at: new Date(Date.now() - 2 * 86_400_000).toISOString(), hired_at: "2026-11-01T00:00:00Z", this_week: false });
     const fresh = row({ agent_id: "f", name: "Fresh", hired_at: "2026-11-22T00:00:00Z" });
     expect(sortRollCall([fresh, missed]).map((r) => r.agent_id)).toEqual(["m", "f"]);
   });
@@ -62,7 +64,7 @@ describe("mondayRollCall: who to call first", () => {
     expect(rollCallRank(row({ interview_state: "missed", mark: "confirmed" }))).toBeGreaterThan(rollCallRank(row()));
   });
 
-  it("this week's hires come before older ones, newest first inside a group", () => {
+  it("people with nothing special about them are listed newest hire first", () => {
     const older = row({ agent_id: "old", this_week: false, hired_at: "2026-10-15T00:00:00Z" });
     const a = row({ agent_id: "a", hired_at: "2026-11-19T00:00:00Z" });
     const b = row({ agent_id: "b", hired_at: "2026-11-22T00:00:00Z" });
@@ -143,7 +145,7 @@ describe("mondayRollCall: header counts", () => {
       row({ mark: "showed", live_leads: 10 }),
       row({ mark: "no_show" }),
     ]);
-    expect(s).toEqual({ total: 6, confirmed: 1, toCall: 2, cantMake: 1, showed: 1, noShow: 1, notInterviewed: 1, noLeadsYet: 3 });
+    expect(s).toEqual({ total: 6, confirmed: 1, toCall: 2, cantMake: 1, showed: 1, noShow: 1, notInterviewed: 1, noLeadsYet: 3, linkNoProduction: 0 });
     expect(s.confirmed + s.toCall + s.cantMake + s.showed + s.noShow).toBe(s.total);
   });
 });
@@ -170,5 +172,88 @@ describe("mondayRollCall: a number that cannot be dialed", () => {
     const needs = needsList(row({ phone: "1480555010" }));
     expect(needs).toContain("Phone on file is missing a digit: get the right number");
     expect(needs).not.toContain("No phone on file");
+  });
+});
+
+describe("mondayRollCall: people who were sent the link and are not producing come first", () => {
+  const linked = (over: Partial<RollCallRow> = {}) =>
+    row({ producing: false, via_hire_link: true, link_sent_at: "2026-11-20T17:00:00Z", link_opened_at: null, contracts_on_file: 0, ...over });
+
+  it("knows who they are: no production, and a hire link, an emailed link or an opened link", () => {
+    expect(sentLinkNoProduction(linked())).toBe(true);
+    expect(sentLinkNoProduction(linked({ via_hire_link: false }))).toBe(true);
+    expect(sentLinkNoProduction(linked({ via_hire_link: false, link_sent_at: null, link_opened_at: "2026-11-13T00:00:00Z" }))).toBe(true);
+    expect(sentLinkNoProduction(linked({ via_hire_link: false, link_sent_at: null }))).toBe(false);
+    expect(sentLinkNoProduction(linked({ producing: true }))).toBe(false);
+    // a payload from before the fields existed prioritizes nobody
+    expect(sentLinkNoProduction(row())).toBe(false);
+  });
+
+  it("a licensed one outranks an interview still to hold and an ordinary recent hire, but not a missed interview", () => {
+    const order = sortRollCall([
+      row({ agent_id: "plain", hired_at: "2026-11-22T00:00:00Z" }),
+      row({ agent_id: "upcoming", interview_state: "upcoming" }),
+      linked({ agent_id: "link", hired_at: "2026-09-01T00:00:00Z", this_week: false }),
+      row({ agent_id: "missed", interview_state: "missed" }),
+    ]).map((r) => r.agent_id);
+    expect(order).toEqual(["missed", "link", "upcoming", "plain"]);
+  });
+
+  it("an unlicensed one sits below the licensed group and above ordinary rows", () => {
+    const order = sortRollCall([
+      row({ agent_id: "plain" }),
+      linked({ agent_id: "unlicensed", licensed: false, license_step: "course_started" }),
+      linked({ agent_id: "licensed" }),
+    ]).map((r) => r.agent_id);
+    expect(order).toEqual(["licensed", "unlicensed", "plain"]);
+  });
+
+  it("inside the group the most recent sign-in is first, never-signed-in last", () => {
+    const order = sortRollCall([
+      linked({ agent_id: "never", last_sign_in_at: null, hired_at: "2026-11-22T00:00:00Z" }),
+      linked({ agent_id: "old", last_sign_in_at: "2026-09-01T00:00:00Z" }),
+      linked({ agent_id: "fresh", last_sign_in_at: "2026-11-22T10:00:00Z", hired_at: "2026-08-01T00:00:00Z" }),
+    ]).map((r) => r.agent_id);
+    expect(order).toEqual(["fresh", "old", "never"]);
+  });
+
+  it("someone already confirmed or already producing no longer leads the list", () => {
+    expect(rollCallRank(linked({ mark: "confirmed" }))).toBeGreaterThan(rollCallRank(row()));
+    expect(rollCallRank(linked({ producing: true }))).toBe(rollCallRank(row()));
+  });
+
+  it("says where each one stands on the link", () => {
+    expect(linkLine(linked())).toBe("Contracting link emailed Nov 20, not opened · no carrier contract on file · no production yet");
+    expect(linkLine(linked({ link_opened_at: "2026-11-13T18:00:00Z", contracts_on_file: 1 }))).toBe("Contracting link opened Nov 13 · 1 carrier contract on file · no production yet");
+    expect(linkLine(linked({ link_sent_at: null, contracts_on_file: 4 }))).toBe("Joined through the hire link · 4 carrier contracts on file · no production yet");
+    expect(linkLine(linked({ licensed: false }))).toBe("Joined through the hire link · not licensed yet");
+    expect(linkLine(linked({ producing: true }))).toBeNull();
+    expect(linkLine(row())).toBeNull();
+  });
+
+  it("the header counts them", () => {
+    expect(summarize([linked(), linked({ licensed: false }), row(), linked({ producing: true })]).linkNoProduction).toBe(2);
+  });
+});
+
+describe("mondayRollCall: an old missed interview does not outrank this week's people", () => {
+  const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
+
+  it("a call missed two days ago leads; one missed six weeks ago falls back into the ordinary order", () => {
+    expect(rollCallRank(row({ interview_state: "missed", interview_at: daysAgo(2) }))).toBe(0);
+    expect(rollCallRank(row({ interview_state: "missed", interview_at: daysAgo(44) }))).toBeGreaterThan(0);
+    // no time on file: treat it as recent rather than bury someone who may be waiting
+    expect(rollCallRank(row({ interview_state: "missed", interview_at: null }))).toBe(0);
+  });
+
+  it("an old missed interview on a licensed link person ranks with the link group", () => {
+    const old = row({ interview_state: "missed", interview_at: daysAgo(44), producing: false, link_sent_at: daysAgo(3) });
+    expect(rollCallRank(old)).toBe(1);
+  });
+
+  it("the new lead-standing words read plainly", () => {
+    expect(leadsLine(row({ leads_state: "ready" }))).toBe("Gets 25 leads at the next hourly run");
+    expect(leadsLine(row({ leads_state: "has_leads" }))).toBe("Holds leads");
+    expect(leadsLine(row({ leads_state: "no_login" }))).toBe("No leads: no portal login");
   });
 });

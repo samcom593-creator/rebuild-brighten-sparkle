@@ -22,6 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { errorMessage } from "@/lib/queryState";
 import { formatPhoneDisplay, startPhoneCall, startSmsThread } from "@/lib/phone";
+import { contractingLink, smsBody } from "@/lib/contractingRequests";
 import {
   BEFORE_MARKS,
   DAY_OF_MARKS,
@@ -29,6 +30,7 @@ import {
   hiredLabel,
   interviewLine,
   leadsLine,
+  linkLine,
   mondayLabel,
   needsList,
   notInterviewed,
@@ -45,7 +47,7 @@ import { LICENSED_LEADS_QUERY_KEY, leadsReplyLine, type LeadsReply } from "@/lib
 type RpcFn<T> = (fn: string, args?: Record<string, unknown>) => Promise<{ data: T | null; error: { message: string } | null }>;
 
 const QUERY_KEY = ["owner-monday-rollcall"] as const;
-const FIRST_SHOWN = 8;
+const FIRST_SHOWN = 12;
 
 const MARK_TONE: Record<RollCallMark, string> = {
   confirmed: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
@@ -95,6 +97,7 @@ function PersonRow({
   const marks = isToday ? [...DAY_OF_MARKS, ...BEFORE_MARKS] : BEFORE_MARKS;
   const needsState = row.licensed && !(row.license_states && row.license_states.length);
   const canDial = phoneUsable(row.phone);
+  const link = linkLine(row);
   return (
     <li className="rounded-xl border border-border bg-background/40 p-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -117,6 +120,7 @@ function PersonRow({
               {interview}
             </p>
           )}
+          {link && <p className="text-[13px] font-semibold leading-5 text-foreground">{link}</p>}
           {needs.length > 0 && <p className="text-[13px] leading-5 text-foreground">Needs: {needs.join(" · ")}</p>}
           <p className="text-[13px] leading-5 text-muted-foreground">{leadsLine(row)}</p>
           {!canDial && row.email && <p className="break-all text-[13px] leading-5 text-foreground">Email: {row.email}</p>}
@@ -159,6 +163,18 @@ function PersonRow({
         {notInterviewed(row) && (
           <Button size="sm" variant="outline" disabled={busy} onClick={() => onMark("interviewed")}>
             Interviewed
+          </Button>
+        )}
+        {link && row.licensed && canDial && (
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => {
+              // Opens the owner's own messages app with the contracting link written out; nothing is sent for him.
+              if (!startSmsThread(row.phone, smsBody(row.name, row.contracting_link ?? contractingLink()))) toast.error("That number cannot be texted");
+            }}
+          >
+            Text the link
           </Button>
         )}
       </div>
@@ -215,7 +231,8 @@ export function MondayRollCall() {
             {query.data?.monday ? `Call list for ${mondayLabel(query.data.monday)}` : "Call list for Monday"}
           </h2>
           <p className="text-[13px] leading-5 text-muted-foreground">
-            Everyone hired in the last 45 days. Call each one, then tap the result.
+            People who were sent the link and are not producing yet come first, then every hire of the last 45 days.
+            Call each one, then tap the result.
           </p>
         </div>
         {rows.length > 0 && (
@@ -236,13 +253,14 @@ export function MondayRollCall() {
         </p>
       )}
       {!query.isLoading && !query.isError && rows.length === 0 && (
-        <p className="mt-4 text-sm text-muted-foreground">Nobody was hired in the last 45 days.</p>
+        <p className="mt-4 text-sm text-muted-foreground">Nobody to call: no recent hires and nobody waiting on a link.</p>
       )}
 
       {rows.length > 0 && (
         <>
-          {(summary.notInterviewed > 0 || summary.noLeadsYet > 0) && (
+          {(summary.linkNoProduction > 0 || summary.notInterviewed > 0 || summary.noLeadsYet > 0) && (
             <p className="mt-3 text-[13px] leading-5 text-foreground">
+              {summary.linkNoProduction > 0 && `${summary.linkNoProduction} were sent the link and have no production. `}
               {summary.notInterviewed > 0 && `${summary.notInterviewed} not interviewed yet. `}
               {summary.noLeadsYet > 0 && `${summary.noLeadsYet} licensed with no leads in hand.`}
             </p>

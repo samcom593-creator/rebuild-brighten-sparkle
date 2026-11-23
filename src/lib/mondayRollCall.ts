@@ -1,7 +1,8 @@
 /**
  * Monday roll call (MP-MONDAY-ROLLCALL, 2026-11-22): the rules behind the owner Home card.
  *
- * Source: owner_monday_rollcall(). One row per hire of the last 45 days. This file decides the
+ * Source: owner_monday_rollcall(). One row per hire of the last 45 days, plus anyone who was sent a
+ * hire or contracting link and has no production (MP-ROLLCALL-LINK, 2026-11-23). This file decides the
  * order to call in, what each person still needs before the meeting, and what the header counts.
  * It is pure so the order and the wording are testable without a browser.
  */
@@ -39,6 +40,13 @@ export interface RollCallRow {
   mark_note: string | null;
   marked_at: string | null;
   marked_by: string | null;
+  /** MP-ROLLCALL-LINK. Absent on a payload from before 2026-11-23, so every reader treats missing as "no". */
+  producing?: boolean;
+  via_hire_link?: boolean;
+  link_sent_at?: string | null;
+  link_opened_at?: string | null;
+  contracts_on_file?: number;
+  contracting_link?: string | null;
 }
 
 export interface RollCallPayload {
@@ -143,7 +151,11 @@ export function leadsLine(row: RollCallRow): string {
   if (row.live_leads > 0) return `${row.live_leads} leads in My Leads`;
   switch (row.leads_state) {
     case "ready":
-      return "Gets a 25-lead starter pack at the next hourly run";
+      return "Gets 25 leads at the next hourly run";
+    case "has_leads":
+      return "Holds leads";
+    case "no_login":
+      return "No leads: no portal login";
     case "license_state_unknown":
       return "No leads until a license state is on file";
     case "not_interviewed_yet":
@@ -164,26 +176,79 @@ export function leadsLine(row: RollCallRow): string {
   }
 }
 
+/** "Nov 20" in Arizona time. */
+export function phoenixDay(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return new Intl.DateTimeFormat("en-US", { timeZone: PHOENIX, month: "short", day: "numeric" }).format(d);
+}
+
+/**
+ * Sam, 2026-11-23: "prioritize the people we've sent that Galaxy link, we just haven't got production or they
+ * haven't been onboarded." True for someone with no production who came in through a hire link, was emailed
+ * the contracting link, or opened it.
+ */
+export function sentLinkNoProduction(row: RollCallRow): boolean {
+  if (row.producing) return false;
+  return Boolean(row.via_hire_link || row.link_sent_at || row.link_opened_at);
+}
+
+/** Where this person stands on the link they were sent. Null for someone already producing. */
+export function linkLine(row: RollCallRow): string | null {
+  if (row.producing || !sentLinkNoProduction(row)) return null;
+  if (!row.licensed) return "Joined through the hire link · not licensed yet";
+  const link = row.link_opened_at
+    ? `Contracting link opened ${phoenixDay(row.link_opened_at)}`
+    : row.link_sent_at
+      ? `Contracting link emailed ${phoenixDay(row.link_sent_at)}, not opened`
+      : "Joined through the hire link";
+  const n = row.contracts_on_file ?? 0;
+  const contracts = n === 0 ? "no carrier contract on file" : `${n} carrier contract${n === 1 ? "" : "s"} on file`;
+  return `${link} · ${contracts} · no production yet`;
+}
+
 /**
  * Call order. An interview that was not held comes first because that person is owed a call.
- * Then people nobody has reached, this week's hires before older ones. People already
- * confirmed sink; "can't make it" sits last because the call was made and answered.
+ * Then the licensed people who were sent the link and are not producing: they can write the
+ * day their contract lands. Then an interview still to hold, then people who joined through
+ * the link and are not licensed yet. People already confirmed sink; "can't make it" sits low
+ * because the call was made and answered.
  */
 export function rollCallRank(row: RollCallRow): number {
-  if (row.mark === "showed") return 8;
+  if (row.mark === "showed") return 9;
+  if (row.mark === "cant_make_it") return 8;
+  if (row.mark === "confirmed") return 7;
   if (row.mark === "no_show") return 3;
-  if (row.mark === "cant_make_it") return 7;
-  if (row.mark === "confirmed") return 6;
-  if (row.interview_state === "missed") return 0;
-  if (row.mark === "no_answer" || row.mark === "texted") return 4;
-  if (row.interview_state === "upcoming" || row.interview_state === "never") return 1;
-  return row.this_week ? 2 : 5;
+  if (row.interview_state === "missed" && interviewIsRecent(row)) return 0;
+  if (row.mark === "no_answer" || row.mark === "texted") return 5;
+  if (row.licensed && sentLinkNoProduction(row)) return 1;
+  if (row.interview_state === "upcoming" || row.interview_state === "never") return 2;
+  if (sentLinkNoProduction(row)) return 4;
+  return 6;
 }
+
+/**
+ * A call missed in the last two weeks is a person still waiting on you. One missed in October is a
+ * record nobody closed: it stays on the list with its note, but it does not outrank this week's people.
+ */
+function interviewIsRecent(row: Pick<RollCallRow, "interview_at">): boolean {
+  if (!row.interview_at) return true;
+  const at = new Date(row.interview_at).getTime();
+  return Number.isNaN(at) || Date.now() - at < 14 * 86_400_000;
+}
+
+const signedIn = (r: RollCallRow) => (r.last_sign_in_at ? new Date(r.last_sign_in_at).getTime() : 0);
 
 export function sortRollCall(rows: readonly RollCallRow[]): RollCallRow[] {
   return [...rows].sort((a, b) => {
     const rank = rollCallRank(a) - rollCallRank(b);
     if (rank !== 0) return rank;
+    // Inside the link group, whoever used the portal most recently is the likeliest to pick up and move today.
+    if (rollCallRank(a) === 1) {
+      const recent = signedIn(b) - signedIn(a);
+      if (recent !== 0) return recent;
+    }
     const hired = new Date(b.hired_at).getTime() - new Date(a.hired_at).getTime();
     if (hired !== 0) return hired;
     return a.name.localeCompare(b.name);
@@ -199,10 +264,12 @@ export interface RollCallSummary {
   noShow: number;
   notInterviewed: number;
   noLeadsYet: number;
+  /** Sent a hire or contracting link, no production on file. */
+  linkNoProduction: number;
 }
 
 export function summarize(rows: readonly RollCallRow[]): RollCallSummary {
-  const s: RollCallSummary = { total: rows.length, confirmed: 0, toCall: 0, cantMake: 0, showed: 0, noShow: 0, notInterviewed: 0, noLeadsYet: 0 };
+  const s: RollCallSummary = { total: rows.length, confirmed: 0, toCall: 0, cantMake: 0, showed: 0, noShow: 0, notInterviewed: 0, noLeadsYet: 0, linkNoProduction: 0 };
   for (const r of rows) {
     if (r.mark === "confirmed") s.confirmed += 1;
     else if (r.mark === "cant_make_it") s.cantMake += 1;
@@ -211,6 +278,7 @@ export function summarize(rows: readonly RollCallRow[]): RollCallSummary {
     else s.toCall += 1;
     if (notInterviewed(r)) s.notInterviewed += 1;
     if (r.licensed && r.live_leads === 0) s.noLeadsYet += 1;
+    if (sentLinkNoProduction(r)) s.linkNoProduction += 1;
   }
   return s;
 }

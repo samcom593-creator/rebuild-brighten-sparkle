@@ -25,6 +25,7 @@ import { dropOwnerMuted, loadOwnerMute, REFUSED_OWNER_MUTED, type OwnerMutePolic
 
 export const REFUSED_SUPPRESSED = "suppressed_recipient";
 export const REFUSED_NON_ROUTABLE = "non_routable_recipient";
+export const REFUSED_MALFORMED = "malformed_recipient";
 
 const GATED = Symbol.for("apex.resendGate");
 
@@ -44,6 +45,11 @@ export function addressOf(recipient: unknown): string {
   const s = String(recipient ?? "").trim();
   const m = s.match(/<([^<>]+)>\s*$/);
   return (m ? m[1] : s).trim().toLowerCase();
+}
+
+/** True when the recipient carries something shaped like local@domain.tld. */
+export function addressShaped(recipient: unknown): boolean {
+  return /^[^\s@<>,;]+@[^\s@<>,;]+\.[^\s@<>,;.]+$/.test(addressOf(recipient));
 }
 
 function mask(addr: string): string {
@@ -71,11 +77,46 @@ export function gateResend<T extends ResendLike | null | undefined>(client: T, o
     // Nothing to check: let Resend report its own validation error.
     if (all.length === 0) return inner(payload, ...rest);
 
+    // Malformed addresses (2026-11-23). Resend validates every address on a
+    // message and rejects the WHOLE message with a 422 when one is not an
+    // address. A manager row pointed at a retired duplicate profile whose email
+    // was the tombstone "DEDUP_<uuid>"; that went on the CC line of the login
+    // email, so every "send login" for his 126 agents failed while the agent's
+    // own address was fine. A courtesy copy must never block the real
+    // recipient: anything on to, cc or bcc that is not shaped like an address
+    // is dropped here, and the send is refused only when no real `to` is left.
+    const good = all.filter(addressShaped);
+    if (good.length === 0) {
+      console.warn(`[resend-gate] refused ${all.map((r) => mask(addressOf(r))).join(", ")}: ${REFUSED_MALFORMED}`);
+      return { data: null, error: { name: REFUSED_MALFORMED, message: "recipient is not an email address; not sent" } };
+    }
+    {
+      // deno-lint-ignore no-explicit-any
+      const clean = (field: any, label: string) => {
+        if (field === undefined || field === null) return field;
+        const list = Array.isArray(field) ? field : [field];
+        const left = list.filter(addressShaped);
+        if (left.length === list.length) return field;
+        const bad = list.filter((r: unknown) => !addressShaped(r));
+        console.warn(`[resend-gate] dropped malformed ${label} ${bad.map((r: unknown) => mask(addressOf(r))).join(", ")}`);
+        return left.length === 0 ? undefined : Array.isArray(field) ? left : left[0];
+      };
+      const to = good.length < all.length ? clean(payload.to, "to") : payload.to;
+      const cc = clean(payload.cc, "cc"), bcc = clean(payload.bcc, "bcc");
+      if (to !== payload.to || cc !== payload.cc || bcc !== payload.bcc) {
+        const next = { ...payload, to };
+        if (cc === undefined) delete next.cc; else next.cc = cc;
+        if (bcc === undefined) delete next.bcc; else next.bcc = bcc;
+        payload = next;
+      }
+    }
+    const recipients = good;
+
     // Owner inbox mute (owner-mute.ts): the owner is taken off to, cc and bcc
     // for the subjects he switched off. Everyone else on the message still gets it.
     const policy = await ownerMute();
     if (policy?.enabled) {
-      const kept = dropOwnerMuted(policy, all, payload?.subject);
+      const kept = dropOwnerMuted(policy, recipients, payload?.subject);
       if (kept.length === 0) {
         console.warn(`[resend-gate] owner mute: "${String(payload?.subject ?? "").slice(0, 60)}" not sent`);
         return { data: null, error: { name: REFUSED_OWNER_MUTED, message: "owner switched this notice off; not sent" } };
@@ -87,7 +128,7 @@ export function gateResend<T extends ResendLike | null | undefined>(client: T, o
         return left.length === 0 ? undefined : Array.isArray(field) ? left : left[0];
       };
       const cc = trim(payload.cc), bcc = trim(payload.bcc);
-      if (kept.length < all.length || cc !== payload.cc || bcc !== payload.bcc) {
+      if (kept.length < recipients.length || cc !== payload.cc || bcc !== payload.bcc) {
         const next = { ...payload, to: Array.isArray(payload.to) ? kept : kept[0] };
         if (cc === undefined) delete next.cc; else next.cc = cc;
         if (bcc === undefined) delete next.bcc; else next.bcc = bcc;

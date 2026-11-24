@@ -5,7 +5,8 @@
 // good, and the number never goes into another bundle.
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, Inbox, Info, Phone, PhoneCall, Mic, Check, Search, Trophy, X } from "lucide-react";
+import { ChevronDown, Inbox, Info, Phone, PhoneCall, Mic, Check, Search, Trophy, UserPlus, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -229,6 +230,29 @@ export default function MyLeads() {
     } as never);
     if (error) toast.error(`The recording uploaded but was not attached to the lead: ${error.message}`);
   };
+  // One tap puts a lead into the agent's own client pipeline with everything on file carried over
+  // (my_lead_to_pipeline). A second tap finds the same client instead of making a twin.
+  const navigate = useNavigate();
+  const [inPipeline, setInPipeline] = useState<Record<string, boolean>>({});
+  const toPipeline = useMutation({
+    mutationFn: async (item: string) => {
+      const { data, error } = await supabase.rpc("my_lead_to_pipeline" as never, { p_item: item } as never);
+      if (error) throw new Error(error.message);
+      return data as unknown as { client_id: string; created: boolean };
+    },
+    onSuccess: (res, item) => {
+      setInPipeline((m) => ({ ...m, [item]: true }));
+      toast.success(res.created ? "Added to your pipeline." : "Already in your pipeline.", {
+        action: { label: "Open pipeline", onClick: () => navigate("/dashboard/clients") },
+      });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const pipelineButton = (item: string, status: string) => status === "do_not_call" ? null : (
+    <Button type="button" size="sm" variant="outline" disabled={toPipeline.isPending || inPipeline[item]} onClick={() => toPipeline.mutate(item)} data-testid="lead-to-pipeline">
+      {inPipeline[item] ? <><Check className="mr-1 h-3.5 w-3.5" />In your pipeline</> : <><UserPlus className="mr-1 h-3.5 w-3.5" />Add to my pipeline</>}
+    </Button>
+  );
   const recorderProps = (item: string) => ({
     onTranscriptionUpdate: () => { /* the audio and its summary are what is kept */ },
     onSummaryComplete: (summary: unknown) => { recSummary.current[item] = summary; void saveRecording(item); },
@@ -444,6 +468,7 @@ export default function MyLeads() {
                             {recordings[l.item_id] && (
                               <Badge variant="outline" className="bg-green-600/15 border-green-600/40 text-green-300"><Check className="mr-1 h-3 w-3" />recorded</Badge>
                             )}
+                            {pipelineButton(l.item_id, l.status)}
                             <Input value={notes[l.item_id] ?? ""} onChange={(e) => setNotes((n) => ({ ...n, [l.item_id]: e.target.value }))} placeholder="Note (saved with the next tap)" className="h-8 min-w-[12rem] flex-1" maxLength={300} aria-label="Note" />
                           </div>
                           {recordingFor === l.item_id && (
@@ -533,6 +558,7 @@ export default function MyLeads() {
                         {recordings[cur.item_id] && (
                           <Badge variant="outline" className="bg-green-600/15 border-green-600/40 text-green-300"><Check className="mr-1 h-3 w-3" />recorded</Badge>
                         )}
+                        {pipelineButton(cur.item_id, cur.status)}
                       </div>
                       {recordingFor === cur.item_id && (
                         <CallCenterVoiceRecorder key={cur.item_id} {...recorderProps(cur.item_id)} className="rounded-lg border border-border/60 p-3" />

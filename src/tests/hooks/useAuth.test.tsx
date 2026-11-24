@@ -25,10 +25,11 @@
  */
 
 import React from "react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, act, waitFor } from "@testing-library/react";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -51,9 +52,9 @@ function ThrowConsumer() {
   return null;
 }
 
-function makeSession(userId = "user-001", email = "test@example.com") {
+function makeSession(userId = "user-001", email = "test@example.com"): Session {
   return {
-    user: { id: userId, email },
+    user: { id: userId, email, aud: "authenticated", app_metadata: {}, user_metadata: {}, created_at: "2026-01-01T00:00:00Z" },
     access_token: "token",
     refresh_token: "refresh",
     expires_in: 3600,
@@ -66,16 +67,16 @@ const mockGetSession = vi.mocked(supabase.auth.getSession);
 const mockOnAuthStateChange = vi.mocked(supabase.auth.onAuthStateChange);
 const mockFrom = vi.mocked(supabase.from);
 
-let authStateCallback: ((event: string, session: any) => void) | null = null;
+let authStateCallback: ((event: AuthChangeEvent, session: Session | null) => void) | null = null;
 
 beforeEach(() => {
   vi.clearAllMocks();
   authStateCallback = null;
 
   // Capture the onAuthStateChange callback so we can fire events in tests
-  mockOnAuthStateChange.mockImplementation((cb: any) => {
+  mockOnAuthStateChange.mockImplementation((cb) => {
     authStateCallback = cb;
-    return { data: { subscription: { unsubscribe: vi.fn() } } };
+    return { data: { subscription: { id: "test-auth-subscription", callback: cb, unsubscribe: vi.fn() } } };
   });
 
   // Default: no session
@@ -232,22 +233,19 @@ describe("useAuth — auth state events", () => {
   });
 
   it("handles PASSWORD_RECOVERY event without throwing", async () => {
-    // PASSWORD_RECOVERY sets window.location.href — jsdom allows this
-    const originalLocation = window.location.href;
-    render(
-      <AuthProvider>
-        <TestConsumer />
-      </AuthProvider>
-    );
-    await waitFor(() =>
-      expect(screen.getByTestId("loading").textContent).toBe("ready")
-    );
-
-    expect(() => {
-      act(() => {
-        authStateCallback?.("PASSWORD_RECOVERY", makeSession());
-      });
-    }).not.toThrow();
+    // A real navigation is outside jsdom. Record the destination through a
+    // location object instead of relying on its "not implemented" error.
+    const originalLocation = window.location;
+    const location = { pathname: "/dashboard", href: "https://galaxyfinancial.org/dashboard" };
+    Object.defineProperty(window, "location", { configurable: true, writable: true, value: location });
+    try {
+      render(<AuthProvider><TestConsumer /></AuthProvider>);
+      await waitFor(() => expect(screen.getByTestId("loading").textContent).toBe("ready"));
+      expect(() => { act(() => { authStateCallback?.("PASSWORD_RECOVERY", makeSession()); }); }).not.toThrow();
+      expect(location.href).toBe("/reset-password");
+    } finally {
+      Object.defineProperty(window, "location", { configurable: true, writable: true, value: originalLocation });
+    }
   });
 
   // 2026-11-18: recovery used to hard-redirect to /dashboard/settings?recovery=true.

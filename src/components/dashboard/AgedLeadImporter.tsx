@@ -379,22 +379,21 @@ export const AgedLeadImporter = forwardRef<HTMLDivElement, AgedLeadImporterProps
         const unbannedLeads: ParsedLead[] = [];
 
         const banChecks = await concurrentMap(leadsToCheck, 8, async (lead) => {
-          const { data: isBanned } = await supabase.rpc("check_banned_prospect" as any, {
+          const { data: isBanned, error } = await supabase.rpc("check_banned_prospect", {
             p_email: lead.email || null,
             p_phone: lead.phone || null,
             p_first_name: lead.first_name || null,
             p_last_name: lead.last_name || null,
           });
-          return !!isBanned;
+          if (error) throw error;
+          if (typeof isBanned !== "boolean") throw new Error("The ban check could not be verified. No leads were imported.");
+          return isBanned;
         });
 
-        // Preserve the old serial loop's semantics exactly: it ignored the RPC's
-        // `error` field, so a Postgres-level failure left `isBanned` undefined
-        // and the lead was imported (fail-open); a transport-level rejection
-        // propagated to the outer catch and aborted the whole import.
+        // Every check must succeed before any lead is inserted or emailed.
         for (let i = 0; i < banChecks.length; i++) {
           const res = banChecks[i];
-          if (!res.ok) throw res.error;
+          if (res.ok === false) throw res.error;
           if (res.value) {
             bannedCount++;
           } else {

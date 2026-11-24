@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { DollarSign, TrendingUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
 
 interface PeriodStats {
   week: number;
@@ -37,9 +38,11 @@ export function ProductionAnalyticsCard() {
   const [stats, setStats] = useState<PeriodStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true); setFailed(false); setStats(null);
 
     const fail = () => {
       if (cancelled) return;
@@ -47,8 +50,7 @@ export function ProductionAnalyticsCard() {
       setLoading(false);
     };
 
-    supabase
-      .rpc("production_period_totals")
+    Promise.resolve(supabase.rpc("production_period_totals"))
       .then(({ data, error }) => {
         if (cancelled) return;
         const row = Array.isArray(data) ? data[0] : data;
@@ -58,13 +60,11 @@ export function ProductionAnalyticsCard() {
           fail();
           return;
         }
+        const fields = [row.week_alp, row.month_alp, row.year_alp, row.week_deals, row.month_deals, row.year_deals];
+        if (fields.some(value => value == null || !Number.isFinite(Number(value)) || Number(value) < 0)) { fail(); return; }
         setStats({
-          week: Number(row.week_alp ?? 0),
-          month: Number(row.month_alp ?? 0),
-          year: Number(row.year_alp ?? 0),
-          weekDeals: Number(row.week_deals ?? 0),
-          monthDeals: Number(row.month_deals ?? 0),
-          yearDeals: Number(row.year_deals ?? 0),
+          week: Number(row.week_alp), month: Number(row.month_alp), year: Number(row.year_alp),
+          weekDeals: Number(row.week_deals), monthDeals: Number(row.month_deals), yearDeals: Number(row.year_deals),
         });
         setLoading(false);
       })
@@ -73,7 +73,7 @@ export function ProductionAnalyticsCard() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [attempt]);
 
   const fmt = (n: number) =>
     n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(1)}M`
@@ -83,9 +83,9 @@ export function ProductionAnalyticsCard() {
   // Explicit calendar-month + year labels (Phoenix TZ, Sam 2026-07-05):
   // MTD = calendar month (e.g. "Jul"), YTD = calendar year (e.g. "2026").
   // The RPC windows on Phoenix dates too, so label and number agree.
-  const nowPhx = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Phoenix" }));
-  const monthLabel = nowPhx.toLocaleDateString("en-US", { month: "short", timeZone: "America/Phoenix" });
-  const yearLabel = String(nowPhx.getFullYear());
+  const now = new Date();
+  const monthLabel = now.toLocaleDateString("en-US", { month: "short", timeZone: "America/Phoenix" });
+  const yearLabel = now.toLocaleDateString("en-US", { year: "numeric", timeZone: "America/Phoenix" });
 
   const show = (value: number | undefined) =>
     loading ? "…" : failed || value === undefined ? "—" : fmt(value);
@@ -120,9 +120,7 @@ export function ProductionAnalyticsCard() {
           </div>
         </div>
         {failed && (
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            Production figures unavailable — the read failed. This is not a zero.
-          </p>
+          <div className="mt-2 space-y-2"><p className="text-sm text-muted-foreground">Production figures could not be verified.</p><Button variant="outline" size="sm" onClick={()=>setAttempt(value=>value+1)}>Retry production figures</Button></div>
         )}
       </CardContent>
     </Card>

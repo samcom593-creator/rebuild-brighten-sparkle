@@ -55,7 +55,7 @@ export function XcelStalledCard() {
     queryKey: ["v_xcel_pipeline", "stalled"],
     queryFn: async (): Promise<XcelRow[]> => {
       const { data, error } = await supabase
-        .from("v_xcel_pipeline" as any)
+        .from("v_xcel_pipeline")
         .select("*")
         .in("xcel_state", ["stalled", "never_started"])
         .order("days_since_login", { ascending: false, nullsFirst: false });

@@ -1,93 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { FileText, Building2 } from "lucide-react";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { useInteractionGate } from "@/shared/hooks/useInteractionGate";
+import { useLandingLiveStats } from "@/hooks/useLandingLiveStats";
 
-// wave-19 (2026-06-04): supabase deferred to queryFn. LiveStatsCounterStrip
-// renders eagerly under HeroSection — the static import was the second of
-// two anchor edges pulling vendor-supabase into the cold landing modulepreload
-// chain (the other was RecentHiresTicker, also detached this wave). The
-// the localStorage cache below means the numbers render real-
-// looking before the dynamic import even resolves — no above-fold zero.
-//
-// wave-41 (2026-06-08): wave-19 deferred the static import but the queryFn
-// still fired sync-on-mount, dynamic-importing vendor-supabase (45 KB gz)
-// inside Lighthouse mobile's audit window — it consistently showed in
-// heaviest-transfers even after wave-40 killed the AuthProvider path. Gate
-// the query `enabled` on useInteractionGate(): first paint stays exactly
-// the same (cache fallback), but the dynamic import only
-// fires once the user actually interacts (pointerdown / keydown / scroll /
-// touchstart) or the 5s safety timeout fires. Lighthouse audits never
-// interact, so vendor-supabase finally exits the cold-landing transfer list.
-
-interface LiveStats {
-  active_agents: number;
-  hires_recent: number;
-  applications_30d: number;
-  applications_total: number;
-  carriers_partnered: number;
-  generated_at: string;
-}
-
-const CACHE_KEY = "apex_live_stats_last_good";
-// wave-X (2026-06-19): feb05b97 fixed landing_live_stats() to return truth=41
-// active_agents (was 123 due to inactive+XAGENT placeholder pollution). But the
-// The floor was the disease, not the cure: HARDCODED_FLOOR.active_agents was 104 and pick() upgraded any live<floor to
-// floor — so the strip kept rendering 104 even after the DB told the truth.
-// Floor now mirrors known truth-floor (40, one below current 41) and pick()
-// trusts any real positive RPC result. Lying upward is the same disease as
-// lying downward: it just kills trust later instead of now.
-// MP-370: there is no floor any more, because a floor is a fabricated number.
-//
-// This strip renders under a label that says "Live · pulled from the operating
-// system". The floor was { active_agents: 40, applications_30d: 131,
-// carriers_partnered: 22 } and it shipped whenever the RPC errored or a cold
-// visitor had no cache. Measured 2026-09-01: landing_live_stats() returns
-// applications_30d = 35. The floor said 131 -- 3.7x -- under the word "Live".
-//
-// The floor was not a stale constant that drifted. It was correct when it was
-// written and truth fell underneath it, which is the failure mode a constant
-// cannot survive: it can only ever be right on the day it is typed. The
-// check-landing-truth-floor ceiling for this key is 150 and it never moves
-// down, so 131 passed every CI run while being nearly four times the number.
-//
-// A loading state is not a trust problem. An invented one is. Unknown now
-// renders as a dash.
-
-function readCache(): Partial<LiveStats> | null {
-  try {
-    const raw = localStorage.getItem(CACHE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch { return null; }
-}
-function writeCache(d: LiveStats) {
-  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ...d, _cached_at: Date.now() })); } catch { /* swallow */ } // empty-catch-allow:localstorage-incognito
-}
-// Live RPC wins whenever it returns a real positive count; cache is the warm
-// fallback for a repeat visitor. There is no third option: null means "we do
-// not know yet", and the card says so instead of inventing a figure.
-function pick(live: number | undefined, cached: number | undefined): number | null {
-  if (typeof live === "number" && live >= 1) return live;
-  if (typeof cached === "number" && cached >= 1) return cached;
-  return null;
-}
-
-/**
- * Live-counter strip rendered below the hero CTA on the public landing.
- *
- * Pulls real numbers from the public RPC landing_live_stats() (no PII, just
- * counts). Numbers animate up on first mount via the existing
- * AnimatedCounter primitive so the page feels alive on every load.
- *
- * Refresh cadence: 5 min — counts move slowly, no need to hammer.
- *
- * Resilience (2026-05-24): the RPC sometimes returns 0 on cold render or
- * during a Supabase blip. A zero above the fold destroys the trust the
- * deals ticker just built. So we layer three fallbacks: RPC → localStorage
- * last-good → a dash. MP-370 deleted the hardcoded floor: an invented number
- * under a label reading "Live" is worse than an honest loading state.
- */
+/** Public counts share one verified response. Unavailable data stays unknown. */
 export function LiveStatsCounterStrip() {
   const gateOpen = useInteractionGate();
   // 2026-06-12: gate-OR-timer · keeps Lighthouse cold-load clean (~1s) but
@@ -97,36 +14,19 @@ export function LiveStatsCounterStrip() {
     const t = setTimeout(() => setTimerOpen(true), 1500);
     return () => clearTimeout(t);
   }, []);
-  const { data } = useQuery({
-    queryKey: ["landing_live_stats"],
-    queryFn: async (): Promise<LiveStats | null> => {
-      const { supabase } = await import("@/integrations/supabase/client");
-      const { data, error } = await supabase.rpc("landing_live_stats");
-      if (error) throw error;
-      return data as unknown as LiveStats;
-    },
-    enabled: gateOpen || timerOpen,
-    staleTime: 60_000,
-    refetchInterval: 300_000,
-  });
-
-  const cached = useMemo(() => readCache(), []);
-  // Persist any positive RPC result. Caching truth — even when truth is lower
-  // than the prior cache — keeps the strip honest after roster shrinks.
-  useEffect(() => {
-    if (data && (data.active_agents ?? 0) >= 1) {
-      writeCache(data);
-    }
-  }, [data]);
-
-  const apps30d = pick(data?.applications_30d, cached?.applications_30d);
-  const carriers = pick(data?.carriers_partnered, cached?.carriers_partnered);
+  const { data, isError, isPending, refetch, isFetching } = useLandingLiveStats(gateOpen || timerOpen);
+  const apps30d = data?.applications_30d ?? null;
+  const carriers = data?.carriers_partnered ?? null;
+  const status = isError
+    ? data ? "Last available numbers · update unavailable" : "Agency numbers are unavailable right now"
+    : isPending ? "Loading agency numbers…" : "Latest available agency numbers";
 
   return (
     <div className="landing-fade-up landing-delay-400 max-w-3xl mx-auto mb-10">
-      <p className="text-[10px] text-muted-foreground text-center mb-3 uppercase tracking-[0.3em] font-display font-semibold">
-        {apps30d === null && carriers === null ? "Pulling from the operating system…" : "Live · pulled from the operating system"}
-      </p>
+      <div className="mb-3 text-center">
+        <p role="status" className="text-sm text-muted-foreground font-display">{status}</p>
+        {isError && <button type="button" className="min-h-11 px-3 text-sm text-primary underline underline-offset-4" disabled={isFetching} onClick={() => void refetch()}>{isFetching ? "Retrying…" : "Retry agency numbers"}</button>}
+      </div>
       {/* 2026-08-13 Sam: "just remove that number." The Active agents counter is
           gone from the public strip — 56 (loose def) vs 6 (Skool-gated) was a
           number that could only mislead a recruit, so it is not shown at all
@@ -172,10 +72,10 @@ function CounterCard({ icon: Icon, value, label, color }: CardProps) {
       <div className={`relative font-display font-extrabold tabular-nums ${c.text}`}
            style={{ fontSize: "clamp(1.5rem, 4.5vw, 2.5rem)", lineHeight: 1 }}>
         {value === null
-          ? <span aria-label="loading" className="opacity-40">—</span>
+          ? <span aria-label="Not available" className="opacity-50">—</span>
           : <AnimatedCounter value={value} duration={1800} />}
       </div>
-      <div className="relative text-[11px] sm:text-xs text-muted-foreground mt-2 font-medium uppercase tracking-wider">
+      <div className="relative text-sm text-muted-foreground mt-2 font-medium">
         {label}
       </div>
     </div>

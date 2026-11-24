@@ -390,7 +390,7 @@ export default function TelegramBot() {
             <GlassCard className="p-5">
               <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">Per-stage breakdown</h3>
               {!funnel || funnel.length === 0 ? (
-                <EmptyState title="No users yet" description="Once candidates DM the bot, they'll appear here grouped by stage." icon={Users} />
+                <EmptyState title="No users yet" description="Once candidates DM the bot, they'll appear here grouped by stage." icon={<Users className="h-7 w-7" aria-hidden />} />
               ) : (
                 <ul className="space-y-2">
                   {funnel.map((f) => (
@@ -412,7 +412,7 @@ export default function TelegramBot() {
             <GlassCard className="p-5">
               <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">Open escalations</h3>
               {!escalations || escalations.length === 0 ? (
-                <EmptyState title="No open escalations" description="The bot routes here whenever a candidate hits a hard trigger (money / contract / 'manager')." icon={CheckCircle2} />
+                <EmptyState title="No open escalations" description="The bot routes here whenever a candidate hits a hard trigger (money / contract / 'manager')." icon={<CheckCircle2 className="h-7 w-7" aria-hidden />} />
               ) : (
                 <ul className="space-y-2">
                   {escalations.map((e) => (
@@ -436,7 +436,7 @@ export default function TelegramBot() {
             <GlassCard className="p-5">
               <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">Stale &gt; 3d</h3>
               {!stuck || stuck.length === 0 ? (
-                <EmptyState title="Nothing stuck" description="All active users have moved within the last 3 days." icon={CheckCircle2} />
+                <EmptyState title="Nothing stuck" description="All active users have moved within the last 3 days." icon={<CheckCircle2 className="h-7 w-7" aria-hidden />} />
               ) : (
                 <ul className="space-y-2">
                   {stuck.map((u) => (
@@ -461,7 +461,7 @@ export default function TelegramBot() {
                 <EmptyState
                   title="No groups registered"
                   description="Add the bot as admin to your Telegram groups. The bot auto-registers them here on the first message — then update type via SQL."
-                  icon={MessageSquare}
+                  icon={<MessageSquare className="h-7 w-7" aria-hidden />}
                 />
               ) : (
                 <ul className="space-y-2">
@@ -794,7 +794,7 @@ function PreAgentHqPanel({ groups, faqs }: { groups: Group[]; faqs: PreAgentHqFa
             <EmptyState
               title="No HQ channels seeded"
               description="The migration didn't apply, or the rows were deleted. Re-run 20260522000300_telegram_pre_agent_hq.sql."
-              icon={MessageSquare}
+              icon={<MessageSquare className="h-7 w-7" aria-hidden />}
             />
           ) : (
             groups.map((g) => {

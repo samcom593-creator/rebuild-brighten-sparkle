@@ -18,7 +18,7 @@ const WORKSPACE_VIEWS = [
   { label: "Call list", detail: "Contact, outcome, next step", href: "/dashboard/recruiting", icon: Users, tone: "gold", exact: true },
   { label: "Licensed", detail: "Licensed agents to bring on", href: "/dashboard/recruiting/licensed", icon: BadgeCheck, tone: "good", staffOnly: true },
   { label: "Pipeline", detail: "Everyone, one view", href: "/dashboard/recruiting/pipeline", icon: LayoutList, tone: "cool" },
-  { label: "New hires", detail: "Hire to first deal", href: "/dashboard/recruits", icon: UserCheck, tone: "good" },
+  { label: "New hires", detail: "Hire to first deal", href: "/dashboard/recruits", icon: UserCheck, tone: "good", hireTracking: true },
   { label: "Calendar", detail: "Interviews and calls", href: "/dashboard/calendar", icon: CalendarClock, tone: "warm" },
   { label: trainingLabel, detail: "Ramp to field", href: "/dashboard/recruiting/training", icon: BookOpenCheck, tone: "royal" },
 ] as const;
@@ -35,7 +35,12 @@ export function RecruitingWorkspaceNav() {
   const { pathname } = useLocation();
   const auth = useOptionalAuth();
   const isStaff = !!auth && (auth.isAdmin || auth.isVaManager || auth.isVa);
-  const views = WORKSPACE_VIEWS.filter((view) => !("staffOnly" in view && view.staffOnly) || isStaff);
+  // Recruiters can work applications, but /dashboard/recruits is restricted to
+  // managers and staff. Keep that page's existing access boundary visible here.
+  const recruiterOnly = !!auth?.isRecruiter && !isStaff && !auth.isManager;
+  const views = WORKSPACE_VIEWS.filter((view) =>
+    (!("staffOnly" in view && view.staffOnly) || isStaff)
+    && (!("hireTracking" in view && view.hireTracking) || !recruiterOnly));
 
   return (
     <nav aria-label="Recruiting workspace" className="border-b border-border sm:overflow-x-auto">

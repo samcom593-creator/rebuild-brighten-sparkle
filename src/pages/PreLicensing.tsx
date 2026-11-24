@@ -181,7 +181,7 @@ export default function PreLicensing() {
       if (ids.length === 0) return new Set();
       const { data, error } = await supabase
         .from("agents")
-        .select("display_name, profile:profiles(full_name)")
+        .select("display_name, profile:profiles!agents_profile_id_fkey(full_name)")
         .in("id", ids);
       if (error) {
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "react-router-dom";
 import { ExternalLink, Copy, Check, ClipboardList, Building2, Files, Search } from "lucide-react";
@@ -14,12 +14,12 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { CONTRACTING_LINK_URL } from "@/lib/contractingLinks";
+import { CONTRACTING_LINK_URL, CONTRACTING_PROFILE_URL } from "@/lib/contractingLinks";
 import { ContractingIntakeAdmin } from "@/components/contracting/ContractingIntakeAdmin";
 import { ContractingRequestsBoard } from "@/components/contracting/ContractingRequestsBoard";
 import { ContractingReviewWorkspace } from "@/components/contracting-review/ContractingReviewWorkspace";
 import { useContractReview } from "@/hooks/useContractReview";
-import { useContractRows, useContractSummary } from "@/hooks/useContractRecords";
+import { CONTRACT_RECORD_PAGE_SIZE, useContractRows, useContractSummary } from "@/hooks/useContractRecords";
 import { externalHref } from "@/lib/externalHref";
 
 /**
@@ -27,7 +27,8 @@ import { externalHref } from "@/lib/externalHref";
  *   Review          the manual portal tracker (the SAME component My Team shows, over the same records)
  *   Carriers        the four tracked carriers and their portal links, plus the full carrier directory
  *   Writing numbers writing and contract numbers carriers have issued (still real records)
- *   Requests        history only: the intakes the retired 2026-10-09 process produced, behind a banner
+ *   Requests        current carrier-request snapshots and their sheet delivery receipts
+ *   Intake history  earlier intake records; no dispatch action on that historical page
  * Every other page of the old process (operations, cases, Aflac sends, Ethos sheet, audit, contracts board) redirects
  * to the review or to My Team's Contracting view (src/App.tsx). Carrier contracting itself happens in each carrier's
  * own portal; nothing here submits to a carrier.
@@ -72,8 +73,7 @@ export default function CarrierContracts() {
     },
   });
 
-  // Every contracting route is admin-only (src/App.tsx). Requests is history: the intake records the retired process
-  // produced, kept readable behind a banner so nothing is lost.
+  // These management routes are admin-only. Managers use the scoped Grow and Team review routes.
   const reviewItem = [["review", "/dashboard/contracting", "Review"]] as Array<[string, string, string]>;
   const liveItems = [["requests", "/dashboard/contracting/requests", "Requests"], ["carriers", "/dashboard/contracting/carriers", "Carriers"], ["documents", "/dashboard/contracting/documents", "Writing numbers"]] as Array<[string, string, string]>;
   const earlierItems = [["history", "/dashboard/contracting/history", "Intake history"]] as Array<[string, string, string]>;
@@ -93,13 +93,14 @@ export default function CarrierContracts() {
     <nav className="flex items-center gap-1 overflow-x-auto border-b border-border" aria-label="Contracting sections">
       {reviewItem.map(navButton)}
       {liveItems.map(navButton)}
+      <Button asChild variant="ghost" className="shrink-0 rounded-none border-b-2 border-transparent px-3 text-muted-foreground"><Link to="/dashboard/grow">Ethos submissions</Link></Button>
       {earlierItems.length > 0 ? <span className="ml-3 shrink-0 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">History</span> : null}
       {earlierItems.map(navButton)}
     </nav>
   );
   const retiredBanner = isHistory ? (
     <div role="note" className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-foreground">
-      <span className="flex-1">This page belongs to the contracting process retired on Oct 9, 2026 and is kept as history. Nothing here reaches a carrier, a channel or a sheet any more. Contracting is now tracked by hand in the <Link to="/dashboard/contracting" className="font-semibold underline">Contracting review</Link>.</span>
+      <span className="flex-1">These are earlier intake records. Use <Link to="/dashboard/contracting/requests" className="font-semibold underline">Requests</Link> for current carrier-request receipts, <Link to="/dashboard/grow" className="font-semibold underline">Grow my team</Link> for the Ethos submission lane, and <Link to="/dashboard/contracting" className="font-semibold underline">Review</Link> to record carrier confirmation.</span>
     </div>
   ) : null;
 
@@ -110,7 +111,7 @@ export default function CarrierContracts() {
           eyebrow="Contracting"
           eyebrowIcon={<ClipboardList className="h-4 w-4" />}
           title="Contracting review"
-          subtitle="Find a person, check their profile, confirm Combine, AFLAC, GTO and Ethos, and set their placement level."
+          subtitle="Check the agent's profile and carrier portal, then record each carrier's confirmation. Submission receipts and writing numbers have their own tabs."
         />
         {workspaceNav}
         {canInvite ? <ContractingLinkCard copyLink={copyLink} copiedId={copiedId} /> : null}
@@ -123,9 +124,9 @@ export default function CarrierContracts() {
   const subtitle = mode === "carriers"
     ? "The four carriers tracked on every agent's profile, their portal links, and the full carrier directory."
     : mode === "requests"
-    ? "The carrier contracting request for every active agent, filled from what is on file. Missing items name who fixes them; ready rows go to the sheet."
+    ? "Review missing information, save a request and follow its sheet receipt. A submitted request does not establish carrier approval."
     : mode === "history"
-    ? "Intake records from the process retired on Oct 9, 2026. New agents now complete their own contracting profile from the link on the Review page."
+    ? "Earlier intake records retained for reference. Current submissions and carrier confirmations are tracked separately."
     : "Writing and contract numbers that carriers have issued, kept on record. E&O certificates live on each agent's profile documents.";
 
   return (
@@ -180,7 +181,7 @@ function TrackedCarriersCard() {
 /* ───────────────────────── Carrier Directory ───────────────────────── */
 
 function CarrierDirectory({ carriersQ }: {
-  carriersQ: { data?: Carrier[]; isLoading: boolean; error: unknown };
+  carriersQ: { data?: Carrier[]; isLoading: boolean; error: unknown; refetch: () => unknown };
 }) {
   const [search, setSearch] = useState("");
   const all = carriersQ.data ?? [];
@@ -191,11 +192,10 @@ function CarrierDirectory({ carriersQ }: {
       <div className="flex flex-wrap items-center gap-2 border-b border-border p-4">
         <div className="relative min-w-56 flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search carriers" className="pl-9" data-testid="carrier-search" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search carriers" aria-label="Search carriers" className="pl-9" data-testid="carrier-search" />
         </div>
         <p className="text-xs text-muted-foreground">
-          <span className="font-semibold tabular-nums text-foreground">{rows.length}</span> of{" "}
-          <span className="font-semibold tabular-nums text-foreground">{all.length}</span> active carriers
+          {carriersQ.error ? "Carrier count unavailable" : carriersQ.isLoading ? "Loading carriers…" : <><span className="font-semibold tabular-nums text-foreground">{rows.length}</span> of{" "}<span className="font-semibold tabular-nums text-foreground">{all.length}</span> active carriers</>}
         </p>
       </div>
 
@@ -205,6 +205,8 @@ function CarrierDirectory({ carriersQ }: {
 
       {carriersQ.isLoading ? (
         <div className="space-y-2 p-4"><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /></div>
+      ) : carriersQ.error ? (
+        <div role="alert" className="space-y-2 p-4 text-sm"><p>The carrier directory did not load.</p><Button type="button" variant="outline" onClick={() => void carriersQ.refetch()}>Retry carrier directory</Button></div>
       ) : rows.length === 0 ? (
         <EmptyState
           icon={<Building2 className="h-7 w-7" />}
@@ -244,20 +246,22 @@ function CarrierDirectory({ carriersQ }: {
 
 function ContractDocuments() {
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(0);
+  useEffect(() => { setPage(0); }, [search]);
   const summaryQ = useContractSummary("agency", search);
-  const rowsQ = useContractRows("agency", "all", search, 0);
+  const rowsQ = useContractRows("agency", "all", search, page);
   const rows = rowsQ.data ?? [];
-  const shown = summaryQ.data?.total ?? rows.length;
+  const total = summaryQ.isError ? null : summaryQ.data?.total ?? null;
 
   return (
     <GlassCard className="overflow-hidden">
       <div className="flex flex-wrap items-center gap-2 border-b border-border p-4">
         <div className="relative min-w-56 flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search carrier, producer, or writing number" className="pl-9" data-testid="documents-search" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search carrier, producer, or writing number" aria-label="Search contract records" className="pl-9" data-testid="documents-search" />
         </div>
         <p className="w-full text-xs text-muted-foreground sm:w-auto">
-          <span className="font-semibold tabular-nums text-foreground">{shown}</span> records
+          {summaryQ.isError ? "Record count unavailable" : total == null ? "Loading record count…" : <><span className="font-semibold tabular-nums text-foreground">{total}</span> records</>}
         </p>
       </div>
 
@@ -267,6 +271,8 @@ function ContractDocuments() {
 
       {rowsQ.isLoading ? (
         <div className="p-4"><Skeleton className="h-12 w-full" /></div>
+      ) : rowsQ.isError ? (
+        <div role="alert" className="space-y-2 p-4 text-sm"><p>The contract records did not load.</p><Button type="button" variant="outline" onClick={() => { void rowsQ.refetch(); void summaryQ.refetch(); }}>Retry contract records</Button></div>
       ) : rows.length === 0 ? (
         <EmptyState
           icon={<Files className="h-7 w-7" />}
@@ -278,7 +284,7 @@ function ContractDocuments() {
           {rows.map((r) => (
             <li key={r.id} className="grid grid-cols-2 gap-2 border-b border-border/70 px-4 py-3 text-sm last:border-0 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_120px_minmax(0,1fr)]">
               <span className="truncate font-medium">{r.carrier_name ?? "Carrier not on file"}</span>
-              <span className="truncate text-muted-foreground">{r.agent_name ?? "Producer not linked"}</span>
+              <span className="truncate text-muted-foreground">{r.agent_id ? <Link to={`/dashboard/profile?agentId=${r.agent_id}`} className="underline underline-offset-2">{r.agent_name ?? "Open linked producer"}</Link> : r.agent_name ?? "Producer not linked"}</span>
               <span className="truncate capitalize text-muted-foreground">{(r.status ?? "unknown").replace(/_/g, " ")}</span>
               <span className="truncate font-mono text-xs text-muted-foreground">
                 {r.writing_number ? `Writing # ${r.writing_number}` : r.contract_number ? `Contract # ${r.contract_number}` : "No number issued yet"}
@@ -287,6 +293,10 @@ function ContractDocuments() {
           ))}
         </ul>
       )}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-4 py-3">
+        <p className="text-xs text-muted-foreground">Page {page + 1}{!rowsQ.isLoading && !rowsQ.isError ? ` · ${rows.length} records shown` : ""}</p>
+        <div className="flex gap-2"><Button type="button" variant="outline" size="sm" disabled={page === 0 || rowsQ.isLoading} onClick={() => setPage((p) => Math.max(0,p-1))}>Previous records</Button><Button type="button" variant="outline" size="sm" disabled={rowsQ.isLoading || rowsQ.isError || rows.length < CONTRACT_RECORD_PAGE_SIZE || (total != null && (page+1)*CONTRACT_RECORD_PAGE_SIZE >= total)} onClick={() => setPage((p) => p+1)}>Next records</Button></div>
+      </div>
     </GlassCard>
   );
 }
@@ -304,14 +314,16 @@ function ContractingLinkCard({ copyLink, copiedId }: { copyLink: (id: string, ur
     <GlassCard className="p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0 sm:flex-1">
-          <h2 className="text-sm font-semibold text-foreground">Contracting link</h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">Send this to any agent. It opens the MGN Agent Hub, where they contract with each carrier. You type nothing.</p>
+          <h2 className="text-sm font-semibold text-foreground">Agent contracting links</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">MGN opens the carrier portal. The Galaxy profile link collects the signed-in agent&apos;s details for review. Recruiting and new account setup start in Grow my team.</p>
         </div>
         <Button size="sm" variant="outline" className="h-10" onClick={() => copyLink("contracting-profile-link", url)}>
           {copiedId === "contracting-profile-link"
             ? <><Check className="mr-1.5 h-3.5 w-3.5" aria-hidden /> Copied</>
-            : <><Copy className="mr-1.5 h-3.5 w-3.5" aria-hidden /> Copy contracting link</>}
+            : <><Copy className="mr-1.5 h-3.5 w-3.5" aria-hidden /> Copy MGN portal link</>}
         </Button>
+        <Button size="sm" variant="outline" className="h-10" onClick={() => copyLink("galaxy-profile-link", CONTRACTING_PROFILE_URL)}>{copiedId === "galaxy-profile-link" ? "Profile link copied" : "Copy agent profile link"}</Button>
+        <Button asChild size="sm" variant="ghost" className="h-10"><Link to="/dashboard/grow">Grow my team</Link></Button>
       </div>
     </GlassCard>
   );

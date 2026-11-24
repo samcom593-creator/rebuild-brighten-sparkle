@@ -1,19 +1,9 @@
 import { forwardRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { useInteractionGate } from "@/shared/hooks/useInteractionGate";
 // S11 fix (2026-06-15): relay ?ref= through the closing CTA so the slug
 // survives the landing -> /apply hop on the bottom-of-page conversion path.
 import { applyHrefWithRef } from "@/lib/refSlug";
-// wave-42 (2026-06-08): supabase dynamic-imported inside queryFn so the chunk graph
-// has no static edge to vendor-supabase. Wave-43 (2026-06-08): wave-42 wasn't enough —
-// useQuery still fires queryFn sync-on-mount, which runs the dynamic import inside
-// Lighthouse's cold-landing measurement window and re-drags vendor-supabase (45 KB gz)
-// onto cold-landing transfers. Wave-43 gates `enabled` on useInteractionGate, matching
-// wave-41's LiveStats + RecentHires pattern. The `??95` fallback already renders the
-// real number, so anonymous landings see the same pixels until they scroll/click.
-
 const benefits = [
   "Licensed and unlicensed tracks",
   "One-link recruiting and onboarding",
@@ -23,31 +13,9 @@ const benefits = [
   "Hierarchy-aware agency reporting",
 ];
 
-type LandingLiveStats = { active_agents: number };
-
 export const CTASection = forwardRef<HTMLElement>((_, ref) => {
-  // Pull the real agent count from landing_live_stats() so the closing CTA
-  // never claims a number that isn't true. Prior copy said "thousands of
-  // agents" — actual roster is ~95. Fake-success killer.
-  const gateOpen = useInteractionGate();
   const [searchParams] = useSearchParams();
   const applyHref = applyHrefWithRef(searchParams.get("ref"));
-  const { data: liveStats } = useQuery({
-    queryKey: ["landing_live_stats"],
-    queryFn: async (): Promise<LandingLiveStats | null> => {
-      const { supabase } = await import("@/integrations/supabase/client");
-      const { data, error } = await supabase.rpc("landing_live_stats");
-      if (error) throw error;
-      return data as unknown as LandingLiveStats;
-    },
-    enabled: gateOpen,
-    staleTime: 60_000,
-    refetchInterval: 300_000,
-  });
-  // 2026-06-19: feb05b97 truth-floor sync — landing_live_stats now returns
-  // 41 active (was 123 due to placeholder pollution). 40 is the cold-render
-  // floor; live RPC is the source of truth and always wins when present.
-  const activeAgents = liveStats?.active_agents ?? 40;
 
   return (
     <section ref={ref} className="py-24 relative overflow-hidden bg-white dark:bg-[#030712]">
@@ -66,7 +34,7 @@ export const CTASection = forwardRef<HTMLElement>((_, ref) => {
           </h2>
 
           <p className="text-lg md:text-xl text-[#94a3b8] max-w-2xl mx-auto mb-8">
-            {activeAgents}+ agents are already moving through the system. Choose the path that fits your current level and see exactly what comes next.
+            Choose the path that fits your current level and see exactly what comes next.
           </p>
 
           {/* Benefits Grid */}

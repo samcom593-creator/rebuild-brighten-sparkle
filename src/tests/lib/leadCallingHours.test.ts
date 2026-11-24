@@ -39,8 +39,8 @@ describe("calling hours in the agent portal", () => {
     expect(page).toContain('data-testid="work-mode-hours-closed"');
   });
 
-  it("an older server without the flag leaves every lead workable", () => {
-    expect(page).toContain('const callableNow = (r: Pick<MyLead, "callable_now">) => r.callable_now !== false;');
+  it("an older server without the clock flag still honors known contact holds", () => {
+    expect(page).toContain('const callableNow = (r: Pick<MyLead, "callable_now" | "attrs" | "status">) => r.callable_now !== false && !heldReason(r);');
   });
 
   it("progress counts results, not leads waiting for morning", () => {

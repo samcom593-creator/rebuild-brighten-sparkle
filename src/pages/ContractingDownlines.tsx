@@ -3,8 +3,10 @@ import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { CheckCircle2, ClipboardCopy, Loader2, RefreshCw, Upload, UserPlus, Handshake, ListChecks } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { useMyRecruitingLink } from "@/components/invitations/invitationApi";
+import { ownLinkUrl, PUBLIC_SITE } from "@/lib/recruitLinks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,27 +49,26 @@ function VerdictBadge({ v }: { v: Verdict | null | undefined }) {
 
 export default function ContractingDownlines() {
   usePageTitle("Grow my team · Galaxy");
+  const { user } = useAuth();
   const qc = useQueryClient();
-  const actorQ = useQuery({ queryKey: ["contracting-actor"], queryFn: async () => (await contractingDownlines.actor()).data as Actor | null, staleTime: 60_000 });
-  const boardQ = useQuery({ queryKey: ["contracting-downlines"], queryFn: async () => (await contractingDownlines.downlines()).data?.rows ?? [], enabled: !!actorQ.data?.ok });
+  const actorQ = useQuery({ queryKey: ["contracting-actor", user?.id], enabled: !!user?.id, queryFn: async () => {
+    const result = await contractingDownlines.actor();
+    if (result.error || !result.data) throw new Error(result.error ?? "Contracting access did not load.");
+    return result.data as Actor;
+  }, staleTime: 60_000 });
+  const boardQ = useQuery({ queryKey: ["contracting-downlines", user?.id], queryFn: async () => {
+    const result = await contractingDownlines.downlines();
+    if (result.error || !result.data?.ok || !Array.isArray(result.data.rows)) throw new Error(result.error ?? "Contracting submissions did not load.");
+    return result.data.rows;
+  }, enabled: !!actorQ.data?.ok });
   const actor = actorQ.data;
   // Step 1's link: the same ref_slug URL every other recruiting surface uses (it is what attributes the applicant).
-  const recruitQ = useQuery({
-    queryKey: ["my-recruiting-link"],
-    enabled: !!actorQ.data?.ok,
-    staleTime: 300_000,
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc("my_recruiting_link" as never);
-      if (error) throw new Error(error.message);
-      return (data ?? {}) as { link?: string; active?: boolean };
-    },
-  });
-  const recruitUrl = recruitQ.data?.active ? recruitQ.data.link ?? null : null;
+  const recruitQ = useMyRecruitingLink(user?.id);
+  const recruitUrl = recruitQ.data?.active ? ownLinkUrl(recruitQ.data.ref_slug) : null;
   // One-tap "Add to sheet" for a team member who is licensed but not on MGN's sheet: first tap asks, second tap sends.
   const [confirmAdd, setConfirmAdd] = useState<string | null>(null);
   const [adding, setAdding] = useState<string | null>(null);
-  const origin = typeof window !== "undefined" ? window.location.origin : "https://galaxyfinancial.org";
-  const joinUrl = actor?.join_path ? `${origin}${actor.join_path}` : null;
+  const joinUrl = actor?.ref_slug ? `${PUBLIC_SITE}/contract/${encodeURIComponent(actor.ref_slug)}` : null;
   const options = useMemo(() => levelOptions(actor?.cap_pct, actor?.default_pct ?? 60), [actor?.cap_pct, actor?.default_pct]);
 
   // ── 1. The one link ─────────────────────────────────────────────────────────────────────────
@@ -78,7 +79,7 @@ export default function ContractingDownlines() {
     setSavingLink(true);
     try {
       const r = await contractingDownlines.setMgnLink(mgnValue.trim());
-      if (r.data?.ok) { toast.success(mgnValue.trim() ? "MGN link saved. Your one link now lands there." : "MGN link cleared; recruits land on the MGN home page."); setMgn(null); void qc.invalidateQueries({ queryKey: ["contracting-actor"] }); }
+      if (r.data?.ok) { toast.success(mgnValue.trim() ? "MGN link saved. Your contracting join link continues there after the details are saved." : "MGN link cleared; the contracting join link continues to the MGN dashboard."); setMgn(null); void qc.invalidateQueries({ queryKey: ["contracting-actor"] }); }
       else toast.error(r.data?.error ?? r.error ?? "Not saved.");
     } finally { setSavingLink(false); }
   };
@@ -174,7 +175,7 @@ export default function ContractingDownlines() {
         email: r.email ?? "", phone: r.phone ?? "", npn: r.npn ?? "", comp_pct: r.comp_pct, license_attested: true, eo_attested: false,
       }]);
       const v = res.data?.results?.[0];
-      if (v?.ok) toast.success(`${r.display_name} is going onto MGN's sheet at ${pctLabel(v.comp_pct)}.`);
+      if (v?.ok) toast.success(`${r.display_name}: request saved at ${pctLabel(v.comp_pct)}. Check the submission receipt below.`);
       else toast.error(v?.message ?? res.error ?? "Not added.");
     } finally { setAdding(null); setConfirmAdd(null); void qc.invalidateQueries({ queryKey: ["contracting-downlines"] }); }
   };
@@ -189,11 +190,19 @@ export default function ContractingDownlines() {
     <div className="page-enter mx-auto w-full max-w-5xl space-y-6 px-4 pb-24 pt-6 sm:px-6">
       <header className="space-y-1">
         <h1 className="text-xl font-semibold">Grow my team</h1>
-        <p className="text-sm text-muted-foreground">Three steps, two links. Everything after that happens on its own.</p>
-        {!actor.writes_enabled ? <p className="text-xs text-amber-500">Automatic sheet writes are off right now: everything is saved and queued, and goes onto MGN&apos;s sheet the moment they are switched on.</p> : null}
+        <p className="text-sm text-muted-foreground">Recruit, hire, and track the contracting request through its next step.</p>
+        {!actor.writes_enabled ? <p className="text-xs text-amber-500" role="status">Automatic sheet writes are off. Saved requests are waiting; an admin must enable delivery and verify the resulting receipt.</p> : null}
       </header>
 
-      <ol className="grid gap-4 md:grid-cols-3" aria-label="How growing your team works">
+      <nav aria-label="Team growth workspace" className="flex flex-wrap gap-2">
+        <Button asChild variant="outline"><Link to="/dashboard/recruiting">Applicants and follow-ups</Link></Button>
+        <Button asChild variant="outline"><Link to="/admin/invite-links">Personal hire invitations</Link></Button>
+        <Button asChild variant="outline"><Link to="/dashboard/recruits">Track new hires</Link></Button>
+        <Button asChild variant="outline"><Link to="/dashboard/team?view=contracting">Carrier approval review</Link></Button>
+        {actor.is_admin ? <Button asChild variant="outline"><Link to="/dashboard/contracting">Contracts management</Link></Button> : null}
+      </nav>
+
+      <ol className="grid gap-4 md:grid-cols-2" aria-label="How growing your team works">
         <li className="space-y-3 rounded-xl border border-border bg-card p-4">
           <div className="flex items-center gap-2"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary">1</span><UserPlus className="h-4 w-4 text-muted-foreground" aria-hidden /><h2 className="text-base font-semibold">Recruit</h2></div>
           <p className="text-sm text-muted-foreground">Share your recruiting link anywhere. People apply, you interview them.</p>
@@ -202,27 +211,28 @@ export default function ContractingDownlines() {
               <Input readOnly value={recruitUrl} className="h-10 font-mono text-xs" aria-label="Your recruiting link" />
               <div className="flex flex-wrap gap-2">
                 <Button type="button" variant="outline" className="h-10" onClick={() => void copy(recruitUrl, "Recruiting link")}><ClipboardCopy className="mr-1 h-4 w-4" aria-hidden /> Copy</Button>
-                <Button asChild type="button" variant="ghost" className="h-10"><Link to="/dashboard/recruits">See applicants</Link></Button>
+                <Button asChild type="button" variant="ghost" className="h-10"><Link to="/dashboard/recruiting">See applicants</Link></Button>
               </div>
             </div>
-          ) : recruitQ.isLoading ? <p className="text-xs text-muted-foreground" role="status">Loading your link…</p> : <p className="text-xs text-destructive">Your recruiting link is not set up. Ask an admin.</p>}
+          ) : recruitQ.isLoading ? <p className="text-xs text-muted-foreground" role="status">Loading your link…</p> : recruitQ.isError ? <p className="text-xs text-destructive" role="alert">Your recruiting link did not load. <button type="button" className="underline" onClick={() => void recruitQ.refetch()}>Try again</button></p> : <p className="text-xs text-destructive">Your recruiting link is not set up. Ask an admin.</p>}
+          <p className="text-xs text-muted-foreground">This credits the application to you. Hiring and account creation happen afterward.</p>
         </li>
 
         <li className="space-y-3 rounded-xl border border-border bg-card p-4">
           <div className="flex items-center gap-2"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary">2</span><Handshake className="h-4 w-4 text-muted-foreground" aria-hidden /><h2 className="text-base font-semibold">Hire &amp; contract</h2></div>
-          <p className="text-sm text-muted-foreground">Bringing someone on? Send your <span className="font-medium text-foreground">Join link</span>. They fill it in once: their account is made under you and, if licensed, they go onto MGN&apos;s Ethos sheet at {actor.default_pct}% · {ADVANCE_TIER} and on to MGN to finish.</p>
+          <p className="text-sm text-muted-foreground">For an existing applicant, use Hire in recruiting so their application and agent account stay linked. For someone joining directly, share your contracting join link. It saves their details and reports account setup and the Ethos request separately.</p>
           {joinUrl ? (
             <div className="space-y-2">
-              <Input readOnly value={joinUrl} className="h-10 font-mono text-xs" aria-label="Your Join link" />
-              <Button type="button" variant="outline" className="h-10" onClick={() => void copy(joinUrl, "Join link")}><ClipboardCopy className="mr-1 h-4 w-4" aria-hidden /> Copy</Button>
+              <Input readOnly value={joinUrl} className="h-10 font-mono text-xs" aria-label="Your contracting join link" />
+              <Button type="button" variant="outline" className="h-10" onClick={() => void copy(joinUrl, "Contracting join link")}><ClipboardCopy className="mr-1 h-4 w-4" aria-hidden /> Copy contracting join link</Button>
             </div>
           ) : <p className="text-xs text-destructive">Your agent record has no link slug yet. Ask an admin.</p>}
-          <p className="text-xs text-muted-foreground">Not licensed yet? Same link — they get the licensing course, and open it again once they have their NPN.</p>
+          <p className="text-xs text-muted-foreground">Licensed requests default to {actor.default_pct}% · {ADVANCE_TIER}, subject to the submission checks. Unlicensed people continue to licensing first.</p>
         </li>
 
         <li className="space-y-3 rounded-xl border border-border bg-card p-4">
-          <div className="flex items-center gap-2"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary">3</span><ListChecks className="h-4 w-4 text-muted-foreground" aria-hidden /><h2 className="text-base font-semibold">Watch it happen</h2></div>
-          <p className="text-sm text-muted-foreground">Everyone you bring on shows up below with one plain status. The only thing that ever needs you is a row marked <span className="font-medium text-amber-500">Ready</span> or <span className="font-medium text-amber-500">Held</span>.</p>
+          <div className="flex items-center gap-2"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary">3</span><ListChecks className="h-4 w-4 text-muted-foreground" aria-hidden /><h2 className="text-base font-semibold">Track submission receipts</h2></div>
+          <p className="text-sm text-muted-foreground">Use the board below to resolve account setup, missing details and delivery holds. A queued request is waiting for delivery; a sheet receipt confirms submission to MGN.</p>
           <div className="space-y-1">
             <Label htmlFor="mgn-url" className="text-xs">Your MGN Agent Hub link (paste once)</Label>
             <div className="flex gap-2">
@@ -231,6 +241,13 @@ export default function ContractingDownlines() {
             </div>
             <p className="text-xs text-muted-foreground">Where your Join link sends licensed people after Galaxy. Must start with https://mgnagenthub.com/.</p>
           </div>
+        </li>
+
+        <li className="space-y-3 rounded-xl border border-border bg-card p-4">
+          <div className="flex items-center gap-2"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary">4</span><CheckCircle2 className="h-4 w-4 text-muted-foreground" aria-hidden /><h2 className="text-base font-semibold">Confirm carrier approval</h2></div>
+          <p className="text-sm text-muted-foreground">Check the carrier portal before marking a carrier confirmed. An application, agent account or sheet submission does not establish an appointment or authorization to write business.</p>
+          <Button asChild variant="outline" className="h-10"><Link to="/dashboard/team?view=contracting">Open carrier review</Link></Button>
+          {actor.is_admin ? <Button asChild variant="ghost" className="h-10"><Link to="/dashboard/contracting/documents">View writing numbers</Link></Button> : null}
         </li>
       </ol>
 
@@ -327,6 +344,7 @@ export default function ContractingDownlines() {
           <h2 className="text-base font-semibold">Where everyone is ({board.length})</h2>
           <Button type="button" variant="outline" size="sm" className="h-10" onClick={() => void boardQ.refetch()}><RefreshCw className="mr-1 h-4 w-4" aria-hidden /> Refresh</Button>
         </div>
+        <p className="text-xs text-muted-foreground">A sheet receipt confirms submission to MGN. Carrier approval is confirmed separately on the agent&apos;s contracting review.</p>
         {boardQ.isLoading ? <p className="text-sm text-muted-foreground" role="status">Loading…</p> : boardQ.isError ? <p className="text-sm text-destructive" role="alert">The board did not load. <button type="button" className="underline" onClick={() => void boardQ.refetch()}>Try again</button></p> : !board.length ? <p className="text-sm text-muted-foreground">No downlines yet.</p> : (
           <div className="overflow-x-auto rounded-lg border border-border">
             <table className="w-full text-xs">
@@ -346,7 +364,7 @@ export default function ContractingDownlines() {
                           <Button type="button" size="sm" className="h-9" onClick={() => setConfirmAdd(r.agent_id)}>Add to sheet</Button>
                         )
                       ) : null}
-                      {r.agent_id ? <Button type="button" size="sm" variant="outline" className="ml-2 h-9" onClick={() => openEdit(r)}>Edit</Button> : null}
+                      {r.agent_id ? <><Button asChild type="button" size="sm" variant="outline" className="ml-2 h-9"><Link to={`/dashboard/team?view=contracting&review=${r.agent_id}`}>Review agent</Link></Button><Button type="button" size="sm" variant="ghost" className="ml-2 h-9" onClick={() => openEdit(r)}>Edit request</Button></> : <Button asChild type="button" size="sm" variant="outline" className="ml-2 h-9"><Link to="/dashboard/team">Resolve account setup</Link></Button>}
                     </td>
                   </tr>); })}
               </tbody>

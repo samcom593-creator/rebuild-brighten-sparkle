@@ -241,6 +241,9 @@
     "public.comp_change_audit",
     "public.comp_rate_imports",
     "public.comp_rates",
+    "public.consumer_import_batches",
+    "public.consumer_import_rows",
+    "public.consumer_policy_observations",
     "public.contact_history",
     "public.content_access",
     "public.content_cards",
@@ -339,6 +342,9 @@
     "public.ethos_book_policies",
     "public.ethos_callsheet_calls",
     "public.ethos_callsheet_people",
+    "public.ethos_consumer_campaigns",
+    "public.ethos_consumer_deliveries",
+    "public.ethos_consumer_license_scope",
     "public.ethos_live_policies",
     "public.ethos_live_production",
     "public.ethos_roster",
@@ -388,6 +394,7 @@
     "public.integration_accounts",
     "public.integration_capabilities",
     "public.integration_events",
+    "public.interview_disposition_receipts",
     "public.interview_event_activity",
     "public.interview_events",
     "public.interview_recordings",
@@ -401,6 +408,7 @@
     "public.lead_bundle_grants",
     "public.lead_bundle_items",
     "public.lead_bundles",
+    "public.lead_contact_dnc",
     "public.lead_counter",
     "public.lead_item_recordings",
     "public.lead_payment_tracking",
@@ -495,6 +503,8 @@
     "public.policy_quality_flags",
     "public.prelicensing_confirmations",
     "public.private_surface_registry",
+    "public.producer_client_call_links",
+    "public.producer_work_schedules",
     "public.production_external_daily_snapshots",
     "public.production_external_deals",
     "public.production_ledger",
@@ -1115,5 +1125,20 @@
     "supabase_migrations.schema_migrations",
     "vault.decrypted_secrets",
     "vault.secrets"
-  ]
+  ],
+  "_migration_contract_additions": {
+    "source": "Tables declared by the 20261124 producer/consumer migrations; verified in isolated PostgreSQL fixtures, pending live deployment.",
+    "relations": [
+      "public.consumer_import_batches",
+      "public.consumer_import_rows",
+      "public.consumer_policy_observations",
+      "public.ethos_consumer_campaigns",
+      "public.ethos_consumer_deliveries",
+      "public.ethos_consumer_license_scope",
+      "public.interview_disposition_receipts",
+      "public.lead_contact_dnc",
+      "public.producer_client_call_links",
+      "public.producer_work_schedules"
+    ]
+  }
 }

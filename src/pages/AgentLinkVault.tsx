@@ -125,19 +125,19 @@ function OverviewPanel() {
         // `not("is_dead","is",true)` is PostgREST for `is_dead IS NOT TRUE` —
         // matches false AND null, exactly the predicate v_agentlink_book_truth
         // uses. `.eq("is_dead", false)` would silently drop the null rows.
-        supabase.from("v_agentlink_book_scoped" as any).select("*", { count: "exact", head: true }).not("is_dead", "is", true),
-        supabase.from("v_agentlink_book_scoped" as any).select("*", { count: "exact", head: true }).is("is_dead", true),
-        supabase.from("agentlink_clients" as any).select("*", { count: "exact", head: true }),
-        supabase.from("agentlink_contracts" as any).select("*", { count: "exact", head: true }),
-        supabase.from("agentlink_contracts" as any).select("*", { count: "exact", head: true }).eq("status", "active"),
-        supabase.from("agentlink_agents" as any).select("*", { count: "exact", head: true }),
-        supabase.from("agentlink_agents" as any).select("*", { count: "exact", head: true }).eq("is_producer_active", true),
+        supabase.from("v_agentlink_book_scoped").select("*", { count: "exact", head: true }).not("is_dead", "is", true),
+        supabase.from("v_agentlink_book_scoped").select("*", { count: "exact", head: true }).is("is_dead", true),
+        supabase.from("agentlink_clients").select("*", { count: "exact", head: true }),
+        supabase.from("agentlink_contracts").select("*", { count: "exact", head: true }),
+        supabase.from("agentlink_contracts").select("*", { count: "exact", head: true }).eq("status", "active"),
+        supabase.from("agentlink_agents").select("*", { count: "exact", head: true }),
+        supabase.from("agentlink_agents").select("*", { count: "exact", head: true }).eq("is_producer_active", true),
         supabase.from("carriers").select("*", { count: "exact", head: true }),
         supabase
-          .from("v_agentlink_book_truth" as any)
+          .from("v_agentlink_book_truth")
           .select("total_annual_premium")
           .maybeSingle(),
-        supabase.from("agentlink_raw_exports" as any).select("id, endpoint, captured_at").order("captured_at", { ascending: false }).limit(1),
+        supabase.from("agentlink_raw_exports").select("id, endpoint, captured_at").order("captured_at", { ascending: false }).limit(1),
       ]);
       // Supabase RESOLVES (does not reject) on a query-level error — a dropped
       // view, renamed column, or RLS change comes back as { count: null, error }.
@@ -246,7 +246,7 @@ function AgentsPanel() {
     queryKey: ["alvault-agents"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("agentlink_agents" as any)
+        .from("agentlink_agents")
         .select("insuracloud_user_id, email, first_name, last_name, phone_number, npn_number, account_status, is_producer_active, state, contract_count, team_size, joined_date, last_sign_in_at, ssn_last4, date_of_birth")
         .order("last_name", { ascending: true });
       if (error) throw error;
@@ -313,7 +313,7 @@ function ClientsPanel() {
     queryKey: ["alvault-clients"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("agentlink_clients" as any)
+        .from("agentlink_clients")
         .select("insuracloud_pipeline_client_id, first_name, last_name, phone, email, date_of_birth, pipeline_stage, insuracloud_user_id, agent_id")
         .order("last_name", { ascending: true })
         .limit(2000);
@@ -375,7 +375,7 @@ function ContractsPanel() {
     queryKey: ["alvault-contracts"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("agentlink_contracts" as any)
+        .from("agentlink_contracts")
         .select("insuracloud_contract_id, writing_number, secondary_writing_number, contract_number, status, commission_level, activated_date, insuracloud_user_id, insuracloud_carrier_id")
         .order("activated_date", { ascending: false, nullsFirst: false })
         .limit(2000);
@@ -440,7 +440,7 @@ function BinariesPanel() {
     queryKey: ["alvault-binaries"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("agentlink_binary_docs" as any)
+        .from("agentlink_binary_docs")
         .select("id, doc_kind, content_type, byte_size, captured_at, agent_id, insuracloud_user_id")
         .order("captured_at", { ascending: false });
       if (error) throw error;
@@ -449,7 +449,7 @@ function BinariesPanel() {
   });
   const download = async (id: string, kind: string, ct: string) => {
     const { data, error } = await supabase
-      .from("agentlink_binary_docs" as any)
+      .from("agentlink_binary_docs")
       .select("payload_b64")
       .eq("id", id)
       .maybeSingle();
@@ -511,7 +511,7 @@ function VaultPanel() {
     queryKey: ["alvault-raw"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("agentlink_raw_exports" as any)
+        .from("agentlink_raw_exports")
         .select("id, endpoint, upstream_status, row_count, captured_at, sync_run_id")
         .order("captured_at", { ascending: false })
         .limit(500);

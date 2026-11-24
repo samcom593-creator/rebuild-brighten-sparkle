@@ -21,10 +21,12 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useBusinessToday } from "@/hooks/useBusinessToday";
+import { loadPlaqueFacts, summarizePlaques } from "@/lib/dashboardRecords";
 import {
   resolveAgentNames,
   AGENT_NAME_FALLBACK,
-  type AgentNameSource,
 } from "@/shared/api/agentDisplayNames";
 import { PageHeader } from "@/components/ui/page-header";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -53,7 +55,7 @@ interface Plaque {
   image_svg_url: string | null;
   image_png_url: string | null;
   custom_photo_url: string | null;
-  awarded_at: string;
+  awarded_at: string | null;
   // /plaque/:slug (PlaqueShare.tsx) resolves the public page by share_slug,
   // NOT plaque.id — copying plaque.id to the clipboard rendered a broken link.
   share_slug: string | null;
@@ -67,13 +69,6 @@ interface TopEarner {
   avatar_url: string | null;
   plaque_count: number;
   total_amount: number;
-}
-
-interface Stats {
-  total: number;
-  totalAwarded: number;
-  honorees: number;
-  thisMonth: number;
 }
 
 type Category = "all" | "personal" | "business" | "referral";
@@ -136,6 +131,8 @@ function prettyMilestone(s: string): string {
 
 // ─── Main ───────────────────────────────────────────────────────────────────
 export default function HallOfFame() {
+  const { user } = useAuth();
+  const today = useBusinessToday();
   const [activeCategory, setActiveCategory] = useState<Category>("all");
   const [period, setPeriod] = useState<Period>("all");
   const [search, setSearch] = useState("");
@@ -143,7 +140,8 @@ export default function HallOfFame() {
 
   // ── Plaques (last 240 awarded, filtered client-side) ────────────────────
   const { data: plaques = [], isLoading: loadingPlaques, isError: plaquesError } = useQuery({
-    queryKey: ["hof-plaques"],
+    queryKey: ["hof-plaques", user?.id],
+    enabled: Boolean(user?.id),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("plaque_awards")
@@ -151,73 +149,38 @@ export default function HallOfFame() {
           id, agent_id, milestone_type, milestone_date, amount,
           badge_label, color_hex, image_svg_url, image_png_url,
           custom_photo_url, awarded_at, share_slug,
-          agent:agents!inner(id, user_id, display_name)
+          agent:agents!plaque_awards_agent_id_fkey(id, user_id, display_name)
         `)
         .order("awarded_at", { ascending: false })
         .limit(240);
       if (error) throw error;
       const resolved = await resolveAgentNames(
-        (data ?? []).map((row: any) => row.agent).filter(Boolean) as AgentNameSource[],
+        (data ?? []).flatMap(row => row.agent ? [row.agent] : []),
       );
-      return (data ?? []).map((row: any) => ({
+      return (data ?? []).map(row => ({
         ...row,
         agent_name: resolved.get(row.agent?.id)?.name ?? AGENT_NAME_FALLBACK,
         agent_photo: resolved.get(row.agent?.id)?.avatarUrl ?? null,
-      })) as Plaque[];
+      }));
     },
   });
 
-  // ── Stats (one-shot, doesn't refetch) ───────────────────────────────────
-  const { data: stats } = useQuery({
-    queryKey: ["hof-stats"],
-    queryFn: async (): Promise<Stats> => {
-      const [{ count: total }, { data: amtRow }, { data: agentsRow }, { count: thisMonth }] = await Promise.all([
-        supabase.from("plaque_awards").select("*", { count: "exact", head: true }),
-        supabase.rpc("sum_plaque_amounts" as any).then(() => null).catch(() => null) || // empty-catch-allow:best-effort-fallback
-          supabase.from("plaque_awards").select("amount").then(({ data }) => ({ data })),
-        supabase
-          .from("plaque_awards")
-          .select("agent_id")
-          .then(({ data }) => ({ data })),
-        supabase
-          .from("plaque_awards")
-          .select("*", { count: "exact", head: true })
-          .gte("awarded_at", new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()),
-      ]);
-      const totalAwarded = ((amtRow as any)?.data ?? []).reduce(
-        (acc: number, r: { amount: number | null }) => acc + Number(r.amount ?? 0),
-        0,
-      );
-      const honorees = new Set(((agentsRow as any)?.data ?? []).map((r: { agent_id: string }) => r.agent_id)).size;
-      return {
-        total: total ?? 0,
-        totalAwarded,
-        honorees,
-        thisMonth: thisMonth ?? 0,
-      };
-    },
+  // Totals and standings share the same complete award history, not the grid window.
+  const awardFacts = useQuery({
+    queryKey: ["hof-award-facts", user?.id, today],
+    enabled: Boolean(user?.id),
+    queryFn: ({ signal }) => loadPlaqueFacts(signal),
+    staleTime: 60_000,
   });
+  const stats = useMemo(() => awardFacts.data ? summarizePlaques(awardFacts.data, today) : null, [awardFacts.data, today]);
 
-  // ── Top earners (top 10 by plaque count, server-side aggregation
-  // via a small subquery in JS since we already loaded all rows above) ───
+  // ── Top ten by plaque count, across the complete verified history ───────
   const { data: topEarners = [], isLoading: loadingTop, isError: topError } = useQuery({
-    queryKey: ["hof-top-earners"],
+    queryKey: ["hof-top-earners", user?.id, awardFacts.dataUpdatedAt],
+    enabled: Boolean(user?.id && awardFacts.data) && !awardFacts.isError,
     queryFn: async () => {
-      // Get every plaque (cap 1000) and aggregate client-side, joining
-      // agent names so the podium reads as people, not UUIDs.
-      const { data, error } = await supabase
-        .from("plaque_awards")
-        .select(`
-          agent_id, amount,
-          agent:agents!inner(id, user_id, display_name)
-        `)
-        .limit(1000);
-      if (error) throw error;
-      const resolved = await resolveAgentNames(
-        (data ?? []).map((row: any) => row.agent).filter(Boolean) as AgentNameSource[],
-      );
       const byAgent = new Map<string, TopEarner>();
-      for (const row of (data ?? []) as any[]) {
+      for (const row of awardFacts.data ?? []) {
         const id = row.agent_id;
         const existing = byAgent.get(id);
         const amount = Number(row.amount ?? 0);
@@ -227,16 +190,21 @@ export default function HallOfFame() {
         } else {
           byAgent.set(id, {
             agent_id: id,
-            agent_name: resolved.get(row.agent?.id)?.name ?? AGENT_NAME_FALLBACK,
-            avatar_url: resolved.get(row.agent?.id)?.avatarUrl ?? null,
+            agent_name: AGENT_NAME_FALLBACK,
+            avatar_url: null,
             plaque_count: 1,
             total_amount: amount,
           });
         }
       }
-      return Array.from(byAgent.values())
-        .sort((a, b) => b.plaque_count - a.plaque_count)
+      const leaders = Array.from(byAgent.values())
+        .sort((a, b) => b.plaque_count - a.plaque_count || a.agent_id.localeCompare(b.agent_id))
         .slice(0, 10);
+      if (!leaders.length) return leaders;
+      const { data: identities, error } = await supabase.from("agents").select("id,user_id,display_name").in("id", leaders.map(row => row.agent_id));
+      if (error) throw error;
+      const resolved = await resolveAgentNames(identities ?? []);
+      return leaders.map(row => ({ ...row, agent_name: resolved.get(row.agent_id)?.name ?? AGENT_NAME_FALLBACK, avatar_url: resolved.get(row.agent_id)?.avatarUrl ?? null }));
     },
   });
 
@@ -252,7 +220,7 @@ export default function HallOfFame() {
         const cat = CATEGORY_MAP[p.milestone_type];
         if (cat !== activeCategory) return false;
       }
-      if (cutoff && new Date(p.awarded_at).getTime() < cutoff) return false;
+      if (cutoff && (!p.awarded_at || new Date(p.awarded_at).getTime() < cutoff)) return false;
       if (search.trim()) {
         const q = search.toLowerCase();
         if (!p.agent_name.toLowerCase().includes(q) &&
@@ -280,12 +248,13 @@ export default function HallOfFame() {
       />
 
       {/* ── Stats strip ───────────────────────────────────────────── */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {awardFacts.isError ? <div role="alert" className="rounded-md border border-border p-4"><p>Award totals could not be verified.</p><Button variant="outline" className="mt-2" onClick={()=>void awardFacts.refetch()}>Retry award totals</Button></div> : <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile icon={Trophy} label="Total plaques" value={stats?.total ?? 0} loading={!stats} color="text-amber-500 dark:text-amber-400" />
-        <StatTile icon={DollarSign} label="Total $ awarded" value={stats?.totalAwarded ?? 0} loading={!stats} color="text-emerald-500 dark:text-emerald-400" formatter={fmtUsd} />
+        <StatTile icon={DollarSign} label="Recorded award amounts" value={stats?.totalAwarded ?? 0} loading={!stats} color="text-emerald-500 dark:text-emerald-400" formatter={fmtUsd} />
         <StatTile icon={Users} label="Honorees" value={stats?.honorees ?? 0} loading={!stats} color="text-violet-500 dark:text-violet-400" />
         <StatTile icon={Calendar} label="This month" value={stats?.thisMonth ?? 0} loading={!stats} color="text-primary" />
-      </div>
+      </div>}
+      <p className="text-sm text-muted-foreground">Award amounts can recognize overlapping milestones; they are not additional production or commission. The wall shows the latest 240 plaques; totals and standings use the full history.</p>
 
       {/* ── Podium ────────────────────────────────────────────────── */}
       <GlassCard className="p-5 sm:p-6">
@@ -298,12 +267,12 @@ export default function HallOfFame() {
           </div>
           <Badge variant="outline" className="text-xs">by plaque count</Badge>
         </div>
-        {loadingTop ? (
+        {awardFacts.isLoading || loadingTop ? (
           <div className="grid sm:grid-cols-3 gap-4">
             {/* stable-key-allow:skeleton-static-array */}
             {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-44 w-full" />)}
           </div>
-        ) : topError ? (
+        ) : awardFacts.isError || topError ? (
           <EmptyState
             variant="warning"
             icon={<AlertTriangle className="h-7 w-7" />}
@@ -690,7 +659,7 @@ function PlaqueDetail({ plaque, onClose }: PlaqueDetailProps) {
           <div>
             <p className="font-bold text-lg">{plaque.agent_name}</p>
             <p className="text-xs text-muted-foreground">
-              Awarded {format(new Date(plaque.awarded_at), "PPP")}
+              {plaque.awarded_at ? `Awarded ${format(new Date(plaque.awarded_at), "PPP")}` : "Award date unavailable"}
             </p>
           </div>
         </div>

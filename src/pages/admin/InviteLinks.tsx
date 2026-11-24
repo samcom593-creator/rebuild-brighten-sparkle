@@ -4,7 +4,7 @@
  * OVERHAUL-1 (2026-10-29), Sam: "Give them an option: either put their first name, last name,
  * email, NPN, phone number... Or an option, just click attach a link, and they just tap it."
  *   - Top: your own permanent /r/<slug> link, Copy and Share, one tap (MyLinkCard). Everyone who
- *     applies through it is credited to you and placed under you (MP-342).
+ *     applies through it is credited to you; hiring places the agent under you (MP-342).
  *   - Make a link: Quick link or With details, Licensed or Not licensed yet (required),
  *     Permanent or Temporary, then Copy / Share / Text / Email (InviteAgentForm, kind hire).
  *   - Your invitations: hire invitations only; the server filters and counts by kind.
@@ -43,6 +43,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { InviteAgentForm } from "@/components/invitations/InviteAgentForm";
 import { InvitationsTable } from "@/components/invitations/InvitationsTable";
 import { MyLinkCard } from "@/components/invitations/MyLinkCard";
+import { Button } from "@/components/ui/button";
 
 export default function InviteLinksAdmin() {
   usePageTitle("Invite Agent");
@@ -55,15 +56,27 @@ export default function InviteLinksAdmin() {
     <div className="page-enter mx-auto w-full max-w-5xl space-y-6 pb-24">
       <PageHeader
         title="Invite an agent"
-        subtitle="Send your link, or make one for one person."
+        subtitle="Choose an application link or a personal hiring invitation."
         icon={<UserPlus />}
         tone="royal"
       />
 
-      <MyLinkCard blurb="Anyone who applies through it is credited to you and joins your team." />
+      <nav aria-label="Team growth workflow" className="flex flex-wrap gap-2">
+        <Button asChild variant="outline"><Link to="/dashboard/grow">Grow my team</Link></Button>
+        <Button asChild variant="outline"><Link to="/dashboard/recruiting">Review applicants</Link></Button>
+        <Button asChild variant="outline"><Link to="/dashboard/recruits">Track new hires</Link></Button>
+      </nav>
+
+      <MyLinkCard blurb="Share this application link to recruit. Applications are credited to you; review and hire the applicant to add them to your team." />
 
       {/* The license rule is said once, as the hint of the License step (council findings 11 and 27). */}
-      <InviteAgentForm framed licenseHint="License status is always required. Pick one." />
+      <section className="space-y-3" aria-labelledby="personal-hiring-invitation">
+        <div>
+          <h2 id="personal-hiring-invitation" className="text-lg font-semibold">Invite someone you are hiring</h2>
+          <p className="mt-1 text-sm text-muted-foreground">A personal invitation carries the offered role, team and terms. The recipient accepts it to create their account. Carrier contracting and approval are tracked separately in Grow my team.</p>
+        </div>
+        <InviteAgentForm framed licenseHint="License status is always required. Pick one." />
+      </section>
 
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">

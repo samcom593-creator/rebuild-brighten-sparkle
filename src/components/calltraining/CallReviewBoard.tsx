@@ -8,7 +8,7 @@
 import { useState, type ReactNode } from "react";
 import { useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import { ChevronDown, Phone } from "lucide-react";
-import { looseSupabase } from "@/lib/looseSupabase";
+import { looseSupabase, type LooseResult } from "@/lib/looseSupabase";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { contactLinkProps, formatPhoneDisplay, phoneHref } from "@/lib/phone";
@@ -26,11 +26,10 @@ const SECTIONS: Array<{ key: Key; title: string; blurb: string }> = [
   { key: "risk", title: "Drop-off and chargeback risk", blurb: "Sales that fell off, are lapsing, were declined after SSN and bank, carry a compliance flag, sit pending, or never reached the book." },
 ];
 
-function rows<T>(p: Promise<unknown>): Promise<T[]> {
-  return (p as Promise<{ data: T[] | null; error: Error | null }>).then(({ data, error }) => {
-    if (error) throw error;
-    return data ?? [];
-  });
+async function rows<T>(query: PromiseLike<LooseResult<T[]>>): Promise<T[]> {
+  const { data, error } = await query;
+  if (error) throw error;
+  return data ?? [];
 }
 const view = (key: string, fn: () => Promise<unknown[]>) => ({ queryKey: ["call-review", key], queryFn: fn, staleTime: 5 * 60_000 });
 
@@ -53,7 +52,7 @@ const ago = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("en-
 
 interface Closer { agent_name: string | null; reached_all: number | null; sold_all: number | null; close_pct_all: number | null; close_pct_30d: number | null; sold_30d: number | null; fall_off_pct: number | null; sticky_close_score: number | null; avg_grade: number | null; great_calls: number | null }
 function Closers({ onPickAgent }: { onPickAgent: (n: string) => void }) {
-  const q = useQuery(view("closers", () => rows<Closer>(looseSupabase.from("v_best_closers").select("agent_name, reached_all, sold_all, close_pct_all, close_pct_30d, sold_30d, fall_off_pct, sticky_close_score, avg_grade, great_calls").order("sticky_close_score", { ascending: false, nullsFirst: false }).limit(25)))) as UseQueryResult<Closer[]>;
+  const q = useQuery(view("closers", () => rows<Closer>(looseSupabase.from<Closer>("v_best_closers").select("agent_name, reached_all, sold_all, close_pct_all, close_pct_30d, sold_30d, fall_off_pct, sticky_close_score, avg_grade, great_calls").order("sticky_close_score", { ascending: false, nullsFirst: false }).limit(25)))) as UseQueryResult<Closer[]>;
   return (
     <State q={q} empty="No agent has 50 reached calls yet.">
       {(list) => (
@@ -81,7 +80,7 @@ function Closers({ onPickAgent }: { onPickAgent: (n: string) => void }) {
 
 interface LeftRow { agent_name: string | null; warm_not_sold: number | null; stopped_at_bank: number | null; stopped_at_ssn: number | null; gave_up: number | null; appointment_not_sold: number | null; last_30d: number | null }
 function LeftOnTable({ onPickAgent }: { onPickAgent: (n: string) => void }) {
-  const q = useQuery(view("table", () => rows<LeftRow>(looseSupabase.from("v_deals_left_on_table").select("agent_name, warm_not_sold, stopped_at_bank, stopped_at_ssn, gave_up, appointment_not_sold, last_30d").order("warm_not_sold", { ascending: false }).limit(25)))) as UseQueryResult<LeftRow[]>;
+  const q = useQuery(view("table", () => rows<LeftRow>(looseSupabase.from<LeftRow>("v_deals_left_on_table").select("agent_name, warm_not_sold, stopped_at_bank, stopped_at_ssn, gave_up, appointment_not_sold, last_30d").order("warm_not_sold", { ascending: false }).limit(25)))) as UseQueryResult<LeftRow[]>;
   return (
     <State q={q} empty="No warm leads left unsold.">
       {(list) => (
@@ -120,7 +119,7 @@ const VERDICT: Record<string, string> = {
 const TOP: Record<string, string> = { bank: "bank details", ssn: "SSN", gave_up: "agent gave up" };
 const RANK: Record<string, number> = { slump_objections: 0, slump: 1, objections_rising: 2, steady: 3, new: 4, too_few_calls: 5 };
 function Slumps({ onPickAgent }: { onPickAgent: (n: string) => void }) {
-  const q = useQuery(view("slump", () => rows<SlumpRow>(looseSupabase.from("v_agent_slump").select("agent_name, verdict, recent_contacts, recent_close_pct, base_close_pct, recent_objection_pct, base_objection_pct, top_objection").order("recent_contacts", { ascending: false }).limit(80)))) as UseQueryResult<SlumpRow[]>;
+  const q = useQuery(view("slump", () => rows<SlumpRow>(looseSupabase.from<SlumpRow>("v_agent_slump").select("agent_name, verdict, recent_contacts, recent_close_pct, base_close_pct, recent_objection_pct, base_objection_pct, top_objection").order("recent_contacts", { ascending: false }).limit(80)))) as UseQueryResult<SlumpRow[]>;
   return (
     <State q={q} empty="No dialer activity in the last 8 weeks.">
       {(list) => (
@@ -149,7 +148,7 @@ function Slumps({ onPickAgent }: { onPickAgent: (n: string) => void }) {
 interface EasyRow { phone10: string | null; first_name: string | null; last_name: string | null; call_id: string; disposition: string | null; call_started_at: string | null; agent_name: string | null; what_happened: string | null; call_grade: number | null }
 function EasyCloses({ canHandOff }: { canHandOff: boolean }) {
   const qc = useQueryClient();
-  const q = useQuery(view("easy", () => rows<EasyRow>(looseSupabase.from("v_easy_closes").select("phone10, first_name, last_name, call_id, disposition, call_started_at, agent_name, what_happened, call_grade").eq("in_a_bundle", false).order("call_started_at", { ascending: false }).limit(60)))) as UseQueryResult<EasyRow[]>;
+  const q = useQuery(view("easy", () => rows<EasyRow>(looseSupabase.from<EasyRow>("v_easy_closes").select("phone10, first_name, last_name, call_id, disposition, call_started_at, agent_name, what_happened, call_grade").eq("in_a_bundle", false).order("call_started_at", { ascending: false }).limit(60)))) as UseQueryResult<EasyRow[]>;
   return (
     <State q={q} empty="No warm leads waiting.">
       {(list) => (
@@ -175,7 +174,7 @@ function EasyCloses({ canHandOff }: { canHandOff: boolean }) {
 
 interface CoverageRow { call_id: string; call_started_at: string | null; agent_name: string | null; first_name: string | null; last_name: string | null; phone10: string | null; book_status: string | null; packet_carrier: string | null; packet_monthly_premium: number | null; spouse_coverage: boolean | null; mortgage_protection: boolean | null; opportunities: string | null }
 function MoreCoverage() {
-  const q = useQuery(view("coverage", () => rows<CoverageRow>(looseSupabase.from("v_more_coverage").select("call_id, call_started_at, agent_name, first_name, last_name, phone10, book_status, packet_carrier, packet_monthly_premium, spouse_coverage, mortgage_protection, opportunities").order("call_started_at", { ascending: false }).limit(60)))) as UseQueryResult<CoverageRow[]>;
+  const q = useQuery(view("coverage", () => rows<CoverageRow>(looseSupabase.from<CoverageRow>("v_more_coverage").select("call_id, call_started_at, agent_name, first_name, last_name, phone10, book_status, packet_carrier, packet_monthly_premium, spouse_coverage, mortgage_protection, opportunities").order("call_started_at", { ascending: false }).limit(60)))) as UseQueryResult<CoverageRow[]>;
   return (
     <State q={q} empty="No buyer asked about more coverage.">
       {(list) => (
@@ -199,7 +198,7 @@ function MoreCoverage() {
 interface RiskRow { call_id: string; call_started_at: string | null; agent_name: string | null; first_name: string | null; last_name: string | null; phone10: string | null; book_status: string | null; book_carrier: string | null; risk: string | null; what_happened: string | null; do_not_call: boolean | null }
 function DropoffRisk() {
   const [only, setOnly] = useState<string>("all");
-  const q = useQuery(view("risk", () => rows<RiskRow>(looseSupabase.from("v_dropoff_risk").select("call_id, call_started_at, agent_name, first_name, last_name, phone10, book_status, book_carrier, risk, what_happened, do_not_call").order("call_started_at", { ascending: false }).limit(200)))) as UseQueryResult<RiskRow[]>;
+  const q = useQuery(view("risk", () => rows<RiskRow>(looseSupabase.from<RiskRow>("v_dropoff_risk").select("call_id, call_started_at, agent_name, first_name, last_name, phone10, book_status, book_carrier, risk, what_happened, do_not_call").order("call_started_at", { ascending: false }).limit(200)))) as UseQueryResult<RiskRow[]>;
   return (
     <State q={q} empty="No sale is at risk right now.">
       {(list) => {

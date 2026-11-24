@@ -1,16 +1,19 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { Copy, Link2, MessageSquareShare, QrCode, Search, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveBrand } from "@/config/brand";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ownLinkUrl, PUBLIC_SITE, shareLink } from "@/lib/recruitLinks";
 
 /**
  * RecruitingLinks — admin surface for sending out recruiting links UNDER any
@@ -26,7 +29,6 @@ import { Skeleton } from "@/components/ui/skeleton";
  * them. admin_recruiting_links() is the admin-gated roster read.
  */
 
-const SITE = "https://galaxyfinancial.org";
 const BRAND = resolveBrand();
 
 interface LinkRow {
@@ -48,11 +50,8 @@ const MODE_LABEL: Record<string, string> = {
   va_manager: "VA Manager",
 };
 
-function shortLink(slug: string): string {
-  return `${SITE}/r/${slug}`;
-}
 function fullLink(slug: string): string {
-  return `${SITE}/apply?ref=${encodeURIComponent(slug)}`;
+  return `${PUBLIC_SITE}/apply?ref=${encodeURIComponent(slug)}`;
 }
 
 async function copyText(text: string, label: string) {
@@ -65,10 +64,11 @@ async function copyText(text: string, label: string) {
 }
 
 function LinkActions({ row }: { row: LinkRow }) {
-  if (!row.ref_slug) {
+  const slug = row.ref_slug?.trim();
+  const short = ownLinkUrl(slug);
+  if (!slug || !short) {
     return <Badge variant="outline" className="text-muted-foreground">no link yet</Badge>;
   }
-  const short = shortLink(row.ref_slug);
   const name = row.display_name ?? "our team";
   const smsBody = encodeURIComponent(
     `Here's the application link for ${name}'s team at ${BRAND.legalName}: ${short}`,
@@ -77,18 +77,18 @@ function LinkActions({ row }: { row: LinkRow }) {
     <div className="flex flex-wrap items-center gap-1.5">
       <Button size="sm" variant="secondary" className="h-8" onClick={() => void copyText(short, "Short link")}>
         <Copy className="h-3.5 w-3.5 mr-1.5" aria-hidden />
-        {`/r/${row.ref_slug}`}
+        {`/r/${slug}`}
       </Button>
       <Button
         size="sm"
         variant="ghost"
         className="h-8"
         aria-label={`Copy full apply link for ${name}`}
-        onClick={() => void copyText(fullLink(row.ref_slug as string), "Full link")}
+        onClick={() => void copyText(fullLink(slug), "Full link")}
       >
         <Link2 className="h-3.5 w-3.5" aria-hidden />
       </Button>
-      <Button size="sm" variant="ghost" className="h-8" aria-label={`Text this link`} asChild>
+      <Button size="sm" variant="ghost" className="h-8" aria-label={`Text ${name}'s application link`} asChild>
         <a href={`sms:?&body=${smsBody}`}>
           <MessageSquareShare className="h-3.5 w-3.5" aria-hidden />
         </a>
@@ -100,9 +100,10 @@ function LinkActions({ row }: { row: LinkRow }) {
           className="h-8"
           aria-label={`Share ${name}'s link`}
           onClick={() => {
-            void navigator
-              .share({ title: `Join ${name} at ${BRAND.legalName}`, url: short })
-              .catch(() => {/* empty-catch-allow:user-cancelled-share */});
+            void shareLink({ title: `Apply to ${name}'s team at ${BRAND.legalName}`, text: "Application link", url: short }).then((outcome) => {
+              if (outcome === "copied") toast.success("Link copied. Paste it into your message.");
+              if (outcome === "failed") toast.error("Could not share or copy. Select and copy the link by hand.");
+            });
           }}
         >
           <Share2 className="h-3.5 w-3.5" aria-hidden />
@@ -114,10 +115,12 @@ function LinkActions({ row }: { row: LinkRow }) {
 
 export default function RecruitingLinks() {
   usePageTitle("Recruiting Links");
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
 
   const linksQ = useQuery({
-    queryKey: ["admin-recruiting-links"],
+    queryKey: ["admin-recruiting-links", user?.id],
+    enabled: !!user?.id,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("admin_recruiting_links" as never);
       if (error) throw error;
@@ -141,8 +144,14 @@ export default function RecruitingLinks() {
         eyebrow="Recruiting"
         eyebrowIcon={<QrCode className="h-3.5 w-3.5" aria-hidden />}
         title="Recruiting Links"
-        subtitle="Send an application link under any manager. Whoever applies through it is credited to them and hired onto their team."
+        subtitle="Applications through each link are credited to its owner. Review and hire the applicant to create their agent account and team placement."
       />
+
+      <nav aria-label="Recruiting link workflow" className="flex flex-wrap gap-2">
+        <Button asChild variant="outline"><Link to="/dashboard/grow">Grow my team</Link></Button>
+        <Button asChild variant="outline"><Link to="/dashboard/recruiting">Review applicants</Link></Button>
+        <Button asChild variant="outline"><Link to="/admin/invite-links">Personal hiring invitation</Link></Button>
+      </nav>
 
       <Card>
         <CardHeader className="pb-3">
@@ -158,9 +167,10 @@ export default function RecruitingLinks() {
             </div>
           )}
           {linksQ.isError && (
-            <p className="text-sm text-destructive">
-              Couldn&apos;t load links: {(linksQ.error as Error).message}
-            </p>
+            <div className="space-y-2">
+              <p role="alert" className="text-sm text-destructive">Couldn&apos;t load links: {(linksQ.error as Error).message}</p>
+              <Button variant="outline" size="sm" onClick={() => void linksQ.refetch()}>Retry links</Button>
+            </div>
           )}
           {!linksQ.isLoading && !linksQ.isError && managers.length === 0 && (
             <p className="text-sm text-muted-foreground">No active managers found.</p>
@@ -204,7 +214,7 @@ export default function RecruitingLinks() {
               <LinkActions row={r} />
             </div>
           ))}
-          {!linksQ.isLoading && everyoneElse.length === 0 && (
+          {!linksQ.isLoading && !linksQ.isError && everyoneElse.length === 0 && (
             <p className="text-sm text-muted-foreground">No matches.</p>
           )}
         </CardContent>

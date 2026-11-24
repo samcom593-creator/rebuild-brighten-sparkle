@@ -659,12 +659,11 @@ export default function RecoveryQueue() {
   });
 
   const logAttempt = useCallback((id: string, channel: "call" | "sms" | "email") => {
-    void supabase
-      .rpc("log_contact_attempt" as any, {
+    void Promise.resolve(supabase.rpc("log_contact_attempt" as any, {
         p_application_id: id,
         p_channel: channel,
         p_outcome: "initiated",
-      })
+      }))
       .then(() => undefined)
       // empty-catch-allow:fire-and-forget telemetry — must not block navigation
       .catch(() => undefined);

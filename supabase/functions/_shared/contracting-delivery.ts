@@ -28,6 +28,7 @@ import {
   type UpdateRequest,
 } from "./ethos-contract.ts";
 import { createSheetsClient, getAccessToken, type FetchLike } from "./google-sheets.ts";
+import { nanpTenDigits } from "./nanp-phone.ts";
 
 /**
  * Thrown when a provider gave a definite rejection, so no side effect exists.
@@ -427,7 +428,7 @@ async function deliverMgnNewAgent(
   }
   const npn = digits(intake.npn);
   const email = trimOuter(intake.email).toLowerCase();
-  const mobile = digits(intake.phone_e164).slice(-10);
+  const mobile = nanpTenDigits(intake.phone_e164);
   const npnRows: number[] = []; const otherRows: number[] = []; let lastPopulated = MGN_FIRST_DATA_ROW - 1;
   for (let i = MGN_FIRST_DATA_ROW - 1; i < rows.length; i++) {
     const r = rows[i] ?? [];
@@ -435,7 +436,7 @@ async function deliverMgnNewAgent(
     lastPopulated = i + 1;
     const rowNpn = digits(r[MGN.NPN]);
     if (npn && rowNpn === npn) { npnRows.push(i + 1); continue; }
-    if ((email && trimOuter(r[MGN.EMAIL]).toLowerCase() === email) || (mobile && digits(r[MGN.MOBILE]).slice(-10) === mobile)) otherRows.push(i + 1);
+    if ((email && trimOuter(r[MGN.EMAIL]).toLowerCase() === email) || (mobile && nanpTenDigits(trimOuter(r[MGN.MOBILE])) === mobile)) otherRows.push(i + 1);
   }
   if (npnRows.length) {
     return { state: "delivered", receipt: { provider: "google_sheets", action: "already_present", rows: npnRows, written: false, layout: "mgn" }, note: `NPN already on the MGN New Agents tab (row ${npnRows.join(", ")}); nothing written.` };
@@ -461,7 +462,8 @@ async function deliverMgnNewAgent(
   const mismatches: string[] = [];
   payload.forEach((want, c) => {
     const got = written[c];
-    const same = c === MGN.MOBILE ? digits(got).slice(-10) === digits(want).slice(-10)
+    const expectedMobile = c === MGN.MOBILE ? nanpTenDigits(trimOuter(want)) : null;
+    const same = c === MGN.MOBILE ? expectedMobile !== null && nanpTenDigits(trimOuter(got)) === expectedMobile
       : c === MGN.EMAIL ? trimOuter(got).toLowerCase() === trimOuter(want).toLowerCase()
       : trimOuter(got) === trimOuter(want);
     if (!same) mismatches.push(MGN_NEW_AGENTS_HEADERS[c]);

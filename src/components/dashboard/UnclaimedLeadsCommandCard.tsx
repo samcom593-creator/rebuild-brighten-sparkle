@@ -72,7 +72,7 @@ export function UnclaimedLeadsCommandCard() {
     queryKey: ["v_unclaimed_new_apps"],
     queryFn: async (): Promise<UnclaimedRow[]> => {
       const { data, error } = await supabase
-        .from("v_unclaimed_new_apps" as any)
+        .from("v_unclaimed_new_apps")
         .select("*")
         .order("created_at", { ascending: true })
         .limit(40);

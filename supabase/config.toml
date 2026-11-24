@@ -852,3 +852,8 @@ verify_jwt = false
 # onboarding-nudge-sweep; verify_jwt must stay false or the gateway pre-rejects the cron caller.
 [functions.contracting-nudge-sweep]
 verify_jwt = false
+
+# Owner-only consumer campaign. Handler verifies admin/manager auth and exact
+# campaign ownership, then the DB rechecks verified state eligibility per claim.
+[functions.ethos-consumer-campaign]
+verify_jwt = true

@@ -23,6 +23,7 @@ import { contactLinkProps, formatPhoneDisplay, phoneHref } from "@/lib/phone";
 import { dispositionLabel } from "@/lib/readymodeDispositions";
 import { LEAD_STATUS_BUTTONS, TIER_STYLE, canDial, flagBadges, formatLabel, isOpenLead, leadStatusLabel, tierLabel, tierLegendFor } from "@/lib/leadBundles";
 import { dialTapHandler } from "@/lib/leadDialTap";
+import { holdLabels } from "@/lib/leadManagerFilters";
 import { MY_LEADS_QUERY_KEY, fetchMyLeads } from "@/lib/myLeads";
 import { cn } from "@/lib/utils";
 import { CallCenterVoiceRecorder } from "@/components/callcenter/CallCenterVoiceRecorder";
@@ -56,7 +57,12 @@ interface MyLead {
 }
 // A lead is workable unless the server says its calling hours are closed. An older server
 // that does not send the flag leaves every lead workable, exactly as before.
-const callableNow = (r: Pick<MyLead, "callable_now">) => r.callable_now !== false;
+const heldReason = (r: Pick<MyLead, "attrs" | "status">): string => {
+  if (r.status === "do_not_call") return "Do not call";
+  const flags = r.attrs ?? {};
+  return holdLabels({ true_dnc: flags.true_dnc, dnc: flags.dnc, current_client: flags.current_client, import_review_required: flags.import_review_required }).join(" · ");
+};
+const callableNow = (r: Pick<MyLead, "callable_now" | "attrs" | "status">) => r.callable_now !== false && !heldReason(r);
 function opensLabel(iso: string | null | undefined): string {
   if (!iso) return "tomorrow morning";
   const d = new Date(iso);
@@ -73,10 +79,11 @@ function earliestOpening(list: Array<Pick<MyLead, "callable_at">>): string | nul
   for (const r of list) if (r.callable_at && (!best || r.callable_at < best)) best = r.callable_at;
   return best;
 }
-type Show = "open" | "done" | "all";
+type Show = "open" | "done" | "held" | "all";
 const SHOW: ReadonlyArray<{ key: Show; label: string }> = [
   { key: "open", label: "To call" },
   { key: "done", label: "Done" },
+  { key: "held", label: "Held" },
   { key: "all", label: "All" },
 ];
 // To call, in the order that makes money (2026-11-19). Measured that day: 656 leads were in agents' hands and 420
@@ -128,7 +135,7 @@ function prettyVal(k: string, v: unknown): string {
 }
 const LONG_FIELDS = new Set(["call_summary", "health_notes", "notes", "key_points", "beneficiaries", "missing_fields", "call_notes", "transcript_excerpt"]);
 
-function LeadDetailGrid({ itemId }: { itemId: string }) {
+function LeadBaseDetailGrid({ itemId }: { itemId: string }) {
   const q = useQuery({
     queryKey: ["my-lead-detail", itemId],
     queryFn: async () => {
@@ -248,7 +255,7 @@ export default function MyLeads() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
-  const pipelineButton = (item: string, status: string) => status === "do_not_call" ? null : (
+  const pipelineButton = (item: string, status: string, held = false) => status === "do_not_call" || held ? null : (
     <Button type="button" size="sm" variant="outline" disabled={toPipeline.isPending || inPipeline[item]} onClick={() => toPipeline.mutate(item)} data-testid="lead-to-pipeline">
       {inPipeline[item] ? <><Check className="mr-1 h-3.5 w-3.5" />In your pipeline</> : <><UserPlus className="mr-1 h-3.5 w-3.5" />Add to my pipeline</>}
     </Button>
@@ -291,7 +298,7 @@ export default function MyLeads() {
   const myWorked = rows.filter((r) => !isOpenLead(r.status)).length;
   // Sam (2026-11-10): after 7 PM leads can't be worked, so they leave "To call". Closed
   // leads stay under "All" so a call made at 6:58 can still be logged.
-  const inView = (r: MyLead, s: Show) => s === "all" || (s === "open" ? isOpenLead(r.status) && callableNow(r) : !isOpenLead(r.status));
+  const inView = (r: MyLead, s: Show) => s === "all" || (s === "held" ? !!heldReason(r) : s === "open" ? isOpenLead(r.status) && callableNow(r) : !isOpenLead(r.status));
   const count = (s: Show) => rows.filter((r) => inView(r, s)).length;
   const inShow = rows.filter((r) => inView(r, show));
   const matched = inShow.filter((r) => matchesSearch(r, search));
@@ -300,7 +307,8 @@ export default function MyLeads() {
   orderRef.current = visible.map((r) => r.item_id);
   openRef.current = openId;
   const callbacksDue = rows.filter((r) => (r.status === "callback" || r.status === "appointment") && callableNow(r)).length;
-  const closedOpen = rows.filter((r) => isOpenLead(r.status) && !callableNow(r));
+  const closedOpen = rows.filter((r) => isOpenLead(r.status) && !heldReason(r) && !callableNow(r));
+  const heldCount = rows.filter((r) => !!heldReason(r)).length;
   const groups: Array<{ id: string; name: string; note: string | null; format: string; leads: MyLead[] }> = [];
   for (const r of visible) {
     const g = groups.find((x) => x.id === r.bundle_id);
@@ -326,6 +334,9 @@ export default function MyLeads() {
           </span>
         </div>
       )}
+      {heldCount > 0 && <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm" data-testid="lead-holds">
+        {heldCount} lead{heldCount === 1 ? " is" : "s are"} held from contact. Open Held to review the reason; calling and pipeline actions are disabled.
+      </div>}
       {closedOpen.length > 0 && (
         <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm" data-testid="calling-hours-closed">
           <p className="font-semibold text-amber-200">
@@ -400,7 +411,7 @@ export default function MyLeads() {
                             <a href={href} {...contactLinkProps(href)} onClick={dialTapHandler(l.item_id)} onClickCapture={() => setActiveId(l.item_id)} data-testid="lead-call-link" className="inline-flex min-h-[32px] items-center gap-1 font-medium text-primary hover:underline"><Phone className="h-3.5 w-3.5" />{formatPhoneDisplay(l.phone10)}</a>
                           ) : (
                             <span className="text-muted-foreground">
-                              {formatPhoneDisplay(l.phone10)} · {canDial(l.status) && !hoursOpen ? `calling hours closed, opens ${opensLabel(l.callable_at)}` : "do not call"}
+                              {formatPhoneDisplay(l.phone10)} · {heldReason(l) || (canDial(l.status) && !hoursOpen ? `calling hours closed, opens ${opensLabel(l.callable_at)}` : "do not call")}
                             </span>
                           )}
                           {/* A closed row carries the tier as a plain label; the tappable badge that explains the tiers is a
@@ -436,7 +447,7 @@ export default function MyLeads() {
                           </button>
                         {detailOpen.has(l.item_id) && (
                           <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
-                            <LeadDetailGrid itemId={l.item_id} />
+                            <LeadDetailGrid itemId={l.item_id} context={l.attrs} />
                           </div>
                         )}
                         {(() => {
@@ -460,7 +471,7 @@ export default function MyLeads() {
                         <div className="space-y-2">
                           <div className="flex flex-wrap items-center gap-2">
                             {LEAD_STATUS_BUTTONS.map((b) => (
-                              <Button key={b.key} type="button" size="sm" variant={l.status === b.key ? "default" : "outline"} disabled={set.isPending} onClick={() => set.mutate({ item: l.item_id, status: b.key })}>{b.label}</Button>
+                              <Button key={b.key} type="button" size="sm" variant={l.status === b.key ? "default" : "outline"} disabled={set.isPending || (!!heldReason(l) && b.key !== "do_not_call")} onClick={() => set.mutate({ item: l.item_id, status: b.key })}>{b.label}</Button>
                             ))}
                             <Button type="button" size="sm" variant={recordingFor === l.item_id ? "default" : "outline"} onClick={() => setRecordingFor((c) => (c === l.item_id ? null : l.item_id))}>
                               <Mic className="mr-1 h-3.5 w-3.5" />{recordingFor === l.item_id ? "Close recorder" : "Record the call"}
@@ -468,7 +479,7 @@ export default function MyLeads() {
                             {recordings[l.item_id] && (
                               <Badge variant="outline" className="bg-green-600/15 border-green-600/40 text-green-300"><Check className="mr-1 h-3 w-3" />recorded</Badge>
                             )}
-                            {pipelineButton(l.item_id, l.status)}
+                            {pipelineButton(l.item_id, l.status, !!heldReason(l))}
                             <Input value={notes[l.item_id] ?? ""} onChange={(e) => setNotes((n) => ({ ...n, [l.item_id]: e.target.value }))} placeholder="Note (saved with the next tap)" className="h-8 min-w-[12rem] flex-1" maxLength={300} aria-label="Note" />
                           </div>
                           {recordingFor === l.item_id && (
@@ -490,7 +501,8 @@ export default function MyLeads() {
         const pack = rows.filter((r) => r.bundle_id === workBundle);
         if (pack.length === 0) { return null; }
         const queue = pack.filter((r) => r.status === "new" && callableNow(r));
-        const waiting = pack.filter((r) => r.status === "new" && !callableNow(r));
+        const waiting = pack.filter((r) => r.status === "new" && !heldReason(r) && !callableNow(r));
+        const held = pack.filter((r) => !!heldReason(r));
         const cur = queue[0] ?? null;
         const workedN = pack.filter((r) => r.status !== "new").length;
         const soldN = pack.filter((r) => r.status === "sold").length;
@@ -540,7 +552,7 @@ export default function MyLeads() {
                     {pack[0].bundle_note && <p className="text-sm italic text-amber-300/90">“{pack[0].bundle_note}”</p>}
                     <GlassCard className="p-4">
                       <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Client file</p>
-                      <LeadDetailGrid itemId={cur.item_id} />
+                      <LeadDetailGrid itemId={cur.item_id} context={cur.attrs} />
                     </GlassCard>
                     <div className="space-y-2">
                       <p className="text-sm font-medium">What happened? <span className="font-normal text-muted-foreground">(required — this is what moves you to the next lead)</span></p>
@@ -558,7 +570,7 @@ export default function MyLeads() {
                         {recordings[cur.item_id] && (
                           <Badge variant="outline" className="bg-green-600/15 border-green-600/40 text-green-300"><Check className="mr-1 h-3 w-3" />recorded</Badge>
                         )}
-                        {pipelineButton(cur.item_id, cur.status)}
+                        {pipelineButton(cur.item_id, cur.status, !!heldReason(cur))}
                       </div>
                       {recordingFor === cur.item_id && (
                         <CallCenterVoiceRecorder key={cur.item_id} {...recorderProps(cur.item_id)} className="rounded-lg border border-border/60 p-3" />
@@ -582,6 +594,7 @@ export default function MyLeads() {
                 ) : (
                   <div className="flex flex-col items-center gap-3 py-16 text-center">
                     <Trophy className="h-10 w-10 text-primary" />
+                    {held.length > 0 && <p className="text-sm text-amber-300">{held.length} held lead{held.length === 1 ? "" : "s"}. Return to the list to review the hold reasons.</p>}
                     {waiting.length > 0 ? (
                       <>
                         <h2 className="text-xl font-semibold">Calling hours are closed for the rest of this pack.</h2>
@@ -603,4 +616,62 @@ export default function MyLeads() {
       })()}
     </div>
   );
+}
+
+
+type SourcePolicyObservation = Record<string, unknown> & { observation_id: string };
+
+/** Source policies stay observations until separately verified by the carrier. */
+function LeadDetailGrid({ itemId, context }: { itemId: string; context: Record<string, unknown> | null }) {
+  const source = useQuery({
+    queryKey: ["my-lead-source-history", itemId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("my_lead_source_history" as never, { p_item: itemId } as never);
+      if (error) throw new Error(error.message);
+      return (Array.isArray(data) ? data : []) as unknown as SourcePolicyObservation[];
+    }, staleTime: 300_000,
+  });
+  return <div className="space-y-4">
+    <LeadBaseDetailGrid itemId={itemId} />
+    {source.isError ? <p className="text-xs text-destructive">Source history did not load: {source.error.message}</p>
+      : (source.data?.length ?? 0) > 0 && <section className="space-y-2 border-t pt-3">
+        <h3 className="text-sm font-medium">Source policy history</h3>
+        <p className="text-xs text-muted-foreground">Supplier-reported ownership. Source dates and status do not verify an active policy. Amounts with an unknown cadence are not monthly or annual premium.</p>
+        {source.data?.map((row) => <dl key={row.observation_id} className="grid gap-x-4 gap-y-1 rounded border p-2 text-xs sm:grid-cols-2">
+          {Object.entries(row).filter(([key, value]) => !["id", "observation_id"].includes(key) && value != null && value !== "").map(([key, value]) => <div key={key}>
+            <dt className="text-muted-foreground">{prettyKey(key)}</dt><dd className="break-words">{prettyVal(key, value)}</dd>
+          </div>)}
+        </dl>)}
+      </section>}
+    {context?.blocked !== true && <LeadFollowUp itemId={itemId} context={context} />}
+  </div>;
+}
+
+function LeadFollowUp({ itemId, context }: { itemId: string; context: Record<string, unknown> | null }) {
+  const qc = useQueryClient();
+  const [callback, setCallback] = useState(() => {
+    if (typeof context?.callback_at !== "string") return "";
+    const date = new Date(context.callback_at);
+    return Number.isNaN(date.getTime()) ? "" : new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+  });
+  const [action, setAction] = useState(typeof context?.next_action === "string" ? context.next_action : "");
+  const save = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc("lead_bundle_followup_set" as never, {
+        p_item: itemId, p_callback_at: callback ? new Date(callback).toISOString() : null,
+        p_next_action: action.trim() || null,
+      } as never);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => { toast.success("Follow-up saved"); qc.invalidateQueries({ queryKey: MY_LEADS_QUERY_KEY }); },
+    onError: (error: Error) => toast.error(error.message),
+  });
+  return <section className="space-y-2 border-t pt-3">
+    <h3 className="text-sm font-medium">Follow-up plan</h3>
+    <label className="block text-xs text-muted-foreground">Callback time (your local time)
+      <Input type="datetime-local" aria-label="Callback time" value={callback} onChange={(e) => setCallback(e.target.value)} />
+    </label>
+    <Input aria-label="Next action" placeholder="Next action" maxLength={500} value={action} onChange={(e) => setAction(e.target.value)} />
+    <Button type="button" size="sm" variant="outline" disabled={save.isPending} onClick={() => save.mutate()}>Save follow-up</Button>
+  </section>;
 }

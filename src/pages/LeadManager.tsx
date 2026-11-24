@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +17,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { QueryState } from "@/components/ui/query-state";
 import { cn } from "@/lib/utils";
 import { TIER_STYLE, flagBadges, tierLegendFor } from "@/lib/leadBundles";
+import { EMPTY_WORK_FILTERS, LEAD_PACK_COLUMNS, OUTCOME_OPTIONS, holdLabels, workFilterParams, type LeadPackRow, type LeadWorkFilters } from "@/lib/leadManagerFilters";
 import { formatTimeAgo } from "@/lib/dateUtils";
 import {
   Popover, PopoverContent, PopoverTrigger,
@@ -90,6 +92,9 @@ type PoolCounts = {
   by_tier: Record<string, number>;
   under_9mo: number;
   dnc_excluded: number;
+  client_excluded?: number;
+  review_excluded?: number;
+  matching?: number;
   resold_excluded: number;
   in_bundle_excluded: number;
   /** When the pool snapshot the counts read from was last refreshed (MP-LEAD-MANAGER-15). */
@@ -123,10 +128,6 @@ type RecentBundle = {
 type Closer = {
   user_id: string; display_name: string | null; dropped: number; worked: number;
   sold: number; appointments: number; recorded: number; sold_rate: number | null;
-};
-type ExportRow = {
-  first_name: string | null; last_name: string | null; phone10: string | null; email: string | null;
-  state: string | null; age: number | null; grade: string | null; tags: string | null; status: string | null;
 };
 
 function csvField(value: unknown): string {
@@ -281,6 +282,7 @@ function AgentDropdown({
           type="button"
           variant="outline"
           role="combobox"
+          aria-label={selected ? selected.display_name : placeholder}
           aria-expanded={open}
           disabled={disabled}
           className={cn("h-11 justify-between px-3 font-normal", widthClass ?? "w-full sm:w-80")}
@@ -347,8 +349,7 @@ export default function LeadManager() {
   const [minAge, setMinAge] = useState("");
   const [maxAge, setMaxAge] = useState("");
   const [vantageOnly, setVantageOnly] = useState(false);
-  const [excludeDnc, setExcludeDnc] = useState(true);
-  const [excludeResold, setExcludeResold] = useState(true);
+  const [workFilters, setWorkFilters] = useState<LeadWorkFilters>({ ...EMPTY_WORK_FILTERS });
   const [sort, setSort] = useState("tier");
   const [limit, setLimit] = useState(100);
   const [note, setNote] = useState("");
@@ -360,12 +361,13 @@ export default function LeadManager() {
   useEffect(() => {
     setTiers(new Set()); setFlags(new Set()); setVantageOnly(false);
     setStates(new Set()); setCampaigns(new Set()); setMinAge(""); setMaxAge("");
+    setWorkFilters({ ...EMPTY_WORK_FILTERS });
   }, [pool]);
 
   const [agent, setAgent] = useState<AssignableAgent | null>(null);
 
   const filters = useMemo(() => {
-    const f: Record<string, unknown> = { exclude_dnc: excludeDnc, exclude_resold: excludeResold, sort };
+    const f: Record<string, unknown> = { ...workFilterParams(workFilters), sort };
     if (tiers.size) f.tiers = Array.from(tiers);
     if (flags.size) f.require_flags = Array.from(flags);
     // Every pool carries a state and an age now (MP-LEAD-MANAGER-RM): the dialer pool from the
@@ -377,7 +379,7 @@ export default function LeadManager() {
     if (maxAge) f.max_age = Number(maxAge);
     if (vantageOnly) f.vantage_only = true;
     return f;
-  }, [tiers, flags, states, campaigns, minAge, maxAge, vantageOnly, excludeDnc, excludeResold, sort]);
+  }, [tiers, flags, states, campaigns, minAge, maxAge, vantageOnly, workFilters, sort]);
 
   const debouncedFilters = useDebounced(filters, 350);
 
@@ -403,7 +405,7 @@ export default function LeadManager() {
   });
   const totals = totalsQuery.data ?? {};
 
-  const { data: counts, isFetching } = useQuery<PoolCounts>({
+  const countsQuery = useQuery<PoolCounts>({
     queryKey: ["lead-pool", pool, debouncedFilters],
     queryFn: async () => {
       const { data, error } = await rpc("lead_pool_counts", { p_source: pool, p_filters: debouncedFilters });
@@ -417,6 +419,9 @@ export default function LeadManager() {
     // with the spinner while a filter tweak recomputes, instead of blanking to "—".
     placeholderData: (prev) => prev,
   });
+
+  const { data: counts, isFetching } = countsQuery;
+  const previewCurrent = filters === debouncedFilters && !isFetching && !countsQuery.isPlaceholderData && !countsQuery.isError;
 
   // The states and campaigns that can be picked in this pool, with counts. Read from the same
   // 10-minute snapshot as the counts; cached per pool.
@@ -493,6 +498,7 @@ export default function LeadManager() {
   const assign = useMutation({
     mutationFn: async () => {
       if (!agent) throw new Error("Pick a live agent first.");
+      if (!previewCurrent) throw new Error("Wait for the matching preview to finish.");
       const { data, error } = await rpc("lead_pool_assign", {
         p_source: pool, p_filters: filters, p_limit: limit,
         p_agent_user_id: agent.user_id, p_name: null, p_note: note.trim() || null,
@@ -519,14 +525,13 @@ export default function LeadManager() {
   });
 
   async function exportPack(b: RecentBundle) {
-    const { data, error } = await rpc("lead_bundle_export", { p_bundle: b.bundle_id });
+    const { data, error } = await rpc("lead_bundle_export_detail", { p_bundle: b.bundle_id });
     if (error) { toast.error("Could not export pack"); return; }
-    const rows = ((data as ExportRow[]) ?? []).map((r) => [
-      r.first_name, r.last_name, r.phone10, r.email, r.state, r.age, r.grade, r.tags, r.status,
-    ]);
-    downloadCsv(`${b.name.replace(/[^\w.-]+/g, "_")}.csv`,
-      ["First", "Last", "Phone", "Email", "State", "Age", "Tier", "Tags", "Status"], rows);
-    toast.success(`Exported ${rows.length} leads`);
+    const allRows = (data as LeadPackRow[]) ?? [];
+    const safeRows = allRows.filter((r) => !r.hold_reasons);
+    const rows = safeRows.map((r) => LEAD_PACK_COLUMNS.map(([key]) => r[key]));
+    downloadCsv(`${b.name.replace(/[^\w.-]+/g, "_")}.csv`, LEAD_PACK_COLUMNS.map(([, title]) => title), rows);
+    toast.success(`Exported ${rows.length} leads${allRows.length > rows.length ? `; ${allRows.length - rows.length} held records excluded` : ""}`);
   }
 
   const tierOpts = POOL_TIERS[pool];
@@ -539,6 +544,7 @@ export default function LeadManager() {
         title="Lead Manager"
         subtitle="Pick a pool, filter it, tap an agent in the drop-down, drop the pack into their portal."
       />
+      <Button asChild variant="outline"><Link to="/dashboard/consumer-import">Import consumers</Link></Button>
 
       {/* POOL SWITCH */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -666,6 +672,8 @@ export default function LeadManager() {
             </div>
           </div>
 
+          <WorkFilterControls value={workFilters} onChange={setWorkFilters} />
+          <p className="text-xs text-muted-foreground">Do not call, current-client, review and allocation holds stay protected. Select a hold reason to inspect those records. Imported ownership and dialer sales do not verify an active policy.</p>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
             {pool === "winback" && (
               <label className="flex items-center gap-2 text-sm">
@@ -673,14 +681,6 @@ export default function LeadManager() {
                 Vantage only
               </label>
             )}
-            <label className="flex items-center gap-2 text-sm">
-              <Checkbox checked={excludeDnc} onCheckedChange={(v) => setExcludeDnc(Boolean(v))} />
-              Hold back Do-Not-Call
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <Checkbox checked={excludeResold} onCheckedChange={(v) => setExcludeResold(Boolean(v))} />
-              Hold back already-sold
-            </label>
             <div className="flex items-center gap-2 text-sm">
               <span className="text-muted-foreground">Pack size</span>
               <Input type="number" inputMode="numeric" value={limit}
@@ -694,8 +694,12 @@ export default function LeadManager() {
             <StatTile label="Ready to drop" value={isFetching ? "…" : (counts?.total ?? 0).toLocaleString()} accent />
             <StatTile label="Under 9 months" value={(counts?.under_9mo ?? 0).toLocaleString()} warn={!!counts?.under_9mo} />
             <StatTile label="Held: Do-Not-Call" value={(counts?.dnc_excluded ?? 0).toLocaleString()} />
-            <StatTile label="Held: already sold" value={(counts?.resold_excluded ?? 0).toLocaleString()} />
+            <StatTile label="Held: existing client" value={(counts?.client_excluded ?? 0).toLocaleString()} />
+            <StatTile label="Held: assigned" value={(counts?.in_bundle_excluded ?? 0).toLocaleString()} />
+            <StatTile label="Held: distributed" value={(counts?.resold_excluded ?? 0).toLocaleString()} />
+            <StatTile label="Held: import review" value={(counts?.review_excluded ?? 0).toLocaleString()} />
           </div>
+          {countsQuery.isError && <QueryState status="error" label="matching leads" error={countsQuery.error} onRetry={() => void countsQuery.refetch()} compact />}
           {facetsQuery.isError && (
             <QueryState status="error" label="the state and campaign lists" error={facetsQuery.error} onRetry={() => void facetsQuery.refetch()} compact />
           )}
@@ -704,7 +708,7 @@ export default function LeadManager() {
           )}
           {counts?.as_of && (
             <p className="text-xs text-muted-foreground" data-testid="pool-snapshot-age">
-              Pool counts come from a snapshot refreshed {formatTimeAgo(counts.as_of)}. The ReadyMode lead list itself is pulled every night. Leads already dropped or sold are excluded live.
+              Pool counts come from a snapshot refreshed {formatTimeAgo(counts.as_of)}. The ReadyMode lead list itself is pulled every night. Do-not-call records and leads already assigned or distributed are excluded live. Hold totals may overlap for the same phone.
             </p>
           )}
 
@@ -716,7 +720,7 @@ export default function LeadManager() {
                     <th className="px-3 py-2 text-left">Name</th>
                     <th className="px-3 py-2 text-left">Phone</th>
                     <th className="px-3 py-2 text-left">Tier</th>
-                    <th className="px-3 py-2 text-left">Flags</th>
+                    <th className="px-3 py-2 text-left">Context / holds</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -732,10 +736,17 @@ export default function LeadManager() {
                       </td>
                       <td className="px-3 py-1.5">
                         <div className="flex flex-wrap gap-1">
-                          {flagBadges(s.flags, s.under_9mo).slice(0, 4).map((b) => (
+                          {holdLabels(s.flags).map((label) => <Badge key={label} variant="outline" className="text-[10px] text-amber-300">{label}</Badge>)}
+                          {flagBadges(s.flags, s.under_9mo).filter((b) => b.key !== "current_client").slice(0, 4).map((b) => (
                             <Badge key={b.key} variant="outline" className={cn("text-[10px]", b.cls)}>{b.label}</Badge>
                           ))}
                         </div>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {[typeof s.flags.last_caller === "string" && s.flags.last_caller,
+                            typeof s.flags.last_outcome === "string" && s.flags.last_outcome.replace(/_/g, " "),
+                            typeof s.flags.times_called === "number" && `${s.flags.times_called} attempts`,
+                            typeof s.flags.last_touched_at === "string" && formatTimeAgo(s.flags.last_touched_at)].filter(Boolean).join(" · ")}
+                        </p>
                       </td>
                     </tr>
                   ))}
@@ -789,7 +800,7 @@ export default function LeadManager() {
             onChange={(e) => setNote(e.target.value)} className="max-w-md" aria-label="Pack note" />
 
           <Button type="button" data-primary-action size="lg"
-            disabled={!agent || dropCount < 1 || assign.isPending}
+            disabled={!agent || dropCount < 1 || assign.isPending || !previewCurrent}
             onClick={() => assign.mutate()}>
             <Send className="mr-1.5 h-4 w-4" />
             {assign.isPending ? "Dropping…"
@@ -895,6 +906,7 @@ export default function LeadManager() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5">
+                    <PackDetails bundle={b} />
                     <Button type="button" size="sm" variant="outline" onClick={() => exportPack(b)}><Download className="mr-1 h-4 w-4" /> Pack</Button>
                     <MarkSoldDialog bundle={b} onDone={() => {
                       queryClient.invalidateQueries({ queryKey: ["lead-bundles-recent"] });
@@ -1351,5 +1363,81 @@ function RecordingsCard() {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function WorkFilterControls({ value, onChange }: { value: LeadWorkFilters; onChange: (value: LeadWorkFilters) => void }) {
+  const set = (key: keyof LeadWorkFilters, next: string) => onChange({ ...value, [key]: next });
+  const textFields: Array<[keyof LeadWorkFilters, string, string]> = [
+    ["caller", "Last caller", "text"], ["sourceFile", "Source file contains", "text"],
+    ["touchedAfter", "Touched on or after", "date"], ["touchedBefore", "Touched on or before", "date"],
+    ["minAttempts", "Minimum attempts", "number"], ["maxAttempts", "Maximum attempts", "number"],
+    ["callbackBefore", "Callback due by", "date"],
+  ];
+  const choices: Array<[keyof LeadWorkFilters, string, ReadonlyArray<readonly [string, string]>]> = [
+    ["outcome", "Last outcome", OUTCOME_OPTIONS],
+    ["sourceType", "Source type", [["pos", "Purchased POS"], ["mortgage", "Mortgage"], ["readymode", "ReadyMode"]]],
+    ["policyStanding", "Policy standing", [["unverified", "Unverified"], ["current_client", "Existing client match"], ["lapsing", "Lapsed in book"], ["gone", "Other out of force"]]],
+    ["hold", "Hold reason", [["ready", "Ready to assign"], ["true_dnc", "Do not call"], ["current_client", "Existing client"], ["assigned", "Already assigned"], ["resold", "Previously distributed"], ["review", "Import review"]]],
+  ];
+  return (
+    <div className="grid gap-3 rounded-lg border border-border/60 p-3 sm:grid-cols-2 lg:grid-cols-4">
+      {textFields.map(([key, label, type]) => (
+        <div key={key} className="space-y-1">
+          <Label htmlFor={`lead-filter-${key}`} className="text-xs text-muted-foreground">{label}</Label>
+          <Input id={`lead-filter-${key}`} type={type} min={type === "number" ? 0 : undefined}
+            value={value[key]} onChange={(e) => set(key, e.target.value)} />
+        </div>
+      ))}
+      {choices.map(([key, label, options]) => (
+        <div key={key} className="space-y-1">
+          <Label className="text-xs text-muted-foreground">{label}</Label>
+          <Select value={value[key] || "__all"} onValueChange={(next) => set(key, next === "__all" ? "" : next)}>
+            <SelectTrigger aria-label={label}><SelectValue /></SelectTrigger>
+            <SelectContent><SelectItem value="__all">All</SelectItem>
+              {options.map(([v, title]) => <SelectItem key={v} value={v}>{title}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+      ))}
+      <div className="flex items-end"><Button type="button" variant="ghost" size="sm" onClick={() => onChange({ ...EMPTY_WORK_FILTERS })}>Clear work filters</Button></div>
+      <p className="text-xs text-muted-foreground sm:col-span-2 lg:col-span-4">Date filters use Phoenix calendar days. Missing dates and unknown caller details do not match a specific filter.</p>
+    </div>
+  );
+}
+
+function PackDetails({ bundle }: { bundle: RecentBundle }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const q = useQuery<LeadPackRow[]>({
+    queryKey: ["lead-pack-detail", bundle.bundle_id], enabled: open,
+    queryFn: async () => {
+      const { data, error } = await rpc("lead_bundle_export_detail", { p_bundle: bundle.bundle_id });
+      if (error) throw error;
+      return (data ?? []) as LeadPackRow[];
+    },
+  });
+  const rows = (q.data ?? []).filter((row) => [row.first_name, row.last_name, row.phone10].join(" ").toLowerCase().includes(search.trim().toLowerCase()));
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild><Button type="button" size="sm" variant="outline">Details</Button></DialogTrigger>
+      <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto">
+        <DialogHeader><DialogTitle>{bundle.name}</DialogTitle></DialogHeader>
+        <p className="text-xs text-muted-foreground">Source claims, call history and next actions travel with the lead. A reported sale does not verify an active policy. Held records are excluded from the downloadable pack.</p>
+        <Input aria-label="Search pack details" placeholder="Search name or phone" value={search} onChange={(e) => setSearch(e.target.value)} />
+        {q.isError ? <QueryState status="error" label="pack details" error={q.error} onRetry={() => void q.refetch()} compact />
+          : q.isLoading ? <p>Loading details…</p> : <div className="space-y-3">
+            {rows.slice(0, 100).map((row) => <div key={String(row.phone10)} className="rounded-lg border p-3">
+              <h3 className="font-medium">{[row.first_name, row.last_name].filter(Boolean).join(" ") || row.phone10}</h3>
+              <dl className="mt-2 grid gap-x-4 gap-y-2 text-sm sm:grid-cols-2">
+                {LEAD_PACK_COLUMNS.filter(([key]) => !["first_name", "last_name"].includes(key) && row[key] != null && row[key] !== "").map(([key, label]) => <div key={key}>
+                  <dt className="text-xs text-muted-foreground">{label}</dt><dd className="break-words">{String(row[key])}</dd>
+                </div>)}
+              </dl>
+            </div>)}
+            <p className="text-xs text-muted-foreground">Showing {Math.min(rows.length, 100)} of {rows.length} matches. Search to narrow the pack.</p>
+          </div>}
+      </DialogContent>
+    </Dialog>
   );
 }

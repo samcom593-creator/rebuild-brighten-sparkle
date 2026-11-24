@@ -58,8 +58,8 @@ export default function AgentDetail() {
         .from("agents")
         .select(`id, status, license_status, start_date, total_policies, total_premium,
           insuracloud_user_id, metadata,
-          profile:profiles(full_name, email, phone, avatar_url),
-          manager:agents!manager_id(profile:profiles(full_name))`)
+          profile:profiles!agents_profile_id_fkey(full_name, email, phone, avatar_url),
+          manager:agents!manager_id(profile:profiles!agents_profile_id_fkey(full_name))`)
         .eq("id", id).maybeSingle();
       if (!a) { if (!cancelled) { setAgent(null); setLoading(false); } return; }
       const p = (a as any).profile;
@@ -84,7 +84,7 @@ export default function AgentDetail() {
         supabase
           .from("deals")
           .select(`id, client_first_name, client_last_name, annual_premium, status, effective_date, posted_at,
-            carrier:carriers(name)`)
+            carrier:carriers!deals_carrier_id_fkey(name)`)
           .eq("agent_id", id)
           .order("posted_at", { ascending: false })
           .limit(50),

@@ -51,7 +51,7 @@ export default function XcelPipeline() {
     queryKey: ["v_xcel_pipeline"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_xcel_pipeline" as any)
+        .from("v_xcel_pipeline")
         .select("*")
         .order("last_login", { ascending: false, nullsFirst: false });
       if (error) throw error;

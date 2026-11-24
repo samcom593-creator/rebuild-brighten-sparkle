@@ -1925,6 +1925,52 @@
         ],
         "unnamed": false,
         "raw": "p_id uuid, p_outcome text, p_notes text DEFAULT NULL::text, p_followup_due_at timestamp with time zone DEFAULT NULL::timestamp with time zone"
+      },
+      {
+        "all": [
+          "p_id",
+          "p_outcome",
+          "p_notes",
+          "p_followup_due_at"
+        ],
+        "required": [
+          "p_id",
+          "p_outcome"
+        ],
+        "unnamed": false,
+        "raw": "p_id uuid,p_outcome text,p_notes text default null,p_followup_due_at timestamptz default null"
+      }
+    ],
+    "cc_record_interview_disposition": [
+      {
+        "all": [
+          "p_id",
+          "p_outcome",
+          "p_notes",
+          "p_followup_due_at",
+          "p_expected_updated_at"
+        ],
+        "required": [
+          "p_id",
+          "p_outcome",
+          "p_notes",
+          "p_followup_due_at",
+          "p_expected_updated_at"
+        ],
+        "unnamed": false,
+        "raw": "p_id uuid,p_outcome text,p_notes text,p_followup_due_at timestamptz,p_expected_updated_at timestamptz"
+      }
+    ],
+    "cc_undo_interview_disposition": [
+      {
+        "all": [
+          "p_receipt_id"
+        ],
+        "required": [
+          "p_receipt_id"
+        ],
+        "unnamed": false,
+        "raw": "p_receipt_id uuid"
       }
     ],
     "check_banned_prospect": [
@@ -2010,6 +2056,21 @@
         "raw": "p_intake_id uuid"
       }
     ],
+    "claim_ethos_consumer_deliveries": [
+      {
+        "all": [
+          "p_campaign_key",
+          "p_delivery_ids",
+          "p_limit"
+        ],
+        "required": [
+          "p_campaign_key",
+          "p_delivery_ids"
+        ],
+        "unnamed": false,
+        "raw": "p_campaign_key text,p_delivery_ids uuid[],p_limit integer default 5"
+      }
+    ],
     "claim_messaging_delivery_receipt": [
       {
         "all": [
@@ -2084,6 +2145,74 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "consumer_import_history": [
+      {
+        "all": [
+          "p_limit"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_limit integer default 40"
+      }
+    ],
+    "consumer_import_resolve_review": [
+      {
+        "all": [
+          "p_source_key",
+          "p_source_row",
+          "p_payload",
+          "p_resolved_by"
+        ],
+        "required": [
+          "p_source_key",
+          "p_source_row",
+          "p_payload",
+          "p_resolved_by"
+        ],
+        "unnamed": false,
+        "raw": "p_source_key text,p_source_row integer,p_payload jsonb,p_resolved_by uuid"
+      }
+    ],
+    "consumer_import_review": [
+      {
+        "all": [
+          "p_limit"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_limit integer default 50"
+      }
+    ],
+    "consumer_lead_import": [
+      {
+        "all": [
+          "p_source_key",
+          "p_source_name",
+          "p_source_kind",
+          "p_rows"
+        ],
+        "required": [
+          "p_source_key",
+          "p_source_name",
+          "p_source_kind",
+          "p_rows"
+        ],
+        "unnamed": false,
+        "raw": "p_source_key text, p_source_name text, p_source_kind text, p_rows jsonb"
+      }
+    ],
+    "consumer_phone10": [
+      {
+        "all": [
+          "p_value"
+        ],
+        "required": [
+          "p_value"
+        ],
+        "unnamed": false,
+        "raw": "p_value text"
       }
     ],
     "content_can_access": [
@@ -3057,6 +3186,44 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "ethos_consumer_batch_members": [
+      {
+        "all": [
+          "p_source_batch_id"
+        ],
+        "required": [
+          "p_source_batch_id"
+        ],
+        "unnamed": false,
+        "raw": "p_source_batch_id text"
+      }
+    ],
+    "ethos_consumer_candidates": [
+      {
+        "all": [
+          "p_campaign_key",
+          "p_source_batch_id"
+        ],
+        "required": [
+          "p_campaign_key",
+          "p_source_batch_id"
+        ],
+        "unnamed": false,
+        "raw": "p_campaign_key text, p_source_batch_id text"
+      }
+    ],
+    "ethos_consumer_phone10": [
+      {
+        "all": [
+          "p_raw"
+        ],
+        "required": [
+          "p_raw"
+        ],
+        "unnamed": false,
+        "raw": "p_raw text"
       }
     ],
     "ethos_paste_rows_approved": [
@@ -5550,6 +5717,30 @@
         ],
         "unnamed": false,
         "raw": "p_age text, p_dob text"
+      }
+    ],
+    "fn_lead_assignment_hold": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_lead_capture_book_dnc": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_lead_capture_dnc": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
       }
     ],
     "fn_lead_pool_stats_refresh": [
@@ -8995,6 +9186,33 @@
         "raw": "p_bundle uuid"
       }
     ],
+    "lead_bundle_export_detail": [
+      {
+        "all": [
+          "p_bundle"
+        ],
+        "required": [
+          "p_bundle"
+        ],
+        "unnamed": false,
+        "raw": "p_bundle uuid"
+      }
+    ],
+    "lead_bundle_followup_set": [
+      {
+        "all": [
+          "p_item",
+          "p_callback_at",
+          "p_next_action"
+        ],
+        "required": [
+          "p_item",
+          "p_callback_at"
+        ],
+        "unnamed": false,
+        "raw": "p_item uuid, p_callback_at timestamptz, p_next_action text default null"
+      }
+    ],
     "lead_bundle_grant": [
       {
         "all": [
@@ -9152,6 +9370,18 @@
         "raw": ""
       }
     ],
+    "lead_context_time": [
+      {
+        "all": [
+          "p_value"
+        ],
+        "required": [
+          "p_value"
+        ],
+        "unnamed": false,
+        "raw": "p_value text"
+      }
+    ],
     "lead_hold_set": [
       {
         "all": [
@@ -9216,6 +9446,32 @@
         ],
         "unnamed": false,
         "raw": "p_from uuid, p_to uuid, p_limit integer DEFAULT NULL::integer, p_pause boolean DEFAULT true"
+      },
+      {
+        "all": [
+          "p_from",
+          "p_to",
+          "p_limit",
+          "p_pause"
+        ],
+        "required": [
+          "p_from",
+          "p_to"
+        ],
+        "unnamed": false,
+        "raw": "p_from uuid, p_to uuid, p_limit integer default null, p_pause boolean default true"
+      }
+    ],
+    "lead_outcome_key": [
+      {
+        "all": [
+          "p_value"
+        ],
+        "required": [
+          "p_value"
+        ],
+        "unnamed": false,
+        "raw": "p_value text"
       }
     ],
     "lead_pool_assign": [
@@ -9236,6 +9492,37 @@
         ],
         "unnamed": false,
         "raw": "p_source text, p_filters jsonb, p_limit integer, p_agent_user_id uuid, p_name text DEFAULT NULL::text, p_note text DEFAULT NULL::text"
+      },
+      {
+        "all": [
+          "p_source",
+          "p_filters",
+          "p_limit",
+          "p_agent_user_id",
+          "p_name",
+          "p_note"
+        ],
+        "required": [
+          "p_source",
+          "p_filters",
+          "p_limit",
+          "p_agent_user_id"
+        ],
+        "unnamed": false,
+        "raw": "p_source text, p_filters jsonb, p_limit integer, p_agent_user_id uuid, p_name text DEFAULT NULL::text, p_note text DEFAULT NULL::text"
+      }
+    ],
+    "lead_pool_candidates": [
+      {
+        "all": [
+          "p_source",
+          "p_filters"
+        ],
+        "required": [
+          "p_source"
+        ],
+        "unnamed": false,
+        "raw": "p_source text, p_filters jsonb default '{}'"
       }
     ],
     "lead_pool_counts": [
@@ -9249,6 +9536,17 @@
         ],
         "unnamed": false,
         "raw": "p_source text, p_filters jsonb DEFAULT '{}'::jsonb"
+      },
+      {
+        "all": [
+          "p_source",
+          "p_filters"
+        ],
+        "required": [
+          "p_source"
+        ],
+        "unnamed": false,
+        "raw": "p_source text, p_filters jsonb default '{}'"
       }
     ],
     "lead_pool_facets": [
@@ -9261,6 +9559,28 @@
         ],
         "unnamed": false,
         "raw": "p_source text"
+      }
+    ],
+    "lead_pool_filter_matches": [
+      {
+        "all": [
+          "p_state",
+          "p_age",
+          "p_tier",
+          "p_lead_age",
+          "p_flags",
+          "p_filters"
+        ],
+        "required": [
+          "p_state",
+          "p_age",
+          "p_tier",
+          "p_lead_age",
+          "p_flags",
+          "p_filters"
+        ],
+        "unnamed": false,
+        "raw": "p_state text, p_age integer, p_tier text, p_lead_age integer, p_flags jsonb, p_filters jsonb"
       }
     ],
     "lead_pool_tiles": [
@@ -9708,6 +10028,18 @@
         ],
         "unnamed": false,
         "raw": "p_item_id uuid"
+      }
+    ],
+    "my_lead_source_history": [
+      {
+        "all": [
+          "p_item"
+        ],
+        "required": [
+          "p_item"
+        ],
+        "unnamed": false,
+        "raw": "p_item uuid"
       }
     ],
     "my_lead_to_pipeline": [
@@ -10185,6 +10517,73 @@
         "raw": "p_email_key text, p_in_slack boolean, p_done boolean, p_note text DEFAULT NULL::text"
       }
     ],
+    "preview_ethos_consumer_campaign": [
+      {
+        "all": [
+          "p_campaign_key",
+          "p_source_batch_id"
+        ],
+        "required": [
+          "p_campaign_key",
+          "p_source_batch_id"
+        ],
+        "unnamed": false,
+        "raw": "p_campaign_key text,p_source_batch_id text"
+      }
+    ],
+    "producer_call_matches_client": [
+      {
+        "all": [
+          "p_client_id",
+          "p_call_id"
+        ],
+        "required": [
+          "p_client_id",
+          "p_call_id"
+        ],
+        "unnamed": false,
+        "raw": "p_client_id uuid, p_call_id uuid"
+      }
+    ],
+    "producer_can_access_agent": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
+    "producer_can_access_client": [
+      {
+        "all": [
+          "p_client_id"
+        ],
+        "required": [
+          "p_client_id"
+        ],
+        "unnamed": false,
+        "raw": "p_client_id uuid"
+      }
+    ],
+    "producer_client_calls": [
+      {
+        "all": [
+          "p_client_id",
+          "p_category",
+          "p_before_at",
+          "p_before_key"
+        ],
+        "required": [
+          "p_client_id"
+        ],
+        "unnamed": false,
+        "raw": "p_client_id uuid, p_category text default null, p_before_at timestamptz default null, p_before_key text default null"
+      }
+    ],
     "producer_deep_dive": [
       {
         "all": [
@@ -10197,6 +10596,18 @@
         "raw": "p_user_id integer"
       }
     ],
+    "producer_month_workspace": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
     "producer_profile_detail": [
       {
         "all": [
@@ -10207,6 +10618,67 @@
         ],
         "unnamed": false,
         "raw": "p_agent_id uuid"
+      }
+    ],
+    "producer_save_client_transcript": [
+      {
+        "all": [
+          "p_client_id",
+          "p_transcript",
+          "p_category",
+          "p_outcome"
+        ],
+        "required": [
+          "p_client_id",
+          "p_transcript",
+          "p_category"
+        ],
+        "unnamed": false,
+        "raw": "p_client_id uuid, p_transcript text, p_category text, p_outcome text default null"
+      }
+    ],
+    "producer_set_work_schedule": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_selling_days"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_selling_days"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_selling_days integer[]"
+      }
+    ],
+    "producer_tag_client_call": [
+      {
+        "all": [
+          "p_client_id",
+          "p_source",
+          "p_source_id",
+          "p_category"
+        ],
+        "required": [
+          "p_client_id",
+          "p_source",
+          "p_source_id",
+          "p_category"
+        ],
+        "unnamed": false,
+        "raw": "p_client_id uuid,p_source text,p_source_id uuid,p_category text"
+      }
+    ],
+    "producer_transcript_allowed": [
+      {
+        "all": [
+          "p_transcript_id"
+        ],
+        "required": [
+          "p_transcript_id"
+        ],
+        "unnamed": false,
+        "raw": "p_transcript_id uuid"
       }
     ],
     "production_attribution_exceptions": [
@@ -10332,6 +10804,24 @@
         ],
         "unnamed": false,
         "raw": "p_subject_kind text, p_subject_id uuid, p_channel text, p_idempotency_key uuid, p_subject text DEFAULT NULL::text, p_message text DEFAULT NULL::text"
+      }
+    ],
+    "queue_ethos_consumer_deliveries": [
+      {
+        "all": [
+          "p_campaign_key",
+          "p_source_batch_id",
+          "p_selections",
+          "p_actor"
+        ],
+        "required": [
+          "p_campaign_key",
+          "p_source_batch_id",
+          "p_selections",
+          "p_actor"
+        ],
+        "unnamed": false,
+        "raw": "p_campaign_key text,p_source_batch_id text,p_selections jsonb,p_actor uuid"
       }
     ],
     "queue_sms": [
@@ -11206,6 +11696,17 @@
         ],
         "unnamed": false,
         "raw": "p_source text, p_filters jsonb DEFAULT '{}'::jsonb"
+      },
+      {
+        "all": [
+          "p_source",
+          "p_filters"
+        ],
+        "required": [
+          "p_source"
+        ],
+        "unnamed": false,
+        "raw": "p_source text, p_filters jsonb default '{}'"
       }
     ],
     "send_completion_contracting_handoff": [
@@ -11514,6 +12015,43 @@
         "raw": "p_request_id uuid, p_status text, p_note text DEFAULT NULL::text"
       }
     ],
+    "set_ethos_consumer_campaign_enabled": [
+      {
+        "all": [
+          "p_campaign_key",
+          "p_actor",
+          "p_enabled"
+        ],
+        "required": [
+          "p_campaign_key",
+          "p_actor",
+          "p_enabled"
+        ],
+        "unnamed": false,
+        "raw": "p_campaign_key text,p_actor uuid,p_enabled boolean"
+      }
+    ],
+    "set_ethos_consumer_scope": [
+      {
+        "all": [
+          "p_campaign_key",
+          "p_actor",
+          "p_state",
+          "p_active",
+          "p_license_evidence_ref",
+          "p_license_expires_at",
+          "p_ethos_evidence_ref"
+        ],
+        "required": [
+          "p_campaign_key",
+          "p_actor",
+          "p_state",
+          "p_active"
+        ],
+        "unnamed": false,
+        "raw": "p_campaign_key text,p_actor uuid,p_state text,p_active boolean,p_license_evidence_ref text default null,p_license_expires_at timestamptz default null,p_ethos_evidence_ref text default null"
+      }
+    ],
     "set_expected_start": [
       {
         "all": [
@@ -11775,6 +12313,24 @@
         ],
         "unnamed": false,
         "raw": "p_date date, p_agent_ids uuid[], p_status text"
+      }
+    ],
+    "settle_ethos_consumer_delivery": [
+      {
+        "all": [
+          "p_id",
+          "p_claim_id",
+          "p_status",
+          "p_provider_id",
+          "p_reason"
+        ],
+        "required": [
+          "p_id",
+          "p_claim_id",
+          "p_status"
+        ],
+        "unnamed": false,
+        "raw": "p_id uuid,p_claim_id uuid,p_status text,p_provider_id text default null,p_reason text default null"
       }
     ],
     "should_post_to_discord": [
@@ -13020,5 +13576,50 @@
         "raw": "p_view text"
       }
     ]
+  },
+  "_migration_contract_additions": {
+    "source": "Authored migration signatures verified through isolated PostgreSQL execution; existing live source metadata is unchanged.",
+    "functions": {
+      "lead_outcome_key": "20261124110000_lead_context_and_filters.sql",
+      "lead_context_time": "20261124110000_lead_context_and_filters.sql",
+      "fn_lead_capture_dnc": "20261124110000_lead_context_and_filters.sql",
+      "lead_pool_filter_matches": "20261124110000_lead_context_and_filters.sql",
+      "lead_pool_candidates": "20261124110000_lead_context_and_filters.sql",
+      "sellable_pool": "20261124110000_lead_context_and_filters.sql",
+      "lead_pool_counts": "20261124110000_lead_context_and_filters.sql",
+      "fn_lead_assignment_hold": "20261124110000_lead_context_and_filters.sql",
+      "lead_bundle_followup_set": "20261124110000_lead_context_and_filters.sql",
+      "lead_pool_assign": "20261124110000_lead_context_and_filters.sql",
+      "lead_move_unworked": "20261124110000_lead_context_and_filters.sql",
+      "fn_lead_capture_book_dnc": "20261124110000_lead_context_and_filters.sql",
+      "lead_bundle_export_detail": "20261124110000_lead_context_and_filters.sql",
+      "producer_can_access_agent": "20261124120000_producer_workspace.sql",
+      "producer_set_work_schedule": "20261124120000_producer_workspace.sql",
+      "producer_month_workspace": "20261124120000_producer_workspace.sql",
+      "producer_can_access_client": "20261124121000_producer_client_calls.sql",
+      "producer_transcript_allowed": "20261124121000_producer_client_calls.sql",
+      "producer_call_matches_client": "20261124121000_producer_client_calls.sql",
+      "producer_client_calls": "20261124121000_producer_client_calls.sql",
+      "producer_save_client_transcript": "20261124121000_producer_client_calls.sql",
+      "producer_tag_client_call": "20261124121000_producer_client_calls.sql",
+      "set_ethos_consumer_scope": "20261124130000_ethos_consumer_campaign.sql",
+      "set_ethos_consumer_campaign_enabled": "20261124130000_ethos_consumer_campaign.sql",
+      "ethos_consumer_batch_members": "20261124130000_ethos_consumer_campaign.sql",
+      "ethos_consumer_phone10": "20261124130000_ethos_consumer_campaign.sql",
+      "ethos_consumer_candidates": "20261124130000_ethos_consumer_campaign.sql",
+      "preview_ethos_consumer_campaign": "20261124130000_ethos_consumer_campaign.sql",
+      "queue_ethos_consumer_deliveries": "20261124130000_ethos_consumer_campaign.sql",
+      "claim_ethos_consumer_deliveries": "20261124130000_ethos_consumer_campaign.sql",
+      "settle_ethos_consumer_delivery": "20261124130000_ethos_consumer_campaign.sql",
+      "cc_dispose_interview": "20261124131000_interview_disposition_receipts.sql",
+      "cc_record_interview_disposition": "20261124131000_interview_disposition_receipts.sql",
+      "cc_undo_interview_disposition": "20261124131000_interview_disposition_receipts.sql",
+      "consumer_phone10": "20261124140000_consumer_source_import.sql",
+      "consumer_import_resolve_review": "20261124140000_consumer_source_import.sql",
+      "consumer_lead_import": "20261124140000_consumer_source_import.sql",
+      "my_lead_source_history": "20261124140000_consumer_source_import.sql",
+      "consumer_import_history": "20261124140000_consumer_source_import.sql",
+      "consumer_import_review": "20261124140000_consumer_source_import.sql"
+    }
   }
 }

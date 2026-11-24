@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Target, TrendingUp, Users, DollarSign, CalendarClock, ClipboardList } from "lucide-react";
+import { ProducerWorkspaceCard } from "@/components/dashboard/ProducerWorkspaceCard";
 
 // MP-303 — one person's goal, the plan to hit it, and projected income, straight
 // from fn_goal_scorecard. The money model is the production scoreboard's first-hop
@@ -59,7 +60,11 @@ const STATUS: Record<string, { label: string; cls: string }> = {
   no_goal: { label: "No goal set", cls: "bg-muted text-muted-foreground border-border" },
 };
 
-export function GoalTrackerCard({ agentId }: { agentId?: string | null }) {
+export function GoalTrackerCard({ agentId, scope = "team" }: { agentId?: string | null; scope?: "personal" | "team" }) {
+  return scope === "personal" ? <ProducerWorkspaceCard agentId={agentId} /> : <TeamGoalTrackerCard agentId={agentId} />;
+}
+
+function TeamGoalTrackerCard({ agentId }: { agentId?: string | null }) {
   const q = useQuery({
     queryKey: ["goal-scorecard", agentId],
     enabled: !!agentId,
@@ -103,7 +108,7 @@ export function GoalTrackerCard({ agentId }: { agentId?: string | null }) {
     <Card className="overflow-hidden">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-base flex items-center gap-2"><Target className="h-4 w-4 text-primary" /> {d.period_label} goal</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2"><Target className="h-4 w-4 text-primary" /> {d.period_label} team goal</CardTitle>
           <Badge variant="outline" className={st.cls}>{st.label}</Badge>
         </div>
       </CardHeader>

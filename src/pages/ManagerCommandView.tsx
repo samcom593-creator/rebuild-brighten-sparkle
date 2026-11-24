@@ -77,7 +77,7 @@ export default function ManagerCommandView() {
       monthStart.setHours(0, 0, 0, 0);
 
       const { data: deals } = await supabase
-        .from("agentlink_deals_snapshot" as any)
+        .from("agentlink_deals_snapshot")
         .select("user_id, annual_premium, effective_date")
         .in("user_id", alIds)
         .gte("effective_date", monthStart.toISOString().slice(0, 10));
@@ -117,7 +117,7 @@ export default function ManagerCommandView() {
     staleTime: 60_000,
     queryFn: async () => {
       const { data } = await supabase
-        .from("v_upcoming_calls" as any)
+        .from("v_upcoming_calls")
         .select("id, prospect_name, prospect_phone, start_at, call_type")
         .limit(5);
       return data ?? [];

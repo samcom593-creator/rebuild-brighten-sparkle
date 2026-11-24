@@ -16,7 +16,7 @@ import {
   Tabs, TabsContent, TabsList, TabsTrigger,
 } from "@/components/ui/tabs";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Sparkles, AlertTriangle, CheckCircle2, XCircle, Send,
@@ -34,7 +34,7 @@ type Draft = {
   pillar: string | null; title: string; hook: string | null; body: string | null;
   cta: string | null; caption: string | null; hashtags: string | null;
   sound: string | null; duration_sec: number | null; file_path: string | null;
-  status: "pending" | "approved" | "shipped" | "rejected";
+  status: "pending" | "awaiting_approval" | "awaiting_film" | "approved" | "shipped" | "rejected" | "archived";
   approved_at: string | null; shipped_at: string | null;
   approved_by: string | null; shipped_url: string | null; notes: string | null;
 };
@@ -112,8 +112,9 @@ const statusBadge = (s: string) => {
   if (s === "shipped")  return <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">shipped</Badge>;
   if (s === "approved") return <Badge className="bg-amber-500/20 text-amber-300 border border-amber-500/40">approved</Badge>;
   if (s === "rejected") return <Badge className="bg-rose-500/20 text-rose-300 border border-rose-500/40">rejected</Badge>;
-  return <Badge className="bg-zinc-700/40 text-zinc-300 border border-zinc-600/50">pending</Badge>;
+  return <Badge className="bg-zinc-700/40 text-zinc-300 border border-zinc-600/50">{s.replace(/_/g, " ")}</Badge>;
 };
+const canReviewDraft = (status: Draft["status"]) => status === "pending" || status === "awaiting_approval" || status === "awaiting_film" || status === "rejected";
 const severityBadge = (s: string) => {
   if (s === "critical") return <Badge className="bg-rose-600/30 text-rose-200 border border-rose-500">CRITICAL</Badge>;
   if (s === "high")     return <Badge className="bg-orange-500/30 text-orange-200 border border-orange-500/50">high</Badge>;
@@ -289,8 +290,8 @@ export default function SocialMediaBot() {
         <EmptyState
           icon={<AlertTriangle className="h-7 w-7" />}
           title="Social Media Bot data unavailable"
-          description="The bot's Supabase view is unreachable. Confirm RLS + auth, or check ~/business-ops/social-media-bot/heartbeat.txt for the daemon."
-          action={<Button onClick={() => refetch()}>Retry</Button>}
+          description="The content dashboard could not be loaded. Retry to check the current data."
+          actions={<Button onClick={() => void refetch()} disabled={isRefetching}>Retry</Button>}
         />
       </div>
     );
@@ -480,7 +481,7 @@ export default function SocialMediaBot() {
                               2 "awaiting_film", 3 "approved". So Approve/Reject never rendered
                               on this page at all. ContentCommand.tsx:779 already had the
                               correct gate; this now matches it. */}
-                          {d.status !== "approved" && d.status !== "shipped" && d.status !== "archived" && (
+                          {canReviewDraft(d.status) && (
                             <>
                               <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); mutateDraftStatus(d.id, "approved"); }}>
                                 <CheckCircle2 className="h-4 w-4 mr-1" /> Approve
@@ -852,6 +853,7 @@ export default function SocialMediaBot() {
               })()}
               {activeDraft?.title}
             </DialogTitle>
+            <DialogDescription>Review the draft and its current status before taking the next action.</DialogDescription>
           </DialogHeader>
           {activeDraft && (
             <div className="space-y-4 text-sm">
@@ -906,7 +908,7 @@ export default function SocialMediaBot() {
             </div>
           )}
           <DialogFooter className="gap-2">
-            {activeDraft?.status === "pending" && (
+            {activeDraft && canReviewDraft(activeDraft.status) && (
               <>
                 <Button variant="ghost" onClick={() => { if (activeDraft) { mutateDraftStatus(activeDraft.id, "rejected"); setActiveDraft(null); } }}>
                   Reject

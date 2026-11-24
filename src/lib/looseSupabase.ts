@@ -3,21 +3,26 @@ import { supabase } from "@/integrations/supabase/client";
 export interface LooseResult<T> {
   data: T | null;
   error: Error | null;
+  count?: number | null;
 }
 
 interface LooseUpdateBuilder<T> {
   eq(column: string, value: unknown): Promise<LooseResult<T>>;
 }
 
-interface LooseQuery<T> {
-  select(columns: string): LooseQuery<T>;
+// PostgREST queries are awaitable builders. A filter or limit does not execute
+// the request or remove later modifiers such as range() and maybeSingle().
+interface LooseQuery<T> extends PromiseLike<LooseResult<T[]>> {
+  select(columns: string, options?: { count?: "exact" | "planned" | "estimated"; head?: boolean }): LooseQuery<T>;
   eq(column: string, value: unknown): LooseQuery<T>;
   is(column: string, value: null | boolean): LooseQuery<T>;
   gte(column: string, value: string | number): LooseQuery<T>;
   in(column: string, values: unknown[]): LooseQuery<T>;
+  or(filters: string, options?: { referencedTable?: string; foreignTable?: string }): LooseQuery<T>;
   order(column: string, options?: Record<string, unknown>): LooseQuery<T>;
-  limit(count: number): Promise<LooseResult<T[]>>;
-  maybeSingle(): Promise<LooseResult<T | null>>;
+  limit(count: number): LooseQuery<T>;
+  range(from: number, to: number): LooseQuery<T>;
+  maybeSingle(): PromiseLike<LooseResult<T | null>>;
   insert(payload: Record<string, unknown> | Record<string, unknown>[]): Promise<LooseResult<T>>;
   upsert(payload: Record<string, unknown> | Record<string, unknown>[], options?: Record<string, unknown>): Promise<LooseResult<T>>;
   update(payload: Record<string, unknown>): LooseUpdateBuilder<T>;

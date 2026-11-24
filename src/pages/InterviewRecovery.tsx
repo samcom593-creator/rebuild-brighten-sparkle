@@ -8,7 +8,7 @@
 //
 // Reads public.v_interview_pipeline (one bucket per interview, America/Chicago
 // date math, nothing filtered out) and writes through cc_dispose_interview.
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -53,6 +53,7 @@ import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetail
 import { RecruitingWorkspaceNav } from "@/components/recruiting/RecruitingWorkspaceNav";
 import { RecruitingCommandHero } from "@/components/recruiting/RecruitingCommandHero";
 import { contactLinkProps, phoneHref } from "@/lib/phone";
+import { recordInterviewDisposition, undoInterviewDisposition } from "@/lib/interviewDisposition";
 
 // ---------------------------------------------------------------------------
 // Types — mirror v_interview_pipeline
@@ -249,6 +250,7 @@ export default function InterviewRecovery() {
   // 0 = no follow-up scheduled. Days from now, applied on the next disposition.
   const [followupDays, setFollowupDays] = useState(0);
   const [busy, setBusy] = useState(false);
+  const writeInFlight = useRef(false);
   const [visibleCount, setVisibleCount] = useState(100);
 
   const pipeline = useQuery({
@@ -382,6 +384,9 @@ export default function InterviewRecovery() {
     await Promise.all([
       qc.invalidateQueries({ queryKey: ["interview-pipeline"] }),
       qc.invalidateQueries({ queryKey: ["prospect-review-queue"] }),
+      qc.invalidateQueries({ queryKey: ["recruiting-worklist"] }),
+      qc.invalidateQueries({ queryKey: ["recruiting-pipeline"] }),
+      qc.invalidateQueries({ queryKey: ["application-detail"] }),
     ]);
   }, [qc]);
 
@@ -395,40 +400,33 @@ export default function InterviewRecovery() {
       notes?: string,
       followupDueAt?: string | null,
     ) => {
+      if (writeInFlight.current) return false;
+      writeInFlight.current = true;
       setBusy(true);
       try {
-        // cc_dispose_interview has always accepted p_followup_due_at; the UI hardcoded
-        // null, so "call them back Tuesday" had nowhere to live and the callback outcome
-        // was a dead end. Now the caller can schedule the next touch in the same tap.
-        const { error } = await (supabase as any).rpc("cc_dispose_interview", {
-          p_id: id,
-          p_outcome: outcome,
-          p_notes: notes && notes.trim() ? notes.trim() : null,
-          p_followup_due_at: followupDueAt ?? null,
-        });
-        if (error) throw error;
-
+        const receipt = await recordInterviewDisposition({ id, outcome, notes, followupDueAt });
+        if (receipt.hire?.partial) toast.warning(receipt.hire.message);
         toast.success(`${label} → ${outcome.replace(/_/g, " ")}`, {
-          action: {
+          action: receipt.can_undo ? {
             label: "Undo",
             onClick: async () => {
-              const { error: undoErr } = await (supabase as any)
-                .from("interview_events")
-                .update({ outcome: null, outcome_at: null })
-                .eq("id", id);
-              if (undoErr) toast.error(`Undo failed: ${undoErr.message}`);
-              else {
-                toast.success("Reverted");
+              try {
+                await undoInterviewDisposition(receipt.receipt_id);
+                toast.success("Outcome and linked follow-up restored");
                 await invalidateQueues();
-              }
+              } catch (error) { toast.error(`Undo was not applied: ${(error as Error).message}`); }
             },
-          },
+          } : undefined,
         });
         await invalidateQueues();
+        return true;
       } catch (err) {
         // Never swallow — a silent failure here is the exact bug this page fixes.
         toast.error(`Could not log outcome: ${(err as Error).message}`);
+        await invalidateQueues();
+        return false;
       } finally {
+        writeInFlight.current = false;
         setBusy(false);
       }
     },
@@ -442,8 +440,8 @@ export default function InterviewRecovery() {
   );
 
   const disposeProspect = useCallback(
-    (p: ProspectRow, outcome: Outcome) =>
-      disposeById(p.interview_event_id, prospectName(p), outcome),
+    (p: ProspectRow, outcome: Outcome, followupDueAt?: string | null) =>
+      disposeById(p.interview_event_id, prospectName(p), outcome, undefined, followupDueAt),
     [disposeById],
   );
 
@@ -454,7 +452,8 @@ export default function InterviewRecovery() {
         followupDays > 0
           ? new Date(Date.now() + followupDays * 86_400_000).toISOString()
           : null;
-      await dispose(current, outcome, noteDraft, due);
+      const saved = await dispose(current, outcome, noteDraft, due);
+      if (!saved) return;
       setNoteDraft("");
       setFollowupDays(0);
       setCatchIndex((i) => Math.min(i + 1, Math.max(0, catchQueue.length - 2)));
@@ -465,17 +464,16 @@ export default function InterviewRecovery() {
   const bulkDispose = useCallback(
     async (outcome: Outcome) => {
       const ids = Array.from(selected);
-      if (!ids.length) return;
+      if (!ids.length || writeInFlight.current) return;
+      writeInFlight.current = true;
       setBusy(true);
       let ok = 0;
       const failures: string[] = [];
       for (const id of ids) {
-        const { error } = await (supabase as any).rpc("cc_dispose_interview", {
-          p_id: id, p_outcome: outcome, p_notes: null, p_followup_due_at: null,
-        });
-        if (error) failures.push(error.message);
-        else ok += 1;
+        try { await recordInterviewDisposition({ id, outcome }); ok += 1; }
+        catch (error) { failures.push((error as Error).message); }
       }
+      writeInFlight.current = false;
       setBusy(false);
       setSelected(new Set());
       await invalidateQueues();
@@ -803,7 +801,7 @@ export default function InterviewRecovery() {
                   <Button
                     key={d.key}
                     variant="outline"
-                    disabled={busy}
+                    disabled={busy || (d.key === "hired" && !current.application_id) || (d.key === "callback" && followupDays === 0)}
                     className={dispositionClass(d.tone)}
                     onClick={() => void disposeAndAdvance(d.key)}
                     aria-label={`${d.label} — ${current.display_name}`}
@@ -1011,7 +1009,7 @@ export default function InterviewRecovery() {
             return next;
           })}
           onToggleExpand={(id) => setExpandedId((cur) => (cur === id ? null : id))}
-          onDispose={(p, o) => void disposeProspect(p, o)}
+          onDispose={(p, o, due) => void disposeProspect(p, o, due)}
         />
       ) : (
         <GlassCard className="p-4">
@@ -1084,7 +1082,7 @@ export default function InterviewRecovery() {
                     });
                   }}
                   onToggleExpand={() => setExpandedId((cur) => (cur === r.id ? null : r.id))}
-                  onDispose={(o) => void dispose(r, o)}
+                  onDispose={(o, due) => void dispose(r, o, undefined, due)}
                   onOpenFull={() => setDetailAppId(r.application_id)}
                 />
               ))}
@@ -1222,11 +1220,12 @@ function InterviewRow({
   busy: boolean;
   onToggleSelect: () => void;
   onToggleExpand: () => void;
-  onDispose: (o: Outcome) => void;
+  onDispose: (o: Outcome, followupDueAt?: string | null) => void;
   onOpenFull: () => void;
 }) {
   const bucketMeta = BUCKETS.find((b) => b.key === row.bucket);
   const reasons = priorityReasons(row);
+  const [callbackAt, setCallbackAt] = useState("");
 
   return (
     <li className={cn(
@@ -1313,10 +1312,13 @@ function InterviewRow({
 
           {!row.outcome && (
             <div className="mt-3 flex flex-wrap gap-2">
+              <label className="w-full text-xs text-muted-foreground">Callback date and time
+                <Input type="datetime-local" className="mt-1 max-w-xs" aria-label={`Callback time for ${row.display_name}`} value={callbackAt} onChange={(e) => setCallbackAt(e.target.value)} />
+              </label>
               {DISPOSITIONS.map((d) => (
-                <Button key={d.key} size="sm" variant="outline" disabled={busy}
+                <Button key={d.key} size="sm" variant="outline" disabled={busy || (d.key === "hired" && !row.application_id) || (d.key === "callback" && !callbackAt)}
                         className={dispositionClass(d.tone)}
-                        onClick={() => onDispose(d.key)}
+                        onClick={() => onDispose(d.key, d.key === "callback" && callbackAt ? new Date(callbackAt).toISOString() : null)}
                         aria-label={`${d.label} — ${row.display_name}`}>
                   <d.icon className="mr-1.5 h-4 w-4 shrink-0" />{d.label}
                 </Button>
@@ -1354,7 +1356,7 @@ function ProspectQueue({
   busy: boolean;
   onToggleSelect: (id: string) => void;
   onToggleExpand: (id: string) => void;
-  onDispose: (p: ProspectRow, o: Outcome) => void;
+  onDispose: (p: ProspectRow, o: Outcome, followupDueAt?: string | null) => void;
 }) {
   if (query.isLoading) {
     return (
@@ -1445,7 +1447,7 @@ function ProspectQueue({
               busy={busy}
               onToggleSelect={() => onToggleSelect(p.interview_event_id)}
               onToggleExpand={() => onToggleExpand(p.interview_event_id)}
-              onDispose={(o) => onDispose(p, o)}
+              onDispose={(o, due) => onDispose(p, o, due)}
             />
           ))}
         </ul>
@@ -1463,13 +1465,14 @@ function ProspectRowCard({
   busy: boolean;
   onToggleSelect: () => void;
   onToggleExpand: () => void;
-  onDispose: (o: Outcome) => void;
+  onDispose: (o: Outcome, followupDueAt?: string | null) => void;
 }) {
   const name = prospectName(row);
   const track = row.call_track ?? "other";
   const handle = row.instagram_handle?.replace(/^@/, "") || null;
   const matches = Math.max(0, num(row.candidate_count));
   const stuck = Math.floor(Math.max(0, num(row.days_stuck)));
+  const [callbackAt, setCallbackAt] = useState("");
 
   return (
     <li className={cn(
@@ -1600,10 +1603,14 @@ function ProspectRowCard({
 
           {!row.outcome && (
             <div className="mt-3 flex flex-wrap gap-2">
-              {DISPOSITIONS.map((d) => (
-                <Button key={d.key} size="sm" variant="outline" disabled={busy}
+              <label className="w-full text-xs text-muted-foreground">Callback date and time
+                <Input type="datetime-local" className="mt-1 max-w-xs" aria-label={`Callback time for ${name}`} value={callbackAt} onChange={(e) => setCallbackAt(e.target.value)} />
+              </label>
+              <p className="w-full text-xs text-muted-foreground">Link this person&apos;s application before hiring so onboarding can start.</p>
+              {DISPOSITIONS.filter((d) => d.key !== "hired").map((d) => (
+                <Button key={d.key} size="sm" variant="outline" disabled={busy || (d.key === "callback" && !callbackAt)}
                         className={dispositionClass(d.tone)}
-                        onClick={() => onDispose(d.key)}
+                        onClick={() => onDispose(d.key, d.key === "callback" && callbackAt ? new Date(callbackAt).toISOString() : null)}
                         aria-label={`${d.label} — ${name}`}>
                   <d.icon className="mr-1.5 h-4 w-4 shrink-0" />{d.label}
                 </Button>

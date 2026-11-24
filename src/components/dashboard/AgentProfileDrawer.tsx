@@ -305,7 +305,7 @@ export function AgentProfileDrawer() {
       }
       let manager: { id: string; profile: { full_name: string | null } | null } | null = null;
       if (data.manager_id) {
-        const m = await supabase.from("agents").select("id, display_name, profile:profiles(full_name)").eq("id", data.manager_id).maybeSingle();
+        const m = await supabase.from("agents").select("id, display_name, profile:profiles!agents_profile_id_fkey(full_name)").eq("id", data.manager_id).maybeSingle();
         const mp = (m.data?.profile ?? null) as { full_name: string | null } | null;
         // A failed manager read never hides the agent: the drawer shows "—" for the manager instead.
         manager = m.data ? { id: m.data.id, profile: { full_name: m.data.display_name || mp?.full_name || null } } : null;

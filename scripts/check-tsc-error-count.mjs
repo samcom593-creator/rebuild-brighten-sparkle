@@ -200,7 +200,10 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 // legacy page-typing errors; lock the measured lower floor.
 // 2026-09-04: the usage-drain release's typed PerformanceObserver entries and
 // nullable RPC normalization reduced the verified project graph from 86 to 85.
-const BASELINE = 71; // 2026-10-29 (OVERHAUL-leaderboards): 75 -> 71. The four were all
+// 2026-11-24: the full project-reference compiler completed with exit 0 and
+// zero TypeScript diagnostics after the workflow audit. Fail on any new error.
+const BASELINE = 0;
+// 2026-10-29 (OVERHAUL-leaderboards): 75 -> 71. The four were all
 // in the old src/pages/Leaderboard.tsx, TS2352 casts of reads whose relation types.ts could not
 // infer (v_agentlink_book_freshness, v_agent_canonical_map, v_top_legs_excl_sam,
 // readymode_dialer_calls); the rebuilt page reads none of them. Measured with this gate's

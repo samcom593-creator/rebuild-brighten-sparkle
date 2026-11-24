@@ -31,6 +31,7 @@ vi.mock("@/integrations/supabase/client", () => ({
     rpc: (fn: string, args?: Record<string, unknown>) => {
       db.calls.push({ fn, args: args ?? {} });
       if (fn === "my_lead_bundles") return Promise.resolve({ data: db.leads.map((l) => ({ ...l })), error: null });
+      if (fn === "my_lead_source_history") return Promise.resolve({ data: [{ observation_id: "observation-1", policy_number: "TEST-ONLY-1", carrier: "Synthetic Carrier", ownership_claim: "supplier_reported", supplier_amount: 100, amount_cadence: "unknown" }, { observation_id: "observation-2", policy_number: "TEST-ONLY-2", carrier: "Synthetic Carrier", ownership_claim: "supplier_reported" }], error: null });
       if (fn === "my_lead_to_pipeline") return Promise.resolve({ data: { client_id: "c-1", created: true }, error: null });
       return Promise.resolve({ data: { ok: true }, error: null });
     },
@@ -104,4 +105,29 @@ describe("My Leads recordings and pipeline", () => {
     await screen.findAllByTestId("lead-row");
     expect(screen.queryByTestId("lead-to-pipeline")).toBeNull();
   });
+
+  it("shows a later suppression reason and blocks calling and pipeline creation even while status remains new", async () => {
+    db.leads = [lead(1, { attrs: { pool: "marketing", true_dnc: true, blocked: true }, callable_now: true })];
+    renderPage();
+    expect(await screen.findByTestId("lead-holds")).toBeTruthy();
+    expect(screen.queryByTestId("calling-hours-closed")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /^Held/ }));
+    await screen.findAllByTestId("lead-row");
+    expect(screen.queryByTestId("lead-call-link")).toBeNull();
+    expect(screen.queryByTestId("lead-to-pipeline")).toBeNull();
+    expect(screen.getByText(/555.*Do not call/)).toBeTruthy();
+  });
+
+  it("shows multiple supplier observations and saves a next action without fabricating policy verification", async () => {
+    renderPage();
+    await screen.findAllByTestId("lead-row");
+    fireEvent.click(screen.getByRole("button", { name: /Full info/ }));
+    expect(await screen.findByText("TEST-ONLY-1")).toBeTruthy();
+    expect(await screen.findByText("TEST-ONLY-2")).toBeTruthy();
+    expect(screen.getByText(/Source dates and status do not verify an active policy/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Next action"), { target: { value: "Confirm the source policy details" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save follow-up" }));
+    await waitFor(() => expect(db.calls.find((c) => c.fn === "lead_bundle_followup_set")?.args).toEqual({ p_item: "item-1", p_callback_at: null, p_next_action: "Confirm the source policy details" }));
+  });
+
 });

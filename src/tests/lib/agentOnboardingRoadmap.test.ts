@@ -11,7 +11,8 @@ describe("agent onboarding roadmap", () => {
   const command = source("src/pages/AgentCommandDashboard.tsx");
   const agentLogin = source("src/pages/AgentNumbersLogin.tsx");
   const welcome = source("supabase/functions/welcome-new-agent/index.ts");
-  const resources = source("src/components/training/RequiredOnboardingResources.tsx");
+  // MP-TRAINING-CENTER.2: the "Practice toolkit" block became the four-step journey; the Field Course link lives there.
+  const resources = source("src/components/training/TrainingJourney.tsx");
   const trainingMigration = source("supabase/migrations/20260827214500_training_experience_redesign.sql");
 
   it("uses receipt-backed milestones instead of entitlement flags", () => {

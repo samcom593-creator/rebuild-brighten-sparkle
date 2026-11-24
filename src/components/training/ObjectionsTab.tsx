@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CallAudioPlayer } from "@/components/calls/CallAudioPlayer";
+import { OBJECTIONS_COURSE, useTrainingProgress } from "@/components/training/useTrainingProgress";
 
 interface ObjectionRow {
   call_id: string;
@@ -51,6 +52,7 @@ export function ObjectionsTab() {
   const [category, setCategory] = useState<string>("price");
   const [search, setSearch] = useState("");
   const [playing, setPlaying] = useState<string | null>(null);
+  const { mark } = useTrainingProgress();
   const all = useMemo(() => q.data ?? [], [q.data]);
   const counts = useMemo(() => {
     const c: Record<string, number> = {};
@@ -100,7 +102,7 @@ export function ObjectionsTab() {
                     {r.technique && <Badge variant="outline" className="font-normal">{r.technique}</Badge>}
                     <span>{r.agent_name || "Agent"}</span>
                     {playing !== id && (
-                      <Button type="button" size="sm" variant="outline" className="ml-auto h-8" onClick={() => setPlaying(id)}>
+                      <Button type="button" size="sm" variant="outline" className="ml-auto h-8" onClick={() => { setPlaying(id); void mark(OBJECTIONS_COURSE, r.category); }}>
                         Hear it
                       </Button>
                     )}

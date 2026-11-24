@@ -28,7 +28,7 @@ async function fetchAudio(callId: string): Promise<{ url: string; variant: strin
   return { url: signed.data.signedUrl, variant: row.variant };
 }
 
-export function CallAudioPlayer({ callId, moments = [], compact = false }: { callId: string; moments?: AudioMoment[]; compact?: boolean }) {
+export function CallAudioPlayer({ callId, moments = [], compact = false, onPlay }: { callId: string; moments?: AudioMoment[]; compact?: boolean; onPlay?: () => void }) {
   const [armed, setArmed] = useState(!compact);
   const q = useQuery({ queryKey: ["call-audio", callId], queryFn: () => fetchAudio(callId), enabled: armed && !!callId, staleTime: 50 * 60_000 });
   const ref = useRef<HTMLAudioElement | null>(null);
@@ -99,6 +99,7 @@ export function CallAudioPlayer({ callId, moments = [], compact = false }: { cal
           }
         }}
         onSeeking={() => { stopAt.current = null; }}
+        onPlay={onPlay}
       />
       {q.data.variant === "numbers_muted" && <p className="text-xs text-muted-foreground">Spoken numbers are muted for privacy.</p>}
       {q.data.variant === "client_data_removed" && <p className="text-xs text-muted-foreground">Client names, addresses and numbers are muted. Silent gaps are normal.</p>}

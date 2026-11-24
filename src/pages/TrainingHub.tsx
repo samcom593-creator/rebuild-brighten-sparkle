@@ -6,13 +6,10 @@ import {
   CheckCircle2,
   ExternalLink,
   FileText,
-  GraduationCap,
   Headphones,
   Library,
   ListChecks,
   MessageCircleQuestion,
-  Mic,
-  Play,
   RefreshCw,
   ScrollText,
   Search,
@@ -26,9 +23,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/ui/page-header";
 import { TrainingWorkspaceNav } from "@/components/training/TrainingWorkspaceNav";
-import { TrainingPathPanel } from "@/components/training/TrainingPathPanel";
 import { TrainingLeaderPanel } from "@/components/training/TrainingLeaderPanel";
-import { RequiredOnboardingResources } from "@/components/training/RequiredOnboardingResources";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -51,6 +46,7 @@ import {
   useHubData,
 } from "@/lib/apexResourcesHub";
 import { TopCallsTab } from "@/components/training/TopCallsTab";
+import { TrainingJourney } from "@/components/training/TrainingJourney";
 import { ObjectionsTab } from "@/components/training/ObjectionsTab";
 import { TrainingRecordings } from "@/components/training/TrainingRecordings";
 
@@ -201,23 +197,14 @@ export default function TrainingHub() {
     staleTime: 60 * 1000,
   });
 
-  // WP6: a licensed agent's "start training" lands on the REQUIRED course
-  // (TRAINING_ROUTES.fieldCourse, where onboarding_progress lives). The course
-  // email used to send them to the library instead, and the library hero had
-  // no way through to the required modules. Unlicensed agents are not sent to
-  // the sales course (MP-357: wrong material before the licence).
-  const { data: isLicensedAgent = false } = useQuery({
-    queryKey: ["training-hub-licensed", user?.id],
-    enabled: !!user?.id && !isLeader,
+  // The journey's step two needs to know how many training calls exist; same cache key as the Top calls tab.
+  const { data: callsAvailable = null } = useQuery({
+    queryKey: ["call-training-library-count"],
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
-      const client = supabase as unknown as {
-        rpc: (fn: string) => Promise<{ data: unknown; error: { message?: string } | null }>;
-      };
-      const { data: rows, error } = await client.rpc("my_activation_state");
-      if (error) return false;
-      const row = (Array.isArray(rows) ? rows[0] : rows) as { license_status?: string | null } | undefined;
-      return row?.license_status === "licensed";
+      const { data: rows, error } = await supabase.rpc("call_training_library" as never);
+      if (error) return null;
+      return Array.isArray(rows) ? (rows as unknown[]).length : 0;
     },
   });
 
@@ -264,10 +251,8 @@ export default function TrainingHub() {
       {/* Staff run six training views; an agent has one center, so the second strip of links is noise for them. */}
       {(isLeader || isVa) && <TrainingWorkspaceNav />}
       <PageHeader
-        eyebrow="Learn · Practice · Progress"
-        eyebrowIcon={<Library className="h-3 w-3" />}
-        title="Training center"
-        subtitle="Finish the Field Course, then learn from the best calls on the team: top calls, the objections they turned, and the scripts."
+        title="Training"
+        subtitle="Four steps to get phone-ready. Do them in order."
         accent="primary"
         actions={
           (isAdmin || isManager) ? (
@@ -279,27 +264,7 @@ export default function TrainingHub() {
                 </Link>
               </Button>
             </div>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {isLicensedAgent && (
-                <Button asChild size="sm" className="gap-2">
-                  <Link to={TRAINING_ROUTES.fieldCourse}>
-                    <Play className="h-4 w-4" />
-                    Continue Field Course
-                  </Link>
-                </Button>
-              )}
-              <Button asChild variant="outline" size="sm" className="gap-2">
-                <Link to="/dashboard/call-lab">
-                  <Mic className="h-4 w-4" />
-                  Practice a call
-                </Link>
-              </Button>
-              <Button asChild variant="ghost" size="sm">
-                <Link to={TRAINING_ROUTES.annuities}>Annuities</Link>
-              </Button>
-            </div>
-          )
+          ) : null
         }
       />
 
@@ -311,7 +276,7 @@ export default function TrainingHub() {
         <TabsList className="mb-4 w-full justify-start overflow-x-auto">
           <TabsTrigger value="path" className="gap-1.5">
             <ListChecks className="h-4 w-4" />
-            My training
+            Start here
           </TabsTrigger>
           <TabsTrigger value="calls" className="gap-1.5">
             <Star className="h-4 w-4" />
@@ -338,21 +303,7 @@ export default function TrainingHub() {
         </TabsList>
 
         <TabsContent value="path">
-          <div className="space-y-6">
-            <TrainingPathPanel />
-            <RequiredOnboardingResources />
-            {/* Courses read the external content library; an outage there must not take the path above with it. */}
-            {isLoading ? (
-              <HubSkeleton />
-            ) : isError ? (
-              <HubUnreachable refetch={refetch} isRefetching={isRefetching} />
-            ) : courses.length > 0 ? (
-              <section className="space-y-3">
-                <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">Courses</h2>
-                <CoursesTab courses={courses} completion={courseCompletion} />
-              </section>
-            ) : null}
-          </div>
+          <TrainingJourney onOpenTab={setTab} callsAvailable={callsAvailable} />
         </TabsContent>
 
         <TabsContent value="calls">
@@ -370,7 +321,15 @@ export default function TrainingHub() {
           ) : isError ? (
             <HubUnreachable refetch={refetch} isRefetching={isRefetching} />
           ) : (
-            <LibraryTab items={libraryItems} />
+            <div className="space-y-8">
+              <LibraryTab items={libraryItems} />
+              {courses.length > 0 && (
+                <section className="space-y-3">
+                  <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">Courses</h2>
+                  <CoursesTab courses={courses} completion={courseCompletion} />
+                </section>
+              )}
+            </div>
           )}
         </TabsContent>
         {isLeader && (

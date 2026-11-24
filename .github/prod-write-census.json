@@ -49,10 +49,6 @@
     "jsonld-asset-live.yml::jsonld-asset-live::Probe live JSON-LD asset liveness": {
       "classification": "read",
       "why": "MP-WIB-JSONLD-ASSET-LIVE. Live liveness probe: scripts/check-jsonld-asset-live.mjs ranged-GETs the PUBLIC served index.html and the same-origin assets its JSON-LD references (the Organization logo chief among them), asserting 200/206 + image|video content-type. It writes nothing to prod. It reaches the census ONLY because the string xrzweoneiieddzxogewk appears in its --selftest masquerade FIXTURE (check-jsonld-asset-live.mjs:269-270 — a fake supabase-storage contentUrl/thumbnailUrl used to exercise the DEFECT classifier), never fetched: that URL is cross-origin and the live probe is same-origin by design (check-vsl-media-live owns the cross-origin supabase media). The step body runs `node scripts/check-jsonld-asset-live.mjs` with no write command in command position and no SQL payload, so the read claim is un-contradicted."
-    },
-    "recover-producer-migrations.yml::recover::Recover and verify the five pending migrations": {
-      "classification": "write",
-      "why": "Owner-approved recovery of the five known pending producer-release migrations. Fixed version-history SELECTs bracket a real-schema BEGIN/DDL/ROLLBACK preflight and Supabase CLI db push using the reviewed temporary migration copy. Only the exact enum-to-text expression is corrected after original/corrected SHA checks; CLI records successful migrations itself. No history repair commands, source publication, function deployment, consumer imports, campaign enabling, or messages. Writes require this exact repository, push event, and refs/heads/main in both workflow and script; shared deploy concurrency serializes the existing deployment workflow."
     }
   }
 }

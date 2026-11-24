@@ -5,6 +5,8 @@
 // call. The bot publishes each downloaded recording to the private readymode-audio bucket (publish-call-audio.py): a
 // copy with spoken digits muted for the team, and an unmuted sold-call copy for Sam and Aisha. call_audio_for() picks
 // the file this viewer may play and the storage policy enforces the same rule. A moment button plays a short snippet.
+// 2026-11-23 (MP-TRAINING-CENTER): another agent's call now plays from the team copy only (variant
+// client_data_removed): names, places, emails and banks are muted as well as numbers.
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Play } from "lucide-react";
@@ -99,6 +101,7 @@ export function CallAudioPlayer({ callId, moments = [], compact = false }: { cal
         onSeeking={() => { stopAt.current = null; }}
       />
       {q.data.variant === "numbers_muted" && <p className="text-xs text-muted-foreground">Spoken numbers are muted for privacy.</p>}
+      {q.data.variant === "client_data_removed" && <p className="text-xs text-muted-foreground">Client names, addresses and numbers are muted. Silent gaps are normal.</p>}
       {placed.length > 0 && (
         <div className="flex flex-wrap gap-1.5" aria-label="Play a moment">
           {placed.map((m) => (

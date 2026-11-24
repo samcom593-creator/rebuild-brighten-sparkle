@@ -1748,6 +1748,14 @@
         "raw": ""
       }
     ],
+    "call_training_objections": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "can_play_call_audio": [
       {
         "all": [
@@ -6129,6 +6137,18 @@
         "raw": ""
       }
     ],
+    "fn_objection_category": [
+      {
+        "all": [
+          "p_text"
+        ],
+        "required": [
+          "p_text"
+        ],
+        "unnamed": false,
+        "raw": "p_text text"
+      }
+    ],
     "fn_observe_agentlink_carrier_statuses": [
       {
         "all": [],
@@ -7243,6 +7263,18 @@
         "raw": ""
       }
     ],
+    "fn_team_copy_text": [
+      {
+        "all": [
+          "tc"
+        ],
+        "required": [
+          "tc"
+        ],
+        "unnamed": false,
+        "raw": "tc call_training_team_copy"
+      }
+    ],
     "fn_team_population": [
       {
         "all": [],
@@ -7341,6 +7373,30 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "fn_training_privacy_audit": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_training_text_leaks": [
+      {
+        "all": [
+          "p_first",
+          "p_last",
+          "p_text"
+        ],
+        "required": [
+          "p_first",
+          "p_last",
+          "p_text"
+        ],
+        "unnamed": false,
+        "raw": "p_text text, p_first text, p_last text"
       }
     ],
     "fn_unlicensed_digest_health": [
@@ -11909,6 +11965,14 @@
       }
     ],
     "track_license_milestones": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "training_recordings_list": [
       {
         "all": [],
         "required": [],

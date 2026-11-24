@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-11-23T22:23:05Z",
+ "_generated_at": "2026-11-24T00:07:03Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -480,6 +480,7 @@
   "fn_ntfy_relay": "bigint",
   "fn_ntfy_relay_receipt": "jsonb",
   "fn_ntfy_relay_result": "text",
+  "fn_objection_category": "text",
   "fn_observe_agentlink_carrier_statuses": "trigger",
   "fn_on_licensing_proof_submitted": "trigger",
   "fn_onboarding_contracting_stalled_alert": "void",
@@ -576,6 +577,7 @@
   "fn_sweep_recruiting_milestones": "integer",
   "fn_sync_is_manager": "trigger",
   "fn_system_settings_reject_json_quoted": "trigger",
+  "fn_team_copy_text": "text",
   "fn_team_reader": "boolean",
   "fn_telegram_queue_inactivity_nudges": "integer",
   "fn_text_json_safe": "text",
@@ -585,6 +587,7 @@
   "fn_touch_contracting_updated_at": "trigger",
   "fn_touch_manual_interview_entries_updated_at": "trigger",
   "fn_touch_messaging_updated_at": "trigger",
+  "fn_training_text_leaks": "boolean",
   "fn_unlicensed_slack_digest": "text",
   "fn_us_state_send_zones": "text[]",
   "fn_user_is_suspended": "boolean",
@@ -3718,9 +3721,11 @@
   },
   "call_audio_for.call_id": {
    "candidates": [
+    "call_training_team_copy.call_id",
     "readymode_call_audio.call_id"
    ],
    "body_literals": [
+    "client_data_removed",
     "full",
     "numbers_muted",
     "public"
@@ -3732,6 +3737,7 @@
     "readymode_dialer_calls.duration_seconds"
    ],
    "body_literals": [
+    "client_data_removed",
     "full",
     "numbers_muted",
     "public"
@@ -3739,9 +3745,11 @@
   },
   "call_audio_for.muted_ranges": {
    "candidates": [
+    "call_training_team_copy.muted_ranges",
     "readymode_call_audio.muted_ranges"
    ],
    "body_literals": [
+    "client_data_removed",
     "full",
     "numbers_muted",
     "public"
@@ -3750,6 +3758,7 @@
   "call_audio_for.path": {
    "candidates": [],
    "body_literals": [
+    "client_data_removed",
     "full",
     "numbers_muted",
     "public"
@@ -3758,6 +3767,7 @@
   "call_audio_for.variant": {
    "candidates": [],
    "body_literals": [
+    "client_data_removed",
     "full",
     "numbers_muted",
     "public"
@@ -3923,18 +3933,25 @@
   "call_training_library.agent_name": {
    "candidates": [],
    "body_literals": [
+    "day",
     "grade-v1",
-    "public"
+    "public",
+    "true",
+    "worked"
    ]
   },
   "call_training_library.call_id": {
    "candidates": [
+    "call_training_team_copy.call_id",
     "readymode_call_analysis.call_id",
     "readymode_call_audio.call_id"
    ],
    "body_literals": [
+    "day",
     "grade-v1",
-    "public"
+    "public",
+    "true",
+    "worked"
    ]
   },
   "call_training_library.call_started_at": {
@@ -3942,8 +3959,11 @@
     "readymode_dialer_calls.call_started_at"
    ],
    "body_literals": [
+    "day",
     "grade-v1",
-    "public"
+    "public",
+    "true",
+    "worked"
    ]
   },
   "call_training_library.disposition": {
@@ -3951,8 +3971,11 @@
     "readymode_dialer_calls.disposition"
    ],
    "body_literals": [
+    "day",
     "grade-v1",
-    "public"
+    "public",
+    "true",
+    "worked"
    ]
   },
   "call_training_library.duration_seconds": {
@@ -3961,8 +3984,11 @@
     "readymode_dialer_calls.duration_seconds"
    ],
    "body_literals": [
+    "day",
     "grade-v1",
-    "public"
+    "public",
+    "true",
+    "worked"
    ]
   },
   "call_training_library.great_call": {
@@ -3970,26 +3996,37 @@
     "readymode_call_analysis.great_call"
    ],
    "body_literals": [
+    "day",
     "grade-v1",
-    "public"
+    "public",
+    "true",
+    "worked"
    ]
   },
   "call_training_library.key_quotes": {
    "candidates": [
+    "call_training_team_copy.key_quotes",
     "readymode_call_analysis.key_quotes"
    ],
    "body_literals": [
+    "day",
     "grade-v1",
-    "public"
+    "public",
+    "true",
+    "worked"
    ]
   },
   "call_training_library.objection_moments": {
    "candidates": [
+    "call_training_team_copy.objection_moments",
     "readymode_call_analysis.objection_moments"
    ],
    "body_literals": [
+    "day",
     "grade-v1",
-    "public"
+    "public",
+    "true",
+    "worked"
    ]
   },
   "call_training_library.overall_score": {
@@ -3997,17 +4034,24 @@
     "readymode_call_analysis.overall_score"
    ],
    "body_literals": [
+    "day",
     "grade-v1",
-    "public"
+    "public",
+    "true",
+    "worked"
    ]
   },
   "call_training_library.score_reasons": {
    "candidates": [
+    "call_training_team_copy.score_reasons",
     "readymode_call_analysis.score_reasons"
    ],
    "body_literals": [
+    "day",
     "grade-v1",
-    "public"
+    "public",
+    "true",
+    "worked"
    ]
   },
   "call_training_library.scores": {
@@ -4015,8 +4059,11 @@
     "readymode_call_analysis.scores"
    ],
    "body_literals": [
+    "day",
     "grade-v1",
-    "public"
+    "public",
+    "true",
+    "worked"
    ]
   },
   "call_training_library.script_followed": {
@@ -4024,8 +4071,11 @@
     "readymode_call_analysis.script_followed"
    ],
    "body_literals": [
+    "day",
     "grade-v1",
-    "public"
+    "public",
+    "true",
+    "worked"
    ]
   },
   "call_training_library.script_score": {
@@ -4033,17 +4083,24 @@
     "readymode_call_analysis.script_score"
    ],
    "body_literals": [
+    "day",
     "grade-v1",
-    "public"
+    "public",
+    "true",
+    "worked"
    ]
   },
   "call_training_library.script_steps": {
    "candidates": [
+    "call_training_team_copy.script_steps",
     "readymode_call_analysis.script_steps"
    ],
    "body_literals": [
+    "day",
     "grade-v1",
-    "public"
+    "public",
+    "true",
+    "worked"
    ]
   },
   "call_training_library.stage_reached": {
@@ -4051,35 +4108,50 @@
     "readymode_call_analysis.stage_reached"
    ],
    "body_literals": [
+    "day",
     "grade-v1",
-    "public"
+    "public",
+    "true",
+    "worked"
    ]
   },
   "call_training_library.strengths": {
    "candidates": [
+    "call_training_team_copy.strengths",
     "readymode_call_analysis.strengths"
    ],
    "body_literals": [
+    "day",
     "grade-v1",
-    "public"
+    "public",
+    "true",
+    "worked"
    ]
   },
   "call_training_library.summary": {
    "candidates": [
+    "call_training_team_copy.summary",
     "readymode_call_analysis.summary"
    ],
    "body_literals": [
+    "day",
     "grade-v1",
-    "public"
+    "public",
+    "true",
+    "worked"
    ]
   },
   "call_training_library.tactics": {
    "candidates": [
+    "call_training_team_copy.tactics",
     "readymode_call_analysis.tactics"
    ],
    "body_literals": [
+    "day",
     "grade-v1",
-    "public"
+    "public",
+    "true",
+    "worked"
    ]
   },
   "call_training_library.training_tags": {
@@ -4087,8 +4159,149 @@
     "readymode_call_analysis.training_tags"
    ],
    "body_literals": [
+    "day",
     "grade-v1",
-    "public"
+    "public",
+    "true",
+    "worked"
+   ]
+  },
+  "call_training_objections.agent_name": {
+   "candidates": [],
+   "body_literals": [
+    "grade-v1",
+    "objection",
+    "public",
+    "response",
+    "t",
+    "technique",
+    "true",
+    "worked"
+   ]
+  },
+  "call_training_objections.call_day": {
+   "candidates": [],
+   "body_literals": [
+    "grade-v1",
+    "objection",
+    "public",
+    "response",
+    "t",
+    "technique",
+    "true",
+    "worked"
+   ]
+  },
+  "call_training_objections.call_id": {
+   "candidates": [
+    "call_training_team_copy.call_id",
+    "readymode_call_analysis.call_id",
+    "readymode_call_audio.call_id"
+   ],
+   "body_literals": [
+    "grade-v1",
+    "objection",
+    "public",
+    "response",
+    "t",
+    "technique",
+    "true",
+    "worked"
+   ]
+  },
+  "call_training_objections.category": {
+   "candidates": [],
+   "body_literals": [
+    "grade-v1",
+    "objection",
+    "public",
+    "response",
+    "t",
+    "technique",
+    "true",
+    "worked"
+   ]
+  },
+  "call_training_objections.great_call": {
+   "candidates": [
+    "readymode_call_analysis.great_call"
+   ],
+   "body_literals": [
+    "grade-v1",
+    "objection",
+    "public",
+    "response",
+    "t",
+    "technique",
+    "true",
+    "worked"
+   ]
+  },
+  "call_training_objections.objection": {
+   "candidates": [],
+   "body_literals": [
+    "grade-v1",
+    "objection",
+    "public",
+    "response",
+    "t",
+    "technique",
+    "true",
+    "worked"
+   ]
+  },
+  "call_training_objections.overall_score": {
+   "candidates": [
+    "readymode_call_analysis.overall_score"
+   ],
+   "body_literals": [
+    "grade-v1",
+    "objection",
+    "public",
+    "response",
+    "t",
+    "technique",
+    "true",
+    "worked"
+   ]
+  },
+  "call_training_objections.response": {
+   "candidates": [],
+   "body_literals": [
+    "grade-v1",
+    "objection",
+    "public",
+    "response",
+    "t",
+    "technique",
+    "true",
+    "worked"
+   ]
+  },
+  "call_training_objections.t": {
+   "candidates": [],
+   "body_literals": [
+    "grade-v1",
+    "objection",
+    "public",
+    "response",
+    "t",
+    "technique",
+    "true",
+    "worked"
+   ]
+  },
+  "call_training_objections.technique": {
+   "candidates": [],
+   "body_literals": [
+    "grade-v1",
+    "objection",
+    "public",
+    "response",
+    "t",
+    "technique",
+    "true",
+    "worked"
    ]
   },
   "closer_candidates.agent_name": {
@@ -13634,6 +13847,34 @@
     "text"
    ]
   },
+  "fn_training_privacy_audit.id": {
+   "candidates": [
+    "agents.id",
+    "readymode_dialer_calls.id",
+    "training_recordings.id"
+   ],
+   "body_literals": [
+    "public",
+    "recording",
+    "team_copy"
+   ]
+  },
+  "fn_training_privacy_audit.problem": {
+   "candidates": [],
+   "body_literals": [
+    "public",
+    "recording",
+    "team_copy"
+   ]
+  },
+  "fn_training_privacy_audit.source": {
+   "candidates": [],
+   "body_literals": [
+    "public",
+    "recording",
+    "team_copy"
+   ]
+  },
   "fn_unlicensed_digest_health.detail": {
    "candidates": [],
    "body_literals": [
@@ -16159,8 +16400,12 @@
     "g",
     "intake",
     "intake_only",
+    "layout",
     "public",
-    "terminated"
+    "row",
+    "terminated",
+    "true",
+    "written"
    ]
   },
   "my_contracting_downlines.agent_status": {
@@ -16172,8 +16417,12 @@
     "g",
     "intake",
     "intake_only",
+    "layout",
     "public",
-    "terminated"
+    "row",
+    "terminated",
+    "true",
+    "written"
    ]
   },
   "my_contracting_downlines.comp_pct": {
@@ -16185,8 +16434,12 @@
     "g",
     "intake",
     "intake_only",
+    "layout",
     "public",
-    "terminated"
+    "row",
+    "terminated",
+    "true",
+    "written"
    ]
   },
   "my_contracting_downlines.comp_source": {
@@ -16198,8 +16451,12 @@
     "g",
     "intake",
     "intake_only",
+    "layout",
     "public",
-    "terminated"
+    "row",
+    "terminated",
+    "true",
+    "written"
    ]
   },
   "my_contracting_downlines.display_name": {
@@ -16213,8 +16470,12 @@
     "g",
     "intake",
     "intake_only",
+    "layout",
     "public",
-    "terminated"
+    "row",
+    "terminated",
+    "true",
+    "written"
    ]
   },
   "my_contracting_downlines.email": {
@@ -16231,8 +16492,12 @@
     "g",
     "intake",
     "intake_only",
+    "layout",
     "public",
-    "terminated"
+    "row",
+    "terminated",
+    "true",
+    "written"
    ]
   },
   "my_contracting_downlines.ethos_delivered_at": {
@@ -16244,8 +16509,12 @@
     "g",
     "intake",
     "intake_only",
+    "layout",
     "public",
-    "terminated"
+    "row",
+    "terminated",
+    "true",
+    "written"
    ]
   },
   "my_contracting_downlines.ethos_level": {
@@ -16257,8 +16526,12 @@
     "g",
     "intake",
     "intake_only",
+    "layout",
     "public",
-    "terminated"
+    "row",
+    "terminated",
+    "true",
+    "written"
    ]
   },
   "my_contracting_downlines.ethos_note": {
@@ -16270,8 +16543,12 @@
     "g",
     "intake",
     "intake_only",
+    "layout",
     "public",
-    "terminated"
+    "row",
+    "terminated",
+    "true",
+    "written"
    ]
   },
   "my_contracting_downlines.ethos_state": {
@@ -16283,8 +16560,12 @@
     "g",
     "intake",
     "intake_only",
+    "layout",
     "public",
-    "terminated"
+    "row",
+    "terminated",
+    "true",
+    "written"
    ]
   },
   "my_contracting_downlines.first_name": {
@@ -16301,8 +16582,12 @@
     "g",
     "intake",
     "intake_only",
+    "layout",
     "public",
-    "terminated"
+    "row",
+    "terminated",
+    "true",
+    "written"
    ]
   },
   "my_contracting_downlines.intake_id": {
@@ -16317,8 +16602,12 @@
     "g",
     "intake",
     "intake_only",
+    "layout",
     "public",
-    "terminated"
+    "row",
+    "terminated",
+    "true",
+    "written"
    ]
   },
   "my_contracting_downlines.intake_status": {
@@ -16330,8 +16619,12 @@
     "g",
     "intake",
     "intake_only",
+    "layout",
     "public",
-    "terminated"
+    "row",
+    "terminated",
+    "true",
+    "written"
    ]
   },
   "my_contracting_downlines.last_name": {
@@ -16348,8 +16641,12 @@
     "g",
     "intake",
     "intake_only",
+    "layout",
     "public",
-    "terminated"
+    "row",
+    "terminated",
+    "true",
+    "written"
    ]
   },
   "my_contracting_downlines.last_update_at": {
@@ -16361,8 +16658,12 @@
     "g",
     "intake",
     "intake_only",
+    "layout",
     "public",
-    "terminated"
+    "row",
+    "terminated",
+    "true",
+    "written"
    ]
   },
   "my_contracting_downlines.last_update_status": {
@@ -16374,8 +16675,12 @@
     "g",
     "intake",
     "intake_only",
+    "layout",
     "public",
-    "terminated"
+    "row",
+    "terminated",
+    "true",
+    "written"
    ]
   },
   "my_contracting_downlines.manager_id": {
@@ -16389,8 +16694,12 @@
     "g",
     "intake",
     "intake_only",
+    "layout",
     "public",
-    "terminated"
+    "row",
+    "terminated",
+    "true",
+    "written"
    ]
   },
   "my_contracting_downlines.manager_name": {
@@ -16402,8 +16711,12 @@
     "g",
     "intake",
     "intake_only",
+    "layout",
     "public",
-    "terminated"
+    "row",
+    "terminated",
+    "true",
+    "written"
    ]
   },
   "my_contracting_downlines.npn": {
@@ -16419,8 +16732,12 @@
     "g",
     "intake",
     "intake_only",
+    "layout",
     "public",
-    "terminated"
+    "row",
+    "terminated",
+    "true",
+    "written"
    ]
   },
   "my_contracting_downlines.on_sheet": {
@@ -16432,8 +16749,12 @@
     "g",
     "intake",
     "intake_only",
+    "layout",
     "public",
-    "terminated"
+    "row",
+    "terminated",
+    "true",
+    "written"
    ]
   },
   "my_contracting_downlines.phone": {
@@ -16447,8 +16768,12 @@
     "g",
     "intake",
     "intake_only",
+    "layout",
     "public",
-    "terminated"
+    "row",
+    "terminated",
+    "true",
+    "written"
    ]
   },
   "my_contracting_downlines.sheet_level": {
@@ -16460,8 +16785,12 @@
     "g",
     "intake",
     "intake_only",
+    "layout",
     "public",
-    "terminated"
+    "row",
+    "terminated",
+    "true",
+    "written"
    ]
   },
   "my_contracting_downlines.sheet_row": {
@@ -16475,8 +16804,12 @@
     "g",
     "intake",
     "intake_only",
+    "layout",
     "public",
-    "terminated"
+    "row",
+    "terminated",
+    "true",
+    "written"
    ]
   },
   "my_contracting_downlines.sheet_sub_agency": {
@@ -16488,8 +16821,12 @@
     "g",
     "intake",
     "intake_only",
+    "layout",
     "public",
-    "terminated"
+    "row",
+    "terminated",
+    "true",
+    "written"
    ]
   },
   "my_downline_agent_ids.agent_id": {
@@ -21356,6 +21693,86 @@
     "pending",
     "stage_transition_",
     "transition_"
+   ]
+  },
+  "training_recordings_list.audio_path": {
+   "candidates": [
+    "training_recordings.audio_path"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "training_recordings_list.description": {
+   "candidates": [
+    "training_recordings.description"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "training_recordings_list.duration_seconds": {
+   "candidates": [
+    "training_recordings.duration_seconds"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "training_recordings_list.id": {
+   "candidates": [
+    "training_recordings.id"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "training_recordings_list.presenter_id": {
+   "candidates": [
+    "training_recordings.presenter_id"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "training_recordings_list.presenter_name": {
+   "candidates": [
+    "training_recordings.presenter_name"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "training_recordings_list.recorded_on": {
+   "candidates": [
+    "training_recordings.recorded_on"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "training_recordings_list.title": {
+   "candidates": [
+    "training_recordings.title"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "training_recordings_list.topic": {
+   "candidates": [
+    "training_recordings.topic"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "training_recordings_list.transcript": {
+   "candidates": [
+    "training_recordings.transcript"
+   ],
+   "body_literals": [
+    "public"
    ]
   },
   "weekly_dialer_status.agent_code": {

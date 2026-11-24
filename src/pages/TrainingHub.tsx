@@ -10,11 +10,14 @@ import {
   Headphones,
   Library,
   ListChecks,
+  MessageCircleQuestion,
+  Mic,
   Play,
   RefreshCw,
   ScrollText,
   Search,
   Settings,
+  Star,
   Users,
   Video,
   X,
@@ -44,15 +47,14 @@ import { cn } from "@/lib/utils";
 import { TRAINING_ROUTES } from "@/lib/trainingRoutes";
 import {
   HUB_ORIGIN,
-  HubRecording,
   HubResource,
-  HUB_EMBED_SANDBOX,
   hubCourseCounts,
   hubCourseItems,
-  toHubEmbedUrl,
   useHubData,
-  useHubTranscripts,
 } from "@/lib/apexResourcesHub";
+import { TopCallsTab } from "@/components/training/TopCallsTab";
+import { ObjectionsTab } from "@/components/training/ObjectionsTab";
+import { TrainingRecordings } from "@/components/training/TrainingRecordings";
 
 /**
  * TrainingHub — the apex-resources.vercel.app agent hub, rebuilt inside the
@@ -61,7 +63,7 @@ import {
  * hub_course_progress instead of the legacy site's localStorage-by-typed-email.
  */
 
-type HubTab = "path" | "courses" | "recordings" | "library" | "team";
+type HubTab = "path" | "calls" | "objections" | "recordings" | "library" | "team";
 
 const LIBRARY_FILTERS: { key: string; label: string }[] = [
   { key: "all", label: "All" },
@@ -157,7 +159,7 @@ function HubUnreachable({
 
 export default function TrainingHub() {
   usePageTitle("Training Hub · Galaxy Financial");
-  const { user, isAdmin, isManager, isVaManager } = useAuth();
+  const { user, isAdmin, isManager, isVaManager, isVa } = useAuth();
   const { data, isLoading, isError, refetch, isRefetching } = useHubData();
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -174,8 +176,10 @@ export default function TrainingHub() {
   // "team" is only a legal tab for a leader. A non-leader who lands on
   // ?tab=team falls back to their own path instead of an empty pane — the RPC
   // behind that view fails closed server-side, so this is only the UI half.
-  const requestedTab = searchParams.get("tab") || "";
-  const legalTabs = ["path", "courses", "recordings", "library", ...(isLeader ? ["team"] : [])];
+  // "courses" was its own tab; courses now sit under My training, so old links land there.
+  const rawTab = searchParams.get("tab") || "";
+  const requestedTab = rawTab === "courses" ? "path" : rawTab;
+  const legalTabs = ["path", "calls", "objections", "recordings", "library", ...(isLeader ? ["team"] : [])];
   const tab = (legalTabs.includes(requestedTab) ? requestedTab : "path") as HubTab;
   const setTab = (next: string) => {
     setSearchParams((prev) => {
@@ -265,29 +269,51 @@ export default function TrainingHub() {
 
   return (
     <div className="page-enter mx-auto w-full max-w-6xl space-y-6 px-4 pb-24 sm:px-6">
-      <TrainingWorkspaceNav />
+      {/* Staff run six training views; an agent has one center, so the second strip of links is noise for them. */}
+      {(isLeader || isVa) && <TrainingWorkspaceNav />}
       <PageHeader
         eyebrow="Learn · Practice · Progress"
         eyebrowIcon={<Library className="h-3 w-3" />}
         title="Training center"
-        subtitle="Continue your required course first, then use the library for extra practice, recordings, and field resources."
+        subtitle="Finish the Field Course, then learn from the best calls on the team: top calls, the objections they turned, and the scripts."
         accent="primary"
         actions={
           (isAdmin || isManager) ? (
-            <Button asChild variant="outline" size="sm" className="gap-2">
-              <a href={`${HUB_ORIGIN}/admin/`} target="_blank" rel="noopener noreferrer">
-                <Settings className="h-4 w-4" />
-                Manage content
-              </a>
-            </Button>
-          ) : isLicensedAgent ? (
-            <Button asChild size="sm" className="gap-2">
-              <Link to={TRAINING_ROUTES.fieldCourse}>
-                <Play className="h-4 w-4" />
-                Continue required course
-              </Link>
-            </Button>
-          ) : null
+            <div className="flex flex-wrap gap-2">
+              <Button asChild size="sm" className="gap-2">
+                <Link to="/dashboard/call-training">
+                  <Headphones className="h-4 w-4" />
+                  Coach calls
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="sm" className="gap-2">
+                <a href={`${HUB_ORIGIN}/admin/`} target="_blank" rel="noopener noreferrer">
+                  <Settings className="h-4 w-4" />
+                  Manage content
+                </a>
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {isLicensedAgent && (
+                <Button asChild size="sm" className="gap-2">
+                  <Link to={TRAINING_ROUTES.fieldCourse}>
+                    <Play className="h-4 w-4" />
+                    Continue Field Course
+                  </Link>
+                </Button>
+              )}
+              <Button asChild variant="outline" size="sm" className="gap-2">
+                <Link to="/dashboard/call-lab">
+                  <Mic className="h-4 w-4" />
+                  Practice a call
+                </Link>
+              </Button>
+              <Button asChild variant="ghost" size="sm">
+                <Link to={TRAINING_ROUTES.annuities}>Annuities</Link>
+              </Button>
+            </div>
+          )
         }
       />
 
@@ -301,9 +327,13 @@ export default function TrainingHub() {
             <ListChecks className="h-4 w-4" />
             My training
           </TabsTrigger>
-          <TabsTrigger value="courses" className="gap-1.5">
-            <GraduationCap className="h-4 w-4" />
-            More courses
+          <TabsTrigger value="calls" className="gap-1.5">
+            <Star className="h-4 w-4" />
+            Top calls
+          </TabsTrigger>
+          <TabsTrigger value="objections" className="gap-1.5">
+            <MessageCircleQuestion className="h-4 w-4" />
+            Objections
           </TabsTrigger>
           <TabsTrigger value="recordings" className="gap-1.5">
             <Headphones className="h-4 w-4" />
@@ -311,7 +341,7 @@ export default function TrainingHub() {
           </TabsTrigger>
           <TabsTrigger value="library" className="gap-1.5">
             <BookOpen className="h-4 w-4" />
-            Resources
+            Scripts &amp; guides
           </TabsTrigger>
           {isLeader && (
             <TabsTrigger value="team" className="gap-1.5">
@@ -321,43 +351,32 @@ export default function TrainingHub() {
           )}
         </TabsList>
 
-        {data && tab !== "path" && tab !== "team" && (
-          <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <StatTile value={courses.length} label="Courses" />
-            <StatTile value={data.recordings.length} label="Recordings" />
-            <StatTile value={libraryItems.length} label="Resources" />
-            <StatTile
-              value={completedCourses}
-              label="Courses completed"
-              tone={completedCourses > 0 ? "text-success" : undefined}
-            />
-          </div>
-        )}
-
         <TabsContent value="path">
           <div className="space-y-6">
             <TrainingPathPanel />
             <RequiredOnboardingResources />
+            {/* Courses read the external content library; an outage there must not take the path above with it. */}
+            {isLoading ? (
+              <HubSkeleton />
+            ) : isError ? (
+              <HubUnreachable refetch={refetch} isRefetching={isRefetching} />
+            ) : courses.length > 0 ? (
+              <section className="space-y-3">
+                <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">Courses</h2>
+                <CoursesTab courses={courses} completion={courseCompletion} />
+              </section>
+            ) : null}
           </div>
         </TabsContent>
 
-        <TabsContent value="courses">
-          {isLoading ? (
-            <HubSkeleton />
-          ) : isError ? (
-            <HubUnreachable refetch={refetch} isRefetching={isRefetching} />
-          ) : (
-            <CoursesTab courses={courses} completion={courseCompletion} />
-          )}
+        <TabsContent value="calls">
+          <TopCallsTab />
+        </TabsContent>
+        <TabsContent value="objections">
+          <ObjectionsTab />
         </TabsContent>
         <TabsContent value="recordings">
-          {isLoading ? (
-            <HubSkeleton />
-          ) : isError || !data ? (
-            <HubUnreachable refetch={refetch} isRefetching={isRefetching} />
-          ) : (
-            <RecordingsTab data={data} />
-          )}
+          <TrainingRecordings />
         </TabsContent>
         <TabsContent value="library">
           {isLoading ? (
@@ -375,7 +394,7 @@ export default function TrainingHub() {
         )}
       </Tabs>
 
-      {data && quickLinks.length > 0 && tab !== "path" && tab !== "team" && (
+      {data && quickLinks.length > 0 && tab === "library" && (
         <section>
           <div className="mb-3 flex items-center gap-3">
             <div className="h-px flex-1 bg-border" />
@@ -495,240 +514,6 @@ function CoursesTab({
           </Link>
         );
       })}
-    </div>
-  );
-}
-
-/* ── Recordings ─────────────────────────────────────────────────────────── */
-
-function RecordingsTab({
-  data,
-}: {
-  data: NonNullable<ReturnType<typeof useHubData>["data"]>;
-}) {
-  const [presenterId, setPresenterId] = useState<string>("all");
-  const [active, setActive] = useState<HubRecording | null>(null);
-
-  const counts = useMemo(() => {
-    const byPresenter: Record<string, number> = {};
-    for (const r of data.recordings) {
-      byPresenter[r.presenter] = (byPresenter[r.presenter] ?? 0) + 1;
-    }
-    return byPresenter;
-  }, [data.recordings]);
-
-  const list = useMemo(() => {
-    const filtered =
-      presenterId === "all"
-        ? data.recordings
-        : data.recordings.filter((r) => r.presenter === presenterId);
-    return [...filtered].sort((a, b) => parseHubDate(b.date) - parseHubDate(a.date));
-  }, [data.recordings, presenterId]);
-
-  const activePresenter = active
-    ? data.presenters.find((p) => p.id === active.presenter)
-    : null;
-  // Fails closed: a non-Drive/non-YouTube URL yields null and we render an
-  // "unavailable" state rather than framing an arbitrary origin in-app.
-  const activeEmbed = active?.video ? toHubEmbedUrl(active.video) : null;
-
-  return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => setPresenterId("all")}
-          className={cn(
-            "rounded-md border px-3 py-2 text-sm font-semibold transition-colors",
-            presenterId === "all"
-              ? "border-primary/60 bg-primary/10 text-primary"
-              : "border-border bg-card text-muted-foreground hover:text-foreground",
-          )}
-        >
-          All · {data.recordings.length}
-        </button>
-        {data.presenters.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            onClick={() => setPresenterId(p.id)}
-            className={cn(
-              "flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors",
-              presenterId === p.id
-                ? "border-primary/60 bg-primary/10"
-                : "border-border bg-card hover:bg-muted/40",
-            )}
-          >
-            <span
-              className={cn(
-                "flex h-7 w-7 items-center justify-center rounded-full border text-xs font-bold",
-                presenterId === p.id
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-primary/40 text-primary",
-              )}
-            >
-              {p.initials}
-            </span>
-            <span className="text-left leading-tight">
-              <span className="block font-semibold">{p.name}</span>
-              <span className="block text-[12px] text-muted-foreground">
-                {p.role} · {counts[p.id] ?? 0}
-              </span>
-            </span>
-          </button>
-        ))}
-      </div>
-
-      {list.length === 0 ? (
-        <Card>
-          <CardContent className="p-8 pt-8 text-center">
-            <p className="text-lg font-bold">Nothing here yet — no recordings</p>
-            <p className="text-sm text-muted-foreground">
-              Recordings for this presenter will appear here once they're added.
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card className="divide-y divide-border">
-          {list.map((rec) => {
-            const presenter = data.presenters.find((p) => p.id === rec.presenter);
-            return (
-              <button
-                key={rec.id}
-                type="button"
-                onClick={() => setActive(rec)}
-                className="flex w-full items-center gap-4 p-4 text-left transition-colors first:rounded-t-[10px] last:rounded-b-[10px] hover:bg-muted/30"
-              >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary/40 bg-primary/10">
-                  <Play className="h-4 w-4 text-primary" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block line-clamp-2 text-sm font-semibold">{rec.title}</span>
-                  <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
-                    <Badge
-                      variant="outline"
-                      className="border-primary/30 bg-primary/10 px-1.5 py-0 text-[11px] uppercase tracking-wide text-primary"
-                    >
-                      {rec.topic}
-                    </Badge>
-                    {presenter && <span>{presenter.name}</span>}
-                    <span>·</span>
-                    <span>{rec.date}</span>
-                    {rec.duration && (
-                      <>
-                        <span>·</span>
-                        <span className="tabular-nums">{rec.duration}</span>
-                      </>
-                    )}
-                  </span>
-                </span>
-                <Video className="h-4 w-4 shrink-0 text-muted-foreground" />
-              </button>
-            );
-          })}
-        </Card>
-      )}
-
-      <Dialog open={!!active} onOpenChange={(open) => !open && setActive(null)}>
-        <DialogContent className="max-h-[85dvh] w-[calc(100vw-2rem)] max-w-3xl overflow-y-auto sm:w-full">
-          {active && (
-            <>
-              <DialogHeader>
-                <DialogTitle className="pr-6 text-left">{active.title}</DialogTitle>
-                <DialogDescription className="text-left">
-                  {activePresenter
-                    ? `${activePresenter.name} · ${activePresenter.role} · ${active.date}`
-                    : active.date}
-                  {active.desc ? ` — ${active.desc}` : ""}
-                </DialogDescription>
-              </DialogHeader>
-              {activeEmbed ? (
-                <div className="aspect-video w-full overflow-hidden rounded-md border border-border bg-black">
-                  <iframe
-                    src={activeEmbed}
-                    title={active.title}
-                    className="h-full w-full"
-                    sandbox={HUB_EMBED_SANDBOX}
-                    allow="autoplay; encrypted-media; picture-in-picture"
-                    allowFullScreen
-                  />
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  {active.video
-                    ? "This recording's media link isn't a Google Drive or YouTube URL, so it can't be played here."
-                    : "No media attached to this recording yet."}
-                </p>
-              )}
-              <TranscriptPanel recId={active.id} />
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-
-function TranscriptPanel({ recId }: { recId: string }) {
-  const { data: transcripts, isLoading, isError, refetch } = useHubTranscripts(true);
-  const entry = transcripts?.[recId];
-
-  return (
-    <div className="rounded-md border border-border">
-      <div className="flex items-center justify-between border-b border-border px-4 py-2">
-        <span className="text-xs font-bold uppercase tracking-wide">Transcript</span>
-        <span className="text-xs text-muted-foreground">
-          {isLoading
-            ? "Loading…"
-            : isError
-              ? "Couldn't load"
-              : entry?.status === "completed"
-              ? `${entry.utterances?.length ?? 0} segments · speaker-labeled`
-              : entry?.status === "queued" || entry?.status === "processing"
-                ? "Transcribing…"
-                : "Not available yet"}
-        </span>
-      </div>
-      <div className="max-h-56 overflow-y-auto p-2">
-        {entry?.status === "completed" && (entry.utterances?.length ?? 0) > 0 ? (
-          entry.utterances!.map((u) => (
-            <div
-              key={`${u.startMs}-${u.text.slice(0, 24)}`}
-              className="flex gap-3 rounded-md px-2 py-1.5 text-sm hover:bg-muted/40"
-            >
-              <span className="w-11 shrink-0 pt-0.5 text-xs tabular-nums text-muted-foreground">
-                {fmtClock(u.startMs)}
-              </span>
-              {u.speaker && (
-                <span className="shrink-0 pt-0.5 text-[11px] font-bold uppercase text-primary">
-                  {u.speaker}
-                </span>
-              )}
-              <span className="leading-relaxed text-muted-foreground">{u.text}</span>
-            </div>
-          ))
-        ) : entry?.status === "completed" && entry.text ? (
-          <p className="whitespace-pre-wrap p-2 text-sm leading-relaxed text-muted-foreground">
-            {entry.text}
-          </p>
-        ) : isError ? (
-          <div className="p-3 text-center">
-            <p className="mb-2 text-xs text-muted-foreground">
-              Couldn't load transcripts. This is a connection problem, not a missing
-              transcript.
-            </p>
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
-              Retry
-            </Button>
-          </div>
-        ) : (
-          <p className="p-3 text-center text-xs text-muted-foreground">
-            {isLoading
-              ? "Fetching transcripts…"
-              : "The transcript for this recording hasn't been generated yet."}
-          </p>
-        )}
-      </div>
     </div>
   );
 }

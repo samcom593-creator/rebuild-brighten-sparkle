@@ -14,7 +14,7 @@ returns boolean language sql stable security definer set search_path to 'public'
          where coalesce(a.canonical_agent_id, a.id) = p_agent_id
            and a.user_id = auth.uid()
            and a.is_deactivated is not true and a.is_inactive is not true
-           and coalesce(a.status,'') not in ('terminated','inactive')
+           and coalesce(a.status::text,'') not in ('terminated','inactive')
            and not public.fn_agent_is_suspended(p_agent_id)
       )
     )

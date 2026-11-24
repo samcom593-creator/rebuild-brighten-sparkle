@@ -25,7 +25,9 @@ create function public.fn_user_login_blocked(uuid) returns boolean language sql 
 create function public.fn_user_is_suspended(uuid) returns boolean language sql as $$select coalesce(current_setting('fixture.suspended',true)='yes',false)$$;
 create function public.fn_agent_is_suspended(uuid) returns boolean language sql as $$select coalesce(current_setting('fixture.agent_suspended',true)='yes',false)$$;
 create function public.can_view_sold_calls() returns boolean language sql as $$select coalesce(current_setting('fixture.raw_access',true)='yes',false)$$;
-create table public.agents(id uuid primary key,user_id uuid,canonical_agent_id uuid,status text default 'active',is_deactivated boolean default false,is_inactive boolean default false);
+-- Match the production enum so invalid text fallbacks fail during migration creation.
+create type public.agent_status as enum ('active','inactive','pending','terminated');
+create table public.agents(id uuid primary key,user_id uuid,canonical_agent_id uuid,status public.agent_status default 'active',is_deactivated boolean default false,is_inactive boolean default false);
 insert into public.agents(id,user_id,canonical_agent_id) values ('${agentA}','${userA}',null),('${aliasA}',null,'${agentA}'),('${agentB}','${userB}',null);
 create table public.team_goals(agent_id uuid,period_start date,period_end date,personal_ap_goal numeric,team_ap_goal numeric);
 insert into public.team_goals values ('${agentA}',date_trunc('month',now() at time zone 'America/Phoenix')::date,(date_trunc('month',now() at time zone 'America/Phoenix') + interval '1 month - 1 day')::date,10000,999999);
@@ -63,6 +65,14 @@ create table public.client_pipeline_activity(id uuid default gen_random_uuid(),c
 await db.exec(readFileSync(new URL('../../supabase/migrations/20261124120000_producer_workspace.sql', import.meta.url), 'utf8'));
 await db.exec(readFileSync(new URL('../../supabase/migrations/20261124121000_producer_client_calls.sql', import.meta.url), 'utf8'));
 await db.query("select set_config('fixture.uid',$1,false),set_config('fixture.role','agent',false)", [userA]);
+for (const status of ['inactive','terminated']) {
+  await db.query('update public.agents set status=$1 where id=$2', [status,agentA]);
+  assert.equal((await db.query('select public.producer_can_access_agent($1) as allowed', [agentA])).rows[0].allowed, false, `${status} producers must remain denied`);
+}
+for (const status of ['pending',null,'active']) {
+  await db.query('update public.agents set status=$1 where id=$2', [status,agentA]);
+  assert.equal((await db.query('select public.producer_can_access_agent($1) as allowed', [agentA])).rows[0].allowed, true, `The enum cast must preserve access for existing ${status ?? 'null'} status semantics`);
+}
 await db.exec('set role authenticated');
 const workspace = async (agent = agentA) => (await db.query('select public.producer_month_workspace($1) as result', [agent])).rows[0].result;
 const history = async (client = clientA, category = null, cursor = null) => (await db.query('select public.producer_client_calls($1,$2,$3,$4) as result', [client, category, cursor?.at ?? null, cursor?.key ?? null])).rows[0].result;

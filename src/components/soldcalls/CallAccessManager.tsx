@@ -132,7 +132,7 @@ export function CallAccessManager() {
         <div className="mt-3 space-y-2">
           <p className="text-xs text-muted-foreground">
             Admins always see everything. A grant below opens sold calls, booking packets (SSN/bank),
-            call audio, coaching, call training and the Ayro book — the database enforces it everywhere at once.
+            call audio, coaching and call training — the database enforces it everywhere at once.
           </p>
 
           {grants.isLoading && <p className="text-xs text-muted-foreground">Loading grants…</p>}

@@ -14,6 +14,13 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "Ayro Financial is off the site: the Ayro Book page, its menu item and its panel on Book of Business are gone (an old bookmark lands on Book of Business). The Training Hub no longer sends anyone to the old outside library that asks for a password nobody has: the Manage content button, the Open the library button, and the Admin and AgentLink quick links are removed. The playbook and quiz PDFs still open, because those files are public.",
+    detail: "MP-CLEANUP-LEARN. Deleted AyroBook.tsx, AyroProductionPanel.tsx, lib/ayroBook.ts; /dashboard/ayro-book redirects. isDeadEndLink() in lib/apexResourcesHub.ts filters quick links to the gated origin (except /assets/) and to agentlink.insuracloud.ai. Ayro data and RPCs untouched.",
+    commit: "mp-cleanup-learn",
+  },
+  {
+    ts: "today",
+    label:
       "Managers now have one page and one process: Team → Grow my team. Step 1, Recruit: copy your recruiting link, people apply, you interview. Step 2, Hire & contract: send your Join link — one form makes their account under you and, if they are licensed, puts them on MGN's Ethos sheet at 60% · 6 Month Advance and sends them on to MGN; not licensed yet, same link, they get the course first. Step 3, Watch: everyone shows with one plain status, and the only rows that need you say Ready (one tap: Add to sheet) or Held. Your own hire links now do the same — a licensed hire lands on the sheet automatically instead of waiting to be done by hand.",
     detail:
       "MP-304 simplify. Measured first: only the owner made hire links (20/20 in 30d), consume-invite-token explicitly skipped contracting ('tracked by hand'), /join/:token was dead (1 in 30d). consume-invite-token now calls submit_downline_contracting for a licensed hire with an NPN — after invitation_apply_terms, before invitation_complete, inside a non-fatal guard (a held verdict or a down queue can never fail a hire that made the account); never the legacy four-destination intake (tests restated to pin exactly that). trusted_comp: the hire-link offer carries its approved comp capped at the offerer's own level; the public form still cannot set comp (proven rolled back: public 70 -> needs_fix cap 60; hire 70 -> ok; an offer above the offerer's level -> refused). Page /dashboard/grow (old path kept): three steps, recruiting link via my_recruiting_link(), Join link, MGN link, one stage per person (downlineStage, 7 tests), one-tap Add to sheet with an inline confirm; add-one and spreadsheet upload folded behind one disclosure. Nav: Team -> Grow my team.",

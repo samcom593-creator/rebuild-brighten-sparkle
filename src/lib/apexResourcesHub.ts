@@ -160,6 +160,21 @@ export function hubCourseCounts(course: HubCourseInfo): { lessons: number; quizz
   };
 }
 
+/**
+ * Links the content library still publishes that an agent cannot use (Sam, 2026-11-23: "it's asking for
+ * passwords, I don't even have the password"): the library's own pages sit behind a password nobody holds,
+ * and AgentLink was retired on 2026-11-10. Files under /assets/ on the same host are public and stay.
+ */
+export function isDeadEndLink(href: string): boolean {
+  try {
+    const u = new URL(href, HUB_ORIGIN);
+    if (u.hostname === "agentlink.insuracloud.ai") return true;
+    return u.origin === HUB_ORIGIN && !u.pathname.startsWith("/assets/");
+  } catch {
+    return true;
+  }
+}
+
 async function fetchHubData(): Promise<HubData> {
   const res = await fetch(`${HUB_ORIGIN}/api/data`);
   if (!res.ok) throw new Error(`apex-resources API returned ${res.status}`);
@@ -170,7 +185,7 @@ async function fetchHubData(): Promise<HubData> {
     (r: HubResource) => ({ ...r, url: absolutizeHubUrl(r.url) ?? undefined }),
   );
   const quickLinks: HubQuickLink[] = (Array.isArray(raw?.quickLinks) ? raw.quickLinks : []).filter(
-    (l: HubQuickLink) => l?.href && l.href !== "#",
+    (l: HubQuickLink) => l?.href && l.href !== "#" && !isDeadEndLink(l.href),
   );
   return { recordings, presenters, resources, quickLinks };
 }

@@ -16,7 +16,6 @@ import {
   RefreshCw,
   ScrollText,
   Search,
-  Settings,
   Star,
   Users,
   Video,
@@ -46,7 +45,6 @@ import {
 import { cn } from "@/lib/utils";
 import { TRAINING_ROUTES } from "@/lib/trainingRoutes";
 import {
-  HUB_ORIGIN,
   HubResource,
   hubCourseCounts,
   hubCourseItems,
@@ -138,18 +136,12 @@ function HubUnreachable({
         <p className="mb-1 text-lg font-bold">Couldn't reach the content library</p>
         <p className="mb-4 text-sm text-muted-foreground">
           The live library didn't respond, so nothing here is confirmed empty — it's unread.
-          Retry, or open the library directly.
+          Retry in a moment.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-2">
           <Button onClick={() => refetch()} disabled={isRefetching} className="gap-2">
             <RefreshCw className={cn("h-4 w-4", isRefetching && "animate-spin")} />
             Retry
-          </Button>
-          <Button asChild variant="outline" className="gap-2">
-            <a href={HUB_ORIGIN} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="h-4 w-4" />
-              Open the library
-            </a>
           </Button>
         </div>
       </CardContent>
@@ -285,12 +277,6 @@ export default function TrainingHub() {
                   <Headphones className="h-4 w-4" />
                   Coach calls
                 </Link>
-              </Button>
-              <Button asChild variant="outline" size="sm" className="gap-2">
-                <a href={`${HUB_ORIGIN}/admin/`} target="_blank" rel="noopener noreferrer">
-                  <Settings className="h-4 w-4" />
-                  Manage content
-                </a>
               </Button>
             </div>
           ) : (

@@ -223,8 +223,6 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       { label: "Easy Resells", href: "/dashboard/easy-resells", icon: Sparkles, grant: "sold_calls" },
       // Book Flips is now a tab inside Book Reconciliation (/dashboard/book-quality); the
       // /dashboard/books route stays for EasyResells deep links. No standalone sidebar item.
-      // Ayro Financial's production (2026-10-20), every policy from its CRM grouped by carrier. Sam + Aisha (sold_calls grant), 2026-10-25.
-      { label: "Ayro Book", href: "/dashboard/ayro-book", icon: Building2, grant: "sold_calls" },
       // Admins plus call_access_grants rows (can_view_sold_calls — managed on Sold Calls); grantees
       // work in manager mode, so a mode list could not reach them.
       { label: "Sold Calls", href: "/dashboard/sold-calls", icon: PhoneCall, grant: "sold_calls" },

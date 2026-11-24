@@ -1,8 +1,7 @@
-name: Prepare producer release branch
+name: Verify deployed producer migrations
 
-# The history job reads migration metadata. The publish job reconstructs only
-# the approved source tree and pushes its feature branch with normal Git hooks.
-# Neither job writes to the production database or deploys the website.
+# Read-only verification of the exact merged main commit and its migration
+# history. This workflow publishes no source and performs no database writes.
 on:
   push:
     branches: ["codex/producer-release-preflight-20261124"]
@@ -25,7 +24,7 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Read and verify recorded migration versions
+      - name: Read and verify deployed migration versions
         env:
           APEX_BOT_TOKEN: ${{ secrets.APEX_BOT_TOKEN }}
         shell: bash
@@ -33,20 +32,30 @@ jobs:
           node --input-type=module <<'NODE'
           import { execFileSync } from "node:child_process";
 
-          const base = "a679d70e0b5ffd82aed3e660da898a2452cff502";
+          const expectedMain = "c405bf29d5ac14054cac05a5d3cc731271f0abc8";
+          const requiredNew = [
+            "20261124110000", "20261124111000", "20261124120000",
+            "20261124121000", "20261124130000", "20261124131000",
+            "20261124140000",
+          ];
           const git = (...args) => execFileSync("git", args, {
             encoding: "utf8", timeout: 20000, stdio: ["ignore", "pipe", "pipe"],
           }).trim();
           const fail = (message) => { throw new Error(message); };
 
-          try {
-            if (git("rev-parse", "refs/remotes/origin/main") !== base) {
-              fail("origin/main moved from the reviewed release base; refresh the release before retrying.");
+          function checkMain() {
+            if (git("rev-parse", "refs/remotes/origin/main") !== expectedMain) {
+              fail("origin/main differs from the merged release commit; verification cannot proceed.");
             }
             const remoteMain = git("ls-remote", "--exit-code", "origin", "refs/heads/main");
-            if (remoteMain !== `${base}\trefs/heads/main`) {
-              fail("Remote main moved from the reviewed release base; refresh the release before retrying.");
+            if (remoteMain !== `${expectedMain}\trefs/heads/main`) {
+              fail("Remote main differs from the merged release commit; verification cannot proceed.");
             }
+          }
+
+          try {
+            if (!/^[a-f0-9]{40}$/.test(expectedMain)) fail("The merged main commit must be pinned before verification.");
+            checkMain();
 
             const token = process.env.APEX_BOT_TOKEN?.trim();
             if (!token) fail("The configured bot-sql credential is unavailable.");
@@ -76,80 +85,37 @@ jobs:
             }
 
             const recorded = new Set(versions);
-            const files = git("ls-tree", "-r", "--name-only", base, "--", "supabase/migrations").split("\n");
-            const earlier = [...new Set(files.map((path) =>
+            const files = git("ls-tree", "-r", "--name-only", expectedMain, "--", "supabase/migrations").split("\n");
+            const expected = [...new Set(files.map((path) =>
               path.match(/^supabase\/migrations\/(\d{14})_[^/]+\.sql$/)?.[1],
             ).filter(Boolean))].sort();
-            if (earlier.length === 0) fail("The reviewed base has no readable migration versions.");
-            const missing = earlier.filter((version) => !recorded.has(version));
-
-            console.log(`RELEASE_MIGRATION_HISTORY=${JSON.stringify({ base, checked_at: new Date().toISOString(), versions: [...recorded].sort() })}`);
-            console.log(`Earlier versions: ${earlier.length}; recorded versions: ${recorded.size}; missing earlier versions: ${missing.length}.`);
-            if (missing.length) {
-              console.error(`Missing earlier versions: ${missing.join(", ")}`);
-              fail("Earlier migrations are unrecorded; the release must remain blocked.");
+            if (expected.length === 0 || requiredNew.some((version) => !expected.includes(version))) {
+              fail("The merged release commit does not contain all seven required migrations.");
             }
-            console.log("Release migration-history preflight passed. No database writes performed.");
+            const missing = expected.filter((version) => !recorded.has(version));
+            const missingNew = requiredNew.filter((version) => !recorded.has(version));
+            checkMain();
+
+            const checkedAt = new Date().toISOString();
+            console.log(`RELEASE_MIGRATION_HISTORY=${JSON.stringify({ main: expectedMain, checked_at: checkedAt, versions: [...recorded].sort() })}`);
+            console.log(`Merged versions: ${expected.length}; recorded versions: ${recorded.size}; missing versions: ${missing.length}; required new versions: ${requiredNew.length}; missing new versions: ${missingNew.length}.`);
+            if (missing.length) {
+              console.error(`Missing versions: ${missing.join(", ")}`);
+              fail("Required migrations are unrecorded; deployment verification failed.");
+            }
+            console.log(`RELEASE_MIGRATION_DEPLOYMENT=${JSON.stringify({ main: expectedMain, checked_at: checkedAt, verified_new_versions: requiredNew, verified_main_version_count: expected.length })}`);
+            console.log("Deployed migration-history verification passed. No database writes performed.");
           } catch (error) {
             // Only explicit messages above are exposed; subprocess/network errors
             // and provider response bodies are never printed.
             const allowed = [
-              "origin/main moved", "Remote main moved", "The configured bot-sql credential",
+              "origin/main differs", "Remote main differs", "The configured bot-sql credential",
               "The migration-history read", "The migration-history response",
-              "The reviewed base", "Earlier migrations are unrecorded",
+              "The merged main commit", "The merged release commit", "Required migrations are unrecorded",
             ];
             const message = error instanceof Error && allowed.some((prefix) => error.message.startsWith(prefix))
-              ? error.message : "The read-only preflight could not complete; no database writes were attempted.";
+              ? error.message : "The read-only deployment verification could not complete; no database writes were attempted.";
             console.error(`::error::${message}`);
             process.exitCode = 1;
           }
           NODE
-
-  publish:
-    needs: history
-    if: github.repository == 'samcom593-creator/rebuild-brighten-sparkle' && github.ref == 'refs/heads/codex/producer-release-preflight-20261124'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: write
-    concurrency:
-      group: publish-producer-workspace-20261124
-      cancel-in-progress: false
-    steps:
-      - name: Set runner worktree path
-        shell: bash
-        run: printf 'RELEASE_WORKTREE=%s/galaxy-producer-release-20261124\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
-
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          persist-credentials: true
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Reconstruct and verify approved source tree
-        run: node .github/scripts/reconstruct-producer-release.mjs
-
-      - name: Install release dependencies with normal lifecycle scripts
-        working-directory: ${{ env.RELEASE_WORKTREE }}
-        run: npm ci --no-audit --no-fund
-
-      - name: Commit approved source with normal hooks
-        working-directory: ${{ env.RELEASE_WORKTREE }}
-        shell: bash
-        run: |
-          test "$(git config --get core.hooksPath)" = ".husky"
-          git config user.name "Sam James"
-          git config user.email "sam.com593@gmail.com"
-          git commit -m "Connect producer workspace, lead intake, recruiting, and contract management"
-          test "$(git rev-parse 'HEAD^{tree}')" = "c8932ddadf439b870c0ed0b65eea95aa7f04d2fa"
-          test "$(git rev-parse HEAD^)" = "a679d70e0b5ffd82aed3e660da898a2452cff502"
-          git diff --quiet
-          git diff --cached --quiet
-
-      - name: Read fresh migration history and publish verified feature branch
-        env:
-          APEX_BOT_TOKEN: ${{ secrets.APEX_BOT_TOKEN }}
-        run: node .github/scripts/publish-producer-release.mjs

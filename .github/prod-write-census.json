@@ -2,14 +2,6 @@
   "_why": "MP-603. Every CI step that can reach the production Supabase project (xrzweoneiieddzxogewk) is listed here, classified read or write, by a human who read it. check-prod-write-ref-gate.mjs refuses to grade an unclassified population: a NEW prod-touching step is RED even when the guard does not recognise the verb it uses, which is the failure a vocabulary-only matcher cannot avoid (MP-399: a dead status='error' filter matched no rows and printed green for its entire life).",
   "_rules": "classification=write AND the workflow admits a non-main ref => the step must AND in a ref gate. Keys are file::job::step and are matched exactly; a stale key is RED so a deleted write's slot cannot be silently reused (MP-356: count-only floors are fungible). MP-606: a classification outside [\"read\",\"write\"] is RED (one transposed letter used to demote a real write to ungraded), and a \"read\" claim is RED when the guard's own evidence refutes it -- a write command in command position, or a SQL payload whose statement mutates. That CONTRADICTS a read claim; it cannot PROVE one. `Fire critical jobs` below is a write whose payload is `SELECT <fn>::text`, and no matcher can see a side effect behind a SELECT, so the human `why` is still load-bearing. Proof: npm run prove:prod-write-census-claims.",
   "steps": {
-    "release-migration-preflight.yml::publish::Read fresh migration history and publish verified feature branch": {
-      "classification": "read",
-      "why": "The only production-database operation is a fixed SELECT of migration version metadata using json_agg/coalesce, with no mutations or side-effect functions. Actual freshly read versions feed the unchanged Git pre-push gate. The subsequent Git push targets only the approved feature branch; it does not apply migrations, deploy functions, or write main."
-    },
-    "release-migration-preflight.yml::history::Read and verify recorded migration versions": {
-      "classification": "read",
-      "why": "Fixed SELECT of version values from supabase_migrations.schema_migrations for the approved 2026-11-24 release. Uses only json_agg/coalesce, with no side-effect function calls or SQL mutations. Validates the live list against the unchanged release base and emits version metadata only; no token or provider error body is printed."
-    },
     "deploy-supabase.yml::deploy::Sync rotated automation credential": {
       "classification": "write",
       "why": "runs `supabase secrets set` against prod. Fired successfully twice from an unmerged branch (runs 33531886227 / 33548643802, pull_request, codex/apex-imo-vsl-rewrite-20260901) before MP-602 gated it."
@@ -57,6 +49,10 @@
     "jsonld-asset-live.yml::jsonld-asset-live::Probe live JSON-LD asset liveness": {
       "classification": "read",
       "why": "MP-WIB-JSONLD-ASSET-LIVE. Live liveness probe: scripts/check-jsonld-asset-live.mjs ranged-GETs the PUBLIC served index.html and the same-origin assets its JSON-LD references (the Organization logo chief among them), asserting 200/206 + image|video content-type. It writes nothing to prod. It reaches the census ONLY because the string xrzweoneiieddzxogewk appears in its --selftest masquerade FIXTURE (check-jsonld-asset-live.mjs:269-270 — a fake supabase-storage contentUrl/thumbnailUrl used to exercise the DEFECT classifier), never fetched: that URL is cross-origin and the live probe is same-origin by design (check-vsl-media-live owns the cross-origin supabase media). The step body runs `node scripts/check-jsonld-asset-live.mjs` with no write command in command position and no SQL payload, so the read claim is un-contradicted."
+    },
+    "release-migration-preflight.yml::history::Read and verify deployed migration versions": {
+      "classification": "read",
+      "why": "Fixed SELECT of version metadata from supabase_migrations.schema_migrations using only json_agg/coalesce. Pins the expected merged main SHA before and after the read, verifies all migrations in that commit and explicitly all seven new release versions, and emits migration metadata only. No SQL mutations, side-effect functions, source publication, deployment, secret values, or provider error bodies."
     }
   }
 }

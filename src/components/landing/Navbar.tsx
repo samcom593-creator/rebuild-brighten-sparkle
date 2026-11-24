@@ -1,10 +1,8 @@
-import { useState, useRef, useEffect } from "react";
+import { useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Menu, X, Crown, Search } from "lucide-react";
-import { applyHrefWithRef } from "@/lib/refSlug";
+import { Menu } from "lucide-react";
+import { buildPublicRecruitingHref } from "@/lib/publicRecruitingFlow";
 
-// Sam-feedback 2026-06-03: removed #testimonials and #systems — no matching
-// section IDs on the landing, so taps did nothing. Five real anchors only.
 const NAV_LINKS = [
   { href: "#agency-system", label: "Platform" },
   { href: "#benefits", label: "Capabilities" },
@@ -12,164 +10,54 @@ const NAV_LINKS = [
   { href: "#career", label: "Roadmap" },
 ];
 
+/** Keep the opening focused on license selection; details remain one tap away. */
 export function Navbar() {
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
+  const menuRef = useRef<HTMLDetailsElement>(null);
   const [searchParams] = useSearchParams();
-  const applyHref = applyHrefWithRef(searchParams.get("ref"));
-
-  useEffect(() => {
-    if (searchOpen) inputRef.current?.focus();
-  }, [searchOpen]);
-
-  const filtered = searchTerm.trim()
-    ? NAV_LINKS.filter((l) =>
-        l.label.toLowerCase().includes(searchTerm.toLowerCase()),
-      )
-    : [];
-
-  const handleJump = (href: string) => {
-    setSearchOpen(false);
-    setSearchTerm("");
-    setIsOpen(false);
-    const el = document.querySelector(href);
-    if (el) el.scrollIntoView({ behavior: "smooth" });
-  };
+  const applyHref = buildPublicRecruitingHref("/apply", searchParams);
 
   return (
-    <nav className="landing-nav-enter fixed top-[32px] left-0 right-0 z-50 bg-white dark:bg-[#030712]/90 backdrop-blur-xl border-b border-[#1e293b]/50">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16 md:h-20">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 flex-shrink-0">
-            <div className="relative">
-              <Crown className="h-8 w-8 text-[#e8bb2b]" />
-              <div className="absolute inset-0 blur-lg bg-[#e8bb2b]/30" />
-            </div>
-            <span className="text-xl md:text-2xl font-extrabold text-[#e8bb2b] font-display">
-              Galaxy Financial
-            </span>
-          </Link>
-
-          {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center gap-6">
+    <nav aria-label="Main navigation" className="absolute inset-x-0 top-0 z-40 text-white">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-8">
+        <details ref={menuRef} className="relative">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-md px-2 text-sm font-semibold text-white/70 transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary [&::-webkit-details-marker]:hidden">
+            <Menu className="h-4 w-4" aria-hidden="true" />
+            Explore Galaxy
+          </summary>
+          <div className="absolute left-0 top-full mt-2 w-60 rounded-lg border border-white/15 bg-black p-2 shadow-xl">
             {NAV_LINKS.map((link) => (
               <a
                 key={link.href}
                 href={link.href}
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleJump(link.href);
+                className="flex min-h-11 items-center rounded-md px-3 text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                onClick={(event) => {
+                  const section = document.querySelector(link.href);
+                  if (menuRef.current) menuRef.current.open = false;
+                  if (!section) return;
+                  event.preventDefault();
+                  section.scrollIntoView({
+                    behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+                  });
                 }}
-                className="text-[#94a3b8] hover:text-[#f1f5f9] transition-colors font-display font-semibold text-sm tracking-wide whitespace-nowrap"
               >
                 {link.label}
               </a>
             ))}
-          </div>
-
-          {/* Desktop Search + CTAs */}
-          <div className="hidden md:flex items-center gap-3 flex-shrink-0">
-            {/* Mini search */}
-            <div className="relative">
-              <button
-                onClick={() => setSearchOpen(!searchOpen)}
-                aria-label="Search sections"
-                aria-expanded={searchOpen}
-                className="p-2 rounded-lg text-[#94a3b8] hover:text-[#f1f5f9] hover:bg-white/5 transition-colors"
-              >
-                <Search className="h-4 w-4" />
-              </button>
-
-              {searchOpen && (
-                <div className="landing-panel-enter absolute right-0 top-full mt-2 w-[220px] bg-white dark:bg-[#0f172a] border border-[#1e293b] rounded-md shadow-2xl overflow-hidden">
-                  <input
-                    ref={inputRef}
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Jump to section…"
-                    className="w-full px-4 py-2.5 bg-transparent text-sm text-white placeholder:text-white/30 outline-none focus-visible:shadow-[var(--apex-focus-ring)] font-display"
-                  />
-                  {filtered.length > 0 && (
-                    <div className="border-t border-[#1e293b]">
-                      {filtered.map((link) => (
-                        <button
-                          key={link.href}
-                          onClick={() => handleJump(link.href)}
-                          className="w-full text-left px-4 py-2 text-sm text-white/70 hover:bg-white/5 hover:text-white transition-colors font-display"
-                        >
-                          {link.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <Link to="/login" className="inline-flex min-h-11 items-center px-4 py-2 text-sm font-bold font-display text-[#f1f5f9] hover:text-[#e8bb2b] transition-colors">
-              Login
-            </Link>
-            <Link to={applyHref} className="inline-flex min-h-11 items-center px-6 py-2.5 text-sm font-bold font-display bg-[#e8bb2b] text-[#030712] rounded-lg hover:bg-[#1cb88f] hover:shadow-lg transition-all duration-200">
-              Apply Now
+            <Link
+              to={applyHref}
+              className="mt-2 flex min-h-11 items-center rounded-md border-t border-white/15 px-3 text-sm font-semibold text-primary hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+            >
+              Start an application
             </Link>
           </div>
-
-          {/* Mobile Menu Button */}
-          <button
-            type="button"
-            aria-label={isOpen ? "Close menu" : "Open menu"}
-            aria-expanded={isOpen}
-            className="md:hidden p-2 text-[#f1f5f9]"
-            onClick={() => setIsOpen(!isOpen)}
-          >
-            {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-          </button>
-        </div>
+        </details>
+        <Link
+          to="/login"
+          className="inline-flex min-h-11 items-center rounded-md px-2 text-sm font-semibold text-white/70 transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
+        >
+          Agent login
+        </Link>
       </div>
-
-      {/* Mobile Menu */}
-      {isOpen && (
-        <div className="landing-mobile-menu-enter md:hidden bg-white dark:bg-[#030712]/95 backdrop-blur-xl border-t border-[#1e293b]">
-          <div className="container mx-auto px-4 py-4 flex flex-col gap-1">
-            {/* Mobile search */}
-            <div className="relative mb-3">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
-              <input
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Jump to section…"
-                className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-white/30 outline-none focus-visible:shadow-[var(--apex-focus-ring)] font-display"
-              />
-            </div>
-
-            {(searchTerm.trim() ? filtered : NAV_LINKS).map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className="text-[#94a3b8] hover:text-[#f1f5f9] transition-colors py-2 font-display font-semibold"
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleJump(link.href);
-                }}
-              >
-                {link.label}
-              </a>
-            ))}
-
-            <div className="flex flex-col gap-2 pt-4 border-t border-[#1e293b]">
-              <Link to="/login" onClick={() => setIsOpen(false)} className="inline-flex min-h-11 w-full items-center justify-center py-3 text-sm font-bold font-display border-2 border-[#1e293b] text-[#f1f5f9] rounded-lg hover:border-[#e8bb2b] transition-colors">
-                Login
-              </Link>
-              <Link to={applyHref} onClick={() => setIsOpen(false)} className="inline-flex min-h-11 w-full items-center justify-center py-3 text-sm font-bold font-display bg-[#e8bb2b] text-[#030712] rounded-lg hover:bg-[#1cb88f] transition-colors shadow-md">
-                Apply Now
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
     </nav>
   );
 }

@@ -3,7 +3,6 @@ import { Navigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "@/components/landing/Navbar";
 import { HeroSection } from "@/components/landing/HeroSection";
-import { DealsTicker } from "@/components/landing/DealsTicker";
 // S11 fix (2026-06-15): capture `?ref=` on landing mount + persist with 24h
 // TTL so the slug survives the landing -> /apply CTA hop even when the CTA
 // href forgets to relay it. Belt-and-suspenders to the href-with-ref pattern
@@ -17,6 +16,7 @@ import { setRefSlug } from "@/lib/refSlug";
 import { LazyQueryRoot } from "@/shared/api/LazyQueryRoot";
 
 const BenefitsSection = lazy(() => import("@/components/landing/BenefitsSection").then((mod) => ({ default: mod.BenefitsSection })));
+const DealsTicker = lazy(() => import("@/components/landing/DealsTicker").then((mod) => ({ default: mod.DealsTicker })));
 const AgencyOperatingSystemSection = lazy(() => import("@/components/landing/AgencyOperatingSystemSection").then((mod) => ({ default: mod.AgencyOperatingSystemSection })));
 const EarningsSection = lazy(() => import("@/components/landing/EarningsSection").then((mod) => ({ default: mod.EarningsSection })));
 const CareerPathwaySection = lazy(() => import("@/components/landing/CareerPathwaySection").then((mod) => ({ default: mod.CareerPathwaySection })));
@@ -72,8 +72,8 @@ const Index = () => {
 
   useEffect(() => {
     const previousTitle = document.title;
-    document.title = "Galaxy Financial · Operating System for Elite Insurance Agencies";
-    const description = "Galaxy helps ambitious producers and agency builders scale with contracting, training, carrier access, and live production operations.";
+    document.title = "Galaxy Financial · Build Your Insurance Career";
+    const description = "Choose your path with Galaxy Financial. Explore carrier access, training, and support for licensed producers, future agents, and agency builders.";
     const meta = document.querySelector<HTMLMetaElement>('meta[name="description"]');
     const previousDescription = meta?.content;
     if (meta) meta.content = description;
@@ -94,7 +94,6 @@ const Index = () => {
       >
         Skip to main content
       </a>
-      <DealsTicker />
       <Navbar />
       {/* pb-24 md:pb-0 reserves the height of the fixed StickyMobileCTA so the
           last section (CTASection) is not permanently covered on phones. */}
@@ -102,6 +101,7 @@ const Index = () => {
         <HeroSection />
         <Suspense fallback={<SectionFallback />}>
           <LazyQueryRoot>
+            <DealsTicker />
             <AgencyOperatingSystemSection />
             <Testimonials />
             <BenefitsSection />

@@ -35,9 +35,9 @@
  *   preserve it on the VSL's rendered Apply link. A broken helper is a drop,
  *   not a removed feature. Missing helper/relay source is a parse failure.
  *
- *   If the hero no longer tags `track=` at all (the product removed partner
- *   paths), there is nothing to capture → pass, printed as FEATURE-REMOVED so
- *   the state is visible rather than a silent green. If the hero's partnerPaths
+ *   Only removing both the track choices and their emitted signal counts as
+ *   FEATURE-REMOVED. Retained choices whose links stop carrying track are a
+ *   dropped selection, even if the helper call disappears. If the hero's partnerPaths
  *   structure can no longer be found, the emit-detector is blind → exit 2
  *   (could-not-parse is NEVER laundered into pass — the apply-field-parity rule).
  *
@@ -76,7 +76,10 @@ export function heroSignal(heroStripped) {
   const helperIntent = hasTrackChoices && callsHelper;
   return {
     hasAnchor,
-    emits: literalEmits || helperIntent,
+    hasTrackChoices,
+    literalEmits,
+    callsHelper,
+    emits: literalEmits || hasTrackChoices,
     helperIntent,
     helperImported: importsPublicFlow(heroStripped),
     passesChoice,
@@ -125,6 +128,9 @@ export function evaluate(heroStripped, applyStripped, flowStripped = null, vslSt
   }
   if (!hero.emits) return { code: "feature-removed" };
   const missing = [];
+  if (hero.hasTrackChoices && !hero.literalEmits && !hero.callsHelper) {
+    missing.push("Hero carries each retained partner path's track into its destination link");
+  }
   if (hero.helperIntent) {
     if (!hero.helperImported || flowStripped === null) {
       return { code: "parseError", reason: "Partner-path helper usage has no readable canonical import/source" };
@@ -152,7 +158,7 @@ function selftest() {
 
   const HERO_EMITS = `const partnerPaths = [ { track: "agency-builder" } ];
     const destination = \`\${applyHref}&track=\${path.track}\`;`;
-  const HERO_NO_TRACK = `const partnerPaths = [ { track: "agency-builder" } ];
+  const HERO_NO_TRACK = `const partnerPaths = [ { label: "Explore Galaxy" } ];
     const destination = applyHref;`;
   const HERO_NO_ANCHOR = `const links = []; const destination = applyHref;`;
 
@@ -167,7 +173,7 @@ function selftest() {
   ok(evaluate(HERO_EMITS, APPLY_READS_ONLY).missing.length === 1, "DROP: names exactly the missing persist");
   ok(evaluate(HERO_EMITS, APPLY_NONE).code === "dropped", "DROP: neither read nor persist -> dropped");
   ok(evaluate(HERO_EMITS, APPLY_NONE).missing.length === 2, "DROP: names both missing legs");
-  ok(evaluate(HERO_NO_TRACK, APPLY_NONE).code === "feature-removed", "REMOVED: hero no longer tags track -> pass (noted)");
+  ok(evaluate(HERO_NO_TRACK, APPLY_NONE).code === "feature-removed", "REMOVED: hero has neither track choices nor track links -> pass (noted)");
   ok(evaluate(HERO_NO_ANCHOR, APPLY_FULL).code === "parseError", "BLIND: no partnerPaths anchor -> parseError (never laundered to pass)");
 
   const HERO_HELPER = `import { buildPublicRecruitingHref } from "@/lib/publicRecruitingFlow";
@@ -184,6 +190,11 @@ function selftest() {
     const applyHref = buildPublicRecruitingHref("/apply", searchParams);
     return <Link to={applyHref}>Apply</Link>;`;
   ok(evaluate(HERO_HELPER, APPLY_FULL, FLOW_FULL, VSL_FULL).code === "ok", "HELPER: actual track argument, query write and VSL relay -> ok");
+  const HERO_BARE_VSL = HERO_HELPER.replace('buildPublicRecruitingHref("/vsl", searchParams, path.track)', '"/vsl"');
+  const bareVslResult = evaluate(HERO_BARE_VSL, APPLY_FULL, FLOW_FULL, VSL_FULL);
+  ok(bareVslResult.code === "dropped", "HERO DROP: retained choices with a bare /vsl link are not FEATURE-REMOVED");
+  ok(bareVslResult.missing?.length === 1 && bareVslResult.missing[0].includes("retained partner path"), "HERO DROP: names the missing choice-to-link handoff");
+  ok(evaluate(HERO_BARE_VSL.replace('import { buildPublicRecruitingHref } from "@/lib/publicRecruitingFlow";', ''), APPLY_FULL).code === "dropped", "HERO DROP: removing both helper call and import still leaves retained choices to capture");
   ok(evaluate(HERO_HELPER, APPLY_FULL, FLOW_FULL.replace('params.set("track", track)', 'params.set("ref", ref)'), VSL_FULL).code === "dropped", "HELPER DROP: no track setter is not FEATURE-REMOVED");
   ok(evaluate(HERO_HELPER, APPLY_FULL, FLOW_FULL.replace('searchParams.get("track")', 'null'), VSL_FULL).code === "dropped", "HELPER DROP: later hops must read incoming track");
   ok(evaluate(HERO_HELPER, APPLY_FULL, FLOW_FULL.replace('params.toString()', '""'), VSL_FULL).code === "dropped", "HELPER DROP: query must be serialized");

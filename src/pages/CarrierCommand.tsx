@@ -63,6 +63,17 @@ type CarrierCommandPayload = {
   unaccounted_by_carrier: Record<string, number>;
   chargebacks: Chargeback[];
   production: Production[];
+  // MP-CARRIER-BOOK-TRUTH (2026-11-24): the policy-level book the whole site now counts from.
+  book?: Array<{ carrier: string; written: number; written_ap: number; submitted: number; in_force: number; at_risk: number; lapsed: number; not_placed: number; retention_pct: number | null }>;
+  unmapped_agents?: Array<{ carrier: string; agent: string | null; npn: string | null; policies: number }>;
+  freshness?: Array<{ carrier: string; last_ok_at: string | null; hours_stale: number | null; last_error: string | null; last_error_at: string | null; policies: number }>;
+  site_not_in_portal?: Array<{ agent: string | null; carrier: string; deals: number; ap: number; oldest_days: number; agent_has_portal_policies: boolean; typed_numbers: number }>;
+  recent_changes?: Array<{ carrier: string; policy: string; from: string | null; to: string; on: string; agent: string | null }>;
+};
+
+const BUCKET_WORD: Record<string, string> = {
+  pending: "submitted", active: "in force", claim: "in force (claim)", at_risk: "at risk", lapsed: "lapsed",
+  not_taken: "not taken", declined: "declined", abandoned: "abandoned", started: "app started", quote: "quote", unknown: "unknown",
 };
 
 const QUERY_KEY = ["carrier-command"] as const;
@@ -121,9 +132,9 @@ export default function CarrierCommand() {
     <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6">
       <PageHeader
         icon={<ShieldCheck className="h-5 w-5" />}
-        eyebrow={d?.as_of ? `Pulled ${formatTimeAgo(d.as_of)} · twice daily` : "twice daily"}
+        eyebrow={d?.as_of ? `Pulled ${formatTimeAgo(d.as_of)} · 4× daily` : "4× daily"}
         title="Carrier Command"
-        subtitle="Ethos + Chubb — live book, chargebacks, and production the site isn't counting yet"
+        subtitle="Ethos + Combined (Chubb) — the live book the whole site counts from: production, chargebacks, retention"
         primaryAction={
           <Button variant="outline" size="sm" onClick={() => qc.invalidateQueries({ queryKey: QUERY_KEY })}>
             <RefreshCw className="mr-2 h-4 w-4" /> Refresh
@@ -168,14 +179,126 @@ export default function CarrierCommand() {
         )}
       </div>
 
+      {/* the live policy book — what production, chargebacks and retention read site-wide */}
+      {(d?.book?.length ?? 0) > 0 && (
+        <GlassCard className="p-5">
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-lg font-semibold">Live book · policy by policy</h2>
+            <span className="text-xs text-muted-foreground">
+              {(d?.freshness ?? []).map((f) => `${f.carrier}: ${f.last_ok_at ? `pulled ${formatTimeAgo(f.last_ok_at)}` : "never pulled"}`).join(" · ")}
+            </span>
+          </div>
+          {(d?.freshness ?? []).filter((f) => f.last_error_at && (!f.last_ok_at || f.last_error_at > f.last_ok_at)).map((f) => (
+            <p key={f.carrier} role="alert" className="mb-3 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-sm text-amber-800 dark:text-amber-300">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              {f.carrier} pull is failing ({f.last_error ?? "unknown error"}). Its numbers below are as of the last good pull. A signed-out portal is fixed by signing in to it in Chrome.
+            </p>
+          ))}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-left text-xs text-muted-foreground">
+                <tr><th className="py-2 pr-3">Carrier</th><th className="py-2 pr-3 text-right">Written</th><th className="py-2 pr-3 text-right">Annual premium</th><th className="py-2 pr-3 text-right">Submitted</th><th className="py-2 pr-3 text-right">In force</th><th className="py-2 pr-3 text-right">At risk</th><th className="py-2 pr-3 text-right">Lapsed</th><th className="py-2 pr-3 text-right">Never placed</th><th className="py-2 text-right">Retention</th></tr>
+              </thead>
+              <tbody>
+                {(d?.book ?? []).map((b) => (
+                  <tr key={b.carrier} className="border-t border-border">
+                    <td className="py-2 pr-3 font-medium">{b.carrier}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{num(b.written)}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{b.written_ap ? money(b.written_ap) : "not shown by portal"}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{num(b.submitted)}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{num(b.in_force)}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{num(b.at_risk)}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{num(b.lapsed)}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{num(b.not_placed)}</td>
+                    <td className="py-2 text-right font-semibold tabular-nums">{b.retention_pct == null ? "—" : `${b.retention_pct}%`}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">Retention = in force ÷ every policy that was issued. Tap any agent anywhere on the site to see their book policy by policy.</p>
+        </GlassCard>
+      )}
+
+      {(d?.unmapped_agents?.length ?? 0) > 0 && (
+        <GlassCard className="p-5">
+          <div className="mb-3 flex items-start gap-3">
+            <Users className="mt-0.5 h-5 w-5 text-amber-500" />
+            <div>
+              <h2 className="text-lg font-semibold">Writing agents the site can't match</h2>
+              <p className="text-sm text-muted-foreground">These names write in a carrier portal but have no agent record (or no NPN / name match). Their policies are in the book but credited to no one until they are.</p>
+            </div>
+          </div>
+          <ul className="grid gap-1 text-sm sm:grid-cols-2">
+            {d!.unmapped_agents!.map((u) => (
+              <li key={`${u.carrier}-${u.agent}-${u.npn}`} className="flex justify-between gap-3 border-b border-border py-1">
+                <span>{u.agent ?? "—"} <span className="text-muted-foreground">· {u.carrier}{u.npn ? ` · NPN ${u.npn}` : ""}</span></span>
+                <span className="tabular-nums text-muted-foreground">{u.policies}</span>
+              </li>
+            ))}
+          </ul>
+        </GlassCard>
+      )}
+
+      {(d?.site_not_in_portal?.length ?? 0) > 0 && (
+        <GlassCard className="p-5">
+          <div className="mb-3 flex items-start gap-3">
+            <TrendingDown className="mt-0.5 h-5 w-5 text-red-500" />
+            <div>
+              <h2 className="text-lg font-semibold">Posted on the site, not in the carrier portal</h2>
+              <p className="text-sm text-muted-foreground">
+                Ethos / Combined deals 14+ days old that the portal has no record of — a typed policy number, an app written under another upline, or a deal that never happened.
+                They still count until you decide; open the agent to see each one.
+              </p>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-left text-xs text-muted-foreground">
+                <tr><th className="py-2 pr-3">Agent</th><th className="py-2 pr-3">Carrier</th><th className="py-2 pr-3 text-right">Deals</th><th className="py-2 pr-3 text-right">Annual premium</th><th className="py-2 pr-3 text-right">Oldest</th><th className="py-2">Signal</th></tr>
+              </thead>
+              <tbody>
+                {d!.site_not_in_portal!.map((g) => (
+                  <tr key={`${g.agent}-${g.carrier}`} className="border-t border-border">
+                    <td className="py-2 pr-3 font-medium">{g.agent ?? "—"}</td>
+                    <td className="py-2 pr-3">{g.carrier}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{num(g.deals)}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{money(g.ap)}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{g.oldest_days}d</td>
+                    <td className="py-2 text-xs text-muted-foreground">
+                      {!g.agent_has_portal_policies ? "No policies at all under this agent in your portal" : "Agent writes in your portal; these deals don't match"}
+                      {g.typed_numbers ? ` · ${g.typed_numbers} placeholder policy #` : ""}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </GlassCard>
+      )}
+
+      {(d?.recent_changes?.length ?? 0) > 0 && (
+        <GlassCard className="p-5">
+          <h2 className="mb-3 text-lg font-semibold">Status changes the carriers reported</h2>
+          <ul className="max-h-80 space-y-1 overflow-y-auto text-sm">
+            {d!.recent_changes!.slice(0, 60).map((c, i) => (
+              <li key={`${c.carrier}-${c.policy}-${i}`} className="flex flex-wrap justify-between gap-2 border-b border-border py-1">
+                <span>{c.agent ?? "Unmatched agent"} <span className="text-muted-foreground">· {c.carrier} {c.policy}</span></span>
+                <span className="text-muted-foreground">{BUCKET_WORD[c.from ?? ""] ?? c.from} → <span className="font-medium text-foreground">{BUCKET_WORD[c.to] ?? c.to}</span> · {shortDate(c.on)}</span>
+              </li>
+            ))}
+          </ul>
+        </GlassCard>
+      )}
+
       {/* unaccounted production — the point of the page */}
       <GlassCard className="p-5">
         <div className="mb-4 flex items-start gap-3">
           <FileWarning className="mt-0.5 h-5 w-5 text-amber-500" />
           <div>
-            <h2 className="text-lg font-semibold">Production the site isn't counting</h2>
+            <h2 className="text-lg font-semibold">Written in a portal, never posted on the site</h2>
             <p className="text-sm text-muted-foreground">
-              {num(d?.unaccounted_count)} policies live in a carrier portal with no matching record in the site's feed.
+              {num(d?.unaccounted_count)} policies were written in a carrier portal but never posted on the site. They now count toward production from the carrier book (Combined counts once the portal shows its premium).
               {d?.unaccounted_by_carrier
                 ? " " + Object.entries(d.unaccounted_by_carrier).map(([k, v]) => `${k}: ${v}`).join(" · ")
                 : ""}

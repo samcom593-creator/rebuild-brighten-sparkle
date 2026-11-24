@@ -89,6 +89,7 @@ import { cn } from "@/lib/utils";
 import { formatEnumLabel } from "@/lib/formatEnumLabel";
 import { toast } from "sonner";
 import { startPhoneCall, startSmsThread } from "@/lib/phone";
+import { AgentCarrierBookPanel } from "@/components/team/AgentCarrierBookPanel";
 
 interface AgentRow {
   id: string;
@@ -752,6 +753,9 @@ const qnum = (v: number | string | null | undefined): number | null => {
                 Owner controls — login, email, password &amp; profile
               </Button>
             )}
+
+            {/* MP-CARRIER-BOOK-TRUTH: the live Ethos + Combined book, policy by policy — first thing on tap. */}
+            <AgentCarrierBookPanel agentId={agent.id} />
 
             {/* 2026-06-18 — pace verdict from v_agent_20k_target_leaderboard.
                 Instant visual: 🔥 hit_20k · 📈 on_pace_20k · 📉 below_pace ·

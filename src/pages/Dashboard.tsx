@@ -76,6 +76,7 @@ import { cn } from "@/lib/utils";
 import { ReferralLinkCard } from "@/components/dashboard/ReferralLinkCard";
 import { AgentCloudHome } from "@/components/dashboard/AgentCloudHome";
 import { ScopedProductionScoreboard } from "@/components/dashboard/ScopedProductionScoreboard";
+import { DealCarrierStatusCard } from "@/components/dashboard/DealCarrierStatusCard";
 import { LeadsWaitingCard } from "@/components/dashboard/LeadsWaitingCard";
 // MP-MORNING-LEADS: a licensed agent with no state on file answers once and gets their leads.
 import { LeadStatePrompt } from "@/components/dashboard/LeadStatePrompt";
@@ -1032,6 +1033,7 @@ export default function Dashboard() {
             tile already carry the same "needs review" count with a link, so the
             banner was the third copy of one number above the scoreboard. */}
         <AgentCloudHome />
+        <DealCarrierStatusCard />
       </div>
     );
   }
@@ -1053,6 +1055,7 @@ export default function Dashboard() {
           <LeadStatePrompt />
           <LeadsWaitingCard />
           <ScopedProductionScoreboard />
+          <DealCarrierStatusCard />
         </div>
         <Suspense fallback={<PageLoadingSkeleton />}>
           <AgentCommandDashboard />
@@ -1077,6 +1080,7 @@ export default function Dashboard() {
           <LeadStatePrompt />
           <LeadsWaitingCard />
           <ScopedProductionScoreboard />
+          <DealCarrierStatusCard />
         </div>
         <Suspense fallback={<PageLoadingSkeleton />}>
           <AgencyOwnerHome />
@@ -1098,6 +1102,7 @@ export default function Dashboard() {
           <LeadStatePrompt />
           <LeadsWaitingCard />
           <ScopedProductionScoreboard />
+          <DealCarrierStatusCard />
         </div>
         <Suspense fallback={<PageLoadingSkeleton />}>
           <ManagerCommandView />

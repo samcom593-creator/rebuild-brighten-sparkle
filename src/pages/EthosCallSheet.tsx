@@ -398,6 +398,9 @@ export default function EthosCallSheet() {
               {" "}
               {withPhone} of {scoped.length} have a phone number on file.
               {sheet.data.snapshot_on ? ` Ethos numbers are from the ${shortDate(sheet.data.snapshot_on)} export.` : ""}
+              {sheet.data.hidden && sheet.data.hidden.fired + sheet.data.hidden.no_activity_30d > 0
+                ? ` Left off: ${sheet.data.hidden.fired} fired or not interested, ${sheet.data.hidden.no_activity_30d} with no production and no conversation in 30 days — a deal or a real call brings them back.`
+                : ""}
             </>
           ) : null}
         </p>

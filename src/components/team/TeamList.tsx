@@ -27,6 +27,7 @@ import { ToneBubble } from "@/components/ui/delight/ToneBubble";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { GrowScoreboard, type ScoreTile } from "@/components/recruiting/GrowScoreboard";
 import { OverFiveKBadge } from "@/components/team/OverFiveKBadge";
+import { teamCarrierLine, useTeamCarrierSummary, type TeamCarrierStats } from "@/components/team/AgentCarrierBookPanel";
 import { contactLinkProps, formatPhoneDisplay, phoneHref } from "@/lib/phone";
 import { firstGrapheme } from "@/lib/personInitials";
 import { plural, usdOrNull } from "@/lib/teamRoster";
@@ -122,6 +123,8 @@ export function TeamList({
   const search = params.get("q") ?? "";
   const [shown, setShown] = useState(PAGE);
   const [explainOpen, setExplainOpen] = useState(false);
+  // Live Ethos + Combined book per person (scoped in the database); a failed read just leaves the line off.
+  const carrier = useTeamCarrierSummary();
 
   const searched = useMemo(() => members.filter((m) => matchesTeamSearch(m, search)), [members, search]);
   const counts = useMemo(() => teamListCounts(searched, { factsReady }), [searched, factsReady]);
@@ -300,6 +303,7 @@ export function TeamList({
                   showUpline={showUpline}
                   myAgentId={myAgentId}
                   selected={selectedId === member.row.agent_id}
+                  carrier={carrier.data?.[member.row.agent_id]}
                   onOpen={() => onOpenPerson(member.row.agent_id)}
                 />
               ))}
@@ -363,9 +367,11 @@ function MemberBubble({ name, tone, className }: { name: string | null; tone: To
  * is last and hidden on a phone, where the Call button dials it and the card shows it; "No phone on file" always
  * shows, because it is why a row offers no call.
  */
-function Facts({ member, showUpline, myAgentId, id }: { member: TeamMember; showUpline: boolean; myAgentId: string | null; id: string }) {
+function Facts({ member, showUpline, myAgentId, id, carrier }: { member: TeamMember; showUpline: boolean; myAgentId: string | null; id: string; carrier?: TeamCarrierStats }) {
   const { row, facts } = member;
   const parts: Array<{ key: string; text: string; className?: string; wideOnly?: boolean }> = [];
+  const book = teamCarrierLine(carrier);
+  if (book) parts.push({ key: "carrier", text: book.text, className: cn("font-medium", book.tone === "good" ? TONE_CLASS.good.text : book.tone === "bad" ? "text-red-700 dark:text-red-300" : book.tone === "warn" ? TONE_CLASS.warm.text : undefined) });
   const training = trainingStageWords(facts);
   if (training) parts.push({ key: "training", text: training });
   if (showUpline && row.manager_name && row.manager_id !== myAgentId) parts.push({ key: "upline", text: `Upline ${row.manager_name}` });
@@ -416,8 +422,9 @@ function NextAction({ member, step, name, onOpen, className }: { member: TeamMem
  * one fact, the facts that matter, and one button that does the next step. From 1024px the step sits in its
  * own column so rows read like a table.
  */
-function MemberRow({ member, todayKey, isMe, showUpline, myAgentId, selected, onOpen }: {
+function MemberRow({ member, todayKey, isMe, showUpline, myAgentId, selected, onOpen, carrier }: {
   member: TeamMember;
+  carrier?: TeamCarrierStats;
   todayKey: string;
   isMe: boolean;
   showUpline: boolean;
@@ -456,7 +463,7 @@ function MemberRow({ member, todayKey, isMe, showUpline, myAgentId, selected, on
         <span id={ids.status} className="flex min-w-0 lg:col-start-2 lg:row-span-2 lg:row-start-1">
           <TeamStageMark stage={stage} stacked />
         </span>
-        <span className="lg:col-start-1 lg:row-start-2"><Facts id={ids.facts} member={member} showUpline={showUpline} myAgentId={myAgentId} /></span>
+        <span className="lg:col-start-1 lg:row-start-2"><Facts id={ids.facts} member={member} showUpline={showUpline} myAgentId={myAgentId} carrier={carrier} /></span>
       </button>
       <NextAction member={member} step={step} name={name} onOpen={onOpen} className="relative z-10 h-11 shrink-0 px-3 lg:w-28" />
     </li>

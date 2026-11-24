@@ -119,6 +119,8 @@ export interface EthosCallSheetPayload {
   sees_all: boolean;
   snapshot_on: string | null;
   rows: EthosCallSheetRow[];
+  /** People left off: fired (terminated, banned, suspended, not interested) or no production and no conversation in 30 days. */
+  hidden?: { fired: number; no_activity_30d: number };
 }
 
 export type CallLane = "call_now" | "follow_up" | "coming_back" | "needs_action" | "closed" | "selling" | "left";

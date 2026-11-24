@@ -14,6 +14,7 @@ import { WorkdaysEditor } from "@/components/team/WorkdaysEditor";
 import { TeamStageMark } from "@/components/team/TeamList";
 import { RecruitingSystemPanel } from "@/components/team/RecruitingSystemPanel";
 import { CarrierContractsPanel } from "@/components/team/CarrierContractsPanel";
+import { AgentCarrierBookPanel } from "@/components/team/AgentCarrierBookPanel";
 
 // The card opens in a portal, outside the page's type floor, so its small text is set at 13px here.
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -164,6 +165,7 @@ export function TeamPersonDrawer({ open, onOpenChange, row, onOpenContracting, m
             </>
           ) : null}
 
+          {agentId ? <AgentCarrierBookPanel agentId={agentId} compact /> : null}
           {agentId ? <CarrierContractsPanel agentId={agentId} /> : null}
           {agentId ? <RecruitingSystemPanel agentId={agentId} /> : null}
 

@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-11-24T00:30:45Z",
+ "_generated_at": "2026-11-24T01:02:23Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -433,6 +433,7 @@
   "fn_is_first_slack_deal_today": "boolean",
   "fn_lane_ladder_cutoff": "timestamp with time zone",
   "fn_lead_age": "integer",
+  "fn_lead_pool_stats_refresh": "void",
   "fn_lead_type_of": "text",
   "fn_license_milestone_emit": "trigger",
   "fn_license_stage_rank": "integer",
@@ -21222,7 +21223,6 @@
    ],
    "body_literals": [
     "array",
-    "campaign",
     "campaigns",
     "dialer",
     "marketing",
@@ -21243,7 +21243,6 @@
    "candidates": [],
    "body_literals": [
     "array",
-    "campaign",
     "campaigns",
     "dialer",
     "marketing",
@@ -21275,7 +21274,6 @@
    ],
    "body_literals": [
     "array",
-    "campaign",
     "campaigns",
     "dialer",
     "marketing",
@@ -21307,7 +21305,6 @@
    ],
    "body_literals": [
     "array",
-    "campaign",
     "campaigns",
     "dialer",
     "marketing",
@@ -21334,7 +21331,6 @@
    ],
    "body_literals": [
     "array",
-    "campaign",
     "campaigns",
     "dialer",
     "marketing",
@@ -21355,7 +21351,6 @@
    "candidates": [],
    "body_literals": [
     "array",
-    "campaign",
     "campaigns",
     "dialer",
     "marketing",
@@ -21387,7 +21382,6 @@
    ],
    "body_literals": [
     "array",
-    "campaign",
     "campaigns",
     "dialer",
     "marketing",
@@ -21415,7 +21409,6 @@
    ],
    "body_literals": [
     "array",
-    "campaign",
     "campaigns",
     "dialer",
     "marketing",
@@ -21445,7 +21438,6 @@
    ],
    "body_literals": [
     "array",
-    "campaign",
     "campaigns",
     "dialer",
     "marketing",
@@ -21478,7 +21470,6 @@
    ],
    "body_literals": [
     "array",
-    "campaign",
     "campaigns",
     "dialer",
     "marketing",
@@ -21510,7 +21501,6 @@
    ],
    "body_literals": [
     "array",
-    "campaign",
     "campaigns",
     "dialer",
     "marketing",
@@ -21537,7 +21527,6 @@
    ],
    "body_literals": [
     "array",
-    "campaign",
     "campaigns",
     "dialer",
     "marketing",
@@ -21564,7 +21553,6 @@
    ],
    "body_literals": [
     "array",
-    "campaign",
     "campaigns",
     "dialer",
     "marketing",
@@ -21591,7 +21579,6 @@
    ],
    "body_literals": [
     "array",
-    "campaign",
     "campaigns",
     "dialer",
     "marketing",

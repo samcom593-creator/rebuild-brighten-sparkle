@@ -92359,6 +92359,33 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_pool_stats: {
+        Row: {
+          computed_at: string | null
+          error_at: string | null
+          facets: Json | null
+          id: boolean
+          last_error: string | null
+          tiles: Json | null
+        }
+        Insert: {
+          computed_at?: string | null
+          error_at?: string | null
+          facets?: Json | null
+          id?: boolean
+          last_error?: string | null
+          tiles?: Json | null
+        }
+        Update: {
+          computed_at?: string | null
+          error_at?: string | null
+          facets?: Json | null
+          id?: boolean
+          last_error?: string | null
+          tiles?: Json | null
+        }
+        Relationships: []
+      }
       lead_purchase_requests: {
         Row: {
           agent_id: string

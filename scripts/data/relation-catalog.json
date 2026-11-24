@@ -405,6 +405,7 @@
     "public.lead_item_recordings",
     "public.lead_payment_tracking",
     "public.lead_pool_snapshot_meta",
+    "public.lead_pool_stats",
     "public.lead_purchase_requests",
     "public.lead_purchases",
     "public.lead_purchases_dedup_archive",

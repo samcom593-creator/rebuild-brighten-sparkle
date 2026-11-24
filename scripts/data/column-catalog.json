@@ -5205,6 +5205,14 @@
       "rows",
       "started_at"
     ],
+    "lead_pool_stats": [
+      "computed_at",
+      "error_at",
+      "facets",
+      "id",
+      "last_error",
+      "tiles"
+    ],
     "lead_purchase_requests": [
       "agent_id",
       "amount_paid",

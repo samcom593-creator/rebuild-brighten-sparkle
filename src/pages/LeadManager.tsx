@@ -704,7 +704,7 @@ export default function LeadManager() {
           )}
           {counts?.as_of && (
             <p className="text-xs text-muted-foreground" data-testid="pool-snapshot-age">
-              Pool counts come from a snapshot refreshed {formatTimeAgo(counts.as_of)} (every 10 min). Leads already dropped or sold are excluded live.
+              Pool counts come from a snapshot refreshed {formatTimeAgo(counts.as_of)}. The ReadyMode lead list itself is pulled every night. Leads already dropped or sold are excluded live.
             </p>
           )}
 

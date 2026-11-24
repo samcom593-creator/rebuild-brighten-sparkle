@@ -52,7 +52,7 @@ function vslSyncCheckPlugin() {
         { label: "poster preload", source: index, expected: `l.href = "${posterUrl}"` },
         { label: "VideoObject thumbnailUrl", source: index, expected: `"thumbnailUrl":"${posterUrl}"` },
         { label: "VideoObject contentUrl", source: index, expected: `"contentUrl":"${videoUrl}"` },
-        { label: "VideoObject embedUrl", source: index, expected: '"embedUrl":"https://apex-financial.org/vsl"' },
+        { label: "VideoObject embedUrl", source: index, expected: '"embedUrl":"https://galaxyfinancial.org/vsl"' },
       ];
 
       const drift: string[] = [];

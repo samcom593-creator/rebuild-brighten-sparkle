@@ -88,7 +88,7 @@ serve(async (req: Request) => {
       if (daysSinceActivity >= 8 && daysSinceActivity < 9 && resend) {
         try {
           await resend.emails.send({
-            from: "Galaxy Financial <notifications@apex-financial.org>",
+            from: "Galaxy Financial <notifications@galaxyfinancial.org>",
             to: ["info@kingofsales.net"],
             subject: `👻 Ghosted Agent: ${app.first_name} ${app.last_name} — ${daysSinceActivity} days silent`,
             html: `<p><strong>${app.first_name} ${app.last_name}</strong> has gone ${daysSinceActivity} days without responding. Stage: ${app.license_progress || "unknown"}</p>

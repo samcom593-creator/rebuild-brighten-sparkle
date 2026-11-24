@@ -224,7 +224,7 @@ const handler = async (req: Request): Promise<Response> => {
       try {
         const recipientEmail = (passedAgent as any).profile.email;
         await resend.emails.send({
-          from: "Galaxy Financial <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@galaxyfinancial.org>",
           to: [recipientEmail],
           cc: ["info@kingofsales.net"],
           subject: `🏃 ${passerName} just passed you on the leaderboard!`,

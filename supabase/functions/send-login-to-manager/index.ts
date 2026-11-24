@@ -220,7 +220,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send email to manager
     await resend.emails.send({
-      from: "Galaxy Financial <notifications@apex-financial.org>",
+      from: "Galaxy Financial <notifications@galaxyfinancial.org>",
       to: [managerEmail],
       cc: [ADMIN_EMAIL].filter(e => e !== managerEmail),
       subject: `🔑 Login Link for ${agentName} — Please Forward`,

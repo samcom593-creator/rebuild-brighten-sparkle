@@ -122,7 +122,7 @@ const handler = async (req: Request): Promise<Response> => {
     for (const email of notifyEmails) {
       try {
         await resend.emails.send({
-           from: "Galaxy Financial <notifications@apex-financial.org>",
+           from: "Galaxy Financial <notifications@galaxyfinancial.org>",
           to: [email!],
           subject: `⚠️ Low Close Rate Alert: ${agentName} (${closeRate.toFixed(0)}%)`,
           html: `
@@ -190,7 +190,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (agentProfile?.email) {
       try {
         await resend.emails.send({
-          from: "Galaxy Financial <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@galaxyfinancial.org>",
           to: [agentProfile.email],
           subject: "💪 Let's Work on Your Closing Game",
           html: `

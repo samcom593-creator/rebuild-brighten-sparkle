@@ -102,7 +102,7 @@ Deno.serve(async (req) => {
 
       try {
         await resend.emails.send({
-          from: "Galaxy Financial <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@galaxyfinancial.org>",
           to: [e.email],
           subject: `${first} — add your photo, we're making your plaque`,
           html: `<div style="font-family:'DM Sans',Arial,sans-serif;background:#030712;color:#e2e8f0;padding:40px 20px;">
@@ -142,7 +142,7 @@ Deno.serve(async (req) => {
         try {
           const gateway = `${photoTen}@${CARRIER_GATEWAYS[e.carrier]}`;
           await resend.emails.send({
-            from: "Galaxy <notifications@apex-financial.org>",
+            from: "Galaxy <notifications@galaxyfinancial.org>",
             to: [gateway], subject: "",
             text: `${first} — upload a headshot so we can finish your plaques: ${UPLOAD_URL}`.slice(0, 160),
           });

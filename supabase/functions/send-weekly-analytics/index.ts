@@ -190,7 +190,7 @@ async function sendAnalyticsEmail(stats: ManagerStats) {
 
   try {
     await resend.emails.send({
-      from: "Galaxy Financial <notifications@apex-financial.org>",
+      from: "Galaxy Financial <notifications@galaxyfinancial.org>",
       to: [stats.managerEmail],
       subject: `📊 Your Weekly Analytics - ${stats.newThisWeek} new leads, ${stats.closeRate.toFixed(0)}% close rate`,
       html,

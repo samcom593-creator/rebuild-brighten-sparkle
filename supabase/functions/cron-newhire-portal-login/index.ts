@@ -177,7 +177,7 @@ serve(async (req: Request): Promise<Response> => {
         const numbers = await generateMagicToken(sb, r.agent_id, email, "numbers");
         tokenIds.push(numbers.id);
         const reply = await sendEmail({
-          from: "Galaxy Financial <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@galaxyfinancial.org>",
           to: email,
           subject: "🎯 Your Galaxy Portal Access - One-Tap Login Inside!",
           html: buildEmail(firstName, email, portal.url, numbers.url, isLicensed),

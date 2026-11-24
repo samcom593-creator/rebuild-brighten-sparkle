@@ -159,7 +159,7 @@ Deno.serve(async (req) => {
         } else {
           const result = await sendEmail({
             to:      email,
-            from:    "Galaxy Financial <notifications@apex-financial.org>",
+            from:    "Galaxy Financial <notifications@galaxyfinancial.org>",
             subject: `🎯 ${agentName} just closed a deal!`,
             html: `<div style="font-family:'DM Sans',Arial,sans-serif;background:#030712;color:#e2e8f0;padding:32px 16px;">
               <div style="max-width:520px;margin:0 auto;background:#0d1526;border:1px solid #22d3a540;border-radius:16px;padding:36px;">
@@ -207,7 +207,7 @@ Deno.serve(async (req) => {
         try {
           const smsAddr = `${smsTen}@${CARRIER_GATEWAYS[carrier]}`;
           await resend.emails.send({
-            from: "Galaxy <notifications@apex-financial.org>",
+            from: "Galaxy <notifications@galaxyfinancial.org>",
             to: [smsAddr], subject: "",
             text: `🎯 ${agentName} just closed! ${fmt$(monthly)}/mo ${productSold}. Who's next? galaxyfinancial.org`.slice(0, 160),
           });

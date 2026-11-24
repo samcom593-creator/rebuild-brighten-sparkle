@@ -42,7 +42,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (resendApiKey) {
       const resend = gateResend(new Resend(resendApiKey));
       await resend.emails.send({
-        from: "Galaxy Alerts <notifications@apex-financial.org>",
+        from: "Galaxy Alerts <notifications@galaxyfinancial.org>",
         to: ["info@kingofsales.net"],
         subject: `🔔 ${name} just clicked REAPPLY from aged lead email`,
         html: `

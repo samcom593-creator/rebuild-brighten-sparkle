@@ -138,7 +138,7 @@ export function AgedLeadEmailPreview({
             <div className="mb-4 p-3 rounded-lg bg-muted/30 border border-border/50 space-y-1.5">
               <div className="flex items-center gap-2 text-sm">
                 <span className="text-muted-foreground">From:</span>
-                <span className="text-foreground">Galaxy Financial &lt;noreply@apex-financial.org&gt;</span>
+                <span className="text-foreground">Galaxy Financial &lt;noreply@galaxyfinancial.org&gt;</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <span className="text-muted-foreground">Subject:</span>

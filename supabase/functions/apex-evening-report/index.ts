@@ -122,7 +122,7 @@ ${prep.length ? `<div style="margin-top:18px;padding:14px 16px;background:#f0f9f
 
   try {
     await resend.emails.send({
-      from: "Galaxy Engine <sam@apex-financial.org>",
+      from: "Galaxy Engine <sam@galaxyfinancial.org>",
       to: SAM_EMAIL,
       subject: humanize(`🌙 ${today} · ${fmt$(aopToday)} · ${dealsToday} deals`),
       html: humanize(html),

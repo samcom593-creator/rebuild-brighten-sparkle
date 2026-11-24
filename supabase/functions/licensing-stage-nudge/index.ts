@@ -153,7 +153,7 @@ async function sendEmail(app: App, subject: string, html: string) {
     // send-outreach-email, notify-module-progress); this one caller did not.
     // A receipt id is required, not merely the absence of a throw.
     const { data, error } = await resend.emails.send({
-      from: "Sam at Galaxy <sam@apex-financial.org>",
+      from: "Sam at Galaxy <sam@galaxyfinancial.org>",
       to: app.email, subject, html,
     });
     if (error) return { ok: false, error: (error as { message?: string }).message ?? String(error) };

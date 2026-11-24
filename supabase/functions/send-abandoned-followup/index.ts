@@ -94,7 +94,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send re-engagement email with admin CC
     await resend.emails.send({
-      from: "Galaxy Financial <notifications@apex-financial.org>",
+      from: "Galaxy Financial <notifications@galaxyfinancial.org>",
       to: [lead.email],
       cc: [ADMIN_EMAIL],
       subject: `${sanitizeHtml(firstName)}, Still Interested in Joining Galaxy? 🚀`,

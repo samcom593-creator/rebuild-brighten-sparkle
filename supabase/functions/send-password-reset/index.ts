@@ -204,7 +204,7 @@ const handler = async (req: Request): Promise<Response> => {
         const firstName = profile.full_name?.split(" ")[0] || "there";
 
         await resend.emails.send({
-           from: "Galaxy Financial <notifications@apex-financial.org>",
+           from: "Galaxy Financial <notifications@galaxyfinancial.org>",
           to: [normalizedEmail],
           subject: "Your New Login Link – Galaxy",
           html: `
@@ -291,7 +291,7 @@ const handler = async (req: Request): Promise<Response> => {
     // account is known to exist, so a send failure must not surface as a 500.
     try {
       await resend.emails.send({
-        from: "Galaxy Financial <notifications@apex-financial.org>",
+        from: "Galaxy Financial <notifications@galaxyfinancial.org>",
         to: [normalizedEmail],
         subject: "Reset Your Password – Galaxy",
         html: `

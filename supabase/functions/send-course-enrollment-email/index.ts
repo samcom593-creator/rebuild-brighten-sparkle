@@ -173,7 +173,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     try {
       await resend.emails.send({
-        from: "Galaxy Financial <notifications@apex-financial.org>",
+        from: "Galaxy Financial <notifications@galaxyfinancial.org>",
         to: [profile.email],
         cc: ccList.length > 0 ? ccList : undefined,
         subject: "🎓 Your Galaxy Training Course Is Ready!",

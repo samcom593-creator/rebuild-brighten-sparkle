@@ -232,7 +232,7 @@ serve(async (req: Request) => {
       const resend = gateResend(new Resend(resendApiKey));
       
       await resend.emails.send({
-        from: "Galaxy Financial <notifications@apex-financial.org>",
+        from: "Galaxy Financial <notifications@galaxyfinancial.org>",
         to: [managerProfile.email],
         cc: ["info@kingofsales.net"],
         subject: `${tierLabel}: ${agentName} hit $${roundedAmount.toLocaleString()} today`,

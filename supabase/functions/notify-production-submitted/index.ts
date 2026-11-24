@@ -113,7 +113,7 @@ serve(async (req) => {
     let email: unknown = { skipped: true };
     if (resendKey) {
       email = await gateResend(new Resend(resendKey)).emails.send({
-        from: "Galaxy Production <notifications@apex-financial.org>",
+        from: "Galaxy Production <notifications@galaxyfinancial.org>",
         to: [...new Set(["info@kingofsales.net", managerEmail].filter(Boolean))] as string[],
         subject: `${agentName} | Production report`,
         html: `<h1>Production report</h1><p><strong>${escapeHtml(agentName)}</strong></p><p>${deals} policies · $${alp.toLocaleString()} ALP · ${Number(daily?.presentations || 0)} presentations</p><p>${productionDate} · America/Phoenix</p>`,

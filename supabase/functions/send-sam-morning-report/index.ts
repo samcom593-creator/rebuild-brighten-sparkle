@@ -91,7 +91,7 @@ serve(async (req) => {
       const resend = gateResend(new Resend(resendKey));
 
       await resend.emails.send({
-        from: "Galaxy System <sam@apex-financial.org>",
+        from: "Galaxy System <sam@galaxyfinancial.org>",
         to: "info@kingofsales.net",
         subject: `📊 Morning Report — $${totalALP.toLocaleString()} ALP Yesterday`,
         html: `

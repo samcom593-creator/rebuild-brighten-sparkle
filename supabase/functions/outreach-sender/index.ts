@@ -266,10 +266,10 @@ async function sendOne(
   //   'From' address... From is 'kingofsales.net' but you are sending to 'gmail.com'."
   // Every applicant is on gmail/outlook/etc, so Postmark rejects the entire queue while
   // Resend is demonstrably delivering (3 real applicant confirmations landed 2026-07-28
-  // 17:23 from notifications@apex-financial.org, Resend's verified domain).
+  // 17:23 from notifications@galaxyfinancial.org, Resend's verified domain).
   //
   // So: try Postmark, and on ANY non-2xx fall through to Resend rather than burning the row.
-  // 405 of the 671 queued rows already carry a notifications@apex-financial.org From and
+  // 405 of the 671 queued rows already carry a notifications@galaxyfinancial.org From and
   // will deliver on the Resend leg immediately. The rest use info@kingofsales.net, which is
   // not a verified Resend domain — those will still fail, honestly and visibly, until either
   // Postmark approves the account or kingofsales.net is verified on Resend.

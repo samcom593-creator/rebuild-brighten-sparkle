@@ -9,7 +9,7 @@ const corsHeaders = {
 };
 
 const ADMIN_EMAIL = "info@kingofsales.net";
-const FROM_EMAIL = "Galaxy Financial <notifications@apex-financial.org>";
+const FROM_EMAIL = "Galaxy Financial <notifications@galaxyfinancial.org>";
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {

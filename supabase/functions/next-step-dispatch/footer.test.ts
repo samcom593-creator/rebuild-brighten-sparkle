@@ -6,7 +6,7 @@ import { hasEmptyHref, stripDeadReplyStop } from "./footer.ts";
 
 // The live footer, byte for byte, as read from next_step_stages on 2026-11-11.
 const LIVE_FOOTER =
-  '<p style="font-size:11px;color:#6b7280;line-height:1.5">Galaxy Financial · Recruiting Communications<br/>You received this because you applied to Galaxy Financial. You can <a href="https://xrzweoneiieddzxogewk.supabase.co/functions/v1/unsubscribe?u=jo%40example.com" style="color:#6b7280">unsubscribe</a> or <a href="mailto:hello@apex-financial.org?subject=STOP">reply STOP</a> to stop these messages.<br/>Galaxy Financial · Dallas, TX</p>';
+  '<p style="font-size:11px;color:#6b7280;line-height:1.5">Galaxy Financial · Recruiting Communications<br/>You received this because you applied to Galaxy Financial. You can <a href="https://xrzweoneiieddzxogewk.supabase.co/functions/v1/unsubscribe?u=jo%40example.com" style="color:#6b7280">unsubscribe</a> or <a href="mailto:hello@galaxyfinancial.org?subject=STOP">reply STOP</a> to stop these messages.<br/>Galaxy Financial · Dallas, TX</p>';
 
 Deno.test("the dead mailto is removed and the working unsubscribe link is kept", () => {
   const out = stripDeadReplyStop(LIVE_FOOTER);

@@ -87,7 +87,7 @@ const handler = async (req: Request): Promise<Response> => {
 
       try {
         await resend.emails.send({
-          from: "Galaxy Financial <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@galaxyfinancial.org>",
           to: [profile.email],
           cc: [ADMIN_EMAIL],
           subject: `🌅 Good Morning! Training Reminder - Day ${8 - daysRemaining} of 7`,

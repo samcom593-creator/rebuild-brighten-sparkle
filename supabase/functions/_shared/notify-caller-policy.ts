@@ -36,6 +36,7 @@
 
 export const STAFF_INBOXES: ReadonlySet<string> = new Set([
   "sam@apex-financial.org",
+  "sam@galaxyfinancial.org",
   "info@kingofsales.net",
 ]);
 

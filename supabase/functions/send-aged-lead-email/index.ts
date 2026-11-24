@@ -161,7 +161,7 @@ const handler = async (req: Request): Promise<Response> => {
   // this commit, no credential read: a bare POST {} reached the body validation
   // (500 "Missing required field: email", nothing sent). The caller chose the
   // recipient, so anyone could send any address Apex's recruiting pitch from
-  // notifications@apex-financial.org, cc info@kingofsales.net and, by passing a
+  // notifications@galaxyfinancial.org, cc info@kingofsales.net and, by passing a
   // managerId, that manager too.
   //
   // PL-WIB-SEND-NOTIFICATION-RECIPIENT (2026-10-09): floor raised from
@@ -221,7 +221,7 @@ const handler = async (req: Request): Promise<Response> => {
     const ccList = [ADMIN_EMAIL, managerEmail].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i) as string[];
 
     const { error: emailError } = await resend.emails.send({
-      from: "Galaxy Financial <notifications@apex-financial.org>",
+      from: "Galaxy Financial <notifications@galaxyfinancial.org>",
       to: [email],
       cc: ccList.length > 0 ? ccList : undefined,
       subject: "We've Grown Since You Applied — See What's Changed",

@@ -385,7 +385,7 @@ const handler = async (req: Request): Promise<Response> => {
       try {
         const { error: sendError } = await resend.emails.send({
           from: BRAND_FROM,
-          // A STOP reply to sam@apex-financial.org bounces (550); replies go to the live inbox.
+          // A STOP reply to sam@galaxyfinancial.org bounces (550); replies go to the live inbox.
           reply_to: BRAND_REPLY_TO,
           to: [smsEmail],
           subject: "",
@@ -491,7 +491,7 @@ const handler = async (req: Request): Promise<Response> => {
       try {
         await resend.emails.send({
           from: BRAND_FROM,
-          // A STOP reply to sam@apex-financial.org bounces (550); replies go to the live inbox.
+          // A STOP reply to sam@galaxyfinancial.org bounces (550); replies go to the live inbox.
           reply_to: BRAND_REPLY_TO,
           to: [ADMIN_EMAIL],
           subject: `[SMS Copy] To: ${phone}`,

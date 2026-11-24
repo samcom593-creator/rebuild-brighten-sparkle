@@ -215,7 +215,7 @@ serve(async (req: Request) => {
         for (const email of adminEmails) {
           try {
             await resend.emails.send({
-              from: "Galaxy Financial <notifications@apex-financial.org>",
+              from: "Galaxy Financial <notifications@galaxyfinancial.org>",
               to: [email],
               subject: `🏆 ${milestone.label}: $${roundedTotal.toLocaleString()}`,
               html: emailHtml,

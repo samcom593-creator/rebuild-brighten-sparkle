@@ -181,7 +181,7 @@ serve(async (req: Request) => {
       // --- EMAIL ---
       try {
         await resend.emails.send({
-           from: "Galaxy Financial <notifications@apex-financial.org>",
+           from: "Galaxy Financial <notifications@galaxyfinancial.org>",
           to: [app.email],
           subject: "📅 You're Invited: Weekly Career Seminar — This Thursday!",
           html: buildSeminarEmail(app.first_name, regUrl, slackLink),
@@ -224,7 +224,7 @@ serve(async (req: Request) => {
           for (const gw of gateways) {
             try {
               await resend.emails.send({
-                from: "Galaxy Financial <notifications@apex-financial.org>",
+                from: "Galaxy Financial <notifications@galaxyfinancial.org>",
                 to: [`${digits}@${gw}`],
                 subject: "",
                 text: smsText,

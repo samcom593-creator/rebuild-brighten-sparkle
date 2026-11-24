@@ -451,7 +451,7 @@ serve(async (req) => {
 
       try {
         await resend.emails.send({
-          from: "Galaxy Financial <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@galaxyfinancial.org>",
           to: [profile.email],
           cc: ["info@kingofsales.net"],
           subject: `☀️ ${firstName}'s Daily Digest - $${weeklyALP.toLocaleString()} this week`,

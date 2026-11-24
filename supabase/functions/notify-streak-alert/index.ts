@@ -232,7 +232,7 @@ serve(async (req) => {
     // Send to all agents
     try {
       await resend.emails.send({
-        from: "Galaxy Financial <notifications@apex-financial.org>",
+        from: "Galaxy Financial <notifications@galaxyfinancial.org>",
         bcc: recipients,
         to: "info@kingofsales.net",
         subject: `🔥 ${agentName} is on a ${dealStreak}-DAY DEAL STREAK!`,

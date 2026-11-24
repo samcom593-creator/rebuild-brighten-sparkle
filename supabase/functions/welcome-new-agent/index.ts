@@ -48,7 +48,7 @@ const handler = async (req: Request): Promise<Response> => {
   // Before this gate verify_jwt = false let a bare POST choose the recipient,
   // the name (raw into the HTML) and the "Complete contracting profile" /
   // "Open My Account" button hrefs, so anyone could send a Galaxy welcome email
-  // from notifications@apex-financial.org to any address, CC Sam and the named
+  // from notifications@galaxyfinancial.org to any address, CC Sam and the named
   // manager, with buttons pointing wherever they liked. Service key or a
   // signed-in admin/manager only.
   const sendAuth = await requireSendAuth(req);
@@ -219,7 +219,7 @@ const handler = async (req: Request): Promise<Response> => {
         Authorization: `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "Galaxy Financial <notifications@apex-financial.org>",
+        from: "Galaxy Financial <notifications@galaxyfinancial.org>",
         to: [agentEmail],
         cc: ccList.length > 0 ? ccList : undefined,
         subject: "Welcome to Galaxy Financial! 🎉 Your First Steps",

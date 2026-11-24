@@ -19,7 +19,7 @@ const ADMIN_EMAIL = "info@kingofsales.net";
 // PL-WIB-POST-CALL-RELAY (2026-10-14). The recipient, name and licence status
 // come from the lead ROW, never from the body. Before this the body carried
 // firstName + email + calendarLink with no credential read, so one anonymous
-// POST mailed any address from notifications@apex-financial.org (CC Sam), with
+// POST mailed any address from notifications@galaxyfinancial.org (CC Sam), with
 // a name pasted raw into the HTML and a CTA link of the caller's choosing.
 // Callers: CallCenter (applications + aged_leads rows) and InterviewRecorder
 // (applicationId). InterviewRecorder already sent only applicationId, which the
@@ -420,7 +420,7 @@ const handler = async (req: Request): Promise<Response> => {
     `;
 
     const emailResponse = await resend.emails.send({
-      from: "Galaxy Financial <notifications@apex-financial.org>",
+      from: "Galaxy Financial <notifications@galaxyfinancial.org>",
       to: [email],
       cc: ccList.length > 0 ? ccList : undefined,
       subject: emailSubject,

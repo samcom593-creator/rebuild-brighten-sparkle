@@ -38,13 +38,13 @@ describe("APEX Function Perfection Remediation Suite", () => {
           policy_id: "pol-1",
           agent_id: "ag-1",
           agent_display: "Test Agent",
-          agent_email: "test@apex-financial.org",
+          agent_email: "test@galaxyfinancial.org",
           carrier_name: "Ethos",
           effective_date: "2026-08-01",
           client_name: "Client Demo",
         },
       ];
-      expect(mockResult[0].agent_email).toBe("test@apex-financial.org");
+      expect(mockResult[0].agent_email).toBe("test@galaxyfinancial.org");
     });
   });
 
@@ -53,7 +53,7 @@ describe("APEX Function Perfection Remediation Suite", () => {
       const quickAddAgent = {
         firstName: "Test",
         lastName: "Agent",
-        email: "testagent@apex-financial.org",
+        email: "testagent@galaxyfinancial.org",
         phone: "5551234567",
         paNumber: "PA999888",
       };

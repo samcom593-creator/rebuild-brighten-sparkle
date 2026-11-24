@@ -134,7 +134,7 @@ Deno.serve(
       }
 
       const { error: emailError } = await resend.emails.send({
-        from: "Galaxy Financial <notifications@apex-financial.org>",
+        from: "Galaxy Financial <notifications@galaxyfinancial.org>",
         to: [profile.email],
         cc: ccList,
         subject: `${stageInfo.emoji} ${isPromotion ? "Congratulations!" : "Update:"} You're now ${stageInfo.label}!`,

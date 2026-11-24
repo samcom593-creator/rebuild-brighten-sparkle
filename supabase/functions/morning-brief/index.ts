@@ -119,7 +119,7 @@ Let's go. 💥`,
       const resend = gateResend(new Resend(resendKey));
       const topRows = top5.map((e, i) => `<tr><td style="padding:6px 10px;color:#64748b">${i + 1}.</td><td style="padding:6px 10px;color:#f8fafc;font-weight:600">${e.name}</td><td style="padding:6px 10px;color:#22d3a5;text-align:right;font-weight:700">${fmt$(e.alp)}</td></tr>`).join("");
       await resend.emails.send({
-        from: "Galaxy Brief <notifications@apex-financial.org>",
+        from: "Galaxy Brief <notifications@galaxyfinancial.org>",
         to: [adminEmail],
         subject: `☀️ Galaxy morning brief — close ${recruitTargetToday} · hit ${fmt$(prodTargetToday)}`,
         html: `<div style="font-family:'DM Sans',Arial;background:#030712;color:#e2e8f0;padding:32px 16px;">

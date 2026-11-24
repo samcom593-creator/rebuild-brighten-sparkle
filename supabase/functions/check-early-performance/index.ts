@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
                 method: "POST",
                 headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
                 body: JSON.stringify({
-                  from: "Galaxy Alerts <alerts@apex-financial.org>",
+                  from: "Galaxy Alerts <alerts@galaxyfinancial.org>",
                   to: [mgrProfile.email],
                   subject: `⚠️ Early Performance Alert: ${agent.display_name}`,
                   html: `<p><strong>${agent.display_name}</strong> is at <strong>${Math.round(performanceRatio * 100)}%</strong> of expected pace after ${daysActive} days ($${Math.round(totalALP)} actual vs $${Math.round(expectedALP)} expected). Needs coaching.</p>`,

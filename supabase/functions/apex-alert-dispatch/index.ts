@@ -246,7 +246,7 @@ async function send(alert: any): Promise<{ email_id: string | null; sent_sms: bo
       // brand_funnel leads also land in Sam's personal Gmail (the inbox on his
       // phone); every other alert keeps the business inbox only.
       const r = await resend.emails.send({
-        from: "Galaxy Engine <sam@apex-financial.org>",
+        from: "Galaxy Engine <sam@galaxyfinancial.org>",
         to: alert?.source === "brand_funnel" ? [SAM_EMAIL, "sam.com593@gmail.com"] : SAM_EMAIL,
         subject: alert.subject,
         html,

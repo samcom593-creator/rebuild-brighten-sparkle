@@ -34,7 +34,7 @@ const corsHeaders = {
 };
 
 const SOURCE_RUN = "calendly-invite";
-const FROM = "Sam James <sam@apex-financial.org>";
+const FROM = "Sam James <sam@galaxyfinancial.org>";
 const SUBJECT = "Personal invite from Samuel James — let's talk about your career";
 const CALENDLY_URL = "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone";
 const RESEND_SEND_URL = "https://api.resend.com/emails";

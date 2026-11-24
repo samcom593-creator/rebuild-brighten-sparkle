@@ -840,7 +840,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send email
     const { data: emailReceipt, error: emailError } = await resend.emails.send({
-      from: "Galaxy Financial <notifications@apex-financial.org>",
+      from: "Galaxy Financial <notifications@galaxyfinancial.org>",
       to: [recipientEmail],
       cc: ccList.length > 0 ? ccList : undefined,
       subject,

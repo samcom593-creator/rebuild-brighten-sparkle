@@ -343,7 +343,7 @@ serve(async (req) => {
       if (resendKey) {
         const resend = gateResend(new Resend(resendKey));
         await resend.emails.send({
-          from: "Galaxy System <alerts@apex-financial.org>",
+          from: "Galaxy System <alerts@galaxyfinancial.org>",
           to: "info@kingofsales.net",
           // MP-ONBOARD-ANCHOR-PKG1: alerts@ has no mailbox (550); a reply lands in the live inbox.
           reply_to: RECRUIT_REPLY_TO,

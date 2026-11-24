@@ -51,10 +51,10 @@ export interface SendEmailResult {
 // `from: "..."` outside this file is counted by scripts/check-hardcoded-sender.mjs
 // and a NEW one fails the ratchet. The sending domain stays apex-financial.org
 // (verified in Resend; changing it would reset reputation).
-export const BRAND_FROM = "Sam at Galaxy Financial <sam@apex-financial.org>";
+export const BRAND_FROM = "Sam at Galaxy Financial <sam@galaxyfinancial.org>";
 // Personal-brand mail (sell4daddy.com: the Glow-Up checklist and its sequence). Same verified sending
 // domain, Sam's own name: these readers signed up to hear from him, not from the agency.
-export const PERSONAL_FROM = "Samuel James <sam@apex-financial.org>";
+export const PERSONAL_FROM = "Samuel James <sam@galaxyfinancial.org>";
 // Reply-To is the inbox the pipeline owner actually works. EMAIL_REPLY_TO is
 // unset in edge secrets today (checked 2026-11-10). MP-ONBOARD-ANCHOR-PKG1
 // (2026-11-12): the value goes through resolveReplyTo(), so an empty secret or
@@ -70,7 +70,7 @@ export const COMPANY_POSTAL_ADDRESS =
 
 const DEFAULT_FROM     = Deno.env.get("EMAIL_FROM")     ?? BRAND_FROM;
 const DEFAULT_REPLY_TO = BRAND_REPLY_TO;
-const DOMAIN           = Deno.env.get("APEX_DOMAIN")    ?? "apex-financial.org";
+const DOMAIN           = Deno.env.get("APEX_DOMAIN")    ?? "galaxyfinancial.org";
 
 export function htmlToText(html: string): string {
   return html

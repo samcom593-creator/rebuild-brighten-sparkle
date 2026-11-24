@@ -112,7 +112,7 @@ Deno.serve(
       );
 
       await resend.emails.send({
-        from: "Galaxy Financial <notifications@apex-financial.org>",
+        from: "Galaxy Financial <notifications@galaxyfinancial.org>",
         to: [managerProfile.email],
         cc: [ADMIN_EMAIL],
         subject: `New Note Added: ${agentName}`,

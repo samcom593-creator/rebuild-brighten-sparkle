@@ -325,7 +325,7 @@ const handler = async (req: Request): Promise<Response> => {
     const denyUrl = `${base}&action=deny&token=${await linkToken("deny", request.id, supabaseServiceKey)}`;
 
     const emailResponse = await resend.emails.send({
-      from: "Galaxy Team <notifications@apex-financial.org>",
+      from: "Galaxy Team <notifications@galaxyfinancial.org>",
       to: ["info@kingofsales.net"],
       subject: `🗑️ Agent Removal Request: ${agentName.replace(/[\r\n]+/g, " ").slice(0, 120)}`,
       html: `

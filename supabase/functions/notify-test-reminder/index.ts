@@ -215,7 +215,7 @@ async function sendEmail(apiKey: string, to: string, cc: string[], subject: stri
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      from: "Galaxy Financial <notifications@apex-financial.org>",
+      from: "Galaxy Financial <notifications@galaxyfinancial.org>",
       to: [to],
       cc,
       subject,

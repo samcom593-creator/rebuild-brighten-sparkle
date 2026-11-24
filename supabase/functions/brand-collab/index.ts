@@ -11,7 +11,7 @@ const RESEND = Deno.env.get("RESEND_API_KEY") || "";
 // 30+ min without ForwardEmail ever returning 250. A forwarder in the path is one more
 // thing that can defer a lead; the brand address stays the public-facing one.
 const TO = "sam.com593@gmail.com";
-const FROM = "King of Sales <noreply@apex-financial.org>";
+const FROM = "King of Sales <noreply@galaxyfinancial.org>";
 
 const cors = {
   "access-control-allow-origin": "*",

@@ -312,7 +312,7 @@ serve(async (req) => {
       try {
         // Send to agent
         await resend.emails.send({
-          from: "Galaxy Financial <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@galaxyfinancial.org>",
           to: [agent.email],
           cc: ["info@kingofsales.net"],
           subject,
@@ -322,7 +322,7 @@ serve(async (req) => {
         // Also notify manager if critical
         if (isCritical && agent.managerEmail) {
           await resend.emails.send({
-            from: "Galaxy Financial <notifications@apex-financial.org>",
+            from: "Galaxy Financial <notifications@galaxyfinancial.org>",
             to: [agent.managerEmail],
             cc: ["info@kingofsales.net"],
             subject: `⚠️ Agent Alert: ${agent.agentName} stalled in course`,

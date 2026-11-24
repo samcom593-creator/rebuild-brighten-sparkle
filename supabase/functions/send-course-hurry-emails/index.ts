@@ -269,7 +269,7 @@ serve(async (req) => {
       try {
         const agentName = profile?.full_name || "Agent";
         const { error: emailError } = await resend.emails.send({
-          from: "Galaxy Financial <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@galaxyfinancial.org>",
           to: [email],
           cc: ["info@kingofsales.net"],
           subject: EMAIL_SUBJECTS[emailType],

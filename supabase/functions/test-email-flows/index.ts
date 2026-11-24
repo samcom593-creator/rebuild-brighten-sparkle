@@ -69,7 +69,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (allFlows || flowType === "licensed-confirmation") {
       try {
         await resend.emails.send({
-          from: "Galaxy Financial <noreply@apex-financial.org>",
+          from: "Galaxy Financial <noreply@galaxyfinancial.org>",
           to: [testEmail],
           subject: "[TEST] 🎉 You're on the Fast Track! - Licensed Agent Welcome",
           html: `
@@ -131,7 +131,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (allFlows || flowType === "unlicensed-confirmation") {
       try {
         await resend.emails.send({
-          from: "Galaxy Financial <noreply@apex-financial.org>",
+          from: "Galaxy Financial <noreply@galaxyfinancial.org>",
           to: [testEmail],
           subject: "[TEST] 📋 Your Next Steps to Getting Licensed - Galaxy Financial",
           html: `
@@ -209,7 +209,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (allFlows || flowType === "admin-hot-lead") {
       try {
         await resend.emails.send({
-          from: "Galaxy Applications <applications@apex-financial.org>",
+          from: "Galaxy Applications <applications@galaxyfinancial.org>",
           to: [testEmail],
           subject: "[TEST] 🔥 HOT LEAD - CALL NOW: John TestApplicant is LICENSED!",
           html: `
@@ -292,7 +292,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (allFlows || flowType === "admin-standard") {
       try {
         await resend.emails.send({
-          from: "Galaxy Applications <applications@apex-financial.org>",
+          from: "Galaxy Applications <applications@galaxyfinancial.org>",
           to: [testEmail],
           subject: "[TEST] New Application: John TestApplicant (Not Yet Licensed)",
           html: `
@@ -354,7 +354,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (allFlows || flowType === "manager-referral") {
       try {
         await resend.emails.send({
-          from: "Galaxy Applications <applications@apex-financial.org>",
+          from: "Galaxy Applications <applications@galaxyfinancial.org>",
           to: [testEmail],
           subject: "[TEST] 🎯 New Team Applicant: John TestApplicant",
           html: `
@@ -415,7 +415,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (allFlows || flowType === "unlicensed-followup") {
       try {
         await resend.emails.send({
-          from: "Galaxy Financial <noreply@apex-financial.org>",
+          from: "Galaxy Financial <noreply@galaxyfinancial.org>",
           to: [testEmail],
           subject: "[TEST] Need Help Getting Licensed? We're Here For You! 📋",
           html: `
@@ -472,7 +472,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (allFlows || flowType === "unlicensed-followup-2") {
       try {
         await resend.emails.send({
-          from: "Galaxy Financial <noreply@apex-financial.org>",
+          from: "Galaxy Financial <noreply@galaxyfinancial.org>",
           to: [testEmail],
           subject: "[TEST] Are You Licensed Yet? 🎓",
           html: `
@@ -553,7 +553,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (allFlows || flowType === "licensed-followup") {
       try {
         await resend.emails.send({
-          from: "Galaxy Financial <noreply@apex-financial.org>",
+          from: "Galaxy Financial <noreply@galaxyfinancial.org>",
           to: [testEmail],
           subject: "[TEST] Did We Get to You Yet? Let's Connect! 🚀",
           html: `
@@ -611,7 +611,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (allFlows || flowType === "abandoned-alert") {
       try {
         await resend.emails.send({
-          from: "Galaxy Alerts <alerts@apex-financial.org>",
+          from: "Galaxy Alerts <alerts@galaxyfinancial.org>",
           to: [testEmail],
           subject: "[TEST] ⚠️ 3 Abandoned Applications - Follow Up Required",
           html: `
@@ -685,7 +685,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (allFlows || flowType === "weekly-analytics") {
       try {
         await resend.emails.send({
-          from: "Galaxy Analytics <analytics@apex-financial.org>",
+          from: "Galaxy Analytics <analytics@galaxyfinancial.org>",
           to: [testEmail],
           subject: "[TEST] 📊 Your Weekly Team Performance - Galaxy Financial",
           html: `
@@ -749,7 +749,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (allFlows || flowType === "leaderboard") {
       try {
         await resend.emails.send({
-          from: "Galaxy Financial <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@galaxyfinancial.org>",
           to: [testEmail],
           subject: "[TEST] 🏆 GALAXY Manager Scored Another Recruit!",
           html: `
@@ -919,7 +919,7 @@ const handler = async (req: Request): Promise<Response> => {
           // Send reminder email
           try {
             await resend.emails.send({
-              from: "Galaxy Financial <noreply@apex-financial.org>",
+              from: "Galaxy Financial <noreply@galaxyfinancial.org>",
               to: [authData.user.email],
               subject: hasInstagram 
                 ? "📱 Your Instagram Handle is Set - Thanks!" 

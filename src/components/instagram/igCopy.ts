@@ -279,7 +279,7 @@ export const EMAIL = {
   subject: "the link from sam",
   body: (first: string, url: string) => `yo ${first}, it's sam from ig.\n\nhere's the link: ${url}\n\nreply here if anything's unclear.\n\nsam`,
   confirm: (to: string) => `Send the apply link to ${to}?`,
-  from: "Sam James <alerts@apex-financial.org>",
+  from: "Sam James <alerts@galaxyfinancial.org>",
   replyTo: "info@kingofsales.net",
   tag: "ig-command-center",
   applyUrl: (handle: string | null) =>

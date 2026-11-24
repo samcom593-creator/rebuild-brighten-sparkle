@@ -460,7 +460,7 @@ async function sendManagerNotification(
 
   try {
     await resend.emails.send({
-       from: "Galaxy Financial <notifications@apex-financial.org>",
+       from: "Galaxy Financial <notifications@galaxyfinancial.org>",
       to: [manager.email],
       // MP-ONBOARD-ANCHOR-PKG1: notifications@ has no mailbox (550); replies land here.
       reply_to: RECRUIT_REPLY_TO,
@@ -681,7 +681,7 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
 
     // Send notification email to APEX team
     const adminEmailResponse = skipAdminAlert ? null : await resend.emails.send({
-      from: "Galaxy Applications <notifications@apex-financial.org>",
+      from: "Galaxy Applications <notifications@galaxyfinancial.org>",
       to: ["info@kingofsales.net"],
       subject: adminSubject,
       html: `
@@ -1576,7 +1576,7 @@ const handler = async (req: Request): Promise<Response> => {
       if (resend) {
         try {
           await resend.emails.send({
-            from: "Galaxy Financial <notifications@apex-financial.org>",
+            from: "Galaxy Financial <notifications@galaxyfinancial.org>",
             to: ["info@kingofsales.net"],
             subject: `🔄 Duplicate Application: ${data.firstName} ${data.lastName}${referrerAdopted ? " (referrer adopted)" : ""}`,
             html: `<p><strong>${data.firstName} ${data.lastName}</strong> applied again. They're already in your pipeline since ${new Date(existingApp.created_at).toLocaleDateString()}.</p>
@@ -1673,7 +1673,7 @@ const handler = async (req: Request): Promise<Response> => {
         if (mostRecent.contracted_at && resend) {
           try {
             await resend.emails.send({
-              from: "Galaxy Financial <notifications@apex-financial.org>",
+              from: "Galaxy Financial <notifications@galaxyfinancial.org>",
               to: ["info@kingofsales.net"],
               subject: `🔄 Rehire Application — ${data.firstName} ${data.lastName}`,
               html: `<p><strong>${data.firstName} ${data.lastName}</strong> previously contracted with Galaxy and has reapplied.${incomingReferrer ? ` Referrer preserved: ${incomingReferrer}.` : " Assigned directly to you."} Original application: ${mostRecent.id}</p>`,

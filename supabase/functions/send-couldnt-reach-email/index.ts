@@ -147,7 +147,7 @@ serve(async (req) => {
     sMap.set(r.key, r.value);
   }
   const resendKey = Deno.env.get("RESEND_API_KEY") ?? sMap.get("resend_api_key") ?? "";
-  const fromRaw = sMap.get("onboarding_email_from_address") ?? "Galaxy Financial <recruiting@apex-financial.org>";
+  const fromRaw = sMap.get("onboarding_email_from_address") ?? "Galaxy Financial <recruiting@galaxyfinancial.org>";
   const from = fromRaw.replace(/^"|"$/g, "");
 
   if (!resendKey) {

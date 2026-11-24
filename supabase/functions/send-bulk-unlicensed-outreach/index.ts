@@ -191,7 +191,7 @@ We provide <strong>free CRM, free dialer, 50+ carrier contracts</strong>, and 72
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: "Galaxy Financial <notifications@apex-financial.org>",
+            from: "Galaxy Financial <notifications@galaxyfinancial.org>",
             to: [app.email],
             cc: [ADMIN_EMAIL],
             subject: `${safeFirst}, Your $20K/Month Opportunity Awaits 🚀`,

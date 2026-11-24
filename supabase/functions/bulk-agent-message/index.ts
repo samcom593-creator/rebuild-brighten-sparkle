@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
   // reached the body validation (400, nothing sent). The caller chose the agents
   // and the message, and the message goes into the HTML unescaped, so anyone
   // holding agent ids could mail or text the roster "A message from your
-  // manager" from notifications@apex-financial.org.
+  // manager" from notifications@galaxyfinancial.org.
   //
   // Floor is admin_or_manager. Callers: AgentManagement (requireAdmin route) on
   // the admin's JWT; AgentPipeline (any signed-in user) sends a body this
@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
         if (channel === "email") {
           if (!resend) throw new Error("RESEND_API_KEY missing");
           const { error: emailErr } = await resend.emails.send({
-            from: "Galaxy Financial <notifications@apex-financial.org>",
+            from: "Galaxy Financial <notifications@galaxyfinancial.org>",
             to: [to],
             subject: "A message from your manager",
             html: `<p>${message.replace(/\n/g, "<br>")}</p>`,

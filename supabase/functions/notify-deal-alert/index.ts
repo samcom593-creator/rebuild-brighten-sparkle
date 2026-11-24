@@ -48,7 +48,7 @@ Deno.serve(
     async (req) => {
       // PL-WIB-DEAL-ALERT-AUTH (2026-10-10). verify_jwt = false and no credential
       // read, so a bare POST from anyone sent the body's agentName (up to 128
-      // chars, caller-chosen) from notifications@apex-financial.org to every
+      // chars, caller-chosen) from notifications@galaxyfinancial.org to every
       // non-deactivated agent (83 on 2026-10-10) and pushed it to the same 83
       // phones. The only control was the 30/min per-IP rate limit. It has no
       // caller (src, pg_proc, cron: 0; 24h edge logs: 0 POSTs), so the
@@ -147,7 +147,7 @@ Deno.serve(
         const batch = recipients.slice(i, i + BATCH_SIZE);
         try {
           await resend.emails.send({
-            from: "Galaxy Financial <notifications@apex-financial.org>",
+            from: "Galaxy Financial <notifications@galaxyfinancial.org>",
             bcc: batch,
             to: "info@kingofsales.net",
             subject: `🚨🔥 DEAL ALERT! ${agentName} just closed! 🔥🚨`,

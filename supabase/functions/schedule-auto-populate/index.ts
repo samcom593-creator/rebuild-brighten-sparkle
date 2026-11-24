@@ -472,7 +472,7 @@ async function sendManagerSummaries(eventsToEmail: PlannedEvent[], onlyManagerEm
     let res: Awaited<ReturnType<typeof sendEmail>> = { ok: false, id: null, error: "send failed" };
     for (let attempt = 0; attempt < 2; attempt++) {
       res = await sendEmail({
-        from: "Galaxy Schedule <notifications@apex-financial.org>",
+        from: "Galaxy Schedule <notifications@galaxyfinancial.org>",
         to: email,
         subject: `Galaxy schedule auto-fill: ${events.length} item${events.length === 1 ? "" : "s"} added`,
         html,

@@ -50,7 +50,7 @@ describe("reply path", () => {
   it("the shared default is the one inbox that exists; dead and empty values cannot replace it", () => {
     expect(RECRUIT_REPLY_TO).toBe("info@kingofsales.net");
     expect(resolveReplyTo("")).toBe(RECRUIT_REPLY_TO);
-    expect(resolveReplyTo("hello@apex-financial.org")).toBe(RECRUIT_REPLY_TO);
+    expect(resolveReplyTo("hello@galaxyfinancial.org")).toBe(RECRUIT_REPLY_TO);
     const email = read("supabase/functions/_shared/email.ts");
     expect(email).toContain('BRAND_REPLY_TO = resolveReplyTo(Deno.env.get("EMAIL_REPLY_TO"))');
     expect(email).toContain("reply_to: resolveReplyTo(reply_to ?? DEFAULT_REPLY_TO)");

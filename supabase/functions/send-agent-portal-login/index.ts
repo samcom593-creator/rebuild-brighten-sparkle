@@ -232,7 +232,7 @@ const handler = async (req: Request): Promise<Response> => {
       // building. With the provider account currently under review and rejecting every
       // external recipient, this reported 100% delivery while delivering nothing.
       const { data: sendData, error: sendError } = await resend.emails.send({
-        from: "Galaxy Financial <notifications@apex-financial.org>",
+        from: "Galaxy Financial <notifications@galaxyfinancial.org>",
         to: [profile.email],
         cc: ccList.length > 0 ? ccList : undefined,
         subject: "🎉 Welcome to the Agent Portal - One-Tap Access Inside!",

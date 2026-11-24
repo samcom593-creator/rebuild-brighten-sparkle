@@ -7,7 +7,7 @@
 // no credential, so a bare POST with no Authorization header reached the Resend
 // call (probed 2026-10-08 04:5xZ: 400 from body validation, not 401). The
 // caller chose the recipient, the HTML AND the From line, so any stranger could
-// send mail as sam@apex-financial.org to any address.
+// send mail as sam@galaxyfinancial.org to any address.
 //
 // Callers, inventoried before gating: no src/ invoke, no other edge function,
 // no business-ops script, 0 edge hits in 24h. Four pg functions post here:
@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
     }
     const resend = gateResend(new Resend(resendKey));
     const result = await resend.emails.send({
-      from: from || "Sam at Galaxy <sam@apex-financial.org>",
+      from: from || "Sam at Galaxy <sam@galaxyfinancial.org>",
       to,
       subject,
       html: html || `<pre>${text}</pre>`,

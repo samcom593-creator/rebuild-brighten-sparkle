@@ -102,7 +102,7 @@ Deno.serve(async (req) => {
       subject = msg.subject;
       template = "agent_nudge";
       await resend.emails.send({
-        from: "Galaxy Financial <notifications@apex-financial.org>",
+        from: "Galaxy Financial <notifications@galaxyfinancial.org>",
         to: [email],
         subject,
         html: `<p>Hi ${profile?.full_name || ""},</p><p>${msg.body}</p><p>— Galaxy Team</p>`,

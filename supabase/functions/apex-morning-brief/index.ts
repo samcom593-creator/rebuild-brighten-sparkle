@@ -180,7 +180,7 @@ ${rest.length ? `<p style="color:#64748b;font-size:12px;margin-top:14px">+${rest
   let email_id: string | null = null;
   try {
     const r = await resend.emails.send({
-      from: "Galaxy Engine <sam@apex-financial.org>",
+      from: "Galaxy Engine <sam@galaxyfinancial.org>",
       to: SAM_EMAIL,
       subject: humanize(clean ? `☀️ ${today} · all clear` : `☀️ ${today} · ${totalActions} action${totalActions === 1 ? "" : "s"}${criticalCount ? ` · ${criticalCount} critical` : ""}`),
       html: humanize(html),

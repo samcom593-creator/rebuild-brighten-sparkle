@@ -181,7 +181,7 @@ serve(async (req) => {
     // Send to all agents
     try {
       await resend.emails.send({
-        from: "Galaxy Financial <notifications@apex-financial.org>",
+        from: "Galaxy Financial <notifications@galaxyfinancial.org>",
         bcc: recipients,
         to: "info@kingofsales.net",
         subject: `⚡ COMEBACK! ${agentName} jumped from #${prev} to #${next}!`,

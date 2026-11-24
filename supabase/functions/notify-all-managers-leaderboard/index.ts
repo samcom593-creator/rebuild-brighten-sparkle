@@ -223,7 +223,7 @@ const handler = async (req: Request): Promise<Response> => {
       try {
         // sendEmail drops suppressed and non-routable recipients before Resend sees them.
         const res = await sendEmail({
-          from: "Galaxy Financial <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@galaxyfinancial.org>",
           to: manager.email,
           subject,
           html,

@@ -26,7 +26,7 @@ const corsHeaders = {
 
 const CAMPAIGN = "reapply_doors_open_2026_04_23";
 const SUBJECT  = "The doors are back open.";
-const FROM     = "Sam @ Galaxy Financial <sam@apex-financial.org>";
+const FROM     = "Sam @ Galaxy Financial <sam@galaxyfinancial.org>";
 const SB_URL   = Deno.env.get("SUPABASE_URL")!;
 const SB_SRV   = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const RESEND   = gateResend(new Resend(Deno.env.get("RESEND_API_KEY")));

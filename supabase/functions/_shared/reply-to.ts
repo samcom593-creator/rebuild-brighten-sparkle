@@ -1,7 +1,7 @@
 // Where a recruit's reply lands (MP-ONBOARD-ANCHOR-PKG1, 2026-11-12).
 //
 // Measured 2026-11-11 with an SMTP RCPT probe that sends no message: sam@,
-// notifications@, hello@, alerts@ and unsubscribe@apex-financial.org all return
+// notifications@, hello@, alerts@ and unsubscribe@galaxyfinancial.org all return
 // 550 5.1.1 "account does not exist" at Google's MX, while info@kingofsales.net
 // returns 250. A reply to any apex-financial.org address bounces back to the
 // recruit and leaves no trace on our side. info@kingofsales.net is the only

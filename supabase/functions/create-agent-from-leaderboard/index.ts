@@ -222,7 +222,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Send welcome email with magic link
     const resend = gateResend(new Resend(RESEND_API_KEY));
     const { error: emailError } = await resend.emails.send({
-      from: "Galaxy Financial <notifications@apex-financial.org>",
+      from: "Galaxy Financial <notifications@galaxyfinancial.org>",
       to: [email],
       cc: ["info@kingofsales.net"],
       subject: "🎉 Your Galaxy Portal Access is Ready!",

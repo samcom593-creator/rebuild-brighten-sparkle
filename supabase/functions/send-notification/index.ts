@@ -90,7 +90,7 @@ const handler = async (req: Request): Promise<Response> => {
   // this commit, no credential read: a bare POST {} with no Authorization header
   // reached the body validation (400, nothing sent). The caller chose `email`,
   // `title`, `message` (interpolated into the HTML unescaped) and `url`, so anyone
-  // could mail any address from notifications@apex-financial.org with a link of
+  // could mail any address from notifications@galaxyfinancial.org with a link of
   // their choosing, and text or push any userId on file.
   //
   // Floor is any_authenticated, not admin_or_manager. AgentPipelineSimple
@@ -237,7 +237,7 @@ const handler = async (req: Request): Promise<Response> => {
           try {
             const smsEmail = `${cleanedPhone}@${gateway}`;
             await resend.emails.send({
-               from: "Galaxy Financial <notifications@apex-financial.org>",
+               from: "Galaxy Financial <notifications@galaxyfinancial.org>",
               to: [smsEmail],
               reply_to: RECRUIT_REPLY_TO,
               subject: "",
@@ -299,10 +299,10 @@ const handler = async (req: Request): Promise<Response> => {
         // status:"sent" unconditionally. Result: 24,806 rows in July marked "sent" while
         // Resend was returning 429 monthly_quota_exceeded on every call. Inspect `error`.
         const { data: sendData, error: sendError } = await resend.emails.send({
-          from: "Galaxy Financial <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@galaxyfinancial.org>",
           to: [recipientEmail],
           cc: [ADMIN_EMAIL],
-          // MP-ONBOARD-ANCHOR-PKG1: notifications@apex-financial.org has no mailbox (550 at
+          // MP-ONBOARD-ANCHOR-PKG1: notifications@galaxyfinancial.org has no mailbox (550 at
           // Google's MX), and several bodies sent through here say "reply to this email".
           reply_to: RECRUIT_REPLY_TO,
           subject: title || "Galaxy Financial Notification",

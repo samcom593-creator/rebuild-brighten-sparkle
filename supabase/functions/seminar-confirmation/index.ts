@@ -90,7 +90,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   if (!resend) return json({ ok: true, skipped: "resend not configured" });
   try {
     const r = await resend.emails.send({
-      from: `${BRAND_NAME} <notifications@apex-financial.org>`,
+      from: `${BRAND_NAME} <notifications@galaxyfinancial.org>`,
       to: [String(app.email)],
       subject, html, text,
     });

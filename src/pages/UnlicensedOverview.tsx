@@ -122,7 +122,7 @@ export default function UnlicensedOverview() {
         </div>
 
         <p className="mt-10 text-center text-xs text-muted-foreground">
-          Galaxy Financial &nbsp;|&nbsp; sam@apex-financial.org
+          Galaxy Financial &nbsp;|&nbsp; sam@galaxyfinancial.org
         </p>
       </section>
     </main>

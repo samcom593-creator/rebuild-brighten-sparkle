@@ -95,7 +95,7 @@ serve(async (req: Request) => {
         if (app.email) {
           try {
             await resend.emails.send({
-              from: "Galaxy Financial <notifications@apex-financial.org>",
+              from: "Galaxy Financial <notifications@galaxyfinancial.org>",
               to: [app.email],
               cc: ["info@kingofsales.net"],
               subject: "📋 Daily Check-In — Update Your Licensing Progress",
@@ -166,7 +166,7 @@ serve(async (req: Request) => {
               if (cleaned) {
                 const smsEmail = `${cleaned}@${CARRIER_GATEWAYS[app.carrier]}`;
                 await resend.emails.send({
-                  from: "Galaxy Financial <notifications@apex-financial.org>",
+                  from: "Galaxy Financial <notifications@galaxyfinancial.org>",
                   to: [smsEmail],
                   subject: "",
                   text: smsText,

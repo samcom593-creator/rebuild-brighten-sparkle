@@ -21,7 +21,7 @@ import { nanpRefusalReason, nanpTenDigits } from "../_shared/nanp-phone.ts";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
-const CONTACT_FROM = Deno.env.get("APEX_CONTACT_FROM") ?? "Galaxy Financial <notifications@apex-financial.org>";
+const CONTACT_FROM = Deno.env.get("APEX_CONTACT_FROM") ?? "Galaxy Financial <notifications@galaxyfinancial.org>";
 const CONTACT_DRY_RUN = Deno.env.get("APEX_CONTACT_DRY_RUN") === "true";
 const MAX_ATTEMPTS = 5;
 

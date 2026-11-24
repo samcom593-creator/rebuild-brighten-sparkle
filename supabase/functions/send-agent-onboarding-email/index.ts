@@ -111,7 +111,7 @@ async function loadSettings(sb: any): Promise<Settings> {
   const fromRaw = map.get("onboarding_email_from_address");
   const fromAddr = fromRaw && fromRaw.trim().length > 0
     ? fromRaw.trim()
-    : "Sam James <sam@apex-financial.org>";
+    : "Sam James <sam@galaxyfinancial.org>";
 
   const eventTypeRaw = map.get("onboarding_call_event_type_uri");
   const schedulingRaw = map.get("onboarding_call_scheduling_url");

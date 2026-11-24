@@ -91,7 +91,7 @@ serve(async (req: Request) => {
       if (resend && email) {
         try {
           await resend.emails.send({
-            from: "Sam · Galaxy <notifications@apex-financial.org>",
+            from: "Sam · Galaxy <notifications@galaxyfinancial.org>",
             to: email,
             subject: `${firstName} — don't forget your numbers today`,
             html: `

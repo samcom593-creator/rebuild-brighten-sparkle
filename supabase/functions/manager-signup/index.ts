@@ -212,7 +212,7 @@ serve(async (req) => {
           const adminName = adminProfile.full_name || "Admin";
 
           await resend.emails.send({
-            from: "Galaxy Financial <notifications@apex-financial.org>",
+            from: "Galaxy Financial <notifications@galaxyfinancial.org>",
             to: [adminProfile.email],
             subject: "🎉 New Manager Account Created",
             html: `

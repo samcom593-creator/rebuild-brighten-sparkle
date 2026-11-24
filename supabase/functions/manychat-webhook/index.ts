@@ -93,7 +93,7 @@ async function emailProspect(to: string, lane: Lane, link: string, handle: strin
     const r = await fetch("https://api.resend.com/emails", {
       method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        from: "Sam James <alerts@apex-financial.org>", reply_to: "info@kingofsales.net", to: [to],
+        from: "Sam James <alerts@galaxyfinancial.org>", reply_to: "info@kingofsales.net", to: [to],
         subject: subject[lane],
         text: `yo${handle ? ` ${handle.replace(/^@/, "")}` : ""}, it's sam from ig.\n\n${line[lane]}\n${link}\n\nif something's not clear just reply here or dm me.\n\nsam`,
       }),
@@ -578,7 +578,7 @@ async function emailSam(subject: string, text: string): Promise<void> {
     const r = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { "Authorization": `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from: "Galaxy Alerts <alerts@apex-financial.org>", to: ["sam.com593@gmail.com", "info@kingofsales.net"], subject, text }),
+      body: JSON.stringify({ from: "Galaxy Alerts <alerts@galaxyfinancial.org>", to: ["sam.com593@gmail.com", "info@kingofsales.net"], subject, text }),
     });
     if (!r.ok) console.error("[manychat-webhook] emailSam failed", r.status, (await r.text()).slice(0, 200));
   } catch (e) { console.error("[manychat-webhook] emailSam threw", e); }

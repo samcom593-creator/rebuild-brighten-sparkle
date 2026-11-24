@@ -288,7 +288,7 @@ serve(async (req) => {
     `;
 
     const { error: emailError } = await resend.emails.send({
-      from: "Galaxy Financial <notifications@apex-financial.org>",
+      from: "Galaxy Financial <notifications@galaxyfinancial.org>",
       to: [profile.email],
       cc: ccList.length > 0 ? ccList : undefined,
       subject: `📚 ${firstName}, your course is waiting for you!`,

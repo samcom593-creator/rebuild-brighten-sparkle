@@ -29,7 +29,7 @@ const handler = async (req: Request): Promise<Response> => {
   // PL-WIB-PUSH-OPTIN-AUTH (2026-10-11). verify_jwt = false and, until this
   // commit, no credential read, so a bare POST from anyone emailed every
   // non-terminated applicant with an address (836 on 2026-10-11) from
-  // notifications@apex-financial.org, 1s apart, with no dedupe: every POST
+  // notifications@galaxyfinancial.org, 1s apart, with no dedupe: every POST
   // repeats the whole send. The only caller is NotificationHub's opt-in button
   // (requireAdmin route, user JWT); src/pg_proc/cron otherwise 0, so the
   // admin_or_manager floor locks out nobody.
@@ -93,7 +93,7 @@ const handler = async (req: Request): Promise<Response> => {
         // returns ok:false on a provider refusal. The SDK call it replaces
         // resolves {error} instead of throwing, so refusals were logged as sent.
         const result = await sendEmail({
-          from: "Galaxy Financial <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@galaxyfinancial.org>",
           to: app.email,
           tagName: "push-optin",
           subject: "📲 Stay in the Loop — Enable Push Notifications!",

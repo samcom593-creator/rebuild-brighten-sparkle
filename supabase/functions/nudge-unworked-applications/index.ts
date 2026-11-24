@@ -110,7 +110,7 @@ async function sendEmail(app: App): Promise<{ ok: boolean; error?: string }> {
 </div></body></html>`;
   try {
     await resend.emails.send({
-      from: "Sam James <sam@apex-financial.org>",
+      from: "Sam James <sam@galaxyfinancial.org>",
       to: app.email,
       subject: licensed ? `${first}, fast-track call?` : `${first}, still interested in getting licensed?`,
       html,

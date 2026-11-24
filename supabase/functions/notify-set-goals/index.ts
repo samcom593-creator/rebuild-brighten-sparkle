@@ -168,7 +168,7 @@ Deno.serve(
 </html>`;
 
           await resend.emails.send({
-            from: "Galaxy Financial <notifications@apex-financial.org>",
+            from: "Galaxy Financial <notifications@galaxyfinancial.org>",
             to: [email],
             subject: `📊 ${currentMonth} Goals - Set Yours Now!`,
             html: emailHtml,

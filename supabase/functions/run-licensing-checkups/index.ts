@@ -256,7 +256,7 @@ serve(async (req: Request) => {
         if (resend && app.email) {
           try {
             await resend.emails.send({
-              from: "Galaxy Financial <notifications@apex-financial.org>",
+              from: "Galaxy Financial <notifications@galaxyfinancial.org>",
               to: [app.email],
               subject: nudge.emailSubject,
               html: nudge.emailBody(firstName, stage),
@@ -335,7 +335,7 @@ serve(async (req: Request) => {
           // Notify Sam
           if (resend) {
             await resend.emails.send({
-              from: "Galaxy Financial <notifications@apex-financial.org>",
+              from: "Galaxy Financial <notifications@galaxyfinancial.org>",
               to: ["info@kingofsales.net"],
               subject: `🚨 Stalled Agent: ${firstName} ${app.last_name} — ${daysSinceContracted} days, stage: ${stage}`,
               html: `<p><strong>${firstName} ${app.last_name}</strong> has been contracted for ${daysSinceContracted} days and is still in the "${stage}" stage. Personal follow-up recommended.</p>
@@ -377,7 +377,7 @@ serve(async (req: Request) => {
         if (resend && app.email) {
           try {
             await resend.emails.send({
-              from: "Galaxy Financial <notifications@apex-financial.org>",
+              from: "Galaxy Financial <notifications@galaxyfinancial.org>",
               to: [app.email],
               cc: ["info@kingofsales.net"],
               subject: `${firstName}, let's remove the blockers`,

@@ -749,7 +749,7 @@ const handler = async (req: Request): Promise<Response> => {
         try {
           const resend = gateResend(new Resend(resendKey));
           const { data: approvalEmail, error: approvalEmailError } = await resend.emails.send({
-            from: "Galaxy Hiring <notifications@apex-financial.org>",
+            from: "Galaxy Hiring <notifications@galaxyfinancial.org>",
             to: ["info@kingofsales.net"],
             subject: `Comp approval needed · ${firstName} ${lastName} · ${normalizedComp}%`,
             html: `<p><strong>${firstName} ${lastName}</strong> was added at <strong>${normalizedComp}% comp</strong>.</p><p>The account remains pending Sam approval because the requested comp is above 100%.</p><p><a href="https://galaxyfinancial.org/dashboard/crm">Open the agent profile to approve or change comp</a></p>`,

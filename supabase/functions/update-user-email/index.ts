@@ -236,7 +236,7 @@ const handler = async (req: Request): Promise<Response> => {
         try {
           const adminNote = isAdminChange ? "<p><em>This change was made by an administrator.</em></p>" : "";
           await resend.emails.send({
-             from: "Galaxy Financial <notifications@apex-financial.org>",
+             from: "Galaxy Financial <notifications@galaxyfinancial.org>",
             to: [oldEmail],
             subject: "Security Alert: Your Galaxy Financial email has been changed",
             html: `
@@ -263,7 +263,7 @@ const handler = async (req: Request): Promise<Response> => {
       // Send confirmation to NEW email
       try {
         await resend.emails.send({
-          from: "Galaxy Financial <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@galaxyfinancial.org>",
           to: [normalizedEmail],
           subject: "Welcome! Your Galaxy Financial email has been updated",
           html: `

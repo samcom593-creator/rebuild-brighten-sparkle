@@ -68,7 +68,7 @@ async function loadSettings(sb: ReturnType<typeof createClient>): Promise<Settin
   // empty setting re-emitted the same dead link.
   const reschedule = resolveRescheduleUrl(map.get("seminar_calendly_url"));
   const fromRaw = stripWrappedQuotes(map.get("onboarding_email_from_address"))
-    || "Sam James <sam@apex-financial.org>";
+    || "Sam James <sam@galaxyfinancial.org>";
 
   return {
     resend_api_key: envResend && envResend.length > 8

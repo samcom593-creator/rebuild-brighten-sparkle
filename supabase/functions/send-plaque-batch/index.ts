@@ -208,7 +208,7 @@ Deno.serve(async (req) => {
 
       try {
         await resend.emails.send({
-          from: "Galaxy Financial <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@galaxyfinancial.org>",
           to: [adminEmail],
           subject: `🏆 Galaxy Plaque Digest — ${plaques!.length} awards`,
           html: digestHtml,
@@ -238,7 +238,7 @@ Deno.serve(async (req) => {
 
       try {
         await resend.emails.send({
-          from: "Galaxy Financial <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@galaxyfinancial.org>",
           to: [email],
           subject: `${TIER_CONFIG[tier]?.emoji ?? "🏆"} You earned the ${TIER_CONFIG[tier]?.title ?? "Galaxy"} — ${fmt$(amount)}`,
           html: renderEmailHtml(fullName, tier, amount, date, dataUri),

@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
       // sendEmail drops suppressed and non-routable recipients before Resend sees them;
       // a refusal stays unstamped, so it reads as not sent, never as recovered.
       const res = await sendEmail({
-        from: "Sam James <alerts@apex-financial.org>", reply_to: "info@kingofsales.net", to: p.email,
+        from: "Sam James <alerts@galaxyfinancial.org>", reply_to: "info@kingofsales.net", to: p.email,
         subject: "you started the application, sam",
         text: `yo${p.first_name ? ` ${p.first_name}` : ""}, it's sam from ig.\n\nyou started the application and didn't finish. takes 2 minutes, finish it here and i'll reach out:\n${link}\n\nif something's not clear just reply here.\n\nsam`,
         tagName: "instagram-dm-nudge",

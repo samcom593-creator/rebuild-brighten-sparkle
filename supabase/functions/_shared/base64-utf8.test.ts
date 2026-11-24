@@ -36,7 +36,7 @@ Deno.test("survives the character classes a human can put in system_settings", (
 });
 
 Deno.test("pure ASCII encodes identically to btoa", () => {
-  const s = "BEGIN:VCALENDAR\r\nUID:apex-seminar@apex-financial.org\r\nEND:VCALENDAR\r\n";
+  const s = "BEGIN:VCALENDAR\r\nUID:apex-seminar@galaxyfinancial.org\r\nEND:VCALENDAR\r\n";
   assertEquals(base64Utf8(s), btoa(s));
 });
 

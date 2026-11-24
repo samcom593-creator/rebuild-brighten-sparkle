@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
   const monday: string = body.monday ?? nextMonday();
   const when = pretty(monday);
   const resendKey = await setting("resend_api_key");
-  const from = (await setting("onboarding_email_from_address")) || "Sam James <sam@apex-financial.org>";
+  const from = (await setting("onboarding_email_from_address")) || "Sam James <sam@galaxyfinancial.org>";
   const out: Record<string, unknown>[] = [];
 
   // Claim a send. Returns the claim id, -1 for a dry run, or null when this Monday's

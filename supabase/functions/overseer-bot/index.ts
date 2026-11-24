@@ -169,7 +169,7 @@ Deno.serve(async (req) => {
       `<td style="padding:4px 10px;color:#94a3b8">${c.detail}</td></tr>`
     ).join("");
     await resend.emails.send({
-      from: "Galaxy Overseer <notifications@apex-financial.org>",
+      from: "Galaxy Overseer <notifications@galaxyfinancial.org>",
       to: [ADMIN_EMAIL],
       subject: `${overall === "critical" ? "🚨" : "⚠️"} Galaxy ${overall.toUpperCase()} — ${criticalCount} critical, ${warningCount} warning`,
       html: `<div style="font-family:'DM Sans',Arial;background:#030712;color:#e2e8f0;padding:32px;">

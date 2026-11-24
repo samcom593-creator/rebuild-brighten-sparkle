@@ -281,7 +281,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send admin/manager notification
     const { error: adminEmailError } = await resend.emails.send({
-      from: "Galaxy Financial <notifications@apex-financial.org>",
+      from: "Galaxy Financial <notifications@galaxyfinancial.org>",
       to: adminRecipients,
       subject: `🎓 ${finalAgentName} Completed Onboarding Course!`,
       html: adminEmailHtml,
@@ -296,7 +296,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Send congratulations to the agent
     if (finalAgentEmail) {
       const { error: agentEmailError } = await resend.emails.send({
-        from: "Galaxy Financial <notifications@apex-financial.org>",
+        from: "Galaxy Financial <notifications@galaxyfinancial.org>",
         to: [finalAgentEmail],
         cc: adminRecipients,
         subject: `🎉 Congratulations! You've Completed Your Training!`,

@@ -87,7 +87,7 @@ serve(async (req) => {
         const end = new Date(due.getTime() + 30 * 60 * 1000);
         lines.push(
           "BEGIN:VEVENT",
-          `UID:apex-task-${task.id}@apex-financial.org`,
+          `UID:apex-task-${task.id}@galaxyfinancial.org`,
           `DTSTAMP:${toIcsDate(new Date())}`,
           `DTSTART:${toIcsDate(due)}`,
           `DTEND:${toIcsDate(end)}`,

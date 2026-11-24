@@ -259,7 +259,7 @@ const handler = async (req: Request): Promise<Response> => {
         // for every attempt regardless of outcome. A bulk run could report "42 sent" having
         // delivered zero.
         const { data: sendData, error: sendError } = await resend.emails.send({
-          from: "Galaxy Financial <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@galaxyfinancial.org>",
           to: [profile.email],
           cc: ccList.length > 0 ? ccList : undefined,
           subject: "🎯 Your Galaxy Portal Access - One-Tap Login Inside!",

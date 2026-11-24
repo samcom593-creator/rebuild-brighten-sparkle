@@ -145,7 +145,7 @@ async function sendPageEmail(to: string[], subject: string, text: string): Promi
   const { Resend } = await import("https://esm.sh/resend@2.0.0");
   const resend = gateResend(new Resend(key));
   const { data, error } = await resend.emails.send({
-    from: "Galaxy Engine <sam@apex-financial.org>",
+    from: "Galaxy Engine <sam@galaxyfinancial.org>",
     to,
     subject,
     text,

@@ -190,7 +190,7 @@ ${criticalsBlock}
 
   try {
     await resend.emails.send({
-      from: "Galaxy Engine <sam@apex-financial.org>",
+      from: "Galaxy Engine <sam@galaxyfinancial.org>",
       to: SAM_EMAIL,
       subject: humanize(`📊 Week · ${fmt$(aopT)} · ${wow >= 0 ? "+" : ""}${wow.toFixed(0)}% WoW`),
       html: humanize(html),

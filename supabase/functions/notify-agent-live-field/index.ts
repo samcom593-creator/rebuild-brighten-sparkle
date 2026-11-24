@@ -177,7 +177,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send email to agent
     const { error: emailError } = await resend.emails.send({
-      from: "Galaxy Financial <notifications@apex-financial.org>",
+      from: "Galaxy Financial <notifications@galaxyfinancial.org>",
       to: [agentEmail],
       cc: agentCcList,
       subject: `🚀 You're Officially LIVE, ${agentName}!`,
@@ -195,7 +195,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     await resend.emails.send({
-      from: "Galaxy Financial <notifications@apex-financial.org>",
+      from: "Galaxy Financial <notifications@galaxyfinancial.org>",
       to: notifyRecipients,
       subject: `🚀 ${agentName} is Now LIVE in the Field!`,
       html: `

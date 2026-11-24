@@ -313,7 +313,7 @@ serve(async (req: Request) => {
 
       try {
         const emailResponse = await resend.emails.send({
-          from: "Galaxy Financial <notifications@apex-financial.org>",
+          from: "Galaxy Financial <notifications@galaxyfinancial.org>",
           to: [agentEmail],
           subject: `${milestone.badge} – Congratulations ${agentName}`,
           html: generateEmailHTML(agentName, milestoneType, amount, pngUrl, shareUrl, false),
@@ -393,7 +393,7 @@ serve(async (req: Request) => {
               .single();
             try {
               const mgrResp = await resend.emails.send({
-                from: "Galaxy Financial <notifications@apex-financial.org>",
+                from: "Galaxy Financial <notifications@galaxyfinancial.org>",
                 to: [mgrProf.email],
                 subject: `Team Achievement: ${agentName} – ${milestone.badge}`,
                 html: generateEmailHTML(agentName, milestoneType, amount, pngUrl, shareUrl, true),

@@ -133,7 +133,7 @@ Deno.serve(async (req) => {
                 method: "POST",
                 headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
                 body: JSON.stringify({
-                  from: "Galaxy Alerts <alerts@apex-financial.org>",
+                  from: "Galaxy Alerts <alerts@galaxyfinancial.org>",
                   to: [mgrProfile.email],
                   subject: `⚠️ ${agent.display_name} — 2 days no production`,
                   html: `<p>${agent.display_name} hasn't logged production in 2 days. Please reach out.</p>`,
@@ -161,7 +161,7 @@ Deno.serve(async (req) => {
             method: "POST",
             headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
             body: JSON.stringify({
-              from: "Galaxy Alerts <alerts@apex-financial.org>",
+              from: "Galaxy Alerts <alerts@galaxyfinancial.org>",
               to: ["info@kingofsales.net"],
               subject: `🚨 PRODUCTION GAP: ${agent.display_name} — ${consecutiveMissed} consecutive days`,
               html: `<p><strong>${agent.display_name}</strong> has not logged production in <strong>${consecutiveMissed} consecutive days</strong>.</p>`,

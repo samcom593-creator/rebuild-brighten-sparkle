@@ -470,7 +470,7 @@ Deno.serve(async (req) => {
       </body></html>`;
       try {
         emailResult = await resend.emails.send({
-          from: "Galaxy Awards <notifications@apex-financial.org>",
+          from: "Galaxy Awards <notifications@galaxyfinancial.org>",
           to: [adminEmail],
           subject: `🏆 Galaxy ${label} — Awards Bundle (${generated.length} plaques)`,
           html,

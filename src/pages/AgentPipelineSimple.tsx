@@ -165,7 +165,7 @@ export default function AgentPipelineSimple() {
       await supabase.from("agents").update({ invited_by_manager_id: switchTargetManager }).eq("id", switchAgentId);
       await supabase.functions.invoke("send-notification", {
         body: {
-          email: "sam@apex-financial.org",
+          email: "sam@galaxyfinancial.org",
           title: `Manager Switch Request — ${switchAgentName}`,
           message: `${switchAgentName} is requesting a move to ${targetMgr?.name}. Reason: ${switchReason}`,
         },

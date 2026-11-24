@@ -75,7 +75,7 @@ serve(async (req: Request) => {
           const checkinUrl = `${buildAppUrl("/checkin")}?id=${app.id}`;
 
           await resend.emails.send({
-            from: "Galaxy Financial <notifications@apex-financial.org>",
+            from: "Galaxy Financial <notifications@galaxyfinancial.org>",
             to: [app.email],
             cc: ["info@kingofsales.net"],
             subject: "🚀 Important Update — New Licensing Support Process",

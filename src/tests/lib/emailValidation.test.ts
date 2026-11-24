@@ -10,7 +10,7 @@ describe("email entry hygiene", () => {
   });
   it("stays quiet for correct or unknown domains and for partial input", () => {
     expect(suggestEmailCorrection("x@gmail.com")).toBeNull();
-    expect(suggestEmailCorrection("x@apex-financial.org")).toBeNull();
+    expect(suggestEmailCorrection("x@galaxyfinancial.org")).toBeNull();
     expect(suggestEmailCorrection("x@")).toBeNull();
     expect(suggestEmailCorrection("")).toBeNull();
   });

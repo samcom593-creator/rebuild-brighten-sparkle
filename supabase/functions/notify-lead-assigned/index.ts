@@ -194,7 +194,7 @@ const handler = async (req: Request): Promise<Response> => {
       : `📥 New Lead Assigned: ${sanitized.firstName} ${sanitized.lastName}`;
 
     const emailResponse = await resend.emails.send({
-      from: "Galaxy Notifications <notifications@apex-financial.org>",
+      from: "Galaxy Notifications <notifications@galaxyfinancial.org>",
       to: [newAgentInfo.email],
       cc: ccList.length > 0 ? ccList : undefined,
       subject,

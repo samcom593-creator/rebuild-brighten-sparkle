@@ -47,7 +47,7 @@ const handler = async (req: Request): Promise<Response> => {
     const sendReminder = async (email: string, name: string, attendanceType: string) => {
       const crmUrl = "https://galaxyfinancial.org/dashboard/crm";
       const { error } = await resend.emails.send({
-        from: "Galaxy Financial <notifications@apex-financial.org>",
+        from: "Galaxy Financial <notifications@galaxyfinancial.org>",
         to: [email],
         subject: `⏰ Time to Mark ${attendanceType} Attendance`,
         html: `

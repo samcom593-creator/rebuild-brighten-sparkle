@@ -26,7 +26,7 @@ import {
 import {
   Layers, Send, Download, Archive, DollarSign, AlertTriangle, UserRound, X,
   Trophy, Phone, RotateCcw, Boxes, ClipboardList, Users as UsersIcon, Check,
-  ChevronsUpDown, Info,
+  ChevronsUpDown, Mic, Pause, Play, Undo2, Hourglass,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -57,7 +57,7 @@ type PoolKey = "marketing" | "dialer" | "rewrite" | "winback";
 
 const POOLS: { key: PoolKey; label: string; icon: typeof Layers; blurb: string }[] = [
   { key: "marketing", label: "Marketing", icon: Layers, blurb: "Owned aged leads" },
-  { key: "dialer", label: "Dialer", icon: Phone, blurb: "Called & graded" },
+  { key: "dialer", label: "Dialer", icon: Phone, blurb: "Every ReadyMode lead" },
   { key: "rewrite", label: "Re-write pile", icon: RotateCcw, blurb: "Collected, never booked" },
   { key: "winback", label: "Win-back", icon: Boxes, blurb: "Lapsed policies" },
 ];
@@ -65,7 +65,7 @@ const POOLS: { key: PoolKey; label: string; icon: typeof Layers; blurb: string }
 // Which tier chips + which controls each pool shows.
 const POOL_TIERS: Record<PoolKey, { v: string; label: string }[]> = {
   marketing: [{ v: "A", label: "A" }, { v: "B", label: "B" }, { v: "C", label: "C" }, { v: "D", label: "D" }],
-  dialer: [{ v: "A", label: "A" }, { v: "B", label: "B" }, { v: "C", label: "C" }, { v: "D", label: "D" }, { v: "pos", label: "POS" }],
+  dialer: [{ v: "pos", label: "POS" }, { v: "A", label: "A" }, { v: "B", label: "B" }, { v: "F", label: "Fresh" }, { v: "C", label: "C" }, { v: "D", label: "D" }],
   rewrite: [{ v: "S", label: "S" }, { v: "A", label: "A" }, { v: "B", label: "B" }],
   winback: [{ v: "A", label: "Lapsed" }, { v: "B", label: "Other out-of-force" }],
 };
@@ -99,6 +99,19 @@ type PoolCounts = {
     state: string | null; age: number | null; tier: string; tags: string | null;
     flags: Record<string, unknown>; lead_age_days: number; under_9mo: boolean;
   }>;
+};
+/** What a pool can be filtered by, with how many leads each choice holds (lead_pool_facets). */
+type Facet = { k: string; n: number };
+type PoolFacets = { states: Facet[]; no_state: number; campaigns: Facet[] };
+/** One person holding leads (lead_holder_board). */
+type Holder = {
+  user_id: string; name: string; packs: number; live_leads: number; unworked: number; worked: number;
+  follow_ups: number; sold: number; oldest_unworked_at: string | null; last_worked_at: string | null;
+  last_sign_in_at: string | null; recordings: number; paused: boolean;
+};
+type LeadRecording = {
+  id: string; created_at: string; path: string; summary: string | null; sentiment: string | null;
+  agent: string | null; lead_name: string | null; state: string | null; tier: string | null; status: string | null;
 };
 type AssignableAgent = { user_id: string; agent_id: string; display_name: string; subagency: string | null; is_live?: boolean };
 type RecentBundle = {
@@ -329,7 +342,8 @@ export default function LeadManager() {
   // filter state (shared object; controls shown depend on pool)
   const [tiers, setTiers] = useState<Set<string>>(new Set());
   const [flags, setFlags] = useState<Set<string>>(new Set());
-  const [states, setStates] = useState("");
+  const [states, setStates] = useState<Set<string>>(new Set());
+  const [campaigns, setCampaigns] = useState<Set<string>>(new Set());
   const [minAge, setMinAge] = useState("");
   const [maxAge, setMaxAge] = useState("");
   const [vantageOnly, setVantageOnly] = useState(false);
@@ -345,7 +359,7 @@ export default function LeadManager() {
   // reset tier/flag selections when switching pools (they differ per pool)
   useEffect(() => {
     setTiers(new Set()); setFlags(new Set()); setVantageOnly(false);
-    setStates(""); setMinAge(""); setMaxAge("");
+    setStates(new Set()); setCampaigns(new Set()); setMinAge(""); setMaxAge("");
   }, [pool]);
 
   const [agent, setAgent] = useState<AssignableAgent | null>(null);
@@ -354,17 +368,16 @@ export default function LeadManager() {
     const f: Record<string, unknown> = { exclude_dnc: excludeDnc, exclude_resold: excludeResold, sort };
     if (tiers.size) f.tiers = Array.from(tiers);
     if (flags.size) f.require_flags = Array.from(flags);
-    // state/age inputs only exist for the marketing pool — never leak them into
-    // dialer/rewrite/winback (which emit null state/age) and silently zero them.
-    if (pool === "marketing") {
-      const st = states.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean);
-      if (st.length) f.states = st;
-      if (minAge) f.min_age = Number(minAge);
-      if (maxAge) f.max_age = Number(maxAge);
-    }
+    // Every pool carries a state and an age now (MP-LEAD-MANAGER-RM): the dialer pool from the
+    // lead's ReadyMode file, win-back and re-write from the lead's own record, the phone's area
+    // code where nothing better is on file. So the same filters apply to all four.
+    if (states.size) f.states = Array.from(states);
+    if (campaigns.size) f.campaigns = Array.from(campaigns);
+    if (minAge) f.min_age = Number(minAge);
+    if (maxAge) f.max_age = Number(maxAge);
     if (vantageOnly) f.vantage_only = true;
     return f;
-  }, [pool, tiers, flags, states, minAge, maxAge, vantageOnly, excludeDnc, excludeResold, sort]);
+  }, [tiers, flags, states, campaigns, minAge, maxAge, vantageOnly, excludeDnc, excludeResold, sort]);
 
   const debouncedFilters = useDebounced(filters, 350);
 
@@ -404,6 +417,22 @@ export default function LeadManager() {
     // with the spinner while a filter tweak recomputes, instead of blanking to "—".
     placeholderData: (prev) => prev,
   });
+
+  // The states and campaigns that can be picked in this pool, with counts. Read from the same
+  // 10-minute snapshot as the counts; cached per pool.
+  const facetsQuery = useQuery<PoolFacets>({
+    queryKey: ["lead-pool-facets", pool],
+    queryFn: async () => {
+      const { data, error } = await rpc("lead_pool_facets", { p_source: pool });
+      if (error) throw error;
+      const f = (data ?? {}) as Partial<PoolFacets>;
+      return { states: f.states ?? [], no_state: f.no_state ?? 0, campaigns: f.campaigns ?? [] };
+    },
+    staleTime: 10 * 60_000,
+  });
+  const facets = facetsQuery.data ?? { states: [], no_state: 0, campaigns: [] };
+  const toggleIn = (setter: React.Dispatch<React.SetStateAction<Set<string>>>) => (k: string) =>
+    setter((prev) => { const n = new Set(prev); if (n.has(k)) n.delete(k); else n.add(k); return n; });
 
   // Shared tap-roster (see useAgentRoster above) — the same list BundleManage taps from.
   const agentsRoster = useAgentRoster();
@@ -537,9 +566,9 @@ export default function LeadManager() {
               <span className="text-xs text-muted-foreground">{p.blurb}</span>
               {totals[p.key] && Object.keys(totals[p.key].by_tier).length > 0 && (
                 <span className="mt-0.5 flex flex-wrap gap-x-2 text-[10px] tabular-nums text-muted-foreground">
-                  {["S", "A", "B", "C", "D"].filter((t) => (totals[p.key].by_tier[t] ?? 0) > 0).map((t) => (
+                  {["S", "pos", "A", "B", "F", "C", "D"].filter((t) => (totals[p.key].by_tier[t] ?? 0) > 0).map((t) => (
                     <span key={t}>
-                      <span className="font-semibold text-foreground/80">{t}</span> {totals[p.key].by_tier[t].toLocaleString()}
+                      <span className="font-semibold text-foreground/80">{t === "pos" ? "POS" : t === "F" ? "Fresh" : t}</span> {totals[p.key].by_tier[t].toLocaleString()}
                     </span>
                   ))}
                 </span>
@@ -559,41 +588,31 @@ export default function LeadManager() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <div className="flex items-center gap-1.5">
-              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Tier</Label>
-              {/* Sam (2026-11-09): "explain the differences between A, B, C, D type
-                  of leads" — the ladder for the ACTIVE pool, same copy agents see. */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button type="button" aria-label="What the tiers mean" className="text-muted-foreground transition-colors hover:text-foreground">
-                    <Info className="h-3.5 w-3.5" />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80 text-sm" align="start">
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tiers in the {POOLS.find((p) => p.key === pool)?.label} pool</p>
-                  <ul className="space-y-1.5">
-                    {tierLegendFor(pool).map((t) => (
-                      <li key={t.tier} className="flex gap-2">
-                        <Badge variant="outline" className={cn("h-5 shrink-0 font-normal", TIER_STYLE[t.tier] ?? "")}>{t.tier}</Badge>
-                        <span className="text-muted-foreground">{t.desc}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </PopoverContent>
-              </Popover>
-            </div>
+            <Label className="text-xs uppercase tracking-wide text-muted-foreground">Tier</Label>
             <div className="flex flex-wrap gap-2">
               {tierOpts.map((t) => {
                 const on = tiers.has(t.v);
                 return (
                   <Button key={t.v} type="button" size="sm" variant={on ? "default" : "outline"} className="rounded-full"
-                    onClick={() => setTiers((prev) => { const n = new Set(prev); n.has(t.v) ? n.delete(t.v) : n.add(t.v); return n; })}>
+                    onClick={() => toggleIn(setTiers)(t.v)}>
                     {t.label}
-                    {counts?.by_tier?.[t.v] != null && <span className="ml-1.5 text-xs opacity-70">{counts.by_tier[t.v]}</span>}
+                    {counts?.by_tier?.[t.v] != null && <span className="ml-1.5 text-xs opacity-70">{counts.by_tier[t.v].toLocaleString()}</span>}
                   </Button>
                 );
               })}
             </div>
+            {/* Sam (2026-11-23): "a description of each lead type A, B, C, D" on every pool. Always on
+                screen, the same words the agent sees on the lead card (tierLegendFor). */}
+            <ul className="grid gap-x-4 gap-y-1 rounded-lg border border-border/60 bg-muted/20 p-3 text-xs sm:grid-cols-2" data-testid="tier-legend">
+              {tierLegendFor(pool).map((t) => (
+                <li key={t.tier} className="flex items-start gap-2">
+                  <Badge variant="outline" className={cn("h-5 shrink-0 font-normal", TIER_STYLE[t.tier] ?? "")}>
+                    {t.tier === "pos" ? "POS" : t.tier === "F" ? "Fresh" : t.tier}
+                  </Badge>
+                  <span className="text-muted-foreground">{t.desc}</span>
+                </li>
+              ))}
+            </ul>
           </div>
 
           {flagOpts.length > 0 && (
@@ -604,7 +623,7 @@ export default function LeadManager() {
                   const on = flags.has(f.key);
                   return (
                     <Button key={f.key} type="button" size="sm" variant={on ? "default" : "outline"} className="rounded-full"
-                      onClick={() => setFlags((prev) => { const n = new Set(prev); n.has(f.key) ? n.delete(f.key) : n.add(f.key); return n; })}>
+                      onClick={() => toggleIn(setFlags)(f.key)}>
                       {f.label}
                     </Button>
                   );
@@ -613,23 +632,27 @@ export default function LeadManager() {
             </div>
           )}
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {pool === "marketing" && (
-              <>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">States (TX, FL)</Label>
-                  <Input value={states} onChange={(e) => setStates(e.target.value)} placeholder="All states" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Min age</Label>
-                  <Input type="number" inputMode="numeric" value={minAge} onChange={(e) => setMinAge(e.target.value)} placeholder="—" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Max age</Label>
-                  <Input type="number" inputMode="numeric" value={maxAge} onChange={(e) => setMaxAge(e.target.value)} placeholder="—" />
-                </div>
-              </>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">State</Label>
+              <MultiPick label="States" placeholder="All states" options={facets.states} selected={states}
+                onToggle={toggleIn(setStates)} onClear={() => setStates(new Set())} />
+            </div>
+            {facets.campaigns.length > 0 && (
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">ReadyMode campaign</Label>
+                <MultiPick label="Campaigns" placeholder="All campaigns" options={facets.campaigns} selected={campaigns}
+                  onToggle={toggleIn(setCampaigns)} onClear={() => setCampaigns(new Set())} />
+              </div>
             )}
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Min age</Label>
+              <Input type="number" inputMode="numeric" value={minAge} onChange={(e) => setMinAge(e.target.value)} placeholder="Any" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Max age</Label>
+              <Input type="number" inputMode="numeric" value={maxAge} onChange={(e) => setMaxAge(e.target.value)} placeholder="Any" />
+            </div>
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">Sort</Label>
               <Select value={sort} onValueChange={setSort}>
@@ -673,6 +696,12 @@ export default function LeadManager() {
             <StatTile label="Held: Do-Not-Call" value={(counts?.dnc_excluded ?? 0).toLocaleString()} />
             <StatTile label="Held: already sold" value={(counts?.resold_excluded ?? 0).toLocaleString()} />
           </div>
+          {facetsQuery.isError && (
+            <QueryState status="error" label="the state and campaign lists" error={facetsQuery.error} onRetry={() => void facetsQuery.refetch()} compact />
+          )}
+          {(minAge || maxAge) && pool !== "marketing" && (
+            <p className="text-xs text-muted-foreground">An age filter leaves out leads with no age on file.</p>
+          )}
           {counts?.as_of && (
             <p className="text-xs text-muted-foreground" data-testid="pool-snapshot-age">
               Pool counts come from a snapshot refreshed {formatTimeAgo(counts.as_of)} (every 10 min). Leads already dropped or sold are excluded live.
@@ -769,6 +798,13 @@ export default function LeadManager() {
           </Button>
         </CardContent>
       </Card>
+
+      {/* WHO IS SITTING ON LEADS */}
+      <HolderBoard onChange={() => {
+        queryClient.invalidateQueries({ queryKey: ["lead-bundles-recent"] });
+        queryClient.invalidateQueries({ queryKey: ["lead-pool"] });
+        queryClient.invalidateQueries({ queryKey: ["lead-pool-tiles"] });
+      }} />
 
       {/* CLOSERS LEADERBOARD */}
       <Card>
@@ -882,6 +918,9 @@ export default function LeadManager() {
           );
         })()}
       </div>
+
+      {/* CALL RECORDINGS */}
+      <RecordingsCard />
     </div>
   );
 }
@@ -946,7 +985,7 @@ function MarkSoldDialog({ bundle, onDone }: { bundle: RecentBundle; onDone: () =
 
 type ManageItem = {
   item_id: string; name: string | null; phone_masked: string;
-  tier: string | null; status: string; tags: string | null; has_recording: boolean;
+  tier: string | null; status: string; tags: string | null; has_recording: boolean; recordings?: number;
 };
 
 // A wedged client (stale service worker, or a network flap that left React Query
@@ -1070,7 +1109,9 @@ function BundleManage({ bundle, onChange }: { bundle: RecentBundle; onChange: ()
                     <span className="flex-1 truncate">{it.name ?? "—"} <span className="font-mono text-muted-foreground">{it.phone_masked}</span></span>
                     <Badge variant="outline" className={cn("text-[10px]", TIER_STYLE[it.tier ?? "C"] ?? TIER_STYLE.C)}>{it.tier}</Badge>
                     <span className="text-muted-foreground">{it.status}</span>
-                    {it.has_recording && <Phone className="h-3 w-3 text-green-400" />}
+                    {(it.recordings ?? 0) > 0 ? (
+                      <span className="inline-flex items-center gap-0.5 text-green-400" title="Call recordings on this lead"><Mic className="h-3 w-3" />{it.recordings}</span>
+                    ) : it.has_recording ? <Mic className="h-3 w-3 text-green-400" /> : null}
                     <button type="button" disabled={busy} onClick={() => removeItem(it.item_id)} aria-label="Remove lead from pack" className="text-muted-foreground hover:text-rose-400"><X className="h-3.5 w-3.5" /></button>
                   </div>
                 ))}
@@ -1080,5 +1121,235 @@ function BundleManage({ bundle, onChange }: { bundle: RecentBundle; onChange: ()
         </div>
       )}
     </div>
+  );
+}
+
+// One tap-open list for "pick any of these" filters (states, campaigns): every choice carries the
+// number of leads behind it, so a filter never has to be typed or guessed.
+function MultiPick({
+  label, placeholder, options, selected, onToggle, onClear,
+}: {
+  label: string; placeholder: string; options: Facet[]; selected: Set<string>;
+  onToggle: (k: string) => void; onClear: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const picked = Array.from(selected);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button type="button" variant="outline" role="combobox" aria-expanded={open} aria-label={label}
+          className="h-10 w-full justify-between px-3 font-normal">
+          <span className={cn("truncate", picked.length === 0 && "text-muted-foreground")}>
+            {picked.length === 0 ? placeholder : picked.length <= 3 ? picked.join(", ") : `${picked.length} picked`}
+          </span>
+          <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] min-w-60 p-0" align="start">
+        <Command>
+          <CommandInput placeholder={`Search ${label.toLowerCase()}…`} />
+          <CommandList className="max-h-72">
+            <CommandEmpty>Nothing matches.</CommandEmpty>
+            {options.map((o) => (
+              <CommandItem key={o.k} value={o.k} onSelect={() => onToggle(o.k)} className="gap-2 py-2">
+                <Check className={cn("h-4 w-4 shrink-0", selected.has(o.k) ? "text-primary opacity-100" : "opacity-0")} />
+                <span className="flex-1 truncate">{o.k}</span>
+                <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{o.n.toLocaleString()}</span>
+              </CommandItem>
+            ))}
+          </CommandList>
+          {picked.length > 0 && (
+            <button type="button" onClick={onClear}
+              className="flex w-full items-center justify-center border-t border-border/50 px-3 py-2 text-xs text-muted-foreground transition-colors hover:text-foreground">
+              Clear {picked.length} picked
+            </button>
+          )}
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// Who is sitting on leads (Sam, 2026-11-23: "move leads out of inboxes and remove them from people
+// who aren't working them ... make sure people are actually working those leads"). One row per
+// person holding leads: how many they have never touched, how long the oldest has waited, when they
+// last worked one. Take back returns the untouched leads to the pool (worked ones stay with them) and
+// pauses the hourly top-up, which would otherwise hand them 25 more within the hour.
+function HolderBoard({ onChange }: { onChange: () => void }) {
+  const queryClient = useQueryClient();
+  const q = useQuery<Holder[]>({
+    queryKey: ["lead-holders"],
+    queryFn: async () => {
+      const { data, error } = await rpc("lead_holder_board");
+      if (error) throw error;
+      return (data as Holder[]) ?? [];
+    },
+    staleTime: 30_000,
+  });
+  const { roster, degraded } = useAgentRoster();
+  const [busy, setBusy] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const [everyone, setEveryone] = useState(false);
+  const rows = q.data ?? [];
+  const sitting = rows.filter((h) => h.unworked > 0 || h.paused);
+  const shown = everyone ? rows : sitting;
+  const untouched = rows.reduce((n, h) => n + h.unworked, 0);
+  const done = () => { void queryClient.invalidateQueries({ queryKey: ["lead-holders"] }); onChange(); };
+
+  async function run(key: string, fn: () => Promise<string>) {
+    setBusy(key);
+    try { toast.success(await fn()); done(); }
+    catch (e) { toast.error(e instanceof Error ? e.message : "That did not go through"); }
+    finally { setBusy(null); setConfirming(null); }
+  }
+  const takeBack = (h: Holder) => run(`${h.user_id}:pull`, async () => {
+    const { data, error } = await rpc("lead_pull_back", { p_user: h.user_id, p_pause: true });
+    if (error) throw new Error(error.message);
+    const n = (data as { pulled: number }).pulled;
+    return `Took ${n} untouched lead${n === 1 ? "" : "s"} back from ${h.name}. They are in the pool again.`;
+  });
+  const moveTo = (h: Holder, to: AssignableAgent) => run(`${h.user_id}:move`, async () => {
+    const { data, error } = await rpc("lead_move_unworked", { p_from: h.user_id, p_to: to.user_id, p_limit: null, p_pause: true });
+    if (error) throw new Error(error.message);
+    const n = (data as { moved: number }).moved;
+    return `Moved ${n} lead${n === 1 ? "" : "s"} from ${h.name} to ${to.display_name}.`;
+  });
+  const setPaused = (h: Holder, on: boolean) => run(`${h.user_id}:hold`, async () => {
+    const { error } = await rpc("lead_hold_set", { p_user: h.user_id, p_on: on, p_reason: null });
+    if (error) throw new Error(error.message);
+    return on ? `${h.name} gets no automatic leads until you resume them.` : `${h.name} gets automatic leads again.`;
+  });
+
+  return (
+    <Card data-testid="holder-board">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex flex-wrap items-center justify-between gap-2 text-base">
+          <span className="flex items-center gap-2"><Hourglass className="h-4 w-4 text-primary" /> Who is sitting on leads</span>
+          {rows.length > 0 && (
+            <Button type="button" size="sm" variant="outline" onClick={() => setEveryone((v) => !v)}>
+              {everyone ? "Only people with untouched leads" : `Show everyone holding leads (${rows.length})`}
+            </Button>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {q.isError ? (
+          <QueryState status="error" label="who holds leads" error={q.error} onRetry={() => void q.refetch()} compact />
+        ) : q.isPending ? (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : rows.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nobody holds any leads right now.</p>
+        ) : (
+          <>
+            <p className="text-sm text-muted-foreground">
+              {untouched.toLocaleString()} lead{untouched === 1 ? "" : "s"} handed out and never touched, across {rows.filter((h) => h.unworked > 0).length} people.
+              Taking leads back leaves the ones they have worked with them.
+            </p>
+            {shown.length === 0 && <p className="text-sm text-muted-foreground">Everyone has touched every lead they hold.</p>}
+            {shown.map((h) => {
+              const never = h.unworked > 0 && !h.last_worked_at;
+              const others = roster.filter((a) => a.user_id !== h.user_id);
+              return (
+                <div key={h.user_id} className="space-y-2 rounded-lg border border-border/50 px-3 py-2.5" data-testid="holder-row">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <span className="text-sm font-medium">{h.name}</span>
+                    {h.paused && <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-300">automatic leads paused</Badge>}
+                    <span className={cn("text-sm tabular-nums", h.unworked > 0 ? "font-semibold text-amber-400" : "text-muted-foreground")}>
+                      {h.unworked} untouched of {h.live_leads}
+                    </span>
+                    {h.follow_ups > 0 && <span className="text-xs text-muted-foreground">{h.follow_ups} callbacks or appointments</span>}
+                    {h.sold > 0 && <span className="text-xs text-green-400">{h.sold} sold</span>}
+                    {h.recordings > 0 && <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground"><Mic className="h-3 w-3" />{h.recordings}</span>}
+                  </div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
+                    {h.oldest_unworked_at && <span>oldest untouched lead given {formatTimeAgo(h.oldest_unworked_at)}</span>}
+                    <span className={cn(never && "text-amber-400")}>{h.last_worked_at ? `last worked a lead ${formatTimeAgo(h.last_worked_at)}` : h.live_leads > 0 ? "has never worked a lead" : "holds no leads"}</span>
+                    <span>{h.last_sign_in_at ? `signed in ${formatTimeAgo(h.last_sign_in_at)}` : "has never signed in"}</span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {h.unworked > 0 && (confirming === h.user_id ? (
+                      <>
+                        <Button type="button" size="sm" variant="destructive" disabled={busy !== null} onClick={() => void takeBack(h)}>
+                          {busy === `${h.user_id}:pull` ? "Taking back…" : `Yes, take back ${h.unworked}`}
+                        </Button>
+                        <Button type="button" size="sm" variant="ghost" disabled={busy !== null} onClick={() => setConfirming(null)}>Cancel</Button>
+                      </>
+                    ) : (
+                      <Button type="button" size="sm" variant="outline" disabled={busy !== null} onClick={() => setConfirming(h.user_id)}>
+                        <Undo2 className="mr-1 h-3.5 w-3.5" /> Take back {h.unworked} untouched
+                      </Button>
+                    ))}
+                    {h.unworked > 0 && (
+                      <AgentDropdown agents={others} degraded={degraded} isLoading={roster.length === 0} selectedId={null}
+                        onPick={(a) => void moveTo(h, a)} placeholder={`Move ${h.unworked} to another agent…`}
+                        disabled={busy !== null} widthClass="w-full sm:w-64" />
+                    )}
+                    <Button type="button" size="sm" variant="ghost" disabled={busy !== null} onClick={() => void setPaused(h, !h.paused)}>
+                      {h.paused ? <><Play className="mr-1 h-3.5 w-3.5" /> Resume automatic leads</> : <><Pause className="mr-1 h-3.5 w-3.5" /> Pause automatic leads</>}
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// Every recording an agent makes from a lead card, newest first, for review and training. Playback
+// uses a one-hour signed link; the recordings bucket is readable by admins only.
+function RecordingsCard() {
+  const q = useQuery<LeadRecording[]>({
+    queryKey: ["lead-recordings-recent"],
+    queryFn: async () => {
+      const { data, error } = await rpc("lead_recordings_recent", { p_limit: 40 });
+      if (error) throw error;
+      return (data as LeadRecording[]) ?? [];
+    },
+    staleTime: 60_000,
+  });
+  const [playing, setPlaying] = useState<{ id: string; url: string } | null>(null);
+  async function play(r: LeadRecording) {
+    const { data, error } = await supabase.storage.from("call-recordings").createSignedUrl(r.path, 3600);
+    if (error || !data?.signedUrl) { toast.error("That recording could not be opened"); return; }
+    setPlaying({ id: r.id, url: data.signedUrl });
+  }
+  const rows = q.data ?? [];
+  return (
+    <Card data-testid="lead-recordings">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base"><Mic className="h-4 w-4 text-primary" /> Calls recorded from lead cards</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-1.5">
+        {q.isError ? (
+          <QueryState status="error" label="lead call recordings" error={q.error} onRetry={() => void q.refetch()} compact />
+        ) : rows.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No recordings yet. Every lead in My Leads has a Record button; each recording is saved to that lead the moment it finishes and shows up here.
+          </p>
+        ) : (
+          rows.map((r) => (
+            <div key={r.id} className="rounded-lg border border-border/50 px-3 py-2">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                <Button type="button" size="sm" variant="outline" className="h-8" onClick={() => void play(r)}>
+                  <Play className="mr-1 h-3.5 w-3.5" /> Play
+                </Button>
+                <span className="font-medium">{r.agent ?? "Agent"}</span>
+                <span className="text-muted-foreground">with {r.lead_name ?? "a lead"}{r.state ? `, ${r.state}` : ""}</span>
+                {r.tier && <Badge variant="outline" className={cn("text-[10px]", TIER_STYLE[r.tier] ?? TIER_STYLE.C)}>{r.tier === "pos" ? "POS" : r.tier === "F" ? "Fresh" : r.tier}</Badge>}
+                {r.status && <span className="text-xs text-muted-foreground">{r.status.replace(/_/g, " ")}</span>}
+                <span className="text-xs text-muted-foreground">{formatTimeAgo(r.created_at)}</span>
+              </div>
+              {r.summary && <p className="mt-1 text-xs text-muted-foreground">{r.summary}</p>}
+              {playing?.id === r.id && (
+                <audio controls autoPlay src={playing.url} className="mt-2 w-full" />
+              )}
+            </div>
+          ))
+        )}
+      </CardContent>
+    </Card>
   );
 }

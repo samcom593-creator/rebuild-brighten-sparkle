@@ -2294,6 +2294,13 @@
       "notes",
       "task_id"
     ],
+    "brand_galaxy_preimage_20261124": [
+      "captured_at",
+      "col",
+      "old_value",
+      "row_id",
+      "tbl"
+    ],
     "brand_leads": [
       "answers",
       "created_at",
@@ -2455,6 +2462,22 @@
       "win_score",
       "winning_lines"
     ],
+    "call_training_team_copy": [
+      "audio_path",
+      "call_id",
+      "key_quotes",
+      "muted_ranges",
+      "muted_seconds",
+      "objection_moments",
+      "pii_hits",
+      "redacted_at",
+      "redaction_version",
+      "score_reasons",
+      "script_steps",
+      "strengths",
+      "summary",
+      "tactics"
+    ],
     "call_transcripts": [
       "agent_id",
       "ai_model",
@@ -2497,6 +2520,74 @@
       "updated_at",
       "weekly_presentation_target",
       "why_statement"
+    ],
+    "carrier_book_chargebacks": [
+      "agent_id",
+      "agent_name",
+      "agent_npn",
+      "amount",
+      "carrier",
+      "chargeback_on",
+      "first_seen_on",
+      "last_seen_on",
+      "original_amount",
+      "policy_number",
+      "reason",
+      "ref_id",
+      "source",
+      "status"
+    ],
+    "carrier_book_policies": [
+      "agent_id",
+      "agent_match",
+      "agent_name",
+      "agent_npn",
+      "annual_premium",
+      "carrier",
+      "client_name",
+      "close_reason",
+      "effective_on",
+      "external_id",
+      "face_amount",
+      "first_seen_on",
+      "issued_on",
+      "last_seen_on",
+      "lost_on",
+      "monthly_premium",
+      "policy_key",
+      "policy_number",
+      "product",
+      "site_deal_id",
+      "site_match",
+      "sold_on",
+      "sold_on_basis",
+      "stage",
+      "status_bucket",
+      "status_changed_on",
+      "status_pre",
+      "status_raw",
+      "underwriter",
+      "updated_at"
+    ],
+    "carrier_book_runs": [
+      "carrier",
+      "chargebacks",
+      "id",
+      "note",
+      "ok",
+      "policies",
+      "run_at"
+    ],
+    "carrier_book_status_events": [
+      "carrier",
+      "created_at",
+      "from_bucket",
+      "from_raw",
+      "id",
+      "observed_on",
+      "policy_key",
+      "to_bucket",
+      "to_raw"
     ],
     "carrier_hierarchy_exemptions": [
       "carrier",
@@ -5016,6 +5107,15 @@
       "lead_id",
       "title"
     ],
+    "lead_agent_holds": [
+      "held_at",
+      "held_by",
+      "id",
+      "lifted_at",
+      "lifted_by",
+      "reason",
+      "user_id"
+    ],
     "lead_bundle_events": [
       "action",
       "actor",
@@ -5076,6 +5176,16 @@
       "count",
       "id",
       "updated_at"
+    ],
+    "lead_item_recordings": [
+      "bundle_id",
+      "created_at",
+      "id",
+      "item_id",
+      "phone10",
+      "recording_path",
+      "summary",
+      "user_id"
     ],
     "lead_payment_tracking": [
       "agent_id",
@@ -6849,6 +6959,24 @@
       "note",
       "verdict"
     ],
+    "readymode_leads": [
+      "address",
+      "age",
+      "attrs",
+      "batch_name",
+      "campaign",
+      "city",
+      "email",
+      "first_name",
+      "first_seen_at",
+      "last_name",
+      "phone10",
+      "pulled_at",
+      "rm_lead_id",
+      "state",
+      "times_called",
+      "zip"
+    ],
     "readymode_packet_access_log": [
       "accessed_at",
       "accessed_by",
@@ -7693,6 +7821,24 @@
       "source",
       "title",
       "updated_at"
+    ],
+    "training_recordings": [
+      "audio_path",
+      "description",
+      "duration_seconds",
+      "id",
+      "muted_seconds",
+      "pii_hits",
+      "presenter_id",
+      "presenter_name",
+      "published",
+      "recorded_on",
+      "redacted_at",
+      "redaction_version",
+      "sort_key",
+      "title",
+      "topic",
+      "transcript"
     ],
     "transfer_requests": [
       "agent_id",
@@ -9463,6 +9609,14 @@
       "win_score",
       "winning_lines"
     ],
+    "v_carrier_book_freshness": [
+      "carrier",
+      "hours_stale",
+      "last_error",
+      "last_error_at",
+      "last_ok_at",
+      "policies"
+    ],
     "v_carrier_book_recon": [
       "agent_id",
       "agent_name",
@@ -9499,6 +9653,9 @@
       "total_policies",
       "total_premium",
       "unmatched_agents"
+    ],
+    "v_carrier_dead_site_deals": [
+      "deal_id"
     ],
     "v_carrier_dormancy_watch": [
       "agents",
@@ -14121,6 +14278,18 @@
     "v_seminar_next_slots": [
       "dow",
       "slot_at"
+    ],
+    "v_site_deals_not_in_portal": [
+      "agent_has_portal_policies",
+      "agent_id",
+      "agent_name",
+      "annual_premium",
+      "carrier",
+      "days_old",
+      "deal_id",
+      "policy_number",
+      "policy_number_grade",
+      "posted_date"
     ],
     "v_slack_destination_health": [
       "channel_id",

@@ -310,6 +310,18 @@
         "raw": "p_agent_id uuid"
       }
     ],
+    "agent_carrier_book": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
     "agent_claim_state": [
       {
         "all": [
@@ -1815,6 +1827,64 @@
         "raw": "p_id uuid, p_reason text, p_outcome text DEFAULT NULL::text"
       }
     ],
+    "carrier_book_digest": [
+      {
+        "all": [
+          "p_since"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_since timestamp with time zone DEFAULT (now() - '24:00:00'::interval)"
+      }
+    ],
+    "carrier_book_ingest": [
+      {
+        "all": [
+          "p_carrier",
+          "p_chargebacks",
+          "p_policies",
+          "p_snapshot"
+        ],
+        "required": [
+          "p_carrier",
+          "p_policies"
+        ],
+        "unnamed": false,
+        "raw": "p_carrier text, p_policies jsonb, p_chargebacks jsonb DEFAULT '[]'::jsonb, p_snapshot date DEFAULT ((now() AT TIME ZONE 'America/Phoenix'::text))::date"
+      }
+    ],
+    "carrier_book_log_failure": [
+      {
+        "all": [
+          "p_carrier",
+          "p_note"
+        ],
+        "required": [
+          "p_carrier",
+          "p_note"
+        ],
+        "unnamed": false,
+        "raw": "p_carrier text, p_note text"
+      }
+    ],
+    "carrier_book_match_client_only": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "carrier_book_reconcile": [
+      {
+        "all": [
+          "p_refresh"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_refresh boolean DEFAULT true"
+      }
+    ],
     "carrier_command": [
       {
         "all": [],
@@ -2650,6 +2720,20 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "dashboard_deal_status": [
+      {
+        "all": [
+          "p_end",
+          "p_start"
+        ],
+        "required": [
+          "p_end",
+          "p_start"
+        ],
+        "unnamed": false,
+        "raw": "p_start date, p_end date"
       }
     ],
     "dashboard_paid_today_summary": [
@@ -3806,7 +3890,107 @@
         "raw": ""
       }
     ],
+    "fn_carrier_bucket_placed": [
+      {
+        "all": [
+          "p_bucket"
+        ],
+        "required": [
+          "p_bucket"
+        ],
+        "unnamed": false,
+        "raw": "p_bucket text"
+      }
+    ],
+    "fn_carrier_bucket_written": [
+      {
+        "all": [
+          "p_bucket"
+        ],
+        "required": [
+          "p_bucket"
+        ],
+        "unnamed": false,
+        "raw": "p_bucket text"
+      }
+    ],
+    "fn_carrier_name_key": [
+      {
+        "all": [
+          "p"
+        ],
+        "required": [
+          "p"
+        ],
+        "unnamed": false,
+        "raw": "p text"
+      }
+    ],
+    "fn_carrier_pn_key": [
+      {
+        "all": [
+          "p"
+        ],
+        "required": [
+          "p"
+        ],
+        "unnamed": false,
+        "raw": "p text"
+      }
+    ],
     "fn_carrier_policies_touch": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_carrier_resolve_agent": [
+      {
+        "all": [
+          "p_name",
+          "p_npn"
+        ],
+        "required": [
+          "p_name",
+          "p_npn"
+        ],
+        "unnamed": false,
+        "raw": "p_npn text, p_name text"
+      }
+    ],
+    "fn_carrier_status_bucket": [
+      {
+        "all": [
+          "p_carrier",
+          "p_pre",
+          "p_raw",
+          "p_stage"
+        ],
+        "required": [
+          "p_carrier",
+          "p_pre",
+          "p_raw",
+          "p_stage"
+        ],
+        "unnamed": false,
+        "raw": "p_carrier text, p_raw text, p_pre text, p_stage text"
+      }
+    ],
+    "fn_carrier_status_label": [
+      {
+        "all": [
+          "p_bucket"
+        ],
+        "required": [
+          "p_bucket"
+        ],
+        "unnamed": false,
+        "raw": "p_bucket text"
+      }
+    ],
+    "fn_carrier_visible_agent_ids": [
       {
         "all": [],
         "required": [],
@@ -5354,6 +5538,20 @@
         "raw": ""
       }
     ],
+    "fn_lead_age": [
+      {
+        "all": [
+          "p_age",
+          "p_dob"
+        ],
+        "required": [
+          "p_age",
+          "p_dob"
+        ],
+        "unnamed": false,
+        "raw": "p_age text, p_dob text"
+      }
+    ],
     "fn_lead_type_of": [
       {
         "all": [
@@ -5364,6 +5562,30 @@
         ],
         "unnamed": false,
         "raw": "p text"
+      }
+    ],
+    "fn_lead_unworked_items": [
+      {
+        "all": [
+          "p_user"
+        ],
+        "required": [
+          "p_user"
+        ],
+        "unnamed": false,
+        "raw": "p_user uuid"
+      }
+    ],
+    "fn_lead_unworked_items_from": [
+      {
+        "all": [
+          "p_ids"
+        ],
+        "required": [
+          "p_ids"
+        ],
+        "unnamed": false,
+        "raw": "p_ids uuid[]"
       }
     ],
     "fn_license_milestone_emit": [
@@ -6206,6 +6428,25 @@
         "required": [],
         "unnamed": false,
         "raw": "p_period_start date DEFAULT NULL::date, p_period_end date DEFAULT NULL::date"
+      }
+    ],
+    "fn_owner_goal_board_uncached": [
+      {
+        "all": [
+          "p_period_end",
+          "p_period_start"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_period_start date DEFAULT NULL::date, p_period_end date DEFAULT NULL::date"
+      }
+    ],
+    "fn_owner_lists_cache_clear": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
       }
     ],
     "fn_perf_bot_run": [
@@ -8157,6 +8398,20 @@
         "raw": "p_start date, p_end date"
       }
     ],
+    "home_conversion_people_range_uncached": [
+      {
+        "all": [
+          "p_end",
+          "p_start"
+        ],
+        "required": [
+          "p_end",
+          "p_start"
+        ],
+        "unnamed": false,
+        "raw": "p_start date, p_end date"
+      }
+    ],
     "ig_bucket": [
       {
         "all": [
@@ -8889,6 +9144,72 @@
         "raw": ""
       }
     ],
+    "lead_hold_set": [
+      {
+        "all": [
+          "p_on",
+          "p_reason",
+          "p_user"
+        ],
+        "required": [
+          "p_on",
+          "p_user"
+        ],
+        "unnamed": false,
+        "raw": "p_user uuid, p_on boolean, p_reason text DEFAULT NULL::text"
+      }
+    ],
+    "lead_holder_board": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "lead_item_add_recording": [
+      {
+        "all": [
+          "p_item",
+          "p_path",
+          "p_summary"
+        ],
+        "required": [
+          "p_item",
+          "p_path"
+        ],
+        "unnamed": false,
+        "raw": "p_item uuid, p_path text, p_summary jsonb DEFAULT NULL::jsonb"
+      }
+    ],
+    "lead_item_recordings_list": [
+      {
+        "all": [
+          "p_item"
+        ],
+        "required": [
+          "p_item"
+        ],
+        "unnamed": false,
+        "raw": "p_item uuid"
+      }
+    ],
+    "lead_move_unworked": [
+      {
+        "all": [
+          "p_from",
+          "p_limit",
+          "p_pause",
+          "p_to"
+        ],
+        "required": [
+          "p_from",
+          "p_to"
+        ],
+        "unnamed": false,
+        "raw": "p_from uuid, p_to uuid, p_limit integer DEFAULT NULL::integer, p_pause boolean DEFAULT true"
+      }
+    ],
     "lead_pool_assign": [
       {
         "all": [
@@ -8922,12 +9243,47 @@
         "raw": "p_source text, p_filters jsonb DEFAULT '{}'::jsonb"
       }
     ],
+    "lead_pool_facets": [
+      {
+        "all": [
+          "p_source"
+        ],
+        "required": [
+          "p_source"
+        ],
+        "unnamed": false,
+        "raw": "p_source text"
+      }
+    ],
     "lead_pool_tiles": [
       {
         "all": [],
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "lead_pull_back": [
+      {
+        "all": [
+          "p_pause",
+          "p_user"
+        ],
+        "required": [
+          "p_user"
+        ],
+        "unnamed": false,
+        "raw": "p_user uuid, p_pause boolean DEFAULT true"
+      }
+    ],
+    "lead_recordings_recent": [
+      {
+        "all": [
+          "p_limit"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_limit integer DEFAULT 50"
       }
     ],
     "lead_resale_pool_counts": [
@@ -9620,6 +9976,14 @@
         "raw": ""
       }
     ],
+    "owner_licensed_leads_board_uncached": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "owner_monday_rollcall": [
       {
         "all": [
@@ -9658,6 +10022,16 @@
         ],
         "unnamed": false,
         "raw": "p_agent_id uuid, p_states text[]"
+      }
+    ],
+    "owner_monday_rollcall_uncached": [
+      {
+        "all": [
+          "p_monday"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_monday date DEFAULT NULL::date"
       }
     ],
     "owner_overview_settings": [
@@ -11775,6 +12149,14 @@
         "raw": "p_date date DEFAULT NULL::date"
       }
     ],
+    "team_carrier_book_summary": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "team_carrier_contract_status": [
       {
         "all": [
@@ -12434,6 +12816,18 @@
       }
     ],
     "upsert_readymode_dialer_calls": [
+      {
+        "all": [
+          "p_rows"
+        ],
+        "required": [
+          "p_rows"
+        ],
+        "unnamed": false,
+        "raw": "p_rows jsonb"
+      }
+    ],
+    "upsert_readymode_leads": [
       {
         "all": [
           "p_rows"

@@ -215,6 +215,29 @@ export default function MyLeads() {
   const [search, setSearch] = useState("");
   const orderRef = useRef<string[]>([]);
   const openRef = useRef<string | null>(null);
+  // MP-LEAD-MANAGER-RM (2026-11-24): a recording is saved against its lead the moment the upload
+  // finishes. Before this it rode along with the next result tap, so closing the card, reloading or
+  // just not tapping a result threw it away: one recording had ever been kept across 4,641 leads handed out.
+  // The AI summary arrives on its own clock; whichever of the two lands second completes the row.
+  const recPath = useRef<Record<string, string>>({});
+  const recSummary = useRef<Record<string, unknown>>({});
+  const saveRecording = async (item: string) => {
+    const path = recPath.current[item];
+    if (!path) return;
+    const { error } = await supabase.rpc("lead_item_add_recording" as never, {
+      p_item: item, p_path: path, p_summary: recSummary.current[item] ?? null,
+    } as never);
+    if (error) toast.error(`The recording uploaded but was not attached to the lead: ${error.message}`);
+  };
+  const recorderProps = (item: string) => ({
+    onTranscriptionUpdate: () => { /* the audio and its summary are what is kept */ },
+    onSummaryComplete: (summary: unknown) => { recSummary.current[item] = summary; void saveRecording(item); },
+    onAudioSaved: (path: string) => {
+      recPath.current[item] = path;
+      setRecordings((r) => ({ ...r, [item]: path }));
+      void saveRecording(item).then(() => toast.success("Recording saved to this lead. Now tap what happened."));
+    },
+  });
   const set = useMutation({
     mutationFn: async ({ item, status }: { item: string; status: string }) => {
       // lead_bundle_item_log is the superset of item_set: same status + note, plus
@@ -416,7 +439,7 @@ export default function MyLeads() {
                               <Button key={b.key} type="button" size="sm" variant={l.status === b.key ? "default" : "outline"} disabled={set.isPending} onClick={() => set.mutate({ item: l.item_id, status: b.key })}>{b.label}</Button>
                             ))}
                             <Button type="button" size="sm" variant={recordingFor === l.item_id ? "default" : "outline"} onClick={() => setRecordingFor((c) => (c === l.item_id ? null : l.item_id))}>
-                              <Mic className="mr-1 h-3.5 w-3.5" />{recordingFor === l.item_id ? "Close recorder" : "Record"}
+                              <Mic className="mr-1 h-3.5 w-3.5" />{recordingFor === l.item_id ? "Close recorder" : "Record the call"}
                             </Button>
                             {recordings[l.item_id] && (
                               <Badge variant="outline" className="bg-green-600/15 border-green-600/40 text-green-300"><Check className="mr-1 h-3 w-3" />recorded</Badge>
@@ -424,11 +447,7 @@ export default function MyLeads() {
                             <Input value={notes[l.item_id] ?? ""} onChange={(e) => setNotes((n) => ({ ...n, [l.item_id]: e.target.value }))} placeholder="Note (saved with the next tap)" className="h-8 min-w-[12rem] flex-1" maxLength={300} aria-label="Note" />
                           </div>
                           {recordingFor === l.item_id && (
-                            <CallCenterVoiceRecorder
-                              onTranscriptionUpdate={() => { /* transcript not needed here — audio + summary only */ }}
-                              onAudioSaved={(p) => { setRecordings((r) => ({ ...r, [l.item_id]: p })); toast.success("Recording saved — now tap what happened"); }}
-                              className="rounded-lg border border-border/60 p-3"
-                            />
+                            <CallCenterVoiceRecorder key={l.item_id} {...recorderProps(l.item_id)} className="rounded-lg border border-border/60 p-3" />
                           )}
                         </div>
                         </div>
@@ -516,11 +535,7 @@ export default function MyLeads() {
                         )}
                       </div>
                       {recordingFor === cur.item_id && (
-                        <CallCenterVoiceRecorder
-                          onTranscriptionUpdate={() => { /* audio + summary only */ }}
-                          onAudioSaved={(p) => { setRecordings((r) => ({ ...r, [cur.item_id]: p })); toast.success("Recording saved — now tap what happened"); }}
-                          className="rounded-lg border border-border/60 p-3"
-                        />
+                        <CallCenterVoiceRecorder key={cur.item_id} {...recorderProps(cur.item_id)} className="rounded-lg border border-border/60 p-3" />
                       )}
                       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                         {LEAD_STATUS_BUTTONS.map((b) => (

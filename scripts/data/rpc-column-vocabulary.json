@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-11-24T00:07:03Z",
+ "_generated_at": "2026-11-24T00:26:13Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -27,6 +27,7 @@
   "aflac_gate_state": "jsonb",
   "aflac_intake_missing": "text[]",
   "aflac_mark_submitted": "jsonb",
+  "agent_carrier_book": "jsonb",
   "agent_claim_state": "text",
   "agent_credentials_upsert": "uuid",
   "agent_inbox_touch_updated_at": "trigger",
@@ -142,6 +143,11 @@
   "can_work_application": "boolean",
   "can_work_recruiting_application": "boolean",
   "cancel_interview_event": "interview_events",
+  "carrier_book_digest": "text",
+  "carrier_book_ingest": "jsonb",
+  "carrier_book_log_failure": "void",
+  "carrier_book_match_client_only": "integer",
+  "carrier_book_reconcile": "jsonb",
   "carrier_command": "jsonb",
   "cc_dispose": "jsonb",
   "cc_dispose_interview": "interview_events",
@@ -207,6 +213,7 @@
   "cw_smb_drafts_auto_ingest": "trigger",
   "cw_smb_platform_to_enum": "cw_platform",
   "cw_winner_schedule_ig": "trigger",
+  "dashboard_deal_status": "jsonb",
   "dashboard_paid_today_summary": "jsonb",
   "data_quality_audit": "jsonb",
   "day_plan_check_to_brand_activity": "trigger",
@@ -304,7 +311,14 @@
   "fn_canonical_agent_id": "uuid",
   "fn_capture_application_licensing_milestone": "trigger",
   "fn_capture_pg_cron_timeout_state": "void",
+  "fn_carrier_bucket_placed": "boolean",
+  "fn_carrier_bucket_written": "boolean",
+  "fn_carrier_name_key": "text",
+  "fn_carrier_pn_key": "text",
   "fn_carrier_policies_touch": "trigger",
+  "fn_carrier_status_bucket": "text",
+  "fn_carrier_status_label": "text",
+  "fn_carrier_visible_agent_ids": "uuid[]",
   "fn_catchup_course_finishers": "jsonb",
   "fn_catchup_hired_unlicensed": "jsonb",
   "fn_client_pipeline_action": "void",
@@ -418,6 +432,7 @@
   "fn_invite_insert": "invite_tokens",
   "fn_is_first_slack_deal_today": "boolean",
   "fn_lane_ladder_cutoff": "timestamp with time zone",
+  "fn_lead_age": "integer",
   "fn_lead_type_of": "text",
   "fn_license_milestone_emit": "trigger",
   "fn_license_stage_rank": "integer",
@@ -487,6 +502,8 @@
   "fn_onboarding_email_backfill_sweep": "jsonb",
   "fn_onboarding_wp6_cutoff": "timestamp with time zone",
   "fn_owner_goal_board": "jsonb",
+  "fn_owner_goal_board_uncached": "jsonb",
+  "fn_owner_lists_cache_clear": "trigger",
   "fn_perf_bot_run": "jsonb",
   "fn_perf_return_deals_to_leads": "jsonb",
   "fn_phoenix_today": "date",
@@ -653,6 +670,7 @@
   "hh_touch_user": "trigger",
   "home_conversion_people": "jsonb",
   "home_conversion_people_range": "jsonb",
+  "home_conversion_people_range_uncached": "jsonb",
   "ig_bucket": "text",
   "in_course_peer_pressure": "jsonb",
   "ingest_ayro_sales_deal": "jsonb",
@@ -698,9 +716,17 @@
   "lead_bundle_remove_item": "jsonb",
   "lead_bundle_revoke": "jsonb",
   "lead_closers_leaderboard": "jsonb",
+  "lead_hold_set": "jsonb",
+  "lead_holder_board": "jsonb",
+  "lead_item_add_recording": "jsonb",
+  "lead_item_recordings_list": "jsonb",
+  "lead_move_unworked": "jsonb",
   "lead_pool_assign": "jsonb",
   "lead_pool_counts": "jsonb",
+  "lead_pool_facets": "jsonb",
   "lead_pool_tiles": "jsonb",
+  "lead_pull_back": "jsonb",
+  "lead_recordings_recent": "jsonb",
   "lead_resale_pool_counts": "jsonb",
   "leaderboard_set_cheer": "jsonb",
   "leaderboard_team_board": "jsonb",
@@ -745,9 +771,11 @@
   "orphan_deal_audit": "jsonb",
   "owner_daily_overview": "jsonb",
   "owner_licensed_leads_board": "jsonb",
+  "owner_licensed_leads_board_uncached": "jsonb",
   "owner_monday_rollcall": "jsonb",
   "owner_monday_rollcall_mark": "jsonb",
   "owner_monday_rollcall_set_states": "jsonb",
+  "owner_monday_rollcall_uncached": "jsonb",
   "owner_overview_settings": "jsonb",
   "owner_system_overview": "jsonb",
   "perf_bot_core": "jsonb",
@@ -893,6 +921,7 @@
   "sync_health_summary": "jsonb",
   "sync_lead_counter": "trigger",
   "team_attendance_day": "jsonb",
+  "team_carrier_book_summary": "jsonb",
   "team_carrier_contract_status": "jsonb",
   "team_contracting_status": "jsonb",
   "team_people_facts": "jsonb",
@@ -963,6 +992,7 @@
   "update_scheduled_interviews_updated_at": "trigger",
   "update_updated_at_column": "trigger",
   "upsert_readymode_dialer_calls": "integer",
+  "upsert_readymode_leads": "integer",
   "us_state_code": "text",
   "uuid_from_text": "uuid",
   "void_strike": "agent_strikes",
@@ -4457,6 +4487,7 @@
   "contracting_checkin_list.agent_id": {
    "candidates": [
     "agentlink_book.agent_id",
+    "carrier_book_policies.agent_id",
     "contracting_checkins.agent_id",
     "contracting_intakes.agent_id",
     "deals.agent_id",
@@ -4944,7 +4975,9 @@
    ]
   },
   "contracting_checkin_list.stage": {
-   "candidates": [],
+   "candidates": [
+    "carrier_book_policies.stage"
+   ],
    "body_literals": [
     "active",
     "agent",
@@ -5040,6 +5073,7 @@
   "crm_agent_free_leads_status.agent_id": {
    "candidates": [
     "agentlink_book.agent_id",
+    "carrier_book_policies.agent_id",
     "deals.agent_id",
     "production_external_deals.agent_id",
     "v_agent_canonical_map.agent_id",
@@ -9521,6 +9555,28 @@
     "scheduled"
    ]
   },
+  "fn_carrier_resolve_agent.agent_id": {
+   "candidates": [
+    "contracting_intakes.agent_id",
+    "deals.agent_id",
+    "ethos_callsheet_people.agent_id"
+   ],
+   "body_literals": [
+    "g",
+    "name",
+    "npn",
+    "public"
+   ]
+  },
+  "fn_carrier_resolve_agent.how": {
+   "candidates": [],
+   "body_literals": [
+    "g",
+    "name",
+    "npn",
+    "public"
+   ]
+  },
   "fn_commission_rate.rate_pct": {
    "candidates": [],
    "body_literals": [
@@ -11505,6 +11561,37 @@
     "public"
    ]
   },
+  "fn_lead_unworked_items.bundle_id": {
+   "candidates": [
+    "lead_bundle_grants.bundle_id",
+    "lead_bundle_items.bundle_id"
+   ],
+   "body_literals": [
+    "new",
+    "public"
+   ]
+  },
+  "fn_lead_unworked_items.item_id": {
+   "candidates": [],
+   "body_literals": [
+    "new",
+    "public"
+   ]
+  },
+  "fn_lead_unworked_items_from.bundle_id": {
+   "candidates": [
+    "lead_bundle_items.bundle_id"
+   ],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "fn_lead_unworked_items_from.item_id": {
+   "candidates": [],
+   "body_literals": [
+    "public"
+   ]
+  },
   "fn_license_renewal_sweep.agent_code": {
    "candidates": [
     "agents.agent_code"
@@ -11683,6 +11770,7 @@
     "admin",
     "agent",
     "has_leads",
+    "leads_paused",
     "license_state_unknown",
     "licensed",
     "login_banned",
@@ -11705,6 +11793,7 @@
     "admin",
     "agent",
     "has_leads",
+    "leads_paused",
     "license_state_unknown",
     "licensed",
     "login_banned",
@@ -11729,6 +11818,7 @@
     "admin",
     "agent",
     "has_leads",
+    "leads_paused",
     "license_state_unknown",
     "licensed",
     "login_banned",
@@ -11753,6 +11843,7 @@
     "admin",
     "agent",
     "has_leads",
+    "leads_paused",
     "license_state_unknown",
     "licensed",
     "login_banned",
@@ -11775,6 +11866,7 @@
     "admin",
     "agent",
     "has_leads",
+    "leads_paused",
     "license_state_unknown",
     "licensed",
     "login_banned",
@@ -11799,6 +11891,7 @@
     "admin",
     "agent",
     "has_leads",
+    "leads_paused",
     "license_state_unknown",
     "licensed",
     "login_banned",
@@ -11821,6 +11914,7 @@
     "admin",
     "agent",
     "has_leads",
+    "leads_paused",
     "license_state_unknown",
     "licensed",
     "login_banned",
@@ -11843,6 +11937,7 @@
     "admin",
     "agent",
     "has_leads",
+    "leads_paused",
     "license_state_unknown",
     "licensed",
     "login_banned",
@@ -11865,6 +11960,7 @@
     "admin",
     "agent",
     "has_leads",
+    "leads_paused",
     "license_state_unknown",
     "licensed",
     "login_banned",
@@ -11881,12 +11977,15 @@
    ]
   },
   "fn_morning_lead_candidates.reason": {
-   "candidates": [],
+   "candidates": [
+    "lead_agent_holds.reason"
+   ],
    "body_literals": [
     "active",
     "admin",
     "agent",
     "has_leads",
+    "leads_paused",
     "license_state_unknown",
     "licensed",
     "login_banned",
@@ -11909,6 +12008,7 @@
     "admin",
     "agent",
     "has_leads",
+    "leads_paused",
     "license_state_unknown",
     "licensed",
     "login_banned",
@@ -11927,6 +12027,7 @@
   "fn_morning_lead_candidates.user_id": {
    "candidates": [
     "agents.user_id",
+    "lead_agent_holds.user_id",
     "lead_bundle_grants.user_id",
     "profiles.user_id"
    ],
@@ -11935,6 +12036,7 @@
     "admin",
     "agent",
     "has_leads",
+    "leads_paused",
     "license_state_unknown",
     "licensed",
     "login_banned",
@@ -12909,6 +13011,7 @@
   "fn_reconcile_first_deal_at.agent_id": {
    "candidates": [
     "agentlink_book.agent_id",
+    "carrier_book_policies.agent_id",
     "deals.agent_id",
     "mat_production_unified.agent_id",
     "production_external_deals.agent_id",
@@ -13421,6 +13524,7 @@
     "client_leads.age",
     "lead_bundle_items.age",
     "mat_lead_pool.age",
+    "readymode_leads.age",
     "v_pool_dialer.age",
     "v_pool_marketing.age",
     "v_pool_rewrite.age",
@@ -13446,6 +13550,7 @@
     "lead_bundle_items.email",
     "mat_lead_pool.email",
     "profiles.email",
+    "readymode_leads.email",
     "v_leads_do_not_dial.email",
     "v_pool_dialer.email",
     "v_pool_marketing.email",
@@ -13472,6 +13577,7 @@
     "client_leads.first_name",
     "lead_bundle_items.first_name",
     "mat_lead_pool.first_name",
+    "readymode_leads.first_name",
     "v_leads_do_not_dial.first_name",
     "v_leads_sold_already.first_name",
     "v_pool_dialer.first_name",
@@ -13518,6 +13624,7 @@
     "client_leads.last_name",
     "lead_bundle_items.last_name",
     "mat_lead_pool.last_name",
+    "readymode_leads.last_name",
     "v_leads_do_not_dial.last_name",
     "v_leads_sold_already.last_name",
     "v_pool_dialer.last_name",
@@ -13588,6 +13695,8 @@
     "lead_bundle_items.phone10",
     "lead_resale_ledger.phone10",
     "mat_lead_pool.phone10",
+    "readymode_leads.phone10",
+    "v_dialer_client_suppression.phone10",
     "v_pool_dialer.phone10",
     "v_pool_marketing.phone10",
     "v_pool_rewrite.phone10",
@@ -13633,6 +13742,8 @@
     "lead_bundle_items.state",
     "mat_lead_pool.state",
     "profiles.state",
+    "readymode_leads.state",
+    "us_area_codes.state",
     "v_leads_do_not_dial.state",
     "v_pool_dialer.state",
     "v_pool_marketing.state",
@@ -21098,10 +21209,20 @@
   },
   "sellable_pool.age": {
    "candidates": [
-    "lead_bundle_items.age"
+    "client_leads.age",
+    "lead_bundle_items.age",
+    "mat_lead_pool.age",
+    "readymode_leads.age",
+    "v_pool_dialer.age",
+    "v_pool_marketing.age",
+    "v_pool_rewrite.age",
+    "v_pool_winback.age",
+    "v_sellable_client_leads.age"
    ],
    "body_literals": [
     "array",
+    "campaign",
+    "campaigns",
     "dialer",
     "marketing",
     "max_age",
@@ -21112,10 +21233,6 @@
     "rewrite",
     "states",
     "tiers",
-    "v_pool_dialer",
-    "v_pool_marketing",
-    "v_pool_rewrite",
-    "v_pool_winback",
     "vantage",
     "vantage_only",
     "winback"
@@ -21125,6 +21242,8 @@
    "candidates": [],
    "body_literals": [
     "array",
+    "campaign",
+    "campaigns",
     "dialer",
     "marketing",
     "max_age",
@@ -21135,10 +21254,6 @@
     "rewrite",
     "states",
     "tiers",
-    "v_pool_dialer",
-    "v_pool_marketing",
-    "v_pool_rewrite",
-    "v_pool_winback",
     "vantage",
     "vantage_only",
     "winback"
@@ -21146,10 +21261,21 @@
   },
   "sellable_pool.email": {
    "candidates": [
-    "lead_bundle_items.email"
+    "client_leads.email",
+    "lead_bundle_items.email",
+    "mat_lead_pool.email",
+    "readymode_leads.email",
+    "v_pool_dialer.email",
+    "v_pool_marketing.email",
+    "v_pool_rewrite.email",
+    "v_pool_winback.email",
+    "v_readymode_lead_quality.email",
+    "v_sellable_client_leads.email"
    ],
    "body_literals": [
     "array",
+    "campaign",
+    "campaigns",
     "dialer",
     "marketing",
     "max_age",
@@ -21160,10 +21286,6 @@
     "rewrite",
     "states",
     "tiers",
-    "v_pool_dialer",
-    "v_pool_marketing",
-    "v_pool_rewrite",
-    "v_pool_winback",
     "vantage",
     "vantage_only",
     "winback"
@@ -21171,10 +21293,21 @@
   },
   "sellable_pool.first_name": {
    "candidates": [
-    "lead_bundle_items.first_name"
+    "client_leads.first_name",
+    "lead_bundle_items.first_name",
+    "mat_lead_pool.first_name",
+    "readymode_leads.first_name",
+    "v_pool_dialer.first_name",
+    "v_pool_marketing.first_name",
+    "v_pool_rewrite.first_name",
+    "v_pool_winback.first_name",
+    "v_readymode_lead_quality.first_name",
+    "v_sellable_client_leads.first_name"
    ],
    "body_literals": [
     "array",
+    "campaign",
+    "campaigns",
     "dialer",
     "marketing",
     "max_age",
@@ -21185,19 +21318,23 @@
     "rewrite",
     "states",
     "tiers",
-    "v_pool_dialer",
-    "v_pool_marketing",
-    "v_pool_rewrite",
-    "v_pool_winback",
     "vantage",
     "vantage_only",
     "winback"
    ]
   },
   "sellable_pool.flags": {
-   "candidates": [],
+   "candidates": [
+    "mat_lead_pool.flags",
+    "v_pool_dialer.flags",
+    "v_pool_marketing.flags",
+    "v_pool_rewrite.flags",
+    "v_pool_winback.flags"
+   ],
    "body_literals": [
     "array",
+    "campaign",
+    "campaigns",
     "dialer",
     "marketing",
     "max_age",
@@ -21208,10 +21345,6 @@
     "rewrite",
     "states",
     "tiers",
-    "v_pool_dialer",
-    "v_pool_marketing",
-    "v_pool_rewrite",
-    "v_pool_winback",
     "vantage",
     "vantage_only",
     "winback"
@@ -21221,6 +21354,8 @@
    "candidates": [],
    "body_literals": [
     "array",
+    "campaign",
+    "campaigns",
     "dialer",
     "marketing",
     "max_age",
@@ -21231,10 +21366,6 @@
     "rewrite",
     "states",
     "tiers",
-    "v_pool_dialer",
-    "v_pool_marketing",
-    "v_pool_rewrite",
-    "v_pool_winback",
     "vantage",
     "vantage_only",
     "winback"
@@ -21242,10 +21373,21 @@
   },
   "sellable_pool.last_name": {
    "candidates": [
-    "lead_bundle_items.last_name"
+    "client_leads.last_name",
+    "lead_bundle_items.last_name",
+    "mat_lead_pool.last_name",
+    "readymode_leads.last_name",
+    "v_pool_dialer.last_name",
+    "v_pool_marketing.last_name",
+    "v_pool_rewrite.last_name",
+    "v_pool_winback.last_name",
+    "v_readymode_lead_quality.last_name",
+    "v_sellable_client_leads.last_name"
    ],
    "body_literals": [
     "array",
+    "campaign",
+    "campaigns",
     "dialer",
     "marketing",
     "max_age",
@@ -21256,19 +21398,24 @@
     "rewrite",
     "states",
     "tiers",
-    "v_pool_dialer",
-    "v_pool_marketing",
-    "v_pool_rewrite",
-    "v_pool_winback",
     "vantage",
     "vantage_only",
     "winback"
    ]
   },
   "sellable_pool.lead_age_days": {
-   "candidates": [],
+   "candidates": [
+    "mat_lead_pool.lead_age_days",
+    "v_pool_dialer.lead_age_days",
+    "v_pool_marketing.lead_age_days",
+    "v_pool_rewrite.lead_age_days",
+    "v_pool_winback.lead_age_days",
+    "v_sellable_client_leads.lead_age_days"
+   ],
    "body_literals": [
     "array",
+    "campaign",
+    "campaigns",
     "dialer",
     "marketing",
     "max_age",
@@ -21279,10 +21426,6 @@
     "rewrite",
     "states",
     "tiers",
-    "v_pool_dialer",
-    "v_pool_marketing",
-    "v_pool_rewrite",
-    "v_pool_winback",
     "vantage",
     "vantage_only",
     "winback"
@@ -21291,10 +21434,18 @@
   "sellable_pool.lead_id": {
    "candidates": [
     "lead_bundle_items.lead_id",
-    "lead_resale_ledger.lead_id"
+    "lead_resale_ledger.lead_id",
+    "mat_lead_pool.lead_id",
+    "v_pool_dialer.lead_id",
+    "v_pool_marketing.lead_id",
+    "v_pool_rewrite.lead_id",
+    "v_pool_winback.lead_id",
+    "v_sellable_client_leads.lead_id"
    ],
    "body_literals": [
     "array",
+    "campaign",
+    "campaigns",
     "dialer",
     "marketing",
     "max_age",
@@ -21305,10 +21456,6 @@
     "rewrite",
     "states",
     "tiers",
-    "v_pool_dialer",
-    "v_pool_marketing",
-    "v_pool_rewrite",
-    "v_pool_winback",
     "vantage",
     "vantage_only",
     "winback"
@@ -21317,10 +21464,21 @@
   "sellable_pool.phone10": {
    "candidates": [
     "lead_bundle_items.phone10",
-    "lead_resale_ledger.phone10"
+    "lead_resale_ledger.phone10",
+    "mat_lead_pool.phone10",
+    "readymode_leads.phone10",
+    "v_dialer_client_suppression.phone10",
+    "v_pool_dialer.phone10",
+    "v_pool_marketing.phone10",
+    "v_pool_rewrite.phone10",
+    "v_pool_winback.phone10",
+    "v_readymode_lead_quality.phone10",
+    "v_sellable_client_leads.phone10"
    ],
    "body_literals": [
     "array",
+    "campaign",
+    "campaigns",
     "dialer",
     "marketing",
     "max_age",
@@ -21331,10 +21489,6 @@
     "rewrite",
     "states",
     "tiers",
-    "v_pool_dialer",
-    "v_pool_marketing",
-    "v_pool_rewrite",
-    "v_pool_winback",
     "vantage",
     "vantage_only",
     "winback"
@@ -21342,10 +21496,21 @@
   },
   "sellable_pool.state": {
    "candidates": [
-    "lead_bundle_items.state"
+    "client_leads.state",
+    "lead_bundle_items.state",
+    "mat_lead_pool.state",
+    "readymode_leads.state",
+    "us_area_codes.state",
+    "v_pool_dialer.state",
+    "v_pool_marketing.state",
+    "v_pool_rewrite.state",
+    "v_pool_winback.state",
+    "v_sellable_client_leads.state"
    ],
    "body_literals": [
     "array",
+    "campaign",
+    "campaigns",
     "dialer",
     "marketing",
     "max_age",
@@ -21356,19 +21521,23 @@
     "rewrite",
     "states",
     "tiers",
-    "v_pool_dialer",
-    "v_pool_marketing",
-    "v_pool_rewrite",
-    "v_pool_winback",
     "vantage",
     "vantage_only",
     "winback"
    ]
   },
   "sellable_pool.tags": {
-   "candidates": [],
+   "candidates": [
+    "mat_lead_pool.tags",
+    "v_pool_dialer.tags",
+    "v_pool_marketing.tags",
+    "v_pool_rewrite.tags",
+    "v_pool_winback.tags"
+   ],
    "body_literals": [
     "array",
+    "campaign",
+    "campaigns",
     "dialer",
     "marketing",
     "max_age",
@@ -21379,19 +21548,23 @@
     "rewrite",
     "states",
     "tiers",
-    "v_pool_dialer",
-    "v_pool_marketing",
-    "v_pool_rewrite",
-    "v_pool_winback",
     "vantage",
     "vantage_only",
     "winback"
    ]
   },
   "sellable_pool.tier": {
-   "candidates": [],
+   "candidates": [
+    "mat_lead_pool.tier",
+    "v_pool_dialer.tier",
+    "v_pool_marketing.tier",
+    "v_pool_rewrite.tier",
+    "v_pool_winback.tier"
+   ],
    "body_literals": [
     "array",
+    "campaign",
+    "campaigns",
     "dialer",
     "marketing",
     "max_age",
@@ -21402,19 +21575,23 @@
     "rewrite",
     "states",
     "tiers",
-    "v_pool_dialer",
-    "v_pool_marketing",
-    "v_pool_rewrite",
-    "v_pool_winback",
     "vantage",
     "vantage_only",
     "winback"
    ]
   },
   "sellable_pool.under_9mo": {
-   "candidates": [],
+   "candidates": [
+    "mat_lead_pool.under_9mo",
+    "v_pool_dialer.under_9mo",
+    "v_pool_marketing.under_9mo",
+    "v_pool_rewrite.under_9mo",
+    "v_pool_winback.under_9mo"
+   ],
    "body_literals": [
     "array",
+    "campaign",
+    "campaigns",
     "dialer",
     "marketing",
     "max_age",
@@ -21425,10 +21602,6 @@
     "rewrite",
     "states",
     "tiers",
-    "v_pool_dialer",
-    "v_pool_marketing",
-    "v_pool_rewrite",
-    "v_pool_winback",
     "vantage",
     "vantage_only",
     "winback"

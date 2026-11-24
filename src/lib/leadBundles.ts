@@ -36,6 +36,7 @@ export const CALLED_LEAD_TIERS: ReadonlyArray<{ key: "A" | "B" | "C" | "D"; labe
 export function tierLabel(tier: string | null | undefined): string {
   if (tier === "pos") return "Policy owner";
   if (tier === "blocked") return "Do not call";
+  if (tier === "F") return "Fresh";
   return tier ? `Tier ${tier}` : "";
 }
 
@@ -55,6 +56,7 @@ export const TIER_STYLE: Record<string, string> = {
   C: "bg-slate-500/15 border-slate-500/40 text-muted-foreground",
   D: "bg-slate-500/10 border-slate-500/30 text-muted-foreground",
   pos: "bg-violet-500/15 border-violet-500/40 text-violet-300",
+  F: "bg-cyan-500/15 border-cyan-500/40 text-cyan-300",
 };
 
 export const FLAG_BADGE: Record<string, { label: string; cls: string }> = {
@@ -75,6 +77,8 @@ export const FLAG_BADGE: Record<string, { label: string; cls: string }> = {
   // MP-LEAD-PHONE-READYMODE: the dial number was swapped to the one ReadyMode actually
   // reached this client on (mat_lead_phone_fix / rewrite call link).
   readymode_number: { label: "ReadyMode number", cls: "bg-emerald-500/15 border-emerald-500/40 text-emerald-300" },
+  // MP-LEAD-MANAGER-RM: a phone whose policy with us still stands. Held back with do-not-call, never dropped.
+  current_client: { label: "Current client", cls: "bg-rose-500/15 border-rose-500/40 text-rose-300" },
 };
 
 export function flagBadges(flags: Record<string, unknown>, under9: boolean) {
@@ -99,12 +103,15 @@ export const TIER_LEGEND: Record<string, ReadonlyArray<{ tier: string; desc: str
     { tier: "C", desc: "C-list purchase — thinner data" },
     { tier: "D", desc: "Everything else — oldest or least-qualified lists" },
   ],
+  // The dialer pool is every lead in ReadyMode (MP-LEAD-MANAGER-RM, 2026-11-24), graded by what has
+  // happened on the phone so far (v_pool_dialer). F is a lead the dialer has never called.
   dialer: [
-    { tier: "pos", desc: "Bought on a dialer call — a policy owner to service or rewrite" },
-    { tier: "A", desc: "Warm — booked an appointment, or reached bank/SSN and stopped" },
+    { tier: "pos", desc: "Bought on a dialer call. A policy owner to service or rewrite" },
+    { tier: "A", desc: "Warm. Booked an appointment, or got to bank or SSN and stopped" },
     { tier: "B", desc: "Talked to an agent, never bought" },
-    { tier: "C", desc: "Never reached — dialed 3 times or fewer" },
-    { tier: "D", desc: "Never reached — dialed 4 or more times" },
+    { tier: "F", desc: "Fresh. Loaded in the dialer, never called yet" },
+    { tier: "C", desc: "Never reached. Dialed 3 times or fewer" },
+    { tier: "D", desc: "Never reached. Dialed 4 or more times" },
   ],
   rewrite: [
     { tier: "S", desc: "SSN and bank both collected — the application was nearly done" },

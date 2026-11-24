@@ -1,0 +1,105 @@
+name: Read release migration history
+
+# One release-only read. This branch contains no migrations or deployment writes.
+# The returned version list is evidence for the unchanged pre-push gate.
+on:
+  push:
+    branches: ["codex/producer-release-preflight-20261124"]
+
+permissions:
+  contents: read
+
+jobs:
+  history:
+    if: github.repository == 'samcom593-creator/rebuild-brighten-sparkle' && github.ref == 'refs/heads/codex/producer-release-preflight-20261124'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Read and verify recorded migration versions
+        env:
+          APEX_BOT_TOKEN: ${{ secrets.APEX_BOT_TOKEN }}
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { execFileSync } from "node:child_process";
+
+          const base = "a679d70e0b5ffd82aed3e660da898a2452cff502";
+          const git = (...args) => execFileSync("git", args, {
+            encoding: "utf8", timeout: 20000, stdio: ["ignore", "pipe", "pipe"],
+          }).trim();
+          const fail = (message) => { throw new Error(message); };
+
+          try {
+            if (git("rev-parse", "refs/remotes/origin/main") !== base) {
+              fail("origin/main moved from the reviewed release base; refresh the release before retrying.");
+            }
+            const remoteMain = git("ls-remote", "--exit-code", "origin", "refs/heads/main");
+            if (remoteMain !== `${base}\trefs/heads/main`) {
+              fail("Remote main moved from the reviewed release base; refresh the release before retrying.");
+            }
+
+            const token = process.env.APEX_BOT_TOKEN?.trim();
+            if (!token) fail("The configured bot-sql credential is unavailable.");
+
+            let response;
+            try {
+              response = await fetch("https://xrzweoneiieddzxogewk.supabase.co/functions/v1/bot-sql", {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ query: "select coalesce(json_agg(version), '[]'::json) as v from supabase_migrations.schema_migrations" }),
+                signal: AbortSignal.timeout(20000),
+              });
+            } catch {
+              fail("The migration-history read failed or exceeded its 20-second timeout.");
+            }
+            if (!response.ok) fail(`The migration-history read returned HTTP ${response.status}.`);
+
+            let body;
+            try { body = await response.json(); }
+            catch { fail("The migration-history response was not valid JSON."); }
+            const versions = body?.rows?.[0]?.v;
+            if (body?.ok !== true || !Array.isArray(body.rows) || body.rows.length !== 1
+              || !Array.isArray(versions) || versions.length > 10000
+              || !versions.every((v) => typeof v === "string" && /^\d{14}$/.test(v))
+              || new Set(versions).size !== versions.length) {
+              fail("The migration-history response did not contain a valid bounded version list.");
+            }
+
+            const recorded = new Set(versions);
+            const files = git("ls-tree", "-r", "--name-only", base, "--", "supabase/migrations").split("\n");
+            const earlier = [...new Set(files.map((path) =>
+              path.match(/^supabase\/migrations\/(\d{14})_[^/]+\.sql$/)?.[1],
+            ).filter(Boolean))].sort();
+            if (earlier.length === 0) fail("The reviewed base has no readable migration versions.");
+            const missing = earlier.filter((version) => !recorded.has(version));
+
+            console.log(`RELEASE_MIGRATION_HISTORY=${JSON.stringify({ base, checked_at: new Date().toISOString(), versions: [...recorded].sort() })}`);
+            console.log(`Earlier versions: ${earlier.length}; recorded versions: ${recorded.size}; missing earlier versions: ${missing.length}.`);
+            if (missing.length) {
+              console.error(`Missing earlier versions: ${missing.join(", ")}`);
+              fail("Earlier migrations are unrecorded; the release must remain blocked.");
+            }
+            console.log("Release migration-history preflight passed. No database writes performed.");
+          } catch (error) {
+            // Only explicit messages above are exposed; subprocess/network errors
+            // and provider response bodies are never printed.
+            const allowed = [
+              "origin/main moved", "Remote main moved", "The configured bot-sql credential",
+              "The migration-history read", "The migration-history response",
+              "The reviewed base", "Earlier migrations are unrecorded",
+            ];
+            const message = error instanceof Error && allowed.some((prefix) => error.message.startsWith(prefix))
+              ? error.message : "The read-only preflight could not complete; no database writes were attempted.";
+            console.error(`::error::${message}`);
+            process.exitCode = 1;
+          }
+          NODE

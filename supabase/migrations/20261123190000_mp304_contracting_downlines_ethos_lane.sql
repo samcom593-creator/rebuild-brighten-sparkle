@@ -813,7 +813,12 @@ begin
   if v_pct < 60 or v_pct > 135 or v_pct <> round(v_pct / 5) * 5 then
     return jsonb_build_object('ok', false, 'verdict', 'needs_fix', 'field', 'comp_pct', 'message', 'Comp must be a multiple of 5 between 60 and 135 (Level 12 to Level 27).');
   end if;
-  v_cap := case when v_admin then null when v_service then v_def else public.fn_contracting_comp_cap(v_actor) end;
+  -- Service path: the public one-link form can never set comp above the default. The hire link (consume-invite-token)
+  -- passes trusted_comp: its comp is the offer the link's creator approved, capped at THAT person's own level.
+  v_cap := case when v_admin then null
+                when v_service and coalesce((p->>'trusted_comp')::boolean, false) then public.fn_contracting_comp_cap(v_actor)
+                when v_service then v_def
+                else public.fn_contracting_comp_cap(v_actor) end;
   if v_cap is not null and v_pct > v_cap then
     return jsonb_build_object('ok', false, 'verdict', 'needs_fix', 'field', 'comp_pct', 'message', 'You can set up to ' || v_cap::text || '% (your own level).', 'cap_pct', v_cap);
   end if;

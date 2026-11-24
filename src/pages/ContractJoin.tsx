@@ -25,7 +25,7 @@ const LABEL: Record<Field, string> = { first_name: "Legal first name (as on your
 const REDIRECT_HOST = /^(www\.)?mgnagenthub\.com$/;
 
 export default function ContractJoin() {
-  usePageTitle("Get contracted · Galaxy");
+  usePageTitle("Join the team · Galaxy");
   const { slug = "" } = useParams<{ slug: string }>();
   const [resolved, setResolved] = useState<Resolved | null>(null);
   const [resolving, setResolving] = useState(true);
@@ -125,9 +125,9 @@ export default function ContractJoin() {
         ) : (
           <>
             <header className="space-y-1">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Galaxy Financial · contracting</p>
-              <h1 className="text-xl font-semibold">Get contracted under {resolved.manager_name}</h1>
-              <p className="text-sm text-muted-foreground">Step 1 of 2. Enter your details exactly as they appear on your insurance licence. Step 2 takes you to MGN Agent Hub to finish.</p>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Galaxy Financial</p>
+              <h1 className="text-xl font-semibold">Join {resolved.manager_name}&apos;s team</h1>
+              <p className="text-sm text-muted-foreground">One form. Enter your details exactly as they appear on your insurance licence. Licensed? We set up your Ethos contracting and send you to MGN Agent Hub to finish. Not licensed yet? You get the licensing course first.</p>
             </header>
             <form onSubmit={submit} noValidate className="space-y-4 rounded-xl border border-border bg-card p-4 sm:p-5" aria-label="Contracting details">
               <div className="grid gap-4 sm:grid-cols-2">

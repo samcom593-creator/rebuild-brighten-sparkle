@@ -682,15 +682,50 @@ serve(async (req) => {
     return json({ ok: false, error: "invitation_terms_failed" }, 500);
   }
 
-  // No contracting intake is queued any more. A licensed hire's NPN is already on their agent profile; the hire then
-  // completes the five-field contracting profile themselves (signed in, prefilled) and the team tracks the four
-  // carriers by hand. Nothing is queued anywhere outside the website, so this step can no longer fail the
-  // invite: a hire who has activated an account is never asked to retry because a downstream queue was down.
-  const contracting: Record<string, unknown> = {
+  // MP-304 (2026-11-23): hiring and contracting are ONE step. A licensed hire with an NPN goes straight into the Ethos
+  // lane (submit_downline_contracting — the same path a manager's Join link and the manager page use): verdicts,
+  // the offered comp (capped at the offerer's own level), 6 Month Advance, the manager's NPN as upline, then the
+  // outbox writes the row to MGN's "Apex financial / Ethos" sheet with a read-back receipt. Never the legacy
+  // four-destination intake. And it can NEVER fail the hire: the account already exists, so any refusal or error is
+  // reported in `contracting` and shows on the manager's board, never as a failed invitation.
+  let contracting: Record<string, unknown> = {
     skipped: true,
     reason: "manual_portal_review",
-    detail: "Contracting is tracked by hand on the agent's profile; the agent completes their contracting profile after signing in.",
+    detail: licensed
+      ? "No NPN on the hire yet; they open their manager's Join link once they have it."
+      : "Not licensed yet; contracting starts when they add their NPN through their manager's Join link.",
   };
+  if (licensed && nipr_number && /^[0-9]{5,10}$/.test(nipr_number) && resolvedManagerId) {
+    try {
+      const nameParts = full_name.split(/\s+/).filter(Boolean);
+      const { data: verdictData, error: verdictErr } = await admin.rpc("submit_downline_contracting", {
+        p: {
+          actor_agent_id: resolvedManagerId,
+          first_name: nameParts[0] ?? full_name,
+          last_name: nameParts.length > 1 ? nameParts.slice(1).join(" ") : full_name,
+          email,
+          phone: phone_digits,
+          npn: nipr_number,
+          comp_pct: terms.offered_comp_pct ?? null,
+          trusted_comp: true,
+          license_attested: true,
+          eo_attested: false,
+          source: "hire_link",
+        },
+        p_dry_run: false,
+      });
+      const v = (verdictData ?? {}) as Record<string, unknown>;
+      if (verdictErr || v.ok !== true) {
+        contracting = { skipped: false, held: true, verdict: v.verdict ?? "error", detail: v.message ?? verdictErr?.message ?? "not saved" };
+      } else {
+        await admin.rpc("fn_contracting_after_provision", { p_intake: v.intake_id, p_agent: agentId, p_source: "hire_link" });
+        contracting = { skipped: false, intake_id: v.intake_id, delivery: v.delivery, comp_pct: v.comp_pct, advance: v.advance };
+      }
+    } catch (e) {
+      console.error("hire_contracting_nonfatal", e instanceof Error ? e.message : String(e));
+      contracting = { skipped: false, held: true, verdict: "error", detail: "contracting will be retried from the manager's board" };
+    }
+  }
 
   // Slack access is hired-only and provider-exclusion aware. The dispatcher
   // repeats this check immediately before sending, so a stale/manual outbox row

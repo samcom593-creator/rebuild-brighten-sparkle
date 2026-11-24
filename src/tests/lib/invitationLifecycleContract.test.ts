@@ -141,8 +141,15 @@ describe("consume-invite-token uses the lifecycle RPCs", () => {
     const complete = edge.lastIndexOf('admin.rpc("invitation_complete"');
     expect(apply).toBeGreaterThan(0);
     expect(apply).toBeLessThan(complete);
-    // Contracting is tracked by hand on the agent's profile now. Nothing is queued to a spreadsheet or a private
-    // channel, so a down queue can never fail an invitation that has already created the account.
+    // MP-304: hiring and contracting are one step. A licensed hire enters the Ethos lane AFTER the offered terms are
+    // applied (so the offer is what gets contracted) and BEFORE the invitation completes; it is wrapped so a down
+    // queue or a held verdict can never fail an invitation that has already created the account. Never the legacy
+    // four-destination intake.
+    const contract = edge.indexOf('admin.rpc("submit_downline_contracting"');
+    expect(contract).toBeGreaterThan(apply);
+    expect(contract).toBeLessThan(complete);
+    expect(edge).toContain("hire_contracting_nonfatal");
+    expect(edge).toContain("trusted_comp: true");
     expect(edge).not.toContain('"submit_contracting_intake"');
     expect(edge).not.toContain("contracting_enqueue_failed");
     expect(edge).toContain('reason: "manual_portal_review"');

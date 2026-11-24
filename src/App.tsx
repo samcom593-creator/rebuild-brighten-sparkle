@@ -611,6 +611,8 @@ const App = () => (
                     {/* The page the contracting email and link open: signed-in, prefilled, writes only the caller's own profile. */}
                     <Route path="/dashboard/contracting-profile" element={<ProtectedRoute><ContractingProfile /></ProtectedRoute>} />
                     {/* MP-304: a manager's Ethos lane — their one link, add/upload downlines, the board. Scoped in SQL. */}
+                    <Route path="/dashboard/grow" element={<ProtectedRoute><ContractingDownlines /></ProtectedRoute>} />
+                    {/* The first name of the page; kept so a link already shared still opens it. */}
                     <Route path="/dashboard/contracting/downlines" element={<ProtectedRoute><ContractingDownlines /></ProtectedRoute>} />
                     {/* The retired process's pages (contracts board, operations, audit, Aflac sends, cases, Ethos sheet) go to the review. */}
                     <Route path="/dashboard/contracting/contracts" element={<LegacyWorkspaceRedirect to="/dashboard/contracting/documents" />} />

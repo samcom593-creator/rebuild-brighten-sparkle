@@ -105,8 +105,12 @@ describe("AgentCloud parity surfaces", () => {
     expect(hire).toContain("License path");
     expect(hire).toContain("hire-license-path-locked");
     expect(hire).toContain("licensed: licensedHire === true");
+    // MP-304: never the legacy four-destination intake; a licensed hire goes through the Ethos lane instead,
+    // and contracting can never fail the hire (non-fatal, reported in `contracting`).
     expect(consumer).not.toContain('"submit_contracting_intake"');
     expect(consumer).not.toContain("licensed_contracting_enqueue_failed");
+    expect(consumer).toContain('admin.rpc("submit_downline_contracting"');
+    expect(consumer).toContain("hire_contracting_nonfatal");
     expect(consumer).toContain('reason: "manual_portal_review"');
   });
 

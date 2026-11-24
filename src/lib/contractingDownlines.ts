@@ -177,3 +177,18 @@ export function levelFor(pct: number | null | undefined): string {
   if (!Number.isFinite(n)) return "Level 12";
   return `Level ${Math.min(27, Math.max(12, 12 + Math.round((n - 60) / 5)))}`;
 }
+
+// ── One plain stage per person (MP-304 "Grow my team") ──────────────────────────────────────────
+export type DownlineStage = { key: "login_pending" | "licensing" | "ready" | "adding" | "held" | "on_sheet"; label: string; tone: "ok" | "pending" | "warn" | "muted"; hint: string };
+
+/** Ordered so a manager reads the row left to right as a journey; the board sorts on `order`. */
+export const STAGE_ORDER: Record<DownlineStage["key"], number> = { held: 0, ready: 1, login_pending: 2, adding: 3, licensing: 4, on_sheet: 5 };
+
+export function downlineStage(r: Pick<BoardRow, "agent_status" | "npn" | "on_sheet" | "ethos_state" | "ethos_note">): DownlineStage {
+  if (r.on_sheet) return { key: "on_sheet", label: "On MGN's sheet", tone: "ok", hint: "Contracting sent. MGN/Ethos take it from here." };
+  if (r.agent_status === "intake_only") return { key: "login_pending", label: "Joined — login not made", tone: "warn", hint: "Their details are saved; an admin finishes the login." };
+  if (!r.npn) return { key: "licensing", label: "Getting licensed", tone: "muted", hint: "When they have an NPN they open your Join link again." };
+  if (r.ethos_state === "queued" || r.ethos_state === "attempting") return { key: "adding", label: "Being added to the sheet", tone: "pending", hint: "Usually under a minute." };
+  if (r.ethos_state === "manual_review") return { key: "held", label: "Held — needs a look", tone: "warn", hint: r.ethos_note ?? "Something on this person conflicts with another record." };
+  return { key: "ready", label: "Ready — not on the sheet", tone: "warn", hint: "Licensed with an NPN. Tap Add to sheet." };
+}

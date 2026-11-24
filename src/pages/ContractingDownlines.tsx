@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { CheckCircle2, ClipboardCopy, Loader2, RefreshCw, Upload } from "lucide-react";
+import { CheckCircle2, ClipboardCopy, Loader2, RefreshCw, Upload, UserPlus, Handshake, ListChecks } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +16,7 @@ import { formatPhoneDisplay, maskUsPhoneInput } from "@/lib/phone";
 import { cn } from "@/lib/utils";
 import {
   ADVANCE_TIER, ETHOS_LEVELS, MGN_DEFAULT, VERDICT_COPY, contractingDownlines, parseGrid, pctLabel,
-  type Actor, type BoardRow, type DownlineRow, type Verdict,
+  STAGE_ORDER, downlineStage, type Actor, type BoardRow, type DownlineRow, type Verdict,
 } from "@/lib/contractingDownlines";
 
 /**
@@ -42,27 +44,28 @@ function VerdictBadge({ v }: { v: Verdict | null | undefined }) {
   return <Badge variant="outline" className={cn("text-xs", tone === "ok" && "border-emerald-500/50 text-emerald-500", tone === "warn" && "border-amber-500/50 text-amber-500", tone === "block" && "border-destructive/60 text-destructive")}>{v.ok ? (v.dry_run ? "Ready" : "Saved") : copy.label}</Badge>;
 }
 
-function ethosStateCopy(r: BoardRow): { label: string; tone: "ok" | "pending" | "warn" | "muted" } {
-  if (r.on_sheet) return { label: `On the Ethos sheet${r.sheet_level ? ` · ${r.sheet_level}` : ""}`, tone: "ok" };
-  switch (r.ethos_state) {
-    case "delivered": return { label: "Sent to Ethos", tone: "ok" };
-    case "queued": return { label: "Queued for Ethos", tone: "pending" };
-    case "attempting": return { label: "Sending…", tone: "pending" };
-    case "manual_review": return { label: "Held for review", tone: "warn" };
-    case "not_configured": return { label: "Queued · sheet writes off", tone: "warn" };
-    case "awaiting_license": return { label: "Waiting on licence", tone: "muted" };
-    case "failed": return { label: "Retrying", tone: "warn" };
-    case null: case undefined: return { label: r.npn ? "Not submitted" : "No NPN yet", tone: "muted" };
-    default: return { label: r.ethos_state, tone: "muted" };
-  }
-}
 
 export default function ContractingDownlines() {
-  usePageTitle("Downlines & contracting · Galaxy");
+  usePageTitle("Grow my team · Galaxy");
   const qc = useQueryClient();
   const actorQ = useQuery({ queryKey: ["contracting-actor"], queryFn: async () => (await contractingDownlines.actor()).data as Actor | null, staleTime: 60_000 });
   const boardQ = useQuery({ queryKey: ["contracting-downlines"], queryFn: async () => (await contractingDownlines.downlines()).data?.rows ?? [], enabled: !!actorQ.data?.ok });
   const actor = actorQ.data;
+  // Step 1's link: the same ref_slug URL every other recruiting surface uses (it is what attributes the applicant).
+  const recruitQ = useQuery({
+    queryKey: ["my-recruiting-link"],
+    enabled: !!actorQ.data?.ok,
+    staleTime: 300_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("my_recruiting_link" as never);
+      if (error) throw new Error(error.message);
+      return (data ?? {}) as { link?: string; active?: boolean };
+    },
+  });
+  const recruitUrl = recruitQ.data?.active ? recruitQ.data.link ?? null : null;
+  // One-tap "Add to sheet" for a team member who is licensed but not on MGN's sheet: first tap asks, second tap sends.
+  const [confirmAdd, setConfirmAdd] = useState<string | null>(null);
+  const [adding, setAdding] = useState<string | null>(null);
   const origin = typeof window !== "undefined" ? window.location.origin : "https://apex-financial.org";
   const joinUrl = actor?.join_path ? `${origin}${actor.join_path}` : null;
   const options = useMemo(() => levelOptions(actor?.cap_pct, actor?.default_pct ?? 60), [actor?.cap_pct, actor?.default_pct]);
@@ -162,7 +165,19 @@ export default function ContractingDownlines() {
       else setEditProblem({ field: r.data?.field ?? "form", text: r.data?.message ?? r.error ?? "Not saved.", suggestion: r.data?.suggestion });
     } finally { setEditBusy(false); }
   };
-  const refreshSheet = async () => { const r = await contractingDownlines.refreshSheet(); if (r.data?.ok) { toast.success(r.data.refreshed ? "Re-read the Ethos sheet." : r.data.note ?? "Mirror is fresh."); void qc.invalidateQueries({ queryKey: ["contracting-downlines"] }); } else toast.error(r.error ?? "Could not refresh."); };
+  const addRowToSheet = async (r: BoardRow) => {
+    if (!r.agent_id) return;
+    setAdding(r.agent_id);
+    try {
+      const res = await contractingDownlines.submit([{
+        row_key: r.agent_id, first_name: r.first_name ?? r.display_name.split(" ")[0], last_name: r.last_name ?? r.display_name.split(" ").slice(1).join(" "),
+        email: r.email ?? "", phone: r.phone ?? "", npn: r.npn ?? "", comp_pct: r.comp_pct, license_attested: true, eo_attested: false,
+      }]);
+      const v = res.data?.results?.[0];
+      if (v?.ok) toast.success(`${r.display_name} is going onto MGN's sheet at ${pctLabel(v.comp_pct)}.`);
+      else toast.error(v?.message ?? res.error ?? "Not added.");
+    } finally { setAdding(null); setConfirmAdd(null); void qc.invalidateQueries({ queryKey: ["contracting-downlines"] }); }
+  };
 
   if (actorQ.isLoading) return <div className="page-enter mx-auto max-w-5xl px-4 pt-6 text-sm text-muted-foreground" role="status"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" aria-hidden /> Loading…</div>;
   if (actorQ.isError || !actor) return <div className="page-enter mx-auto max-w-5xl px-4 pt-6" role="alert"><p className="text-sm font-semibold">This page did not load.</p><Button size="sm" variant="outline" className="mt-2 h-10" onClick={() => void actorQ.refetch()}>Try again</Button></div>;
@@ -173,34 +188,58 @@ export default function ContractingDownlines() {
   return (
     <div className="page-enter mx-auto w-full max-w-5xl space-y-6 px-4 pb-24 pt-6 sm:px-6">
       <header className="space-y-1">
-        <h1 className="text-xl font-semibold">Downlines &amp; contracting</h1>
-        <p className="text-sm text-muted-foreground">Ethos only. Everyone is {ADVANCE_TIER}; the default comp is {actor.default_pct}%{actor.cap_pct != null ? `, and you can set up to ${actor.cap_pct}% — your own level` : ""}. Written to MGN&apos;s sheet under <span className="font-medium text-foreground">{actor.sub_agency_label}</span>.</p>
-        {!actor.writes_enabled ? <p className="text-xs text-amber-500">Automatic sheet writes are currently off: everything you submit is saved and queued, and goes onto the Ethos sheet the moment writes are switched on.</p> : null}
+        <h1 className="text-xl font-semibold">Grow my team</h1>
+        <p className="text-sm text-muted-foreground">Three steps, two links. Everything after that happens on its own.</p>
+        {!actor.writes_enabled ? <p className="text-xs text-amber-500">Automatic sheet writes are off right now: everything is saved and queued, and goes onto MGN&apos;s sheet the moment they are switched on.</p> : null}
       </header>
 
-      {/* 1 · the one link */}
-      <GlassCard className="space-y-3 p-4 sm:p-5">
-        <h2 className="text-base font-semibold">Your one link</h2>
-        <p className="text-sm text-muted-foreground">Send this. The recruit fills in their licence details on Galaxy, then lands on your MGN Agent Hub link to finish carrier contracting.</p>
-        {joinUrl ? (
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <Input readOnly value={joinUrl} className="h-11 font-mono text-xs" aria-label="Your contracting link" />
-            <Button type="button" variant="outline" className="h-11" onClick={() => void copy(joinUrl, "Your link")}><ClipboardCopy className="mr-1 h-4 w-4" aria-hidden /> Copy</Button>
-          </div>
-        ) : <p className="text-sm text-destructive">Your agent record has no link slug yet. Ask an admin.</p>}
-        <div className="space-y-1">
-          <Label htmlFor="mgn-url">Your MGN Agent Hub referral link</Label>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Input id="mgn-url" placeholder={MGN_DEFAULT} value={mgnValue} onChange={(e) => setMgn(e.target.value)} className="h-11 font-mono text-xs" />
-            <Button type="button" className="h-11" disabled={savingLink || mgn === null} onClick={() => void saveLink()}>{savingLink ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : "Save"}</Button>
-          </div>
-          <p className="text-xs text-muted-foreground">Paste the referral link MGN gives you (it must start with https://mgnagenthub.com/). Blank = MGN's home page.</p>
-        </div>
-      </GlassCard>
+      <ol className="grid gap-4 md:grid-cols-3" aria-label="How growing your team works">
+        <li className="space-y-3 rounded-xl border border-border bg-card p-4">
+          <div className="flex items-center gap-2"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary">1</span><UserPlus className="h-4 w-4 text-muted-foreground" aria-hidden /><h2 className="text-base font-semibold">Recruit</h2></div>
+          <p className="text-sm text-muted-foreground">Share your recruiting link anywhere. People apply, you interview them.</p>
+          {recruitUrl ? (
+            <div className="space-y-2">
+              <Input readOnly value={recruitUrl} className="h-10 font-mono text-xs" aria-label="Your recruiting link" />
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" className="h-10" onClick={() => void copy(recruitUrl, "Recruiting link")}><ClipboardCopy className="mr-1 h-4 w-4" aria-hidden /> Copy</Button>
+                <Button asChild type="button" variant="ghost" className="h-10"><Link to="/dashboard/recruits">See applicants</Link></Button>
+              </div>
+            </div>
+          ) : recruitQ.isLoading ? <p className="text-xs text-muted-foreground" role="status">Loading your link…</p> : <p className="text-xs text-destructive">Your recruiting link is not set up. Ask an admin.</p>}
+        </li>
 
+        <li className="space-y-3 rounded-xl border border-border bg-card p-4">
+          <div className="flex items-center gap-2"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary">2</span><Handshake className="h-4 w-4 text-muted-foreground" aria-hidden /><h2 className="text-base font-semibold">Hire &amp; contract</h2></div>
+          <p className="text-sm text-muted-foreground">Bringing someone on? Send your <span className="font-medium text-foreground">Join link</span>. They fill it in once: their account is made under you and, if licensed, they go onto MGN&apos;s Ethos sheet at {actor.default_pct}% · {ADVANCE_TIER} and on to MGN to finish.</p>
+          {joinUrl ? (
+            <div className="space-y-2">
+              <Input readOnly value={joinUrl} className="h-10 font-mono text-xs" aria-label="Your Join link" />
+              <Button type="button" variant="outline" className="h-10" onClick={() => void copy(joinUrl, "Join link")}><ClipboardCopy className="mr-1 h-4 w-4" aria-hidden /> Copy</Button>
+            </div>
+          ) : <p className="text-xs text-destructive">Your agent record has no link slug yet. Ask an admin.</p>}
+          <p className="text-xs text-muted-foreground">Not licensed yet? Same link — they get the licensing course, and open it again once they have their NPN.</p>
+        </li>
+
+        <li className="space-y-3 rounded-xl border border-border bg-card p-4">
+          <div className="flex items-center gap-2"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary">3</span><ListChecks className="h-4 w-4 text-muted-foreground" aria-hidden /><h2 className="text-base font-semibold">Watch it happen</h2></div>
+          <p className="text-sm text-muted-foreground">Everyone you bring on shows up below with one plain status. The only thing that ever needs you is a row marked <span className="font-medium text-amber-500">Ready</span> or <span className="font-medium text-amber-500">Held</span>.</p>
+          <div className="space-y-1">
+            <Label htmlFor="mgn-url" className="text-xs">Your MGN Agent Hub link (paste once)</Label>
+            <div className="flex gap-2">
+              <Input id="mgn-url" placeholder={MGN_DEFAULT} value={mgnValue} onChange={(e) => setMgn(e.target.value)} className="h-10 font-mono text-xs" />
+              <Button type="button" className="h-10" disabled={savingLink || mgn === null} onClick={() => void saveLink()}>{savingLink ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : "Save"}</Button>
+            </div>
+            <p className="text-xs text-muted-foreground">Where your Join link sends licensed people after Galaxy. Must start with https://mgnagenthub.com/.</p>
+          </div>
+        </li>
+      </ol>
+
+      <details className="group rounded-xl border border-border bg-card">
+        <summary className="cursor-pointer list-none p-4 text-sm font-semibold sm:p-5">Someone who never used your Join link? Add them here, one at a time or from a spreadsheet <span className="font-normal text-muted-foreground group-open:hidden">— open</span></summary>
+        <div className="space-y-6 px-4 pb-4 sm:px-5 sm:pb-5">
       {/* 2 · add one */}
       <GlassCard className="space-y-4 p-4 sm:p-5">
-        <h2 className="text-base font-semibold">Add a downline</h2>
+        <h2 className="text-base font-semibold">Add one person</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1"><Label htmlFor="o-first">Legal first name</Label><Input id="o-first" className="h-11" value={one.first_name} onChange={(e) => setOne((s) => ({ ...s, first_name: e.target.value }))} /></div>
           <div className="space-y-1"><Label htmlFor="o-last">Legal last name</Label><Input id="o-last" className="h-11" value={one.last_name} onChange={(e) => setOne((s) => ({ ...s, last_name: e.target.value }))} /></div>
@@ -279,25 +318,36 @@ export default function ContractingDownlines() {
         ) : null}
       </GlassCard>
 
+        </div>
+      </details>
+
       {/* 4 · board */}
       <GlassCard className="space-y-3 p-4 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-base font-semibold">Your downlines ({board.length})</h2>
-          <Button type="button" variant="outline" size="sm" className="h-10" onClick={() => void refreshSheet()}><RefreshCw className="mr-1 h-4 w-4" aria-hidden /> Re-read Ethos sheet</Button>
+          <h2 className="text-base font-semibold">Where everyone is ({board.length})</h2>
+          <Button type="button" variant="outline" size="sm" className="h-10" onClick={() => void boardQ.refetch()}><RefreshCw className="mr-1 h-4 w-4" aria-hidden /> Refresh</Button>
         </div>
         {boardQ.isLoading ? <p className="text-sm text-muted-foreground" role="status">Loading…</p> : boardQ.isError ? <p className="text-sm text-destructive" role="alert">The board did not load. <button type="button" className="underline" onClick={() => void boardQ.refetch()}>Try again</button></p> : !board.length ? <p className="text-sm text-muted-foreground">No downlines yet.</p> : (
           <div className="overflow-x-auto rounded-lg border border-border">
             <table className="w-full text-xs">
-              <thead className="bg-muted/40 text-left"><tr><th className="p-2">Name</th><th className="p-2">NPN</th><th className="p-2">Comp</th><th className="p-2">Ethos</th><th className="p-2">Last update</th><th className="p-2"></th></tr></thead>
+              <thead className="bg-muted/40 text-left"><tr><th className="p-2">Name</th><th className="p-2">Status</th><th className="p-2">NPN</th><th className="p-2">Comp</th><th className="p-2"></th></tr></thead>
               <tbody>
-                {board.map((r) => { const st = ethosStateCopy(r); return (
-                  <tr key={r.agent_id ?? r.intake_id ?? r.display_name} className="border-t border-border">
-                    <td className="p-2 whitespace-nowrap">{r.display_name}{r.agent_status === "intake_only" ? <span className="ml-1 text-amber-500">(no login yet)</span> : null}<div className="text-muted-foreground">{r.email}</div></td>
-                    <td className="p-2 font-mono">{r.npn ?? <span className="text-amber-500">missing</span>}</td>
-                    <td className="p-2 whitespace-nowrap">{r.comp_pct != null ? `${r.comp_pct}%` : <span className="text-muted-foreground">not set</span>}</td>
-                    <td className="p-2"><span className={cn(st.tone === "ok" && "text-emerald-500", st.tone === "warn" && "text-amber-500", st.tone === "muted" && "text-muted-foreground")}>{st.label}</span>{r.ethos_note && st.tone === "warn" ? <div className="text-muted-foreground">{r.ethos_note}</div> : null}</td>
-                    <td className="p-2 whitespace-nowrap text-muted-foreground">{r.last_update_status ? `${r.last_update_status}` : "—"}</td>
-                    <td className="p-2">{r.agent_id ? <Button type="button" size="sm" variant="outline" className="h-9" onClick={() => openEdit(r)}>Edit</Button> : null}</td>
+                {[...board].sort((a, b) => STAGE_ORDER[downlineStage(a).key] - STAGE_ORDER[downlineStage(b).key] || a.display_name.localeCompare(b.display_name)).map((r) => { const st = downlineStage(r); const rowKey = r.agent_id ?? r.intake_id ?? r.display_name; return (
+                  <tr key={rowKey} className="border-t border-border align-top">
+                    <td className="p-2 whitespace-nowrap">{r.display_name}<div className="text-muted-foreground">{r.email}</div></td>
+                    <td className="p-2 min-w-48"><span className={cn("font-medium", st.tone === "ok" && "text-emerald-500", st.tone === "warn" && "text-amber-500", st.tone === "pending" && "text-sky-500", st.tone === "muted" && "text-muted-foreground")}>{st.label}</span><div className="text-muted-foreground">{st.hint}</div></td>
+                    <td className="p-2 font-mono">{r.npn ?? "—"}</td>
+                    <td className="p-2 whitespace-nowrap">{r.comp_pct != null ? `${r.comp_pct}%` : `${actor.default_pct}%`}</td>
+                    <td className="p-2 whitespace-nowrap">
+                      {st.key === "ready" && r.agent_id ? (
+                        confirmAdd === r.agent_id ? (
+                          <Button type="button" size="sm" className="h-9" disabled={adding === r.agent_id} onClick={() => void addRowToSheet(r)}>{adding === r.agent_id ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : "Yes, licensed — add"}</Button>
+                        ) : (
+                          <Button type="button" size="sm" className="h-9" onClick={() => setConfirmAdd(r.agent_id)}>Add to sheet</Button>
+                        )
+                      ) : null}
+                      {r.agent_id ? <Button type="button" size="sm" variant="outline" className="ml-2 h-9" onClick={() => openEdit(r)}>Edit</Button> : null}
+                    </td>
                   </tr>); })}
               </tbody>
             </table>

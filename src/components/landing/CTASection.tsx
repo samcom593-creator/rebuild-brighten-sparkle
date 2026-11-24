@@ -1,9 +1,7 @@
 import { forwardRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
-// S11 fix (2026-06-15): relay ?ref= through the closing CTA so the slug
-// survives the landing -> /apply hop on the bottom-of-page conversion path.
-import { applyHrefWithRef } from "@/lib/refSlug";
+import { buildPublicRecruitingHref } from "@/lib/publicRecruitingFlow";
 const benefits = [
   "Licensed and unlicensed tracks",
   "One-link recruiting and onboarding",
@@ -15,7 +13,7 @@ const benefits = [
 
 export const CTASection = forwardRef<HTMLElement>((_, ref) => {
   const [searchParams] = useSearchParams();
-  const applyHref = applyHrefWithRef(searchParams.get("ref"));
+  const applyHref = buildPublicRecruitingHref("/apply", searchParams);
 
   return (
     <section ref={ref} className="py-24 relative overflow-hidden bg-white dark:bg-[#030712]">

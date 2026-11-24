@@ -1,13 +1,13 @@
 import { forwardRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Crown, Mail, Phone, MapPin } from "lucide-react";
-import { applyHrefWithRef } from "@/lib/refSlug";
+import { buildPublicRecruitingHref } from "@/lib/publicRecruitingFlow";
 
 const CURRENT_YEAR = new Date().getFullYear();
 
 export const Footer = forwardRef<HTMLElement>((_, ref) => {
   const [searchParams] = useSearchParams();
-  const applyHref = applyHrefWithRef(searchParams.get("ref"));
+  const applyHref = buildPublicRecruitingHref("/apply", searchParams);
   return (
     <footer ref={ref} className="py-12 border-t border-[#1e293b] bg-white dark:bg-[#030712]">
       <div className="container mx-auto px-4">

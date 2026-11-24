@@ -2,9 +2,7 @@ import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { track } from "@/lib/analytics";
-// S11 fix (2026-06-15): relay ?ref= through the sticky mobile CTA so the
-// slug survives the landing -> /apply hop on the phone-first path.
-import { applyHrefWithRef } from "@/lib/refSlug";
+import { buildPublicRecruitingHref } from "@/lib/publicRecruitingFlow";
 
 export function StickyMobileCTA() {
   const loc = useLocation();
@@ -45,7 +43,7 @@ export function StickyMobileCTA() {
     //      over from before the black+gold rebrand. Retargeted to --primary.
     <div className="fixed bottom-0 inset-x-0 z-40 md:hidden p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] bg-white dark:bg-black/90 backdrop-blur-xl border-t border-primary/30 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
       <Link
-        to={applyHrefWithRef(searchParams.get("ref"))}
+        to={buildPublicRecruitingHref("/apply", searchParams)}
         onClick={() => track("hero_cta_click", { position: "sticky_mobile", cta_label: "Apply Now" })}
         aria-label="Start my application"
         className="flex items-center justify-center gap-2 py-3.5 rounded-md bg-primary text-primary-foreground font-bold font-display text-base shadow-[0_5px_25px_hsl(var(--primary)/0.45)] active:scale-95 transition-base"

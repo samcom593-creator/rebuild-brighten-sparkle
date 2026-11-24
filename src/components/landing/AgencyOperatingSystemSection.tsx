@@ -9,7 +9,7 @@ import {
   Network,
   UserPlus,
 } from "lucide-react";
-import { applyHrefWithRef } from "@/lib/refSlug";
+import { buildPublicRecruitingHref } from "@/lib/publicRecruitingFlow";
 import { SectionHeading } from "@/components/ui/section-heading";
 
 const operatingStages = [
@@ -65,7 +65,7 @@ const controlPanels = [
 
 export function AgencyOperatingSystemSection() {
   const [searchParams] = useSearchParams();
-  const applyHref = applyHrefWithRef(searchParams.get("ref"));
+  const applyHref = buildPublicRecruitingHref("/apply", searchParams);
 
   return (
     <section id="agency-system" className="relative border-y border-border bg-background py-24">

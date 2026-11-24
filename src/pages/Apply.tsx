@@ -121,6 +121,7 @@ import { refLinkOutcome } from "@/lib/refLinkNotice";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getAttribution } from "@/lib/attribution";
 import { isDialablePhone, normalizePhoneForDial } from "@/lib/phone";
+import { defaultLicenseStatusForTrack } from "@/lib/publicRecruitingFlow";
 
 const applicationBaseSchema = z.object({
   // Step 1: Personal Info
@@ -327,7 +328,7 @@ export default function Apply() {
     resolver: zodResolver(applicationSchema),
     defaultValues: {
       hasInsuranceExperience: false,
-      licenseStatus: "unlicensed",
+      licenseStatus: defaultLicenseStatusForTrack(searchParams.get("track")),
       licensedStates: [],
       smsConsent: false,
       emailConsent: false,

@@ -25,22 +25,32 @@ describe("today production and landing elevation", () => {
     expect(list).toContain('parts.push("Sold today")');
   });
 
-  it("positions the landing page for each APEX partner path", () => {
+  it("hands both license choices and agency builders to the video and application funnel", () => {
     const hero = source("src/components/landing/HeroSection.tsx");
     const index = source("src/pages/Index.tsx");
+    const vsl = source("src/pages/Vsl.tsx");
     const apply = source("src/pages/Apply.tsx");
     const operatingSystem = source("src/components/landing/AgencyOperatingSystemSection.tsx");
-    expect(hero).toContain("The Operating System for");
-    expect(hero).toContain("Elite Insurance Agencies");
-    expect(hero).toContain("Agency Builders");
-    expect(hero).toContain("Licensed Producers");
-    expect(hero).toContain("Licensing Fast Track");
-    expect(hero).toContain("XCEL pre-licensing prep");
-    expect(hero).toContain("#0A0A0A");
-    expect(hero).toContain("#030712");
-    expect(hero).toContain("#C9A961");
-    expect(hero).toContain("#D4AF37");
-    expect(hero).toContain("Founder · $1.2M income in first year");
+    const pathArray = hero.match(/const partnerPaths = \[([\s\S]*?)\]\s+as const/);
+    expect(pathArray, "The hero still declares all three audience paths").not.toBeNull();
+    const paths = Array.from(
+      pathArray![1].matchAll(/title: "([^"]+)",\s*description: "[^"]+",\s*track: "([^"]+)",\s*destination: "([^"]+)"/g),
+      ([, title, track, destination]) => ({ title, track, destination }),
+    );
+    expect(paths).toEqual([
+      { title: "I’m a licensed agent", track: "licensed-producer", destination: "/vsl" },
+      { title: "I need my license", track: "licensing-roadmap", destination: "/vsl" },
+      { title: "Building an agency?", track: "agency-builder", destination: "/vsl" },
+    ]);
+    expect(hero).toContain("Do you have your insurance license?");
+    expect(hero).toContain('partnerPaths.filter((path) => path.track !== "agency-builder")');
+    expect(hero).toContain('partnerPaths.filter((path) => path.track === "agency-builder")');
+    expect(hero).toContain("buildPublicRecruitingHref(path.destination, searchParams, path.track)");
+    expect(vsl).toContain('buildPublicRecruitingHref("/apply", searchParams)');
+    expect(vsl).toMatch(/<Link\s+to=\{applyHref\}/);
+    expect(vsl).toContain("<source src={VSL_VIDEO.src}");
+    expect(apply).toContain('defaultLicenseStatusForTrack(searchParams.get("track"))');
+    expect(apply).toContain("attributionJson: partnerPath");
     expect(apply).toContain("Founder · $1.2M income in first year");
     expect(apply).not.toContain("income in one year");
     expect(index).toContain("<AgencyOperatingSystemSection />");

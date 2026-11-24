@@ -30,7 +30,7 @@ interface StoredSlug {
 }
 
 function isBrowser(): boolean {
-  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+  return typeof window !== "undefined";
 }
 
 function isValidSlug(slug: string | null | undefined): slug is string {

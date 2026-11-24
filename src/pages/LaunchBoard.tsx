@@ -25,7 +25,7 @@
 // Library → card is one click ("New card" mints a card in Edit with the clip attached; "Attach" drops the clip onto an
 // existing idea). Publishing stays in Sam's hands.
 //
-// v3 (2026-09-15, vidIQ channel audit): Instagram is retired — every card funnels to apex-financial.org/apply. Brands
+// v3 (2026-09-15, vidIQ channel audit): Instagram is retired — every card funnels to galaxyfinancial.org/apply. Brands
 // are now channels (YouTube long-form / Shorts auto-republished by Repurpose.io). The Week tab is a real Mon–Sun
 // calendar with a slot per day.
 //
@@ -145,8 +145,8 @@ const LENGTH_LABEL: Record<LengthKey, string> = { all: "Any length", short: "1 m
 
 // Channels (Instagram retired 2026-09-15). YT = YouTube long-form, SH = Shorts (Repurpose.io republishes to TikTok).
 // Legacy SFD / IMS cards were the two Instagram handles; they render as retired so old rows still make sense.
-const CTA = "Want to sell life insurance with my team? Apply: https://apex-financial.org/apply";
-const hasCta = (s: string) => /apex-financial\.org/i.test(s);
+const CTA = "Want to sell life insurance with my team? Apply: https://galaxyfinancial.org/apply";
+const hasCta = (s: string) => /(?:apex-financial|galaxyfinancial)\.org/i.test(s);
 const brandHandle = (b: string) => (b === "SH" ? "YouTube Shorts → Repurpose" : b === "YT" ? "YouTube" : b === "IMS" ? "@imakesystems · retired" : b === "SFD" ? "@sellfordaddy · retired" : b);
 const brandTone = (b: string) => (b === "SH" || b === "YT" ? platformTone("youtube") : "slate");
 const WEEKDAY = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -1097,7 +1097,7 @@ export default function LaunchBoard() {
               {postTarget.caption && !hasCta(postTarget.caption) && !hasCta(postTarget.cta ?? "") && (
                 <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-foreground">
                   <span>No website link in this caption.</span>
-                  <Button size="sm" variant="outline" className="h-10" onClick={async () => { const cap = `${postTarget.caption.trim()}\n\n${CTA}`; if (await patch(postTarget.id, { caption: cap })) setPostTarget({ ...postTarget, caption: cap }); }}>Add apex-financial.org/apply</Button>
+                  <Button size="sm" variant="outline" className="h-10" onClick={async () => { const cap = `${postTarget.caption.trim()}\n\n${CTA}`; if (await patch(postTarget.id, { caption: cap })) setPostTarget({ ...postTarget, caption: cap }); }}>Add galaxyfinancial.org/apply</Button>
                 </div>
               )}
               <div className="flex flex-wrap gap-2">

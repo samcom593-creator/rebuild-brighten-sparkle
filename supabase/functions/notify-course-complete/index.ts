@@ -19,7 +19,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const portalLink = "https://apex-financial.org/agent-portal";
+const portalLink = "https://galaxyfinancial.org/agent-portal";
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {

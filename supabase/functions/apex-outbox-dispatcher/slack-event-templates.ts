@@ -52,15 +52,15 @@ export const SLACK_EDGE_EMITTERS: Readonly<Record<string, string>> = {
 };
 
 export const SLACK_DEFAULT_URLS = {
-  recruitingPipeline: "https://apex-financial.org/dashboard/recruiting",
-  interviewRecovery: "https://apex-financial.org/dashboard/recruiting/follow-ups",
-  contractingOps: "https://apex-financial.org/dashboard/contracting/ops",
-  productionDashboard: "https://apex-financial.org/dashboard",
-  teamDashboard: "https://apex-financial.org/dashboard/team",
+  recruitingPipeline: "https://galaxyfinancial.org/dashboard/recruiting",
+  interviewRecovery: "https://galaxyfinancial.org/dashboard/recruiting/follow-ups",
+  contractingOps: "https://galaxyfinancial.org/dashboard/contracting/ops",
+  productionDashboard: "https://galaxyfinancial.org/dashboard",
+  teamDashboard: "https://galaxyfinancial.org/dashboard/team",
 } as const;
 
 export function safeSlackUrl(value: unknown, fallback: string): string {
-  return typeof value === "string" && value.startsWith("https://apex-financial.org/")
+  return typeof value === "string" && value.startsWith("https://galaxyfinancial.org/")
     ? value
     : fallback;
 }

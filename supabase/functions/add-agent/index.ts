@@ -752,7 +752,7 @@ const handler = async (req: Request): Promise<Response> => {
             from: "Galaxy Hiring <notifications@apex-financial.org>",
             to: ["info@kingofsales.net"],
             subject: `Comp approval needed · ${firstName} ${lastName} · ${normalizedComp}%`,
-            html: `<p><strong>${firstName} ${lastName}</strong> was added at <strong>${normalizedComp}% comp</strong>.</p><p>The account remains pending Sam approval because the requested comp is above 100%.</p><p><a href="https://apex-financial.org/dashboard/crm">Open the agent profile to approve or change comp</a></p>`,
+            html: `<p><strong>${firstName} ${lastName}</strong> was added at <strong>${normalizedComp}% comp</strong>.</p><p>The account remains pending Sam approval because the requested comp is above 100%.</p><p><a href="https://galaxyfinancial.org/dashboard/crm">Open the agent profile to approve or change comp</a></p>`,
           });
           compApprovalEmailStatus = approvalEmailError || !approvalEmail?.id
             ? { ok: false, error: approvalEmailError?.message ?? "email provider returned no id" }

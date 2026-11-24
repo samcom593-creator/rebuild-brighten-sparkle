@@ -2,7 +2,7 @@ import { addDays } from "https://esm.sh/date-fns@4.1.0";
 import { formatInTimeZone, fromZonedTime } from "https://esm.sh/date-fns-tz@3.2.0";
 
 export const APP_BASE_URL =
-  (Deno.env.get("APP_BASE_URL") || "https://apex-financial.org").replace(/\/+$/, "");
+  (Deno.env.get("APP_BASE_URL") || "https://galaxyfinancial.org").replace(/\/+$/, "");
 
 export const BUSINESS_TIMEZONE = "America/Chicago";
 

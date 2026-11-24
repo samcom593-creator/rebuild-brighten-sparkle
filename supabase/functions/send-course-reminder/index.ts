@@ -12,7 +12,7 @@ const corsHeaders = {
 };
 
 const ADMIN_EMAIL = "info@kingofsales.net";
-const BASE_URL = "https://apex-financial.org";
+const BASE_URL = "https://galaxyfinancial.org";
 
 async function generateMagicToken(
   supabaseClient: any,

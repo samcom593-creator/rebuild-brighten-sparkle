@@ -30,7 +30,7 @@ interface UseRealtimeTableOptions {
    *
    * The damage is not confined to the admin surface that causes it. While the
    * database is jammed, unrelated requests time out too, which is how
-   * apex-financial.org's PUBLIC data layer 500s: landing_live_stats and
+   * galaxyfinancial.org's PUBLIC data layer 500s: landing_live_stats and
    * landing_recent_applicants were collateral in exactly these windows. Error
    * minutes carry LOW throughput (46-515 requests) while the busiest minute
    * measured (4,606 requests) had zero errors — this is starvation from burst

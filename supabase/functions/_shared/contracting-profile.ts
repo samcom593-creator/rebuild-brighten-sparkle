@@ -12,7 +12,7 @@
  * src/lib/contractingLinks.ts (the vitest contract pins them together).
  */
 export const MGN_CONTRACTING_URL = "https://mgnagenthub.com/dashboard";
-export const CONTRACTING_PROFILE_URL = "https://apex-financial.org/dashboard/contracting-profile";
+export const CONTRACTING_PROFILE_URL = "https://galaxyfinancial.org/dashboard/contracting-profile";
 
 /** The sign-off the existing welcome emails already use. */
 export const CONTRACTING_TEAM_NAME = "The Galaxy Team";

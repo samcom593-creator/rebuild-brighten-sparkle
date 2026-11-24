@@ -3,11 +3,11 @@
 //   1. One-click (RFC 8058) from a mailbox provider's Unsubscribe button
 //        POST /functions/v1/unsubscribe?u=<encoded-email>
 //        body: List-Unsubscribe=One-Click
-//      Also used by the apex-financial.org/unsubscribe page's button.
+//      Also used by the galaxyfinancial.org/unsubscribe page's button.
 //
 //   2. A human clicking the footer link
 //        GET /functions/v1/unsubscribe?u=<encoded-email>
-//      302s to https://apex-financial.org/unsubscribe?u=<same>, where a real page
+//      302s to https://galaxyfinancial.org/unsubscribe?u=<same>, where a real page
 //      asks for one click and then POSTs here.
 //
 // WHY GET NO LONGER UNSUBSCRIBES (ANCHOR, 2026-11-11):
@@ -26,7 +26,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
-const SITE_UNSUBSCRIBE_URL = "https://apex-financial.org/unsubscribe";
+const SITE_UNSUBSCRIBE_URL = "https://galaxyfinancial.org/unsubscribe";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

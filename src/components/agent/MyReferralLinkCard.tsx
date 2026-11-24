@@ -23,7 +23,7 @@ type RecruitingLink = {
   link?: string;
 };
 
-const APEX_ORIGIN = "https://apex-financial.org";
+const APEX_ORIGIN = "https://galaxyfinancial.org";
 
 export function MyReferralLinkCard() {
   const { user } = useAuth();

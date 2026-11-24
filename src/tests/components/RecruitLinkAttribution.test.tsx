@@ -3,7 +3,7 @@
  * MP-342's promise: whoever applies through /r/<slug> is credited to the slug's owner and hired
  * under them. This file walks the chain link by link, from the card to the hire:
  *
- *   card    my_recruiting_link().ref_slug -> https://apex-financial.org/r/<slug> (Copy writes exactly that)
+ *   card    my_recruiting_link().ref_slug -> https://galaxyfinancial.org/r/<slug> (Copy writes exactly that)
  *   route   /r/<slug> -> /apply?ref=<slug> (the real RecruitingShortLink route)
  *   apply   resolve-ref-slug finds agents.ref_slug -> refLinkOutcome "credited" -> recruiterId
  *   server  submit-application writes recruiter_id, referral_manager_id and referral_recruiter_id
@@ -49,7 +49,7 @@ beforeEach(() => {
   vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mockReset();
   vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mockImplementation(((fn: string) =>
     Promise.resolve(fn === "my_recruiting_link"
-      ? { data: { active: true, agent_id: OWNER, ref_slug: SLUG, link: `https://apex-financial.org/apply?ref=${SLUG}` }, error: null }
+      ? { data: { active: true, agent_id: OWNER, ref_slug: SLUG, link: `https://galaxyfinancial.org/apply?ref=${SLUG}` }, error: null }
       : { data: null, error: null })) as never);
 });
 
@@ -63,9 +63,9 @@ describe("Your link keeps /r/<slug> attribution (MP-342)", () => {
         <MyLinkCard blurb="Anyone who applies through it is credited to you." />
       </QueryClientProvider>,
     );
-    expect(await screen.findByTestId("my-link-url")).toHaveTextContent(`apex-financial.org/r/${SLUG}`);
+    expect(await screen.findByTestId("my-link-url")).toHaveTextContent(`galaxyfinancial.org/r/${SLUG}`);
     fireEvent.click(screen.getByRole("button", { name: "Copy link" }));
-    await waitFor(() => expect(writeText).toHaveBeenCalledWith(`https://apex-financial.org/r/${SLUG}`));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(`https://galaxyfinancial.org/r/${SLUG}`));
     expect(vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mock.calls.map((c) => c[0])).toEqual(["my_recruiting_link"]);
   });
 
@@ -83,7 +83,7 @@ describe("Your link keeps /r/<slug> attribution (MP-342)", () => {
   });
 
   it("the copied link, opened, lands on /apply with the owner as the recruiter", () => {
-    const path = ownLinkPath(`https://apex-financial.org/r/${SLUG}`);
+    const path = ownLinkPath(`https://galaxyfinancial.org/r/${SLUG}`);
     render(
       <MemoryRouter initialEntries={[path]}>
         <Routes>

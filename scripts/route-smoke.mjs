@@ -17,14 +17,14 @@
 // 200 for unknown paths, so HTTP status alone cannot prove a route exists.
 //
 // Usage:
-//   BASE=https://apex-financial.org node scripts/route-smoke.mjs
+//   BASE=https://galaxyfinancial.org node scripts/route-smoke.mjs
 //   BASE=http://localhost:8080      node scripts/route-smoke.mjs
 //
 // Exit non-zero on any failure so CI / post-build gates can block.
 
 import fs from "node:fs";
 
-const BASE = process.env.BASE || "https://apex-financial.org";
+const BASE = process.env.BASE || "https://galaxyfinancial.org";
 const appSource = fs.readFileSync(new URL("../src/App.tsx", import.meta.url), "utf8");
 const registeredRoutes = new Set(
   [...appSource.matchAll(/<Route\s+path=["']([^"']+)["']/g)].map((match) => match[1]),

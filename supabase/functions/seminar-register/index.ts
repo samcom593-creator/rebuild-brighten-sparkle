@@ -196,7 +196,7 @@ async function sendManagerAlert(
   const applicantName = `${clean(app.first_name)} ${clean(app.last_name)}`.trim();
   const seminarPretty = formatSeminarDate(seminarDate);
   const subject = `New seminar registration: ${applicantName} - ${seminarPretty}`;
-  const appUrl = `https://apex-financial.org/dashboard/applicants?lead=${encodeURIComponent(clean(app.id))}`;
+  const appUrl = `https://galaxyfinancial.org/dashboard/applicants?lead=${encodeURIComponent(clean(app.id))}`;
 
   const body = `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;padding:24px;color:#111">
@@ -211,7 +211,7 @@ async function sendManagerAlert(
       </table>
       <p>Follow up before the room opens so they do not come in cold.</p>
       <p style="margin-top:22px"><a href="${appUrl}" style="display:inline-block;background:#111827;color:#fff;text-decoration:none;padding:11px 18px;border-radius:8px;font-weight:700">Open application</a></p>
-      <p style="margin-top:24px;font-size:11px;color:#777">Registration ${html(registrationId)} from apex-financial.org/seminar.</p>
+      <p style="margin-top:24px;font-size:11px;color:#777">Registration ${html(registrationId)} from galaxyfinancial.org/seminar.</p>
     </div>`;
 
   if (!RESEND_KEY) {
@@ -303,7 +303,7 @@ Deno.serve(async (req) => {
   // write. 410, not 200: a caller must not read this as "registered".
   // Gated on a boolean, not a bare return: a bare return makes the rest of the
   // handler unreachable, and deno check stops narrowing there (7 new errors).
-  if (SEMINAR_RETIRED) return jsonResponse({ ok: false, error: "The seminar is retired. Apply at https://apex-financial.org/apply." }, 410);
+  if (SEMINAR_RETIRED) return jsonResponse({ ok: false, error: "The seminar is retired. Apply at https://galaxyfinancial.org/apply." }, 410);
 
   let payload: SeminarPayload;
   try {

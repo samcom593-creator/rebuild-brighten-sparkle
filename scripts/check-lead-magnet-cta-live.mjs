@@ -15,7 +15,7 @@
 // one of these pages — they are the mouth of the funnel.
 //
 // THE BLIND SPOT. These pages live on sell4daddy.com, a SEPARATE Vercel project
-// outside THIS repo's deploy pipeline and every guard it runs. apex-financial.org
+// outside THIS repo's deploy pipeline and every guard it runs. galaxyfinancial.org
 // has a dense live-edge guard suite (share-card-live, vsl-media-live,
 // crawl-entrypoints-live, brand-static-live, funnel-external-CTA liveness,
 // Calendly liveness, Stripe link liveness) — but the lead-magnet doors, which are

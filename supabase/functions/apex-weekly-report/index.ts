@@ -15,7 +15,7 @@ const corsHeaders = {
 
 const SAM_EMAIL = "info@kingofsales.net";
 const SAM_PHONE = "4697676068";
-const BRAND_URL = "https://apex-financial.org";
+const BRAND_URL = "https://galaxyfinancial.org";
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,

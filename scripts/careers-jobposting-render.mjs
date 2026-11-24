@@ -67,14 +67,14 @@
 // render asserted on the exact shipped commit is the right tool).
 //
 // Usage:
-//   BASE=https://apex-financial.org node scripts/careers-jobposting-render.mjs
+//   BASE=https://galaxyfinancial.org node scripts/careers-jobposting-render.mjs
 //   node scripts/careers-jobposting-render.mjs --selftest   # prove the checks both ways, no network
 //   PW_CHANNEL=chrome node scripts/careers-jobposting-render.mjs   # system Chrome (CI, no download)
 
 import { chromium } from "playwright";
 
-const BASE = (process.env.BASE || "https://apex-financial.org").replace(/\/$/, "");
-const PROD_ORIGIN = "https://apex-financial.org"; // canonical is a FIXED prod origin, never window.location (no preview leak)
+const BASE = (process.env.BASE || "https://galaxyfinancial.org").replace(/\/$/, "");
+const PROD_ORIGIN = "https://galaxyfinancial.org"; // canonical is a FIXED prod origin, never window.location (no preview leak)
 const SETTLE_MS = 1200; // let hydration + the head-injection effect + <JsonLd> mount land
 const NAV_TIMEOUT = 40000;
 
@@ -302,7 +302,7 @@ async function selftest() {
         "@type": "ListItem",
         position: i + 1,
         name: `Life Insurance Agent Jobs in ${s}`,
-        url: `https://apex-financial.org/careers/${s}`,
+        url: `https://galaxyfinancial.org/careers/${s}`,
       })),
     },
   };

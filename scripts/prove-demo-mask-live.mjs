@@ -28,7 +28,7 @@ const BURL = fs.readFileSync(process.env.HOME + '/.config/apex-creds/bot-sql.url
 const BTOK = fs.readFileSync(process.env.HOME + '/.config/apex-creds/bot-sql.token','utf8').trim();
 const EMAIL = 'sam.com593@gmail.com';
 const REF = new URL(SURL).hostname.split('.')[0];
-const SITE = 'https://apex-financial.org';
+const SITE = 'https://galaxyfinancial.org';
 
 async function sql(query) {
   const r = await fetch(BURL, { method:'POST', headers:{'Content-Type':'application/json',Authorization:`Bearer ${BTOK}`}, body:JSON.stringify({query}) });

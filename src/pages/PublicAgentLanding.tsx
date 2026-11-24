@@ -80,7 +80,7 @@ export default function PublicAgentLanding() {
           <Shield className="h-12 w-12 text-amber-400 mx-auto mb-4" />
           <h1 className="text-22 text-foreground font-bold mb-2">Galaxy Financial</h1>
           <p className="text-13 text-white/70">This producer profile is not available.</p>
-          <a href="https://apex-financial.org" className="inline-block mt-4 px-4 py-2 bg-amber-500 text-slate-900 rounded-lg text-13 font-bold">
+          <a href="https://galaxyfinancial.org" className="inline-block mt-4 px-4 py-2 bg-amber-500 text-slate-900 rounded-lg text-13 font-bold">
             Visit Galaxy Financial →
           </a>
         </div>
@@ -159,7 +159,7 @@ export default function PublicAgentLanding() {
       <div className="border-t border-border px-6 py-8 text-center">
         <p className="text-11 text-foreground/40 uppercase tracking-[0.25em]">Hold the Standard · Average is the disease</p>
         <p className="text-10 text-foreground/30 mt-2">
-          Galaxy Financial · <a href="https://apex-financial.org" className="text-amber-400 hover:underline">apex-financial.org</a>
+          Galaxy Financial · <a href="https://galaxyfinancial.org" className="text-amber-400 hover:underline">galaxyfinancial.org</a>
         </p>
       </div>
     </div>

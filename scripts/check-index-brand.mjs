@@ -43,12 +43,12 @@
  *     retired-token test applies to them.
  *   - Only human-readable text keys (name/legalName/description/headline/…) are
  *     token-tested. URL/path fields (url, logo, thumbnailUrl, contentUrl,
- *     embedUrl, sameAs) are skipped, so the apex-financial.org domain and the
+ *     embedUrl, sameAs) are skipped, so the galaxyfinancial.org domain and the
  *     apex-vsl.mp4 storage filename never trip it.
  *
  * THE BIO-HUB HALF (added 2026-11-17, Website Integrity Bot)
  * index.html's sameAs is NOT the only public "follow Samuel James" surface.
- * src/pages/LinksPage.tsx renders apex-financial.org/links — the link-in-bio hub
+ * src/pages/LinksPage.tsx renders galaxyfinancial.org/links — the link-in-bio hub
  * every TikTok/IG/YouTube bio points at (the #1-traffic social destination) — and
  * it hardcodes the SAME four profile URLs as a SECOND, independent copy. When
  * @theprincejamez was retired it was fixed in LinksPage on 2026-09-28 and the
@@ -65,7 +65,7 @@
  * handle) is deliberately a different set and is NOT compared here.
  *
  * WHAT THIS GUARD DELIBERATELY DOES NOT TOUCH
- *   - The domain `apex-financial.org` (og:url, canonical, asset URLs). The
+ *   - The domain `galaxyfinancial.org` (og:url, canonical, asset URLs). The
  *     domain legitimately stays Apex post-rebrand (memory: "domain/legal-pages/
  *     CONTENT_ACCOUNTS stay Apex on purpose"). It is allowlisted and stripped
  *     before the negative test.
@@ -127,7 +127,7 @@ if (!found.has("__title__")) die("no <title> found in index.html — guard canno
 if (!found.has("og:title")) die("no og:title <meta> found in index.html — guard cannot find its operand");
 // og:site_name is a MANDATORY anchor (promoted 2026-11-18, Website Integrity Bot):
 // its ABSENCE is itself the leak. Without it every social/LinkedIn/iMessage/Slack
-// unfurl attributes the share card to the bare host "apex-financial.org" — the
+// unfurl attributes the share card to the bare host "galaxyfinancial.org" — the
 // STALE pre-rebrand brand string (the domain legitimately stays Apex; the agency is
 // Galaxy) — instead of the current brand. It sat absent and silently green because
 // every BRAND_TEXT field is optional (`continue` if absent); this makes the one that
@@ -137,7 +137,7 @@ if (!found.has("og:site_name"))
   die(
     'no og:site_name <meta> found in index.html — every social/LinkedIn/iMessage/' +
       'Slack unfurl of a shared link would attribute the card to the bare host ' +
-      '"apex-financial.org" (the stale pre-rebrand brand) instead of the current ' +
+      '"galaxyfinancial.org" (the stale pre-rebrand brand) instead of the current ' +
       'brand. Add <meta property="og:site_name" content="<brand> Financial" />.',
   );
 
@@ -170,9 +170,9 @@ for (const key of BRAND_TEXT) {
 }
 
 // --- Rule NEGATIVE: no user-facing field carries the retired brand token ---
-// The domain apex-financial.org legitimately stays Apex; strip it first so the
+// The domain galaxyfinancial.org legitimately stays Apex; strip it first so the
 // og:url / asset URLs never trip this.
-const ALLOWED_DOMAINS = [/apex-financial\.org/gi, /apexfinancialempire\.com/gi];
+const ALLOWED_DOMAINS = [/apex-financial\.org/gi, /galaxyfinancial\.org/gi, /apexfinancialempire\.com/gi];
 const RETIRED = /apex/i;
 for (const key of [...BRAND_TEXT, ...HANDLE_FIELDS]) {
   if (!found.has(key)) continue;
@@ -182,7 +182,7 @@ for (const key of [...BRAND_TEXT, ...HANDLE_FIELDS]) {
   if (RETIRED.test(stripped)) {
     die(`index.html ${key} = "${val}" still carries the retired brand token "APEX" that a user ` +
         `sees in the tab title / search snippet / social share card. Update it to the current ` +
-        `brand "${platform}" or remove the tag. (The domain apex-financial.org is allowlisted and ` +
+        `brand "${platform}" or remove the tag. (The domain galaxyfinancial.org is allowlisted and ` +
         `not the trigger.)`);
   }
 }
@@ -199,7 +199,7 @@ for (const key of [...BRAND_TEXT, ...HANDLE_FIELDS]) {
 // as a live, URL-reachable orphan after the Nov-3 swap to galaxy-recruit-og.jpg;
 // a future edit could silently repoint the card back at it and every <meta> would
 // stay green because this is a URL field. Delete-the-orphan fixes the instance;
-// this closes the class. Domain stripped first (apex-financial.org legitimately
+// this closes the class. Domain stripped first (galaxyfinancial.org legitimately
 // stays Apex) so only the PATH/basename is tested — galaxy-recruit-og.jpg passes,
 // anything named apex-*.{png,jpg} fails. Denylist-free: it fires on the retired
 // token in the path, so it is born-green after the orphan delete and can never
@@ -217,7 +217,7 @@ for (const key of SHARE_IMAGE_FIELDS) {
         `LinkedIn/iMessage/Slack/X unfurl renders; CI cannot read the pixels, so a ` +
         `retired-brand FILENAME is the only CI-visible signal the card itself is off-brand. ` +
         `Point it at a current-brand asset (e.g. galaxy-recruit-og.jpg). (The domain ` +
-        `apex-financial.org is allowlisted; only the path/filename triggers this.)`,
+        `galaxyfinancial.org is allowlisted; only the path/filename triggers this.)`,
     );
   }
 }
@@ -240,7 +240,7 @@ if (LD_BLOCKS.length === 0) {
   );
 }
 
-// Human-readable text keys only — never URL/path fields, so apex-financial.org
+// Human-readable text keys only — never URL/path fields, so galaxyfinancial.org
 // and the apex-vsl.mp4 storage filename never trip the retired-token test.
 const LD_TEXT_KEYS = new Set([
   "name",
@@ -324,7 +324,7 @@ if (!sawOrgBrand) {
 
 // --- Rule NEGATIVE-SOCIAL: no RETIRED social handle in any index.html URL ---
 // The brand-name passes above deliberately SKIP url/path/sameAs keys (so the
-// apex-financial.org domain and the apex-vsl.mp4 filename never trip them).
+// galaxyfinancial.org domain and the apex-vsl.mp4 filename never trip them).
 // That left the JSON-LD `sameAs` entity graph — the official-profiles list
 // Google Knowledge Graph + AI search (ChatGPT / Perplexity) read to ground
 // "who is Samuel James / Galaxy Financial" — with NO guard at all. It shipped
@@ -360,7 +360,7 @@ for (const { re, note } of RETIRED_HANDLES) {
 
 // --- 4. the /links bio hub — the SECOND public "follow" surface ------------
 // See "THE BIO-HUB HALF" in the header. LinksPage.tsx renders
-// apex-financial.org/links and hardcodes the same four profile URLs the sameAs
+// galaxyfinancial.org/links and hardcodes the same four profile URLs the sameAs
 // block carries. Extract the socialLinks array's href VALUES (never the raw
 // file — line ~23 carries a "@theprincejamez is dead" comment a raw denylist
 // scan would false-red on).
@@ -384,7 +384,7 @@ for (const href of linksHandles) {
   for (const { re, note } of RETIRED_HANDLES) {
     if (re.test(href)) {
       die(
-        `src/pages/LinksPage.tsx (apex-financial.org/links bio hub) still links the ` +
+        `src/pages/LinksPage.tsx (galaxyfinancial.org/links bio hub) still links the ` +
           `RETIRED social handle "${href}" (${note}). This is the link-in-bio page every ` +
           `social profile points at; a dead handle here sends the #1 traffic source to a ` +
           `profile that no longer exists. Replace it with the canonical handle from ` +

@@ -35,7 +35,7 @@ const BASELINE = "scripts/data/hardcoded-sender-baseline.json";
 const EXEMPT = new Set(["supabase/functions/_shared/email.ts"]);
 
 const FROM_LITERAL = /\bfrom\s*:\s*["'`]/;
-const DOMAIN_ADDR = /@apex-financial\.org>/i;
+const DOMAIN_ADDR = /@(?:apex-financial|galaxyfinancial)\.org>/i;
 
 export function countSenderLiterals(source) {
   const code = stripComments(source);

@@ -118,7 +118,7 @@ export default function StateCareerLanding() {
     };
 
     const desc = `Hiring licensed and unlicensed life insurance agents in ${cfg.name}. Work from home, A-rated carriers, lead supply, no cold-calling. 1099 contractor, commission only. Top first-year producers have written ${TOP_PRODUCER_EARNINGS} in commissions.`;
-    const url = `https://apex-financial.org/careers/${cfg.slug}`;
+    const url = `https://galaxyfinancial.org/careers/${cfg.slug}`;
 
     const meta1 = setMeta("description", desc);
     const meta2 = setMeta("og:title", `Life Insurance Agent Jobs in ${cfg.name} — Galaxy Financial`, "property");
@@ -157,8 +157,8 @@ export default function StateCareerLanding() {
     hiringOrganization: {
       "@type": "Organization",
       name: "Galaxy Financial",
-      sameAs: "https://apex-financial.org",
-      logo: "https://apex-financial.org/pwa-512x512.png",
+      sameAs: "https://galaxyfinancial.org",
+      logo: "https://galaxyfinancial.org/pwa-512x512.png",
     },
     jobLocation: {
       "@type": "Place",
@@ -180,7 +180,7 @@ export default function StateCareerLanding() {
     skills: "Sales, communication, follow-through, time management, work ethic",
     workHours: "Flexible — set your own schedule. Most full-time agents work 35-50 hours/week.",
     directApply: false,
-    url: `https://apex-financial.org/careers/${cfg.slug}`,
+    url: `https://galaxyfinancial.org/careers/${cfg.slug}`,
   };
 
   return (

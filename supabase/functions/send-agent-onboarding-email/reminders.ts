@@ -25,7 +25,7 @@ export function isReminderKind(kind: string): kind is ReminderKind {
 // where the required onboarding_progress modules live. The course email used
 // to point at /dashboard/training/library (the extra-practice library), while
 // the nudges pointed here; hires got two different "start training" answers.
-export const FIELD_COURSE_URL = "https://apex-financial.org/dashboard/training/sales-course";
+export const FIELD_COURSE_URL = "https://galaxyfinancial.org/dashboard/training/sales-course";
 
 function firstNameOf(fullName: string | null | undefined): string {
   const cleaned = (fullName ?? "").trim();

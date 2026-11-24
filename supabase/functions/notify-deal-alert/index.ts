@@ -130,7 +130,7 @@ Deno.serve(
         </td></tr>
         <tr><td style="padding: 24px; text-align: center; background: rgba(0,0,0,0.1);">
           <p style="color: white; font-size: 20px; font-weight: 700; margin: 0 0 20px 0; font-style: italic;">"Can YOU keep up?"</p>
-          <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;"><tr><td bgcolor="#fef08a" style="border-radius:12px;"><a href="https://apex-financial.org/numbers" style="display:inline-block;color:#b91c1c;font-size:16px;font-weight:800;text-decoration:none;padding:16px 40px;text-transform:uppercase;letter-spacing:1px;">🎯 LOG MY NUMBERS</a></td></tr></table>
+          <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;"><tr><td bgcolor="#fef08a" style="border-radius:12px;"><a href="https://galaxyfinancial.org/numbers" style="display:inline-block;color:#b91c1c;font-size:16px;font-weight:800;text-decoration:none;padding:16px 40px;text-transform:uppercase;letter-spacing:1px;">🎯 LOG MY NUMBERS</a></td></tr></table>
         </td></tr>
         <tr><td style="padding: 20px; text-align: center; background: rgba(0,0,0,0.3);">
           <p style="color: rgba(255,255,255,0.5); font-size: 12px; margin: 0;">Galaxy Financial • The Hustle Never Stops 🔥</p>

@@ -3,7 +3,7 @@
 // are NOT being told to leave Google's index on the LIVE edge. Owned by the
 // Website Integrity Bot. (MP-WIB-ROBOTS-LIVE, 2026-11-16)
 //
-// WHY THIS EXISTS. apex-financial.org's organic inbound ("insurance sales
+// WHY THIS EXISTS. galaxyfinancial.org's organic inbound ("insurance sales
 // career", "get licensed", the /careers Google-for-Jobs pages) is a load-
 // bearing recruiting lead source. A single `noindex` signal removes a page from
 // Google's index entirely — strictly worse than the 2026-11-10 canonical bug,
@@ -72,7 +72,7 @@ import {
   noindexMetas,
 } from "./lib/robots-indexable-parse.mjs";
 
-const SITE = (process.env.ROBOTS_LIVE_SITE || "https://apex-financial.org/").replace(/\/*$/, "/");
+const SITE = (process.env.ROBOTS_LIVE_SITE || "https://galaxyfinancial.org/").replace(/\/*$/, "/");
 const CONTROL = process.env.ROBOTS_LIVE_CONTROL_URL || "https://www.google.com/generate_204";
 const TIMEOUT_MS = Number(process.env.ROBOTS_LIVE_TIMEOUT_MS || 25000);
 const MAX_ROUTES = Number(process.env.ROBOTS_LIVE_MAX_ROUTES || 40);
@@ -237,14 +237,14 @@ async function selftest() {
   const blockFunnel = classifyRobots({ status: 200, body: "User-agent: *\nDisallow: /apply" }, ["/apply", "/vsl"]);
   ok(blockFunnel.blocks.some((b) => b.path === "/apply"), "live robots Disallow: /apply -> /apply blocked");
   ok(!blockFunnel.blocks.some((b) => b.path === "/vsl"), "live robots Disallow: /apply leaves /vsl crawlable");
-  const allowAll = classifyRobots({ status: 200, body: "User-agent: *\nAllow: /\nSitemap: https://apex-financial.org/sitemap.xml" }, ["/apply", "/vsl"]);
+  const allowAll = classifyRobots({ status: 200, body: "User-agent: *\nAllow: /\nSitemap: https://galaxyfinancial.org/sitemap.xml" }, ["/apply", "/vsl"]);
   ok(allowAll.blocks.length === 0 && !allowAll.unresolved, "live robots Allow: / -> nothing blocked, resolved");
   ok(classifyRobots({ status: 200, body: "<!doctype html><html>shell</html>" }, ["/apply"]).unresolved === true, "robots shell masquerade -> unresolved (crawl-entrypoints owns liveness)");
   ok(classifyRobots({ networkError: "x" }, ["/apply"]).unresolved === true, "robots network error -> unresolved");
   ok(classifyRobots({ status: 503 }, ["/apply"]).unresolved === true, "robots 503 -> unresolved");
 
   // 3. resolveRoutes: sitemap operand + core-funnel fallback + no silent cap.
-  const r1 = resolveRoutes("<urlset><url><loc>https://apex-financial.org/careers/texas</loc></url></urlset>");
+  const r1 = resolveRoutes("<urlset><url><loc>https://galaxyfinancial.org/careers/texas</loc></url></urlset>");
   ok(r1.paths.includes("/careers/texas") && r1.paths.includes("/apply"), "sitemap paths + core funnel merged");
   const r2 = resolveRoutes("");
   ok(r2.paths.includes("/apply") && r2.notes.some((n) => /core funnel/i.test(n)), "empty sitemap -> core funnel fallback, noted");

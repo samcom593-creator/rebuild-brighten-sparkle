@@ -174,8 +174,8 @@ Deno.serve(async (req) => {
         <li>License status: ${app.license_status ?? "unlicensed"}</li>
       </ul>
       <p>They'll get automated email + Telegram reminders T-24h and T-1h before the seminar. You should reach out within 24h to confirm they got the link.</p>
-      <p style="margin-top:24px"><a href="https://apex-financial.org/dashboard/applicants?id=${app.id}" style="display:inline-block;padding:10px 18px;background:#c8a445;color:#fff;text-decoration:none;border-radius:6px;font-weight:600">Open application</a></p>
-      <p style="margin-top:24px;font-size:11px;color:#888">Auto-sent by the apex-financial.org seminar-signup hook. Trigger: applications.course_purchased_at NULL → NOT NULL.</p>
+      <p style="margin-top:24px"><a href="https://galaxyfinancial.org/dashboard/applicants?id=${app.id}" style="display:inline-block;padding:10px 18px;background:#c8a445;color:#fff;text-decoration:none;border-radius:6px;font-weight:600">Open application</a></p>
+      <p style="margin-top:24px;font-size:11px;color:#888">Auto-sent by the galaxyfinancial.org seminar-signup hook. Trigger: applications.course_purchased_at NULL → NOT NULL.</p>
     </div>`;
 
   const ok = await sendEmail(managerEmail, subject, html);

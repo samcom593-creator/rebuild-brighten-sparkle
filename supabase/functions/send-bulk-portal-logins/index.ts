@@ -11,7 +11,7 @@ const corsHeaders = {
 };
 
 const resend = gateResend(new Resend(Deno.env.get("RESEND_API_KEY")));
-const BASE_URL = "https://apex-financial.org";
+const BASE_URL = "https://galaxyfinancial.org";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const ADMIN_EMAIL = "info@kingofsales.net";
 
@@ -334,7 +334,7 @@ const handler = async (req: Request): Promise<Response> => {
                   <!-- Fallback note -->
                   <div style="background: rgba(148, 163, 184, 0.1); border-radius: 8px; padding: 16px; margin: 24px 0;">
                     <p style="color: #94a3b8; font-size: 12px; margin: 0; text-align: center;">
-                      Link not working? You can also sign in at <a href="${BASE_URL}/agent-login" style="color: #c9a84c;">apex-financial.org/agent-login</a><br>
+                      Link not working? You can also sign in at <a href="${BASE_URL}/agent-login" style="color: #c9a84c;">galaxyfinancial.org/agent-login</a><br>
                       using your email: <strong style="color: #e2e8f0;">${profile.email}</strong>
                     </p>
                   </div>

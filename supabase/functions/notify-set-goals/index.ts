@@ -122,7 +122,7 @@ Deno.serve(
           expires_at: expiresAt.toISOString(),
         });
 
-        const baseUrl = "https://apex-financial.org";
+        const baseUrl = "https://galaxyfinancial.org";
         const portalUrl = `${baseUrl}/magic-login?token=${token}`;
 
         try {

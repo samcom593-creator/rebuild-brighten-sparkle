@@ -29,7 +29,7 @@ const corsHeaders = {
 };
 
 // Funnel destinations — where each intent is driven.
-const APPLY_URL = "https://apex-financial.org/apply";
+const APPLY_URL = "https://galaxyfinancial.org/apply";
 // Licensed prospects book straight onto Sam's schedule.
 const LICENSED_CALL_URL = "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone";
 // Licensed prospect who is bringing a team / runs an agency. Same link until
@@ -534,7 +534,7 @@ type CalendlyBooking = { event_uri: string; start_at: Date; label: string; exact
 async function bookOnCalendly(name: string, email: string, phone: string, handle: string | null, when: When, tz: string): Promise<CalendlyBooking | null> {
   const key = Deno.env.get("CALENDLY_API_TOKEN");
   if (!key || !when.startAt) return null;
-  const H = { "Authorization": `Bearer ${key}`, "Content-Type": "application/json", "User-Agent": "Galaxy-DM-Bot/1.0 (+https://apex-financial.org)" };
+  const H = { "Authorization": `Bearer ${key}`, "Content-Type": "application/json", "User-Agent": "Galaxy-DM-Bot/1.0 (+https://galaxyfinancial.org)" };
   try {
     const lo = new Date(Math.max(when.startAt.getTime() - 90 * 60000, Date.now() + 10 * 60000));
     const hi = new Date(when.startAt.getTime() + 90 * 60000);

@@ -3,7 +3,7 @@
  * Robots / indexability guard — the recruiting funnel must stay crawlable.
  *
  * WHY THIS EXISTS (2026-11-11, Website Integrity Bot, Check #3/SEO)
- * apex-financial.org is the agency's recruiting funnel; its organic inbound
+ * galaxyfinancial.org is the agency's recruiting funnel; its organic inbound
  * ("insurance sales career", "get licensed", the /careers Google-for-Jobs
  * pages) is a load-bearing lead source. One line flips the whole thing dark:
  *
@@ -81,7 +81,7 @@ const INDEX = join(ROOT, "index.html");
 const VERCEL = join(ROOT, "vercel.json");
 const SITEMAP = join(ROOT, "public/sitemap.xml");
 const SRC = join(ROOT, "src");
-const PROD_HOST = "apex-financial.org";
+const PROD_HOST = "galaxyfinancial.org";
 
 // A src file may legitimately carry the `noindex` token only if it CANNOT
 // inject a head tag — a pure data/prose module rendered as React-escaped text,
@@ -208,16 +208,16 @@ function selftest() {
   const GOOD = {
     robotsTxt:
       "User-agent: *\nAllow: /\n\nUser-agent: Googlebot\nAllow: /\n\n" +
-      "Sitemap: https://apex-financial.org/sitemap.xml\n",
-    indexHtml: '<head><meta charset="utf-8" /><link rel="canonical" href="https://apex-financial.org" /></head>',
+      "Sitemap: https://galaxyfinancial.org/sitemap.xml\n",
+    indexHtml: '<head><meta charset="utf-8" /><link rel="canonical" href="https://galaxyfinancial.org" /></head>',
     vercelJson: JSON.stringify({
       headers: [
         { source: "/(.*)", headers: [{ key: "X-Content-Type-Options", value: "nosniff" }] },
       ],
     }),
     sitemapXml:
-      "<loc>https://apex-financial.org/</loc><loc>https://apex-financial.org/apply</loc>" +
-      "<loc>https://apex-financial.org/vsl</loc>",
+      "<loc>https://galaxyfinancial.org/</loc><loc>https://galaxyfinancial.org/apply</loc>" +
+      "<loc>https://galaxyfinancial.org/vsl</loc>",
     srcFiles: [{ path: "src/pages/Apply.tsx", raw: "export const Apply = () => <div>apply</div>;" }],
   };
 
@@ -226,15 +226,15 @@ function selftest() {
     // Rule A
     ["robots Disallow: / blocks everything", {
       ...GOOD,
-      robotsTxt: "User-agent: *\nDisallow: /\nSitemap: https://apex-financial.org/sitemap.xml",
+      robotsTxt: "User-agent: *\nDisallow: /\nSitemap: https://galaxyfinancial.org/sitemap.xml",
     }, 1],
     ["robots Disallow /apply blocks a funnel path", {
       ...GOOD,
-      robotsTxt: "User-agent: *\nDisallow: /apply\nSitemap: https://apex-financial.org/sitemap.xml",
+      robotsTxt: "User-agent: *\nDisallow: /apply\nSitemap: https://galaxyfinancial.org/sitemap.xml",
     }, 1],
     ["robots Disallow Googlebot only still caught", {
       ...GOOD,
-      robotsTxt: "User-agent: *\nAllow: /\n\nUser-agent: Googlebot\nDisallow: /\nSitemap: https://apex-financial.org/sitemap.xml",
+      robotsTxt: "User-agent: *\nAllow: /\n\nUser-agent: Googlebot\nDisallow: /\nSitemap: https://galaxyfinancial.org/sitemap.xml",
     }, 1],
     // Allow-override: a broad `Disallow: /` with an explicit Allow per funnel
     // path (incl. `/$` for root) is NOT a block — most-specific-wins, Allow
@@ -242,7 +242,7 @@ function selftest() {
     // any Disallow. (The unguarded broad `Disallow: /` is the case above.)
     ["robots Allow override of every funnel path is crawlable", {
       ...GOOD,
-      robotsTxt: "User-agent: *\nDisallow: /\nAllow: /apply\nAllow: /vsl\nAllow: /$\nSitemap: https://apex-financial.org/sitemap.xml",
+      robotsTxt: "User-agent: *\nDisallow: /\nAllow: /apply\nAllow: /vsl\nAllow: /$\nSitemap: https://galaxyfinancial.org/sitemap.xml",
     }, 0],
     ["robots missing Sitemap line", {
       ...GOOD,

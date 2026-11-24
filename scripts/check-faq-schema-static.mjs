@@ -13,7 +13,7 @@
 //   comment says "for SERP + AI Overview eligibility", and check-index-brand's
 //   header says that block is "the answer ChatGPT/[Perplexity] gives". But the
 //   FAQPage lived ONLY in the lazy React tree, so the SERVED HTML never carried
-//   it: a 2026-11-21 fetch of apex-financial.org/ returned exactly 2 ld+json
+//   it: a 2026-11-21 fetch of galaxyfinancial.org/ returned exactly 2 ld+json
 //   blocks (Organization + VideoObject), no FAQPage. Non-JS crawlers — GPTBot,
 //   ClaudeBot, PerplexityBot, Gemini, and Google's structured-data pass — read
 //   the served HTML and never saw the 5 highest-intent recruiting Q&As ("do I

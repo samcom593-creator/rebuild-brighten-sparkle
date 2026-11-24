@@ -37,7 +37,7 @@ interface CallSummary {
 }
 
 const LICENSED_FOLLOW_UP_URL = SCHEDULING_LINKS.licensed;
-const UNLICENSED_FOLLOW_UP_URL = "https://apex-financial.org/get-licensed";
+const UNLICENSED_FOLLOW_UP_URL = "https://galaxyfinancial.org/get-licensed";
 
 interface CallCenterVoiceRecorderProps {
   onTranscriptionUpdate: (text: string) => void;

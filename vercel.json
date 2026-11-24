@@ -2,6 +2,11 @@
   "buildCommand": "vite build",
   "outputDirectory": "dist",
   "framework": "vite",
+  "redirects": [
+    { "source": "/:path((?!api/|healthz$|readiness$).*)", "has": [{ "type": "host", "value": "galaxyfinancial.org" }], "destination": "https://galaxyfinancial.org/:path", "permanent": true },
+    { "source": "/:path((?!api/|healthz$|readiness$).*)", "has": [{ "type": "host", "value": "www.galaxyfinancial.org" }], "destination": "https://galaxyfinancial.org/:path", "permanent": true },
+    { "source": "/:path*", "has": [{ "type": "host", "value": "www.galaxyfinancial.org" }], "destination": "https://galaxyfinancial.org/:path*", "permanent": true }
+  ],
   "rewrites": [
     {
       "source": "/healthz",

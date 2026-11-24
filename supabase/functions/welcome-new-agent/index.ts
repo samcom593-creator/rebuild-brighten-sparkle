@@ -30,12 +30,12 @@ interface WelcomeEmailRequest {
 }
 
 const defaultCourseLink = "https://partners.xcelsolutions.com/afe";
-const PORTAL_LINK = "https://apex-financial.org/agent-portal";
+const PORTAL_LINK = "https://galaxyfinancial.org/agent-portal";
 // WP7: read from system_settings.slack_community_invite_url (once per isolate
 // boot; never throws, falls back to the current invite).
 const SLACK_LINK = await readSlackInviteUrl();
 const ONBOARDING_CALL_LINK = "https://calendly.com/apexfinancialempire/apex-onboarding-call";
-const APEX_TRAINING_LINK = "https://apex-financial.org/dashboard/training/library";
+const APEX_TRAINING_LINK = "https://galaxyfinancial.org/dashboard/training/library";
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {

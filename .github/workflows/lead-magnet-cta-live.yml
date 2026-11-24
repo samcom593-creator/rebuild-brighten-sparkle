@@ -9,7 +9,7 @@
 # through a single door.
 #
 # THE BLIND SPOT: those pages live on sell4daddy.com — a SEPARATE Vercel project
-# outside THIS repo's deploy pipeline and every guard it runs. apex-financial.org
+# outside THIS repo's deploy pipeline and every guard it runs. galaxyfinancial.org
 # has a dense live-edge suite (share-card-live, vsl-media-live,
 # crawl-entrypoints-live, brand-static-live, funnel-external-CTA liveness) but the
 # doors where the lead-printing engine actually DELIVERS are watched by nothing. A

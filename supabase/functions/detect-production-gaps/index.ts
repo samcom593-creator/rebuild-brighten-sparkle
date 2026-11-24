@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
           headers: { Authorization: `Bearer ${serviceKey}`, "Content-Type": "application/json" },
           body: JSON.stringify({
             to: phone,
-            message: `Galaxy: ${firstName} — don't forget to log your numbers today! https://apex-financial.org/numbers`,
+            message: `Galaxy: ${firstName} — don't forget to log your numbers today! https://galaxyfinancial.org/numbers`,
           }),
         }).catch(console.error);
         alerts++;
@@ -109,7 +109,7 @@ Deno.serve(async (req) => {
             headers: { Authorization: `Bearer ${serviceKey}`, "Content-Type": "application/json" },
             body: JSON.stringify({
               to: phone,
-              message: `Galaxy: ${firstName} — 2 days no numbers. Your manager has been notified. Log now: https://apex-financial.org/numbers`,
+              message: `Galaxy: ${firstName} — 2 days no numbers. Your manager has been notified. Log now: https://galaxyfinancial.org/numbers`,
             }),
           }).catch(console.error);
         }

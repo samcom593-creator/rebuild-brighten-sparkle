@@ -3,7 +3,7 @@
  * check-funnel-capture-handler — does the recruit-capture POST handler RUN?
  *
  * WHY THIS EXISTS (MP-WIB-FUNNEL-CAPTURE-HANDLER, 2026-11-11). Every recruit
- * lead on apex-financial.org — the quick-qualify step AND the full submit —
+ * lead on galaxyfinancial.org — the quick-qualify step AND the full submit —
  * flows through ONE edge function: submit-application (src/pages/Apply.tsx:784
  * and :923, both `supabase.functions.invoke("submit-application")`). It is the
  * single highest-$ endpoint on the funnel: if it stops capturing, the agency's
@@ -61,7 +61,7 @@
  */
 
 const BASE = process.env.APEX_FUNCTIONS_BASE ?? "https://xrzweoneiieddzxogewk.supabase.co/functions/v1";
-const SITE = process.env.APEX_SITE_ORIGIN ?? "https://apex-financial.org";
+const SITE = process.env.APEX_SITE_ORIGIN ?? "https://galaxyfinancial.org";
 const ATTEMPTS = 3;
 
 // Only functions whose empty-body POST is PROVEN to reject before any side

@@ -22,7 +22,7 @@ Deno.test("one short sentence, one link, signed Sam", () => {
   assertEquals((m.html.match(/<a /g) ?? []).length, 1);
   assertEquals((m.text.match(/https:\/\//g) ?? []).length, 1);
   assertStringIncludes(m.text, "\n\nSam");
-  assertStringIncludes(m.html, "https://apex-financial.org/numbers");
+  assertStringIncludes(m.html, "https://galaxyfinancial.org/numbers");
 });
 
 Deno.test("a name from a form is escaped before it reaches HTML", () => {

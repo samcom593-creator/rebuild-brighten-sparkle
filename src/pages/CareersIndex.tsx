@@ -61,7 +61,7 @@ export default function CareersIndex() {
     // A hardcoded "N states" here is forbidden by check-careers-hub.mjs Rule D.
     const desc =
       `Galaxy Financial is hiring licensed and unlicensed life insurance agents across ${STATES.length} states. Work remotely, A-rated carriers, lead supply, no cold-calling. 1099 contractor, commission only. Top first-year producers have written ${TOP_PRODUCER_EARNINGS} in commissions.`;
-    const url = "https://apex-financial.org/careers";
+    const url = "https://galaxyfinancial.org/careers";
     const created = [
       setMeta("description", desc),
       setMeta("og:title", "Life Insurance Agent Jobs — Remote, Nationwide — Galaxy Financial", "property"),
@@ -88,7 +88,7 @@ export default function CareersIndex() {
       "@type": "ListItem",
       position: i + 1,
       name: `Life Insurance Agent Jobs in ${s.name}`,
-      url: `https://apex-financial.org/careers/${s.slug}`,
+      url: `https://galaxyfinancial.org/careers/${s.slug}`,
     })),
   };
 

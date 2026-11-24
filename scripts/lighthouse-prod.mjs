@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * lighthouse-prod — pull a mobile Lighthouse audit of apex-financial.org
+ * lighthouse-prod — pull a mobile Lighthouse audit of galaxyfinancial.org
  * and assert minimum scores. Fails (exit 1) when any category drops below
  * the budget below — wire into CI to lock in the gains.
  *
@@ -15,7 +15,7 @@ import { readFileSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const URL_ = process.env.URL || "https://apex-financial.org/";
+const URL_ = process.env.URL || "https://galaxyfinancial.org/";
 
 // Budgets (override with env vars). Tightened 2026-05-18 round 3 baseline:
 //   Perf 68 / A11y 89 / BP 96 / SEO 100 / FCP 3.8s / LCP 5.7s / CLS 0

@@ -183,10 +183,10 @@ export default function DashboardCRM() {
   };
   const copyCheckInLink = async () => {
     try {
-      await navigator.clipboard.writeText("https://apex-financial.org/agent-login");
+      await navigator.clipboard.writeText("https://galaxyfinancial.org/agent-login");
       toast.success("Check-in link copied. Paste it into a text or DM.");
     } catch {
-      toast.error("Could not copy. The link is apex-financial.org/agent-login.");
+      toast.error("Could not copy. The link is galaxyfinancial.org/agent-login.");
     }
   };
 

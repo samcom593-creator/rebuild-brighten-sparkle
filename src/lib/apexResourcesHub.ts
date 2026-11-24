@@ -113,7 +113,7 @@ export interface HubTranscript {
 
 /** Relative asset paths in the API (e.g. "assets/APEX_Agent_Playbook.pdf") are
  *  relative to the apex-resources origin — absolutize them so they open from
- *  apex-financial.org. "#" means "no external URL" (courses) → null. */
+ *  galaxyfinancial.org. "#" means "no external URL" (courses) → null. */
 export function absolutizeHubUrl(url: string | undefined): string | null {
   if (!url || url === "#") return null;
   if (/^https?:\/\//i.test(url)) return url;

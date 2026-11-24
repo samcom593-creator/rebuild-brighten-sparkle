@@ -15,7 +15,7 @@
 export const RECRUIT_REPLY_TO = "info@kingofsales.net";
 
 /** Domains that send mail but receive none (every mailbox probed returned 550). */
-export const NO_MAILBOX_DOMAINS: readonly string[] = ["apex-financial.org"];
+export const NO_MAILBOX_DOMAINS: readonly string[] = ["apex-financial.org", "galaxyfinancial.org"];
 
 /** "Name <a@b.com>" or "a@b.com" -> "a@b.com" (lower-cased); "" when there is no address. */
 export function replyAddress(value: unknown): string {

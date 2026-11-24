@@ -24,7 +24,7 @@ const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
 
 const resend = resendApiKey ? gateResend(new Resend(resendApiKey)) : null;
 
-const DASHBOARD_URL = "https://apex-financial.org";
+const DASHBOARD_URL = "https://galaxyfinancial.org";
 
 // Sanitize string for HTML output
 function sanitizeHtml(str: string | null | undefined): string {

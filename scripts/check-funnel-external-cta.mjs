@@ -53,14 +53,14 @@
 //
 // Usage:
 //   node scripts/check-funnel-external-cta.mjs
-//   BASE=https://apex-financial.org node scripts/check-funnel-external-cta.mjs
+//   BASE=https://galaxyfinancial.org node scripts/check-funnel-external-cta.mjs
 //   node scripts/check-funnel-external-cta.mjs --selftest   # deterministic, no network
 
 import { chromium } from "playwright";
 import { writeFileSync } from "node:fs";
 import http from "node:http";
 
-const BASE = (process.env.BASE || "https://apex-financial.org").replace(/\/$/, "");
+const BASE = (process.env.BASE || "https://galaxyfinancial.org").replace(/\/$/, "");
 const CONTROL = "https://www.google.com/generate_204";
 const SETTLE_MS = 2500;
 const NAV_TIMEOUT = 40000;

@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
   for (const p of (parts ?? []) as Array<{ id: string; email: string; first_name: string | null; step: string | null }>) {
     if (!key) break;
     if (dryRun) { receipts.push({ partial_id: p.id, email: p.email, dry_run: true }); continue; }
-    const link = "https://apex-financial.org/apply?utm_source=instagram&utm_medium=dm&utm_campaign=recovery";
+    const link = "https://galaxyfinancial.org/apply?utm_source=instagram&utm_medium=dm&utm_campaign=recovery";
     try {
       // sendEmail drops suppressed and non-routable recipients before Resend sees them;
       // a refusal stays unstamped, so it reads as not sent, never as recovered.

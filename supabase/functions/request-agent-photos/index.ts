@@ -21,7 +21,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const UPLOAD_URL = "https://apex-financial.org/dashboard/settings";
+const UPLOAD_URL = "https://galaxyfinancial.org/dashboard/settings";
 
 const CARRIER_GATEWAYS: Record<string, string> = {
   att: "txt.att.net", verizon: "vtext.com", tmobile: "tmomail.net",

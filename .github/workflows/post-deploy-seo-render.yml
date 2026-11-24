@@ -55,9 +55,9 @@ jobs:
           SHORT="$(echo "${{ github.sha }}" | cut -c1-8)"
           DEADLINE=$(( SECONDS + 600 ))
           SERVED=""
-          echo "waiting for apex-financial.org to serve ${SHORT}"
+          echo "waiting for galaxyfinancial.org to serve ${SHORT}"
           while [ "$SECONDS" -lt "$DEADLINE" ]; do
-            SERVED="$(curl -fsS "https://apex-financial.org/version.json?ci=${GITHUB_RUN_ID}&t=${SECONDS}" \
+            SERVED="$(curl -fsS "https://galaxyfinancial.org/version.json?ci=${GITHUB_RUN_ID}&t=${SECONDS}" \
                       | sed -n 's/.*"id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' || true)"
             if [ "$SERVED" = "$SHORT" ]; then
               echo "matched=true" >> "$GITHUB_OUTPUT"
@@ -122,7 +122,7 @@ jobs:
         if: steps.promote.outputs.matched == 'true'
         run: node scripts/careers-jobposting-render.mjs
         env:
-          BASE: https://apex-financial.org
+          BASE: https://galaxyfinancial.org
 
       # Every sitemap URL (minus /careers/*, covered above) must render PUBLIC to an
       # anonymous crawler: no client redirect to /login, no login wall rendered in
@@ -134,7 +134,7 @@ jobs:
         if: steps.promote.outputs.matched == 'true'
         run: node scripts/check-sitemap-public-render.mjs
         env:
-          BASE: https://apex-financial.org
+          BASE: https://galaxyfinancial.org
 
       # Follow the links OFF the funnel. The money pages hand every recruit to
       # external partners — Xcel pre-licensing enrollment, the onboarding-call
@@ -150,7 +150,7 @@ jobs:
       - name: Run funnel external-CTA liveness check
         if: steps.promote.outputs.matched == 'true'
         env:
-          BASE: https://apex-financial.org
+          BASE: https://galaxyfinancial.org
         run: |
           node scripts/check-funnel-external-cta.mjs; code=$?
           if [ "$code" = "3" ]; then

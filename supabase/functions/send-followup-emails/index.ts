@@ -167,7 +167,7 @@ async function sendUnlicensedFollowup(app: {
             <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-top: 25px;">
               <h3 style="color: #111827; margin-top: 0; margin-bottom: 15px; font-size: 16px;">Quick Resources:</h3>
               <ul style="color: #4b5563; margin: 0; padding-left: 20px; line-height: 1.8;">
-                <li><a href="https://apex-financial.org/get-licensed#licensing-video" style="color: #059669;">Watch: How to Get Your Life Insurance License</a></li>
+                <li><a href="https://galaxyfinancial.org/get-licensed#licensing-video" style="color: #059669;">Watch: How to Get Your Life Insurance License</a></li>
                 <li><a href="https://docs.google.com/document/d/1WBN_bh7Tl6IkhdXwQvrUa6Q58xmV9As_q048aKAeyNg/edit" style="color: #059669;">Licensing Step-by-Step Guide</a></li>
                 <li><a href="https://partners.xcelsolutions.com/afe" style="color: #059669;">Start Pre-Licensing Course</a></li>
               </ul>
@@ -251,7 +251,7 @@ async function sendUnlicensedFollowup2(app: {
               </p>
               
               <ul style="color: #4b5563; line-height: 2; font-size: 15px; margin: 15px 0;">
-                <li><a href="https://apex-financial.org/get-licensed#licensing-video" style="color: #059669; font-weight: 500;">▶️ Watch: How to Get Your Life Insurance License</a></li>
+                <li><a href="https://galaxyfinancial.org/get-licensed#licensing-video" style="color: #059669; font-weight: 500;">▶️ Watch: How to Get Your Life Insurance License</a></li>
                 <li><a href="https://docs.google.com/document/d/1WBN_bh7Tl6IkhdXwQvrUa6Q58xmV9As_q048aKAeyNg/edit" style="color: #059669; font-weight: 500;">📄 Licensing Step-by-Step Guide</a></li>
                 <li><a href="https://partners.xcelsolutions.com/afe" style="color: #059669; font-weight: 500;">📚 Start/Continue Pre-Licensing Course</a></li>
               </ul>
@@ -384,7 +384,7 @@ async function sendDay1Nudge(app: { id: string; first_name: string | null; email
     return null;
   }
   const first = (app.first_name ?? "").trim().split(/\s+/)[0] || "there";
-  const nextStep = `https://apex-financial.org/get-licensed?applicationId=${encodeURIComponent(app.id)}`;
+  const nextStep = `https://galaxyfinancial.org/get-licensed?applicationId=${encodeURIComponent(app.id)}`;
   try {
     const response = await resend.emails.send({
       from: BRAND_FROM,

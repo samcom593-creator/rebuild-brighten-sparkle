@@ -3,7 +3,7 @@
 //
 // WHY (2026-10-08): 996492ce renamed the agency to Galaxy and swept ~1,000 strings with a
 // lexer. The og:image was a PNG with "APEX FINANCIAL" baked into the pixels, so no text
-// tool could see it, and every shared apex-financial.org link previewed the old name under
+// tool could see it, and every shared galaxyfinancial.org link previewed the old name under
 // a "Galaxy Financial" title. check:brand-literals cannot see this either: it reads source
 // text, never images.
 //
@@ -23,7 +23,7 @@ import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 
 const ROOT = resolve(import.meta.dirname, "..");
-const SITE = "https://apex-financial.org/";
+const SITE = "https://galaxyfinancial.org/";
 const MAX_BYTES = 300 * 1024;
 const read = (p) => readFileSync(resolve(ROOT, p), "utf8");
 const problems = [];

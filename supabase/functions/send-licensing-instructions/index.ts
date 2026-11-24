@@ -17,9 +17,9 @@ const ADMIN_EMAIL = "info@kingofsales.net";
 // WP7: read from system_settings.slack_community_invite_url (once per isolate
 // boot; never throws, falls back to the current invite).
 const SLACK_LINK = await readSlackInviteUrl();
-const PORTAL_LINK = "https://apex-financial.org/agent-portal";
+const PORTAL_LINK = "https://galaxyfinancial.org/agent-portal";
 const CONTRACTING_LINK = CONTRACTING_PROFILE_URL;
-const TRAINING_LINK = "https://apex-financial.org/dashboard/training/library";
+const TRAINING_LINK = "https://galaxyfinancial.org/dashboard/training/library";
 const PRELICENSING_LINK = "https://partners.xcelsolutions.com/afe";
 
 interface LicensingEmailRequest {
@@ -268,7 +268,7 @@ const handler = async (req: Request): Promise<Response> => {
                 "3",
                 "Learn the Licensing Process",
                 "Watch the overview, then work the course modules in order until you are ready for the state exam.",
-                "https://apex-financial.org/get-licensed#licensing-video",
+                "https://galaxyfinancial.org/get-licensed#licensing-video",
                 "🎬 How to Get Your Life Insurance License",
                 "#4CAF50",
                 "76, 175, 80",
@@ -278,7 +278,7 @@ const handler = async (req: Request): Promise<Response> => {
                 "4",
                 "Open Your Galaxy Roadmap",
                 "Sign in to your Galaxy account and update course, exam, fingerprints, and license milestones as they happen.",
-                "https://apex-financial.org/get-licensed",
+                "https://galaxyfinancial.org/get-licensed",
                 "Open My Licensing Roadmap →",
                 "#14b8a6",
                 "20, 184, 166",

@@ -215,8 +215,8 @@ export default function LeadsLanding() {
             <div>
               <h4 className="font-semibold text-foreground mb-4">Legal</h4>
               <ul className="space-y-2 text-muted-foreground text-sm">
-                <li><a href="https://apex-financial.org/privacy" rel="noopener noreferrer" className="inline-flex min-h-6 items-center hover:text-teal-400 transition">Privacy</a></li>
-                <li><a href="https://apex-financial.org/terms" rel="noopener noreferrer" className="inline-flex min-h-6 items-center hover:text-teal-400 transition">Terms</a></li>
+                <li><a href="https://galaxyfinancial.org/privacy" rel="noopener noreferrer" className="inline-flex min-h-6 items-center hover:text-teal-400 transition">Privacy</a></li>
+                <li><a href="https://galaxyfinancial.org/terms" rel="noopener noreferrer" className="inline-flex min-h-6 items-center hover:text-teal-400 transition">Terms</a></li>
               </ul>
             </div>
           </div>

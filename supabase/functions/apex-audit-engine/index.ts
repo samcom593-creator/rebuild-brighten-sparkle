@@ -24,7 +24,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const APP_BASE = "https://apex-financial.org";
+const APP_BASE = "https://galaxyfinancial.org";
 
 // deploy trigger: 401ea8e
 

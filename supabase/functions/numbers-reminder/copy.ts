@@ -2,7 +2,7 @@
 // them: Sam's voice, one or two short sentences, one link, no em-dash asides, no income claims, the name escaped
 // before it reaches HTML.
 
-export const NUMBERS_URL = "https://apex-financial.org/numbers";
+export const NUMBERS_URL = "https://galaxyfinancial.org/numbers";
 
 export function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");

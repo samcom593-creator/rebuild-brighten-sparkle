@@ -26,7 +26,7 @@ export type LinkLifetime = "permanent" | "temporary";
 export type InviteLinkKind = "hire" | "join";
 
 /** The public site every shared link points at, so a link copied on a preview build still works. */
-export const PUBLIC_SITE = "https://apex-financial.org";
+export const PUBLIC_SITE = "https://galaxyfinancial.org";
 
 /** How long a temporary link can work. fn_invite_insert clamps to 1..720 hours. */
 export const TEMPORARY_SPANS: ReadonlyArray<{ hours: number; label: string }> = [

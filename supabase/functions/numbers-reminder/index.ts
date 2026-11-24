@@ -66,7 +66,7 @@ type Recipient = {
   slack_user_id: string | null;
 };
 
-const SMS_TEXT = "Galaxy: log today's calls, presentations and deals before close of business. apex-financial.org/numbers";
+const SMS_TEXT = "Galaxy: log today's calls, presentations and deals before close of business. galaxyfinancial.org/numbers";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -220,7 +220,7 @@ Deno.serve(async (req) => {
             subject: mail.subject,
             html: mail.html,
             text: mail.text,
-            // the only inbox that exists; the apex-financial.org senders return 550
+            // the only inbox that exists; the galaxyfinancial.org senders return 550
             reply_to: BRAND_REPLY_TO,
             // no unsubscribe_token: the footer link then carries the recipient's address, the only thing the
             // unsubscribe endpoint can record (it ignored the agent id this used to pass)

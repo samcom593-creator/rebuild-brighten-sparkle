@@ -3,7 +3,7 @@
 // Owned by Website Integrity Bot (Check #9/#10 — trust + AI discoverability / GEO).
 //
 // Why this guard exists (MP-WIB-LLMS-TXT, 2026-11-21):
-//   A 2026-11-21 fetch of apex-financial.org/llms.txt (and /ai.txt and
+//   A 2026-11-21 fetch of galaxyfinancial.org/llms.txt (and /ai.txt and
 //   /.well-known/ai-plugin.json) returned HTTP 200 with text/html — the 16KB
 //   SPA index.html shell, not a real file. The vercel.json rewrite
 //   `/((?!api/|assets/|fonts/|img/).*)` sends every unknown path to index.html,
@@ -25,7 +25,7 @@
 //     2. Its H1 carries the SAME brand token as index.html's served <title>
 //        (the SEO truth check-index-brand already protects) — so a rebrand that
 //        updates the title but not llms.txt fails the build.
-//     3. Every absolute link is on apex-financial.org AND appears as a <loc> in
+//     3. Every absolute link is on galaxyfinancial.org AND appears as a <loc> in
 //        public/sitemap.xml — so a page removed from the sitemap can't linger as
 //        a dead link here (the SPA canonical/sitemap-drift + dead-link class).
 //     4. No unqualified $-magnitude income claim (reuses the decimal/aggregate
@@ -44,7 +44,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const LLMS_REL = "public/llms.txt";
 const INDEX_REL = "index.html";
 const SITEMAP_REL = "public/sitemap.xml";
-const DOMAIN = "apex-financial.org";
+const DOMAIN = "galaxyfinancial.org";
 const MIN_BYTES = 300;
 
 // $-magnitude income shapes: "$1.2M", "$150M", "$5MM", "$2B", "$5 million".
@@ -168,17 +168,17 @@ function runReal() {
 function runSelftest() {
   const GOOD_TITLE = "<title>Galaxy Financial — Start Your Career in Insurance Sales</title>";
   const GOOD_SITEMAP = `<?xml version="1.0"?><urlset>
-    <url><loc>https://apex-financial.org/</loc></url>
-    <url><loc>https://apex-financial.org/apply</loc></url>
-    <url><loc>https://apex-financial.org/vsl</loc></url>
+    <url><loc>https://galaxyfinancial.org/</loc></url>
+    <url><loc>https://galaxyfinancial.org/apply</loc></url>
+    <url><loc>https://galaxyfinancial.org/vsl</loc></url>
   </urlset>`;
   const GOOD_LLMS = `# Galaxy Financial
 
 > Galaxy Financial recruits life-insurance sales agents with warm leads and weekly pay. This blockquote is padding to clear the minimum content length so the real failure modes are what get exercised in this hermetic selftest harness run.
 
 ## Apply
-- [Apply](https://apex-financial.org/apply): start here.
-- [Watch the overview](https://apex-financial.org/vsl): how it works.
+- [Apply](https://galaxyfinancial.org/apply): start here.
+- [Watch the overview](https://galaxyfinancial.org/vsl): how it works.
 `;
 
   const cases = [
@@ -197,7 +197,7 @@ function runSelftest() {
     },
     {
       name: "dead link fails (not in sitemap)",
-      input: { llmsText: GOOD_LLMS + "- [Ghost](https://apex-financial.org/ghost-page): nope.\n", titleHtml: GOOD_TITLE, sitemapXml: GOOD_SITEMAP },
+      input: { llmsText: GOOD_LLMS + "- [Ghost](https://galaxyfinancial.org/ghost-page): nope.\n", titleHtml: GOOD_TITLE, sitemapXml: GOOD_SITEMAP },
       expectFail: true,
     },
     {

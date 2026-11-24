@@ -81,7 +81,7 @@ jobs:
           fi
           exit $code
         env:
-          APEX_SITE_ORIGIN: https://apex-financial.org
+          APEX_SITE_ORIGIN: https://galaxyfinancial.org
 
       - name: Post failure summary
         if: failure()

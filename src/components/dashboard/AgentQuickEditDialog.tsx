@@ -802,7 +802,7 @@ export function AgentQuickEditDialog({
             <div className="flex items-center justify-between gap-2 rounded-lg border border-border/60 p-3">
               <div className="min-w-0">
                 <Label>Recruiting link</Label>
-                <p className="text-xs text-muted-foreground truncate">apex-financial.org/r/{agentData.ref_slug}</p>
+                <p className="text-xs text-muted-foreground truncate">galaxyfinancial.org/r/{agentData.ref_slug}</p>
               </div>
               <Button
                 type="button"
@@ -810,7 +810,7 @@ export function AgentQuickEditDialog({
                 variant="secondary"
                 onClick={() => {
                   navigator.clipboard
-                    .writeText(`https://apex-financial.org/r/${agentData.ref_slug}`)
+                    .writeText(`https://galaxyfinancial.org/r/${agentData.ref_slug}`)
                     .then(() => toast("Link copied", { description: "Applications through it credit and place under this person." }))
                     .catch(() => toast.error("Could not copy"));
                 }}

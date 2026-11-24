@@ -2,7 +2,7 @@
  * refSlug.ts — referral slug relay between landing and /apply.
  *
  * Why this exists (verify-workflow S11, 2026-06-15):
- * A visitor hits apex-financial.org/?ref=<slug> and then clicks "Start My
+ * A visitor hits galaxyfinancial.org/?ref=<slug> and then clicks "Start My
  * Application" from the landing page. /apply already wires `?ref=` correctly
  * (resolve-ref-slug edge fn + e2353437), but the landing CTA links go to a
  * bare "/apply" — so the slug evaporates on click and the referring agent

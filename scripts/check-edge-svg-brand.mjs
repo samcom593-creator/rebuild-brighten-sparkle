@@ -35,7 +35,7 @@
  *
  * WHAT THIS GUARD DELIBERATELY DOES NOT TOUCH
  *   - Code identifiers (apexBranding(), raiseApexAlert), comments ("Per the
- *     APEX Operating Contract"), the domain apex-financial.org / Calendly org
+ *     APEX Operating Contract"), the domain galaxyfinancial.org / Calendly org
  *     apexfinancialempire.com, DB identifiers (apex_*), and email/test
  *     fixtures (@APEX.COM in a .test.ts). None of those render onto an image;
  *     the <text>/<tspan> scope excludes them and *.test.ts is skipped.
@@ -102,7 +102,7 @@ if (files.length === 0) die("found 0 edge-function .ts files — scan seam broke
 // [^<]* stops at the next tag boundary, so interpolations like ${esc(label)}
 // (no '<') are captured and harmlessly carry no literal "apex".
 const TEXT_NODE = /<(text|tspan)\b[^>]*>([^<]*)<\/\1>/gi;
-const ALLOWED_DOMAINS = [/apex-financial\.org/gi, /apexfinancialempire\.com/gi];
+const ALLOWED_DOMAINS = [/apex-financial\.org/gi, /galaxyfinancial\.org/gi, /apexfinancialempire\.com/gi];
 const RETIRED = /apex/i;
 
 const leaks = [];

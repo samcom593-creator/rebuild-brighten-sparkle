@@ -51,12 +51,12 @@
 //
 // Usage:
 //   node scripts/live-render-integrity.mjs
-//   BASE=https://apex-financial.org node scripts/live-render-integrity.mjs
+//   BASE=https://galaxyfinancial.org node scripts/live-render-integrity.mjs
 
 import { chromium, webkit, devices } from "playwright";
 import { FORBIDDEN, RENDER_SAFE_TERMS } from "./check-forbidden-language.mjs";
 
-const BASE = (process.env.BASE || "https://apex-financial.org").replace(/\/$/, "");
+const BASE = (process.env.BASE || "https://galaxyfinancial.org").replace(/\/$/, "");
 const CONTROL = "https://www.google.com/generate_204";
 const SETTLE_MS = 3500;
 const OVERFLOW_TOLERANCE_PX = 2; // sub-pixel rounding is not a defect
@@ -321,7 +321,7 @@ const MIN_HERO_PRODUCERS = Number(process.env.MIN_HERO_PRODUCERS || 1);
 // so a preview render that (correctly) injects the prod-origin canonical grades
 // as a pass, and a RouteCanonical that wrongly read window.location.origin and
 // leaked a *.vercel.app canonical into a crawled preview grades as a defect.
-const CANONICAL_ORIGIN = "https://apex-financial.org";
+const CANONICAL_ORIGIN = "https://galaxyfinancial.org";
 // /careers and /careers/<slug> rendered canonical is owned by
 // careers-jobposting-render.mjs. This guard does NOT re-assert it — single
 // ownership keeps the two from drifting into a he-said-she-said on one operand.
@@ -603,14 +603,14 @@ if (process.argv.includes("--selftest")) {
   // preview-host origin) is the de-index state that must page; a self-referencing
   // canonical on the fixed prod origin must pass.
   const canonicalCases = [
-    { name: "self-canonical on /apply (correct)", route: "/apply", dom: { canonical: "https://apex-financial.org/apply", canonicalCount: 1 }, expectDefect: false },
-    { name: "root is the bare prod origin (correct)", route: "/", dom: { canonical: "https://apex-financial.org", canonicalCount: 1 }, expectDefect: false },
-    { name: "deep self-canonical /get-licensed (correct)", route: "/get-licensed", dom: { canonical: "https://apex-financial.org/get-licensed", canonicalCount: 1 }, expectDefect: false },
-    { name: "REGRESSION: /vsl still declares the homepage (de-index leak)", route: "/vsl", dom: { canonical: "https://apex-financial.org", canonicalCount: 1 }, expectDefect: true },
+    { name: "self-canonical on /apply (correct)", route: "/apply", dom: { canonical: "https://galaxyfinancial.org/apply", canonicalCount: 1 }, expectDefect: false },
+    { name: "root is the bare prod origin (correct)", route: "/", dom: { canonical: "https://galaxyfinancial.org", canonicalCount: 1 }, expectDefect: false },
+    { name: "deep self-canonical /get-licensed (correct)", route: "/get-licensed", dom: { canonical: "https://galaxyfinancial.org/get-licensed", canonicalCount: 1 }, expectDefect: false },
+    { name: "REGRESSION: /vsl still declares the homepage (de-index leak)", route: "/vsl", dom: { canonical: "https://galaxyfinancial.org", canonicalCount: 1 }, expectDefect: true },
     { name: "REGRESSION: RouteCanonical never mounted — 0 canonical tags", route: "/storefront", dom: { canonical: null, canonicalCount: 0 }, expectDefect: true },
-    { name: "REGRESSION: two canonicals rendered (crawler ignores both)", route: "/links", dom: { canonical: "https://apex-financial.org/links", canonicalCount: 2 }, expectDefect: true },
+    { name: "REGRESSION: two canonicals rendered (crawler ignores both)", route: "/links", dom: { canonical: "https://galaxyfinancial.org/links", canonicalCount: 2 }, expectDefect: true },
     { name: "REGRESSION: preview-host leak — canonical on a *.vercel.app origin", route: "/apply", dom: { canonical: "https://preview-abc123.vercel.app/apply", canonicalCount: 1 }, expectDefect: true },
-    { name: "anti-FP: trailing slash collapses /apply/ -> /apply (correct)", route: "/apply/", dom: { canonical: "https://apex-financial.org/apply", canonicalCount: 1 }, expectDefect: false },
+    { name: "anti-FP: trailing slash collapses /apply/ -> /apply (correct)", route: "/apply/", dom: { canonical: "https://galaxyfinancial.org/apply", canonicalCount: 1 }, expectDefect: false },
   ];
   for (const c of canonicalCases) {
     const defs = gradeCanonical(c.route, c.dom);

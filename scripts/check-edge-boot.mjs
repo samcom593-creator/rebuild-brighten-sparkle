@@ -48,7 +48,7 @@ async function probe(slug) {
     try {
       const res = await fetch(`${BASE}/${slug}`, {
         method: "OPTIONS",
-        headers: { Origin: "https://apex-financial.org", "Access-Control-Request-Method": "POST" },
+        headers: { Origin: "https://galaxyfinancial.org", "Access-Control-Request-Method": "POST" },
         signal: AbortSignal.timeout(20000),
       });
       const body = (await res.text()).slice(0, 300);

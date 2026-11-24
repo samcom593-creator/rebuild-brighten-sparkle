@@ -16,7 +16,7 @@ export interface OverviewData {
 }
 interface Person { id: string; name: string | null; state: string | null }
 
-const SITE = "https://apex-financial.org";
+const SITE = "https://galaxyfinancial.org";
 
 export function esc(value: unknown): string {
   return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));

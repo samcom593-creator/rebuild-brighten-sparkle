@@ -12,7 +12,7 @@ const corsHeaders = {
 const resendApiKey = Deno.env.get("RESEND_API_KEY");
 const resend = resendApiKey ? gateResend(new Resend(resendApiKey)) : null;
 
-const DASHBOARD_URL = "https://apex-financial.org";
+const DASHBOARD_URL = "https://galaxyfinancial.org";
 
 // Test data
 const testApplicant = {
@@ -158,7 +158,7 @@ const handler = async (req: Request): Promise<Response> => {
                 <p style="color: #4b5563; line-height: 1.6;">
                   Learn exactly how the licensing process works:
                 </p>
-                <a href="https://apex-financial.org/get-licensed#licensing-video" style="display: inline-block; background: #dc2626; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; margin: 10px 0;">
+                <a href="https://galaxyfinancial.org/get-licensed#licensing-video" style="display: inline-block; background: #dc2626; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; margin: 10px 0;">
                   ▶️ How to Get Your Life Insurance License
                 </a>
 
@@ -440,7 +440,7 @@ const handler = async (req: Request): Promise<Response> => {
 
                 <h3 style="color: #111827; margin-bottom: 15px;">Quick Links to Get Started:</h3>
                 <ul style="color: #4b5563; line-height: 2;">
-                  <li><a href="https://apex-financial.org/get-licensed#licensing-video" style="color: #059669;">▶️ How to Get Your Life Insurance License</a></li>
+                  <li><a href="https://galaxyfinancial.org/get-licensed#licensing-video" style="color: #059669;">▶️ How to Get Your Life Insurance License</a></li>
                   <li><a href="https://docs.google.com/document/d/1WBN_bh7Tl6IkhdXwQvrUa6Q58xmV9As_q048aKAeyNg/edit" style="color: #059669;">📄 Review the Licensing Guide</a></li>
                   <li><a href="https://partners.xcelsolutions.com/afe" style="color: #059669;">📚 Start Your Pre-Licensing Course</a></li>
                 </ul>
@@ -513,7 +513,7 @@ const handler = async (req: Request): Promise<Response> => {
                   </p>
                   
                   <ul style="color: #4b5563; line-height: 2; font-size: 15px; margin: 15px 0;">
-                    <li><a href="https://apex-financial.org/get-licensed#licensing-video" style="color: #059669; font-weight: 500;">▶️ Watch: How to Get Your Life Insurance License</a></li>
+                    <li><a href="https://galaxyfinancial.org/get-licensed#licensing-video" style="color: #059669; font-weight: 500;">▶️ Watch: How to Get Your Life Insurance License</a></li>
                     <li><a href="https://docs.google.com/document/d/1WBN_bh7Tl6IkhdXwQvrUa6Q58xmV9As_q048aKAeyNg/edit" style="color: #059669; font-weight: 500;">📄 Licensing Step-by-Step Guide</a></li>
                     <li><a href="https://partners.xcelsolutions.com/afe" style="color: #059669; font-weight: 500;">📚 Start/Continue Pre-Licensing Course</a></li>
                   </ul>

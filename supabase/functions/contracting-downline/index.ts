@@ -1,6 +1,6 @@
 // contracting-downline — MP-304 (2026-11-23). One function, the whole Ethos contracting lane.
 //
-// Public (no login) — the ONE link a manager sends: apex-financial.org/contract/<manager-slug>
+// Public (no login) — the ONE link a manager sends: galaxyfinancial.org/contract/<manager-slug>
 //   resolve  {slug}                       → who the link belongs to + where it goes after
 //   join     {slug, first_name, last_name, email, phone, npn, license_status}
 //            → durable intake (Ethos leg queued) + login/agent provisioned under that manager, THEN the MGN

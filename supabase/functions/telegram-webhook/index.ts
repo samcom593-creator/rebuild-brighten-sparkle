@@ -28,9 +28,9 @@ const BOT_USERNAME = Deno.env.get("APEX_TELEGRAM_BOT_USERNAME") ?? "ApexFinancia
 const ANTHROPIC_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
 const ANTHROPIC_MODEL = Deno.env.get("ANTHROPIC_MODEL") ?? "claude-haiku-4-5-20251001";
 
-const APPLY_URL = "https://apex-financial.org/apply?utm_source=telegram&utm_medium=bot";
+const APPLY_URL = "https://galaxyfinancial.org/apply?utm_source=telegram&utm_medium=bot";
 const PROFILE_URL = CONTRACTING_PROFILE_URL;
-const LICENSE_URL = "https://apex-financial.org/get-licensed";
+const LICENSE_URL = "https://galaxyfinancial.org/get-licensed";
 // WP2: one scheduling source (_shared/scheduling-links.ts).
 const LICENSED_CALL_URL = SCHEDULING_LINKS.licensed;
 
@@ -348,7 +348,7 @@ async function postManagerAlert(
       `sent "${escHtml(said)}" to the Galaxy Telegram bot (${escHtml(reason)}). ` +
       `The bot told them a manager will reply within 12 business hours. ${escHtml(reply)}`,
     smsBody: `Telegram: ${name} asked for a person`.slice(0, 90),
-    actionLink: "https://apex-financial.org/dashboard/admin/telegram-bot",
+    actionLink: "https://galaxyfinancial.org/dashboard/admin/telegram-bot",
   });
   if (!r.ok) console.error("escalation alert did not land", r.receipt);
   return { landed: r.ok, receipt: r.receipt };
@@ -507,7 +507,7 @@ async function answerLicense(chat_id: number, answer: LicenseAnswer, linked: boo
 
 function inferNextStep(stage: string): string {
   switch (stage) {
-    case "lobby": return "Apply at apex-financial.org/apply";
+    case "lobby": return "Apply at galaxyfinancial.org/apply";
     case "applied_unpaid": return "Pay ICA — it's the gate to a manager call";
     case "applied_paid": return "Book your manager call";
     case "manager_call_scheduled": return "Be on camera for the call";
@@ -746,7 +746,7 @@ async function handleCommand(chat_id: number, fromUser: any, command: string, ar
         // (useScriptsUnlocked / v_training_required_completion), so a fresh hire
         // handed that link lands on a locked page. send-agent-onboarding-email
         // delivers the scripts link at unlock time instead.
-        const base = `Training hub:\n\n• Onboarding videos: https://apex-financial.org/training\n• Your scripts unlock after your required training. We email them to you when you finish.`;
+        const base = `Training hub:\n\n• Onboarding videos: https://galaxyfinancial.org/training\n• Your scripts unlock after your required training. We email them to you when you finish.`;
         const text = base;
         await tgSend({ chat_id, text });
       }

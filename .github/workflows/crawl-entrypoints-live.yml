@@ -1,7 +1,7 @@
 # Are the funnel's TWO search-crawl entry points (/robots.txt + /sitemap.xml)
 # still SERVED on the live edge? (MP-WIB-CRAWL-ENTRYPOINTS-LIVE)
 #
-# Google's entire crawl of apex-financial.org — the agency's recruiting funnel,
+# Google's entire crawl of galaxyfinancial.org — the agency's recruiting funnel,
 # whose organic + Google-for-Jobs (/careers/*) inbound is a load-bearing lead
 # source — starts at two static files in public/: robots.txt declares Allow:/
 # plus the Sitemap: URL, and sitemap.xml lists the URLs to index (/apply, /vsl,

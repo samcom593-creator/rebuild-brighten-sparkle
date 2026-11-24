@@ -6,7 +6,7 @@ import { useLocation } from "react-router-dom";
  *
  * WHY THIS EXISTS (Website Integrity Bot, 2026-11-10, Check #3/SEO):
  * index.html ships ONE static canonical pointing at the homepage
- * (https://apex-financial.org). This is a client-rendered SPA — the Vercel
+ * (https://galaxyfinancial.org). This is a client-rendered SPA — the Vercel
  * rewrite serves that same static <head> for every non-asset path — so a
  * crawler saw EVERY route (/apply, /vsl, /get-licensed, ...) declare the
  * homepage as its canonical URL. Verified live 2026-11-10: /, /apply, /vsl,
@@ -38,7 +38,7 @@ import { useLocation } from "react-router-dom";
  * collapsed except on root. Root stays bare (no trailing slash) to match the
  * static index.html canonical and og:url byte-for-byte.
  */
-export const PROD_ORIGIN = "https://apex-financial.org";
+export const PROD_ORIGIN = "https://galaxyfinancial.org";
 
 export function canonicalHref(pathname: string): string {
   let path = pathname || "/";

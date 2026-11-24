@@ -179,7 +179,7 @@ export const LICENSING_COST = {
 /**
  * Who a new hire contacts about onboarding. Name-free on purpose (2026-11-11): the
  * named manager went inactive in September and every surface kept naming her; the
- * inbox is the one live mailbox (the apex-financial.org addresses return 550).
+ * inbox is the one live mailbox (the galaxyfinancial.org addresses return 550).
  */
 export const ONBOARDING_CONTACT = {
   name: "our onboarding team",

@@ -66,7 +66,7 @@ export default function ContractingDownlines() {
   // One-tap "Add to sheet" for a team member who is licensed but not on MGN's sheet: first tap asks, second tap sends.
   const [confirmAdd, setConfirmAdd] = useState<string | null>(null);
   const [adding, setAdding] = useState<string | null>(null);
-  const origin = typeof window !== "undefined" ? window.location.origin : "https://apex-financial.org";
+  const origin = typeof window !== "undefined" ? window.location.origin : "https://galaxyfinancial.org";
   const joinUrl = actor?.join_path ? `${origin}${actor.join_path}` : null;
   const options = useMemo(() => levelOptions(actor?.cap_pct, actor?.default_pct ?? 60), [actor?.cap_pct, actor?.default_pct]);
 

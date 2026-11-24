@@ -1,8 +1,8 @@
 // Pure helpers for slack-unlicensed-welcome (no Deno.serve) so they can be tested.
 
 export const LICENSING_COURSE_URL = "https://partners.xcelsolutions.com/afe";
-export const GET_LICENSED_URL = "https://apex-financial.org/get-licensed#licensing-video";
-export const PORTAL_URL = "https://apex-financial.org/dashboard";
+export const GET_LICENSED_URL = "https://galaxyfinancial.org/get-licensed#licensing-video";
+export const PORTAL_URL = "https://galaxyfinancial.org/dashboard";
 
 // WP7 (2026-11-10): cohort-neutral. #unlicensed is about to become a default
 // channel (Sam action N3), so licensed hires land here too. Receipts go to the

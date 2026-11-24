@@ -166,7 +166,7 @@ serve(async (req: Request) => {
             </p>
 
             <div style="text-align: center;">
-              <a href="https://apex-financial.org/dashboard"
+              <a href="https://galaxyfinancial.org/dashboard"
                  style="display: inline-block; padding: 12px 32px; background: #6366f1; color: #ffffff; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">
                 Log My Numbers
               </a>

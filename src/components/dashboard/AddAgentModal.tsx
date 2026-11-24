@@ -216,14 +216,14 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
     const managerName = managers.find((manager) => manager.id === managerId)?.name ?? "your assigned manager";
     const licensedSteps = [
       "1. Open your private OneLink and complete your profile, NPN, and contracting intake: " + pathLink,
-      "2. Set up or enter your " + BRAND.shortName + " portal: https://apex-financial.org/login",
+      "2. Set up or enter your " + BRAND.shortName + " portal: https://galaxyfinancial.org/login",
       "3. Join Slack: " + TEAM_COMMUNITY_LINKS.slack,
       "4. Book your onboarding call with " + ONBOARDING_CONTACT.name + ": " + SCHEDULING_LINKS.onboarding,
       "5. Complete the onboarding training shown in your portal.",
     ];
     const unlicensedSteps = [
       "1. Open your private OneLink and create your " + BRAND.shortName + " profile: " + pathLink,
-      "2. Set up or enter your " + BRAND.shortName + " portal: https://apex-financial.org/login",
+      "2. Set up or enter your " + BRAND.shortName + " portal: https://galaxyfinancial.org/login",
       "3. Join Slack: " + TEAM_COMMUNITY_LINKS.slack,
       "4. Follow the live course → exam → fingerprints → license roadmap in your portal.",
       "5. When your license posts, add your NPN and OneLink contracting will unlock.",

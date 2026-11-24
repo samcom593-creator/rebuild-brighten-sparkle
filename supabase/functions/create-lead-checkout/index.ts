@@ -143,7 +143,7 @@ Deno.serve(
         }
       }
 
-      const origin = req.headers.get("origin") || "https://apex-financial.org";
+      const origin = req.headers.get("origin") || "https://galaxyfinancial.org";
       const successPath = config.mode === "subscription" ? "/purchase-leads" : "/dashboard";
 
       // CFO Bot 2026-05-20 — Stripe idempotency-key on session create.

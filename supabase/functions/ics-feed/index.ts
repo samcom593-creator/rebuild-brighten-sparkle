@@ -93,7 +93,7 @@ serve(async (req) => {
           `DTEND:${toIcsDate(end)}`,
           `SUMMARY:${escapeIcs(task.title || "Galaxy Task")}`,
           `DESCRIPTION:${escapeIcs(task.description || "Galaxy task")}`,
-          `URL:https://apex-financial.org/dashboard`,
+          `URL:https://galaxyfinancial.org/dashboard`,
           "END:VEVENT"
         );
       }

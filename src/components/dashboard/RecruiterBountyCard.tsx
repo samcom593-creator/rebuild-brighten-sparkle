@@ -28,7 +28,7 @@ interface BountyRow {
 }
 
 const dollars = (cents: number) => `$${Math.round(cents / 100).toLocaleString()}`;
-const APEX_ORIGIN = "https://apex-financial.org";
+const APEX_ORIGIN = "https://galaxyfinancial.org";
 
 export function RecruiterBountyCard({ agentId, className }: { agentId?: string | null; className?: string }) {
   const link = useQuery({

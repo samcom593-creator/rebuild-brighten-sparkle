@@ -60,7 +60,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const HERO_SOURCE =
   process.env.HERO_CARRIER_HERO_SOURCE ||
   resolve(__dirname, "../src/components/landing/HeroSection.tsx");
-const SITE_ORIGIN = process.env.HERO_CARRIER_SITE_ORIGIN || "https://apex-financial.org";
+const SITE_ORIGIN = process.env.HERO_CARRIER_SITE_ORIGIN || "https://galaxyfinancial.org";
 const CONTROL = process.env.HERO_CARRIER_CONTROL_URL || "https://www.google.com/generate_204";
 // Test seam (HERO_CARRIER_RPC_URL/KEY): when set, resolveRpc() uses this RPC
 // endpoint + key directly and skips live bundle extraction — lets --selftest

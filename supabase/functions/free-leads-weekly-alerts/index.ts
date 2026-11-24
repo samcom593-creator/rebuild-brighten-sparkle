@@ -108,8 +108,8 @@ Deno.serve(async (request) => {
       const result = await sendEmail({
         to: email,
         subject: row.qualifies ? "Your Galaxy Free Leads status is active" : `You're $${gap} from Galaxy Free Leads`,
-        text: `Hey ${name.split(" ")[0]} — ${detail}\n\nTrack your live status: https://apex-financial.org/dashboard`,
-        html: `<p>Hey ${name.split(" ")[0]} —</p><p>${detail}</p><p><a href="https://apex-financial.org/dashboard">Open my Galaxy dashboard</a></p>`,
+        text: `Hey ${name.split(" ")[0]} — ${detail}\n\nTrack your live status: https://galaxyfinancial.org/dashboard`,
+        html: `<p>Hey ${name.split(" ")[0]} —</p><p>${detail}</p><p><a href="https://galaxyfinancial.org/dashboard">Open my Galaxy dashboard</a></p>`,
         unsubscribe_token: row.agent_id,
         tagName: "free-leads-weekly",
       });
@@ -130,7 +130,7 @@ Deno.serve(async (request) => {
       destination: "slack",
       payload: {
         eligibleCount: eligible.length, nearCount: near.length, threshold: 20000,
-        weekStart, openUrl: "https://apex-financial.org/dashboard/team",
+        weekStart, openUrl: "https://galaxyfinancial.org/dashboard/team",
       },
       idempotency_key: `free_leads.weekly.summary:${weekStart}:slack`,
       correlation_id: crypto.randomUUID(),

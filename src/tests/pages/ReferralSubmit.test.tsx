@@ -148,11 +148,11 @@ describe("Refer a recruit", () => {
     Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
     renderPage();
     const card = await screen.findByTestId("my-link-card");
-    expect(await within(card).findByTestId("my-link-url")).toHaveTextContent("apex-financial.org/r/ana-agent-a1b2c3");
+    expect(await within(card).findByTestId("my-link-url")).toHaveTextContent("galaxyfinancial.org/r/ana-agent-a1b2c3");
     expect(within(card).getByText("Permanent")).toBeInTheDocument();
     expect(within(card).getByText("Anyone who applies through it is credited to you.")).toBeInTheDocument();
     fireEvent.click(within(card).getByRole("button", { name: "Copy link" }));
-    await waitFor(() => expect(writeText).toHaveBeenCalledWith("https://apex-financial.org/r/ana-agent-a1b2c3"));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("https://galaxyfinancial.org/r/ana-agent-a1b2c3"));
     expect(within(card).getByRole("button", { name: "Share link" })).toBeInTheDocument();
     // Your link records nothing: it is not an invitation.
     expect(rpcCalls("record_invitation_share")).toHaveLength(0);

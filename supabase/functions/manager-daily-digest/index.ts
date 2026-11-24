@@ -129,7 +129,7 @@ serve(async (req) => {
     const weekStartStr = weekStart.toISOString().split("T")[0];
 
     let sentCount = 0;
-    const crmUrl = "https://apex-financial.org/dashboard/crm";
+    const crmUrl = "https://galaxyfinancial.org/dashboard/crm";
 
     for (const manager of managerAgents) {
       const profile = profileMap.get(manager.user_id);

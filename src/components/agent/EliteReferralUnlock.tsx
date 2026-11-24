@@ -22,7 +22,7 @@ export interface ReferralStatus {
   remaining: number;
 }
 
-const APEX_HOST = "https://apex-financial.org";
+const APEX_HOST = "https://galaxyfinancial.org";
 
 function fmt$(n: number): string {
   return `$${Math.round(n).toLocaleString()}`;

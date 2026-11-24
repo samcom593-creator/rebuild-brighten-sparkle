@@ -209,7 +209,7 @@ async function buildBrief(ownerAgentId: string): Promise<BriefBuild> {
  *      'Bearer ' || vault apex_bot_token. That token is 64-char hex, not a
  *      JWT, so the gateway would reject it and the 7am brief would die.
  *   2. Measured 2026-09-06: the gateway accepts the project ANON key, which
- *      ships inside apex-financial.org's public JS bundle. verify_jwt would
+ *      ships inside galaxyfinancial.org's public JS bundle. verify_jwt would
  *      move the bar from "no credential" to "a credential anyone can read off
  *      the website" — not a boundary.
  *

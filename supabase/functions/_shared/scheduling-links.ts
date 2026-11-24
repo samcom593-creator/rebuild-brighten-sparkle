@@ -32,7 +32,7 @@ export const SCHEDULING_LINKS = {
   questions: "https://calendly.com/apexfinancialempire/licensing-questions" as string | null,
 } as const;
 
-export const APP_ORIGIN = "https://apex-financial.org";
+export const APP_ORIGIN = "https://galaxyfinancial.org";
 
 /** The applicant's own status page: course, receipt upload, licensing call, self-report. */
 export function statusPageUrl(applicationId: string): string {

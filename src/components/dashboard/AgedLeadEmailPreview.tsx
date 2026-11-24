@@ -70,7 +70,7 @@ function getEmailPreviewHtml(firstName: string) {
         </div>
         
         <div style="text-align:center;margin:24px 0 16px 0;">
-          <a href="https://apex-financial.org/apply" 
+          <a href="https://galaxyfinancial.org/apply" 
              style="display:inline-block;background:linear-gradient(135deg,#d9a41a,#0ea5e9);color:#ffffff;padding:16px 32px;text-decoration:none;border-radius:10px;font-weight:bold;font-size:16px;box-shadow:0 4px 20px rgba(20,184,166,0.3);letter-spacing:0.5px;max-width:100%;box-sizing:border-box;">
             REAPPLY NOW →
           </a>

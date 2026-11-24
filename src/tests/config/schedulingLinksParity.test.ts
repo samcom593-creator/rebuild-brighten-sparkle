@@ -53,7 +53,7 @@ describe("scheduling links parity (src/lib/apexConfig.ts <-> _shared/scheduling-
   });
 
   it("the status page is the unlicensed destination in emails", () => {
-    expect(statusPageUrl("abc")).toBe("https://apex-financial.org/status/abc");
+    expect(statusPageUrl("abc")).toBe("https://galaxyfinancial.org/status/abc");
   });
 });
 

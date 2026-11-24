@@ -4,7 +4,7 @@
 // Website Integrity Bot.
 //
 // WHY THIS EXISTS. The share card is the funnel's single most-SHARED conversion
-// asset. Every time a recruiting link to apex-financial.org is posted on
+// asset. Every time a recruiting link to galaxyfinancial.org is posted on
 // LinkedIn, X, Facebook, Discord, iMessage, WhatsApp, or Slack, the preview
 // crawler (none of which run JS) reads the SERVED index.html's og:image +
 // twitter:image and renders that image as the card. That image is a single
@@ -75,7 +75,7 @@ import http from "node:http";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const MANIFEST = resolve(ROOT, "scripts/data/share-card.json");
-const SITE = (process.env.SHARE_CARD_SITE || "https://apex-financial.org/").replace(/\/*$/, "/");
+const SITE = (process.env.SHARE_CARD_SITE || "https://galaxyfinancial.org/").replace(/\/*$/, "/");
 const CONTROL = process.env.SHARE_CARD_CONTROL_URL || "https://www.google.com/generate_204";
 const TIMEOUT_MS = Number(process.env.SHARE_CARD_TIMEOUT_MS || 25000);
 
@@ -257,7 +257,7 @@ async function main() {
   console.log(JSON.stringify(out, null, 2));
 
   if (verdict === "DEFECT") {
-    console.error("\nSHARE CARD DEFECT — the funnel's social-share preview image is DEAD. Every LinkedIn/X/Facebook/Discord/iMessage share of an apex-financial.org recruiting link now previews a broken/blank card:");
+    console.error("\nSHARE CARD DEFECT — the funnel's social-share preview image is DEAD. Every LinkedIn/X/Facebook/Discord/iMessage share of an galaxyfinancial.org recruiting link now previews a broken/blank card:");
     for (const r of results.filter((r) => r.state === "dead")) console.error(`  [${r.label}] ${r.url} — ${r.reason}`);
     console.error("\nFix: restore public/galaxy-recruit-og.jpg (or whatever scripts/data/share-card.json names) and redeploy; re-render with `node scripts/render-share-card.mjs` if the SVG changed.");
     process.exit(1);

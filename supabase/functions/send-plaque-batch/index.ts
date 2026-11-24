@@ -105,7 +105,7 @@ function renderEmailHtml(name: string, tier: string, amount: number, date: strin
     </div>
     <div style="padding:28px 36px;text-align:center;">
       <p style="color:#e2e8f0;font-size:15px;line-height:1.7;margin:0 0 20px 0;">Save this image. Post it. Tag <strong style="color:#22d3a5;">@apex.financial</strong>. The team is watching.</p>
-      <a href="https://apex-financial.org/dashboard" style="display:inline-block;background:#22d3a5;color:#030712;font-weight:700;padding:14px 32px;border-radius:10px;text-decoration:none;letter-spacing:0.5px;">VIEW DASHBOARD →</a>
+      <a href="https://galaxyfinancial.org/dashboard" style="display:inline-block;background:#22d3a5;color:#030712;font-weight:700;padding:14px 32px;border-radius:10px;text-decoration:none;letter-spacing:0.5px;">VIEW DASHBOARD →</a>
     </div>
     <div style="border-top:1px solid #1e293b;padding:20px;text-align:center;color:#475569;font-size:11px;letter-spacing:2px;">GALAXY FINANCIAL · BUILDING EMPIRES</div>
   </div>

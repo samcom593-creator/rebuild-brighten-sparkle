@@ -3,7 +3,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
-const HOST = "https://apex-financial.org";
+const HOST = "https://galaxyfinancial.org";
 
 const SHORTCUTS = [
   { name: "Morning Brief", description: "Open the admin dashboard", path: "/dashboard",      emoji: "☀️" },

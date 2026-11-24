@@ -14,7 +14,7 @@
  * statement timeout — 195 of 269 reads of the view failed with 57014 in 24h.
  *
  * The cost is NOT confined to the surface that causes it. While the database is
- * jammed, unrelated requests time out too: apex-financial.org's PUBLIC
+ * jammed, unrelated requests time out too: galaxyfinancial.org's PUBLIC
  * landing_live_stats and landing_recent_applicants 500'd inside exactly these
  * windows, which is what apex-site-health.sh had been paging about. Error
  * minutes carry LOW throughput (46-515 requests) while the busiest minute

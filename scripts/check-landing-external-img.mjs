@@ -26,7 +26,7 @@
 //
 // High-confidence bans only, same philosophy as check-forbidden-language:
 // a guard that cries wolf is one nobody reads. First-party hosts
-// (apex-financial.org, *.supabase.co, youtube.com, calendly.com) are NOT
+// (galaxyfinancial.org, *.supabase.co, youtube.com, calendly.com) are NOT
 // listed and never trip. data: URIs are fine. Comments are skipped so a
 // receipt line naming a host for the record does not self-trigger.
 //

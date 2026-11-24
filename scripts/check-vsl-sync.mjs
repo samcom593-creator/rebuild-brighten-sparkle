@@ -39,7 +39,7 @@ const checks = [
   ["poster preload", index, `l.href = "${posterUrl}"`],
   ["VideoObject thumbnailUrl", index, `"thumbnailUrl":"${posterUrl}"`],
   ["VideoObject contentUrl", index, `"contentUrl":"${videoUrl}"`],
-  ["VideoObject embedUrl", index, '"embedUrl":"https://apex-financial.org/vsl"'],
+  ["VideoObject embedUrl", index, '"embedUrl":"https://galaxyfinancial.org/vsl"'],
 ];
 
 const drift = checks

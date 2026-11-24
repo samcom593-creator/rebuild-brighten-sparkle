@@ -30,8 +30,8 @@ const corsHeaders = {
 
 // WP2: one scheduling source (_shared/scheduling-links.ts).
 const CALENDLY_LICENSED = SCHEDULING_LINKS.licensed;
-const GET_LICENSED_URL = "https://apex-financial.org/get-licensed";
-const APPLY_URL = "https://apex-financial.org/apply";
+const GET_LICENSED_URL = "https://galaxyfinancial.org/get-licensed";
+const APPLY_URL = "https://galaxyfinancial.org/apply";
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,

@@ -1,5 +1,5 @@
 /**
- * recruitingShortLink.ts: what apex-financial.org/r/<code> carries to /apply.
+ * recruitingShortLink.ts: what galaxyfinancial.org/r/<code> carries to /apply.
  *
  * The path code is the recruiter, so a ?ref= the visitor's URL already held
  * is dropped (the short link wins). Every other key (utm_*, source, fbclid,

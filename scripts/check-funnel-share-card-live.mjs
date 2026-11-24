@@ -14,7 +14,7 @@
 // and renders THAT image as the card. It is the first impression of the
 // highest-traffic funnel entry Sam owns.
 //
-// THE BLIND SPOT. apex-financial.org's share card has a dedicated live-edge
+// THE BLIND SPOT. galaxyfinancial.org's share card has a dedicated live-edge
 // guard (check-share-card-live.mjs). check-lead-magnet-cta-live.mjs proves these
 // 4 sell4daddy PAGES serve a real landing body — but it never reads the
 // og:image / twitter:image, so the card can go dead while the page stays alive
@@ -23,7 +23,7 @@
 // purge that evicts it, or a storage hiccup kills the share card on the #1
 // funnel entry — and nothing in this repo would ever know, because the one guard
 // that reads image bytes (check-share-card-live) only ever probes
-// apex-financial.org. This closes the SAME category of leak the apex guard
+// galaxyfinancial.org. This closes the SAME category of leak the apex guard
 // exists to protect, on the higher-traffic origin.
 //
 // WHY READ THE LIVE-SERVED HTML, NOT A MANIFEST. These are separate Vercel

@@ -2,7 +2,7 @@ import { Navigate, useLocation, useParams } from "react-router-dom";
 import { carriedQuery, shortLinkFallbackTarget } from "@/lib/recruitingShortLink";
 
 /**
- * RecruitingShortLink: apex-financial.org/r/:code -> /apply?ref=:code
+ * RecruitingShortLink: galaxyfinancial.org/r/:code -> /apply?ref=:code
  *
  * 2026-06-16 Sam directive: "I'm gonna start recruiting in the next ten
  * minutes. Make this shit done ASAP." This component is the short URL

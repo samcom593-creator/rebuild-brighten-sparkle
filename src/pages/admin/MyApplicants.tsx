@@ -113,7 +113,7 @@ export default function MyApplicants() {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
   const referralUrl = refSlug
-    ? `https://apex-financial.org/apply?ref=${refSlug}`
+    ? `https://galaxyfinancial.org/apply?ref=${refSlug}`
     : "";
 
   const copyLink = () => {

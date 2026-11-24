@@ -30,8 +30,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const APPLY_URL = "https://apex-financial.org/apply";
-const GET_LICENSED_URL = "https://apex-financial.org/get-licensed";
+const APPLY_URL = "https://galaxyfinancial.org/apply";
+const GET_LICENSED_URL = "https://galaxyfinancial.org/get-licensed";
 // WP2: the licensed-call literal that sat here was unused; links come from
 // _shared/scheduling-links.ts. Cost copy is neutral until Sam answers N1.
 

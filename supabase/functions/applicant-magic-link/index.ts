@@ -81,7 +81,7 @@ function isServiceCaller(req: Request): boolean {
   const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
   return Boolean(token) && Boolean(SB_SRV) && safeEqual(token, SB_SRV);
 }
-const BASE_URL = "https://apex-financial.org";
+const BASE_URL = "https://galaxyfinancial.org";
 const DEFAULT_REDIRECT_PATH = "/dashboard";
 // Whitelist of acceptable redirect paths. Hard guard against open-redirect:
 // the action_link is a high-trust magic-login URL, so we never let arbitrary

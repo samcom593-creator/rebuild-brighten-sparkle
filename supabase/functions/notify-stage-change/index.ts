@@ -117,7 +117,7 @@ Deno.serve(
       <div style="margin-top: 24px; text-align: center;">
         <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
           <tr><td align="center" bgcolor="#10b981" style="border-radius:12px;">
-            <a href="https://apex-financial.org/agent-portal" style="display:inline-block;color:#ffffff;font-size:16px;font-weight:bold;padding:14px 32px;text-decoration:none;">🎯 Access Your Portal</a>
+            <a href="https://galaxyfinancial.org/agent-portal" style="display:inline-block;color:#ffffff;font-size:16px;font-weight:bold;padding:14px 32px;text-decoration:none;">🎯 Access Your Portal</a>
           </td></tr>
         </table>
       </div>` : ""}

@@ -36,7 +36,7 @@ export function firstNameOf(fullName: string | null | undefined, displayName: st
   return pick.split(/\s+/)[0] || "there";
 }
 
-export const DASHBOARD_URL = "https://apex-financial.org/agent-dashboard";
+export const DASHBOARD_URL = "https://galaxyfinancial.org/agent-dashboard";
 
 /** The hire's email: three short sentences and one link, no claims, no emoji. Sam's voice. */
 export function welcomeEmail(first: string): { subject: string; html: string; text: string } {

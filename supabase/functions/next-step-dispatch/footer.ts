@@ -8,7 +8,7 @@
 // email leaves the dispatcher with the dead link.
 
 const DEAD_REPLY_STOP =
-  /\s*or\s+<a\s[^>]*href\s*=\s*"mailto:[^"]*@apex-financial\.org[^"]*"[^>]*>\s*reply\s+STOP\s*<\/a>/gi;
+  /\s*or\s+<a\s[^>]*href\s*=\s*"mailto:[^"]*@(?:apex-financial|galaxyfinancial)\.org[^"]*"[^>]*>\s*reply\s+STOP\s*<\/a>/gi;
 
 export function stripDeadReplyStop(html: string): string {
   return String(html ?? "").replace(DEAD_REPLY_STOP, "");

@@ -24,8 +24,8 @@ const corsHeaders = {
 // removed — so the top CTA of the "you're live" email was a dead link. The
 // Release Course (5 lessons, 41 min) lives in the training hub; this is its
 // in-app page, behind the agent's own login.
-const releaseVideoUrl = "https://apex-financial.org/dashboard/training/library/course/r-mqv77rk9";
-const portalLink = "https://apex-financial.org/agent-portal";
+const releaseVideoUrl = "https://galaxyfinancial.org/dashboard/training/library/course/r-mqv77rk9";
+const portalLink = "https://galaxyfinancial.org/agent-portal";
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {

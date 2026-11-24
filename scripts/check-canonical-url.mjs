@@ -5,7 +5,7 @@
  * WHY THIS EXISTS (2026-11-10, Website Integrity Bot, Check #3/SEO)
  * This is a client-rendered SPA. The Vercel rewrite serves ONE static
  * index.html <head> for every non-asset path, and index.html carries a single
- * hardcoded <link rel="canonical" href="https://apex-financial.org">. So a
+ * hardcoded <link rel="canonical" href="https://galaxyfinancial.org">. So a
  * crawler fetching /apply, /vsl, /get-licensed, ... saw EVERY route declare the
  * HOMEPAGE as its canonical URL (verified live 2026-11-10 across 5 routes).
  * Meanwhile public/sitemap.xml lists 11 of those routes as indexable. The two
@@ -314,7 +314,7 @@ export function audit({ indexHtml, appTsx, rcTsx, sitemapXml, stateLandingTsx })
 
 function selftest() {
   const GOOD = {
-    indexHtml: '<head><link rel="canonical" href="https://apex-financial.org" /></head>',
+    indexHtml: '<head><link rel="canonical" href="https://galaxyfinancial.org" /></head>',
     appTsx:
       'import { RouteCanonical } from "@/components/seo/RouteCanonical";\n' +
       "<BrowserRouter>\n  <RouteCanonical />\n" +
@@ -323,14 +323,14 @@ function selftest() {
       '  <Route path="/contact" />\n  <Route path="/careers/:state" />\n  <Route path="*" />\n' +
       "</BrowserRouter>",
     rcTsx:
-      'export const PROD_ORIGIN = "https://apex-financial.org";\n' +
+      'export const PROD_ORIGIN = "https://galaxyfinancial.org";\n' +
       'useLocation(); link.setAttribute("rel", "canonical");',
     sitemapXml:
-      "<loc>https://apex-financial.org/</loc><loc>https://apex-financial.org/apply</loc>" +
-      "<loc>https://apex-financial.org/get-licensed</loc><loc>https://apex-financial.org/vsl</loc>" +
-      "<loc>https://apex-financial.org/schedule-call</loc><loc>https://apex-financial.org/leads</loc>" +
-      "<loc>https://apex-financial.org/contact</loc>" +
-      "<loc>https://apex-financial.org/careers/florida</loc><loc>https://apex-financial.org/careers/texas</loc>",
+      "<loc>https://galaxyfinancial.org/</loc><loc>https://galaxyfinancial.org/apply</loc>" +
+      "<loc>https://galaxyfinancial.org/get-licensed</loc><loc>https://galaxyfinancial.org/vsl</loc>" +
+      "<loc>https://galaxyfinancial.org/schedule-call</loc><loc>https://galaxyfinancial.org/leads</loc>" +
+      "<loc>https://galaxyfinancial.org/contact</loc>" +
+      "<loc>https://galaxyfinancial.org/careers/florida</loc><loc>https://galaxyfinancial.org/careers/texas</loc>",
     stateLandingTsx: 'const STATES = [{ slug: "florida" }, { slug: "texas" }];',
   };
 
@@ -339,7 +339,7 @@ function selftest() {
     ["missing canonical tag", { ...GOOD, indexHtml: "<head></head>" }, 1],
     ["duplicate canonical tags", {
       ...GOOD,
-      indexHtml: GOOD.indexHtml.replace("</head>", '<link rel="canonical" href="https://apex-financial.org/x" /></head>'),
+      indexHtml: GOOD.indexHtml.replace("</head>", '<link rel="canonical" href="https://galaxyfinancial.org/x" /></head>'),
     }, 1],
     ["canonical host != PROD_ORIGIN", {
       ...GOOD,
@@ -356,7 +356,7 @@ function selftest() {
     }, 1],
     ["sitemap lists a non-route", {
       ...GOOD,
-      sitemapXml: GOOD.sitemapXml + "<loc>https://apex-financial.org/ghost-page</loc>",
+      sitemapXml: GOOD.sitemapXml + "<loc>https://galaxyfinancial.org/ghost-page</loc>",
     }, 1],
     ["sitemap off-domain loc", {
       ...GOOD,
@@ -365,12 +365,12 @@ function selftest() {
     // Rule C: the "*" catch-all must NOT launder a soft-404 past parity.
     ["catch-all does not match a bogus path", {
       ...GOOD,
-      sitemapXml: GOOD.sitemapXml + "<loc>https://apex-financial.org/totally-made-up</loc>",
+      sitemapXml: GOOD.sitemapXml + "<loc>https://galaxyfinancial.org/totally-made-up</loc>",
     }, 1],
     // Rule D(1): a /careers loc that isn't a real slug is a redirect soft-404.
     ["careers loc with an invalid slug", {
       ...GOOD,
-      sitemapXml: GOOD.sitemapXml + "<loc>https://apex-financial.org/careers/atlantis</loc>",
+      sitemapXml: GOOD.sitemapXml + "<loc>https://galaxyfinancial.org/careers/atlantis</loc>",
     }, 1],
     // Rule D(2): a live state page absent from the sitemap is orphaned — the bug.
     ["state page orphaned from sitemap", {
@@ -384,14 +384,14 @@ function selftest() {
     // — the exact drop Rule C is blind to, because /vsl still matches a <Route>.
     ["core funnel route dropped from sitemap", {
       ...GOOD,
-      sitemapXml: GOOD.sitemapXml.replace("<loc>https://apex-financial.org/vsl</loc>", ""),
+      sitemapXml: GOOD.sitemapXml.replace("<loc>https://galaxyfinancial.org/vsl</loc>", ""),
     }, 1],
     // Rule E(declared): a required route no longer declared (and gone from sitemap)
     // — Rule C stays silent with no <loc>, so only Rule E catches the rot.
     ["required funnel route no longer declared", {
       ...GOOD,
       appTsx: GOOD.appTsx.replace('<Route path="/contact" />\n  ', ""),
-      sitemapXml: GOOD.sitemapXml.replace("<loc>https://apex-financial.org/contact</loc>", ""),
+      sitemapXml: GOOD.sitemapXml.replace("<loc>https://galaxyfinancial.org/contact</loc>", ""),
     }, 1],
   ];
 

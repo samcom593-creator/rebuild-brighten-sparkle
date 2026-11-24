@@ -48,7 +48,7 @@ const SLOTS: { slot: string; pillars: string[]; brand: string; job: string }[] =
 const DAILY_TARGET = 13;
 const OPEN_STATUSES = ["INBOX", "EDITING", "NEEDS_REVIEW", "APPROVED", "READY"];
 const MEDIA_BUCKET = "content-media";
-const CONTENT_URL = "https://apex-financial.org/dashboard/launch-board?tab=queue";
+const CONTENT_URL = "https://galaxyfinancial.org/dashboard/launch-board?tab=queue";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // The daily plan + first-time setup, lived on the site (not just Notes) so the crew always has it.
@@ -269,7 +269,7 @@ export default function ContentQueue({ embedded = false }: { embedded?: boolean 
     onError: (e: Error) => toast.error(/duplicate|unique/i.test(e.message) ? "That email is already on the list" : e.message || "Could not update access"),
   });
   const copyInvite = async (email: string) => {
-    const text = `You have access to Sam's Launch Board (every clip, the board, the week) and the Content queue.\nOpen: https://apex-financial.org/dashboard/launch-board\nSign in with ${email} — on the login page choose "email me a link", no password needed.\nApprovals live at ${CONTENT_URL}`;
+    const text = `You have access to Sam's Launch Board (every clip, the board, the week) and the Content queue.\nOpen: https://galaxyfinancial.org/dashboard/launch-board\nSign in with ${email} — on the login page choose "email me a link", no password needed.\nApprovals live at ${CONTENT_URL}`;
     try {
       await navigator.clipboard.writeText(text);
       toast.success("Invite copied — paste it to them");

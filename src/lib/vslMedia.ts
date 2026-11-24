@@ -22,7 +22,7 @@ export const VSL_VIDEO = {
   description: `The full ${BRAND.platformName} walkthrough: the platform, the three paths, how production is tracked, and exactly how a licensed producer starts.`,
   src: `${VSL_MEDIA_BASE}/apex-vsl.mp4`,
   poster: `${VSL_MEDIA_BASE}/galaxy-vsl-poster.jpg`,
-  pageUrl: "https://apex-financial.org/vsl",
+  pageUrl: "https://galaxyfinancial.org/vsl",
   durationSeconds: DURATION_SECONDS,
   durationLabel: `${Math.floor(DURATION_SECONDS / 60)}:${String(DURATION_SECONDS % 60).padStart(2, "0")}`,
 } as const;

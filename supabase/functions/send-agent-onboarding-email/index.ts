@@ -199,7 +199,7 @@ function buildGetLicensedEmail(
   bookingUrl: string | null,
 ): { subject: string; html: string; text: string } {
   const fn = escapeHtml(firstName(name));
-  const licenseUrl = "https://apex-financial.org/get-licensed";
+  const licenseUrl = "https://galaxyfinancial.org/get-licensed";
   const subject = "Step 1 — get your insurance licence";
 
   const text = [
@@ -232,7 +232,7 @@ function buildGetLicensedEmail(
 function buildCourseEmail(name: string): { subject: string; html: string; text: string } {
   const fn = escapeHtml(firstName(name));
   const trainingUrl = FIELD_COURSE_URL;
-  const roadmapUrl = "https://apex-financial.org/agent-portal";
+  const roadmapUrl = "https://galaxyfinancial.org/agent-portal";
   const url = escapeHtml(trainingUrl);
   const roadmap = escapeHtml(roadmapUrl);
   const subject = "Your Galaxy online training is ready";
@@ -290,7 +290,7 @@ function buildCommunityEmail(name: string, communityUrl: string | null): { subje
     ``,
     `Slack is your primary team hub for next steps, contracting support, training, and sales wins.`,
     `Join now so your onboarding team can keep you moving.`,
-    `Then open your Galaxy account roadmap: https://apex-financial.org/agent-portal`,
+    `Then open your Galaxy account roadmap: https://galaxyfinancial.org/agent-portal`,
     ``,
     `See you there.`,
     ``,
@@ -308,7 +308,7 @@ function buildCommunityEmail(name: string, communityUrl: string | null): { subje
   <p>Hey ${fn},</p>
   ${ctaHtml}
   <p>Slack is your <strong>primary team hub</strong> for next steps, contracting support, training, and sales wins. Join now so your onboarding team can keep you moving.</p>
-  <p><strong>Next:</strong> <a href="https://apex-financial.org/agent-portal">open your Galaxy account roadmap</a>, confirm your profile, and complete the action shown as current.</p>
+  <p><strong>Next:</strong> <a href="https://galaxyfinancial.org/agent-portal">open your Galaxy account roadmap</a>, confirm your profile, and complete the action shown as current.</p>
   <p>See you there.</p>
   <p style="margin-top:24px;">— Sam<br/>Galaxy Financial</p>
 </body></html>`.trim();
@@ -321,7 +321,7 @@ function buildCommunityEmail(name: string, communityUrl: string | null): { subje
 // link, never script bodies: the packet is served in-app to signed-in agents.
 function buildScriptsPacketEmail(name: string): { subject: string; html: string; text: string } {
   const fn = escapeHtml(firstName(name));
-  const url = "https://apex-financial.org/dashboard/scripts";
+  const url = "https://galaxyfinancial.org/dashboard/scripts";
   const subject = "Your Galaxy scripts are unlocked";
   const text = [
     `Hey ${firstName(name)},`,

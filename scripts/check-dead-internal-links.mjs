@@ -58,7 +58,7 @@ const SCAN_ROOTS = [
 // trimmed too. Without this a test fixture's "<...follow-ups|Open ...>" parsed
 // as a route named "follow-ups|Open" and the guard reported a bug that was a
 // mis-parse of its own making.
-const ORIGIN_PATTERN = /https:\/\/apex-financial\.org(\/[^"'`\s\\)|>]*)?/g;
+const ORIGIN_PATTERN = /https:\/\/(?:www\.)?(?:apex-financial|galaxyfinancial)\.org(\/[^"'`\s\\)|>]*)?/g;
 
 /** A last segment with a file extension is a file in public/, not a route.
  *  Resolved against the filesystem rather than skipped: MP-501 found

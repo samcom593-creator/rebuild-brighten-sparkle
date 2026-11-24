@@ -23,7 +23,7 @@ const supabase = createClient(
   { auth: { persistSession: false } },
 );
 
-const APP_URL = Deno.env.get("APP_BASE_URL") || "https://apex-financial.org";
+const APP_URL = Deno.env.get("APP_BASE_URL") || "https://galaxyfinancial.org";
 const SEMINAR_TZ = "America/Chicago";
 
 // Returns the CT UTC offset (in minutes) for a given UTC instant. Handles

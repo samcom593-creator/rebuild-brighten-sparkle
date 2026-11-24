@@ -144,7 +144,7 @@ function contrast(a: Rgb, b: Rgb): number {
 
 // ── Rendering the real card ─────────────────────────────────────────────────
 
-const ACTIVE_LINK = { active: true, ref_slug: "jontay-taylor-957597", link: "https://apex-financial.org/apply?ref=jontay-taylor-957597" };
+const ACTIVE_LINK = { active: true, ref_slug: "jontay-taylor-957597", link: "https://galaxyfinancial.org/apply?ref=jontay-taylor-957597" };
 
 function renderCard(result: Promise<unknown>) {
   vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mockImplementation((() => result) as never);

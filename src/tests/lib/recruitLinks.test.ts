@@ -30,7 +30,7 @@ const PHX = { timeZone: "America/Phoenix", locale: "en-US" };
 describe("your own link", () => {
   it("is /r/<slug> on the public site, from the slug alone", () => {
     expect(ownLinkUrl("samuel-james-7c3c55")).toBe(`${PUBLIC_SITE}/r/samuel-james-7c3c55`);
-    expect(PUBLIC_SITE).toBe("https://apex-financial.org");
+    expect(PUBLIC_SITE).toBe("https://galaxyfinancial.org");
     expect(ownLinkPath(ownLinkUrl("samuel-james-7c3c55") as string)).toBe("/r/samuel-james-7c3c55");
   });
 
@@ -120,7 +120,7 @@ describe("License either-or", () => {
 });
 
 describe("the words that go with a shared link", () => {
-  const url = "https://apex-financial.org/hire/tok";
+  const url = "https://galaxyfinancial.org/hire/tok";
 
   it("greets by first name, names what the link does, and puts the link on its own line", () => {
     expect(linkSentence({ kind: "hire", url, orgName: "Galaxy Financial", firstName: "Mary Ann" })).toBe("Hi Mary, here is your personal link to join Galaxy Financial:");
@@ -157,7 +157,7 @@ describe("the words that go with a shared link", () => {
 });
 
 describe("Share", () => {
-  const data = { title: "Join", text: "Here is my link:", url: "https://apex-financial.org/r/x" };
+  const data = { title: "Join", text: "Here is my link:", url: "https://galaxyfinancial.org/r/x" };
 
   it("uses the phone's share sheet when there is one", async () => {
     const share = vi.fn().mockResolvedValue(undefined);

@@ -138,7 +138,7 @@ export function buildApplicantWelcome(input: WelcomeInput): WelcomeEmail {
     <p style="margin:18px 0"><a href="${escapeHtml(p.primary.url)}" style="display:inline-block;background:#111827;color:#ffffff;padding:12px 22px;border-radius:6px;text-decoration:none;font-weight:600">${escapeHtml(p.primary.label)}</a></p>
     ${secondaryHtml}
     <p style="margin:0 0 14px">Sam</p>
-    <p style="margin:24px 0 0;font-size:12px;color:#6b7280">Galaxy Financial · apex-financial.org</p>
+    <p style="margin:24px 0 0;font-size:12px;color:#6b7280">Galaxy Financial · galaxyfinancial.org</p>
   </div>`;
   const text = [
     ...p.lines,
@@ -148,7 +148,7 @@ export function buildApplicantWelcome(input: WelcomeInput): WelcomeEmail {
     "",
     "Sam",
     "",
-    "Galaxy Financial · apex-financial.org",
+    "Galaxy Financial · galaxyfinancial.org",
   ].join("\n");
   return {
     variant,

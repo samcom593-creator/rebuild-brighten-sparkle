@@ -85,7 +85,7 @@ Deno.test("licensed: the button is the licensed call, prefilled, utm_content = a
 Deno.test("unlicensed: status page is the button; the questions-call line is kept", () => {
   const w = buildApplicantWelcome({ ...base, licenseStatus: "unlicensed" });
   assertEquals(w.subject, "Jordan, your Galaxy application is in");
-  assertEquals(w.primaryUrl, `https://apex-financial.org/status/${APP}`);
+  assertEquals(w.primaryUrl, `https://galaxyfinancial.org/status/${APP}`);
   assertStringIncludes(w.html, QUESTIONS_CALL_LINE);
   const q = new URL(w.secondaryUrl ?? "");
   assertEquals(`${q.origin}${q.pathname}`, "https://calendly.com/apexfinancialempire/licensing-questions");
@@ -99,7 +99,7 @@ Deno.test("pending: the page's real first step (receipt or certificate), no NPN-
   assertStringIncludes(w.html, "receipt or certificate");
   // the NPN field (LicensingSelfReport) renders only after a receipt upload
   assertEquals(/NPN/.test(`${w.subject}\n${w.text}`), false);
-  assertEquals(w.primaryUrl, `https://apex-financial.org/status/${APP}`);
+  assertEquals(w.primaryUrl, `https://galaxyfinancial.org/status/${APP}`);
 });
 
 Deno.test("the pending copy matches the page: PendingBody asks for the receipt and the NPN waits for it", async () => {

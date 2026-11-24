@@ -16,10 +16,13 @@ Deno.test("an address on the sending domain is refused: those mailboxes return 5
     "notifications@apex-financial.org",
     "Galaxy Financial <hello@apex-financial.org>",
     "ALERTS@APEX-FINANCIAL.ORG",
+    "sam@galaxyfinancial.org",
+    "Galaxy Financial <notifications@galaxyfinancial.org>",
   ]) {
     assertEquals(resolveReplyTo(v), RECRUIT_REPLY_TO, v);
   }
-  assertEquals(NO_MAILBOX_DOMAINS.includes("apex-financial.org"), true);
+  assertEquals(NO_MAILBOX_DOMAINS.includes("galaxyfinancial.org"), true);
+  assertEquals(NO_MAILBOX_DOMAINS.includes("galaxyfinancial.org"), true);
 });
 
 Deno.test("a real receiving inbox named by the caller is kept as given", () => {

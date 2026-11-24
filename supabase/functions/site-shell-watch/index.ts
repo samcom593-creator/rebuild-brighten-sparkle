@@ -11,7 +11,7 @@
 // resolution (MP-273's boot death) can only fail that one send and be recorded
 // on the row; it can never take the watcher down at boot.
 //
-// An OFF-LAPTOP watcher for apex-financial.org's shell + asset graph, fired by
+// An OFF-LAPTOP watcher for galaxyfinancial.org's shell + asset graph, fired by
 // pg_cron every 10 minutes.
 //
 // WHY THIS EXISTS, MEASURED. MP-296 shipped apex-site-health-probe.sh on a 600s
@@ -114,7 +114,7 @@
 // sendPageEmail.
 import { gateResend } from "../_shared/resend-gate.ts";
 
-const BASE = Deno.env.get("SHELL_WATCH_BASE") ?? "https://apex-financial.org";
+const BASE = Deno.env.get("SHELL_WATCH_BASE") ?? "https://galaxyfinancial.org";
 const CONTROL = Deno.env.get("SHELL_WATCH_CONTROL") ?? "https://vercel.com";
 const NTFY = Deno.env.get("SHELL_WATCH_NTFY") ??
   "https://ntfy.sh/sams-agent-yrkv9kbqp9e987nb";
@@ -436,7 +436,7 @@ Deno.serve(async (req) => {
     // GATE 2: DE-STORM.
     if (!episodePaged) {
       const body =
-        `apex-financial.org shell/asset floor FAILED from Supabase pg_cron (off-laptop).\n\n${p.reason}\n\n` +
+        `galaxyfinancial.org shell/asset floor FAILED from Supabase pg_cron (off-laptop).\n\n${p.reason}\n\n` +
         `This watcher checks the shell + asset graph ONLY. The data layer and application write path are checked by the laptop probe and are NOT covered by this page.`;
 
       // CHANNEL LADDER (MP-307, second rung email since MP-SITE-WATCH-EMAIL).

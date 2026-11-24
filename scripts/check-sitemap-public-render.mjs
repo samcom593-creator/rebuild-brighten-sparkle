@@ -57,7 +57,7 @@
 // the right tool).
 //
 // Usage:
-//   BASE=https://apex-financial.org node scripts/check-sitemap-public-render.mjs
+//   BASE=https://galaxyfinancial.org node scripts/check-sitemap-public-render.mjs
 //   node scripts/check-sitemap-public-render.mjs --selftest   # prove the checks both ways, no network
 //   PW_CHANNEL=chrome node scripts/check-sitemap-public-render.mjs   # system Chrome (CI, no download)
 
@@ -66,8 +66,8 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
-const BASE = (process.env.BASE || "https://apex-financial.org").replace(/\/$/, "");
-const PROD_ORIGIN = "https://apex-financial.org"; // canonical is a FIXED prod origin, never window.location (no preview leak)
+const BASE = (process.env.BASE || "https://galaxyfinancial.org").replace(/\/$/, "");
+const PROD_ORIGIN = "https://galaxyfinancial.org"; // canonical is a FIXED prod origin, never window.location (no preview leak)
 const SETTLE_MS = 1600; // let hydration + any auth redirect + RouteCanonical mount land
 const NAV_TIMEOUT = 40000;
 
@@ -157,8 +157,8 @@ function gradeRoute(path, { finalPath, loginWall, canonical, textLen, hasPlaceho
 
   // C. self-referencing canonical on the fixed prod origin. Trailing slashes are
   //    normalized on BOTH sides: Google treats the root canonical bare-origin
-  //    "https://apex-financial.org" (what RouteCanonical emits for "/") and the
-  //    sitemap's "https://apex-financial.org/" as the SAME URL, and sub-paths emit
+  //    "https://galaxyfinancial.org" (what RouteCanonical emits for "/") and the
+  //    sitemap's "https://galaxyfinancial.org/" as the SAME URL, and sub-paths emit
   //    no trailing slash. This is a canonical-URL equivalence fact, not a leniency
   //    hole — a canonical pointing at a DIFFERENT path (/login, another page, or
   //    null) still fails, proven by the selftest.

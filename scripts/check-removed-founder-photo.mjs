@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Fails the build if a founder-headshot image that Sam explicitly ordered OFF
 // the public surface is present under public/img/ (and would therefore deploy
-// to apex-financial.org/img/<name> on the next Vercel build).
+// to galaxyfinancial.org/img/<name> on the next Vercel build).
 // Owned by Website Integrity Bot.
 //
 // Why this guard exists:
@@ -107,7 +107,7 @@ function main() {
     console.error(
       "check-removed-founder-photo FAILED: a founder-headshot image Sam ordered off\n" +
       "the public surface on 2026-09-08 (commit 3e58b71b) is present under public/ and\n" +
-      "will deploy to apex-financial.org/img/<name>:",
+      "will deploy to galaxyfinancial.org/img/<name>:",
     );
     for (const rel of offenders) console.error("  - public/" + rel);
     console.error(

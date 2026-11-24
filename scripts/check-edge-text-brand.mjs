@@ -46,7 +46,7 @@
  *     stripper; a hand-rolled one mis-lexes apostrophes in prose — MP-474).
  *     Most Apex references in functions/ are code comments documenting the live
  *     Slack workspace name, the apply site, etc.
- *   - The domain apex-financial.org / Calendly org apexfinancialempire.com —
+ *   - The domain galaxyfinancial.org / Calendly org apexfinancialempire.com —
  *     these stay Apex by design (the Resend sending domain is verified; a
  *     rename resets reputation). Allowlisted and blanked before the test.
  *   - The social HASHTAG #APEXFinancialEmpire (post-plaque-to-instagram) — it
@@ -94,7 +94,7 @@ const PATS = [
   // `Team Apex` is not the `from`-name drift "Apex Team". Anchored on the
   // `from:` / `"from":` property so prose ("a note from Apex…") never votes;
   // covers the "Apex" display form and the old "APEX" tracked wordmark. The
-  // sending DOMAIN (apex-financial.org, lowercase, after @) is blanked by ALLOW
+  // sending DOMAIN (galaxyfinancial.org, lowercase, after @) is blanked by ALLOW
   // before this runs, so only the display NAME can match. Requires a space +
   // letter after the brand so "ApexBot"/env-var forms never collide.
   /\bfrom["'`]?\s*:\s*["'`](?:Apex|APEX)\s+[A-Za-z]/g,
@@ -104,6 +104,7 @@ const PATS = [
 // offsets so reported line numbers stay true.
 const ALLOW = [
   /apex-financial\.org/gi,
+  /galaxyfinancial\.org/gi,
   /apexfinancialempire\.com/gi,
   /APEX_[A-Z0-9_]+/g,
   /#APEXFinancial\w*/gi,
@@ -162,7 +163,7 @@ if (process.argv.includes("--selftest")) {
   const okComment = '// Welcome to Apex Financial workspace — verified live 2026-09-07';
   if (scan(okComment).length > 0) fails.push("comment referencing dead brand wrongly flagged");
   const okDomain = 'const from = "sam@apex-financial.org";';
-  if (scan(okDomain).length > 0) fails.push("sending domain apex-financial.org wrongly flagged");
+  if (scan(okDomain).length > 0) fails.push("sending domain galaxyfinancial.org wrongly flagged");
   const okEnv = 'const tok = Deno.env.get("APEX_BOT_TOKEN") ?? "";';
   if (scan(okEnv).length > 0) fails.push("env var APEX_BOT_TOKEN wrongly flagged");
   const okHashtag = 'return `${label}\\n\\n#APEXFinancialEmpire #IUL #closer`;';

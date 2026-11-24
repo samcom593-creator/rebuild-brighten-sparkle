@@ -34,7 +34,7 @@
 
 import { chromium } from "playwright";
 
-const BASE = (process.env.BASE || "https://apex-financial.org").replace(/\/$/, "");
+const BASE = (process.env.BASE || "https://galaxyfinancial.org").replace(/\/$/, "");
 const ROUTES = (process.env.ROUTES || "/,/storefront,/contact,/leads").split(",").map((s) => s.trim()).filter(Boolean);
 const STORAGE_KEY = "apex:theme:v2";
 

@@ -2579,7 +2579,7 @@ function ReferralLinkBanner({ agentId }: { agentId: string }) {
   });
   const agentCode = codeQuery.data?.agent_code ?? null;
   if (!agentCode) return null;
-  const base = typeof window !== "undefined" ? window.location.origin : "https://apex-financial.org";
+  const base = typeof window !== "undefined" ? window.location.origin : "https://galaxyfinancial.org";
   const url = `${base}/apply?ref=${encodeURIComponent(agentCode)}`;
   const copy = async () => {
     try {

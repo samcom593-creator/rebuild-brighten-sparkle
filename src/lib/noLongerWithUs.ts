@@ -21,7 +21,7 @@ export function reengageEmail(name: string) {
     subject: "The door's still open",
     html: `<p>Hey ${first},</p>
 <p>It's Sam from ${org}. Looks like the timing didn't line up for you with us right now, and that's okay.</p>
-<p>If you ever want another shot at building this, the door is open. Reply to this email or apply again at <a href="https://apex-financial.org/apply">apex-financial.org/apply</a> and I'll get you plugged back in.</p>
+<p>If you ever want another shot at building this, the door is open. Reply to this email or apply again at <a href="https://galaxyfinancial.org/apply">galaxyfinancial.org/apply</a> and I'll get you plugged back in.</p>
 <p>Hold the standard,<br/>Sam James<br/>${org}</p>`,
   };
 }

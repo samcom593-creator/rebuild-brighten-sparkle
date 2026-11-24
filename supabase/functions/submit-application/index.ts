@@ -552,7 +552,7 @@ async function sendManagerNotification(
               ` : ''}
               <tr>
                 <td align="center" style="padding: 6px;">
-                  <a href="https://apex-financial.org/dashboard/recruiting?lead=${applicationId}" style="display: inline-block; background: #111827; color: white; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 14px; max-width: 100%; box-sizing: border-box;">
+                  <a href="https://galaxyfinancial.org/dashboard/recruiting?lead=${applicationId}" style="display: inline-block; background: #111827; color: white; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 14px; max-width: 100%; box-sizing: border-box;">
                     👤 View Lead in Dashboard
                   </a>
                 </td>
@@ -807,7 +807,7 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
             </div>
 
             <div style="margin-top: 25px; text-align: center;">
-              <a href="https://apex-financial.org/dashboard/recruiting?lead=${applicationId}" style="${callToActionStyle}">
+              <a href="https://galaxyfinancial.org/dashboard/recruiting?lead=${applicationId}" style="${callToActionStyle}">
                 ${callToActionText}
               </a>
               ${isLicensedApplicant ? `

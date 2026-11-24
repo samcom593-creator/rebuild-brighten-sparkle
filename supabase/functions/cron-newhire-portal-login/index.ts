@@ -31,7 +31,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { sendEmail } from "../_shared/email.ts";
 import { maskEmail, receiptFor } from "./receipt.ts";
 
-const BASE_URL = "https://apex-financial.org";
+const BASE_URL = "https://galaxyfinancial.org";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const CRON_SECRET = Deno.env.get("NEWHIRE_CRON_SECRET") ?? "";
@@ -105,7 +105,7 @@ function buildEmail(firstName: string, email: string, portalMagicLink: string, n
           </div>
           <div style="background: rgba(148, 163, 184, 0.1); border-radius: 8px; padding: 16px; margin: 24px 0;">
             <p style="color: #94a3b8; font-size: 12px; margin: 0; text-align: center;">
-              Link not working? You can also sign in at <a href="${BASE_URL}/agent-login" style="color: #c9a84c;">apex-financial.org/agent-login</a><br>
+              Link not working? You can also sign in at <a href="${BASE_URL}/agent-login" style="color: #c9a84c;">galaxyfinancial.org/agent-login</a><br>
               using your email: <strong style="color: #e2e8f0;">${escapeHtml(email)}</strong>
             </p>
           </div>

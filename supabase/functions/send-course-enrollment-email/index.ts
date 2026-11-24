@@ -258,7 +258,7 @@ const handler = async (req: Request): Promise<Response> => {
 
                 <div style="background: rgba(148, 163, 184, 0.1); border-radius: 8px; padding: 16px; margin: 24px 0;">
                   <p style="color: #94a3b8; font-size: 12px; margin: 0; text-align: center;">
-                    Button not working? Sign in at <a href="${BASE_URL}/agent-login" style="color: #14b8a6;">apex-financial.org/agent-login</a><br>
+                    Button not working? Sign in at <a href="${BASE_URL}/agent-login" style="color: #14b8a6;">galaxyfinancial.org/agent-login</a><br>
                     using your email: <strong style="color: #e2e8f0;">${profile.email}</strong>
                   </p>
                 </div>

@@ -15,5 +15,5 @@ export const MGN_CONTRACTING_URL = "https://mgnagenthub.com/dashboard";
 /** The contracting link the team sends. One link for everyone; copying it sends nothing. */
 export const CONTRACTING_LINK_URL = MGN_CONTRACTING_URL;
 export const CONTRACTING_PROFILE_PATH = "/dashboard/contracting-profile";
-export const CONTRACTING_PROFILE_URL = `https://apex-financial.org${CONTRACTING_PROFILE_PATH}`;
+export const CONTRACTING_PROFILE_URL = `https://galaxyfinancial.org${CONTRACTING_PROFILE_PATH}`;
 export const RETIRED_CONTRACTING_INTAKE_PATH = "/start-contracting";

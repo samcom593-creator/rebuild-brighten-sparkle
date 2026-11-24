@@ -135,19 +135,19 @@ describe("Slack delivery lease + interview no-show (20260826053000)", () => {
     const text = renderSlackEventText("candidate.interview_noshow", {
       candidateName: "ZZ E2E TESTUSER DELETE",
       urgentFollowup: true,
-      openUrl: "https://apex-financial.org/dashboard/recruiting/follow-ups",
+      openUrl: "https://galaxyfinancial.org/dashboard/recruiting/follow-ups",
       // a payload that smuggles contact data must still render clean
       inviteePhone: "6015551234",
       inviteeEmail: "zz@example.com",
     });
     expect(text).toBe(
-      ":rotating_light: No-show — *ZZ E2E TESTUSER DELETE* missed their interview. Urgent follow-up: <https://apex-financial.org/dashboard/recruiting/follow-ups|Open interview recovery>",
+      ":rotating_light: No-show — *ZZ E2E TESTUSER DELETE* missed their interview. Urgent follow-up: <https://galaxyfinancial.org/dashboard/recruiting/follow-ups|Open interview recovery>",
     );
     expect(text).not.toContain("6015551234");
     expect(text).not.toContain("zz@example.com");
     // off-domain URLs are replaced with the canonical recovery route
     const hostile = renderSlackEventText("candidate.interview_noshow", { openUrl: "https://evil.example/x" });
-    expect(hostile).toContain("https://apex-financial.org/dashboard/recruiting/follow-ups");
+    expect(hostile).toContain("https://galaxyfinancial.org/dashboard/recruiting/follow-ups");
     expect(hostile).not.toContain("evil.example");
     // the SPA really serves that route (the /dashboard/interview-recovery URL is a legacy redirect to it)
     expect(source("src/App.tsx")).toContain('path="/dashboard/recruiting/follow-ups"');

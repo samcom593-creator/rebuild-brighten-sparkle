@@ -283,7 +283,7 @@ export const EMAIL = {
   replyTo: "info@kingofsales.net",
   tag: "ig-command-center",
   applyUrl: (handle: string | null) =>
-    `https://apex-financial.org/apply?utm_source=instagram&utm_medium=dm&utm_campaign=command_center${handle ? `&ig=${encodeURIComponent(handle)}` : ""}`,
+    `https://galaxyfinancial.org/apply?utm_source=instagram&utm_medium=dm&utm_campaign=command_center${handle ? `&ig=${encodeURIComponent(handle)}` : ""}`,
   licensedUrl: "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone",
 };
 

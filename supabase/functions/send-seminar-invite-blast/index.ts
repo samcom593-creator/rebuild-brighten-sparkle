@@ -28,7 +28,7 @@ const CARRIER_GATEWAYS: Record<string, string> = {
   boost: "sms.myboostmobile.com",
 };
 
-const APP_URL = "https://apex-financial.org";
+const APP_URL = "https://galaxyfinancial.org";
 
 function buildSeminarEmail(firstName: string, registrationUrl: string, slackLink: string): string {
   return `

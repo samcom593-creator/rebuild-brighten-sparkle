@@ -42,7 +42,7 @@ describe("canonicalHref", () => {
   });
 
   it("never emits a preview host — always the fixed prod origin", () => {
-    expect(PROD_ORIGIN).toMatch(/^https:\/\/apex-financial\.org$/);
+    expect(PROD_ORIGIN).toMatch(/^https:\/\/galaxyfinancial\.org$/);
   });
 });
 

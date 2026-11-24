@@ -9,7 +9,7 @@ interface Props {
   agentId: string | null | undefined;
 }
 
-const APEX_HOST = "https://apex-financial.org";
+const APEX_HOST = "https://galaxyfinancial.org";
 
 export function AgentReferralLinkCard({ agentId }: Props) {
   const [refSlug, setRefSlug] = useState<string | null>(null);

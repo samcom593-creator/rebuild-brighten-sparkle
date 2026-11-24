@@ -4,7 +4,7 @@
  *
  * WHY THIS EXISTS (MP-WIB-APPLY-FORM-RENDER, 2026-11-12). /apply is the single
  * conversion point of the recruiting funnel: every lead a recruit on
- * apex-financial.org becomes walks through this form (quick-qualify step 1 ->
+ * galaxyfinancial.org becomes walks through this form (quick-qualify step 1 ->
  * full submit). check-funnel-capture-handler proves the ENDPOINT it POSTs to
  * (submit-application) runs — but nothing proves the BROWSER FORM that calls
  * that endpoint actually renders. Those are different failure surfaces: a
@@ -67,7 +67,7 @@
  *   0 HEALTHY | 0 UNKNOWN (network) | 1 DEFECT | 3 UNRESOLVED/transient
  */
 
-const SITE = process.env.APEX_SITE_ORIGIN || "https://apex-financial.org";
+const SITE = process.env.APEX_SITE_ORIGIN || "https://galaxyfinancial.org";
 const ROUTE = process.env.APEX_APPLY_ROUTE || "/apply";
 const CONTROL = process.env.APPLY_CONTROL_URL || "https://www.google.com/generate_204";
 const NAV_TIMEOUT = 40000;

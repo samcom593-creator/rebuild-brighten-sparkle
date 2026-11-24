@@ -289,7 +289,7 @@ serve(async (req: Request) => {
       .select()
       .single();
 
-    const shareUrl = `https://apex-financial.org/plaque/${slug}`;
+    const shareUrl = `https://galaxyfinancial.org/plaque/${slug}`;
     const pngBase64 = uint8ToBase64(pngData);
 
     const resendApiKey = Deno.env.get("RESEND_API_KEY");

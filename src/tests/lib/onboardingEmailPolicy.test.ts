@@ -52,7 +52,7 @@ describe("licensed and unlicensed onboarding email policy", () => {
     expect(queueWorker).toContain("Your Galaxy online training is ready");
     // WP6: the 6 required modules live on the sales course, so the course email points there.
     expect(queueWorker).toContain("const trainingUrl = FIELD_COURSE_URL");
-    expect(read("supabase/functions/send-agent-onboarding-email/reminders.ts")).toContain('FIELD_COURSE_URL = "https://apex-financial.org/dashboard/training/sales-course"');
+    expect(read("supabase/functions/send-agent-onboarding-email/reminders.ts")).toContain('FIELD_COURSE_URL = "https://galaxyfinancial.org/dashboard/training/sales-course"');
     expect(queueWorker).not.toContain("Your Galaxy prelicensing course access is ready");
     expect(course).toContain("Your next-step roadmap");
     expect(course).toContain("Join the Galaxy Slack");

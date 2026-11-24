@@ -150,7 +150,7 @@ Deno.serve(async (req) => {
     try {
       const out = await RESEND.emails.send({
         from: FROM, to: [r.email], subject: SUBJECT, html, text,
-        // sam@ and unsubscribe@ on apex-financial.org do not exist (550, 2026-11-11):
+        // sam@ and unsubscribe@ on galaxyfinancial.org do not exist (550, 2026-11-11):
         // replies and opt-outs go to the one live inbox.
         reply_to: "info@kingofsales.net",
         headers: {

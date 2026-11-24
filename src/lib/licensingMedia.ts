@@ -12,7 +12,7 @@ export const LICENSING_VIDEO = {
     "The complete 2026 process: state requirements, pre-licensing, exam, fingerprints, application, and license verification.",
   src: `${TRAINING_MEDIA_BASE}/how-to-get-your-life-insurance-license.mp4`,
   poster: `${TRAINING_MEDIA_BASE}/how-to-get-your-life-insurance-license-poster.jpg`,
-  pageUrl: "https://apex-financial.org/get-licensed#licensing-video",
+  pageUrl: "https://galaxyfinancial.org/get-licensed#licensing-video",
   durationLabel: "5:18",
   durationSeconds: 318,
 } as const;

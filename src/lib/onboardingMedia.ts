@@ -13,6 +13,6 @@ export const ONBOARDING_VIDEO = {
   // top-left header, outro card, a "APEX Daily Team Meeting" slide heading, and
   // nested website screenshots — that needs a source re-render, not a pixel patch.
   poster: `${ONBOARDING_MEDIA_BASE}/galaxy-new-agent-onboarding-poster.jpg`,
-  pageUrl: "https://apex-financial.org/get-licensed#apex-onboarding",
+  pageUrl: "https://galaxyfinancial.org/get-licensed#apex-onboarding",
   ready: true,
 } as const;

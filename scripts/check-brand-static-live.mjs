@@ -2,7 +2,7 @@
 // check-brand-static-live.mjs — prove the funnel's icon + PWA-manifest chain is
 // still ALIVE on the live edge. Owned by the Website Integrity Bot.
 //
-// WHY THIS EXISTS. Every served index.html on apex-financial.org declares a set
+// WHY THIS EXISTS. Every served index.html on galaxyfinancial.org declares a set
 // of fixed-name root statics the browser loads to paint the site's identity:
 //   <link rel="icon" href="/favicon.ico">           (browser tab + bookmarks)
 //   <link rel="apple-touch-icon" href="/apple-touch-icon.png">  (iOS home screen)
@@ -77,7 +77,7 @@
 
 import http from "node:http";
 
-const SITE = (process.env.BRAND_STATIC_SITE || "https://apex-financial.org/").replace(/\/*$/, "/");
+const SITE = (process.env.BRAND_STATIC_SITE || "https://galaxyfinancial.org/").replace(/\/*$/, "/");
 const CONTROL = process.env.BRAND_STATIC_CONTROL_URL || "https://www.google.com/generate_204";
 const TIMEOUT_MS = Number(process.env.BRAND_STATIC_TIMEOUT_MS || 25000);
 

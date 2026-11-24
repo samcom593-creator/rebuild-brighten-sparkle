@@ -25,7 +25,7 @@
 //   does it hold" (the operand error this repo keeps re-learning).
 //
 //   Every column feeding the 15 sites below measures ZERO scheme-less values
-//   today: next_step_stages.next_action_url is https://apex-financial.org/...,
+//   today: next_step_stages.next_action_url is https://galaxyfinancial.org/...,
 //   interview_events.reschedule_url is https://calendly.com/..., and
 //   onboarding_modules.video_url is 19/19 anchored. So this guard ships as
 //   PREVENTION. It is LATENT, and it says so rather than implying a live leak.

@@ -1,7 +1,7 @@
 /**
  * useAnimatedCounter.test.ts
  *
- * THE BUG (live on apex-financial.org, found 2026-11-12 by the website
+ * THE BUG (live on galaxyfinancial.org, found 2026-11-12 by the website
  * integrity bot):
  *   The public landing rendered "0 Active Agents" on the recruiting money page,
  *   next to a live receipts strip reading 37 applications / 22 carriers and a

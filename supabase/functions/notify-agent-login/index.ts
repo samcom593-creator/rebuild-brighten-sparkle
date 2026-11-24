@@ -183,7 +183,7 @@ const handler = async (req: Request): Promise<Response> => {
               Ready to log today's numbers?
             </p>
             
-            <a href="https://apex-financial.org/numbers" class="cta">
+            <a href="https://galaxyfinancial.org/numbers" class="cta">
               📊 Log My Numbers
             </a>
           </div>

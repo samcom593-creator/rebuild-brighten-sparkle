@@ -8,7 +8,7 @@
  * were wrong with that single href and NONE of the brand guards could see it:
  *   1. TYPO — "apexfina{in}cial", not "apexfinancial". A reader never reads the
  *      href, so the misspelling was invisible on screen.
- *   2. NON-CANONICAL — the app's real home is apex-financial.org (APP_BASE_URL
+ *   2. NON-CANONICAL — the app's real home is galaxyfinancial.org (APP_BASE_URL
  *      in _shared/apex.ts). A *.vercel.app preview host is not the branded
  *      domain; the recipient lands on a URL bar that does not say the brand.
  *   3. STALE — that preview alias served index-BL5NA38L.js while production
@@ -104,8 +104,8 @@ if (process.argv.includes("--selftest")) {
   const badNetlify = 'const url = "https://galaxy-today.netlify.app/dashboard";';
   if (scan(badNetlify).length === 0) fails.push("netlify.app preview host NOT caught");
   // NEGATIVE: the canonical domain must pass
-  const okCanon = 'const url = buildAppUrl("/dashboard/today"); // https://apex-financial.org';
-  if (scan(okCanon).length > 0) fails.push("canonical apex-financial.org wrongly flagged");
+  const okCanon = 'const url = buildAppUrl("/dashboard/today"); // https://galaxyfinancial.org';
+  if (scan(okCanon).length > 0) fails.push("canonical galaxyfinancial.org wrongly flagged");
   // NEGATIVE: the King of Sales personal-brand funnel is deliberate
   const okKos = 'const MENTORSHIP_URL = "https://kingofsales-brand.vercel.app/mentorship";';
   if (scan(okKos).length > 0) fails.push("allowlisted kingofsales-brand.vercel.app wrongly flagged");

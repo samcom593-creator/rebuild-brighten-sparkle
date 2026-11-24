@@ -26,7 +26,7 @@ import { Skeleton } from "@/components/ui/skeleton";
  * them. admin_recruiting_links() is the admin-gated roster read.
  */
 
-const SITE = "https://apex-financial.org";
+const SITE = "https://galaxyfinancial.org";
 const BRAND = resolveBrand();
 
 interface LinkRow {

@@ -41,10 +41,10 @@ jobs:
           SHORT="$(echo "${{ github.sha }}" | cut -c1-8)"
           DEADLINE=$(( SECONDS + 600 ))
           SERVED=""
-          echo "waiting for apex-financial.org to serve ${SHORT}"
+          echo "waiting for galaxyfinancial.org to serve ${SHORT}"
           while [ "$SECONDS" -lt "$DEADLINE" ]; do
             # `|| true`: the step shell is -e with pipefail, so one failed fetch would end the wait as a failure.
-            SERVED="$(curl -fsS "https://apex-financial.org/version.json?ci=${GITHUB_RUN_ID}&t=${SECONDS}" \
+            SERVED="$(curl -fsS "https://galaxyfinancial.org/version.json?ci=${GITHUB_RUN_ID}&t=${SECONDS}" \
                       | sed -n 's/.*"id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' || true)"
             if [ "$SERVED" = "$SHORT" ]; then
               echo "matched=true" >> "$GITHUB_OUTPUT"
@@ -60,7 +60,7 @@ jobs:
         if: steps.promote.outputs.matched == 'true'
         run: node scripts/route-smoke.mjs
         env:
-          BASE: https://apex-financial.org
+          BASE: https://galaxyfinancial.org
 
       - name: Post failure summary
         if: failure()

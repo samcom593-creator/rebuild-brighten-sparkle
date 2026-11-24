@@ -3,7 +3,7 @@
 // points (/robots.txt and /sitemap.xml) are still SERVED CORRECTLY on the live
 // edge, not the SPA-shell masquerade. Owned by the Website Integrity Bot.
 //
-// WHY THIS EXISTS. apex-financial.org is the agency's recruiting funnel; its
+// WHY THIS EXISTS. galaxyfinancial.org is the agency's recruiting funnel; its
 // organic inbound ("insurance sales career", "get licensed", the /careers
 // Google-for-Jobs pages) is a load-bearing lead source. Google's ENTIRE crawl
 // of the site starts at two static files in public/:
@@ -91,7 +91,7 @@
 
 import http from "node:http";
 
-const SITE = (process.env.CRAWL_ENTRY_SITE || "https://apex-financial.org/").replace(/\/*$/, "/");
+const SITE = (process.env.CRAWL_ENTRY_SITE || "https://galaxyfinancial.org/").replace(/\/*$/, "/");
 const CONTROL = process.env.CRAWL_ENTRY_CONTROL_URL || "https://www.google.com/generate_204";
 const TIMEOUT_MS = Number(process.env.CRAWL_ENTRY_TIMEOUT_MS || 25000);
 
@@ -227,10 +227,10 @@ async function selftest() {
   let pass = 0, total = 0;
   const ok = (cond, msg) => { total++; if (cond) { pass++; console.log(`✓ ${msg}`); } else { console.log(`✗ ${msg}`); } };
 
-  const ROBOTS_OK = "User-agent: *\nAllow: /\n\nSitemap: https://apex-financial.org/sitemap.xml\n";
+  const ROBOTS_OK = "User-agent: *\nAllow: /\n\nSitemap: https://galaxyfinancial.org/sitemap.xml\n";
   const SITEMAP_OK =
     '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
-    "  <url><loc>https://apex-financial.org/</loc></url>\n  <url><loc>https://apex-financial.org/apply</loc></url>\n</urlset>";
+    "  <url><loc>https://galaxyfinancial.org/</loc></url>\n  <url><loc>https://galaxyfinancial.org/apply</loc></url>\n</urlset>";
   const SHELL = "<!doctype html><html lang=\"en\"><head><title>Galaxy Financial</title></head><body></body></html>";
 
   // 1. Pure predicates.
@@ -245,13 +245,13 @@ async function selftest() {
   ok(looksLikeSitemap('<urlset></urlset>') === false, "looksLikeSitemap(urlset w/ no <loc>) -> false");
 
   // 2. sitemapUrlFromRobots — the chain derivation, both ways.
-  ok(sitemapUrlFromRobots(ROBOTS_OK, "https://apex-financial.org/") === "https://apex-financial.org/sitemap.xml",
+  ok(sitemapUrlFromRobots(ROBOTS_OK, "https://galaxyfinancial.org/") === "https://galaxyfinancial.org/sitemap.xml",
     "sitemapUrlFromRobots(same-host Sitemap:) -> declared URL");
-  ok(sitemapUrlFromRobots("User-agent: *\nAllow: /\n", "https://apex-financial.org/") === "https://apex-financial.org/sitemap.xml",
+  ok(sitemapUrlFromRobots("User-agent: *\nAllow: /\n", "https://galaxyfinancial.org/") === "https://galaxyfinancial.org/sitemap.xml",
     "sitemapUrlFromRobots(no Sitemap: line) -> well-known fallback");
-  ok(sitemapUrlFromRobots("Sitemap: https://evil.example.com/sitemap.xml", "https://apex-financial.org/") === "https://apex-financial.org/sitemap.xml",
+  ok(sitemapUrlFromRobots("Sitemap: https://evil.example.com/sitemap.xml", "https://galaxyfinancial.org/") === "https://galaxyfinancial.org/sitemap.xml",
     "sitemapUrlFromRobots(cross-host) -> same-host fallback (not followed)");
-  ok(sitemapUrlFromRobots("Sitemap: https://apex-financial.org/seo/sitemap-index.xml", "https://apex-financial.org/") === "https://apex-financial.org/seo/sitemap-index.xml",
+  ok(sitemapUrlFromRobots("Sitemap: https://galaxyfinancial.org/seo/sitemap-index.xml", "https://galaxyfinancial.org/") === "https://galaxyfinancial.org/seo/sitemap-index.xml",
     "sitemapUrlFromRobots(same-host moved path) -> that moved URL (catches a renamed sitemap)");
 
   // 3. Pure classifier, both directions, per kind — the masquerade is THE case.

@@ -258,7 +258,7 @@ describe("useAuth — auth state events", () => {
   describe("PASSWORD_RECOVERY destination", () => {
     const realLocation = window.location;
     const setLocation = (pathname: string) => {
-      const fake = { pathname, href: `https://apex-financial.org${pathname}` };
+      const fake = { pathname, href: `https://galaxyfinancial.org${pathname}` };
       Object.defineProperty(window, "location", { configurable: true, writable: true, value: fake });
       return fake;
     };
@@ -279,7 +279,7 @@ describe("useAuth — auth state events", () => {
       await waitFor(() => expect(screen.getByTestId("loading").textContent).toBe("ready"));
       const loc = setLocation("/reset-password");
       act(() => { authStateCallback?.("PASSWORD_RECOVERY", makeSession()); });
-      expect(loc.href).toBe("https://apex-financial.org/reset-password");
+      expect(loc.href).toBe("https://galaxyfinancial.org/reset-password");
     });
   });
 });

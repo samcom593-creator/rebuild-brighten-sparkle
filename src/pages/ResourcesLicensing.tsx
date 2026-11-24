@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 
 /**
  * ResourcesLicensing — mirrors apex-resources.vercel.app content into
- * apex-financial.org so applicants + licensed agents get the full
+ * galaxyfinancial.org so applicants + licensed agents get the full
  * training + resource library without leaving the main site.
  *
  * Source: /Users/samjames/business-ops/knowledge/apex-resources-harvest-2026-07-01.md

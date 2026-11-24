@@ -546,7 +546,7 @@ const App = () => (
                   {/* Public plaque share — no auth required */}
                   <Route path="/plaque/:slug" element={<PlaqueShare />} />
                   {/* 2026-06-16 Sam directive: short recruiting links.
-                      apex-financial.org/r/sjames01 -> /apply?ref=sjames01
+                      galaxyfinancial.org/r/sjames01 -> /apply?ref=sjames01
                       Resolves via the existing resolve-ref-slug edge fn so
                       every variant Sam shares (uppercase, lowercase, with
                       or without spaces) lands on the right recruiter.

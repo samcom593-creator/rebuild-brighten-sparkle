@@ -101,7 +101,7 @@ serve(async (req: Request) => {
                 <p style="color:rgba(255,255,255,0.7);line-height:1.7;margin:0 0 24px">
                   You haven't logged your production today. Your numbers matter — for your paycheck, your ranking, and your streak. Takes 60 seconds.
                 </p>
-                <a href="https://apex-financial.org/numbers" style="display:block;text-align:center;background:#22d3a5;color:#030712;padding:14px;border-radius:8px;font-family:Syne,sans-serif;font-weight:700;text-decoration:none">
+                <a href="https://galaxyfinancial.org/numbers" style="display:block;text-align:center;background:#22d3a5;color:#030712;padding:14px;border-radius:8px;font-family:Syne,sans-serif;font-weight:700;text-decoration:none">
                   LOG TODAY'S NUMBERS →
                 </a>
                 <p style="margin:20px 0 0;font-size:12px;color:#64748b;text-align:center">— Sam, Galaxy Financial</p>
@@ -124,7 +124,7 @@ serve(async (req: Request) => {
             },
             body: JSON.stringify({
               phone,
-              message: `${firstName} — you haven't logged your numbers today. Takes 60 seconds: apex-financial.org/numbers`,
+              message: `${firstName} — you haven't logged your numbers today. Takes 60 seconds: galaxyfinancial.org/numbers`,
               carrier: "auto",
             }),
           });

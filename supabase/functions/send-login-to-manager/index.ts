@@ -12,7 +12,7 @@ const corsHeaders = {
 };
 
 const resend = gateResend(new Resend(Deno.env.get("RESEND_API_KEY")));
-const BASE_URL = "https://apex-financial.org";
+const BASE_URL = "https://galaxyfinancial.org";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const ADMIN_EMAIL = "info@kingofsales.net";
 

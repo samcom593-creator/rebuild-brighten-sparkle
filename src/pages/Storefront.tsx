@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
  *
  * 2026-04-29: every Stripe Payment Link in `dialer_payment_link.md`
  * (Gold + Platinum + others) redirects to
- * `apex-financial.org/storefront?paid=1` after checkout. That URL was
+ * `galaxyfinancial.org/storefront?paid=1` after checkout. That URL was
  * returning 404. This page renders a celebratory confirmation when
  * `?paid=1` is present and a clean offer-list otherwise.
  */

@@ -65,7 +65,7 @@ Reply to this email with the best number to reach you and the best time (morning
     <p style="font-size:14px;color:#9ca3af;margin:0;">— Galaxy Financial recruiting</p>
   </div>
   <div style="text-align:center;margin-top:20px;font-size:12px;color:#6b7280;">
-    apex-financial.org
+    galaxyfinancial.org
   </div>
 </div>
 </body></html>`;

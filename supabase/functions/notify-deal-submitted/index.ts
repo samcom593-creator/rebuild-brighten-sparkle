@@ -172,7 +172,7 @@ Deno.serve(async (req) => {
                 </div>
                 <p style="text-align:center;font-size:16px;line-height:1.7;">Hey ${theirFirst} — the board's moving. Who's next? 🔥</p>
                 <div style="text-align:center;margin:28px 0 8px 0;">
-                  <a href="https://apex-financial.org/dashboard" style="display:inline-block;background:#22d3a5;color:#030712;font-family:Syne,sans-serif;font-weight:700;padding:14px 28px;border-radius:8px;text-decoration:none;letter-spacing:0.5px;">VIEW IN Galaxy →</a>
+                  <a href="https://galaxyfinancial.org/dashboard" style="display:inline-block;background:#22d3a5;color:#030712;font-family:Syne,sans-serif;font-weight:700;padding:14px 28px;border-radius:8px;text-decoration:none;letter-spacing:0.5px;">VIEW IN Galaxy →</a>
                 </div>
                 <p style="text-align:center;color:#64748b;font-size:11px;margin:24px 0 0 0;">Galaxy Financial · Building Empires</p>
               </div>
@@ -209,7 +209,7 @@ Deno.serve(async (req) => {
           await resend.emails.send({
             from: "Galaxy <notifications@apex-financial.org>",
             to: [smsAddr], subject: "",
-            text: `🎯 ${agentName} just closed! ${fmt$(monthly)}/mo ${productSold}. Who's next? apex-financial.org`.slice(0, 160),
+            text: `🎯 ${agentName} just closed! ${fmt$(monthly)}/mo ${productSold}. Who's next? galaxyfinancial.org`.slice(0, 160),
           });
           smsSent++;
           await sb.from("notification_log").insert({

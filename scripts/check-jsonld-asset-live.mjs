@@ -9,7 +9,7 @@
 // to build the "Galaxy Financial" entity card. Those blocks reference image/media
 // assets by URL — the Organization `logo` (the image a Knowledge Panel renders
 // beside the brand name) chief among them. The logo is a fixed-name root static
-// (apex-financial.org/pwa-512x512.png) living OUTSIDE Vite's content-hashed build,
+// (galaxyfinancial.org/pwa-512x512.png) living OUTSIDE Vite's content-hashed build,
 // so a deploy that drops it — or a JSON-LD edit that repoints the logo to a NEW
 // dedicated file while shipping the reference but not the PNG — kills the entity
 // image for every AI/search surface, silently.
@@ -71,7 +71,7 @@
 
 import http from "node:http";
 
-const SITE = (process.env.JSONLD_ASSET_SITE || "https://apex-financial.org/").replace(/\/*$/, "/");
+const SITE = (process.env.JSONLD_ASSET_SITE || "https://galaxyfinancial.org/").replace(/\/*$/, "/");
 const CONTROL = process.env.JSONLD_ASSET_CONTROL_URL || "https://www.google.com/generate_204";
 const TIMEOUT_MS = Number(process.env.JSONLD_ASSET_TIMEOUT_MS || 25000);
 
@@ -256,30 +256,30 @@ async function selftest() {
   ok(classify({ status: 200, contentType: "" }).state === "dead", "200 with no content-type -> dead (not a media asset)");
 
   // 2. JSON-LD asset extraction (pure) — same-origin filter + asset-key scoping.
-  const siteT = "https://apex-financial.org/";
+  const siteT = "https://galaxyfinancial.org/";
   const htmlOK = `
     <script type="application/ld+json">${JSON.stringify({
       "@type": "Organization", name: "Galaxy Financial",
-      url: "https://apex-financial.org", logo: "https://apex-financial.org/pwa-512x512.png",
+      url: "https://galaxyfinancial.org", logo: "https://galaxyfinancial.org/pwa-512x512.png",
       sameAs: ["https://instagram.com/sell4daddy"],
     })}</script>
     <script type="application/ld+json">${JSON.stringify({
       "@type": "VideoObject", name: "Why Producers Build With Galaxy",
-      embedUrl: "https://apex-financial.org/vsl",
+      embedUrl: "https://galaxyfinancial.org/vsl",
       contentUrl: "https://xrzweoneiieddzxogewk.supabase.co/storage/v1/object/public/x.mp4",
       thumbnailUrl: "https://xrzweoneiieddzxogewk.supabase.co/storage/v1/object/public/x.jpg",
     })}</script>`;
   const ex = extractJsonLdAssets(htmlOK, siteT);
   const urls = ex.assets.map((a) => a.url);
-  ok(urls.includes("https://apex-financial.org/pwa-512x512.png"), "extract: same-origin Organization logo collected");
+  ok(urls.includes("https://galaxyfinancial.org/pwa-512x512.png"), "extract: same-origin Organization logo collected");
   ok(ex.assets.find((a) => a.key === "logo") != null, "extract: logo key recorded");
   ok(!urls.some((u) => u.includes("supabase.co")), "extract: cross-origin supabase VideoObject media EXCLUDED (owned by vsl-media-live)");
   ok(!urls.some((u) => u.endsWith("/vsl")), "extract: embedUrl page (not an asset key) EXCLUDED");
-  ok(!urls.some((u) => u === "https://apex-financial.org" || u === "https://apex-financial.org/"), "extract: Organization url (page) EXCLUDED");
+  ok(!urls.some((u) => u === "https://galaxyfinancial.org" || u === "https://galaxyfinancial.org/"), "extract: Organization url (page) EXCLUDED");
   ok(extractJsonLdAssets("<html>no json-ld here</html>", siteT).assets.length === 0, "extract: no JSON-LD -> empty asset set");
   // relative asset URL resolves against the site origin and counts same-origin
   const rel = extractJsonLdAssets(`<script type="application/ld+json">${JSON.stringify({ "@type": "Organization", logo: "/pwa-512x512.png" })}</script>`, siteT);
-  ok(rel.assets.length === 1 && rel.assets[0].url === "https://apex-financial.org/pwa-512x512.png", "extract: relative logo resolves to same-origin absolute URL");
+  ok(rel.assets.length === 1 && rel.assets[0].url === "https://galaxyfinancial.org/pwa-512x512.png", "extract: relative logo resolves to same-origin absolute URL");
 
   // 3. End-to-end probeObject against a local server (faithful fetch pipeline).
   const server = http.createServer((req, res) => {

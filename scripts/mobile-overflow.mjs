@@ -29,7 +29,7 @@
 // right tool, a timer-fired live prober is not).
 //
 // Usage:
-//   BASE=https://apex-financial.org node scripts/mobile-overflow.mjs
+//   BASE=https://galaxyfinancial.org node scripts/mobile-overflow.mjs
 //   BASE=http://localhost:8080      node scripts/mobile-overflow.mjs
 //   node scripts/mobile-overflow.mjs --selftest   # prove the detector both ways, no network
 //   PW_CHANNEL=chrome node scripts/mobile-overflow.mjs   # use system Chrome (CI, no browser download)
@@ -39,7 +39,7 @@
 
 import { chromium, devices } from "playwright";
 
-const BASE = process.env.BASE || "https://apex-financial.org";
+const BASE = process.env.BASE || "https://galaxyfinancial.org";
 const TOLERANCE = 3; // px — sub-pixel layout rounding is not a sideways-scrolling page.
 const SETTLE_MS = 900; // let fonts + hydration + the first animation frame land.
 const NAV_TIMEOUT = 35000;

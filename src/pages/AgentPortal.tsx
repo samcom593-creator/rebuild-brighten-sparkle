@@ -765,7 +765,7 @@ export default function AgentPortal() {
                   <img src={galaxyIcon} alt="Galaxy" className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm">Agent Portal</p>
-                    <p className="text-xs text-muted-foreground truncate">apex-financial.org/agent-portal</p>
+                    <p className="text-xs text-muted-foreground truncate">galaxyfinancial.org/agent-portal</p>
                   </div>
                 </div>
               </div>
@@ -773,7 +773,7 @@ export default function AgentPortal() {
               <Button 
                 className="w-full gap-2"
                 onClick={() => {
-                  const logLink = "https://apex-financial.org/agent-portal";
+                  const logLink = "https://galaxyfinancial.org/agent-portal";
                   navigator.clipboard.writeText(logLink);
                   toast.success("Link copied to clipboard!"); playSound("click");
                 }}

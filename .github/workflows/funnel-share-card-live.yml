@@ -9,7 +9,7 @@
 # and renders that image as the card: the first impression of the #1-traffic
 # funnel entry Sam owns.
 #
-# apex-financial.org's share card has share-card-live; the sell4daddy pages are
+# galaxyfinancial.org's share card has share-card-live; the sell4daddy pages are
 # only proven ALIVE by lead-magnet-cta-live, which never reads the og:image — so
 # the card can go dead while the page stays green. sell4daddy.com is a SEPARATE
 # Vercel project outside this repo's deploy pipeline; a dropped/renamed/purged OG

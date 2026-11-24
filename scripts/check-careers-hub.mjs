@@ -167,7 +167,7 @@ export function audit({ appSrc, sitemapXml, indexSrc, landingSrc = "" }) {
   }
   if (!sitemapAdvertisesHub(sitemapXml)) {
     fail.push(
-      "public/sitemap.xml: no <loc> for https://apex-financial.org/careers — the hub exists but no crawler is told, so the state pages stay orphaned from a parent node.",
+      "public/sitemap.xml: no <loc> for https://galaxyfinancial.org/careers — the hub exists but no crawler is told, so the state pages stay orphaned from a parent node.",
     );
   }
   if (!hubIsDataDriven(indexSrc)) {
@@ -216,7 +216,7 @@ function runRepo() {
 
 function selftest() {
   const goodApp = '<Route path="/careers" element={<CareersIndex />} />\n<Route path="/careers/:state" element={<StateCareerLanding />} />\n<Route path="*" element={<NotFound />} />';
-  const goodMap = '<url><loc>https://apex-financial.org/careers</loc></url><url><loc>https://apex-financial.org/careers/florida</loc></url>';
+  const goodMap = '<url><loc>https://galaxyfinancial.org/careers</loc></url><url><loc>https://galaxyfinancial.org/careers/florida</loc></url>';
   const goodIndex = 'import { STATES, TOP_PRODUCER_EARNINGS } from "./StateCareerLanding";\n{STATES.map((s) => (<Link to={`/careers/${s.slug}`}>{s.name}</Link>))}';
   // Clean StateCareerLanding fixture: declares the single-source constant, no
   // re-literaled "written $N" figure. Threaded into every structural case so
@@ -231,7 +231,7 @@ function selftest() {
     // A: catch-all must not be read as the hub
     ["catch-all is not the hub", { appSrc: '<Route path="/careers/:state" element={<S />} />\n<Route path="*" element={<NotFound />} />', sitemapXml: goodMap, indexSrc: goodIndex, landingSrc: goodLanding }, 1],
     // B: sitemap only lists state leaves, not the hub
-    ["hub not advertised", { appSrc: goodApp, sitemapXml: '<url><loc>https://apex-financial.org/careers/florida</loc></url>', indexSrc: goodIndex, landingSrc: goodLanding }, 1],
+    ["hub not advertised", { appSrc: goodApp, sitemapXml: '<url><loc>https://galaxyfinancial.org/careers/florida</loc></url>', indexSrc: goodIndex, landingSrc: goodLanding }, 1],
     // C: hardcoded list, not data-driven
     ["not data-driven", { appSrc: goodApp, sitemapXml: goodMap, indexSrc: '<Link to="/careers/florida">Florida</Link>', landingSrc: goodLanding }, 1],
     // C: imports STATES + maps but links nothing (broken template)
@@ -269,7 +269,7 @@ function selftest() {
     ["declaresCareersHub true", declaresCareersHub(goodApp) === true],
     ["declaresCareersHub false on catch-all only", declaresCareersHub('<Route path="/careers/:state" /><Route path="*" />') === false],
     ["sitemapAdvertisesHub true", sitemapAdvertisesHub(goodMap) === true],
-    ["sitemapAdvertisesHub false on leaves only", sitemapAdvertisesHub('<loc>https://apex-financial.org/careers/florida</loc>') === false],
+    ["sitemapAdvertisesHub false on leaves only", sitemapAdvertisesHub('<loc>https://galaxyfinancial.org/careers/florida</loc>') === false],
     ["hubIsDataDriven true", hubIsDataDriven(goodIndex) === true],
     ["hubIsDataDriven false on hardcoded", hubIsDataDriven('<Link to="/careers/florida" />') === false],
     ["hubCountLiterals catches a hardcoded '10 states'", hubCountLiterals("hiring across 10 states.").length === 1],

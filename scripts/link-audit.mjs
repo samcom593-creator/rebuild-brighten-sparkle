@@ -16,7 +16,7 @@ function loadPlaywright() {
 
 const { chromium } = loadPlaywright();
 
-const BASE = process.env.BASE || "https://apex-financial.org";
+const BASE = process.env.BASE || "https://galaxyfinancial.org";
 const OUT =
   process.env.OUT ||
   `/Users/samjames/business-ops/website-integrity-bot/ledger/link-audit-${new Date().toISOString().slice(0, 10)}.jsonl`;

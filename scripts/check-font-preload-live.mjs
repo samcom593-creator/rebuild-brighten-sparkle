@@ -75,7 +75,7 @@
 
 import http from "node:http";
 
-const SITE = (process.env.FONT_PRELOAD_SITE || "https://apex-financial.org/").replace(/\/*$/, "/");
+const SITE = (process.env.FONT_PRELOAD_SITE || "https://galaxyfinancial.org/").replace(/\/*$/, "/");
 const CONTROL = process.env.FONT_PRELOAD_CONTROL_URL || "https://www.google.com/generate_204";
 const TIMEOUT_MS = Number(process.env.FONT_PRELOAD_TIMEOUT_MS || 25000);
 
@@ -259,7 +259,7 @@ async function selftest() {
   ok(classify({ status: 200, contentType: "" }).state === "dead", "200 with no content-type -> dead (not a font)");
 
   // 2. Head preload-font extraction (pure) — same-origin + as=font scoping.
-  const siteT = "https://apex-financial.org/";
+  const siteT = "https://galaxyfinancial.org/";
   const htmlOK = `<html><head>
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="preload" as="font" type="font/woff2" href="/fonts/hanken-grotesk.woff2" crossorigin />
@@ -270,7 +270,7 @@ async function selftest() {
     <link rel="preload" as="font" href="/fonts/in-body-should-be-ignored.woff2" crossorigin />
   </body></html>`;
   const ex = extractPreloadFonts(htmlOK, siteT);
-  ok(ex.fonts.length === 1 && ex.fonts[0] === "https://apex-financial.org/fonts/hanken-grotesk.woff2", "extract: the one head as=font preload collected (absolute, same-origin)");
+  ok(ex.fonts.length === 1 && ex.fonts[0] === "https://galaxyfinancial.org/fonts/hanken-grotesk.woff2", "extract: the one head as=font preload collected (absolute, same-origin)");
   ok(!ex.fonts.some((u) => u.includes("in-body")), "extract: in-BODY preload ignored (head-scoped)");
   ok(!ex.fonts.some((u) => u.endsWith(".jpg")), "extract: as=image preload EXCLUDED (not a font)");
   ok(!ex.fonts.some((u) => u.endsWith(".css") || u.endsWith(".js")), "extract: stylesheet + modulepreload EXCLUDED");

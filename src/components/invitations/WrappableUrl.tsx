@@ -2,7 +2,7 @@ import { Fragment } from "react";
 
 /**
  * A URL that wraps at its slashes before anywhere else: a soft break after each "/" lets
- * "apex-financial.org/r/" end one line and the slug start the next, instead of cutting the
+ * "galaxyfinancial.org/r/" end one line and the slug start the next, instead of cutting the
  * slug in half. The text content (what is copied or selected) is the URL, unchanged.
  */
 export function WrappableUrl({ url }: { url: string }) {

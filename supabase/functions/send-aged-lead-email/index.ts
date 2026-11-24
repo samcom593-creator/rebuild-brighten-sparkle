@@ -144,7 +144,7 @@ const getEmailHtml = (firstName: string, trackingClickUrl: string, trackingPixel
       <p style="font-size:12px;color:#6b7280;margin:0 0 8px 0;">
         Powered by Galaxy Financial · © ${new Date().getFullYear()}
       </p>
-      <a href="https://apex-financial.org" style="color:#6b7280;font-size:12px;">Visit our website</a>
+      <a href="https://galaxyfinancial.org" style="color:#6b7280;font-size:12px;">Visit our website</a>
     </div>
   </div>
   <img src="${trackingPixelUrl}" width="1" height="1" style="display:none;" alt="" />

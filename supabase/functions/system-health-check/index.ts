@@ -354,7 +354,7 @@ serve(async (req) => {
               <p style="color:rgba(255,255,255,0.7);margin:0 0 16px">The following critical issues were detected:</p>
               ${criticalIssues.map(issue => `<div style="background:#ef444420;border:1px solid #ef444430;border-radius:8px;padding:10px 14px;margin-bottom:8px;color:#fca5a5">• ${issue}</div>`).join("")}
               ${autoFixed.length > 0 ? `<p style="color:rgba(255,255,255,0.7);margin:16px 0 8px">Auto-fixed:</p>${autoFixed.map(fix => `<div style="background:#22d3a520;border-radius:8px;padding:8px 12px;margin-bottom:6px;color:#22d3a5;font-size:13px">✓ ${fix}</div>`).join("")}` : ""}
-              <a href="https://apex-financial.org/dashboard/system-health" style="display:block;text-align:center;background:#ef4444;color:white;padding:12px;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:20px">View System Status →</a>
+              <a href="https://galaxyfinancial.org/dashboard/system-health" style="display:block;text-align:center;background:#ef4444;color:white;padding:12px;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:20px">View System Status →</a>
             </div>
           `
         });

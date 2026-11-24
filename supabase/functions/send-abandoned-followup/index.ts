@@ -24,7 +24,7 @@ const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
 
 const resend = resendApiKey ? gateResend(new Resend(resendApiKey)) : null;
 
-const APPLY_URL = "https://apex-financial.org/apply";
+const APPLY_URL = "https://galaxyfinancial.org/apply";
 const CALENDLY_URL = "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone";
 const ADMIN_EMAIL = "info@kingofsales.net";
 

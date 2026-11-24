@@ -201,7 +201,7 @@ serve(async (req) => {
 
     // Send escalating reminders
     const results = { sent: 0, skipped: 0 };
-    const courseUrl = "https://apex-financial.org/onboarding-course";
+    const courseUrl = "https://galaxyfinancial.org/onboarding-course";
 
     for (const agent of staleAgents) {
       const reminders = reminderMap.get(agent.agentId) || { day3: null, day7: null };

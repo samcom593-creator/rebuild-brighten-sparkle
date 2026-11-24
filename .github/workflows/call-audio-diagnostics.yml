@@ -39,6 +39,16 @@ jobs:
             exists(select 1 from supabase_migrations.schema_migrations where version='20261124150000') as repair_migration_recorded,
             exists(select 1 from information_schema.columns where table_schema='storage' and table_name='objects' and column_name='owner') as storage_owner_column,
             exists(select 1 from information_schema.columns where table_schema='storage' and table_name='objects' and column_name='owner_id') as storage_owner_id_column,
+            exists(select 1 from supabase_migrations.schema_migrations where version='20261124151000') as recruiting_migration_recorded,
+            exists(select 1 from pg_class c where c.oid=to_regclass('public.recruiting_call_recordings') and c.relrowsecurity) as recruiting_receipts_rls_enabled,
+            to_regprocedure('public.recruiting_call_recording_attach(text,uuid,text,integer,text,bigint,text)') is not null as recruiting_attach_present,
+            to_regprocedure('public.recruiting_call_recordings_list(text,uuid)') is not null as recruiting_list_present,
+            coalesce(has_function_privilege('authenticated',to_regprocedure('public.recruiting_call_recording_attach(text,uuid,text,integer,text,bigint,text)'),'EXECUTE'),false) as authenticated_recruiting_attach_execute,
+            coalesce(has_function_privilege('authenticated',to_regprocedure('public.recruiting_call_recordings_list(text,uuid)'),'EXECUTE'),false) as authenticated_recruiting_list_execute,
+            coalesce(not has_function_privilege('anon',to_regprocedure('public.recruiting_call_recording_attach(text,uuid,text,integer,text,bigint,text)'),'EXECUTE'),false) as anon_recruiting_attach_denied,
+            coalesce(not has_function_privilege('anon',to_regprocedure('public.recruiting_call_recordings_list(text,uuid)'),'EXECUTE'),false) as anon_recruiting_list_denied,
+            exists(select 1 from pg_policies where schemaname='storage' and tablename='objects' and policyname='call_recordings_visible_receipt_play' and qual like '%can_play_uploaded_call_recording%') as call_policy_uses_receipt_helper,
+            exists(select 1 from pg_proc p where p.oid=to_regprocedure('public.can_play_uploaded_call_recording(text)') and not p.prosecdef) as receipt_helper_security_invoker,
             coalesce((select json_agg(json_build_object('name',policyname,'command',cmd,'using',qual,'check',with_check)) from pg_policies where schemaname='storage' and tablename='objects' and (policyname like 'call_recordings%' or coalesce(qual,'') like '%call-recordings%' or coalesce(with_check,'') like '%call-recordings%')), '[]'::json) as call_recording_policies`;
           try {
             const token = process.env.APEX_BOT_TOKEN?.trim();
@@ -49,7 +59,15 @@ jobs:
             });
             if (!response.ok) throw new Error('request failed');
             const body = await response.json();
-            const keys = ['private_table_select','training_policy_present','policy_reads_private_table','policy_uses_helper','helper_security_definer','authenticated_helper_execute','anon_helper_execute','readymode_policy_present','repair_migration_recorded','storage_owner_column','storage_owner_id_column'];
+            const keys = [
+              'private_table_select','training_policy_present','policy_reads_private_table','policy_uses_helper',
+              'helper_security_definer','authenticated_helper_execute','anon_helper_execute','readymode_policy_present',
+              'repair_migration_recorded','storage_owner_column','storage_owner_id_column','recruiting_migration_recorded',
+              'recruiting_receipts_rls_enabled','recruiting_attach_present','recruiting_list_present',
+              'authenticated_recruiting_attach_execute','authenticated_recruiting_list_execute',
+              'anon_recruiting_attach_denied','anon_recruiting_list_denied','call_policy_uses_receipt_helper',
+              'receipt_helper_security_invoker',
+            ];
             if (body?.ok !== true || !Array.isArray(body.rows) || body.rows.length !== 1 || !keys.every(key => typeof body.rows[0]?.[key] === 'boolean')) throw new Error('invalid metadata');
             const policies = body.rows[0].call_recording_policies;
             if (!Array.isArray(policies) || policies.length > 20 || !policies.every(p => ['name','command','using','check'].every(k => p[k] === null || typeof p[k] === 'string'))) throw new Error('invalid policy metadata');

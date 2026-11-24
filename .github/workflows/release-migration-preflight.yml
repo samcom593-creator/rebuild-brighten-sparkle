@@ -115,9 +115,11 @@ jobs:
     concurrency:
       group: publish-producer-workspace-20261124
       cancel-in-progress: false
-    env:
-      RELEASE_WORKTREE: ${{ runner.temp }}/galaxy-producer-release-20261124
     steps:
+      - name: Set runner worktree path
+        shell: bash
+        run: printf 'RELEASE_WORKTREE=%s/galaxy-producer-release-20261124\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0

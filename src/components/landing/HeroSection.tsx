@@ -6,6 +6,7 @@ import { track } from "@/lib/analytics";
 import { buildPublicRecruitingHref } from "@/lib/publicRecruitingFlow";
 import { VSL_VIDEO } from "@/lib/vslMedia";
 import { LazyQueryRoot } from "@/shared/api/LazyQueryRoot";
+import { Navbar } from "./Navbar";
 import "./recruiting-funnel.css";
 
 // Keep proof widgets and their query provider outside the eager entry graph.
@@ -53,15 +54,24 @@ const stats = [
   { label: "Licensing path", value: "Guided" },
 ];
 
+// Owner-requested reference copy for an unpublished design review.
+// These three claims have no supporting receipt yet and must not ship as facts.
+const draftMetrics = [
+  { label: "Carrier partners", value: "22", accent: false },
+  { label: "Written premium", value: "$100M/MO", accent: false },
+  { label: "Avg contracting", value: "Instant", accent: false },
+  { label: "Comp in the market", value: "#1", accent: true },
+];
+
 const partnerPaths = [
   {
-    title: "I’m a licensed agent",
+    title: "Yes, I'm Currently Licensed",
     description: "Explore your next opportunity.",
     track: "licensed-producer",
     destination: "/vsl",
   },
   {
-    title: "I need my license",
+    title: "No, I'm Unlicensed",
     description: "See how to get started.",
     track: "licensing-roadmap",
     destination: "/vsl",
@@ -80,6 +90,9 @@ export function HeroSection() {
 
   return (
     <section className="dark recruiting-funnel recruiting-hero" aria-labelledby="recruiting-headline">
+      <aside className="recruiting-draft-notice" role="note">
+        Unpublished design draft · Premium, contracting, and market-ranking claims are unverified.
+      </aside>
       <div className="recruiting-hero-intro">
         <div className="recruiting-wordmark" aria-label={brand.legalName}>
           <Crown className="recruiting-wordmark-crown" aria-hidden="true" strokeWidth={1.5} />
@@ -87,30 +100,29 @@ export function HeroSection() {
         </div>
 
         <h1 id="recruiting-headline" className="recruiting-headline">
-          <span className="recruiting-headline-main">YOUR FUTURE</span>
-          <em className="recruiting-headline-accent">starts here.</em>
+          <img
+            src="/img/recruiting-reference-headline.webp"
+            alt="Where winning agencies are built."
+            width={1764}
+            height={647}
+            fetchPriority="high"
+            decoding="async"
+          />
         </h1>
-        <p className="recruiting-hero-lead">
-          Build your future in life insurance. Get the training, carrier access,
-          and support to take your next step.
-        </p>
 
         <div className="recruiting-proof">
-          <ul className="recruiting-proof-strip" aria-label="Your opportunity with Galaxy">
-            {stats.map((item) => (
-              <li key={item.label}>
+          <ul className="recruiting-proof-strip" aria-label="Draft marketing figures — unverified claims">
+            {draftMetrics.map((item) => (
+              <li key={item.label} className={item.accent ? "recruiting-metric-accent" : undefined}>
                 <strong>{item.value}</strong>
                 <span>{item.label}</span>
               </li>
             ))}
           </ul>
-          <p className="recruiting-proof-note">
-            Contract levels and carrier access depend on eligibility.
-          </p>
         </div>
 
         <div className="recruiting-license-choice" aria-labelledby="recruiting-license-question">
-          <h2 id="recruiting-license-question">Do you have your insurance license?</h2>
+          <h2 id="recruiting-license-question">Do you currently have a life insurance license?</h2>
           <div className="recruiting-choice-grid">
             {partnerPaths.filter((path) => path.track !== "agency-builder").map((path) => (
               <Link
@@ -120,7 +132,6 @@ export function HeroSection() {
                 onClick={() => track("hero_partner_path_click", { partner_path: path.track })}
               >
                 <span className="recruiting-choice-title">{path.title}</span>
-                <span className="recruiting-choice-description">{path.description}</span>
               </Link>
             ))}
           </div>
@@ -138,14 +149,9 @@ export function HeroSection() {
           ))}
         </div>
 
-        <a
-          href="#hero-video"
-          className="recruiting-preview-link"
-          onClick={() => track("secondary_cta_click", { cta_label: "Watch the agency overview" })}
-        >
-          Meet Galaxy below
-        </a>
       </div>
+
+      <Navbar />
 
       <div id="hero-video" className="recruiting-overview" aria-labelledby="recruiting-overview-title">
         <p className="recruiting-eyebrow">The agency overview</p>
@@ -154,6 +160,18 @@ export function HeroSection() {
           Get to know the opportunity, the support, and the path from your first step to building a team.
         </p>
         <HomepageVsl />
+
+        <ul className="recruiting-established-terms" aria-label="Current Galaxy opportunities">
+          {stats.map((item) => (
+            <li key={item.label}>
+              <strong>{item.value}</strong>
+              <span>{item.label}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="recruiting-proof-note">
+          Contract levels and carrier access depend on eligibility.
+        </p>
 
         <details className="recruiting-carriers">
           <summary>Explore our {carriers.length} carrier relationships</summary>

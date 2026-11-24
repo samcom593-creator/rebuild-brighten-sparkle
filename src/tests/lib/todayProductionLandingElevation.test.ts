@@ -38,11 +38,11 @@ describe("today production and landing elevation", () => {
       ([, title, track, destination]) => ({ title, track, destination }),
     );
     expect(paths).toEqual([
-      { title: "I’m a licensed agent", track: "licensed-producer", destination: "/vsl" },
-      { title: "I need my license", track: "licensing-roadmap", destination: "/vsl" },
+      { title: "Yes, I'm Currently Licensed", track: "licensed-producer", destination: "/vsl" },
+      { title: "No, I'm Unlicensed", track: "licensing-roadmap", destination: "/vsl" },
       { title: "Building an agency?", track: "agency-builder", destination: "/vsl" },
     ]);
-    expect(hero).toContain("Do you have your insurance license?");
+    expect(hero).toContain("Do you currently have a life insurance license?");
     expect(hero).toContain('partnerPaths.filter((path) => path.track !== "agency-builder")');
     expect(hero).toContain('partnerPaths.filter((path) => path.track === "agency-builder")');
     expect(hero).toContain("buildPublicRecruitingHref(path.destination, searchParams, path.track)");

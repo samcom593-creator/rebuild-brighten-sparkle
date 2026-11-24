@@ -1,7 +1,6 @@
 import { Suspense, lazy, useEffect } from "react";
 import { Navigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { Navbar } from "@/components/landing/Navbar";
 import { HeroSection } from "@/components/landing/HeroSection";
 // S11 fix (2026-06-15): capture `?ref=` on landing mount + persist with 24h
 // TTL so the slug survives the landing -> /apply CTA hop even when the CTA
@@ -94,7 +93,6 @@ const Index = () => {
       >
         Skip to main content
       </a>
-      <Navbar />
       {/* pb-24 md:pb-0 reserves the height of the fixed StickyMobileCTA so the
           last section (CTASection) is not permanently covered on phones. */}
       <main id="main-content" tabIndex={-1} className="pb-24 md:pb-0">

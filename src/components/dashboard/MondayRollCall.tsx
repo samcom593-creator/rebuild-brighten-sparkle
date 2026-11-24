@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { errorMessage } from "@/lib/queryState";
 import { formatPhoneDisplay, startPhoneCall, startSmsThread } from "@/lib/phone";
 import { contractingLink, smsBody } from "@/lib/contractingRequests";
+import { LICENSING_STEPS, normalizeStep, stepLabel } from "@/lib/licensingStep";
 import {
   BEFORE_MARKS,
   DAY_OF_MARKS,
@@ -84,13 +85,14 @@ export function StateEntry({ row, busy, onSave }: { row: Pick<RollCallRow, "name
 }
 
 function PersonRow({
-  row, isToday, busy, onMark, onStates,
+  row, isToday, busy, onMark, onStates, onStep,
 }: {
   row: RollCallRow;
   isToday: boolean;
   busy: boolean;
   onMark: (mark: RollCallMark | "interviewed") => void;
   onStates: (states: string[]) => void;
+  onStep: (step: string) => void;
 }) {
   const needs = needsList(row);
   const interview = interviewLine(row);
@@ -179,6 +181,22 @@ function PersonRow({
         )}
       </div>
       {needsState && <div className="mt-3"><StateEntry row={row} busy={busy} onSave={onStates} /></div>}
+      {!row.licensed && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <label htmlFor={`step-${row.agent_id}`} className="text-[13px] text-muted-foreground">Licensing step</label>
+          <select
+            id={`step-${row.agent_id}`}
+            value={normalizeStep(row.license_step)}
+            disabled={busy}
+            onChange={(e) => onStep(e.target.value)}
+            className="h-9 rounded-md border border-input bg-background px-2 text-sm text-foreground focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
+          >
+            {LICENSING_STEPS.map((st) => (
+              <option key={st.value} value={st.value}>{st.label}</option>
+            ))}
+          </select>
+        </div>
+      )}
     </li>
   );
 }
@@ -277,6 +295,12 @@ export function MondayRollCall() {
                   "owner_monday_rollcall_mark",
                   { p_agent_id: row.agent_id, p_mark: mark },
                   mark === "interviewed" ? `${row.name}: marked interviewed` : `${row.name}: ${MARK_LABEL[mark]}`,
+                )}
+                onStep={(step) => write(
+                  row.agent_id,
+                  "set_agent_license_progress",
+                  { p_agent_id: row.agent_id, p_progress: step, p_test_date: null },
+                  `${row.name}: ${stepLabel(step)}.`,
                 )}
                 onStates={(states) => write(
                   row.agent_id,

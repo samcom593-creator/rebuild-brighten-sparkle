@@ -79,6 +79,7 @@ import { ScopedProductionScoreboard } from "@/components/dashboard/ScopedProduct
 import { LeadsWaitingCard } from "@/components/dashboard/LeadsWaitingCard";
 // MP-MORNING-LEADS: a licensed agent with no state on file answers once and gets their leads.
 import { LeadStatePrompt } from "@/components/dashboard/LeadStatePrompt";
+import { LicensingStepPrompt } from "@/components/dashboard/LicensingStepPrompt";
 import { APPLICATION_RECORD_TYPE } from "@/shared/api/applicationRecordType";
 import { TeamLookupError } from "@/components/shared/TeamLookupError";
 
@@ -1048,6 +1049,7 @@ export default function Dashboard() {
           </div>
         )}
         <div className="space-y-4 px-4 pt-4 sm:px-6">
+          <LicensingStepPrompt />
           <LeadStatePrompt />
           <LeadsWaitingCard />
           <ScopedProductionScoreboard />
@@ -1071,6 +1073,7 @@ export default function Dashboard() {
           </div>
         )}
         <div className="space-y-4 px-4 pt-4 sm:px-6">
+          <LicensingStepPrompt />
           <LeadStatePrompt />
           <LeadsWaitingCard />
           <ScopedProductionScoreboard />
@@ -1091,6 +1094,7 @@ export default function Dashboard() {
           </div>
         )}
         <div className="space-y-4 px-4 pt-4 sm:px-6">
+          <LicensingStepPrompt />
           <LeadStatePrompt />
           <LeadsWaitingCard />
           <ScopedProductionScoreboard />

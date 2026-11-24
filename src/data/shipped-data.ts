@@ -14,6 +14,20 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "Licensing steps can be saved again. The function behind every 'licensing step' control had been failing on every call, for you, managers and agents alike, which is why 117 of 125 unlicensed people show only 'unlicensed'. It is fixed. Unlicensed agents now see a one-tap check-in on their Home (Not started, In the course, Finished the course, Exam booked, Passed, Fingerprints, Waiting on the license) with their next step under it, and your Monday call list has a step picker on each unlicensed person so you can record it during the call.",
+    detail: "MP-LICENSING-STEP. set_agent_license_progress() compared app_role to 'super_admin' and 'owner' (not in the enum) and raised before doing anything; role now read as text. New my_licensing_step(); LicensingStepPrompt in all three Home branches; step select on MondayRollCall rows. Proven before/after in a rolled-back run.",
+    commit: "mp-licensing-step",
+  },
+  {
+    ts: "today",
+    label:
+      "Your Home screen loads faster. Its four heaviest cards (goal board, conversions, Monday call list, licensed leads) now answer from a short-lived saved copy instead of recomputing on every visit: the goal board took 4.6 seconds and now returns in about a millisecond on a repeat load. Tapping a result, saving a state or granting leads refreshes the two call lists immediately.",
+    detail: "MP-HOME-SPEED. Bodies kept as *_uncached; wrappers gate the caller then serve fn_rpc_single_flight (goal board 300s, conversions 60s, lists 120s); triggers clear the list keys on monday_rollcall_marks insert, agents.license_states/license_progress update, lead_bundle_grants insert.",
+    commit: "mp-home-speed",
+  },
+  {
+    ts: "today",
+    label:
       "Ayro Financial is off the site: the Ayro Book page, its menu item and its panel on Book of Business are gone (an old bookmark lands on Book of Business). The Training Hub no longer sends anyone to the old outside library that asks for a password nobody has: the Manage content button, the Open the library button, and the Admin and AgentLink quick links are removed. The playbook and quiz PDFs still open, because those files are public.",
     detail: "MP-CLEANUP-LEARN. Deleted AyroBook.tsx, AyroProductionPanel.tsx, lib/ayroBook.ts; /dashboard/ayro-book redirects. isDeadEndLink() in lib/apexResourcesHub.ts filters quick links to the gated origin (except /assets/) and to agentlink.insuracloud.ai. Ayro data and RPCs untouched.",
     commit: "mp-cleanup-learn",

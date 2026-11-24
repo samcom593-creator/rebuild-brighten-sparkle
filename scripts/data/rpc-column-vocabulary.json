@@ -724,6 +724,7 @@
   "my_lead_dial_tap": "jsonb",
   "my_leads_set_state": "jsonb",
   "my_leads_state_prompt": "jsonb",
+  "my_licensing_step": "jsonb",
   "my_new_hire_showup": "SETOF v_new_hire_showup",
   "my_recruiting_link": "jsonb",
   "my_recruiting_standing": "jsonb",

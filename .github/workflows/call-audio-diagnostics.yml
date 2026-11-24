@@ -1,0 +1,62 @@
+name: Read recording Storage permissions
+
+on:
+  push:
+    branches: [codex/call-audio-diagnostics-20261124]
+    paths:
+      - .github/workflows/call-audio-diagnostics.yml
+      - .github/prod-write-census.json
+
+permissions:
+  contents: read
+
+jobs:
+  schema:
+    if: github.repository == 'samcom593-creator/rebuild-brighten-sparkle' && github.ref == 'refs/heads/codex/call-audio-diagnostics-20261124'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Read recording Storage permissions
+        env:
+          APEX_BOT_TOKEN: ${{ secrets.APEX_BOT_TOKEN }}
+        run: |
+          node --input-type=module <<'NODE'
+          // Schema metadata only: no recording rows, object paths, customer data,
+          // URL signing, auth sessions, data changes, or provider actions.
+          const query = `select
+            has_table_privilege('authenticated','public.training_recordings','SELECT') as private_table_select,
+            exists(select 1 from pg_policies where schemaname='storage' and tablename='objects' and policyname='training_recordings_play') as training_policy_present,
+            exists(select 1 from pg_policy p join pg_depend d on d.classid='pg_policy'::regclass and d.objid=p.oid and d.refclassid='pg_class'::regclass and d.refobjid='public.training_recordings'::regclass where p.polrelid='storage.objects'::regclass and p.polname='training_recordings_play') as policy_reads_private_table,
+            exists(select 1 from pg_policies where schemaname='storage' and tablename='objects' and policyname='training_recordings_play' and qual like '%can_play_training_recording%') as policy_uses_helper,
+            exists(select 1 from pg_proc p where p.oid=to_regprocedure('public.can_play_training_recording(text)') and p.prosecdef) as helper_security_definer,
+            coalesce(has_function_privilege('authenticated',to_regprocedure('public.can_play_training_recording(text)'),'EXECUTE'),false) as authenticated_helper_execute,
+            coalesce(has_function_privilege('anon',to_regprocedure('public.can_play_training_recording(text)'),'EXECUTE'),false) as anon_helper_execute,
+            exists(select 1 from pg_policies where schemaname='storage' and tablename='objects' and policyname='readymode_audio_play') as readymode_policy_present,
+            exists(select 1 from supabase_migrations.schema_migrations where version='20261124150000') as repair_migration_recorded,
+            exists(select 1 from information_schema.columns where table_schema='storage' and table_name='objects' and column_name='owner') as storage_owner_column,
+            exists(select 1 from information_schema.columns where table_schema='storage' and table_name='objects' and column_name='owner_id') as storage_owner_id_column,
+            coalesce((select json_agg(json_build_object('name',policyname,'command',cmd,'using',qual,'check',with_check)) from pg_policies where schemaname='storage' and tablename='objects' and (policyname like 'call_recordings%' or coalesce(qual,'') like '%call-recordings%' or coalesce(with_check,'') like '%call-recordings%')), '[]'::json) as call_recording_policies`;
+          try {
+            const token = process.env.APEX_BOT_TOKEN?.trim();
+            if (!token) throw new Error('missing credential');
+            const response = await fetch('https://xrzweoneiieddzxogewk.supabase.co/functions/v1/bot-sql', {
+              method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({query}), signal: AbortSignal.timeout(20000),
+            });
+            if (!response.ok) throw new Error('request failed');
+            const body = await response.json();
+            const keys = ['private_table_select','training_policy_present','policy_reads_private_table','policy_uses_helper','helper_security_definer','authenticated_helper_execute','anon_helper_execute','readymode_policy_present','repair_migration_recorded','storage_owner_column','storage_owner_id_column'];
+            if (body?.ok !== true || !Array.isArray(body.rows) || body.rows.length !== 1 || !keys.every(key => typeof body.rows[0]?.[key] === 'boolean')) throw new Error('invalid metadata');
+            const policies = body.rows[0].call_recording_policies;
+            if (!Array.isArray(policies) || policies.length > 20 || !policies.every(p => ['name','command','using','check'].every(k => p[k] === null || typeof p[k] === 'string'))) throw new Error('invalid policy metadata');
+            const state = {...Object.fromEntries(keys.map(key => [key, body.rows[0][key]])), call_recording_policies:policies};
+            console.log(`CALL_AUDIO_STORAGE_STATE=${JSON.stringify({checked_at:new Date().toISOString(),...state})}`);
+          } catch {
+            console.error('::error::Recording Storage metadata could not be read. No data changes or call actions were attempted.');
+            process.exitCode=1;
+          }
+          NODE

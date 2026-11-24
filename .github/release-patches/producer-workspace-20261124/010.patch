@@ -1,0 +1,881 @@
+diff --git a/src/tests/lib/dashboardRecords.test.ts b/src/tests/lib/dashboardRecords.test.ts
+new file mode 100644
+index 00000000..0408bae9
+--- /dev/null
++++ b/src/tests/lib/dashboardRecords.test.ts
+@@ -0,0 +1,62 @@
++import { beforeEach, describe, expect, it, vi } from "vitest";
++import { supabase } from "@/integrations/supabase/client";
++import { loadManagerProduction, loadPlaqueFacts, summarizePlaques } from "@/lib/dashboardRecords";
++
++type Request = { relation: string; columns: string; filters: [string, string, string][]; from: number; to: number };
++function paged(rows: Record<string, unknown>[], failAt = -1) {
++  const requests: Request[] = [];
++  vi.mocked(supabase.from).mockImplementation(relation => {
++    const request: Request = { relation, columns: "", filters: [], from: 0, to: 499 }; requests.push(request);
++    const query = {
++      select: (columns: string) => { request.columns = columns; return query; },
++      gte: (column: string, value: string) => { request.filters.push(["gte", column, value]); return query; },
++      lte: (column: string, value: string) => { request.filters.push(["lte", column, value]); return query; },
++      order: () => query,
++      range: (from: number, to: number) => { request.from = from; request.to = to; return query; },
++      abortSignal: () => query,
++      then: (resolve: (result: unknown) => unknown) => Promise.resolve(resolve(request.from === failAt
++        ? { data: null, error: new Error("History unavailable") }
++        : { data: rows.slice(request.from, request.to + 1), error: null })),
++    };
++    return query as never;
++  });
++  return requests;
++}
++beforeEach(() => { vi.mocked(supabase.from).mockReset(); });
++describe("complete dashboard records", () => {
++  it("uses canonical posted dates and annual premium beyond the old 100-row window", async () => {
++    const requests = paged(Array.from({ length: 501 }, (_, i) => ({ row_key: `deal-${i}`, annual_premium: 100, agent_id: "producer-a", posted_date: "2026-11-24" })));
++    const rows = await loadManagerProduction("2026-11-24");
++    expect(rows).toHaveLength(501);
++    expect(rows.reduce((sum, row) => sum + Number(row.annual_premium), 0)).toBe(50100);
++    expect(requests.map(r => [r.from, r.to])).toEqual([[0, 499], [500, 999]]);
++    expect(requests[0].relation).toBe("v_production_canonical");
++    expect(requests[0].columns).toContain("annual_premium");
++    expect(requests[0].filters).toEqual([["gte", "posted_date", "2026-10-26"], ["lte", "posted_date", "2026-11-24"]]);
++  });
++
++  it("refuses a partial total when a later page fails", async () => {
++    paged(Array.from({ length: 501 }, (_, i) => ({ row_key: `deal-${i}`, annual_premium: 100 })), 500);
++    await expect(loadManagerProduction("2026-11-24")).rejects.toThrow("History unavailable");
++  });
++
++  it("does not count duplicate rows when a list moves while loading", async () => {
++    paged(Array.from({ length: 501 }, (_, i) => ({ row_key: i === 500 ? "deal-0" : `deal-${i}` })));
++    await expect(loadManagerProduction("2026-11-24")).rejects.toThrow("changed while loading");
++  });
++
++  it("includes awards beyond 1000 rows in totals and honorees", async () => {
++    paged(Array.from({ length: 1001 }, (_, i) => ({ id: `award-${i}`, agent_id: i === 1000 ? "producer-b" : "producer-a", amount: 100, awarded_at: "2026-11-24T18:00:00Z" })));
++    const facts = await loadPlaqueFacts();
++    expect(summarizePlaques(facts, "2026-11-24")).toEqual({ total: 1001, totalAwarded: 100100, honorees: 2, thisMonth: 1001 });
++  });
++
++  it("uses Phoenix month boundaries and leaves undated awards out of this-month counts", () => {
++    const rows = [
++      { id: "old", agent_id: "a", amount: 100, awarded_at: "2026-11-01T06:59:59Z" },
++      { id: "new", agent_id: "a", amount: 200, awarded_at: "2026-11-01T07:00:00Z" },
++      { id: "undated", agent_id: "a", amount: null, awarded_at: null },
++    ];
++    expect(summarizePlaques(rows, "2026-11-01")).toEqual({ total: 3, totalAwarded: 300, honorees: 1, thisMonth: 1 });
++  });
++});
+diff --git a/src/tests/lib/downlineStage.test.ts b/src/tests/lib/downlineStage.test.ts
+index fbe3488d..69351f16 100644
+--- a/src/tests/lib/downlineStage.test.ts
++++ b/src/tests/lib/downlineStage.test.ts
+@@ -4,14 +4,27 @@ import { downlineStage, STAGE_ORDER } from "@/lib/contractingDownlines";
+ const row = (o: Record<string, unknown>) => ({ agent_status: "active", npn: "21000001", on_sheet: false, ethos_state: null, ethos_note: null, ...o }) as never;
+ 
+ describe("Grow my team · one plain stage per person (MP-304)", () => {
+-  test("on the sheet wins over everything", () => expect(downlineStage(row({ on_sheet: true, ethos_state: "manual_review" })).key).toBe("on_sheet"));
++  test("a current delivery hold stays visible even when an older sheet row exists", () => expect(downlineStage(row({ on_sheet: true, ethos_state: "manual_review" })).key).toBe("held"));
++  test("a sheet receipt is pending carrier confirmation, never an approval", () => {
++    const stage = downlineStage(row({ on_sheet: true, ethos_state: "delivered" }));
++    expect(stage.key).toBe("on_sheet");
++    expect(stage.tone).toBe("pending");
++    expect(stage.hint).toContain("Carrier approval still needs its own confirmation");
++  });
++  test("failed and unconfigured submissions cannot appear ready for a duplicate retry", () => {
++    expect(downlineStage(row({ ethos_state: "failed" })).key).toBe("held");
++    expect(downlineStage(row({ ethos_state: "not_configured" })).key).toBe("held");
++  });
+   test("no NPN = getting licensed", () => expect(downlineStage(row({ npn: null })).key).toBe("licensing"));
+   test("queued or in flight = being added", () => {
+     expect(downlineStage(row({ ethos_state: "queued" })).key).toBe("adding");
+     expect(downlineStage(row({ ethos_state: "attempting" })).key).toBe("adding");
+   });
+   test("held carries the reason", () => expect(downlineStage(row({ ethos_state: "manual_review", ethos_note: "email on another NPN" })).hint).toBe("email on another NPN"));
+-  test("licensed with an NPN and no leg = ready (the one-tap Add row)", () => expect(downlineStage(row({})).key).toBe("ready"));
++  test("an NPN alone requests a license review instead of claiming verified eligibility", () => {
++    expect(downlineStage(row({})).key).toBe("ready");
++    expect(downlineStage(row({})).hint).toContain("An NPN alone does not verify eligibility");
++  });
+   test("details saved, no login = login pending", () => expect(downlineStage(row({ agent_status: "intake_only" })).key).toBe("login_pending"));
+   test("what needs the manager sorts first", () => expect(STAGE_ORDER.held).toBeLessThan(STAGE_ORDER.on_sheet));
+ });
+diff --git a/src/tests/lib/ethosConsumerCampaign.test.ts b/src/tests/lib/ethosConsumerCampaign.test.ts
+new file mode 100644
+index 00000000..050b775a
+--- /dev/null
++++ b/src/tests/lib/ethosConsumerCampaign.test.ts
+@@ -0,0 +1,43 @@
++import { describe, expect, it, vi } from "vitest";
++import { consumerCoverageMessage, dispatchConsumerClaims, ETHOS_CONSUMER_COVERAGE_URL } from "../../../supabase/functions/_shared/ethos-consumer-campaign.ts";
++
++const claim = { delivery_id: "delivery-1", claim_id: "claim-1", email: "consumer@example.com", first_name: "Pat", state: "WI" };
++
++describe("consumer Ethos coverage invitation receipts", () => {
++  it("uses the supplied coverage link and makes no agent-contracting or approval claim", () => {
++    const message = consumerCoverageMessage("Pat<script>\n");
++    expect(message.text).toContain(ETHOS_CONSUMER_COVERAGE_URL);
++    expect(message.text).toContain("does not confirm coverage or approval");
++    expect(message.text).not.toMatch(/<script>|contracting|join my team|guaranteed approval/i);
++  });
++  it("records provider acceptance only with an actual provider id", async () => {
++    const send = vi.fn().mockResolvedValue({ ok: true, id: "provider-123" });
++    const settle = vi.fn().mockResolvedValue(undefined);
++    const receipts = await dispatchConsumerClaims([claim], { send, settle });
++    expect(send).toHaveBeenCalledTimes(1);
++    expect(receipts[0]).toEqual({ deliveryId: "delivery-1", status: "provider_accepted", providerId: "provider-123", receiptSaved: true });
++    expect(settle).toHaveBeenCalledWith(expect.objectContaining({ claimId: "claim-1", status: "provider_accepted" }));
++  });
++  it("a missing provider id is unknown, even when the helper reports ok", async () => {
++    const receipts = await dispatchConsumerClaims([claim], { send: vi.fn().mockResolvedValue({ ok: true, id: null }), settle: vi.fn().mockResolvedValue(undefined) });
++    expect(receipts[0].status).toBe("unknown");
++  });
++  it("suppressed or muted recipients are blocked rather than reported as sent", async () => {
++    const send = vi.fn().mockResolvedValue({ ok: false, id: null, refused: "suppressed" });
++    const receipts = await dispatchConsumerClaims([claim], { send, settle: vi.fn().mockResolvedValue(undefined) });
++    expect(receipts[0].status).toBe("blocked");
++  });
++  it("never retries a transport failure whose provider outcome is unknown", async () => {
++    const send = vi.fn().mockRejectedValue(new Error("connection closed after submission"));
++    const receipts = await dispatchConsumerClaims([claim], { send, settle: vi.fn().mockResolvedValue(undefined) });
++    expect(send).toHaveBeenCalledTimes(1);
++    expect(receipts[0].status).toBe("unknown");
++  });
++  it("a lost receipt stays explicit and cannot cause a second provider call", async () => {
++    const send = vi.fn().mockResolvedValue({ ok: true, id: "provider-123" });
++    const settle = vi.fn().mockRejectedValue(new Error("database unavailable"));
++    const receipts = await dispatchConsumerClaims([claim], { send, settle });
++    expect(send).toHaveBeenCalledTimes(1);
++    expect(receipts[0]).toMatchObject({ status: "provider_accepted", receiptSaved: false });
++  });
++});
+diff --git a/src/tests/lib/ethosMgnLayout.test.ts b/src/tests/lib/ethosMgnLayout.test.ts
+index da38e089..9d0307a6 100644
+--- a/src/tests/lib/ethosMgnLayout.test.ts
++++ b/src/tests/lib/ethosMgnLayout.test.ts
+@@ -65,6 +65,34 @@ describe("MGN New Agents layout (MP-304)", () => {
+     const out = await deliverEthosSheet("i-1", deps);
+     expect(out.state).toBe("manual_review"); expect(s.calls.some((c) => c.method === "PUT")).toBe(false);
+   });
++  test("formatted NANP mobile under another NPN holds the submission", async () => {
++    const s = sheets({ "New Agents": [...NEW_TAB, ["Other", "Producer", "1 (608) 609-6667", "other@example.com", "21009999", "21346366", "60%", "6 Month Advance"]] });
++    const deps: DeliveryDeps = { ...base, loadIntake: async () => INTAKE, sendEmail: async () => "x", fetchImpl: s.fetchImpl as never, loadEthosApproval: async () => APPROVAL };
++    const out = await deliverEthosSheet("i-1", deps);
++    expect(out.state).toBe("manual_review");
++    expect(s.calls.some((c) => c.method === "PUT")).toBe(false);
++  });
++  test("international mobile sharing a ten-digit suffix is not another producer's NANP identity", async () => {
++    const s = sheets({ "New Agents": [...NEW_TAB, ["Other", "Producer", "+2346086096667", "other@example.com", "21009999", "21346366", "60%", "6 Month Advance"]] });
++    const deps: DeliveryDeps = { ...base, loadIntake: async () => INTAKE, sendEmail: async () => "x", fetchImpl: s.fetchImpl as never, loadEthosApproval: async () => APPROVAL };
++    const out = await deliverEthosSheet("i-1", deps);
++    expect(out.state).toBe("delivered");
++    expect(out.receipt?.written).toBe(true);
++  });
++  test("read-back cannot accept an international number just because its suffix matches", async () => {
++    const s = sheets({ "New Agents": NEW_TAB });
++    const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
++      const response = await s.fetchImpl(url, init);
++      if ((init?.method ?? "GET") === "GET" && s.calls.some((c) => c.method === "PUT")) {
++        const body = await response.json();
++        if (body.values?.[0]) body.values[0][2] = "+2346086096667";
++        return new Response(JSON.stringify(body), { status: 200 });
++      }
++      return response;
++    });
++    const deps: DeliveryDeps = { ...base, loadIntake: async () => INTAKE, sendEmail: async () => "x", fetchImpl: fetchImpl as never, loadEthosApproval: async () => APPROVAL };
++    await expect(deliverEthosSheet("i-1", deps)).rejects.toThrow(/read-back mismatch/);
++  });
+   test("header drift on New Agents → held, nothing written", async () => {
+     const s = sheets({ "New Agents": [["Agent First Name", "Last", ...MGN_NEW_AGENTS_HEADERS.slice(2)]] });
+     const deps: DeliveryDeps = { ...base, loadIntake: async () => INTAKE, sendEmail: async () => "x", fetchImpl: s.fetchImpl as never, loadEthosApproval: async () => APPROVAL };
+diff --git a/src/tests/lib/interviewDisposition.test.ts b/src/tests/lib/interviewDisposition.test.ts
+new file mode 100644
+index 00000000..4de0db10
+--- /dev/null
++++ b/src/tests/lib/interviewDisposition.test.ts
+@@ -0,0 +1,53 @@
++import { describe, expect, it, vi } from "vitest";
++import { recordInterviewDisposition, type InterviewDispositionDeps } from "@/lib/interviewDisposition";
++
++function dependencies(overrides: Partial<InterviewDispositionDeps> = {}): InterviewDispositionDeps {
++  return {
++    load: vi.fn().mockResolvedValue({ id: "interview-1", application_id: "application-1", updated_at: "2026-11-24T12:00:00Z", outcome: null }),
++    promote: vi.fn().mockResolvedValue({ agentId: "agent-1", partial: false, message: "Onboarding started" }),
++    record: vi.fn().mockResolvedValue({ receipt_id: "receipt-1", can_undo: true }),
++    ...overrides,
++  };
++}
++
++describe("interview outcome and canonical hiring", () => {
++  it("creates the canonical hire before recording Hired and never offers account Undo", async () => {
++    const order: string[] = [];
++    const deps = dependencies({
++      promote: vi.fn(async () => { order.push("promote"); return { agentId: "agent-1", partial: false, message: "Onboarding started" }; }),
++      record: vi.fn(async () => { order.push("record"); return { receipt_id: "receipt-1", can_undo: true }; }),
++    });
++    const receipt = await recordInterviewDisposition({ id: "interview-1", outcome: "hired" }, deps);
++    expect(order).toEqual(["promote", "record"]);
++    expect(receipt.can_undo).toBe(false);
++    expect(deps.record).toHaveBeenCalledWith(expect.objectContaining({ p_expected_updated_at: "2026-11-24T12:00:00Z" }));
++  });
++  it("a failed hire never marks the interview hired", async () => {
++    const deps = dependencies({ promote: vi.fn().mockRejectedValue(new Error("NPN required")) });
++    await expect(recordInterviewDisposition({ id: "interview-1", outcome: "hired" }, deps)).rejects.toThrow("NPN required");
++    expect(deps.record).not.toHaveBeenCalled();
++  });
++  it("an unlinked prospect cannot create an untracked hire", async () => {
++    const deps = dependencies({ load: vi.fn().mockResolvedValue({ id: "interview-1", application_id: null, updated_at: "2026-11-24T12:00:00Z", outcome: null }) });
++    await expect(recordInterviewDisposition({ id: "interview-1", outcome: "hired" }, deps)).rejects.toThrow("Link the applicant");
++    expect(deps.promote).not.toHaveBeenCalled(); expect(deps.record).not.toHaveBeenCalled();
++  });
++  it("a concurrently recorded outcome is preserved", async () => {
++    const deps = dependencies({ load: vi.fn().mockResolvedValue({ id: "interview-1", application_id: "application-1", updated_at: "2026-11-24T12:01:00Z", outcome: "completed" }) });
++    await expect(recordInterviewDisposition({ id: "interview-1", outcome: "no_answer" }, deps)).rejects.toThrow("already has an outcome");
++    expect(deps.record).not.toHaveBeenCalled();
++  });
++  it("callbacks require a future deadline and preserve it in the atomic write", async () => {
++    const deps = dependencies();
++    await expect(recordInterviewDisposition({ id: "interview-1", outcome: "callback" }, deps)).rejects.toThrow("future callback");
++    expect(deps.load).not.toHaveBeenCalled();
++    const due = new Date(Date.now() + 86_400_000).toISOString();
++    await recordInterviewDisposition({ id: "interview-1", outcome: "callback", followupDueAt: due }, deps);
++    expect(deps.record).toHaveBeenCalledWith(expect.objectContaining({ p_followup_due_at: due, p_outcome: "callback" }));
++  });
++  it("a receipt failure after provision reports the existing account instead of promising rollback", async () => {
++    const deps = dependencies({ record: vi.fn().mockRejectedValue(new Error("Interview changed")) });
++    await expect(recordInterviewDisposition({ id: "interview-1", outcome: "hired" }, deps)).rejects.toThrow("agent account exists");
++    expect(deps.promote).toHaveBeenCalledTimes(1);
++  });
++});
+diff --git a/src/tests/lib/landingLiveStats.test.ts b/src/tests/lib/landingLiveStats.test.ts
+new file mode 100644
+index 00000000..0263ce01
+--- /dev/null
++++ b/src/tests/lib/landingLiveStats.test.ts
+@@ -0,0 +1,19 @@
++import { describe, expect, it } from "vitest";
++import { parseLandingLiveStats } from "@/lib/landingLiveStats";
++
++describe("public agency counts", () => {
++  it("preserves a verified zero instead of substituting an older positive count", () => {
++    expect(parseLandingLiveStats({ active_agents: 0, applications_30d: 0, carriers_partnered: 0 })).toEqual({ active_agents: 0, applications_30d: 0, carriers_partnered: 0 });
++  });
++
++  it("keeps missing, fractional, and invalid counts unknown", () => {
++    expect(parseLandingLiveStats({ active_agents: 4, applications_30d: -1, carriers_partnered: "22" })).toEqual({ active_agents: 4, applications_30d: null, carriers_partnered: null });
++    expect(parseLandingLiveStats({ active_agents: Infinity, applications_30d: 0.5, carriers_partnered: 2 })).toEqual({ active_agents: null, applications_30d: null, carriers_partnered: 2 });
++  });
++
++  it("refuses malformed or wholly unavailable responses", () => {
++    for (const value of [null, [], "offline", {}, { active_agents: -1 }, { active_agents: NaN }]) {
++      expect(() => parseLandingLiveStats(value)).toThrow("Agency numbers are unavailable.");
++    }
++  });
++});
+diff --git a/src/tests/lib/leadBundles.test.ts b/src/tests/lib/leadBundles.test.ts
+index bb26a6b4..006b3fca 100644
+--- a/src/tests/lib/leadBundles.test.ts
++++ b/src/tests/lib/leadBundles.test.ts
+@@ -19,7 +19,7 @@ describe("lead bundle labels", () => {
+     expect(canDial("callback")).toBe(true);
+   });
+   it("labels tiers and formats", () => {
+-    expect(tierLabel("pos")).toBe("Policy owner");
++    expect(tierLabel("pos")).toBe("Sale reported");
+     expect(tierLabel("A")).toBe("Tier A");
+     expect(formatLabel("pos")).toBe("POS");
+     expect(formatLabel("called_leads")).toBe("Called leads");
+diff --git a/src/tests/lib/leadCallingHours.test.ts b/src/tests/lib/leadCallingHours.test.ts
+index f36838f2..a0b2eb75 100644
+--- a/src/tests/lib/leadCallingHours.test.ts
++++ b/src/tests/lib/leadCallingHours.test.ts
+@@ -39,8 +39,8 @@ describe("calling hours in the agent portal", () => {
+     expect(page).toContain('data-testid="work-mode-hours-closed"');
+   });
+ 
+-  it("an older server without the flag leaves every lead workable", () => {
+-    expect(page).toContain('const callableNow = (r: Pick<MyLead, "callable_now">) => r.callable_now !== false;');
++  it("an older server without the clock flag still honors known contact holds", () => {
++    expect(page).toContain('const callableNow = (r: Pick<MyLead, "callable_now" | "attrs" | "status">) => r.callable_now !== false && !heldReason(r);');
+   });
+ 
+   it("progress counts results, not leads waiting for morning", () => {
+diff --git a/src/tests/lib/leadManagerFilters.test.ts b/src/tests/lib/leadManagerFilters.test.ts
+new file mode 100644
+index 00000000..f94ed5f2
+--- /dev/null
++++ b/src/tests/lib/leadManagerFilters.test.ts
+@@ -0,0 +1,26 @@
++import { describe, expect, it } from "vitest";
++import { EMPTY_WORK_FILTERS, LEAD_PACK_COLUMNS, holdLabels, workFilterParams } from "@/lib/leadManagerFilters";
++
++describe("lead context and holds", () => {
++  it("distinguishes the old conflated client hold from a real recorded DNC", () => {
++    expect(holdLabels({ dnc: true, current_client: true })).toEqual(["Existing client"]);
++    expect(holdLabels({ dnc: true, true_dnc: true, current_client: true })).toEqual(["Do not call", "Existing client"]);
++    expect(holdLabels({ true_dnc: false, current_client: false, import_review_required: true, in_bundle: true })).toEqual(["Already assigned", "Import review"]);
++  });
++  it("keeps restrictions mandatory when inspecting a held cohort", () => {
++    expect(workFilterParams({ ...EMPTY_WORK_FILTERS, hold: "true_dnc" })).toEqual({ exclude_dnc: true, exclude_resold: true, hold: "true_dnc" });
++  });
++  it("serializes the same typed work filters without changing calendar dates", () => {
++    expect(workFilterParams({ ...EMPTY_WORK_FILTERS, caller: "  Caller One ", outcome: "bank_objection", sourceFile: " veterans ",
++      sourceType: "pos", policyStanding: "unverified", touchedAfter: "2026-11-01", touchedBefore: "2026-11-23", callbackBefore: "2026-11-24", minAttempts: "0", maxAttempts: "4" })).toEqual({
++      exclude_dnc: true, exclude_resold: true, caller: "Caller One", outcomes: ["bank_objection"], source_file: "veterans", source_type: "pos", policy_standing: "unverified",
++      touched_after: "2026-11-01", touched_before: "2026-11-23", callback_before: "2026-11-24", min_attempts: 0, max_attempts: 4,
++    });
++    expect(workFilterParams({ ...EMPTY_WORK_FILTERS, minAttempts: "-1", maxAttempts: "0.5", touchedAfter: "not a date" })).toEqual({ exclude_dnc: true, exclude_resold: true });
++  });
++  it("exports explicit provenance and useful history without raw source or credentials", () => {
++    const keys = LEAD_PACK_COLUMNS.map(([key]) => key);
++    expect(keys).toEqual(expect.arrayContaining(["source_batch_id", "policy_ownership_claim", "last_caller", "last_outcome", "callback_at", "next_action", "policy_standing", "work_history", "call_history", "last_summary", "hold_reasons"]));
++    expect(keys.some((key) => /ssn|bank_account|raw|token/.test(key))).toBe(false);
++  });
++});
+diff --git a/src/tests/lib/logLeadActivity.test.ts b/src/tests/lib/logLeadActivity.test.ts
+index 28cd45da..c1309413 100644
+--- a/src/tests/lib/logLeadActivity.test.ts
++++ b/src/tests/lib/logLeadActivity.test.ts
+@@ -34,6 +34,7 @@ function setupFromMocks(opts: {
+   insertError?: Error | null;
+ } = {}) {
+   const { profileName = "Alex Agent", roleValue = "agent", insertError = null } = opts;
++  const insert = vi.fn().mockResolvedValue({ data: null, error: insertError });
+ 
+   mockFrom.mockImplementation((table: string) => {
+     if (table === "profiles") {
+@@ -59,11 +60,12 @@ function setupFromMocks(opts: {
+     }
+     if (table === "lead_activity") {
+       return {
+-        insert: vi.fn().mockResolvedValue({ data: null, error: insertError }),
++        insert,
+       } as any;
+     }
+     return { select: vi.fn().mockReturnThis() } as any;
+   });
++  return { insert };
+ }
+ 
+ beforeEach(() => {
+@@ -94,7 +96,7 @@ describe("logLeadActivity — authenticated user", () => {
+   it("inserts lead_activity row with correct field shape", async () => {
+     const user = makeUser();
+     mockGetUser.mockResolvedValue({ data: { user }, error: null } as any);
+-    setupFromMocks({ profileName: "Alex Agent", roleValue: "agent" });
++    const { insert } = setupFromMocks({ profileName: "Alex Agent", roleValue: "agent" });
+ 
+     await logLeadActivity({
+       leadId: "lead-42",
+@@ -103,8 +105,11 @@ describe("logLeadActivity — authenticated user", () => {
+       details: { from: "contacted", to: "licensed" },
+     });
+ 
+-    const insertCall = mockFrom.mock.calls.find(([t]) => t === "lead_activity");
+-    expect(insertCall).toBeTruthy();
++    expect(mockFrom).toHaveBeenCalledWith("lead_activity");
++    expect(insert).toHaveBeenCalledWith({
++      lead_id: "lead-42", actor_user_id: "user-001", actor_name: "Alex Agent", actor_role: "agent",
++      activity_type: "stage_update", title: "Moved to Licensed", details: { from: "contacted", to: "licensed" },
++    });
+   });
+ 
+   it("uses profile.full_name as actorName", async () => {
+diff --git a/src/tests/lib/producerWorkspace.test.ts b/src/tests/lib/producerWorkspace.test.ts
+new file mode 100644
+index 00000000..d3c0f5d1
+--- /dev/null
++++ b/src/tests/lib/producerWorkspace.test.ts
+@@ -0,0 +1,91 @@
++import { describe, expect, it } from "vitest";
++import { clientCallsSchema, producerMilestones, producerPace, producerWorkspaceSchema, productionStreak, type ProducerDay } from "@/lib/producerWorkspace";
++import { producerWorkspaceFixture } from "@/tests/helpers/producerWorkspaceFixture";
++
++describe("personal production pace", () => {
++  it("uses personal posted AP and measured samples to round up the remaining work", () => {
++    const result = producerPace(producerWorkspaceFixture());
++    expect(result).toMatchObject({ remaining: 15000, completionPct: 25, averagePolicy: 1500, dealsRemaining: 10, callsRemaining: 100, callsPerSellingDay: 20, apPerSellingDay: 3000, status: "Behind pace" });
++    expect(result.targetToday).toBeCloseTo(20000 * 17 / 21);
++  });
++
++  it("never guesses a conversion rate or average policy when personal evidence is insufficient", () => {
++    const d = producerWorkspaceFixture();
++    d.activity.sample_calls = 29;
++    expect(producerPace(d).callsRemaining).toBeNull();
++    d.activity.sample_calls = 60; d.activity.sample_sold_calls = 2;
++    expect(producerPace(d).callsPerSellingDay).toBeNull();
++    d.activity.sample_sold_calls = 6; d.activity.sample_policies = 2;
++    expect(producerPace(d).dealsRemaining).toBeNull();
++    d.activity.sample_policies = 6; d.activity.avg_policy_ap = 0;
++    expect(producerPace(d).dealsRemaining).toBeNull();
++  });
++
++  it("rounds fractional policies and calls up without adding posted production", () => {
++    const d = producerWorkspaceFixture();
++    d.production_ap = 19000; d.activity.avg_policy_ap = 600;
++    d.activity.sample_calls = 31; d.activity.sample_sold_calls = 3;
++    expect(producerPace(d)).toMatchObject({ dealsRemaining: 2, callsRemaining: 21, callsPerSellingDay: 5, completionPct: 95 });
++    expect(d.production_ap).toBe(19000);
++  });
++
++  it("handles completed goals and no remaining selling days without infinity or invented work", () => {
++    const d = producerWorkspaceFixture();
++    d.production_ap = 25000; d.activity.sample_calls = 0; d.activity.sample_sold_calls = 0;
++    expect(producerPace(d)).toMatchObject({ remaining: 0, dealsRemaining: 0, callsRemaining: 0, completionPct: 100, status: "Goal hit" });
++    d.production_ap = 5000; d.selling_days_remaining = 0;
++    expect(producerPace(d).apPerSellingDay).toBeNull();
++    expect(producerPace(d).callsPerSellingDay).toBeNull();
++    d.selling_days_elapsed = 0; d.selling_days_total = 0;
++    expect(producerPace(d).status).toBe("Ready to start");
++  });
++
++  it("scales milestones with a higher assigned personal goal", () => {
++    expect(producerMilestones(15000, 40000)).toEqual([
++      { amount: 10000, achieved: true }, { amount: 20000, achieved: false },
++      { amount: 30000, achieved: false }, { amount: 40000, achieved: false },
++    ]);
++  });
++});
++
++describe("scheduled-day production streak", () => {
++  it("holds through rest days and leaves today open without falsely awarding it", () => {
++    const d = producerWorkspaceFixture();
++    expect(productionStreak(d.days, d.today)).toEqual({ current: 2, best: 2, todayScheduled: true, todayEarned: false });
++    expect(productionStreak(d.days, "2026-11-22")).toEqual({ current: 1, best: 1, todayScheduled: false, todayEarned: false });
++  });
++
++  it("breaks on a completed missed selling day even if the current schedule later changes", () => {
++    const d = producerWorkspaceFixture();
++    d.days[3].production_ap = 0; d.days[3].deals = 0;
++    d.schedule = [2, 3, 4]; // Current preferences cannot rewrite the historical scheduled flag.
++    expect(productionStreak(d.days, d.today)).toMatchObject({ current: 0, best: 1 });
++  });
++
++  it("requires a positive posted policy and never counts multiple sales as multiple days", () => {
++    const days: ProducerDay[] = [
++      { day: "2026-11-20", scheduled: true, production_ap: 0, deals: 12 },
++      { day: "2026-11-21", scheduled: false, production_ap: 5000, deals: 3 },
++      { day: "2026-11-23", scheduled: true, production_ap: 3000, deals: 3 },
++      { day: "2026-11-24", scheduled: true, production_ap: 2000, deals: 2 },
++      { day: "2026-11-25", scheduled: true, production_ap: 9000, deals: 4 },
++    ];
++    expect(productionStreak(days, "2026-11-24")).toEqual({ current: 2, best: 2, todayScheduled: true, todayEarned: true });
++    expect(productionStreak([], "2026-11-24").current).toBe(0);
++  });
++});
++
++describe("producer source boundary", () => {
++  it("keeps absent carrier/payment evidence null and rejects invalid metrics", () => {
++    const d = producerWorkspaceFixture();
++    expect(producerWorkspaceSchema.parse(d).carrier.paid_ap).toBeNull();
++    d.activity.sample_sold_calls = 61;
++    expect(producerWorkspaceSchema.safeParse(d).success).toBe(false);
++    d.activity.sample_sold_calls = 6; d.production_ap = NaN;
++    expect(producerWorkspaceSchema.safeParse(d).success).toBe(false);
++  });
++
++  it("rejects malformed call dates before they reach rendering", () => {
++    expect(clientCallsSchema.safeParse({ client_id: "client-a", raw_provider_access: false, ambiguous_phone: false, next_cursor: null, calls: [{ key: "manual:a", source_id: "a", source: "manual", happened_at: "bad-date", category: "discovery", outcome: null, duration_seconds: null, transcript: "A saved transcript", audio_url: null, transcript_access: "available" }] }).success).toBe(false);
++  });
++});
+diff --git a/src/tests/pages/AdminAutomationEmptyStates.test.tsx b/src/tests/pages/AdminAutomationEmptyStates.test.tsx
+new file mode 100644
+index 00000000..9f8bc474
+--- /dev/null
++++ b/src/tests/pages/AdminAutomationEmptyStates.test.tsx
+@@ -0,0 +1,71 @@
++import { fireEvent, render, screen, within } from "@testing-library/react";
++import userEvent from "@testing-library/user-event";
++import { MemoryRouter } from "react-router-dom";
++import { beforeEach, describe, expect, it, vi } from "vitest";
++
++const { query, refetch, invalidateQueries } = vi.hoisted(() => ({ query: vi.fn(), refetch: vi.fn(), invalidateQueries: vi.fn() }));
++vi.mock("@tanstack/react-query", () => ({ useQuery: query, useQueryClient: () => ({ invalidateQueries }) }));
++vi.mock("@/components/contentwheel/CwBridgeStripForSmb", () => ({ CwBridgeStripForSmb: () => null }));
++vi.mock("@/hooks/useConfirm", () => ({ useConfirm: () => vi.fn() }));
++import SocialMediaBot from "@/pages/admin/SocialMediaBot";
++import TelegramBot from "@/pages/admin/TelegramBot";
++
++const dashboard = {
++  drafts_today: 2, drafts_approved_today: 0, drafts_shipped_today: 0, drafts_pending_today: 1,
++  inbound_7d_count: 0, inbound_7d_paid: 0, inbound_7d_revenue_usd: 0, open_blockers: 0,
++  critical_blockers: 0, total_followers: 0, analytics: [], blockers: [], inbound: [], goals: [],
++  scoreboard: null, recent_runs: [], top_hooks: [], generated_at: "2026-11-24T00:00:00Z", as_of: "2026-11-24T00:00:00Z",
++  today_pack: [
++    { id: 1, draft_date: "2026-11-24", title: "Archived draft", platform: "instagram", status: "archived" },
++    { id: 2, draft_date: "2026-11-24", title: "Draft awaiting review", platform: "instagram", status: "awaiting_approval" },
++  ],
++};
++
++beforeEach(() => {
++  query.mockReset(); refetch.mockReset(); invalidateQueries.mockReset();
++  query.mockReturnValue({ data: [], isLoading: false, isError: false, isRefetching: false, refetch });
++});
++
++describe("automation dashboard recovery and empty states", () => {
++  it("renders a working retry action when the social dashboard cannot load", () => {
++    query.mockImplementation(({ queryKey }: { queryKey: readonly unknown[] }) => queryKey[0] === "social-bot-dashboard"
++      ? { data: undefined, isLoading: false, isError: true, isRefetching: false, refetch }
++      : { data: [], isLoading: false });
++    render(<MemoryRouter><SocialMediaBot /></MemoryRouter>);
++    expect(screen.getByText("Social Media Bot data unavailable")).toBeInTheDocument();
++    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
++    expect(refetch).toHaveBeenCalledTimes(1);
++  });
++
++  it("labels archived drafts accurately and supports the current awaiting-approval state in the detail dialog", async () => {
++    query.mockImplementation(({ queryKey }: { queryKey: readonly unknown[] }) => ({
++      data: queryKey[0] === "social-bot-dashboard" ? dashboard : [], isLoading: false, isError: false, isRefetching: false, refetch,
++    }));
++    render(<MemoryRouter><SocialMediaBot /></MemoryRouter>);
++    expect(screen.getByText("archived")).toBeInTheDocument();
++    expect(screen.getByText("awaiting approval")).toBeInTheDocument();
++    expect(screen.getAllByRole("button", { name: "Approve" })).toHaveLength(1);
++    fireEvent.click(screen.getByText("Archived draft"));
++    let dialog = await screen.findByRole("dialog");
++    expect(within(dialog).queryByRole("button", { name: "Approve" })).not.toBeInTheDocument();
++    expect(within(dialog).queryByRole("button", { name: "Reject" })).not.toBeInTheDocument();
++    await userEvent.setup().keyboard("{Escape}");
++    fireEvent.click(screen.getByText("Draft awaiting review"));
++    dialog = await screen.findByRole("dialog");
++    expect(within(dialog).getByRole("button", { name: "Approve" })).toBeInTheDocument();
++    expect(within(dialog).getByRole("button", { name: "Reject" })).toBeInTheDocument();
++  });
++
++  it.each([
++    ["Funnel", "No users yet"],
++    ["Escalations", "No open escalations"],
++    ["Stuck users", "Nothing stuck"],
++    ["Groups", "No groups registered"],
++    ["Pre-Agent HQ", "No HQ channels seeded"],
++  ])("renders the empty %s view without passing an icon component as a child", async (tab, title) => {
++    render(<MemoryRouter><TelegramBot /></MemoryRouter>);
++    await userEvent.setup().click(screen.getByRole("tab", { name: tab }));
++    const heading = await screen.findByRole("heading", { name: title });
++    expect(heading.parentElement?.querySelector("svg")).toBeInTheDocument();
++  });
++});
+diff --git a/src/tests/pages/CarrierContracts.test.tsx b/src/tests/pages/CarrierContracts.test.tsx
+new file mode 100644
+index 00000000..1e484de1
+--- /dev/null
++++ b/src/tests/pages/CarrierContracts.test.tsx
+@@ -0,0 +1,102 @@
++import { fireEvent, render, screen, waitFor } from "@testing-library/react";
++import { MemoryRouter } from "react-router-dom";
++import { beforeEach, describe, expect, it, vi } from "vitest";
++
++const { rowsHook, summaryHook, rowsRefetch, summaryRefetch, directoryHook } = vi.hoisted(() => ({
++  rowsHook: vi.fn(), summaryHook: vi.fn(), rowsRefetch: vi.fn(), summaryRefetch: vi.fn(), directoryHook: vi.fn(),
++}));
++vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ isAdmin: true, isManager: false }) }));
++vi.mock("@tanstack/react-query", () => ({ useQuery: directoryHook }));
++vi.mock("@/hooks/useContractRecords", async (original) => ({
++  ...await original<typeof import("@/hooks/useContractRecords")>(),
++  useContractRows: rowsHook, useContractSummary: summaryHook,
++}));
++vi.mock("@/hooks/useContractReview", () => ({ useContractReview: () => ({ roster: { carriers: [] }, query: { isLoading: false, isError: false } }) }));
++vi.mock("@/components/contracting/ContractingIntakeAdmin", () => ({ ContractingIntakeAdmin: () => <div>Intake history</div> }));
++vi.mock("@/components/contracting/ContractingRequestsBoard", () => ({ ContractingRequestsBoard: () => <div>Request receipts</div> }));
++vi.mock("@/components/contracting-review/ContractingReviewWorkspace", () => ({ ContractingReviewWorkspace: () => <div>Carrier review workspace</div> }));
++vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
++
++import CarrierContracts from "@/pages/CarrierContracts";
++import { CONTRACT_RECORD_PAGE_SIZE } from "@/hooks/useContractRecords";
++import { CONTRACTING_LINK_URL, CONTRACTING_PROFILE_URL } from "@/lib/contractingLinks";
++
++const writeText = vi.fn().mockResolvedValue(undefined);
++const result = (data: unknown, extra = {}) => ({ data, isLoading: false, isError: false, ...extra });
++const record = (index: number) => ({ id: `contract-${index}`, agent_id: `agent-${index}`, agent_name: `Producer ${index}`, carrier_name: "Fixture carrier", status: "active", writing_number: `W${index}`, contract_number: null });
++
++beforeEach(() => {
++  rowsHook.mockReset(); summaryHook.mockReset(); rowsRefetch.mockReset(); summaryRefetch.mockReset(); writeText.mockClear();
++  directoryHook.mockReturnValue({ data: [], isLoading: false, isError: false, error: null });
++  rowsHook.mockReturnValue(result([], { refetch: rowsRefetch }));
++  summaryHook.mockReturnValue(result({ total: 0 }, { refetch: summaryRefetch }));
++  Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
++});
++
++function renderPage(path = "/dashboard/contracting/documents") {
++  render(<MemoryRouter initialEntries={[path]}><CarrierContracts /></MemoryRouter>);
++}
++
++describe("contract management workflow", () => {
++  it("surfaces a carrier-directory failure instead of an empty carrier list", () => {
++    const retry = vi.fn();
++    directoryHook.mockReturnValue({ data: undefined, isLoading: false, isError: true, error: new Error("Unavailable"), refetch: retry });
++    renderPage("/dashboard/contracting/carriers");
++    expect(screen.getByRole("alert")).toHaveTextContent("The carrier directory did not load.");
++    expect(screen.getByText("Carrier count unavailable")).toBeInTheDocument();
++    expect(screen.queryByText("No active carriers")).not.toBeInTheDocument();
++    fireEvent.click(screen.getByRole("button", { name: "Retry carrier directory" }));
++    expect(retry).toHaveBeenCalledTimes(1);
++  });
++  it("surfaces a records failure and retries both queries without claiming there are no records", () => {
++    rowsHook.mockReturnValue(result(undefined, { isError: true, refetch: rowsRefetch }));
++    summaryHook.mockReturnValue(result(undefined, { isError: true, refetch: summaryRefetch }));
++    renderPage();
++    expect(screen.getByRole("alert")).toHaveTextContent("The contract records did not load.");
++    expect(screen.getByText("Record count unavailable")).toBeInTheDocument();
++    expect(screen.queryByText("No contract records match")).not.toBeInTheDocument();
++    expect(screen.getByRole("button", { name: "Next records" })).toBeDisabled();
++    fireEvent.click(screen.getByRole("button", { name: "Retry contract records" }));
++    expect(rowsRefetch).toHaveBeenCalledTimes(1);
++    expect(summaryRefetch).toHaveBeenCalledTimes(1);
++  });
++
++  it("reaches record 201, links its producer, and resets to the first page for a new search", async () => {
++    summaryHook.mockImplementation((_scope: string, search: string) => result({ total: search ? 1 : 201 }, { refetch: summaryRefetch }));
++    rowsHook.mockImplementation((_scope: string, _status: string, search: string, page: number) => result(
++      search ? [record(7)] : page === 0 ? Array.from({ length: CONTRACT_RECORD_PAGE_SIZE }, (_, i) => record(i + 1)) : [record(201)],
++      { refetch: rowsRefetch },
++    ));
++    renderPage();
++    expect(screen.getByText("Page 1 · 200 records shown")).toBeInTheDocument();
++    expect(screen.getByRole("button", { name: "Previous records" })).toBeDisabled();
++    fireEvent.click(screen.getByRole("button", { name: "Next records" }));
++    expect(await screen.findByText("Page 2 · 1 records shown")).toBeInTheDocument();
++    expect(rowsHook).toHaveBeenLastCalledWith("agency", "all", "", 1);
++    expect(screen.getByRole("link", { name: "Producer 201" })).toHaveAttribute("href", "/dashboard/profile?agentId=agent-201");
++    expect(screen.getByRole("button", { name: "Next records" })).toBeDisabled();
++    fireEvent.change(screen.getByRole("textbox", { name: "Search contract records" }), { target: { value: "W7" } });
++    await waitFor(() => expect(rowsHook).toHaveBeenLastCalledWith("agency", "all", "W7", 0));
++    expect(screen.getByText("Page 1 · 1 records shown")).toBeInTheDocument();
++    expect(screen.getByRole("button", { name: "Previous records" })).toBeDisabled();
++  });
++
++  it("keeps the carrier portal, signed-in profile and team-growth destinations distinct", async () => {
++    renderPage("/dashboard/contracting");
++    // Staff can copy either destination immediately; the signed-in agent supplies
++    // their own details on the destination page, never in this handoff card.
++    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
++    expect(screen.queryByRole("form")).not.toBeInTheDocument();
++    expect(screen.getByRole("button", { name: "Copy MGN portal link" })).toBeEnabled();
++    expect(screen.getByRole("button", { name: "Copy agent profile link" })).toBeEnabled();
++    fireEvent.click(screen.getByRole("button", { name: "Copy MGN portal link" }));
++    await waitFor(() => expect(writeText).toHaveBeenNthCalledWith(1, CONTRACTING_LINK_URL));
++    fireEvent.click(screen.getByRole("button", { name: "Copy agent profile link" }));
++    await waitFor(() => expect(writeText).toHaveBeenNthCalledWith(2, CONTRACTING_PROFILE_URL));
++    expect(CONTRACTING_PROFILE_URL).not.toBe(CONTRACTING_LINK_URL);
++    expect(screen.getByRole("link", { name: "Grow my team" })).toHaveAttribute("href", "/dashboard/grow");
++    expect(screen.getByRole("link", { name: "Ethos submissions" })).toHaveAttribute("href", "/dashboard/grow");
++    expect(screen.getByRole("link", { name: "Requests" })).toHaveAttribute("href", "/dashboard/contracting/requests");
++    expect(screen.getByText(/MGN opens the carrier portal/)).toHaveTextContent("Galaxy profile link collects the signed-in agent's details for review");
++  });
++});
+diff --git a/src/tests/pages/ConsumerLeadImport.test.tsx b/src/tests/pages/ConsumerLeadImport.test.tsx
+new file mode 100644
+index 00000000..f35fd7ea
+--- /dev/null
++++ b/src/tests/pages/ConsumerLeadImport.test.tsx
+@@ -0,0 +1,104 @@
++import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
++import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
++import { MemoryRouter } from "react-router-dom";
++import { beforeEach, describe, expect, it, vi } from "vitest";
++import { supabase } from "@/integrations/supabase/client";
++
++const auth = vi.hoisted(() => ({ user: { id: "user-a" } as { id: string } | null }));
++vi.mock("@/hooks/useAuth", () => ({ useAuth: () => auth }));
++vi.mock("@/components/leads/EthosConsumerCampaignPanel", () => ({ EthosConsumerCampaignPanel: () => <div>Consumer coverage preview</div> }));
++import ConsumerLeadImport from "@/pages/ConsumerLeadImport";
++
++const rpc = vi.mocked(supabase.rpc);
++const masterRow = [1, "Producer Example", "P1", "Taylor Example", "123 Example Way", "TN", "6152345678", "taylor@example.test", "1980-01-03", "", "Active (inforce)", "2021-02-03", "Whole life", "POLICY-DEMO", "75", "Example Carrier"];
++const receipt = (received = 1) => ({ batch_id: "batch-a", source: "MSTERRRR — policy owners", received, imported: received, matched: 0, review: 0, duplicate: 0, suppressed: 0, replayed: false });
++function mount() {
++  const client = new QueryClient({ defaultOptions: { queries: { retry: false, retryDelay: 0 } } });
++  const content = () => <QueryClientProvider client={client}><MemoryRouter><ConsumerLeadImport /></MemoryRouter></QueryClientProvider>;
++  return { client, content, ...render(content()) };
++}
++function preview(rows: unknown[][] = [masterRow]) {
++  fireEvent.change(screen.getByLabelText("Consumer spreadsheet rows"), { target: { value: JSON.stringify(rows) } });
++  fireEvent.click(screen.getByRole("button", { name: "Preview mapping" }));
++}
++beforeEach(() => {
++  rpc.mockReset(); auth.user = { id: "user-a" };
++  rpc.mockResolvedValue({ data: [], error: null } as never);
++  HTMLElement.prototype.scrollIntoView = vi.fn();
++});
++
++describe("consumer intake state and receipts", () => {
++  it("distinguishes pending history from a confirmed empty source list", async () => {
++    let finish!: (value: unknown) => void;
++    rpc.mockReturnValue(new Promise(resolve => { finish = resolve; }) as never);
++    mount();
++    expect(screen.getByText("Loading import receipts…")).toBeInTheDocument();
++    expect(screen.queryByText(/No consumer source receipts yet/)).toBeNull();
++    await act(async () => finish({ data: [], error: null }));
++    expect(await screen.findByText("No held consumer rows.")).toBeInTheDocument();
++  });
++
++  it("gives a retry action when receipt rows cannot be verified", async () => {
++    rpc.mockImplementation(name => Promise.resolve({ data: name === "consumer_import_history" ? [{ id: "bad", receipt: {} }] : [], error: null }) as never);
++    mount();
++    expect(await screen.findByText("Import receipts could not be verified.")).toBeInTheDocument();
++    expect(screen.queryByText(/No consumer source receipts yet/)).toBeNull();
++    rpc.mockResolvedValue({ data: [], error: null } as never);
++    fireEvent.click(screen.getByRole("button", { name: "Retry import receipts" }));
++    expect(await screen.findByText(/No consumer source receipts yet/)).toBeInTheDocument();
++  });
++
++  it("does not let a late file read replace newer pasted rows", async () => {
++    let finish!: (value: string) => void;
++    const file = new File(["old"], "old.csv", { type: "text/csv" });
++    Object.defineProperty(file, "text", { value: () => new Promise<string>(resolve => { finish = resolve; }) });
++    mount();
++    fireEvent.change(screen.getByLabelText("Upload consumer spreadsheet export"), { target: { files: [file] } });
++    expect(screen.getByText("Reading the selected file…")).toBeInTheDocument();
++    fireEvent.change(screen.getByLabelText("Consumer spreadsheet rows"), { target: { value: "Newer pasted source" } });
++    await act(async () => finish("Old file contents"));
++    expect(screen.getByLabelText("Consumer spreadsheet rows")).toHaveValue("Newer pasted source");
++    expect(screen.queryByText("Reading the selected file…")).toBeNull();
++  });
++
++  it("clears the previous file when a different source layout is selected", async () => {
++    mount(); preview();
++    fireEvent.keyDown(screen.getByLabelText("Source layout"), { key: "ArrowDown" });
++    fireEvent.click(await screen.findByRole("option", { name: "Jt — policy history" }));
++    expect(screen.getByLabelText("Consumer spreadsheet rows")).toHaveValue("");
++    expect(screen.queryByRole("button", { name: "Import reviewed source" })).toBeNull();
++    expect(screen.getByRole("button", { name: "Preview mapping" })).toBeDisabled();
++  });
++
++  it("stops after the current chunk when the account changes and clears local consumer data", async () => {
++    let finish!: (value: unknown) => void;
++    rpc.mockImplementation(name => name === "consumer_lead_import"
++      ? new Promise(resolve => { finish = resolve; }) as never
++      : Promise.resolve({ data: [], error: null }) as never);
++    const view = mount(); preview(Array.from({ length: 251 }, (_, i) => { const row = [...masterRow]; row[13] = `DEMO-${i}`; return row; }));
++    fireEvent.click(screen.getByRole("button", { name: "Import reviewed source" }));
++    await waitFor(() => expect(rpc).toHaveBeenCalledWith("consumer_lead_import", expect.anything()));
++    auth.user = { id: "user-b" }; view.rerender(view.content());
++    expect(screen.getByLabelText("Consumer spreadsheet rows")).toHaveValue("");
++    await act(async () => finish({ data: receipt(250), error: null }));
++    expect(rpc.mock.calls.filter(([name]) => name === "consumer_lead_import")).toHaveLength(1);
++    expect(screen.queryByText(/250 new contacts/)).toBeNull();
++    expect(screen.queryByRole("button", { name: "Import complete" })).toBeNull();
++  });
++
++  it("does not mark an import complete when its receipt is incomplete", async () => {
++    rpc.mockImplementation(name => Promise.resolve({ data: name === "consumer_lead_import" ? { batch_id: "batch-a" } : [], error: null }) as never);
++    mount(); preview();
++    fireEvent.click(screen.getByRole("button", { name: "Import reviewed source" }));
++    expect(await screen.findByRole("alert")).toHaveTextContent("Import did not return a verified receipt");
++    expect(screen.queryByRole("button", { name: "Import complete" })).toBeNull();
++    expect(screen.queryByText(/undefined imported|NaN/)).toBeNull();
++  });
++
++  it("identifies the source file and row when a consumer needs correction", async () => {
++    rpc.mockImplementation(name => Promise.resolve({ data: name === "consumer_import_review" ? [{ id: "review-a", source_row: 17, source_key: "jt-policy-history", source_name: "Jt — policy history", issues: ["state_needs_review"], payload: { first_name: "Taylor", last_name: "Example", state: null } }] : [], error: null }) as never);
++    mount();
++    expect(await screen.findByText("Jt — policy history · row 17")).toBeInTheDocument();
++    expect(screen.getByText("State needs review")).toBeInTheDocument();
++  });
++});
+diff --git a/src/tests/pages/ContractJoin.test.tsx b/src/tests/pages/ContractJoin.test.tsx
+new file mode 100644
+index 00000000..04378e48
+--- /dev/null
++++ b/src/tests/pages/ContractJoin.test.tsx
+@@ -0,0 +1,100 @@
++import { act, fireEvent, render, screen } from "@testing-library/react";
++import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
++import { beforeEach, describe, expect, it, vi } from "vitest";
++const { resolve, join } = vi.hoisted(() => ({ resolve: vi.fn(), join: vi.fn() }));
++vi.mock("@/lib/contractingDownlines", () => ({ contractingDownlines: { resolve, join } }));
++vi.mock("@/hooks/usePageTitle", () => ({ usePageTitle: vi.fn() }));
++vi.mock("@/components/ui/email-typo-hint", () => ({ EmailTypoHint: () => null }));
++import ContractJoin from "@/pages/ContractJoin";
++
++beforeEach(() => {
++  vi.clearAllMocks();
++  resolve.mockResolvedValue({ data: { ok: true, manager_name: "Fixture Manager" }, error: null });
++  join.mockResolvedValue({ data: { ok: true, manager_name: "Fixture Manager", intake_id: "receipt-1", provisioned: false, delivery: "not_configured", comp_pct: 60, redirect_url: "https://mgnagenthub.com/dashboard" }, error: null });
++});
++async function mount() {
++  render(<MemoryRouter initialEntries={["/contract/fixture-manager"]}><Routes><Route path="/contract/:slug" element={<ContractJoin />} /></Routes></MemoryRouter>);
++  await screen.findByRole("form", { name: "Contracting details" });
++}
++function fill(licensed: boolean) {
++  fireEvent.click(screen.getByLabelText(licensed ? "I hold a current life insurance license and the NPN above is mine." : "I am not licensed yet."));
++  fireEvent.change(screen.getByLabelText("Legal first name (as on your licence)"), { target: { value: "Pat" } });
++  fireEvent.change(screen.getByLabelText("Legal last name (as on your licence)"), { target: { value: "Producer" } });
++  fireEvent.change(screen.getByLabelText("Email"), { target: { value: "pat@example.com" } });
++  fireEvent.change(screen.getByLabelText("Mobile"), { target: { value: "4145550100" } });
++  if (licensed) fireEvent.change(screen.getByLabelText("NPN"), { target: { value: "1234567" } });
++}
++describe("public contracting join receipts", () => {
++  it("distinguishes a temporary lookup failure from an invalid link and supports retry", async () => {
++    resolve.mockResolvedValueOnce({ data: null, error: "Lookup temporarily unavailable", status: 503 })
++      .mockResolvedValueOnce({ data: { ok: true, manager_name: "Fixture Manager" }, error: null, status: 200 });
++    render(<MemoryRouter initialEntries={["/contract/fixture-manager"]}><Routes><Route path="/contract/:slug" element={<ContractJoin />} /></Routes></MemoryRouter>);
++    expect(await screen.findByRole("alert")).toHaveTextContent("Lookup temporarily unavailable");
++    expect(screen.queryByText("This link isn't valid")).not.toBeInTheDocument();
++    fireEvent.click(screen.getByRole("button", { name: "Retry link check" }));
++    await screen.findByRole("form", { name: "Contracting details" });
++    expect(resolve).toHaveBeenCalledTimes(2);
++  });
++
++  it("keeps a confirmed invalid link distinct from a service outage", async () => {
++    resolve.mockResolvedValue({ data: { ok: false, error: "NO_SUCH_LINK" }, error: "That link is not valid.", status: 404 });
++    render(<MemoryRouter initialEntries={["/contract/no-manager"]}><Routes><Route path="/contract/:slug" element={<ContractJoin />} /></Routes></MemoryRouter>);
++    await screen.findByText("This link isn't valid");
++    expect(screen.queryByRole("button", { name: "Retry link check" })).not.toBeInTheDocument();
++  });
++
++  it("clears the prior manager's saved receipt and form when opening a different team link", async () => {
++    let finishLookup!: (value: unknown) => void;
++    resolve.mockResolvedValueOnce({ data: { ok: true, manager_name: "First Manager" }, error: null, status: 200 })
++      .mockImplementationOnce(() => new Promise((r) => { finishLookup = r; }));
++    render(<MemoryRouter initialEntries={["/contract/first-manager"]}><Link to="/contract/second-manager">Open second team</Link><Routes><Route path="/contract/:slug" element={<ContractJoin />} /></Routes></MemoryRouter>);
++    await screen.findByRole("form", { name: "Contracting details" });
++    fill(true); fireEvent.click(screen.getByRole("button", { name: "Continue" }));
++    await screen.findByText("Request receipt: receipt-1");
++    fireEvent.click(screen.getByRole("link", { name: "Open second team" }));
++    expect(screen.queryByText("Request receipt: receipt-1")).not.toBeInTheDocument();
++    expect(screen.getByRole("status")).toHaveTextContent("Checking your link");
++    await act(async () => finishLookup({ data: { ok: true, manager_name: "Second Manager" }, error: null, status: 200 }));
++    expect(await screen.findByRole("heading", { name: "Join Second Manager's team" })).toBeInTheDocument();
++    expect(screen.getByLabelText("Email")).toHaveValue("");
++    expect(screen.getByLabelText("I hold a current life insurance license and the NPN above is mine.")).not.toBeChecked();
++  });
++
++  it("surfaces an unexpected submission error without leaving the form stuck", async () => {
++    join.mockRejectedValue(new Error("Connection lost while confirming the request"));
++    await mount(); fill(true); fireEvent.click(screen.getByRole("button", { name: "Continue" }));
++    expect(await screen.findByRole("alert")).toHaveTextContent("Connection lost while confirming the request");
++    expect(screen.getByRole("button", { name: "Continue" })).toBeEnabled();
++    expect(screen.getByLabelText("Email")).toHaveValue("pat@example.com");
++  });
++  it("requires an explicit license choice before making a request", async () => {
++    await mount();
++    expect(screen.getByLabelText("I hold a current life insurance license and the NPN above is mine.")).not.toBeChecked();
++    expect(screen.getByLabelText("I am not licensed yet.")).not.toBeChecked();
++    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
++    expect(screen.getByRole("alert")).toHaveTextContent("Choose your current license status");
++    expect(join).not.toHaveBeenCalled();
++  });
++  it("keeps the receipt and account/delivery blockers visible before the external continuation", async () => {
++    await mount(); fill(true); fireEvent.click(screen.getByRole("button", { name: "Continue" }));
++    expect(await screen.findByText("Request receipt: receipt-1")).toBeInTheDocument();
++    expect(screen.getByText(/account setup needs attention/)).toBeInTheDocument();
++    expect(screen.getByText(/Ethos submission is held for review/)).toBeInTheDocument();
++    expect(screen.getByRole("button", { name: "Continue to MGN" })).toBeInTheDocument();
++    expect(screen.queryByText(/Taking you there in/)).not.toBeInTheDocument();
++    expect(join).toHaveBeenCalledWith("fixture-manager", expect.objectContaining({ license_status: "licensed", npn: "1234567" }));
++  });
++  it("directs an explicitly unlicensed person to licensing without claiming an Ethos submission", async () => {
++    join.mockResolvedValue({ data: { ok: true, parked: true, intake_id: "receipt-2", agent_id: null }, error: null });
++    await mount(); fill(false); fireEvent.click(screen.getByRole("button", { name: "Continue" }));
++    expect(await screen.findByRole("link", { name: "Start licensing" })).toHaveAttribute("href", "/get-licensed");
++    expect(screen.getByText(/No Ethos submission has been made/)).toBeInTheDocument();
++    expect(screen.queryByRole("button", { name: "Continue to MGN" })).not.toBeInTheDocument();
++  });
++  it("refuses a non-HTTPS portal URL even when the hostname looks correct", async () => {
++    join.mockResolvedValue({ data: { ok: true, provisioned: true, redirect_url: "http://mgnagenthub.com/dashboard" }, error: null });
++    await mount(); fill(true); fireEvent.click(screen.getByRole("button", { name: "Continue" }));
++    await screen.findByRole("link", { name: "Open Galaxy sign-in" });
++    expect(screen.queryByRole("button", { name: "Continue to MGN" })).not.toBeInTheDocument();
++  });
++});

@@ -408,6 +408,44 @@ jobs:
             BOT_SQL_PERSISTENT_TOKEN="$APEX_BOT_TOKEN" \
             --project-ref "$PROJECT_REF"
 
+      # Apply the schema first so an unrelated function deployment failure
+      # cannot prevent the database changes required by this release.
+      - name: Apply migrations
+        # Migrations are not silently skippable. If skip_migrations input is
+        # explicitly true (manual override), we skip with a notice. If
+        # SUPABASE_DB_PASSWORD is missing the job FAILS so the green-but-
+        # didn't-actually-apply mode Sam reported is dead.
+        if: steps.scope.outputs.migrations_changed == 'true' && steps.scope.outputs.write_allowed == 'true'
+        run: |
+          set -uo pipefail
+          if [ -z "$SUPABASE_DB_PASSWORD" ]; then
+            echo "::error::SUPABASE_DB_PASSWORD secret missing — migrations cannot apply"
+            echo "::error::Add at: github.com/${{ github.repository }}/settings/secrets/actions → New repository secret → SUPABASE_DB_PASSWORD"
+            echo "::error::Value lives in: supabase.com → project $PROJECT_REF → Settings → Database → Connection password"
+            echo "### Migrations: FAILED — SUPABASE_DB_PASSWORD missing" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          # Direct pooler connection — no `supabase link` required (see note at
+          # the removed Link step). Password is URL-encoded because it lands in
+          # a connection string.
+          ENC_PW=$(python3 -c 'import urllib.parse,os; print(urllib.parse.quote(os.environ["SUPABASE_DB_PASSWORD"], safe=""))')
+          # aws-1, not aws-0: pooler tenants are sharded per host and this
+          # project's tenant answered "not found" on aws-0 (run 2026-08-07T21:58Z)
+          DB_URL="postgresql://postgres.${PROJECT_REF}:${ENC_PW}@aws-1-us-west-2.pooler.supabase.com:5432/postgres"
+          if supabase db push --db-url "$DB_URL" --include-all 2>&1 | tee /tmp/dbpush.log; then
+            {
+              echo "### Migrations"
+              echo "- Applied (or no pending)"
+              echo '```'
+              tail -30 /tmp/dbpush.log
+              echo '```'
+            } >> $GITHUB_STEP_SUMMARY
+          else
+            echo "::error::supabase db push failed — see job log for details"
+            tail -50 /tmp/dbpush.log
+            exit 1
+          fi
+
       - name: Deploy edge functions
         if: steps.scope.outputs.functions_changed == 'true' && steps.scope.outputs.write_allowed == 'true'
         env:
@@ -493,42 +531,6 @@ jobs:
           } >> $GITHUB_STEP_SUMMARY
           if [ "$FAIL_COUNT" -gt 0 ]; then
             echo "::error::$FAIL_COUNT function(s) failed to deploy: ${FAILED_FNS[*]}"
-            exit 1
-          fi
-
-      - name: Apply migrations
-        # Migrations are not silently skippable. If skip_migrations input is
-        # explicitly true (manual override), we skip with a notice. If
-        # SUPABASE_DB_PASSWORD is missing the job FAILS so the green-but-
-        # didn't-actually-apply mode Sam reported is dead.
-        if: steps.scope.outputs.migrations_changed == 'true' && steps.scope.outputs.write_allowed == 'true'
-        run: |
-          set -uo pipefail
-          if [ -z "$SUPABASE_DB_PASSWORD" ]; then
-            echo "::error::SUPABASE_DB_PASSWORD secret missing — migrations cannot apply"
-            echo "::error::Add at: github.com/${{ github.repository }}/settings/secrets/actions → New repository secret → SUPABASE_DB_PASSWORD"
-            echo "::error::Value lives in: supabase.com → project $PROJECT_REF → Settings → Database → Connection password"
-            echo "### Migrations: FAILED — SUPABASE_DB_PASSWORD missing" >> $GITHUB_STEP_SUMMARY
-            exit 1
-          fi
-          # Direct pooler connection — no `supabase link` required (see note at
-          # the removed Link step). Password is URL-encoded because it lands in
-          # a connection string.
-          ENC_PW=$(python3 -c 'import urllib.parse,os; print(urllib.parse.quote(os.environ["SUPABASE_DB_PASSWORD"], safe=""))')
-          # aws-1, not aws-0: pooler tenants are sharded per host and this
-          # project's tenant answered "not found" on aws-0 (run 2026-08-07T21:58Z)
-          DB_URL="postgresql://postgres.${PROJECT_REF}:${ENC_PW}@aws-1-us-west-2.pooler.supabase.com:5432/postgres"
-          if supabase db push --db-url "$DB_URL" --include-all 2>&1 | tee /tmp/dbpush.log; then
-            {
-              echo "### Migrations"
-              echo "- Applied (or no pending)"
-              echo '```'
-              tail -30 /tmp/dbpush.log
-              echo '```'
-            } >> $GITHUB_STEP_SUMMARY
-          else
-            echo "::error::supabase db push failed — see job log for details"
-            tail -50 /tmp/dbpush.log
             exit 1
           fi
 

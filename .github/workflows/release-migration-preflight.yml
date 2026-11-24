@@ -1,7 +1,8 @@
-name: Read release migration history
+name: Prepare producer release branch
 
-# One release-only read. This branch contains no migrations or deployment writes.
-# The returned version list is evidence for the unchanged pre-push gate.
+# The history job reads migration metadata. The publish job reconstructs only
+# the approved source tree and pushes its feature branch with normal Git hooks.
+# Neither job writes to the production database or deploys the website.
 on:
   push:
     branches: ["codex/producer-release-preflight-20261124"]
@@ -103,3 +104,50 @@ jobs:
             process.exitCode = 1;
           }
           NODE
+
+  publish:
+    needs: history
+    if: github.repository == 'samcom593-creator/rebuild-brighten-sparkle' && github.ref == 'refs/heads/codex/producer-release-preflight-20261124'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    concurrency:
+      group: publish-producer-workspace-20261124
+      cancel-in-progress: false
+    env:
+      RELEASE_WORKTREE: ${{ runner.temp }}/galaxy-producer-release-20261124
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Reconstruct and verify approved source tree
+        run: node .github/scripts/reconstruct-producer-release.mjs
+
+      - name: Install release dependencies with normal lifecycle scripts
+        working-directory: ${{ env.RELEASE_WORKTREE }}
+        run: npm ci --no-audit --no-fund
+
+      - name: Commit approved source with normal hooks
+        working-directory: ${{ env.RELEASE_WORKTREE }}
+        shell: bash
+        run: |
+          test "$(git config --get core.hooksPath)" = ".husky"
+          git config user.name "Sam James"
+          git config user.email "sam.com593@gmail.com"
+          git commit -m "Connect producer workspace, lead intake, recruiting, and contract management"
+          test "$(git rev-parse 'HEAD^{tree}')" = "c8932ddadf439b870c0ed0b65eea95aa7f04d2fa"
+          test "$(git rev-parse HEAD^)" = "a679d70e0b5ffd82aed3e660da898a2452cff502"
+          git diff --quiet
+          git diff --cached --quiet
+
+      - name: Read fresh migration history and publish verified feature branch
+        env:
+          APEX_BOT_TOKEN: ${{ secrets.APEX_BOT_TOKEN }}
+        run: node .github/scripts/publish-producer-release.mjs

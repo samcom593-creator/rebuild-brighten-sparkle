@@ -1,0 +1,437 @@
+diff --git a/supabase/migrations/20261124131000_interview_disposition_receipts.sql b/supabase/migrations/20261124131000_interview_disposition_receipts.sql
+new file mode 100644
+index 00000000..cb3ce191
+--- /dev/null
++++ b/supabase/migrations/20261124131000_interview_disposition_receipts.sql
+@@ -0,0 +1,161 @@
++-- One transaction keeps interview outcome, recruiting plan, and contact evidence
++-- together. Undo restores its own receipt only; newer activity makes it refuse.
++create table if not exists public.interview_disposition_receipts (
++  id uuid primary key default gen_random_uuid(),
++  sequence bigint generated always as identity,
++  interview_id uuid not null references public.interview_events(id),
++  application_id uuid references public.applications(id),
++  actor_user_id uuid references auth.users(id),
++  outcome text not null,
++  before_interview jsonb not null,
++  after_interview jsonb not null,
++  before_application jsonb,
++  after_application jsonb,
++  before_progress jsonb,
++  after_progress jsonb,
++  contact_log_id uuid,
++  contact_log_receipt jsonb,
++  can_undo boolean not null default false,
++  created_at timestamptz not null default now(),
++  undone_at timestamptz,
++  undone_by uuid references auth.users(id)
++);
++create index if not exists interview_disposition_receipts_latest_idx on public.interview_disposition_receipts(interview_id,sequence desc);
++alter table public.interview_disposition_receipts enable row level security;
++revoke all on public.interview_disposition_receipts from public,anon,authenticated;
++grant select on public.interview_disposition_receipts to service_role;
++
++create or replace function public.cc_dispose_interview(p_id uuid,p_outcome text,p_notes text default null,p_followup_due_at timestamptz default null)
++returns public.interview_events language plpgsql security definer set search_path = public as $fn$
++declare
++  before_row public.interview_events; after_row public.interview_events;
++  app public.applications; app_before jsonb; app_after jsonb;
++  progress_before jsonb; progress_after jsonb;
++  agent_ids uuid[]; canonical_agent uuid; contact_id uuid; contact_receipt jsonb;
++  v_contact_outcome text; calendar_only boolean;
++begin
++  select * into before_row from public.interview_events where id=p_id for update;
++  if not found then raise exception 'Interview not found'; end if;
++  if not (coalesce(auth.role(),'')='service_role' or coalesce(public.calendar_is_scheduling_staff(),false) or coalesce(before_row.owner_user_id=auth.uid(),false)) then
++    raise exception 'not authorized to record an interview outcome' using errcode='42501';
++  end if;
++  if p_outcome is null or p_outcome not in ('completed','hired','contracted','passed','no_show','no_answer','rescheduled','bad_number','callback','not_interested','not_a_fit') then raise exception 'Invalid interview outcome'; end if;
++  if p_outcome='callback' and (p_followup_due_at is null or p_followup_due_at<=now()) then raise exception 'Choose a future callback date before saving'; end if;
++  if before_row.application_id is not null then
++    select * into app from public.applications where id=before_row.application_id for update;
++    app_before:=to_jsonb(app);
++    select to_jsonb(p) into progress_before from public.next_step_progress p where p.application_id=app.id for update;
++  end if;
++  if p_outcome in ('hired','contracted') then
++    select array_agg(a.id) into agent_ids from public.agents a
++      where (a.id=before_row.agent_id or (before_row.application_id is not null and a.source_application_id=before_row.application_id))
++      and a.user_id is not null and coalesce(a.is_deactivated,false)=false and a.canonical_agent_id is null;
++    if coalesce(cardinality(agent_ids),0)<>1 then raise exception 'Create the canonical agent account through add-agent before recording Hired'; end if;
++    canonical_agent:=agent_ids[1];
++  end if;
++
++  update public.interview_events set outcome=p_outcome,outcome_at=clock_timestamp(),outcome_by=auth.uid(),
++    agent_id=coalesce(canonical_agent,agent_id), notes=coalesce(nullif(btrim(p_notes),''),notes),
++    followup_due_at=case when p_outcome in ('hired','contracted','not_interested','not_a_fit') then null else coalesce(p_followup_due_at,followup_due_at) end,
++    contacted_at=case when p_outcome='callback' then now() else contacted_at end
++    where id=p_id returning * into after_row;
++
++  calendar_only:=before_row.application_id is not null and auth.uid() is null and p_outcome='no_show' and coalesce(p_notes,'') ilike 'Calendly no-show%';
++  if before_row.application_id is not null then
++    if calendar_only then
++      update public.applications set status='attended_no_show'::public.application_status where id=app.id;
++    else
++      contact_id:=public.fn_log_human_contact(app.id,'call',p_outcome,auth.uid(),case when auth.uid() is null then 'one_tap_link' else 'interview_disposition' end,'interview '||p_id::text);
++      v_contact_outcome:=case when p_outcome in ('callback','no_answer','not_interested') then p_outcome when p_outcome='bad_number' then 'wrong_number' else null end;
++      update public.application_contact_log set contact_outcome=v_contact_outcome,
++        next_action=case when p_followup_due_at is not null then case when p_outcome='callback' then 'Call back' else 'Follow up' end else null end,
++        next_action_due_at=p_followup_due_at where id=contact_id;
++      update public.applications a set
++        last_contact_outcome=coalesce(v_contact_outcome,a.last_contact_outcome),
++        last_contact_outcome_at=case when v_contact_outcome is not null then now() else a.last_contact_outcome_at end,
++        last_contact_outcome_by=case when v_contact_outcome is not null then auth.uid() else a.last_contact_outcome_by end,
++        last_contact_channel=case when v_contact_outcome is not null then 'call' else a.last_contact_channel end,
++        next_action=case when p_outcome in ('hired','contracted','not_interested','not_a_fit') then null when p_followup_due_at is not null then case when p_outcome='callback' then 'Call back' else 'Follow up' end else a.next_action end,
++        next_action_due_at=case when p_outcome in ('hired','contracted','not_interested','not_a_fit') then null when p_followup_due_at is not null then p_followup_due_at else a.next_action_due_at end,
++        next_action_set_at=case when p_followup_due_at is not null or p_outcome in ('hired','contracted','not_interested','not_a_fit') then now() else a.next_action_set_at end,
++        next_action_set_by=case when p_followup_due_at is not null or p_outcome in ('hired','contracted','not_interested','not_a_fit') then auth.uid() else a.next_action_set_by end,
++        waiting_reason=case when p_followup_due_at is not null or p_outcome in ('hired','contracted','not_interested','not_a_fit') then null else a.waiting_reason end,
++        next_review_at=case when p_followup_due_at is not null or p_outcome in ('hired','contracted','not_interested','not_a_fit') then null else a.next_review_at end
++        where a.id=app.id;
++    end if;
++    -- add-agent has already moved a hire into onboarding. A later disposition
++    -- must not move that person backwards to recruiting/contracting.
++    if canonical_agent is not null or public.fn_application_has_agent(app.id) then
++      update public.applications set status=case when app.status in ('onboarding','producing','approved') then app.status else 'onboarding'::public.application_status end,
++        closed_at=coalesce(closed_at,now()) where id=app.id;
++    end if;
++    select to_jsonb(a) into app_after from public.applications a where a.id=app.id;
++    select to_jsonb(p) into progress_after from public.next_step_progress p where p.application_id=app.id;
++    select to_jsonb(l) into contact_receipt from public.application_contact_log l where l.id=contact_id;
++  end if;
++  insert into public.interview_disposition_receipts(interview_id,application_id,actor_user_id,outcome,before_interview,after_interview,before_application,after_application,before_progress,after_progress,contact_log_id,contact_log_receipt,can_undo)
++  values(p_id,before_row.application_id,auth.uid(),p_outcome,to_jsonb(before_row),to_jsonb(after_row),app_before,app_after,progress_before,progress_after,contact_id,contact_receipt,auth.uid() is not null and canonical_agent is null and not calendar_only);
++  return after_row;
++end $fn$;
++revoke all on function public.cc_dispose_interview(uuid,text,text,timestamptz) from public,anon;
++grant execute on function public.cc_dispose_interview(uuid,text,text,timestamptz) to authenticated,service_role;
++
++create or replace function public.cc_record_interview_disposition(p_id uuid,p_outcome text,p_notes text,p_followup_due_at timestamptz,p_expected_updated_at timestamptz)
++returns jsonb language plpgsql security definer set search_path = public as $fn$
++declare r public.interview_events; receipt public.interview_disposition_receipts;
++begin
++  select * into r from public.interview_events where id=p_id for update;
++  if not found then raise exception 'Interview not found'; end if;
++  if not (coalesce(auth.role(),'')='service_role' or coalesce(public.calendar_is_scheduling_staff(),false) or coalesce(r.owner_user_id=auth.uid(),false)) then raise exception 'not authorized' using errcode='42501'; end if;
++  if p_expected_updated_at is null or r.updated_at is distinct from p_expected_updated_at or r.outcome is not null then raise exception 'Interview changed. Refresh before recording another outcome.' using errcode='40001'; end if;
++  perform public.cc_dispose_interview(p_id,p_outcome,p_notes,p_followup_due_at);
++  select * into receipt from public.interview_disposition_receipts where interview_id=p_id order by sequence desc limit 1;
++  return jsonb_build_object('receipt_id',receipt.id,'can_undo',receipt.can_undo);
++end $fn$;
++
++create or replace function public.cc_undo_interview_disposition(p_receipt_id uuid)
++returns jsonb language plpgsql security definer set search_path = public as $fn$
++declare receipt public.interview_disposition_receipts; r public.interview_events; old_row public.interview_events;
++  app public.applications; old_app public.applications; progress public.next_step_progress; old_progress public.next_step_progress; progress_current jsonb;
++begin
++  select * into receipt from public.interview_disposition_receipts where id=p_receipt_id for update;
++  if not found then raise exception 'Outcome receipt not found'; end if;
++  select * into r from public.interview_events where id=receipt.interview_id for update;
++  if not (coalesce(auth.role(),'')='service_role' or coalesce(public.calendar_is_scheduling_staff(),false) or coalesce(r.owner_user_id=auth.uid(),false)) then raise exception 'not authorized' using errcode='42501'; end if;
++  if receipt.undone_at is not null then return jsonb_build_object('ok',true,'already_undone',true); end if;
++  if not receipt.can_undo or receipt.outcome in ('hired','contracted') then raise exception 'This action cannot be undone. Agent accounts and onboarding are preserved.'; end if;
++  if to_jsonb(r) is distinct from receipt.after_interview then raise exception 'Interview changed after this outcome; Undo refused.' using errcode='40001'; end if;
++  if receipt.application_id is not null then
++    select * into app from public.applications where id=receipt.application_id for update;
++    select * into progress from public.next_step_progress where application_id=receipt.application_id for update;
++    progress_current:=case when found then to_jsonb(progress) else null end;
++    if to_jsonb(app) is distinct from receipt.after_application or progress_current is distinct from receipt.after_progress then raise exception 'Recruiting activity changed after this outcome; Undo refused.' using errcode='40001'; end if;
++  end if;
++  old_row:=jsonb_populate_record(null::public.interview_events,receipt.before_interview);
++  update public.interview_events set outcome=old_row.outcome,outcome_at=old_row.outcome_at,outcome_by=old_row.outcome_by,notes=old_row.notes,
++    followup_due_at=old_row.followup_due_at,contacted_at=old_row.contacted_at,agent_id=old_row.agent_id where id=r.id;
++  if receipt.application_id is not null then
++    -- The full original contact row remains in this immutable receipt. Remove
++    -- only its false operational contact evidence, never unrelated history.
++    delete from public.application_contact_log where id=receipt.contact_log_id and application_id=receipt.application_id;
++    old_app:=jsonb_populate_record(null::public.applications,receipt.before_application);
++    update public.applications set status=old_app.status,closed_at=old_app.closed_at,
++      last_contacted_at=old_app.last_contacted_at,contacted_at=old_app.contacted_at,human_first_contact_at=old_app.human_first_contact_at,human_last_contact_at=old_app.human_last_contact_at,
++      last_contact_outcome=old_app.last_contact_outcome,last_contact_outcome_at=old_app.last_contact_outcome_at,last_contact_outcome_by=old_app.last_contact_outcome_by,last_contact_channel=old_app.last_contact_channel,
++      next_action=old_app.next_action,next_action_due_at=old_app.next_action_due_at,next_action_set_at=old_app.next_action_set_at,next_action_set_by=old_app.next_action_set_by,
++      waiting_reason=old_app.waiting_reason,next_review_at=old_app.next_review_at where id=receipt.application_id;
++    if receipt.before_progress is null then
++      delete from public.next_step_progress where application_id=receipt.application_id;
++    else
++      old_progress:=jsonb_populate_record(null::public.next_step_progress,receipt.before_progress);
++      update public.next_step_progress set current_stage_key=old_progress.current_stage_key,prior_stage_key=old_progress.prior_stage_key,entered_at=old_progress.entered_at,
++        completed_at=old_progress.completed_at,is_stalled=old_progress.is_stalled,stalled_at=old_progress.stalled_at,stall_reason=old_progress.stall_reason,sla_due_at=old_progress.sla_due_at,
++        manual_stage_key=old_progress.manual_stage_key,manual_stage_at=old_progress.manual_stage_at,manual_by=old_progress.manual_by,metadata=old_progress.metadata,
++        owner_role=old_progress.owner_role,owner_user_id=old_progress.owner_user_id,status=old_progress.status where id=old_progress.id;
++    end if;
++  end if;
++  update public.interview_disposition_receipts set undone_at=now(),undone_by=auth.uid() where id=receipt.id;
++  return jsonb_build_object('ok',true,'receipt_id',receipt.id);
++end $fn$;
++revoke all on function public.cc_record_interview_disposition(uuid,text,text,timestamptz,timestamptz),public.cc_undo_interview_disposition(uuid) from public,anon;
++grant execute on function public.cc_record_interview_disposition(uuid,text,text,timestamptz,timestamptz),public.cc_undo_interview_disposition(uuid) to authenticated,service_role;
+diff --git a/supabase/migrations/20261124140000_consumer_source_import.sql b/supabase/migrations/20261124140000_consumer_source_import.sql
+new file mode 100644
+index 00000000..c89cd551
+--- /dev/null
++++ b/supabase/migrations/20261124140000_consumer_source_import.sql
+@@ -0,0 +1,264 @@
++-- Consumer intake is separate from recruiting, carrier production and email.
++-- No source data belongs in this public repository. Rows enter through this authenticated RPC.
++create table if not exists public.consumer_import_batches (
++  id uuid primary key default gen_random_uuid(),
++  batch_key text not null unique,
++  source_key text not null,
++  source_name text not null,
++  source_kind text not null check (source_kind in ('pos','mortgage')),
++  created_by uuid not null references auth.users(id),
++  created_at timestamptz not null default now(),
++  receipt jsonb not null default '{}'::jsonb
++);
++create table if not exists public.consumer_import_rows (
++  id uuid primary key default gen_random_uuid(),
++  batch_id uuid not null references public.consumer_import_batches(id),
++  source_key text not null,
++  row_key text not null,
++  source_row integer not null,
++  status text not null check (status in ('imported','matched','review','duplicate')),
++  lead_id uuid references public.client_leads(id),
++  issues text[] not null default '{}',
++  payload jsonb not null,
++  resolved_by_row_id uuid references public.consumer_import_rows(id),
++  created_at timestamptz not null default now(),
++  unique(source_key,row_key)
++);
++create index if not exists consumer_import_rows_batch_idx on public.consumer_import_rows(batch_id);
++create index if not exists consumer_import_rows_lead_idx on public.consumer_import_rows(lead_id) where lead_id is not null;
++create or replace function public.consumer_phone10(p_value text)
++returns text language sql immutable set search_path to 'public' as $$
++  with n as (select regexp_replace(coalesce(p_value,''),'[^0-9]','','g') d)
++  select case when d ~ '^[2-9][0-9]{2}[2-9][0-9]{6}$' then d
++    when d ~ '^1[2-9][0-9]{2}[2-9][0-9]{6}$' then substring(d from 2) end from n
++$$;
++revoke all on function public.consumer_phone10(text) from public,anon;
++grant execute on function public.consumer_phone10(text) to authenticated;
++create index if not exists consumer_client_phone_digits_idx on public.client_leads(phone_digits);
++create index if not exists consumer_client_phone_e164_idx on public.client_leads(phone_e164);
++create index if not exists consumer_client_phone_alt_idx on public.client_leads(public.consumer_phone10(phone_alt)) where phone_alt is not null;
++create index if not exists consumer_client_email_idx on public.client_leads(lower(email)) where email is not null;
++create index if not exists consumer_client_policy_idx on public.client_leads(policy_carrier,policy_number) where policy_number is not null;
++create table if not exists public.consumer_policy_observations (
++  id uuid primary key default gen_random_uuid(),
++  lead_id uuid not null references public.client_leads(id),
++  import_row_id uuid not null unique references public.consumer_import_rows(id),
++  policy_number text,
++  carrier text,
++  product text,
++  source_policy_date date,
++  source_status text,
++  supplier_amount numeric,
++  amount_cadence text not null default 'unknown' check (amount_cadence = 'unknown'),
++  ownership_claim text not null default 'supplier_reported' check (ownership_claim = 'supplier_reported'),
++  verified_at timestamptz check (verified_at is null),
++  observed_at timestamptz not null default now()
++);
++alter table public.consumer_import_batches enable row level security;
++alter table public.consumer_import_rows enable row level security;
++alter table public.consumer_policy_observations enable row level security;
++revoke all on public.consumer_import_batches, public.consumer_import_rows, public.consumer_policy_observations from public, anon, authenticated;
++grant select on public.consumer_import_batches, public.consumer_import_rows, public.consumer_policy_observations to authenticated;
++create policy consumer_import_batches_admin_read on public.consumer_import_batches for select to authenticated using (public.can_view_sold_calls());
++create policy consumer_import_rows_admin_read on public.consumer_import_rows for select to authenticated using (public.can_view_sold_calls());
++create policy consumer_policy_observations_admin_read on public.consumer_policy_observations for select to authenticated using (public.can_view_sold_calls());
++
++create or replace function public.consumer_import_resolve_review(p_source_key text,p_source_row integer,p_payload jsonb,p_resolved_by uuid)
++returns void language sql security definer set search_path to 'public' as $$
++  update public.consumer_import_rows old set resolved_by_row_id = p_resolved_by
++  where old.source_key = p_source_key and old.source_row = p_source_row
++    and old.status = 'review' and old.resolved_by_row_id is null
++    and (
++      public.consumer_phone10(old.payload->>'phone_digits') = any(array[public.consumer_phone10(p_payload->>'phone_digits'),public.consumer_phone10(p_payload->>'phone_alt')])
++      or public.consumer_phone10(old.payload->>'phone_alt') = any(array[public.consumer_phone10(p_payload->>'phone_digits'),public.consumer_phone10(p_payload->>'phone_alt')])
++      or (nullif(btrim(old.payload->>'email'),'') is not null and lower(old.payload->>'email') = lower(p_payload->>'email'))
++      or (nullif(btrim(old.payload->>'policy_carrier'),'') is not null and old.payload->>'policy_carrier' = p_payload->>'policy_carrier'
++          and nullif(btrim(old.payload->>'policy_number'),'') is not null and old.payload->>'policy_number' = p_payload->>'policy_number')
++    )
++$$;
++revoke all on function public.consumer_import_resolve_review(text,integer,jsonb,uuid) from public,anon,authenticated;
++
++-- A bounded transaction per chunk, with a stable receipt for timeout/retry recovery.
++create or replace function public.consumer_lead_import(p_source_key text, p_source_name text, p_source_kind text, p_rows jsonb)
++returns jsonb language plpgsql security definer set search_path to 'public' as $$
++declare
++  v_batch uuid; v_batch_key text; v_receipt jsonb; r jsonb; v_raw jsonb;
++  v_key text; v_row_id uuid; v_lead uuid; v_match public.client_leads%rowtype;
++  v_phone text; v_alt text; v_phones text[]; v_email text; v_state text; v_name text; v_dob date;
++  v_policy_date date; v_lead_date date; v_dnc boolean; v_issues text[];
++  v_status text; v_count int; v_inserted int := 0; v_matched int := 0;
++  v_review int := 0; v_duplicate int := 0; v_suppressed int := 0;
++begin
++  if auth.uid() is null or not coalesce(public.can_view_sold_calls(),false) then
++    raise exception 'Consumer imports require lead management access.' using errcode = '42501';
++  end if;
++  if nullif(btrim(p_source_key),'') is null or length(p_source_key) > 200
++     or nullif(btrim(p_source_name),'') is null or length(p_source_name) > 200
++     or p_source_kind not in ('pos','mortgage') or p_source_kind is null
++     or jsonb_typeof(p_rows) <> 'array' or p_rows is null
++     or jsonb_array_length(p_rows) not between 1 and 250 then
++    raise exception 'Provide a named consumer source and 1 to 250 rows.' using errcode = '22023';
++  end if;
++  -- Serializes this intake writer, including separate sources sharing the same consumer.
++  perform pg_advisory_xact_lock(hashtextextended('consumer_lead_import',0));
++  v_batch_key := md5(p_source_key || ':' || p_source_kind || ':' || p_rows::text);
++  select id, receipt into v_batch, v_receipt from public.consumer_import_batches where batch_key = v_batch_key;
++  if found then return v_receipt || jsonb_build_object('replayed',true); end if;
++  insert into public.consumer_import_batches(batch_key,source_key,source_name,source_kind,created_by)
++  values(v_batch_key,p_source_key,p_source_name,p_source_kind,auth.uid()) returning id into v_batch;
++
++  for r in select value from jsonb_array_elements(p_rows) loop
++    if jsonb_typeof(r) <> 'object' then raise exception 'Each row must be an object.' using errcode = '22023'; end if;
++    v_issues := '{}'; v_lead := null; v_match := null; v_dob := null; v_policy_date := null; v_lead_date := null;
++    v_raw := case when jsonb_typeof(r->'raw') = 'object' then r->'raw' else '{}'::jsonb end;
++    v_key := md5((r - 'source_row' - 'issues' - 'raw')::text || ':' || (v_raw - 'source_row' - 'import_issues' - 'import_review_required')::text);
++    select id,lead_id into v_row_id,v_lead from public.consumer_import_rows where source_key = p_source_key and row_key = v_key;
++    if found then
++      if v_lead is not null and (r->>'source_row') ~ '^[0-9]{1,7}$' then
++        perform public.consumer_import_resolve_review(p_source_key,(r->>'source_row')::int,r,v_row_id);
++      end if;
++      v_duplicate := v_duplicate + 1; continue;
++    end if;
++    v_phone := public.consumer_phone10(r->>'phone_digits');
++    v_alt := public.consumer_phone10(r->>'phone_alt');
++    v_phones := array_remove(array[v_phone,v_alt],null);
++    if v_phone is null then v_issues := array_append(v_issues,'invalid_phone'); end if;
++    v_email := lower(nullif(btrim(r->>'email'),''));
++    if v_email !~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$' then v_email := null; end if;
++    v_state := upper(nullif(btrim(r->>'state'),''));
++    if v_state is null or not v_state = any(string_to_array('AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY',' ')) then
++      v_state := null; v_issues := array_append(v_issues,'state_needs_review');
++    end if;
++    v_name := lower(regexp_replace(btrim(concat_ws(' ',r->>'first_name',r->>'last_name')),'\s+',' ','g'));
++    if nullif(btrim(r->>'first_name'),'') is null or nullif(btrim(r->>'last_name'),'') is null then v_issues := array_append(v_issues,'incomplete_name'); end if;
++    begin
++      v_dob := nullif(r->>'dob','')::date; v_policy_date := nullif(r->>'policy_date','')::date; v_lead_date := nullif(r->>'lead_date','')::date;
++    exception when invalid_datetime_format or datetime_field_overflow then v_issues := array_append(v_issues,'invalid_date');
++    end;
++    if p_source_kind = 'pos' and nullif(btrim(r->>'policy_number'),'') is null then v_issues := array_append(v_issues,'missing_policy_reference'); end if;
++    -- Client-side warnings survive a missing/ambiguous cell; server checks cannot be bypassed by removing them.
++    if jsonb_typeof(r->'issues') = 'array' then
++      select coalesce(array_agg(distinct issue),'{}') into v_issues from (
++        select unnest(v_issues) issue union all
++        select value from jsonb_array_elements_text(r->'issues') where value in ('incomplete_name','invalid_phone','state_needs_review','missing_policy_reference','invalid_dob','invalid_source_date')
++      ) z;
++    end if;
++    v_dnc := coalesce(r->>'dnc','false') = 'true' or coalesce(r->>'notes','') ~* '\m(d[ .]*n[ .]*c|do[[:space:]]*not[[:space:]]*(call|contact|text|email)|don[''’]?t[[:space:]]*(call|contact|text|email)|stop[[:space:]]*(calling|contacting|texting|emailing)|remove[[:space:]]+(me|my[[:space:]]+(number|name))|unsubscribe)\M';
++    if v_dnc then
++      insert into public.lead_contact_dnc(phone10,recorded_source) select distinct p,'consumer_import:' || p_source_key from unnest(v_phones) p on conflict(phone10) do nothing;
++    end if;
++    v_dnc := v_dnc or exists(select 1 from public.lead_contact_dnc where phone10 = any(v_phones));
++    if v_dnc then v_suppressed := v_suppressed + 1; end if;
++    if cardinality(v_issues) = 0 then
++      -- A phone alone is not an identity. Exact names and non-conflicting DOBs are required.
++      select count(*) into v_count from public.client_leads l where
++        (l.phone_digits = any(v_phones) or l.phone_e164 = any(array['+1' || v_phone,'+1' || v_alt]) or public.consumer_phone10(l.phone_alt) = any(v_phones) or (v_email is not null and lower(l.email) = v_email)
++         or (nullif(r->>'policy_carrier','') is not null and l.policy_carrier = r->>'policy_carrier' and l.policy_number = r->>'policy_number'));
++      if v_count > 1 then v_issues := array_append(v_issues,'conflicting_contact_identifiers');
++      elsif v_count = 1 then
++        select count(*) into v_count from public.client_leads l where
++          (l.phone_digits = any(v_phones) or l.phone_e164 = any(array['+1' || v_phone,'+1' || v_alt]) or public.consumer_phone10(l.phone_alt) = any(v_phones))
++          and lower(regexp_replace(btrim(concat_ws(' ',l.first_name,l.last_name)),'\s+',' ','g')) = v_name
++          and (l.dob is null or v_dob is null or l.dob::text = v_dob::text)
++          and (v_email is null or nullif(l.email,'') is null or lower(l.email) = v_email);
++        if v_count = 1 then
++          select l.* into v_match from public.client_leads l where
++            (l.phone_digits = any(v_phones) or l.phone_e164 = any(array['+1' || v_phone,'+1' || v_alt]) or public.consumer_phone10(l.phone_alt) = any(v_phones))
++            and lower(regexp_replace(btrim(concat_ws(' ',l.first_name,l.last_name)),'\s+',' ','g')) = v_name
++            and (l.dob is null or v_dob is null or l.dob::text = v_dob::text)
++            and (v_email is null or nullif(l.email,'') is null or lower(l.email) = v_email) for update;
++          v_lead := v_match.id; v_status := 'matched';
++          -- Preserve assignment, dispositions, production and every original populated field.
++          update public.client_leads set
++            source_files = array(select distinct x from unnest(coalesce(v_match.source_files,array[v_match.source_file]) || array[p_source_name]) x where x is not null),
++            dnc = coalesce(v_match.dnc,false) or v_dnc,
++            raw = coalesce(v_match.raw,'{}'::jsonb) || jsonb_build_object('latest_consumer_import_batch',v_batch),
++            updated_at = now()
++          where id = v_lead;
++          v_matched := v_matched + 1;
++        else v_issues := array_append(v_issues,'identity_match_needs_review'); end if;
++      end if;
++    end if;
++    if cardinality(v_issues) > 0 then v_status := 'review'; v_review := v_review + 1;
++    elsif v_lead is null then
++      insert into public.client_leads(
++        external_id,source_file,source_files,first_name,last_name,phone_digits,phone_e164,phone_alt,email,state,street_address,dob,
++        policy_number,policy_carrier,policy_product,policy_date,has_existing_policy,original_agent,original_agent_code,
++        loan_amount,loan_type,lender_name,lead_date,lead_type,lead_pack,notes,dnc,status,last_disposition,raw)
++      values(
++        'consumer:' || p_source_key || ':' || v_key,p_source_name,array[p_source_name],btrim(r->>'first_name'),btrim(r->>'last_name'),
++        v_phone,'+1' || v_phone,v_alt,v_email,v_state,nullif(r->>'street_address',''),v_dob,
++        nullif(r->>'policy_number',''),nullif(r->>'policy_carrier',''),nullif(r->>'policy_product',''),v_policy_date,
++        case when p_source_kind = 'pos' then true else null end,nullif(r->>'original_agent',''),nullif(r->>'original_agent_code',''),
++        case when (r->>'loan_amount') ~ '^[0-9]+(\.[0-9]+)?$' then (r->>'loan_amount')::numeric end,
++        nullif(r->>'loan_type',''),nullif(r->>'lender_name',''),v_lead_date,
++        case when p_source_kind = 'pos' then 'policy_owner' else 'mortgage' end,p_source_name,nullif(r->>'notes',''),v_dnc,
++        case when v_dnc then 'do not call' else 'new' end,case when v_dnc then 'do not call' else nullif(r->>'last_disposition','') end,
++        v_raw || jsonb_build_object('source_type',p_source_kind,'source_key',p_source_key,'source_batch_id',v_batch,
++          'state_evidence','supplier_explicit','policy_ownership_claim',case when p_source_kind = 'pos' then 'supplier_reported' end,
++          'policy_status_verified_at',null,'import_review_required',false,'supplier_amount_cadence','unknown')) returning id into v_lead;
++      v_status := 'imported'; v_inserted := v_inserted + 1;
++    end if;
++    insert into public.consumer_import_rows(batch_id,source_key,row_key,source_row,status,lead_id,issues,payload)
++    values(v_batch,p_source_key,v_key,case when (r->>'source_row') ~ '^[0-9]{1,7}$' then (r->>'source_row')::int else 0 end,v_status,v_lead,v_issues,r)
++    returning id into v_row_id;
++    if v_lead is not null and (r->>'source_row') ~ '^[0-9]{1,7}$' then
++      -- A corrected source cell resolves its old review entry without erasing the original receipt.
++      perform public.consumer_import_resolve_review(p_source_key,(r->>'source_row')::int,r,v_row_id);
++    end if;
++    if v_lead is not null and p_source_kind = 'pos' then
++      insert into public.consumer_policy_observations(lead_id,import_row_id,policy_number,carrier,product,source_policy_date,source_status,supplier_amount)
++      values(v_lead,v_row_id,nullif(r->>'policy_number',''),nullif(r->>'policy_carrier',''),nullif(r->>'policy_product',''),v_policy_date,v_raw->>'policy_status_claim',
++        case when (v_raw->>'supplier_amount') ~ '^[0-9]+(\.[0-9]+)?$' then (v_raw->>'supplier_amount')::numeric end);
++    end if;
++  end loop;
++  v_receipt := jsonb_build_object('batch_id',v_batch,'source',p_source_name,'received',jsonb_array_length(p_rows),
++    'imported',v_inserted,'matched',v_matched,'review',v_review,'duplicate',v_duplicate,'suppressed',v_suppressed,'replayed',false);
++  update public.consumer_import_batches set receipt = v_receipt where id = v_batch;
++  return v_receipt;
++end $$;
++revoke all on function public.consumer_lead_import(text,text,text,jsonb) from public,anon;
++grant execute on function public.consumer_lead_import(text,text,text,jsonb) to authenticated;
++
++create or replace function public.consumer_import_history(p_limit integer default 40)
++returns jsonb language plpgsql stable security definer set search_path to 'public' as $$
++begin
++  if auth.uid() is null or not coalesce(public.can_view_sold_calls(),false) then raise exception 'Consumer imports require lead management access.' using errcode = '42501'; end if;
++  return coalesce((select jsonb_agg(to_jsonb(r) order by r.created_at desc) from (
++    select id,source_name,created_at,receipt from public.consumer_import_batches order by created_at desc limit greatest(1,least(coalesce(p_limit,40),100))
++  ) r),'[]'::jsonb);
++end $$;
++create or replace function public.consumer_import_review(p_limit integer default 50)
++returns jsonb language plpgsql stable security definer set search_path to 'public' as $$
++begin
++  if auth.uid() is null or not coalesce(public.can_view_sold_calls(),false) then raise exception 'Consumer imports require lead management access.' using errcode = '42501'; end if;
++  return coalesce((select jsonb_agg(to_jsonb(r) order by r.created_at desc) from (
++    select r.id,r.source_row,r.issues,r.created_at,b.source_name,r.source_key,
++      jsonb_build_object('first_name',r.payload->>'first_name','last_name',r.payload->>'last_name','state',r.payload->>'state') as payload
++    from public.consumer_import_rows r join public.consumer_import_batches b on b.id=r.batch_id
++    where r.status='review' and r.resolved_by_row_id is null
++    order by r.created_at desc limit greatest(1,least(coalesce(p_limit,50),100))
++  ) r),'[]'::jsonb);
++end $$;
++revoke all on function public.consumer_import_history(integer),public.consumer_import_review(integer) from public,anon;
++grant execute on function public.consumer_import_history(integer),public.consumer_import_review(integer) to authenticated;
++
++-- Rich source history follows the assigned pack, without exposing arbitrary consumers.
++create or replace function public.my_lead_source_history(p_item uuid)
++returns jsonb language plpgsql stable security definer set search_path to 'public' as $$
++declare v_lead uuid;
++begin
++  select i.lead_id into v_lead from public.lead_bundle_items i
++  join public.lead_bundles b on b.id = i.bundle_id and b.archived_at is null
++  where i.id = p_item and i.removed_at is null and i.source_kind = 'marketing'
++    and (public.can_view_sold_calls() or exists(select 1 from public.lead_bundle_grants g where g.bundle_id = i.bundle_id and g.user_id = auth.uid() and g.revoked_at is null));
++  if v_lead is null then return '[]'::jsonb; end if;
++  return coalesce((select jsonb_agg(jsonb_build_object('observation_id',o.id,'policy_number',o.policy_number,'carrier',o.carrier,'product',o.product,
++    'source_policy_date',o.source_policy_date,'source_status',o.source_status,'supplier_amount',o.supplier_amount,
++    'amount_cadence',o.amount_cadence,'ownership_claim',o.ownership_claim,'verified_at',o.verified_at,
++    'source_name',b.source_name,'source_row',r.source_row,'observed_at',o.observed_at) order by o.observed_at desc)
++    from public.consumer_policy_observations o join public.consumer_import_rows r on r.id = o.import_row_id
++    join public.consumer_import_batches b on b.id = r.batch_id where o.lead_id = v_lead),'[]'::jsonb);
++end $$;
++revoke all on function public.my_lead_source_history(uuid) from public,anon;
++grant execute on function public.my_lead_source_history(uuid) to authenticated;

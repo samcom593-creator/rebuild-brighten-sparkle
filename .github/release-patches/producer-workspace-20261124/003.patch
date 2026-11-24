@@ -1,0 +1,825 @@
+diff --git a/src/components/calltraining/CallReviewBoard.tsx b/src/components/calltraining/CallReviewBoard.tsx
+index 0423bdd4..997df39f 100644
+--- a/src/components/calltraining/CallReviewBoard.tsx
++++ b/src/components/calltraining/CallReviewBoard.tsx
+@@ -8,7 +8,7 @@
+ import { useState, type ReactNode } from "react";
+ import { useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
+ import { ChevronDown, Phone } from "lucide-react";
+-import { looseSupabase } from "@/lib/looseSupabase";
++import { looseSupabase, type LooseResult } from "@/lib/looseSupabase";
+ import { GlassCard } from "@/components/ui/glass-card";
+ import { Button } from "@/components/ui/button";
+ import { contactLinkProps, formatPhoneDisplay, phoneHref } from "@/lib/phone";
+@@ -26,11 +26,10 @@ const SECTIONS: Array<{ key: Key; title: string; blurb: string }> = [
+   { key: "risk", title: "Drop-off and chargeback risk", blurb: "Sales that fell off, are lapsing, were declined after SSN and bank, carry a compliance flag, sit pending, or never reached the book." },
+ ];
+ 
+-function rows<T>(p: Promise<unknown>): Promise<T[]> {
+-  return (p as Promise<{ data: T[] | null; error: Error | null }>).then(({ data, error }) => {
+-    if (error) throw error;
+-    return data ?? [];
+-  });
++async function rows<T>(query: PromiseLike<LooseResult<T[]>>): Promise<T[]> {
++  const { data, error } = await query;
++  if (error) throw error;
++  return data ?? [];
+ }
+ const view = (key: string, fn: () => Promise<unknown[]>) => ({ queryKey: ["call-review", key], queryFn: fn, staleTime: 5 * 60_000 });
+ 
+@@ -53,7 +52,7 @@ const ago = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("en-
+ 
+ interface Closer { agent_name: string | null; reached_all: number | null; sold_all: number | null; close_pct_all: number | null; close_pct_30d: number | null; sold_30d: number | null; fall_off_pct: number | null; sticky_close_score: number | null; avg_grade: number | null; great_calls: number | null }
+ function Closers({ onPickAgent }: { onPickAgent: (n: string) => void }) {
+-  const q = useQuery(view("closers", () => rows<Closer>(looseSupabase.from("v_best_closers").select("agent_name, reached_all, sold_all, close_pct_all, close_pct_30d, sold_30d, fall_off_pct, sticky_close_score, avg_grade, great_calls").order("sticky_close_score", { ascending: false, nullsFirst: false }).limit(25)))) as UseQueryResult<Closer[]>;
++  const q = useQuery(view("closers", () => rows<Closer>(looseSupabase.from<Closer>("v_best_closers").select("agent_name, reached_all, sold_all, close_pct_all, close_pct_30d, sold_30d, fall_off_pct, sticky_close_score, avg_grade, great_calls").order("sticky_close_score", { ascending: false, nullsFirst: false }).limit(25)))) as UseQueryResult<Closer[]>;
+   return (
+     <State q={q} empty="No agent has 50 reached calls yet.">
+       {(list) => (
+@@ -81,7 +80,7 @@ function Closers({ onPickAgent }: { onPickAgent: (n: string) => void }) {
+ 
+ interface LeftRow { agent_name: string | null; warm_not_sold: number | null; stopped_at_bank: number | null; stopped_at_ssn: number | null; gave_up: number | null; appointment_not_sold: number | null; last_30d: number | null }
+ function LeftOnTable({ onPickAgent }: { onPickAgent: (n: string) => void }) {
+-  const q = useQuery(view("table", () => rows<LeftRow>(looseSupabase.from("v_deals_left_on_table").select("agent_name, warm_not_sold, stopped_at_bank, stopped_at_ssn, gave_up, appointment_not_sold, last_30d").order("warm_not_sold", { ascending: false }).limit(25)))) as UseQueryResult<LeftRow[]>;
++  const q = useQuery(view("table", () => rows<LeftRow>(looseSupabase.from<LeftRow>("v_deals_left_on_table").select("agent_name, warm_not_sold, stopped_at_bank, stopped_at_ssn, gave_up, appointment_not_sold, last_30d").order("warm_not_sold", { ascending: false }).limit(25)))) as UseQueryResult<LeftRow[]>;
+   return (
+     <State q={q} empty="No warm leads left unsold.">
+       {(list) => (
+@@ -120,7 +119,7 @@ const VERDICT: Record<string, string> = {
+ const TOP: Record<string, string> = { bank: "bank details", ssn: "SSN", gave_up: "agent gave up" };
+ const RANK: Record<string, number> = { slump_objections: 0, slump: 1, objections_rising: 2, steady: 3, new: 4, too_few_calls: 5 };
+ function Slumps({ onPickAgent }: { onPickAgent: (n: string) => void }) {
+-  const q = useQuery(view("slump", () => rows<SlumpRow>(looseSupabase.from("v_agent_slump").select("agent_name, verdict, recent_contacts, recent_close_pct, base_close_pct, recent_objection_pct, base_objection_pct, top_objection").order("recent_contacts", { ascending: false }).limit(80)))) as UseQueryResult<SlumpRow[]>;
++  const q = useQuery(view("slump", () => rows<SlumpRow>(looseSupabase.from<SlumpRow>("v_agent_slump").select("agent_name, verdict, recent_contacts, recent_close_pct, base_close_pct, recent_objection_pct, base_objection_pct, top_objection").order("recent_contacts", { ascending: false }).limit(80)))) as UseQueryResult<SlumpRow[]>;
+   return (
+     <State q={q} empty="No dialer activity in the last 8 weeks.">
+       {(list) => (
+@@ -149,7 +148,7 @@ function Slumps({ onPickAgent }: { onPickAgent: (n: string) => void }) {
+ interface EasyRow { phone10: string | null; first_name: string | null; last_name: string | null; call_id: string; disposition: string | null; call_started_at: string | null; agent_name: string | null; what_happened: string | null; call_grade: number | null }
+ function EasyCloses({ canHandOff }: { canHandOff: boolean }) {
+   const qc = useQueryClient();
+-  const q = useQuery(view("easy", () => rows<EasyRow>(looseSupabase.from("v_easy_closes").select("phone10, first_name, last_name, call_id, disposition, call_started_at, agent_name, what_happened, call_grade").eq("in_a_bundle", false).order("call_started_at", { ascending: false }).limit(60)))) as UseQueryResult<EasyRow[]>;
++  const q = useQuery(view("easy", () => rows<EasyRow>(looseSupabase.from<EasyRow>("v_easy_closes").select("phone10, first_name, last_name, call_id, disposition, call_started_at, agent_name, what_happened, call_grade").eq("in_a_bundle", false).order("call_started_at", { ascending: false }).limit(60)))) as UseQueryResult<EasyRow[]>;
+   return (
+     <State q={q} empty="No warm leads waiting.">
+       {(list) => (
+@@ -175,7 +174,7 @@ function EasyCloses({ canHandOff }: { canHandOff: boolean }) {
+ 
+ interface CoverageRow { call_id: string; call_started_at: string | null; agent_name: string | null; first_name: string | null; last_name: string | null; phone10: string | null; book_status: string | null; packet_carrier: string | null; packet_monthly_premium: number | null; spouse_coverage: boolean | null; mortgage_protection: boolean | null; opportunities: string | null }
+ function MoreCoverage() {
+-  const q = useQuery(view("coverage", () => rows<CoverageRow>(looseSupabase.from("v_more_coverage").select("call_id, call_started_at, agent_name, first_name, last_name, phone10, book_status, packet_carrier, packet_monthly_premium, spouse_coverage, mortgage_protection, opportunities").order("call_started_at", { ascending: false }).limit(60)))) as UseQueryResult<CoverageRow[]>;
++  const q = useQuery(view("coverage", () => rows<CoverageRow>(looseSupabase.from<CoverageRow>("v_more_coverage").select("call_id, call_started_at, agent_name, first_name, last_name, phone10, book_status, packet_carrier, packet_monthly_premium, spouse_coverage, mortgage_protection, opportunities").order("call_started_at", { ascending: false }).limit(60)))) as UseQueryResult<CoverageRow[]>;
+   return (
+     <State q={q} empty="No buyer asked about more coverage.">
+       {(list) => (
+@@ -199,7 +198,7 @@ function MoreCoverage() {
+ interface RiskRow { call_id: string; call_started_at: string | null; agent_name: string | null; first_name: string | null; last_name: string | null; phone10: string | null; book_status: string | null; book_carrier: string | null; risk: string | null; what_happened: string | null; do_not_call: boolean | null }
+ function DropoffRisk() {
+   const [only, setOnly] = useState<string>("all");
+-  const q = useQuery(view("risk", () => rows<RiskRow>(looseSupabase.from("v_dropoff_risk").select("call_id, call_started_at, agent_name, first_name, last_name, phone10, book_status, book_carrier, risk, what_happened, do_not_call").order("call_started_at", { ascending: false }).limit(200)))) as UseQueryResult<RiskRow[]>;
++  const q = useQuery(view("risk", () => rows<RiskRow>(looseSupabase.from<RiskRow>("v_dropoff_risk").select("call_id, call_started_at, agent_name, first_name, last_name, phone10, book_status, book_carrier, risk, what_happened, do_not_call").order("call_started_at", { ascending: false }).limit(200)))) as UseQueryResult<RiskRow[]>;
+   return (
+     <State q={q} empty="No sale is at risk right now.">
+       {(list) => {
+diff --git a/src/components/clients/ClientCallHistory.tsx b/src/components/clients/ClientCallHistory.tsx
+new file mode 100644
+index 00000000..119159cf
+--- /dev/null
++++ b/src/components/clients/ClientCallHistory.tsx
+@@ -0,0 +1,161 @@
++import { useEffect, useId, useRef, useState } from "react";
++import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
++import { FileText, LockKeyhole, PhoneCall } from "lucide-react";
++import { toast } from "sonner";
++import { useAuth } from "@/hooks/useAuth";
++import { Button } from "@/components/ui/button";
++import { Input } from "@/components/ui/input";
++import { Label } from "@/components/ui/label";
++import { Skeleton } from "@/components/ui/skeleton";
++import { Textarea } from "@/components/ui/textarea";
++import { looseSupabase } from "@/lib/looseSupabase";
++import { externalHref } from "@/lib/externalHref";
++import { CALL_CATEGORIES, clientCallsSchema, type ClientCall, type ClientCallCategory } from "@/lib/producerWorkspace";
++
++const selectClass = "min-h-11 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
++type Cursor = { at: string; key: string } | null;
++
++function callDate(value: string) {
++  return new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Phoenix" }).format(new Date(value));
++}
++
++function CallRecord({ call, rawAccess, onCategory, pending }: {
++  call: ClientCall; rawAccess: boolean; onCategory: (call: ClientCall, category: ClientCallCategory) => void; pending: boolean;
++}) {
++  const [category, setCategory] = useState(call.category);
++  const categoryId = useId();
++  useEffect(() => setCategory(call.category), [call.category]);
++  // Check both response-level and row-level permissions before rendering text or URLs.
++  const restricted = call.transcript_access === "restricted" || (call.source === "readymode" && !rawAccess);
++  const transcript = !restricted && call.transcript_access === "available" ? call.transcript : null;
++  const recording = !restricted && rawAccess && call.source === "readymode" ? externalHref(call.audio_url) : null;
++  return (
++    <li className="space-y-3 rounded-lg border border-border p-3">
++      <div className="flex flex-wrap items-start justify-between gap-2">
++        <div>
++          <p className="text-sm font-semibold">{call.outcome || "Call recorded"}</p>
++          <p className="text-xs text-muted-foreground">{callDate(call.happened_at)} · {call.source === "readymode" ? "ReadyMode" : "Saved transcript"}{call.duration_seconds !== null ? ` · ${Math.floor(call.duration_seconds / 60)}m ${Math.floor(call.duration_seconds % 60)}s` : ""}</p>
++        </div>
++        <div className="flex flex-wrap items-center gap-2">
++          <Label htmlFor={categoryId} className="sr-only">Category for {call.outcome || "recorded call"}</Label>
++          <select id={categoryId} className={selectClass} value={category} onChange={(e) => setCategory(e.target.value as ClientCallCategory)} disabled={pending}>
++            {CALL_CATEGORIES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
++          </select>
++          {category !== call.category && <Button type="button" variant="outline" disabled={pending} onClick={() => onCategory(call, category)}>{pending ? "Saving…" : "Save category"}</Button>}
++        </div>
++      </div>
++      {restricted ? (
++        <p className="flex gap-2 text-sm text-muted-foreground"><LockKeyhole className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />Raw provider transcripts and audio require existing call-access permission. Call details and categories remain available.</p>
++      ) : transcript ? (
++        <details><summary className="min-h-11 cursor-pointer py-2 text-sm font-medium">Read transcript</summary><p className="max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted/40 p-3 text-sm">{transcript}</p></details>
++      ) : <p className="text-sm text-muted-foreground">A transcript has not been recorded for this call.</p>}
++      {recording && <a className="inline-flex min-h-11 items-center text-sm font-medium text-primary underline underline-offset-4" href={recording} target="_blank" rel="noopener noreferrer">Open recording</a>}
++    </li>
++  );
++}
++
++export function ClientCallHistory({ clientId }: { clientId: string }) {
++  const { user } = useAuth();
++  return <ClientHistoryWorkspace key={`${user?.id ?? "signed-out"}:${clientId}`} clientId={clientId} />;
++}
++
++function ClientHistoryWorkspace({ clientId }: { clientId: string }) {
++  const { user } = useAuth();
++  const active = useRef(true);
++  useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
++  const qc = useQueryClient();
++  const formId = useId();
++  const [filter, setFilter] = useState<ClientCallCategory | "all">("all");
++  const [category, setCategory] = useState<ClientCallCategory>("discovery");
++  const [transcript, setTranscript] = useState("");
++  const [outcome, setOutcome] = useState("");
++  const history = useInfiniteQuery({
++    // User identity is part of the key, so an account change cannot reuse another login's transcript cache.
++    queryKey: ["producer-client-calls", clientId, user?.id, filter],
++    enabled: Boolean(user?.id), staleTime: 60_000, retry: false,
++    initialPageParam: null as Cursor,
++    queryFn: async ({ pageParam }) => {
++      const { data, error } = await looseSupabase.rpc("producer_client_calls", {
++        p_client_id: clientId, p_category: filter === "all" ? null : filter,
++        p_before_at: pageParam?.at ?? null, p_before_key: pageParam?.key ?? null,
++      });
++      if (error) throw error;
++      const result = clientCallsSchema.parse(data);
++      if (result.client_id !== clientId) throw new Error("Client history could not be verified.");
++      return result;
++    },
++    getNextPageParam: (last) => last.next_cursor,
++  });
++  const refresh = async () => {
++    await Promise.all([
++      qc.invalidateQueries({ queryKey: ["producer-client-calls", clientId] }),
++      qc.invalidateQueries({ queryKey: ["client-pipeline-activity", clientId] }),
++    ]);
++  };
++  const save = useMutation({
++    mutationFn: async () => {
++      const { error } = await looseSupabase.rpc("producer_save_client_transcript", {
++        p_client_id: clientId, p_transcript: transcript.trim(), p_category: category, p_outcome: outcome.trim() || null,
++      });
++      if (error) throw error;
++    },
++    onSuccess: async () => {
++      if (active.current) {
++        setTranscript(""); setOutcome(""); setFilter("all");
++        toast.success("Transcript saved to this client.");
++      }
++      await refresh();
++    },
++    onError: (e: Error) => { if (active.current) toast.error(e.message || "Transcript could not be saved."); },
++  });
++  const tag = useMutation({
++    mutationFn: async ({ call, value }: { call: ClientCall; value: ClientCallCategory }) => {
++      const { error } = await looseSupabase.rpc("producer_tag_client_call", { p_client_id: clientId, p_source: call.source, p_source_id: call.source_id, p_category: value });
++      if (error) throw error;
++    },
++    onSuccess: refresh,
++    onError: (e: Error) => { if (active.current) toast.error(e.message || "Call category could not be saved."); },
++  });
++  const pages = history.data?.pages ?? [];
++  const calls = pages.flatMap((page) => page.calls);
++  const denied = history.isError && /access denied|permission denied/i.test(history.error?.message ?? "");
++  return (
++    <section aria-label="Client calls and transcripts" className="space-y-4 rounded-md border border-border bg-card p-4">
++      <div className="flex flex-wrap items-center justify-between gap-3">
++        <h3 className="flex items-center gap-2 text-sm font-semibold"><PhoneCall className="h-4 w-4" aria-hidden="true" /> Calls and transcripts</h3>
++        <div className="flex items-center gap-2">
++          <Label htmlFor={`${formId}-filter`}>Show</Label>
++          <select id={`${formId}-filter`} value={filter} onChange={(e) => setFilter(e.target.value as ClientCallCategory | "all")} className={selectClass}>
++            <option value="all">All categories</option>
++            {CALL_CATEGORIES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
++          </select>
++        </div>
++      </div>
++      {!user ? <p className="text-sm text-muted-foreground">Sign in to view this client’s history.</p> : history.isPending ? <Skeleton className="h-28 w-full" aria-label="Loading client calls" /> : history.isError ? (
++        <div role="alert" className="space-y-2">
++          <p className="text-sm">{denied ? "This call history is available to the client’s producer and authorized administrators. Your current account does not have access." : "Client calls could not be loaded. Saved history is hidden until access and data are verified."}</p>
++          <Button variant="outline" onClick={() => void history.refetch()}>Retry history</Button>
++        </div>
++      ) : <>
++        <p className="text-xs text-muted-foreground">Calls are matched within this producer’s own clients. Dates use Phoenix time.</p>
++        {pages.some((page) => page.ambiguous_phone) && <p role="status" className="rounded-md bg-muted p-3 text-sm">This number is shared by multiple clients. Automatic call matching is paused to keep their histories separate; saved transcripts remain attached to this client.</p>}
++        {calls.length === 0 ? <p className="text-sm text-muted-foreground">{filter === "all" ? "No calls or saved transcripts have been matched to this client." : "No calls are in this category."}</p> : (
++          <ol className="space-y-3">{pages.flatMap((page) => page.calls.map((call) => <CallRecord key={call.key} call={call} rawAccess={page.raw_provider_access} onCategory={(item, value) => tag.mutate({ call: item, value })} pending={tag.isPending && tag.variables?.call.key === call.key} />))}</ol>
++        )}
++        {history.hasNextPage && <Button variant="outline" disabled={history.isFetchingNextPage} onClick={() => void history.fetchNextPage()}>{history.isFetchingNextPage ? "Loading…" : "Load earlier calls"}</Button>}
++        <details className="rounded-lg border border-border p-3">
++          <summary className="min-h-11 cursor-pointer py-2 text-sm font-medium"><FileText className="mr-2 inline h-4 w-4" aria-hidden="true" />Save a client transcript</summary>
++          <form className="space-y-3 pt-2" onSubmit={(e) => { e.preventDefault(); if (!save.isPending && transcript.trim().length >= 10) save.mutate(); }}>
++            <p className="text-xs text-muted-foreground">Paste an existing transcript. Saving does not transcribe audio or generate an AI analysis. Omit bank account and Social Security numbers.</p>
++            <div className="grid gap-3 sm:grid-cols-2">
++              <div className="space-y-1.5"><Label htmlFor={`${formId}-category`}>Transcript category</Label><select id={`${formId}-category`} className={`${selectClass} w-full`} value={category} onChange={(e) => setCategory(e.target.value as ClientCallCategory)} disabled={save.isPending}>{CALL_CATEGORIES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></div>
++              <div className="space-y-1.5"><Label htmlFor={`${formId}-outcome`}>Outcome (optional)</Label><Input id={`${formId}-outcome`} value={outcome} maxLength={160} onChange={(e) => setOutcome(e.target.value)} disabled={save.isPending} /></div>
++            </div>
++            <div className="space-y-1.5"><Label htmlFor={`${formId}-transcript`}>Transcript</Label><Textarea id={`${formId}-transcript`} className="min-h-36" value={transcript} minLength={10} maxLength={100000} required onChange={(e) => setTranscript(e.target.value)} disabled={save.isPending} /></div>
++            <Button type="submit" disabled={save.isPending || transcript.trim().length < 10}>{save.isPending ? "Saving…" : "Save transcript"}</Button>
++          </form>
++        </details>
++      </>}
++    </section>
++  );
++}
+diff --git a/src/components/contracting/ContractingRequestsBoard.tsx b/src/components/contracting/ContractingRequestsBoard.tsx
+index 8291d4a2..0ba356fc 100644
+--- a/src/components/contracting/ContractingRequestsBoard.tsx
++++ b/src/components/contracting/ContractingRequestsBoard.tsx
+@@ -57,10 +57,12 @@ export function ContractingRequestsBoard() {
+     try {
+       const res = await submitContractingRequest(r.agent_id);
+       if (!res.ok) { toast.error(res.error ?? "Not submitted."); return; }
+-      toast.success(`Submitted for ${r.display_name}. Queued for the sheet.`);
++      toast.success(`Request saved for ${r.display_name}. Waiting for a sheet receipt.`);
+       refresh();
+       const sync = await syncContractingSheet();
+-      if (sync.ok) toast.success(`Sheet updated (${sync.synced ?? 0} row${(sync.synced ?? 0) === 1 ? "" : "s"}).`);
++      if (sync.ok && (sync.failed ?? 0) > 0) toast.warning(`${sync.synced ?? 0} sheet writes confirmed; ${sync.failed} failed. Check this request's receipt.`);
++      else if (sync.ok && (sync.synced ?? 0) > 0) toast.success(`${sync.synced} sheet write${sync.synced === 1 ? "" : "s"} confirmed. Check this request's receipt; carrier approval is separate.`);
++      else if (sync.ok) toast.message("Request saved. No new sheet write was confirmed by this sync; check the request receipt.");
+       else toast.message(`Saved. Sheet sync is waiting: ${sync.blocker ?? sync.error ?? "see the sync banner"}.`);
+       refresh();
+     } finally { setBusy(null); }
+@@ -70,7 +72,8 @@ export function ContractingRequestsBoard() {
+     setBusy("sync");
+     try {
+       const res = await syncContractingSheet();
+-      if (res.ok) toast.success(`Sheet in sync: ${res.synced ?? 0} written, ${res.processed ?? 0} checked.`);
++      if (res.ok && (res.failed ?? 0) > 0) toast.warning(`${res.synced ?? 0} sheet writes confirmed; ${res.failed} failed. Review the affected requests.`);
++      else if (res.ok) toast.message(`Sync finished: ${res.synced ?? 0} writes confirmed, ${res.processed ?? 0} checked. Check individual request receipts.`);
+       else toast.error(`Sheet sync blocked: ${res.blocker ?? res.error ?? "unknown"}${res.service_email ? ` (share the sheet with ${res.service_email})` : ""}`);
+       refresh();
+     } finally { setBusy(null); }
+@@ -213,7 +216,7 @@ export function ContractingRequestsBoard() {
+                   <p className="font-semibold text-foreground">Request</p>
+                   <p className="text-xs text-muted-foreground">Submitted {when(open.submitted_at)} · version {open.request_version ?? 1} · sheet {open.sheet_status ?? "—"}{open.sheet_row ? ` (row ${open.sheet_row})` : ""} · {when(open.sheet_synced_at)}</p>
+                   {open.sheet_error ? <p className="mt-1 text-xs text-destructive">{open.sheet_error}</p> : null}
+-                  <p className="mt-1 text-xs text-muted-foreground">The submitted snapshot is what the sheet holds; later profile edits make a new version, never a silent rewrite.</p>
++                  <p className="mt-1 text-xs text-muted-foreground">This is the saved request snapshot. Only a successful sheet receipt confirms it reached the sheet; carrier approval is a separate decision. Later profile edits require a new request version.</p>
+                 </div>
+               ) : null}
+               <div className="flex flex-wrap gap-2">
+@@ -221,12 +224,13 @@ export function ContractingRequestsBoard() {
+                 {open.status === "ready_to_submit" ? <Button type="button" size="sm" className="h-10" disabled={busy === open.agent_id} onClick={() => void submit(open)}>Submit request</Button> : null}
+                 {isAdmin && open.request_id && open.status === "submitted" ? (
+                   <>
+-                    <Button type="button" variant="outline" size="sm" className="h-10" onClick={() => void setStatus(open, "approved")}>Mark approved</Button>
+-                    <Button type="button" variant="outline" size="sm" className="h-10" onClick={() => void setStatus(open, "declined")}>Mark declined</Button>
++                    <Button type="button" variant="outline" size="sm" className="h-10" onClick={() => void setStatus(open, "approved")}>Record request approval</Button>
++                    <Button type="button" variant="outline" size="sm" className="h-10" onClick={() => void setStatus(open, "declined")}>Record request decline</Button>
+                   </>
+                 ) : null}
+                 {isAdmin && open.request_id && open.status === "approved" ? <Button type="button" variant="ghost" size="sm" className="h-10" onClick={() => void setStatus(open, "archived")}>Archive</Button> : null}
+               </div>
++              {isAdmin && open.request_id && open.status === "submitted" ? <p className="text-xs text-muted-foreground">Record a decision only after checking the carrier or IMO confirmation. Then open the agent&apos;s review to confirm the applicable carrier; these request buttons do not update the carrier circles.</p> : null}
+             </div>
+           ) : null}
+         </SheetContent>
+diff --git a/src/components/dashboard/AgedLeadImporter.tsx b/src/components/dashboard/AgedLeadImporter.tsx
+index bf027bdf..d8f0ac14 100644
+--- a/src/components/dashboard/AgedLeadImporter.tsx
++++ b/src/components/dashboard/AgedLeadImporter.tsx
+@@ -379,22 +379,21 @@ export const AgedLeadImporter = forwardRef<HTMLDivElement, AgedLeadImporterProps
+         const unbannedLeads: ParsedLead[] = [];
+ 
+         const banChecks = await concurrentMap(leadsToCheck, 8, async (lead) => {
+-          const { data: isBanned } = await supabase.rpc("check_banned_prospect" as any, {
++          const { data: isBanned, error } = await supabase.rpc("check_banned_prospect", {
+             p_email: lead.email || null,
+             p_phone: lead.phone || null,
+             p_first_name: lead.first_name || null,
+             p_last_name: lead.last_name || null,
+           });
+-          return !!isBanned;
++          if (error) throw error;
++          if (typeof isBanned !== "boolean") throw new Error("The ban check could not be verified. No leads were imported.");
++          return isBanned;
+         });
+ 
+-        // Preserve the old serial loop's semantics exactly: it ignored the RPC's
+-        // `error` field, so a Postgres-level failure left `isBanned` undefined
+-        // and the lead was imported (fail-open); a transport-level rejection
+-        // propagated to the outer catch and aborted the whole import.
++        // Every check must succeed before any lead is inserted or emailed.
+         for (let i = 0; i < banChecks.length; i++) {
+           const res = banChecks[i];
+-          if (!res.ok) throw res.error;
++          if (res.ok === false) throw res.error;
+           if (res.value) {
+             bannedCount++;
+           } else {
+diff --git a/src/components/dashboard/AgentProfileDrawer.tsx b/src/components/dashboard/AgentProfileDrawer.tsx
+index 715263b9..072e744c 100644
+--- a/src/components/dashboard/AgentProfileDrawer.tsx
++++ b/src/components/dashboard/AgentProfileDrawer.tsx
+@@ -305,7 +305,7 @@ export function AgentProfileDrawer() {
+       }
+       let manager: { id: string; profile: { full_name: string | null } | null } | null = null;
+       if (data.manager_id) {
+-        const m = await supabase.from("agents").select("id, display_name, profile:profiles(full_name)").eq("id", data.manager_id).maybeSingle();
++        const m = await supabase.from("agents").select("id, display_name, profile:profiles!agents_profile_id_fkey(full_name)").eq("id", data.manager_id).maybeSingle();
+         const mp = (m.data?.profile ?? null) as { full_name: string | null } | null;
+         // A failed manager read never hides the agent: the drawer shows "—" for the manager instead.
+         manager = m.data ? { id: m.data.id, profile: { full_name: m.data.display_name || mp?.full_name || null } } : null;
+diff --git a/src/components/dashboard/AgentTaskManager.tsx b/src/components/dashboard/AgentTaskManager.tsx
+index 976bfa9f..a9bb9504 100644
+--- a/src/components/dashboard/AgentTaskManager.tsx
++++ b/src/components/dashboard/AgentTaskManager.tsx
+@@ -95,7 +95,7 @@ export function AgentTaskManager({
+       // Load agents
+       const { data: agentData } = await supabase
+         .from("agents")
+-        .select("id, display_name, profiles(full_name)")
++        .select("id, display_name, profiles!agents_profile_id_fkey(full_name)")
+         .eq("is_deactivated", false);
+ 
+       const agentList = (agentData || []).map((a: any) => ({
+diff --git a/src/components/dashboard/BuilderProgressDashboard.tsx b/src/components/dashboard/BuilderProgressDashboard.tsx
+index f775828b..ee70be6e 100644
+--- a/src/components/dashboard/BuilderProgressDashboard.tsx
++++ b/src/components/dashboard/BuilderProgressDashboard.tsx
+@@ -76,7 +76,7 @@ export function BuilderProgressDashboard() {
+     queryKey: ["sam-builders-dashboard"],
+     queryFn: async () => {
+       const { data, error } = await supabase
+-        .from("v_sam_builders_dashboard" as any)
++        .from("v_sam_builders_dashboard")
+         .select("*");
+       if (error) throw error;
+       return (data ?? []) as BuilderRow[];
+diff --git a/src/components/dashboard/GoalTrackerCard.tsx b/src/components/dashboard/GoalTrackerCard.tsx
+index 39407f2b..59ab40e3 100644
+--- a/src/components/dashboard/GoalTrackerCard.tsx
++++ b/src/components/dashboard/GoalTrackerCard.tsx
+@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
+ import { Progress } from "@/components/ui/progress";
+ import { Skeleton } from "@/components/ui/skeleton";
+ import { Target, TrendingUp, Users, DollarSign, CalendarClock, ClipboardList } from "lucide-react";
++import { ProducerWorkspaceCard } from "@/components/dashboard/ProducerWorkspaceCard";
+ 
+ // MP-303 — one person's goal, the plan to hit it, and projected income, straight
+ // from fn_goal_scorecard. The money model is the production scoreboard's first-hop
+@@ -59,7 +60,11 @@ const STATUS: Record<string, { label: string; cls: string }> = {
+   no_goal: { label: "No goal set", cls: "bg-muted text-muted-foreground border-border" },
+ };
+ 
+-export function GoalTrackerCard({ agentId }: { agentId?: string | null }) {
++export function GoalTrackerCard({ agentId, scope = "team" }: { agentId?: string | null; scope?: "personal" | "team" }) {
++  return scope === "personal" ? <ProducerWorkspaceCard agentId={agentId} /> : <TeamGoalTrackerCard agentId={agentId} />;
++}
++
++function TeamGoalTrackerCard({ agentId }: { agentId?: string | null }) {
+   const q = useQuery({
+     queryKey: ["goal-scorecard", agentId],
+     enabled: !!agentId,
+@@ -103,7 +108,7 @@ export function GoalTrackerCard({ agentId }: { agentId?: string | null }) {
+     <Card className="overflow-hidden">
+       <CardHeader className="pb-3">
+         <div className="flex items-center justify-between gap-2">
+-          <CardTitle className="text-base flex items-center gap-2"><Target className="h-4 w-4 text-primary" /> {d.period_label} goal</CardTitle>
++          <CardTitle className="text-base flex items-center gap-2"><Target className="h-4 w-4 text-primary" /> {d.period_label} team goal</CardTitle>
+           <Badge variant="outline" className={st.cls}>{st.label}</Badge>
+         </div>
+       </CardHeader>
+diff --git a/src/components/dashboard/ProducerWorkspaceCard.tsx b/src/components/dashboard/ProducerWorkspaceCard.tsx
+new file mode 100644
+index 00000000..7dd37dc4
+--- /dev/null
++++ b/src/components/dashboard/ProducerWorkspaceCard.tsx
+@@ -0,0 +1,109 @@
++import { useEffect, useState } from "react";
++import { Link } from "react-router-dom";
++import { useMutation, useQueryClient } from "@tanstack/react-query";
++import { CalendarDays, Check, Target } from "lucide-react";
++import { toast } from "sonner";
++import { useProducerWorkspace } from "@/hooks/useProducerWorkspace";
++import { StreakFlameCard } from "@/components/agent/StreakFlameCard";
++import { Button } from "@/components/ui/button";
++import { Progress } from "@/components/ui/progress";
++import { Skeleton } from "@/components/ui/skeleton";
++import { looseSupabase } from "@/lib/looseSupabase";
++import { producerMilestones, producerPace, type ProducerWorkspace } from "@/lib/producerWorkspace";
++
++const dollars = (n: number | null) => n === null ? "—" : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
++const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
++
++function SellingSchedule({ data }: { data: ProducerWorkspace }) {
++  const qc = useQueryClient();
++  const savedDays = (data.next_schedule?.selling_days ?? data.schedule).join(",");
++  const [days, setDays] = useState(data.next_schedule?.selling_days ?? data.schedule);
++  useEffect(() => { setDays(savedDays.split(",").map(Number)); }, [savedDays]);
++  const changed = days.join(",") !== savedDays;
++  const save = useMutation({
++    mutationFn: async () => {
++      const { error } = await looseSupabase.rpc("producer_set_work_schedule", { p_agent_id: data.agent_id, p_selling_days: days });
++      if (error) throw error;
++    },
++    onSuccess: () => {
++      toast.success("Selling schedule saved. It takes effect tomorrow.");
++      void qc.invalidateQueries({ queryKey: ["producer-workspace", data.agent_id] });
++    },
++    onError: (e: Error) => toast.error(e.message || "Schedule could not be saved."),
++  });
++  return (
++    <details className="rounded-lg border border-border px-3 py-2">
++      <summary className="cursor-pointer text-sm font-medium">Selling schedule · {data.schedule.map((d) => DAY_NAMES[d]).join(", ")}</summary>
++      <div className="space-y-3 pt-3">
++        <p className="text-sm text-muted-foreground">Choose your regular selling days. Changes start tomorrow; past days keep their original schedule.</p>
++        {data.next_schedule && <p className="text-sm">Next schedule starts {data.next_schedule.effective_on}.</p>}
++        <div className="flex flex-wrap gap-2" role="group" aria-label="Selling days">
++          {DAY_NAMES.map((label, day) => <Button key={label} type="button" variant={days.includes(day) ? "default" : "outline"} aria-pressed={days.includes(day)} disabled={save.isPending} onClick={() => setDays((prev) => prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort())}>{label}</Button>)}
++        </div>
++        {days.length === 0 && <p role="status" className="text-sm text-muted-foreground">Choose at least one selling day.</p>}
++        <Button variant="outline" disabled={!changed || days.length === 0 || save.isPending} onClick={() => save.mutate()}>{save.isPending ? "Saving…" : "Save schedule"}</Button>
++      </div>
++    </details>
++  );
++}
++
++export function ProducerWorkspaceCard({ agentId }: { agentId?: string | null }) {
++  const q = useProducerWorkspace(agentId);
++  if (!agentId) return null;
++  if (q.isLoading) return <Skeleton className="h-72 w-full rounded-xl" aria-label="Loading personal production plan" />;
++  if (!q.data) return (
++    <section className="rounded-xl border border-border bg-card p-5" aria-label="Personal production plan">
++      <h2 className="font-semibold">Your personal production plan</h2>
++      <p className="mt-2 text-sm text-muted-foreground">Your plan could not be verified. Production and streaks are hidden until the source is available.</p>
++      <Button className="mt-3" variant="outline" onClick={() => void q.refetch()}>Try again</Button>
++    </section>
++  );
++  const d = q.data;
++  const pace = producerPace(d);
++  const currentSchedule = d.days.find((day) => day.day === d.today)?.scheduled === true;
++  const activityRemaining = pace.callsPerSellingDay === null ? null : Math.max(0, pace.callsPerSellingDay - d.activity.completed_today);
++  return (
++    <section className="space-y-4 rounded-xl border border-primary/25 bg-card p-4 sm:p-5" aria-label="Personal production plan">
++      <header className="flex flex-wrap items-start justify-between gap-3">
++        <div>
++          <h2 className="flex items-center gap-2 text-lg font-semibold"><Target className="h-5 w-5 text-primary" aria-hidden="true" /> Your {dollars(d.target_ap)} month</h2>
++          <p className="text-sm text-muted-foreground">Personal production · {d.period_start} to {d.period_end} · Phoenix dates</p>
++        </div>
++        <span className="rounded-full border border-border px-3 py-1 text-sm font-semibold">{pace.status}</span>
++      </header>
++      {q.isError && <p role="status" className="text-sm text-destructive">The latest refresh failed. Showing the last verified read.</p>}
++      <div>
++        <p className="text-3xl font-bold tabular-nums">{dollars(d.production_ap)} <span className="text-base font-normal text-muted-foreground">of {dollars(d.target_ap)} posted ALP</span></p>
++        <Progress value={pace.completionPct} className="mt-3 h-3" aria-label="Personal production goal progress" />
++        <p className="mt-2 text-sm text-muted-foreground">{dollars(pace.remaining)} remaining · {d.selling_days_remaining} selling days left · {dollars(pace.apPerSellingDay)} per selling day</p>
++        <p className="mt-1 text-xs text-muted-foreground">{pace.targetToday !== null ? `Pace target by the end of today: ${dollars(pace.targetToday)}. ` : ""}Posted production includes submissions; carrier status and payment evidence are separate below.</p>
++        <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Production milestones">
++          {producerMilestones(d.production_ap, d.target_ap).map((m) => <li key={m.amount} className={`flex items-center gap-2 rounded-lg border p-2 text-sm ${m.achieved ? "border-primary/40 bg-primary/10 font-semibold" : "border-border text-muted-foreground"}`}>
++            {m.achieved && <Check className="h-4 w-4" aria-hidden="true" />}{dollars(m.amount)}<span className="sr-only">{m.achieved ? " achieved" : " remaining"}</span>
++          </li>)}
++        </ul>
++      </div>
++      <div className="grid gap-3 sm:grid-cols-3">
++        <div className="rounded-lg bg-muted/40 p-3"><p className="text-xs text-muted-foreground">Personal policies posted</p><p className="text-xl font-semibold">{d.production_deals}</p><p className="text-xs text-muted-foreground">Team sales excluded.</p></div>
++        <div className="rounded-lg bg-muted/40 p-3"><p className="text-xs text-muted-foreground">Carrier in force · written this month</p><p className="text-xl font-semibold">{dollars(d.carrier.in_force_month_ap)}</p><p className="text-xs text-muted-foreground">Covered carriers only. Payment confirmation: {dollars(d.carrier.paid_ap)}.</p></div>
++        <div className="rounded-lg bg-muted/40 p-3"><p className="text-xs text-muted-foreground">Active after 90 days</p><p className="text-xl font-semibold">{d.carrier.active_90d_policies ?? "—"}</p><p className="text-xs text-muted-foreground">Carrier observed active at 90+ days. Separate from this month’s goal; not a retention rate.</p></div>
++      </div>
++      <div className="rounded-xl border border-border p-4">
++        <h3 className="flex items-center gap-2 font-semibold"><CalendarDays className="h-4 w-4" aria-hidden="true" /> {currentSchedule ? "Today’s closing plan" : "Next selling day"}</h3>
++        <p className="mt-2 text-sm">{pace.remaining === 0 ? "Your monthly production goal is complete. Keep existing clients moving and protect the book." : pace.dealsRemaining === null ? "A policy estimate needs at least three recorded policies in your sample." : `${pace.dealsRemaining} more policies at your ${dollars(pace.averagePolicy)} average to reach the goal.`}</p>
++        {pace.remaining === 0 ? null : d.selling_days_remaining === 0 ? (
++          <p className="mt-2 text-sm text-muted-foreground">There are no scheduled selling days left this month. Your remaining goal is {dollars(pace.remaining)}.</p>
++        ) : pace.callsPerSellingDay === null ? (
++          <p className="mt-2 text-sm text-muted-foreground">Your calling estimate needs 30 completed provider calls and 3 sale outcomes, plus 3 posted policies. Work your due clients while the sample builds.</p>
++        ) : (
++          <p className="mt-2 text-sm"><strong>{pace.callsPerSellingDay} completed calls per selling day</strong> at your recent conversion rate.{currentSchedule ? ` ${d.activity.completed_today} recorded today; ${activityRemaining} left in today’s estimate.` : ""}</p>
++        )}
++        <p className="mt-2 text-xs text-muted-foreground">Last {d.activity.sample_days} completed days: {d.activity.sample_calls} ReadyMode calls, {d.activity.sample_sold_calls} sale outcomes, {d.activity.sample_policies} posted policies. This is a planning estimate. Dial taps, manual notes and sale dispositions do not add production.</p>
++        <Button asChild className="mt-3"><Link to="/dashboard/agent-pipeline">Work my clients</Link></Button>
++      </div>
++      <StreakFlameCard agentId={agentId} workspace={d} />
++      <SellingSchedule key={d.agent_id} data={d} />
++      <p className="text-xs text-muted-foreground">Carrier evidence covers {d.carrier.covered_policies} policies. {d.carrier.oldest_seen_on ? `Oldest carrier observation: ${d.carrier.oldest_seen_on}.` : "No carrier evidence is available for this producer."} ALP is annualized premium, not take-home pay.</p>
++    </section>
++  );
++}
+diff --git a/src/components/dashboard/ProductionAnalyticsCard.tsx b/src/components/dashboard/ProductionAnalyticsCard.tsx
+index db339ab3..c64f7a14 100644
+--- a/src/components/dashboard/ProductionAnalyticsCard.tsx
++++ b/src/components/dashboard/ProductionAnalyticsCard.tsx
+@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
+ import { Card, CardContent } from "@/components/ui/card";
+ import { DollarSign, TrendingUp } from "lucide-react";
+ import { supabase } from "@/integrations/supabase/client";
++import { Button } from "@/components/ui/button";
+ 
+ interface PeriodStats {
+   week: number;
+@@ -37,9 +38,11 @@ export function ProductionAnalyticsCard() {
+   const [stats, setStats] = useState<PeriodStats | null>(null);
+   const [loading, setLoading] = useState(true);
+   const [failed, setFailed] = useState(false);
++  const [attempt, setAttempt] = useState(0);
+ 
+   useEffect(() => {
+     let cancelled = false;
++    setLoading(true); setFailed(false); setStats(null);
+ 
+     const fail = () => {
+       if (cancelled) return;
+@@ -47,8 +50,7 @@ export function ProductionAnalyticsCard() {
+       setLoading(false);
+     };
+ 
+-    supabase
+-      .rpc("production_period_totals")
++    Promise.resolve(supabase.rpc("production_period_totals"))
+       .then(({ data, error }) => {
+         if (cancelled) return;
+         const row = Array.isArray(data) ? data[0] : data;
+@@ -58,13 +60,11 @@ export function ProductionAnalyticsCard() {
+           fail();
+           return;
+         }
++        const fields = [row.week_alp, row.month_alp, row.year_alp, row.week_deals, row.month_deals, row.year_deals];
++        if (fields.some(value => value == null || !Number.isFinite(Number(value)) || Number(value) < 0)) { fail(); return; }
+         setStats({
+-          week: Number(row.week_alp ?? 0),
+-          month: Number(row.month_alp ?? 0),
+-          year: Number(row.year_alp ?? 0),
+-          weekDeals: Number(row.week_deals ?? 0),
+-          monthDeals: Number(row.month_deals ?? 0),
+-          yearDeals: Number(row.year_deals ?? 0),
++          week: Number(row.week_alp), month: Number(row.month_alp), year: Number(row.year_alp),
++          weekDeals: Number(row.week_deals), monthDeals: Number(row.month_deals), yearDeals: Number(row.year_deals),
+         });
+         setLoading(false);
+       })
+@@ -73,7 +73,7 @@ export function ProductionAnalyticsCard() {
+     return () => {
+       cancelled = true;
+     };
+-  }, []);
++  }, [attempt]);
+ 
+   const fmt = (n: number) =>
+     n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(1)}M`
+@@ -83,9 +83,9 @@ export function ProductionAnalyticsCard() {
+   // Explicit calendar-month + year labels (Phoenix TZ, Sam 2026-07-05):
+   // MTD = calendar month (e.g. "Jul"), YTD = calendar year (e.g. "2026").
+   // The RPC windows on Phoenix dates too, so label and number agree.
+-  const nowPhx = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Phoenix" }));
+-  const monthLabel = nowPhx.toLocaleDateString("en-US", { month: "short", timeZone: "America/Phoenix" });
+-  const yearLabel = String(nowPhx.getFullYear());
++  const now = new Date();
++  const monthLabel = now.toLocaleDateString("en-US", { month: "short", timeZone: "America/Phoenix" });
++  const yearLabel = now.toLocaleDateString("en-US", { year: "numeric", timeZone: "America/Phoenix" });
+ 
+   const show = (value: number | undefined) =>
+     loading ? "…" : failed || value === undefined ? "—" : fmt(value);
+@@ -120,9 +120,7 @@ export function ProductionAnalyticsCard() {
+           </div>
+         </div>
+         {failed && (
+-          <p className="mt-2 text-[11px] text-muted-foreground">
+-            Production figures unavailable — the read failed. This is not a zero.
+-          </p>
++          <div className="mt-2 space-y-2"><p className="text-sm text-muted-foreground">Production figures could not be verified.</p><Button variant="outline" size="sm" onClick={()=>setAttempt(value=>value+1)}>Retry production figures</Button></div>
+         )}
+       </CardContent>
+     </Card>
+diff --git a/src/components/dashboard/UnclaimedLeadsCommandCard.tsx b/src/components/dashboard/UnclaimedLeadsCommandCard.tsx
+index 9fb5583a..b0a9860a 100644
+--- a/src/components/dashboard/UnclaimedLeadsCommandCard.tsx
++++ b/src/components/dashboard/UnclaimedLeadsCommandCard.tsx
+@@ -72,7 +72,7 @@ export function UnclaimedLeadsCommandCard() {
+     queryKey: ["v_unclaimed_new_apps"],
+     queryFn: async (): Promise<UnclaimedRow[]> => {
+       const { data, error } = await supabase
+-        .from("v_unclaimed_new_apps" as any)
++        .from("v_unclaimed_new_apps")
+         .select("*")
+         .order("created_at", { ascending: true })
+         .limit(40);
+diff --git a/src/components/dashboard/XcelStalledCard.tsx b/src/components/dashboard/XcelStalledCard.tsx
+index 5b7ce8b0..f70060d9 100644
+--- a/src/components/dashboard/XcelStalledCard.tsx
++++ b/src/components/dashboard/XcelStalledCard.tsx
+@@ -55,7 +55,7 @@ export function XcelStalledCard() {
+     queryKey: ["v_xcel_pipeline", "stalled"],
+     queryFn: async (): Promise<XcelRow[]> => {
+       const { data, error } = await supabase
+-        .from("v_xcel_pipeline" as any)
++        .from("v_xcel_pipeline")
+         .select("*")
+         .in("xcel_state", ["stalled", "never_started"])
+         .order("days_since_login", { ascending: false, nullsFirst: false });
+diff --git a/src/components/landing/CTASection.tsx b/src/components/landing/CTASection.tsx
+index c6f7402c..fc94566a 100644
+--- a/src/components/landing/CTASection.tsx
++++ b/src/components/landing/CTASection.tsx
+@@ -1,19 +1,9 @@
+ import { forwardRef } from "react";
+ import { Link, useSearchParams } from "react-router-dom";
+ import { ArrowRight, CheckCircle2 } from "lucide-react";
+-import { useQuery } from "@tanstack/react-query";
+-import { useInteractionGate } from "@/shared/hooks/useInteractionGate";
+ // S11 fix (2026-06-15): relay ?ref= through the closing CTA so the slug
+ // survives the landing -> /apply hop on the bottom-of-page conversion path.
+ import { applyHrefWithRef } from "@/lib/refSlug";
+-// wave-42 (2026-06-08): supabase dynamic-imported inside queryFn so the chunk graph
+-// has no static edge to vendor-supabase. Wave-43 (2026-06-08): wave-42 wasn't enough —
+-// useQuery still fires queryFn sync-on-mount, which runs the dynamic import inside
+-// Lighthouse's cold-landing measurement window and re-drags vendor-supabase (45 KB gz)
+-// onto cold-landing transfers. Wave-43 gates `enabled` on useInteractionGate, matching
+-// wave-41's LiveStats + RecentHires pattern. The `??95` fallback already renders the
+-// real number, so anonymous landings see the same pixels until they scroll/click.
+-
+ const benefits = [
+   "Licensed and unlicensed tracks",
+   "One-link recruiting and onboarding",
+@@ -23,31 +13,9 @@ const benefits = [
+   "Hierarchy-aware agency reporting",
+ ];
+ 
+-type LandingLiveStats = { active_agents: number };
+-
+ export const CTASection = forwardRef<HTMLElement>((_, ref) => {
+-  // Pull the real agent count from landing_live_stats() so the closing CTA
+-  // never claims a number that isn't true. Prior copy said "thousands of
+-  // agents" — actual roster is ~95. Fake-success killer.
+-  const gateOpen = useInteractionGate();
+   const [searchParams] = useSearchParams();
+   const applyHref = applyHrefWithRef(searchParams.get("ref"));
+-  const { data: liveStats } = useQuery({
+-    queryKey: ["landing_live_stats"],
+-    queryFn: async (): Promise<LandingLiveStats | null> => {
+-      const { supabase } = await import("@/integrations/supabase/client");
+-      const { data, error } = await supabase.rpc("landing_live_stats");
+-      if (error) throw error;
+-      return data as unknown as LandingLiveStats;
+-    },
+-    enabled: gateOpen,
+-    staleTime: 60_000,
+-    refetchInterval: 300_000,
+-  });
+-  // 2026-06-19: feb05b97 truth-floor sync — landing_live_stats now returns
+-  // 41 active (was 123 due to placeholder pollution). 40 is the cold-render
+-  // floor; live RPC is the source of truth and always wins when present.
+-  const activeAgents = liveStats?.active_agents ?? 40;
+ 
+   return (
+     <section ref={ref} className="py-24 relative overflow-hidden bg-white dark:bg-[#030712]">
+@@ -66,7 +34,7 @@ export const CTASection = forwardRef<HTMLElement>((_, ref) => {
+           </h2>
+ 
+           <p className="text-lg md:text-xl text-[#94a3b8] max-w-2xl mx-auto mb-8">
+-            {activeAgents}+ agents are already moving through the system. Choose the path that fits your current level and see exactly what comes next.
++            Choose the path that fits your current level and see exactly what comes next.
+           </p>
+ 
+           {/* Benefits Grid */}
+diff --git a/src/components/landing/CareerPathwaySection.tsx b/src/components/landing/CareerPathwaySection.tsx
+index 0162cd77..b9893902 100644
+--- a/src/components/landing/CareerPathwaySection.tsx
++++ b/src/components/landing/CareerPathwaySection.tsx
+@@ -26,20 +26,8 @@ import {
+ } from "lucide-react";
+ import { SectionHeading } from "@/components/ui/section-heading";
+ import { GlassCard } from "@/components/ui/glass-card";
+-import { AnimatedCounter } from "@/components/ui/animated-counter";
+-import { useQuery } from "@tanstack/react-query";
+ import { useInteractionGate } from "@/shared/hooks/useInteractionGate";
+-// wave-42 (2026-06-08): supabase dynamic-imported inside queryFn. Wave-43 (2026-06-08):
+-// also gated on useInteractionGate so the queryFn never fires inside Lighthouse's cold
+-// landing window. The `?? 95` / `?? 22` fallbacks already render the real numbers so
+-// anonymous landings see identical pixels — see CTASection for the full rationale.
+-
+-interface LandingLiveStats {
+-  active_agents: number;
+-  applications_30d: number;
+-  applications_total: number;
+-  carriers_partnered: number;
+-}
++import { useLandingLiveStats } from "@/hooks/useLandingLiveStats";
+ 
+ interface Phase {
+   name: string;
+@@ -64,11 +52,7 @@ const phaseConnectorColors = [
+   "from-primary to-purple-500",
+ ];
+ 
+-// phases is now built per-render inside the component so the carrier count
+-// stays in lockstep with landing_live_stats().carriers_partnered. Marketing
+-// "50+ carriers" claim contradicted the canonical 22-carrier HeroSection list
+-// (Audit pass #11, 2026-05-21).
+-const buildPhases = (carriers: number): Phase[] => [
++const buildPhases = (carriers: number | null): Phase[] => [
+   {
+     name: "Phase 1: Foundation",
+     subtitle: "Become a Licensed Life Insurance Agent",
+@@ -112,8 +96,10 @@ const buildPhases = (carriers: number): Phase[] => [
+       {
+         icon: FileSignature,
+         title: "Receive & Submit Carrier Contracts",
+-        description: `Sign contracts with top carriers for the products you want to sell. Contract with up to ${carriers} carriers through Galaxy — Final Expense, Mortgage Protection, and IUL.`,
+-        benefit: `✓ ${carriers} carrier partners`,
++        description: carriers !== null && carriers > 0
++          ? `Review available products across ${carriers} carrier partners. Your appointments depend on your state, licensing, and carrier approval.`
++          : "Review carrier and product options with your manager. Your appointments depend on your state, licensing, and carrier approval.",
++        benefit: "✓ Carrier access reviewed with your manager",
+       },
+       {
+         icon: GraduationCap,
+@@ -252,25 +238,9 @@ const whyAgentsChoose = [
+ 
+ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathwaySection(_props, _ref) {
+   const gateOpen = useInteractionGate();
+-  const { data: liveStats } = useQuery({
+-    queryKey: ["landing_live_stats"],
+-    queryFn: async (): Promise<LandingLiveStats | null> => {
+-      const { supabase } = await import("@/integrations/supabase/client");
+-      const { data, error } = await supabase.rpc("landing_live_stats");
+-      if (error) throw error;
+-      return data as unknown as LandingLiveStats;
+-    },
+-    enabled: gateOpen,
+-    staleTime: 60_000,
+-    refetchInterval: 300_000,
+-  });
+-
+-  // Fall back to the same canonical numbers the LiveStatsCounterStrip uses,
+-  // so the cards never render "0" or "..." even before the RPC resolves.
+-  // 2026-06-19: feb05b97 truth-floor sync — RPC is authoritative (truth=41
+-  // active); 40 is the cold-render floor only.
+-  const activeAgents = liveStats?.active_agents ?? 40;
+-  const carriers = liveStats?.carriers_partnered ?? 22;
++  const { data: liveStats, isError: statsError } = useLandingLiveStats(gateOpen);
++  const activeAgents = liveStats?.active_agents ?? null;
++  const carriers = liveStats?.carriers_partnered ?? null;
+   const phases = useMemo(() => buildPhases(carriers), [carriers]);
+ 
+   const [activePhase, setActivePhase] = useState(0);
+@@ -338,8 +308,8 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
+   const stats = [
+     { value: "$1.2M", label: "First-Year Income" },
+     { value: "70%–145%", label: "Commission Range" },
+-    { value: `${carriers}`, label: "Carrier Partners" },
+-    { value: `${activeAgents}`, label: "Active Agents", isLive: true },
++    { value: carriers === null ? "—" : carriers.toLocaleString(), label: "Carrier Partners", unavailable: carriers === null },
++    { value: activeAgents === null ? "—" : activeAgents.toLocaleString(), label: "Active Agents", unavailable: activeAgents === null },
+   ];
+ 
+   let stepNumber = 0;
+@@ -436,20 +406,8 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
+               style={{ transitionDelay: `${index * 70}ms` }}
+             >
+               <GlassCard className="p-6 text-center relative group" hoverEffect>
+-                {stat.isLive && (
+-                  <div className="absolute top-3 right-3">
+-                    <span className="relative flex h-2 w-2">
+-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+-                    </span>
+-                  </div>
+-                )}
+-                <div className="text-2xl md:text-3xl font-bold gradient-text mb-1">
+-                  {stat.isLive ? (
+-                    <AnimatedCounter value={activeAgents} />
+-                  ) : (
+-                    stat.value
+-                  )}
++                <div className="text-2xl md:text-3xl font-bold gradient-text mb-1" aria-label={stat.unavailable ? `${stat.label} unavailable` : undefined}>
++                  {stat.value}
+                 </div>
+                 <div className="text-sm text-muted-foreground">{stat.label}</div>
+               </GlassCard>
+@@ -457,6 +415,8 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
+           ))}
+         </div>
+ 
++        {statsError && <p role="status" className="-mt-10 mb-10 text-center text-sm text-muted-foreground">{liveStats ? "Showing the last available agency numbers." : "Agency numbers are temporarily unavailable. Explore the steps below."}</p>}
++
+         {/* Section Header */}
+         <SectionHeading
+           badge="Career Path"

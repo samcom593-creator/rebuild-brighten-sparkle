@@ -1,0 +1,525 @@
+diff --git a/src/tests/pages/ContractingDownlines.test.tsx b/src/tests/pages/ContractingDownlines.test.tsx
+new file mode 100644
+index 00000000..7b581938
+--- /dev/null
++++ b/src/tests/pages/ContractingDownlines.test.tsx
+@@ -0,0 +1,60 @@
++import { fireEvent, render, screen, waitFor } from "@testing-library/react";
++import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
++import { MemoryRouter } from "react-router-dom";
++import { beforeEach, describe, expect, it, vi } from "vitest";
++
++const mocks = vi.hoisted(() => ({ actor: vi.fn(), downlines: vi.fn(), rpc: vi.fn(), auth: { user: { id: "owner-one" } } }));
++vi.mock("@/hooks/useAuth", () => ({ useAuth: () => mocks.auth }));
++vi.mock("@/hooks/usePageTitle", () => ({ usePageTitle: vi.fn() }));
++vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc: mocks.rpc } }));
++vi.mock("@/components/ui/email-typo-hint", () => ({ EmailTypoHint: () => null }));
++vi.mock("@/lib/contractingDownlines", async (original) => ({
++  ...await original<typeof import("@/lib/contractingDownlines")>(),
++  contractingDownlines: { actor: mocks.actor, downlines: mocks.downlines },
++}));
++import ContractingDownlines from "@/pages/ContractingDownlines";
++
++beforeEach(() => {
++  vi.clearAllMocks(); mocks.auth.user.id = "owner-one";
++  mocks.actor.mockImplementation(async () => ({ data: { ok: true, is_manager: true, is_admin: false, ref_slug: mocks.auth.user.id, default_pct: 60, writes_enabled: false }, error: null }));
++  mocks.downlines.mockResolvedValue({ data: { ok: true, rows: [{ agent_id: "agent-1", display_name: "Fixture Producer", email: "fixture@example.com", npn: "1234567", agent_status: "active", on_sheet: true, ethos_state: "delivered", comp_pct: 60 }] }, error: null });
++  mocks.rpc.mockImplementation(async () => ({ data: { active: true, ref_slug: mocks.auth.user.id, link: "https://old-preview.invalid/apply" }, error: null }));
++});
++function mount() {
++  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
++  const app = () => <QueryClientProvider client={client}><MemoryRouter><ContractingDownlines /></MemoryRouter></QueryClientProvider>;
++  const view = render(app());
++  return { client, rerender: () => view.rerender(app()) };
++}
++describe("Grow my team workflow", () => {
++  it("copies public links with the current owner's attribution and connects applicants to carrier review", async () => {
++    const writeText = vi.fn().mockResolvedValue(undefined);
++    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
++    mount();
++    expect(await screen.findByLabelText("Your recruiting link")).toHaveValue("https://galaxyfinancial.org/r/owner-one");
++    expect(screen.getByLabelText("Your contracting join link")).toHaveValue("https://galaxyfinancial.org/contract/owner-one");
++    expect(screen.getByRole("link", { name: "See applicants" })).toHaveAttribute("href", "/dashboard/recruiting");
++    expect(await screen.findByRole("link", { name: "Review agent" })).toHaveAttribute("href", "/dashboard/team?view=contracting&review=agent-1");
++    expect(screen.getByText(/Sheet receipt verified/)).toHaveTextContent("Carrier approval still needs its own confirmation");
++    expect(screen.queryByRole("link", { name: "Contracts management" })).not.toBeInTheDocument();
++    fireEvent.click(screen.getByRole("button", { name: "Copy contracting join link" }));
++    await waitFor(() => expect(writeText).toHaveBeenCalledWith("https://galaxyfinancial.org/contract/owner-one"));
++  });
++  it("reloads links and the scoped contracting board when the signed-in owner changes", async () => {
++    const view = mount();
++    await screen.findByDisplayValue("https://galaxyfinancial.org/r/owner-one");
++    mocks.auth.user.id = "owner-two";
++    view.rerender();
++    await screen.findByDisplayValue("https://galaxyfinancial.org/r/owner-two");
++    expect(screen.getByLabelText("Your contracting join link")).toHaveValue("https://galaxyfinancial.org/contract/owner-two");
++    expect(mocks.downlines).toHaveBeenCalledTimes(2);
++    expect(view.client.getQueryData(["my-recruiting-link", "owner-one"])).toEqual(expect.objectContaining({ ref_slug: "owner-one" }));
++    expect(view.client.getQueryData(["my-recruiting-link", "owner-two"])).toEqual(expect.objectContaining({ ref_slug: "owner-two" }));
++  });
++  it("reports a failed recruiting-link read instead of saying the link does not exist", async () => {
++    mocks.rpc.mockResolvedValue({ data: null, error: new Error("read unavailable") });
++    mount();
++    expect(await screen.findByRole("alert")).toHaveTextContent("Your recruiting link did not load.");
++    expect(screen.queryByText("Your recruiting link is not set up. Ask an admin.")).not.toBeInTheDocument();
++  });
++});
+diff --git a/src/tests/pages/InstagramAutomation.test.tsx b/src/tests/pages/InstagramAutomation.test.tsx
+new file mode 100644
+index 00000000..1837cde0
+--- /dev/null
++++ b/src/tests/pages/InstagramAutomation.test.tsx
+@@ -0,0 +1,63 @@
++import { fireEvent, render, screen, within } from "@testing-library/react";
++import { beforeEach, describe, expect, it, vi } from "vitest";
++
++const { from, readSubscriptions } = vi.hoisted(() => ({ from: vi.fn(), readSubscriptions: vi.fn() }));
++vi.mock("@/integrations/supabase/client", () => ({ supabase: { from } }));
++vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ isAdmin: true }) }));
++import InstagramAutomation from "@/pages/InstagramAutomation";
++
++const rows = [
++  { id: "subscription-1", agent_id: "agent-1", status: "active", instagram_handle: "fixture_one", created_at: "2026-11-01T00:00:00Z" },
++  { id: "subscription-2", agent_id: "agent-2", status: "active", instagram_handle: "fixture_two", created_at: "2026-11-02T00:00:00Z" },
++];
++
++beforeEach(() => {
++  from.mockReset(); readSubscriptions.mockReset();
++  readSubscriptions.mockResolvedValue({ data: rows, error: null });
++  from.mockImplementation((relation: string) => relation === "instagram_subscriptions"
++    ? { select: vi.fn().mockReturnThis(), order: readSubscriptions }
++    : { select: vi.fn().mockReturnThis(), in: vi.fn().mockResolvedValue({ data: [{ id: "agent-1", display_name: "First Producer" }, { id: "agent-2", display_name: "Second Producer" }], error: null }) });
++});
++
++describe("Instagram subscription metric truth", () => {
++  it("keeps billing amounts and revenue unknown when enrollment records contain no billing evidence", async () => {
++    const { container } = render(<InstagramAutomation />);
++    await screen.findByText("First Producer");
++    expect(screen.getAllByText("Billing amount unavailable")).toHaveLength(2);
++    const revenue = within(screen.getByText("Monthly recurring revenue").parentElement!);
++    expect(revenue.getByText("Not available")).toBeInTheDocument();
++    expect(revenue.getByText("Verified billing amounts are needed to calculate revenue.")).toBeInTheDocument();
++    expect(within(screen.getByText("Active Subscribers").parentElement!).getByText("2")).toBeInTheDocument();
++    expect(container.textContent).not.toMatch(/\$\s*(97|194)/);
++    expect(screen.queryByText(/Last paid:/)).not.toBeInTheDocument();
++  });
++
++  it("does not invent a service price or zero revenue for an empty enrollment list", async () => {
++    readSubscriptions.mockResolvedValue({ data: [], error: null });
++    const { container } = render(<InstagramAutomation />);
++    await screen.findByText("No Instagram automation subscriptions yet");
++    expect(screen.getByText("Not available")).toBeInTheDocument();
++    expect(container.textContent).not.toMatch(/\$\s*\d/);
++  });
++
++  it("reports a failed read as unavailable rather than zero subscribers and supports retry", async () => {
++    readSubscriptions.mockResolvedValueOnce({ data: null, error: new Error("Subscription feed unavailable") })
++      .mockResolvedValueOnce({ data: rows, error: null });
++    render(<InstagramAutomation />);
++    expect(await screen.findByRole("alert")).toHaveTextContent("Subscription feed unavailable");
++    expect(within(screen.getByText("Active Subscribers").parentElement!).getByText("Unavailable")).toBeInTheDocument();
++    expect(screen.queryByText("No Instagram automation subscriptions yet")).not.toBeInTheDocument();
++    fireEvent.click(screen.getByRole("button", { name: "Retry subscriptions" }));
++    await screen.findByText("First Producer");
++    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
++    expect(readSubscriptions).toHaveBeenCalledTimes(2);
++  });
++
++  it("does not count a missing subscription status as active", async () => {
++    readSubscriptions.mockResolvedValue({ data: [{ ...rows[0], status: null }], error: null });
++    render(<InstagramAutomation />);
++    await screen.findByText("First Producer");
++    expect(screen.getByText("unknown")).toBeInTheDocument();
++    expect(within(screen.getByText("Active Subscribers").parentElement!).getByText("0")).toBeInTheDocument();
++  });
++});
+diff --git a/src/tests/pages/RecruitingLinks.test.tsx b/src/tests/pages/RecruitingLinks.test.tsx
+new file mode 100644
+index 00000000..c2695723
+--- /dev/null
++++ b/src/tests/pages/RecruitingLinks.test.tsx
+@@ -0,0 +1,66 @@
++import { fireEvent, render, screen, waitFor } from "@testing-library/react";
++import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
++import { MemoryRouter } from "react-router-dom";
++import { beforeEach, describe, expect, it, vi } from "vitest";
++import { supabase } from "@/integrations/supabase/client";
++import RecruitingLinks from "@/pages/RecruitingLinks";
++
++vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
++const { auth } = vi.hoisted(() => ({ auth: { user: { id: "admin-one" } } }));
++vi.mock("@/hooks/useAuth", () => ({ useAuth: () => auth }));
++type Rpc = (name: string) => Promise<{ data: unknown; error: unknown }>;
++const rpc = vi.mocked(supabase.rpc as unknown as Rpc);
++const writeText = vi.fn().mockResolvedValue(undefined);
++
++beforeEach(() => {
++  rpc.mockReset(); writeText.mockClear(); auth.user.id = "admin-one";
++  Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
++});
++
++function renderPage() {
++  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
++  const app = () => <QueryClientProvider client={client}><MemoryRouter><RecruitingLinks /></MemoryRouter></QueryClientProvider>;
++  const view = render(app());
++  return { client, rerender: () => view.rerender(app()) };
++}
++
++describe("manager recruiting links", () => {
++  it("copies the canonical encoded owner link and connects the application and hiring workflows", async () => {
++    rpc.mockResolvedValue({ data: [{ agent_id: "manager-1", display_name: "Pat", account_mode: "manager", is_manager: true, ref_slug: " a b/c ", avatar_url: null }], error: null });
++    renderPage();
++    fireEvent.click(await screen.findByRole("button", { name: "/r/a b/c" }));
++    await waitFor(() => expect(writeText).toHaveBeenCalledWith("https://galaxyfinancial.org/r/a%20b%2Fc"));
++    expect(screen.getByRole("link", { name: "Grow my team" })).toHaveAttribute("href", "/dashboard/grow");
++    expect(screen.getByRole("link", { name: "Review applicants" })).toHaveAttribute("href", "/dashboard/recruiting");
++    expect(screen.getByRole("link", { name: "Personal hiring invitation" })).toHaveAttribute("href", "/admin/invite-links");
++    expect(screen.getByText(/Review and hire the applicant to create their agent account/)).toBeInTheDocument();
++    expect(decodeURIComponent(screen.getByRole("link", { name: "Text Pat's application link" }).getAttribute("href") ?? "")).toContain("https://galaxyfinancial.org/r/a%20b%2Fc");
++  });
++
++  it("shows a retryable load failure without calling it an empty roster", async () => {
++    rpc.mockResolvedValueOnce({ data: null, error: new Error("Recruiting feed unavailable") })
++      .mockResolvedValueOnce({ data: [], error: null });
++    renderPage();
++    expect(await screen.findByRole("alert")).toHaveTextContent("Recruiting feed unavailable");
++    expect(screen.queryByText("No matches.")).not.toBeInTheDocument();
++    expect(screen.queryByText("No active managers found.")).not.toBeInTheDocument();
++    fireEvent.click(screen.getByRole("button", { name: "Retry links" }));
++    await screen.findByText("No active managers found.");
++    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
++    expect(rpc).toHaveBeenCalledTimes(2);
++  });
++
++  it("does not reuse a prior login's recruiting roster", async () => {
++    rpc.mockResolvedValueOnce({ data: [{ agent_id: "manager-one", display_name: "First roster", account_mode: "manager", is_manager: true, ref_slug: "first", avatar_url: null }], error: null })
++      .mockResolvedValueOnce({ data: [{ agent_id: "manager-two", display_name: "Second roster", account_mode: "manager", is_manager: true, ref_slug: "second", avatar_url: null }], error: null });
++    const view = renderPage();
++    await screen.findByText("First roster");
++    auth.user.id = "admin-two";
++    view.rerender();
++    expect(screen.queryByText("First roster")).not.toBeInTheDocument();
++    await screen.findByText("Second roster");
++    expect(rpc).toHaveBeenCalledTimes(2);
++    expect(view.client.getQueryData(["admin-recruiting-links", "admin-one"])).toEqual(expect.arrayContaining([expect.objectContaining({ display_name: "First roster" })]));
++    expect(view.client.getQueryData(["admin-recruiting-links", "admin-two"])).toEqual(expect.arrayContaining([expect.objectContaining({ display_name: "Second roster" })]));
++  });
++});
+diff --git a/src/tests/pages/leadManagerPools.test.tsx b/src/tests/pages/leadManagerPools.test.tsx
+index 816ae646..3711a657 100644
+--- a/src/tests/pages/leadManagerPools.test.tsx
++++ b/src/tests/pages/leadManagerPools.test.tsx
+@@ -10,7 +10,7 @@
+ import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+ import { MemoryRouter } from "react-router-dom";
+-import { beforeEach, describe, expect, it, vi } from "vitest";
++import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+ 
+ const db = vi.hoisted(() => ({
+   calls: [] as Array<{ fn: string; args: Record<string, unknown> }>,
+@@ -27,6 +27,7 @@ vi.mock("@/integrations/supabase/client", () => {
+         return ok({ marketing: { total: 195000, by_tier: { A: 70000, B: 39000, C: 65000, D: 20000 } }, dialer: { total: 380000, by_tier: { pos: 427, A: 1300, B: 430, F: 220000, C: 120000, D: 38000 } }, rewrite: { total: 213, by_tier: { S: 157 } }, winback: { total: 190, by_tier: { A: 62 } } });
+       case "lead_pool_counts":
+         return ok({ total: 1234, by_tier: { A: 10, F: 900 }, under_9mo: 0, dnc_excluded: 3, resold_excluded: 0, in_bundle_excluded: 0, sample: [], as_of: "2026-11-24T00:20:00Z" });
++      case "lead_pool_assign": return ok({ items: 100, agent: "Chudi" });
+       case "lead_pool_facets":
+         return ok(args?.p_source === "dialer"
+           ? { states: [{ k: "TX", n: 45000 }, { k: "FL", n: 30000 }], no_state: 12, campaigns: [{ k: "POS", n: 600 }, { k: "Veterans-A", n: 11000 }] }
+@@ -67,6 +68,11 @@ function renderPage() {
+ const lastCounts = () => [...db.calls].reverse().find((c) => c.fn === "lead_pool_counts");
+ 
+ describe("Lead Manager pools", () => {
++  beforeAll(() => {
++    vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
++    HTMLElement.prototype.scrollIntoView = vi.fn();
++  });
++  afterAll(() => vi.unstubAllGlobals());
+   beforeEach(() => { db.calls.length = 0; db.signed.length = 0; localStorage.clear(); });
+ 
+   it("shows what every tier means without a tap, for the pool on screen", async () => {
+@@ -130,4 +136,23 @@ describe("Lead Manager pools", () => {
+     fireEvent.click(within(card).getByRole("button", { name: /Play/ }));
+     await waitFor(() => expect(db.signed).toEqual(["callcenter/2026-11-23/a.webm"]));
+   });
++
++  it("uses the exact work-filter preview for assignment and waits out the debounce", async () => {
++    renderPage();
++    fireEvent.click(await screen.findByRole("combobox", { name: /Pick an agent/ }));
++    fireEvent.click(await screen.findByRole("option", { name: "Chudi" }));
++    await waitFor(() => expect(screen.getByRole("button", { name: /Drop 100 into Chudi/ })).not.toBeDisabled());
++    fireEvent.change(screen.getByLabelText("Last caller"), { target: { value: "Caller One" } });
++    fireEvent.change(screen.getByLabelText("Minimum attempts"), { target: { value: "2" } });
++    fireEvent.change(screen.getByLabelText("Callback due by"), { target: { value: "2026-11-24" } });
++    expect(screen.getByRole("button", { name: /Drop 100 into Chudi/ })).toBeDisabled();
++    await waitFor(() => expect(lastCounts()?.args.p_filters).toMatchObject({ caller: "Caller One", min_attempts: 2, callback_before: "2026-11-24", exclude_dnc: true, exclude_resold: true }));
++    await waitFor(() => expect(screen.getByRole("button", { name: /Drop 100 into Chudi/ })).not.toBeDisabled());
++    const preview = lastCounts()?.args.p_filters;
++    fireEvent.click(screen.getByRole("button", { name: /Drop 100 into Chudi/ }));
++    await waitFor(() => expect(db.calls.find((call) => call.fn === "lead_pool_assign")?.args.p_filters).toEqual(preview));
++    expect(screen.getByRole("link", { name: "Import consumers" })).toHaveAttribute("href", "/dashboard/consumer-import");
++    expect(screen.queryByText("Hold back Do-Not-Call")).toBeNull();
++  });
++
+ });
+diff --git a/src/tests/pages/myLeadsRecordingPipeline.test.tsx b/src/tests/pages/myLeadsRecordingPipeline.test.tsx
+index e0d3d0a6..63cf3d60 100644
+--- a/src/tests/pages/myLeadsRecordingPipeline.test.tsx
++++ b/src/tests/pages/myLeadsRecordingPipeline.test.tsx
+@@ -31,6 +31,7 @@ vi.mock("@/integrations/supabase/client", () => ({
+     rpc: (fn: string, args?: Record<string, unknown>) => {
+       db.calls.push({ fn, args: args ?? {} });
+       if (fn === "my_lead_bundles") return Promise.resolve({ data: db.leads.map((l) => ({ ...l })), error: null });
++      if (fn === "my_lead_source_history") return Promise.resolve({ data: [{ observation_id: "observation-1", policy_number: "TEST-ONLY-1", carrier: "Synthetic Carrier", ownership_claim: "supplier_reported", supplier_amount: 100, amount_cadence: "unknown" }, { observation_id: "observation-2", policy_number: "TEST-ONLY-2", carrier: "Synthetic Carrier", ownership_claim: "supplier_reported" }], error: null });
+       if (fn === "my_lead_to_pipeline") return Promise.resolve({ data: { client_id: "c-1", created: true }, error: null });
+       return Promise.resolve({ data: { ok: true }, error: null });
+     },
+@@ -104,4 +105,29 @@ describe("My Leads recordings and pipeline", () => {
+     await screen.findAllByTestId("lead-row");
+     expect(screen.queryByTestId("lead-to-pipeline")).toBeNull();
+   });
++
++  it("shows a later suppression reason and blocks calling and pipeline creation even while status remains new", async () => {
++    db.leads = [lead(1, { attrs: { pool: "marketing", true_dnc: true, blocked: true }, callable_now: true })];
++    renderPage();
++    expect(await screen.findByTestId("lead-holds")).toBeTruthy();
++    expect(screen.queryByTestId("calling-hours-closed")).toBeNull();
++    fireEvent.click(screen.getByRole("button", { name: /^Held/ }));
++    await screen.findAllByTestId("lead-row");
++    expect(screen.queryByTestId("lead-call-link")).toBeNull();
++    expect(screen.queryByTestId("lead-to-pipeline")).toBeNull();
++    expect(screen.getByText(/555.*Do not call/)).toBeTruthy();
++  });
++
++  it("shows multiple supplier observations and saves a next action without fabricating policy verification", async () => {
++    renderPage();
++    await screen.findAllByTestId("lead-row");
++    fireEvent.click(screen.getByRole("button", { name: /Full info/ }));
++    expect(await screen.findByText("TEST-ONLY-1")).toBeTruthy();
++    expect(await screen.findByText("TEST-ONLY-2")).toBeTruthy();
++    expect(screen.getByText(/Source dates and status do not verify an active policy/)).toBeTruthy();
++    fireEvent.change(screen.getByLabelText("Next action"), { target: { value: "Confirm the source policy details" } });
++    fireEvent.click(screen.getByRole("button", { name: "Save follow-up" }));
++    await waitFor(() => expect(db.calls.find((c) => c.fn === "lead_bundle_followup_set")?.args).toEqual({ p_item: "item-1", p_callback_at: null, p_next_action: "Confirm the source policy details" }));
++  });
++
+ });
+diff --git a/src/tests/pages/recruitingLinksContract.test.ts b/src/tests/pages/recruitingLinksContract.test.ts
+index 28767584..3c943e13 100644
+--- a/src/tests/pages/recruitingLinksContract.test.ts
++++ b/src/tests/pages/recruitingLinksContract.test.ts
+@@ -25,7 +25,8 @@ describe("recruiting links (MP-342)", () => {
+   it("page calls the RPC and builds links only from ref_slug", () => {
+     const page = read("src/pages/RecruitingLinks.tsx");
+     expect(page).toMatch(/rpc\("admin_recruiting_links"/);
+-    expect(page).toMatch(/\/r\/\$\{slug\}|\/r\/\$\{row\.ref_slug|`\$\{SITE\}\/r\/\$\{slug\}`/);
++    expect(page).toMatch(/const slug = row\.ref_slug\?\.trim\(\)/);
++    expect(page).toMatch(/ownLinkUrl\(slug\)/);
+     expect(page).not.toMatch(/from\("agents"\)/); // never a direct table read on a public-ish surface
+   });
+ 
+diff --git a/supabase/config.toml b/supabase/config.toml
+index bdeb2cdf..6de0b117 100644
+--- a/supabase/config.toml
++++ b/supabase/config.toml
+@@ -852,3 +852,8 @@ verify_jwt = false
+ # onboarding-nudge-sweep; verify_jwt must stay false or the gateway pre-rejects the cron caller.
+ [functions.contracting-nudge-sweep]
+ verify_jwt = false
++
++# Owner-only consumer campaign. Handler verifies admin/manager auth and exact
++# campaign ownership, then the DB rechecks verified state eligibility per claim.
++[functions.ethos-consumer-campaign]
++verify_jwt = true
+diff --git a/supabase/functions/_shared/contracting-delivery.ts b/supabase/functions/_shared/contracting-delivery.ts
+index 3f1e9f69..2de7f4d4 100644
+--- a/supabase/functions/_shared/contracting-delivery.ts
++++ b/supabase/functions/_shared/contracting-delivery.ts
+@@ -28,6 +28,7 @@ import {
+   type UpdateRequest,
+ } from "./ethos-contract.ts";
+ import { createSheetsClient, getAccessToken, type FetchLike } from "./google-sheets.ts";
++import { nanpTenDigits } from "./nanp-phone.ts";
+ 
+ /**
+  * Thrown when a provider gave a definite rejection, so no side effect exists.
+@@ -427,7 +428,7 @@ async function deliverMgnNewAgent(
+   }
+   const npn = digits(intake.npn);
+   const email = trimOuter(intake.email).toLowerCase();
+-  const mobile = digits(intake.phone_e164).slice(-10);
++  const mobile = nanpTenDigits(intake.phone_e164);
+   const npnRows: number[] = []; const otherRows: number[] = []; let lastPopulated = MGN_FIRST_DATA_ROW - 1;
+   for (let i = MGN_FIRST_DATA_ROW - 1; i < rows.length; i++) {
+     const r = rows[i] ?? [];
+@@ -435,7 +436,7 @@ async function deliverMgnNewAgent(
+     lastPopulated = i + 1;
+     const rowNpn = digits(r[MGN.NPN]);
+     if (npn && rowNpn === npn) { npnRows.push(i + 1); continue; }
+-    if ((email && trimOuter(r[MGN.EMAIL]).toLowerCase() === email) || (mobile && digits(r[MGN.MOBILE]).slice(-10) === mobile)) otherRows.push(i + 1);
++    if ((email && trimOuter(r[MGN.EMAIL]).toLowerCase() === email) || (mobile && nanpTenDigits(trimOuter(r[MGN.MOBILE])) === mobile)) otherRows.push(i + 1);
+   }
+   if (npnRows.length) {
+     return { state: "delivered", receipt: { provider: "google_sheets", action: "already_present", rows: npnRows, written: false, layout: "mgn" }, note: `NPN already on the MGN New Agents tab (row ${npnRows.join(", ")}); nothing written.` };
+@@ -461,7 +462,8 @@ async function deliverMgnNewAgent(
+   const mismatches: string[] = [];
+   payload.forEach((want, c) => {
+     const got = written[c];
+-    const same = c === MGN.MOBILE ? digits(got).slice(-10) === digits(want).slice(-10)
++    const expectedMobile = c === MGN.MOBILE ? nanpTenDigits(trimOuter(want)) : null;
++    const same = c === MGN.MOBILE ? expectedMobile !== null && nanpTenDigits(trimOuter(got)) === expectedMobile
+       : c === MGN.EMAIL ? trimOuter(got).toLowerCase() === trimOuter(want).toLowerCase()
+       : trimOuter(got) === trimOuter(want);
+     if (!same) mismatches.push(MGN_NEW_AGENTS_HEADERS[c]);
+diff --git a/supabase/functions/_shared/ethos-consumer-campaign.ts b/supabase/functions/_shared/ethos-consumer-campaign.ts
+new file mode 100644
+index 00000000..b22120bf
+--- /dev/null
++++ b/supabase/functions/_shared/ethos-consumer-campaign.ts
+@@ -0,0 +1,61 @@
++/** Consumer coverage invitations. This link is never an agent signup or contracting link. */
++export const ETHOS_CONSUMER_COVERAGE_URL = "https://agents.ethoslife.com/invite/e1c102";
++export const ETHOS_CONSUMER_CAMPAIGN_KEY = "ethos-consumer-20261124-v1";
++export const ETHOS_CONSUMER_TEMPLATE_VERSION = "coverage-invitation-v1";
++
++export type ConsumerClaim = {
++  delivery_id: string;
++  claim_id: string;
++  email: string;
++  first_name: string | null;
++  state: string;
++};
++
++export function consumerCoverageMessage(firstName: string | null) {
++  const name = String(firstName ?? "").replace(/[\r\n<>]/g, "").trim().slice(0, 60);
++  const greeting = name ? `Hi ${name},` : "Hi,";
++  const subject = "Explore life insurance options with Sam";
++  const text = `${greeting}\n\nI'm Sam James with Galaxy Financial. If you're interested in life insurance, you can review options and request a quote through my Ethos coverage page:\n\n${ETHOS_CONSUMER_COVERAGE_URL}\n\nAvailability, pricing, and eligibility depend on your state and the insurer's review. This invitation does not confirm coverage or approval.\n\nYou can reply with questions. There is no obligation to apply.\n\nSam James\nGalaxy Financial`;
++  return { subject, text };
++}
++
++export type ConsumerSendResult = { ok: boolean; id: string | null; error?: string; refused?: string };
++export type ConsumerDeliveryReceipt = {
++  deliveryId: string;
++  status: "provider_accepted" | "blocked" | "unknown";
++  providerId: string | null;
++  receiptSaved: boolean;
++};
++
++/** A DB claim is single-use. Ambiguous outcomes are never automatically requeued. */
++export async function dispatchConsumerClaims(
++  claims: ConsumerClaim[],
++  deps: {
++    send: (input: { to: string; subject: string; text: string; tagName: string }) => Promise<ConsumerSendResult>;
++    settle: (input: { deliveryId: string; claimId: string; status: ConsumerDeliveryReceipt["status"]; providerId: string | null; reason: string | null }) => Promise<void>;
++    pause?: () => Promise<void>;
++  },
++): Promise<ConsumerDeliveryReceipt[]> {
++  const receipts: ConsumerDeliveryReceipt[] = [];
++  for (const claim of claims) {
++    let result: ConsumerSendResult;
++    try {
++      result = await deps.send({ to: claim.email, ...consumerCoverageMessage(claim.first_name), tagName: "ethos-consumer" });
++    } catch {
++      result = { ok: false, id: null, error: "Provider outcome unknown; reconcile before any retry." };
++    }
++    const status = result.ok && result.id ? "provider_accepted" : result.refused ? "blocked" : "unknown";
++    let receiptSaved = false;
++    try {
++      await deps.settle({ deliveryId: claim.delivery_id, claimId: claim.claim_id, status, providerId: result.id ?? null,
++        reason: status === "provider_accepted" ? null : result.refused ?? "Provider outcome unknown; manual reconciliation required." });
++      receiptSaved = true;
++    } catch {
++      // Keep the durable DB claim in attempting state. It must not be retried after a lost receipt.
++      receiptSaved = false;
++    }
++    receipts.push({ deliveryId: claim.delivery_id, status, providerId: result.id ?? null, receiptSaved });
++    if (deps.pause && receipts.length < claims.length) await deps.pause();
++  }
++  return receipts;
++}
+diff --git a/supabase/functions/ethos-consumer-campaign/index.ts b/supabase/functions/ethos-consumer-campaign/index.ts
+new file mode 100644
+index 00000000..2642c368
+--- /dev/null
++++ b/supabase/functions/ethos-consumer-campaign/index.ts
+@@ -0,0 +1,79 @@
++import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
++import { requireSendAuth } from "../_shared/require-send-auth.ts";
++import { sendEmail } from "../_shared/email.ts";
++import { consumerCoverageMessage, dispatchConsumerClaims, ETHOS_CONSUMER_CAMPAIGN_KEY, type ConsumerClaim } from "../_shared/ethos-consumer-campaign.ts";
++
++const headers = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization,x-client-info,apikey,content-type", "Content-Type": "application/json" };
++const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers });
++
++Deno.serve(async (req) => {
++  if (req.method === "OPTIONS") return new Response("ok", { headers });
++  if (req.method !== "POST") return json({ ok: false, error: "POST only" }, 405);
++  const auth = await requireSendAuth(req);
++  if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
++  try {
++    const body = await req.json();
++    const action = String(body.action ?? "preview");
++    if (!["preview", "queue", "dispatch", "receipts", "settings", "save_scope", "deactivate_scope", "set_enabled"].includes(action)) return json({ ok: false, error: "Unknown action" }, 400);
++    const campaignKey = String(body.campaign_key ?? ETHOS_CONSUMER_CAMPAIGN_KEY);
++    const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
++    const { data: campaign, error: campaignError } = await db.from("ethos_consumer_campaigns").select("campaign_key,owner_user_id,sends_enabled,approved_at,template_version").eq("campaign_key", campaignKey).maybeSingle();
++    if (campaignError) return json({ ok: false, error: "Campaign configuration could not be read. Nothing sent." }, 503);
++    if (!campaign) return json({ ok: false, error: "Owner campaign is not configured. Nothing sent." }, 409);
++    if (auth.caller !== "service" && auth.caller !== `user:${campaign.owner_user_id}`) return json({ ok: false, error: "Only the verified campaign owner can access this audience." }, 403);
++
++    const actor = auth.caller?.startsWith("user:") ? auth.caller.slice(5) : campaign.owner_user_id;
++    if (action === "settings") {
++      const { data, error } = await db.from("ethos_consumer_license_scope").select("state,license_status,license_evidence_ref,license_verified_at,license_expires_at,ethos_eligible,ethos_evidence_ref,ethos_verified_at").eq("owner_user_id", campaign.owner_user_id).order("state");
++      if (error) throw error;
++      return json({ ok: true, campaign, scope: data ?? [] });
++    }
++    if (action === "save_scope" || action === "deactivate_scope") {
++      if (action === "save_scope" && body.evidence_reviewed !== true) return json({ ok: false, error: "Record evidence only after checking the named sources." }, 409);
++      const { data, error } = await db.rpc("set_ethos_consumer_scope", { p_campaign_key: campaignKey, p_actor: actor, p_state: String(body.state ?? ""),
++        p_active: action === "save_scope", p_license_evidence_ref: body.license_evidence_ref ?? null, p_license_expires_at: body.license_expires_at ?? null, p_ethos_evidence_ref: body.ethos_evidence_ref ?? null });
++      if (error) return json({ ok: false, error: error.message }, 409);
++      return json({ ok: true, scope: data, sent: 0 });
++    }
++    if (action === "set_enabled") {
++      if (typeof body.enabled !== "boolean") return json({ ok: false, error: "Specify whether sending is enabled." }, 400);
++      const { data, error } = await db.rpc("set_ethos_consumer_campaign_enabled", { p_campaign_key: campaignKey, p_actor: actor, p_enabled: body.enabled });
++      if (error) return json({ ok: false, error: error.message }, 409);
++      return json({ ok: true, campaign: data, sent: 0 });
++    }
++
++    if (action === "receipts") {
++      const { data, error } = await db.from("ethos_consumer_deliveries").select("id,lead_id,state,status,provider_id,reason,queued_at,attempted_at,settled_at").eq("campaign_key", campaignKey).order("queued_at", { ascending: false }).limit(100);
++      if (error) throw error;
++      return json({ ok: true, receipts: data ?? [] });
++    }
++    if (action === "dispatch") {
++      if (body.confirm_campaign !== campaignKey) return json({ ok: false, error: "Confirm the exact campaign after reviewing its audience and message." }, 409);
++      if (!Array.isArray(body.delivery_ids) || body.delivery_ids.length < 1 || body.delivery_ids.length > 25) return json({ ok: false, error: "Use the exact delivery IDs returned by the reviewed queue operation." }, 409);
++      const { data, error } = await db.rpc("claim_ethos_consumer_deliveries", { p_campaign_key: campaignKey, p_delivery_ids: body.delivery_ids, p_limit: Math.max(1, Math.min(25, Number(body.limit) || 25)) });
++      if (error) return json({ ok: false, error: error.message, sent: 0 }, 409);
++      const receipts = await dispatchConsumerClaims((data ?? []) as ConsumerClaim[], {
++        send: sendEmail,
++        pause: async () => { await new Promise((resolve) => setTimeout(resolve, 600)); },
++        settle: async (r) => {
++          const { error: settleError } = await db.rpc("settle_ethos_consumer_delivery", { p_id: r.deliveryId, p_claim_id: r.claimId, p_status: r.status, p_provider_id: r.providerId, p_reason: r.reason });
++          if (settleError) throw settleError;
++        },
++      });
++      return json({ ok: receipts.every((r) => r.receiptSaved), receipts, provider_accepted: receipts.filter((r) => r.status === "provider_accepted").length, delivered: null });
++    }
++    const batchId = String(body.source_batch_id ?? "").trim();
++    if (!batchId || batchId.length > 160) return json({ ok: false, error: "An exact imported consumer batch is required." }, 400);
++    if (action === "queue") {
++      if (!Array.isArray(body.selections) || body.selections.length < 1 || body.selections.length > 25) return json({ ok: false, error: "Select 1–25 recipients from the current preview." }, 400);
++      const { data, error } = await db.rpc("queue_ethos_consumer_deliveries", { p_campaign_key: campaignKey, p_source_batch_id: batchId, p_selections: body.selections, p_actor: actor });
++      if (error) return json({ ok: false, error: error.message }, 409);
++      return json({ ok: true, ...data, sent: 0 });
++    }
++    const { data, error } = await db.rpc("preview_ethos_consumer_campaign", { p_campaign_key: campaignKey, p_source_batch_id: batchId });
++    if (error) return json({ ok: false, error: error.message, sent: 0 }, 503);
++    return json({ ok: true, ...data, campaign, message: consumerCoverageMessage(null), sent: 0 });
++  } catch {
++    return json({ ok: false, error: "Campaign operation could not be completed. Check receipts before retrying a dispatch." }, 500);
++  }
++});

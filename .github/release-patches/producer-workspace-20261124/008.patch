@@ -1,0 +1,983 @@
+diff --git a/src/pages/LeadManager.tsx b/src/pages/LeadManager.tsx
+index c5db62f5..616c24ff 100644
+--- a/src/pages/LeadManager.tsx
++++ b/src/pages/LeadManager.tsx
+@@ -1,3 +1,4 @@
++import { Link } from "react-router-dom";
+ import { useEffect, useMemo, useRef, useState } from "react";
+ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+@@ -16,6 +17,7 @@ import { PageHeader } from "@/components/ui/page-header";
+ import { QueryState } from "@/components/ui/query-state";
+ import { cn } from "@/lib/utils";
+ import { TIER_STYLE, flagBadges, tierLegendFor } from "@/lib/leadBundles";
++import { EMPTY_WORK_FILTERS, LEAD_PACK_COLUMNS, OUTCOME_OPTIONS, holdLabels, workFilterParams, type LeadPackRow, type LeadWorkFilters } from "@/lib/leadManagerFilters";
+ import { formatTimeAgo } from "@/lib/dateUtils";
+ import {
+   Popover, PopoverContent, PopoverTrigger,
+@@ -90,6 +92,9 @@ type PoolCounts = {
+   by_tier: Record<string, number>;
+   under_9mo: number;
+   dnc_excluded: number;
++  client_excluded?: number;
++  review_excluded?: number;
++  matching?: number;
+   resold_excluded: number;
+   in_bundle_excluded: number;
+   /** When the pool snapshot the counts read from was last refreshed (MP-LEAD-MANAGER-15). */
+@@ -124,10 +129,6 @@ type Closer = {
+   user_id: string; display_name: string | null; dropped: number; worked: number;
+   sold: number; appointments: number; recorded: number; sold_rate: number | null;
+ };
+-type ExportRow = {
+-  first_name: string | null; last_name: string | null; phone10: string | null; email: string | null;
+-  state: string | null; age: number | null; grade: string | null; tags: string | null; status: string | null;
+-};
+ 
+ function csvField(value: unknown): string {
+   const raw = value === null || value === undefined ? "" : String(value);
+@@ -281,6 +282,7 @@ function AgentDropdown({
+           type="button"
+           variant="outline"
+           role="combobox"
++          aria-label={selected ? selected.display_name : placeholder}
+           aria-expanded={open}
+           disabled={disabled}
+           className={cn("h-11 justify-between px-3 font-normal", widthClass ?? "w-full sm:w-80")}
+@@ -347,8 +349,7 @@ export default function LeadManager() {
+   const [minAge, setMinAge] = useState("");
+   const [maxAge, setMaxAge] = useState("");
+   const [vantageOnly, setVantageOnly] = useState(false);
+-  const [excludeDnc, setExcludeDnc] = useState(true);
+-  const [excludeResold, setExcludeResold] = useState(true);
++  const [workFilters, setWorkFilters] = useState<LeadWorkFilters>({ ...EMPTY_WORK_FILTERS });
+   const [sort, setSort] = useState("tier");
+   const [limit, setLimit] = useState(100);
+   const [note, setNote] = useState("");
+@@ -360,12 +361,13 @@ export default function LeadManager() {
+   useEffect(() => {
+     setTiers(new Set()); setFlags(new Set()); setVantageOnly(false);
+     setStates(new Set()); setCampaigns(new Set()); setMinAge(""); setMaxAge("");
++    setWorkFilters({ ...EMPTY_WORK_FILTERS });
+   }, [pool]);
+ 
+   const [agent, setAgent] = useState<AssignableAgent | null>(null);
+ 
+   const filters = useMemo(() => {
+-    const f: Record<string, unknown> = { exclude_dnc: excludeDnc, exclude_resold: excludeResold, sort };
++    const f: Record<string, unknown> = { ...workFilterParams(workFilters), sort };
+     if (tiers.size) f.tiers = Array.from(tiers);
+     if (flags.size) f.require_flags = Array.from(flags);
+     // Every pool carries a state and an age now (MP-LEAD-MANAGER-RM): the dialer pool from the
+@@ -377,7 +379,7 @@ export default function LeadManager() {
+     if (maxAge) f.max_age = Number(maxAge);
+     if (vantageOnly) f.vantage_only = true;
+     return f;
+-  }, [tiers, flags, states, campaigns, minAge, maxAge, vantageOnly, excludeDnc, excludeResold, sort]);
++  }, [tiers, flags, states, campaigns, minAge, maxAge, vantageOnly, workFilters, sort]);
+ 
+   const debouncedFilters = useDebounced(filters, 350);
+ 
+@@ -403,7 +405,7 @@ export default function LeadManager() {
+   });
+   const totals = totalsQuery.data ?? {};
+ 
+-  const { data: counts, isFetching } = useQuery<PoolCounts>({
++  const countsQuery = useQuery<PoolCounts>({
+     queryKey: ["lead-pool", pool, debouncedFilters],
+     queryFn: async () => {
+       const { data, error } = await rpc("lead_pool_counts", { p_source: pool, p_filters: debouncedFilters });
+@@ -418,6 +420,9 @@ export default function LeadManager() {
+     placeholderData: (prev) => prev,
+   });
+ 
++  const { data: counts, isFetching } = countsQuery;
++  const previewCurrent = filters === debouncedFilters && !isFetching && !countsQuery.isPlaceholderData && !countsQuery.isError;
++
+   // The states and campaigns that can be picked in this pool, with counts. Read from the same
+   // 10-minute snapshot as the counts; cached per pool.
+   const facetsQuery = useQuery<PoolFacets>({
+@@ -493,6 +498,7 @@ export default function LeadManager() {
+   const assign = useMutation({
+     mutationFn: async () => {
+       if (!agent) throw new Error("Pick a live agent first.");
++      if (!previewCurrent) throw new Error("Wait for the matching preview to finish.");
+       const { data, error } = await rpc("lead_pool_assign", {
+         p_source: pool, p_filters: filters, p_limit: limit,
+         p_agent_user_id: agent.user_id, p_name: null, p_note: note.trim() || null,
+@@ -519,14 +525,13 @@ export default function LeadManager() {
+   });
+ 
+   async function exportPack(b: RecentBundle) {
+-    const { data, error } = await rpc("lead_bundle_export", { p_bundle: b.bundle_id });
++    const { data, error } = await rpc("lead_bundle_export_detail", { p_bundle: b.bundle_id });
+     if (error) { toast.error("Could not export pack"); return; }
+-    const rows = ((data as ExportRow[]) ?? []).map((r) => [
+-      r.first_name, r.last_name, r.phone10, r.email, r.state, r.age, r.grade, r.tags, r.status,
+-    ]);
+-    downloadCsv(`${b.name.replace(/[^\w.-]+/g, "_")}.csv`,
+-      ["First", "Last", "Phone", "Email", "State", "Age", "Tier", "Tags", "Status"], rows);
+-    toast.success(`Exported ${rows.length} leads`);
++    const allRows = (data as LeadPackRow[]) ?? [];
++    const safeRows = allRows.filter((r) => !r.hold_reasons);
++    const rows = safeRows.map((r) => LEAD_PACK_COLUMNS.map(([key]) => r[key]));
++    downloadCsv(`${b.name.replace(/[^\w.-]+/g, "_")}.csv`, LEAD_PACK_COLUMNS.map(([, title]) => title), rows);
++    toast.success(`Exported ${rows.length} leads${allRows.length > rows.length ? `; ${allRows.length - rows.length} held records excluded` : ""}`);
+   }
+ 
+   const tierOpts = POOL_TIERS[pool];
+@@ -539,6 +544,7 @@ export default function LeadManager() {
+         title="Lead Manager"
+         subtitle="Pick a pool, filter it, tap an agent in the drop-down, drop the pack into their portal."
+       />
++      <Button asChild variant="outline"><Link to="/dashboard/consumer-import">Import consumers</Link></Button>
+ 
+       {/* POOL SWITCH */}
+       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+@@ -666,6 +672,8 @@ export default function LeadManager() {
+             </div>
+           </div>
+ 
++          <WorkFilterControls value={workFilters} onChange={setWorkFilters} />
++          <p className="text-xs text-muted-foreground">Do not call, current-client, review and allocation holds stay protected. Select a hold reason to inspect those records. Imported ownership and dialer sales do not verify an active policy.</p>
+           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+             {pool === "winback" && (
+               <label className="flex items-center gap-2 text-sm">
+@@ -673,14 +681,6 @@ export default function LeadManager() {
+                 Vantage only
+               </label>
+             )}
+-            <label className="flex items-center gap-2 text-sm">
+-              <Checkbox checked={excludeDnc} onCheckedChange={(v) => setExcludeDnc(Boolean(v))} />
+-              Hold back Do-Not-Call
+-            </label>
+-            <label className="flex items-center gap-2 text-sm">
+-              <Checkbox checked={excludeResold} onCheckedChange={(v) => setExcludeResold(Boolean(v))} />
+-              Hold back already-sold
+-            </label>
+             <div className="flex items-center gap-2 text-sm">
+               <span className="text-muted-foreground">Pack size</span>
+               <Input type="number" inputMode="numeric" value={limit}
+@@ -694,8 +694,12 @@ export default function LeadManager() {
+             <StatTile label="Ready to drop" value={isFetching ? "…" : (counts?.total ?? 0).toLocaleString()} accent />
+             <StatTile label="Under 9 months" value={(counts?.under_9mo ?? 0).toLocaleString()} warn={!!counts?.under_9mo} />
+             <StatTile label="Held: Do-Not-Call" value={(counts?.dnc_excluded ?? 0).toLocaleString()} />
+-            <StatTile label="Held: already sold" value={(counts?.resold_excluded ?? 0).toLocaleString()} />
++            <StatTile label="Held: existing client" value={(counts?.client_excluded ?? 0).toLocaleString()} />
++            <StatTile label="Held: assigned" value={(counts?.in_bundle_excluded ?? 0).toLocaleString()} />
++            <StatTile label="Held: distributed" value={(counts?.resold_excluded ?? 0).toLocaleString()} />
++            <StatTile label="Held: import review" value={(counts?.review_excluded ?? 0).toLocaleString()} />
+           </div>
++          {countsQuery.isError && <QueryState status="error" label="matching leads" error={countsQuery.error} onRetry={() => void countsQuery.refetch()} compact />}
+           {facetsQuery.isError && (
+             <QueryState status="error" label="the state and campaign lists" error={facetsQuery.error} onRetry={() => void facetsQuery.refetch()} compact />
+           )}
+@@ -704,7 +708,7 @@ export default function LeadManager() {
+           )}
+           {counts?.as_of && (
+             <p className="text-xs text-muted-foreground" data-testid="pool-snapshot-age">
+-              Pool counts come from a snapshot refreshed {formatTimeAgo(counts.as_of)}. The ReadyMode lead list itself is pulled every night. Leads already dropped or sold are excluded live.
++              Pool counts come from a snapshot refreshed {formatTimeAgo(counts.as_of)}. The ReadyMode lead list itself is pulled every night. Do-not-call records and leads already assigned or distributed are excluded live. Hold totals may overlap for the same phone.
+             </p>
+           )}
+ 
+@@ -716,7 +720,7 @@ export default function LeadManager() {
+                     <th className="px-3 py-2 text-left">Name</th>
+                     <th className="px-3 py-2 text-left">Phone</th>
+                     <th className="px-3 py-2 text-left">Tier</th>
+-                    <th className="px-3 py-2 text-left">Flags</th>
++                    <th className="px-3 py-2 text-left">Context / holds</th>
+                   </tr>
+                 </thead>
+                 <tbody>
+@@ -732,10 +736,17 @@ export default function LeadManager() {
+                       </td>
+                       <td className="px-3 py-1.5">
+                         <div className="flex flex-wrap gap-1">
+-                          {flagBadges(s.flags, s.under_9mo).slice(0, 4).map((b) => (
++                          {holdLabels(s.flags).map((label) => <Badge key={label} variant="outline" className="text-[10px] text-amber-300">{label}</Badge>)}
++                          {flagBadges(s.flags, s.under_9mo).filter((b) => b.key !== "current_client").slice(0, 4).map((b) => (
+                             <Badge key={b.key} variant="outline" className={cn("text-[10px]", b.cls)}>{b.label}</Badge>
+                           ))}
+                         </div>
++                        <p className="mt-1 text-xs text-muted-foreground">
++                          {[typeof s.flags.last_caller === "string" && s.flags.last_caller,
++                            typeof s.flags.last_outcome === "string" && s.flags.last_outcome.replace(/_/g, " "),
++                            typeof s.flags.times_called === "number" && `${s.flags.times_called} attempts`,
++                            typeof s.flags.last_touched_at === "string" && formatTimeAgo(s.flags.last_touched_at)].filter(Boolean).join(" · ")}
++                        </p>
+                       </td>
+                     </tr>
+                   ))}
+@@ -789,7 +800,7 @@ export default function LeadManager() {
+             onChange={(e) => setNote(e.target.value)} className="max-w-md" aria-label="Pack note" />
+ 
+           <Button type="button" data-primary-action size="lg"
+-            disabled={!agent || dropCount < 1 || assign.isPending}
++            disabled={!agent || dropCount < 1 || assign.isPending || !previewCurrent}
+             onClick={() => assign.mutate()}>
+             <Send className="mr-1.5 h-4 w-4" />
+             {assign.isPending ? "Dropping…"
+@@ -895,6 +906,7 @@ export default function LeadManager() {
+                     </div>
+                   </div>
+                   <div className="flex items-center gap-1.5">
++                    <PackDetails bundle={b} />
+                     <Button type="button" size="sm" variant="outline" onClick={() => exportPack(b)}><Download className="mr-1 h-4 w-4" /> Pack</Button>
+                     <MarkSoldDialog bundle={b} onDone={() => {
+                       queryClient.invalidateQueries({ queryKey: ["lead-bundles-recent"] });
+@@ -1353,3 +1365,79 @@ function RecordingsCard() {
+     </Card>
+   );
+ }
++
++function WorkFilterControls({ value, onChange }: { value: LeadWorkFilters; onChange: (value: LeadWorkFilters) => void }) {
++  const set = (key: keyof LeadWorkFilters, next: string) => onChange({ ...value, [key]: next });
++  const textFields: Array<[keyof LeadWorkFilters, string, string]> = [
++    ["caller", "Last caller", "text"], ["sourceFile", "Source file contains", "text"],
++    ["touchedAfter", "Touched on or after", "date"], ["touchedBefore", "Touched on or before", "date"],
++    ["minAttempts", "Minimum attempts", "number"], ["maxAttempts", "Maximum attempts", "number"],
++    ["callbackBefore", "Callback due by", "date"],
++  ];
++  const choices: Array<[keyof LeadWorkFilters, string, ReadonlyArray<readonly [string, string]>]> = [
++    ["outcome", "Last outcome", OUTCOME_OPTIONS],
++    ["sourceType", "Source type", [["pos", "Purchased POS"], ["mortgage", "Mortgage"], ["readymode", "ReadyMode"]]],
++    ["policyStanding", "Policy standing", [["unverified", "Unverified"], ["current_client", "Existing client match"], ["lapsing", "Lapsed in book"], ["gone", "Other out of force"]]],
++    ["hold", "Hold reason", [["ready", "Ready to assign"], ["true_dnc", "Do not call"], ["current_client", "Existing client"], ["assigned", "Already assigned"], ["resold", "Previously distributed"], ["review", "Import review"]]],
++  ];
++  return (
++    <div className="grid gap-3 rounded-lg border border-border/60 p-3 sm:grid-cols-2 lg:grid-cols-4">
++      {textFields.map(([key, label, type]) => (
++        <div key={key} className="space-y-1">
++          <Label htmlFor={`lead-filter-${key}`} className="text-xs text-muted-foreground">{label}</Label>
++          <Input id={`lead-filter-${key}`} type={type} min={type === "number" ? 0 : undefined}
++            value={value[key]} onChange={(e) => set(key, e.target.value)} />
++        </div>
++      ))}
++      {choices.map(([key, label, options]) => (
++        <div key={key} className="space-y-1">
++          <Label className="text-xs text-muted-foreground">{label}</Label>
++          <Select value={value[key] || "__all"} onValueChange={(next) => set(key, next === "__all" ? "" : next)}>
++            <SelectTrigger aria-label={label}><SelectValue /></SelectTrigger>
++            <SelectContent><SelectItem value="__all">All</SelectItem>
++              {options.map(([v, title]) => <SelectItem key={v} value={v}>{title}</SelectItem>)}
++            </SelectContent>
++          </Select>
++        </div>
++      ))}
++      <div className="flex items-end"><Button type="button" variant="ghost" size="sm" onClick={() => onChange({ ...EMPTY_WORK_FILTERS })}>Clear work filters</Button></div>
++      <p className="text-xs text-muted-foreground sm:col-span-2 lg:col-span-4">Date filters use Phoenix calendar days. Missing dates and unknown caller details do not match a specific filter.</p>
++    </div>
++  );
++}
++
++function PackDetails({ bundle }: { bundle: RecentBundle }) {
++  const [open, setOpen] = useState(false);
++  const [search, setSearch] = useState("");
++  const q = useQuery<LeadPackRow[]>({
++    queryKey: ["lead-pack-detail", bundle.bundle_id], enabled: open,
++    queryFn: async () => {
++      const { data, error } = await rpc("lead_bundle_export_detail", { p_bundle: bundle.bundle_id });
++      if (error) throw error;
++      return (data ?? []) as LeadPackRow[];
++    },
++  });
++  const rows = (q.data ?? []).filter((row) => [row.first_name, row.last_name, row.phone10].join(" ").toLowerCase().includes(search.trim().toLowerCase()));
++  return (
++    <Dialog open={open} onOpenChange={setOpen}>
++      <DialogTrigger asChild><Button type="button" size="sm" variant="outline">Details</Button></DialogTrigger>
++      <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto">
++        <DialogHeader><DialogTitle>{bundle.name}</DialogTitle></DialogHeader>
++        <p className="text-xs text-muted-foreground">Source claims, call history and next actions travel with the lead. A reported sale does not verify an active policy. Held records are excluded from the downloadable pack.</p>
++        <Input aria-label="Search pack details" placeholder="Search name or phone" value={search} onChange={(e) => setSearch(e.target.value)} />
++        {q.isError ? <QueryState status="error" label="pack details" error={q.error} onRetry={() => void q.refetch()} compact />
++          : q.isLoading ? <p>Loading details…</p> : <div className="space-y-3">
++            {rows.slice(0, 100).map((row) => <div key={String(row.phone10)} className="rounded-lg border p-3">
++              <h3 className="font-medium">{[row.first_name, row.last_name].filter(Boolean).join(" ") || row.phone10}</h3>
++              <dl className="mt-2 grid gap-x-4 gap-y-2 text-sm sm:grid-cols-2">
++                {LEAD_PACK_COLUMNS.filter(([key]) => !["first_name", "last_name"].includes(key) && row[key] != null && row[key] !== "").map(([key, label]) => <div key={key}>
++                  <dt className="text-xs text-muted-foreground">{label}</dt><dd className="break-words">{String(row[key])}</dd>
++                </div>)}
++              </dl>
++            </div>)}
++            <p className="text-xs text-muted-foreground">Showing {Math.min(rows.length, 100)} of {rows.length} matches. Search to narrow the pack.</p>
++          </div>}
++      </DialogContent>
++    </Dialog>
++  );
++}
+diff --git a/src/pages/ManagerCommandView.tsx b/src/pages/ManagerCommandView.tsx
+index 78d82a62..1f5eaf12 100644
+--- a/src/pages/ManagerCommandView.tsx
++++ b/src/pages/ManagerCommandView.tsx
+@@ -77,7 +77,7 @@ export default function ManagerCommandView() {
+       monthStart.setHours(0, 0, 0, 0);
+ 
+       const { data: deals } = await supabase
+-        .from("agentlink_deals_snapshot" as any)
++        .from("agentlink_deals_snapshot")
+         .select("user_id, annual_premium, effective_date")
+         .in("user_id", alIds)
+         .gte("effective_date", monthStart.toISOString().slice(0, 10));
+@@ -117,7 +117,7 @@ export default function ManagerCommandView() {
+     staleTime: 60_000,
+     queryFn: async () => {
+       const { data } = await supabase
+-        .from("v_upcoming_calls" as any)
++        .from("v_upcoming_calls")
+         .select("id, prospect_name, prospect_phone, start_at, call_type")
+         .limit(5);
+       return data ?? [];
+diff --git a/src/pages/MyLeads.tsx b/src/pages/MyLeads.tsx
+index 36df84d3..4541c462 100644
+--- a/src/pages/MyLeads.tsx
++++ b/src/pages/MyLeads.tsx
+@@ -23,6 +23,7 @@ import { contactLinkProps, formatPhoneDisplay, phoneHref } from "@/lib/phone";
+ import { dispositionLabel } from "@/lib/readymodeDispositions";
+ import { LEAD_STATUS_BUTTONS, TIER_STYLE, canDial, flagBadges, formatLabel, isOpenLead, leadStatusLabel, tierLabel, tierLegendFor } from "@/lib/leadBundles";
+ import { dialTapHandler } from "@/lib/leadDialTap";
++import { holdLabels } from "@/lib/leadManagerFilters";
+ import { MY_LEADS_QUERY_KEY, fetchMyLeads } from "@/lib/myLeads";
+ import { cn } from "@/lib/utils";
+ import { CallCenterVoiceRecorder } from "@/components/callcenter/CallCenterVoiceRecorder";
+@@ -56,7 +57,12 @@ interface MyLead {
+ }
+ // A lead is workable unless the server says its calling hours are closed. An older server
+ // that does not send the flag leaves every lead workable, exactly as before.
+-const callableNow = (r: Pick<MyLead, "callable_now">) => r.callable_now !== false;
++const heldReason = (r: Pick<MyLead, "attrs" | "status">): string => {
++  if (r.status === "do_not_call") return "Do not call";
++  const flags = r.attrs ?? {};
++  return holdLabels({ true_dnc: flags.true_dnc, dnc: flags.dnc, current_client: flags.current_client, import_review_required: flags.import_review_required }).join(" · ");
++};
++const callableNow = (r: Pick<MyLead, "callable_now" | "attrs" | "status">) => r.callable_now !== false && !heldReason(r);
+ function opensLabel(iso: string | null | undefined): string {
+   if (!iso) return "tomorrow morning";
+   const d = new Date(iso);
+@@ -73,10 +79,11 @@ function earliestOpening(list: Array<Pick<MyLead, "callable_at">>): string | nul
+   for (const r of list) if (r.callable_at && (!best || r.callable_at < best)) best = r.callable_at;
+   return best;
+ }
+-type Show = "open" | "done" | "all";
++type Show = "open" | "done" | "held" | "all";
+ const SHOW: ReadonlyArray<{ key: Show; label: string }> = [
+   { key: "open", label: "To call" },
+   { key: "done", label: "Done" },
++  { key: "held", label: "Held" },
+   { key: "all", label: "All" },
+ ];
+ // To call, in the order that makes money (2026-11-19). Measured that day: 656 leads were in agents' hands and 420
+@@ -128,7 +135,7 @@ function prettyVal(k: string, v: unknown): string {
+ }
+ const LONG_FIELDS = new Set(["call_summary", "health_notes", "notes", "key_points", "beneficiaries", "missing_fields", "call_notes", "transcript_excerpt"]);
+ 
+-function LeadDetailGrid({ itemId }: { itemId: string }) {
++function LeadBaseDetailGrid({ itemId }: { itemId: string }) {
+   const q = useQuery({
+     queryKey: ["my-lead-detail", itemId],
+     queryFn: async () => {
+@@ -248,7 +255,7 @@ export default function MyLeads() {
+     },
+     onError: (e: Error) => toast.error(e.message),
+   });
+-  const pipelineButton = (item: string, status: string) => status === "do_not_call" ? null : (
++  const pipelineButton = (item: string, status: string, held = false) => status === "do_not_call" || held ? null : (
+     <Button type="button" size="sm" variant="outline" disabled={toPipeline.isPending || inPipeline[item]} onClick={() => toPipeline.mutate(item)} data-testid="lead-to-pipeline">
+       {inPipeline[item] ? <><Check className="mr-1 h-3.5 w-3.5" />In your pipeline</> : <><UserPlus className="mr-1 h-3.5 w-3.5" />Add to my pipeline</>}
+     </Button>
+@@ -291,7 +298,7 @@ export default function MyLeads() {
+   const myWorked = rows.filter((r) => !isOpenLead(r.status)).length;
+   // Sam (2026-11-10): after 7 PM leads can't be worked, so they leave "To call". Closed
+   // leads stay under "All" so a call made at 6:58 can still be logged.
+-  const inView = (r: MyLead, s: Show) => s === "all" || (s === "open" ? isOpenLead(r.status) && callableNow(r) : !isOpenLead(r.status));
++  const inView = (r: MyLead, s: Show) => s === "all" || (s === "held" ? !!heldReason(r) : s === "open" ? isOpenLead(r.status) && callableNow(r) : !isOpenLead(r.status));
+   const count = (s: Show) => rows.filter((r) => inView(r, s)).length;
+   const inShow = rows.filter((r) => inView(r, show));
+   const matched = inShow.filter((r) => matchesSearch(r, search));
+@@ -300,7 +307,8 @@ export default function MyLeads() {
+   orderRef.current = visible.map((r) => r.item_id);
+   openRef.current = openId;
+   const callbacksDue = rows.filter((r) => (r.status === "callback" || r.status === "appointment") && callableNow(r)).length;
+-  const closedOpen = rows.filter((r) => isOpenLead(r.status) && !callableNow(r));
++  const closedOpen = rows.filter((r) => isOpenLead(r.status) && !heldReason(r) && !callableNow(r));
++  const heldCount = rows.filter((r) => !!heldReason(r)).length;
+   const groups: Array<{ id: string; name: string; note: string | null; format: string; leads: MyLead[] }> = [];
+   for (const r of visible) {
+     const g = groups.find((x) => x.id === r.bundle_id);
+@@ -326,6 +334,9 @@ export default function MyLeads() {
+           </span>
+         </div>
+       )}
++      {heldCount > 0 && <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm" data-testid="lead-holds">
++        {heldCount} lead{heldCount === 1 ? " is" : "s are"} held from contact. Open Held to review the reason; calling and pipeline actions are disabled.
++      </div>}
+       {closedOpen.length > 0 && (
+         <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm" data-testid="calling-hours-closed">
+           <p className="font-semibold text-amber-200">
+@@ -400,7 +411,7 @@ export default function MyLeads() {
+                             <a href={href} {...contactLinkProps(href)} onClick={dialTapHandler(l.item_id)} onClickCapture={() => setActiveId(l.item_id)} data-testid="lead-call-link" className="inline-flex min-h-[32px] items-center gap-1 font-medium text-primary hover:underline"><Phone className="h-3.5 w-3.5" />{formatPhoneDisplay(l.phone10)}</a>
+                           ) : (
+                             <span className="text-muted-foreground">
+-                              {formatPhoneDisplay(l.phone10)} · {canDial(l.status) && !hoursOpen ? `calling hours closed, opens ${opensLabel(l.callable_at)}` : "do not call"}
++                              {formatPhoneDisplay(l.phone10)} · {heldReason(l) || (canDial(l.status) && !hoursOpen ? `calling hours closed, opens ${opensLabel(l.callable_at)}` : "do not call")}
+                             </span>
+                           )}
+                           {/* A closed row carries the tier as a plain label; the tappable badge that explains the tiers is a
+@@ -436,7 +447,7 @@ export default function MyLeads() {
+                           </button>
+                         {detailOpen.has(l.item_id) && (
+                           <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
+-                            <LeadDetailGrid itemId={l.item_id} />
++                            <LeadDetailGrid itemId={l.item_id} context={l.attrs} />
+                           </div>
+                         )}
+                         {(() => {
+@@ -460,7 +471,7 @@ export default function MyLeads() {
+                         <div className="space-y-2">
+                           <div className="flex flex-wrap items-center gap-2">
+                             {LEAD_STATUS_BUTTONS.map((b) => (
+-                              <Button key={b.key} type="button" size="sm" variant={l.status === b.key ? "default" : "outline"} disabled={set.isPending} onClick={() => set.mutate({ item: l.item_id, status: b.key })}>{b.label}</Button>
++                              <Button key={b.key} type="button" size="sm" variant={l.status === b.key ? "default" : "outline"} disabled={set.isPending || (!!heldReason(l) && b.key !== "do_not_call")} onClick={() => set.mutate({ item: l.item_id, status: b.key })}>{b.label}</Button>
+                             ))}
+                             <Button type="button" size="sm" variant={recordingFor === l.item_id ? "default" : "outline"} onClick={() => setRecordingFor((c) => (c === l.item_id ? null : l.item_id))}>
+                               <Mic className="mr-1 h-3.5 w-3.5" />{recordingFor === l.item_id ? "Close recorder" : "Record the call"}
+@@ -468,7 +479,7 @@ export default function MyLeads() {
+                             {recordings[l.item_id] && (
+                               <Badge variant="outline" className="bg-green-600/15 border-green-600/40 text-green-300"><Check className="mr-1 h-3 w-3" />recorded</Badge>
+                             )}
+-                            {pipelineButton(l.item_id, l.status)}
++                            {pipelineButton(l.item_id, l.status, !!heldReason(l))}
+                             <Input value={notes[l.item_id] ?? ""} onChange={(e) => setNotes((n) => ({ ...n, [l.item_id]: e.target.value }))} placeholder="Note (saved with the next tap)" className="h-8 min-w-[12rem] flex-1" maxLength={300} aria-label="Note" />
+                           </div>
+                           {recordingFor === l.item_id && (
+@@ -490,7 +501,8 @@ export default function MyLeads() {
+         const pack = rows.filter((r) => r.bundle_id === workBundle);
+         if (pack.length === 0) { return null; }
+         const queue = pack.filter((r) => r.status === "new" && callableNow(r));
+-        const waiting = pack.filter((r) => r.status === "new" && !callableNow(r));
++        const waiting = pack.filter((r) => r.status === "new" && !heldReason(r) && !callableNow(r));
++        const held = pack.filter((r) => !!heldReason(r));
+         const cur = queue[0] ?? null;
+         const workedN = pack.filter((r) => r.status !== "new").length;
+         const soldN = pack.filter((r) => r.status === "sold").length;
+@@ -540,7 +552,7 @@ export default function MyLeads() {
+                     {pack[0].bundle_note && <p className="text-sm italic text-amber-300/90">“{pack[0].bundle_note}”</p>}
+                     <GlassCard className="p-4">
+                       <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Client file</p>
+-                      <LeadDetailGrid itemId={cur.item_id} />
++                      <LeadDetailGrid itemId={cur.item_id} context={cur.attrs} />
+                     </GlassCard>
+                     <div className="space-y-2">
+                       <p className="text-sm font-medium">What happened? <span className="font-normal text-muted-foreground">(required — this is what moves you to the next lead)</span></p>
+@@ -558,7 +570,7 @@ export default function MyLeads() {
+                         {recordings[cur.item_id] && (
+                           <Badge variant="outline" className="bg-green-600/15 border-green-600/40 text-green-300"><Check className="mr-1 h-3 w-3" />recorded</Badge>
+                         )}
+-                        {pipelineButton(cur.item_id, cur.status)}
++                        {pipelineButton(cur.item_id, cur.status, !!heldReason(cur))}
+                       </div>
+                       {recordingFor === cur.item_id && (
+                         <CallCenterVoiceRecorder key={cur.item_id} {...recorderProps(cur.item_id)} className="rounded-lg border border-border/60 p-3" />
+@@ -582,6 +594,7 @@ export default function MyLeads() {
+                 ) : (
+                   <div className="flex flex-col items-center gap-3 py-16 text-center">
+                     <Trophy className="h-10 w-10 text-primary" />
++                    {held.length > 0 && <p className="text-sm text-amber-300">{held.length} held lead{held.length === 1 ? "" : "s"}. Return to the list to review the hold reasons.</p>}
+                     {waiting.length > 0 ? (
+                       <>
+                         <h2 className="text-xl font-semibold">Calling hours are closed for the rest of this pack.</h2>
+@@ -604,3 +617,61 @@ export default function MyLeads() {
+     </div>
+   );
+ }
++
++
++type SourcePolicyObservation = Record<string, unknown> & { observation_id: string };
++
++/** Source policies stay observations until separately verified by the carrier. */
++function LeadDetailGrid({ itemId, context }: { itemId: string; context: Record<string, unknown> | null }) {
++  const source = useQuery({
++    queryKey: ["my-lead-source-history", itemId],
++    queryFn: async () => {
++      const { data, error } = await supabase.rpc("my_lead_source_history" as never, { p_item: itemId } as never);
++      if (error) throw new Error(error.message);
++      return (Array.isArray(data) ? data : []) as unknown as SourcePolicyObservation[];
++    }, staleTime: 300_000,
++  });
++  return <div className="space-y-4">
++    <LeadBaseDetailGrid itemId={itemId} />
++    {source.isError ? <p className="text-xs text-destructive">Source history did not load: {source.error.message}</p>
++      : (source.data?.length ?? 0) > 0 && <section className="space-y-2 border-t pt-3">
++        <h3 className="text-sm font-medium">Source policy history</h3>
++        <p className="text-xs text-muted-foreground">Supplier-reported ownership. Source dates and status do not verify an active policy. Amounts with an unknown cadence are not monthly or annual premium.</p>
++        {source.data?.map((row) => <dl key={row.observation_id} className="grid gap-x-4 gap-y-1 rounded border p-2 text-xs sm:grid-cols-2">
++          {Object.entries(row).filter(([key, value]) => !["id", "observation_id"].includes(key) && value != null && value !== "").map(([key, value]) => <div key={key}>
++            <dt className="text-muted-foreground">{prettyKey(key)}</dt><dd className="break-words">{prettyVal(key, value)}</dd>
++          </div>)}
++        </dl>)}
++      </section>}
++    {context?.blocked !== true && <LeadFollowUp itemId={itemId} context={context} />}
++  </div>;
++}
++
++function LeadFollowUp({ itemId, context }: { itemId: string; context: Record<string, unknown> | null }) {
++  const qc = useQueryClient();
++  const [callback, setCallback] = useState(() => {
++    if (typeof context?.callback_at !== "string") return "";
++    const date = new Date(context.callback_at);
++    return Number.isNaN(date.getTime()) ? "" : new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
++  });
++  const [action, setAction] = useState(typeof context?.next_action === "string" ? context.next_action : "");
++  const save = useMutation({
++    mutationFn: async () => {
++      const { error } = await supabase.rpc("lead_bundle_followup_set" as never, {
++        p_item: itemId, p_callback_at: callback ? new Date(callback).toISOString() : null,
++        p_next_action: action.trim() || null,
++      } as never);
++      if (error) throw new Error(error.message);
++    },
++    onSuccess: () => { toast.success("Follow-up saved"); qc.invalidateQueries({ queryKey: MY_LEADS_QUERY_KEY }); },
++    onError: (error: Error) => toast.error(error.message),
++  });
++  return <section className="space-y-2 border-t pt-3">
++    <h3 className="text-sm font-medium">Follow-up plan</h3>
++    <label className="block text-xs text-muted-foreground">Callback time (your local time)
++      <Input type="datetime-local" aria-label="Callback time" value={callback} onChange={(e) => setCallback(e.target.value)} />
++    </label>
++    <Input aria-label="Next action" placeholder="Next action" maxLength={500} value={action} onChange={(e) => setAction(e.target.value)} />
++    <Button type="button" size="sm" variant="outline" disabled={save.isPending} onClick={() => save.mutate()}>Save follow-up</Button>
++  </section>;
++}
+diff --git a/src/pages/PreLicensing.tsx b/src/pages/PreLicensing.tsx
+index dbd91a1d..05d871bf 100644
+--- a/src/pages/PreLicensing.tsx
++++ b/src/pages/PreLicensing.tsx
+@@ -181,7 +181,7 @@ export default function PreLicensing() {
+       if (ids.length === 0) return new Set();
+       const { data, error } = await supabase
+         .from("agents")
+-        .select("display_name, profile:profiles(full_name)")
++        .select("display_name, profile:profiles!agents_profile_id_fkey(full_name)")
+         .in("id", ids);
+       if (error) {
+ 
+diff --git a/src/pages/RecruitingLinks.tsx b/src/pages/RecruitingLinks.tsx
+index f32921c7..60f6d054 100644
+--- a/src/pages/RecruitingLinks.tsx
++++ b/src/pages/RecruitingLinks.tsx
+@@ -1,16 +1,19 @@
+ import { useMemo, useState } from "react";
+ import { useQuery } from "@tanstack/react-query";
++import { Link } from "react-router-dom";
+ import { Copy, Link2, MessageSquareShare, QrCode, Search, Share2 } from "lucide-react";
+ import { toast } from "sonner";
+ import { supabase } from "@/integrations/supabase/client";
+ import { resolveBrand } from "@/config/brand";
+ import { usePageTitle } from "@/hooks/usePageTitle";
++import { useAuth } from "@/hooks/useAuth";
+ import { PageHeader } from "@/components/ui/page-header";
+ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+ import { Badge } from "@/components/ui/badge";
+ import { Button } from "@/components/ui/button";
+ import { Input } from "@/components/ui/input";
+ import { Skeleton } from "@/components/ui/skeleton";
++import { ownLinkUrl, PUBLIC_SITE, shareLink } from "@/lib/recruitLinks";
+ 
+ /**
+  * RecruitingLinks — admin surface for sending out recruiting links UNDER any
+@@ -26,7 +29,6 @@ import { Skeleton } from "@/components/ui/skeleton";
+  * them. admin_recruiting_links() is the admin-gated roster read.
+  */
+ 
+-const SITE = "https://galaxyfinancial.org";
+ const BRAND = resolveBrand();
+ 
+ interface LinkRow {
+@@ -48,11 +50,8 @@ const MODE_LABEL: Record<string, string> = {
+   va_manager: "VA Manager",
+ };
+ 
+-function shortLink(slug: string): string {
+-  return `${SITE}/r/${slug}`;
+-}
+ function fullLink(slug: string): string {
+-  return `${SITE}/apply?ref=${encodeURIComponent(slug)}`;
++  return `${PUBLIC_SITE}/apply?ref=${encodeURIComponent(slug)}`;
+ }
+ 
+ async function copyText(text: string, label: string) {
+@@ -65,10 +64,11 @@ async function copyText(text: string, label: string) {
+ }
+ 
+ function LinkActions({ row }: { row: LinkRow }) {
+-  if (!row.ref_slug) {
++  const slug = row.ref_slug?.trim();
++  const short = ownLinkUrl(slug);
++  if (!slug || !short) {
+     return <Badge variant="outline" className="text-muted-foreground">no link yet</Badge>;
+   }
+-  const short = shortLink(row.ref_slug);
+   const name = row.display_name ?? "our team";
+   const smsBody = encodeURIComponent(
+     `Here's the application link for ${name}'s team at ${BRAND.legalName}: ${short}`,
+@@ -77,18 +77,18 @@ function LinkActions({ row }: { row: LinkRow }) {
+     <div className="flex flex-wrap items-center gap-1.5">
+       <Button size="sm" variant="secondary" className="h-8" onClick={() => void copyText(short, "Short link")}>
+         <Copy className="h-3.5 w-3.5 mr-1.5" aria-hidden />
+-        {`/r/${row.ref_slug}`}
++        {`/r/${slug}`}
+       </Button>
+       <Button
+         size="sm"
+         variant="ghost"
+         className="h-8"
+         aria-label={`Copy full apply link for ${name}`}
+-        onClick={() => void copyText(fullLink(row.ref_slug as string), "Full link")}
++        onClick={() => void copyText(fullLink(slug), "Full link")}
+       >
+         <Link2 className="h-3.5 w-3.5" aria-hidden />
+       </Button>
+-      <Button size="sm" variant="ghost" className="h-8" aria-label={`Text this link`} asChild>
++      <Button size="sm" variant="ghost" className="h-8" aria-label={`Text ${name}'s application link`} asChild>
+         <a href={`sms:?&body=${smsBody}`}>
+           <MessageSquareShare className="h-3.5 w-3.5" aria-hidden />
+         </a>
+@@ -100,9 +100,10 @@ function LinkActions({ row }: { row: LinkRow }) {
+           className="h-8"
+           aria-label={`Share ${name}'s link`}
+           onClick={() => {
+-            void navigator
+-              .share({ title: `Join ${name} at ${BRAND.legalName}`, url: short })
+-              .catch(() => {/* empty-catch-allow:user-cancelled-share */});
++            void shareLink({ title: `Apply to ${name}'s team at ${BRAND.legalName}`, text: "Application link", url: short }).then((outcome) => {
++              if (outcome === "copied") toast.success("Link copied. Paste it into your message.");
++              if (outcome === "failed") toast.error("Could not share or copy. Select and copy the link by hand.");
++            });
+           }}
+         >
+           <Share2 className="h-3.5 w-3.5" aria-hidden />
+@@ -114,10 +115,12 @@ function LinkActions({ row }: { row: LinkRow }) {
+ 
+ export default function RecruitingLinks() {
+   usePageTitle("Recruiting Links");
++  const { user } = useAuth();
+   const [search, setSearch] = useState("");
+ 
+   const linksQ = useQuery({
+-    queryKey: ["admin-recruiting-links"],
++    queryKey: ["admin-recruiting-links", user?.id],
++    enabled: !!user?.id,
+     queryFn: async () => {
+       const { data, error } = await supabase.rpc("admin_recruiting_links" as never);
+       if (error) throw error;
+@@ -141,9 +144,15 @@ export default function RecruitingLinks() {
+         eyebrow="Recruiting"
+         eyebrowIcon={<QrCode className="h-3.5 w-3.5" aria-hidden />}
+         title="Recruiting Links"
+-        subtitle="Send an application link under any manager. Whoever applies through it is credited to them and hired onto their team."
++        subtitle="Applications through each link are credited to its owner. Review and hire the applicant to create their agent account and team placement."
+       />
+ 
++      <nav aria-label="Recruiting link workflow" className="flex flex-wrap gap-2">
++        <Button asChild variant="outline"><Link to="/dashboard/grow">Grow my team</Link></Button>
++        <Button asChild variant="outline"><Link to="/dashboard/recruiting">Review applicants</Link></Button>
++        <Button asChild variant="outline"><Link to="/admin/invite-links">Personal hiring invitation</Link></Button>
++      </nav>
++
+       <Card>
+         <CardHeader className="pb-3">
+           <CardTitle className="text-base">Managers &amp; agency owners</CardTitle>
+@@ -158,9 +167,10 @@ export default function RecruitingLinks() {
+             </div>
+           )}
+           {linksQ.isError && (
+-            <p className="text-sm text-destructive">
+-              Couldn&apos;t load links: {(linksQ.error as Error).message}
+-            </p>
++            <div className="space-y-2">
++              <p role="alert" className="text-sm text-destructive">Couldn&apos;t load links: {(linksQ.error as Error).message}</p>
++              <Button variant="outline" size="sm" onClick={() => void linksQ.refetch()}>Retry links</Button>
++            </div>
+           )}
+           {!linksQ.isLoading && !linksQ.isError && managers.length === 0 && (
+             <p className="text-sm text-muted-foreground">No active managers found.</p>
+@@ -204,7 +214,7 @@ export default function RecruitingLinks() {
+               <LinkActions row={r} />
+             </div>
+           ))}
+-          {!linksQ.isLoading && everyoneElse.length === 0 && (
++          {!linksQ.isLoading && !linksQ.isError && everyoneElse.length === 0 && (
+             <p className="text-sm text-muted-foreground">No matches.</p>
+           )}
+         </CardContent>
+diff --git a/src/pages/XcelPipeline.tsx b/src/pages/XcelPipeline.tsx
+index bf9cf9e1..8eeccd92 100644
+--- a/src/pages/XcelPipeline.tsx
++++ b/src/pages/XcelPipeline.tsx
+@@ -51,7 +51,7 @@ export default function XcelPipeline() {
+     queryKey: ["v_xcel_pipeline"],
+     queryFn: async () => {
+       const { data, error } = await supabase
+-        .from("v_xcel_pipeline" as any)
++        .from("v_xcel_pipeline")
+         .select("*")
+         .order("last_login", { ascending: false, nullsFirst: false });
+       if (error) throw error;
+diff --git a/src/pages/admin/InviteLinks.tsx b/src/pages/admin/InviteLinks.tsx
+index ab3b6100..fde56e94 100644
+--- a/src/pages/admin/InviteLinks.tsx
++++ b/src/pages/admin/InviteLinks.tsx
+@@ -4,7 +4,7 @@
+  * OVERHAUL-1 (2026-10-29), Sam: "Give them an option: either put their first name, last name,
+  * email, NPN, phone number... Or an option, just click attach a link, and they just tap it."
+  *   - Top: your own permanent /r/<slug> link, Copy and Share, one tap (MyLinkCard). Everyone who
+- *     applies through it is credited to you and placed under you (MP-342).
++ *     applies through it is credited to you; hiring places the agent under you (MP-342).
+  *   - Make a link: Quick link or With details, Licensed or Not licensed yet (required),
+  *     Permanent or Temporary, then Copy / Share / Text / Email (InviteAgentForm, kind hire).
+  *   - Your invitations: hire invitations only; the server filters and counts by kind.
+@@ -43,6 +43,7 @@ import { useAuth } from "@/hooks/useAuth";
+ import { InviteAgentForm } from "@/components/invitations/InviteAgentForm";
+ import { InvitationsTable } from "@/components/invitations/InvitationsTable";
+ import { MyLinkCard } from "@/components/invitations/MyLinkCard";
++import { Button } from "@/components/ui/button";
+ 
+ export default function InviteLinksAdmin() {
+   usePageTitle("Invite Agent");
+@@ -55,15 +56,27 @@ export default function InviteLinksAdmin() {
+     <div className="page-enter mx-auto w-full max-w-5xl space-y-6 pb-24">
+       <PageHeader
+         title="Invite an agent"
+-        subtitle="Send your link, or make one for one person."
++        subtitle="Choose an application link or a personal hiring invitation."
+         icon={<UserPlus />}
+         tone="royal"
+       />
+ 
+-      <MyLinkCard blurb="Anyone who applies through it is credited to you and joins your team." />
++      <nav aria-label="Team growth workflow" className="flex flex-wrap gap-2">
++        <Button asChild variant="outline"><Link to="/dashboard/grow">Grow my team</Link></Button>
++        <Button asChild variant="outline"><Link to="/dashboard/recruiting">Review applicants</Link></Button>
++        <Button asChild variant="outline"><Link to="/dashboard/recruits">Track new hires</Link></Button>
++      </nav>
++
++      <MyLinkCard blurb="Share this application link to recruit. Applications are credited to you; review and hire the applicant to add them to your team." />
+ 
+       {/* The license rule is said once, as the hint of the License step (council findings 11 and 27). */}
+-      <InviteAgentForm framed licenseHint="License status is always required. Pick one." />
++      <section className="space-y-3" aria-labelledby="personal-hiring-invitation">
++        <div>
++          <h2 id="personal-hiring-invitation" className="text-lg font-semibold">Invite someone you are hiring</h2>
++          <p className="mt-1 text-sm text-muted-foreground">A personal invitation carries the offered role, team and terms. The recipient accepts it to create their account. Carrier contracting and approval are tracked separately in Grow my team.</p>
++        </div>
++        <InviteAgentForm framed licenseHint="License status is always required. Pick one." />
++      </section>
+ 
+       <div className="space-y-3">
+         <div className="flex flex-wrap items-center justify-between gap-2">
+diff --git a/src/pages/admin/ManagerDashboard.tsx b/src/pages/admin/ManagerDashboard.tsx
+index 2c1d622a..1c703ec7 100644
+--- a/src/pages/admin/ManagerDashboard.tsx
++++ b/src/pages/admin/ManagerDashboard.tsx
+@@ -12,6 +12,9 @@ import {
+ } from "lucide-react";
+ import { cn } from "@/lib/utils";
+ import { formatDistanceToNow } from "date-fns";
++import { useAuth } from "@/hooks/useAuth";
++import { useBusinessToday } from "@/hooks/useBusinessToday";
++import { loadManagerProduction } from "@/lib/dashboardRecords";
+ 
+ /* ------- types ------- */
+ type AppRow = {
+@@ -34,17 +37,6 @@ type HireRow = {
+   created_at?: string | null;
+ };
+ 
+-type DealRow = {
+-  id: string;
+-  agent_id: string | null;
+-  agent_name?: string | null;
+-  amount: number | null;
+-  carrier: string | null;
+-  status: string;
+-  closed_at: string | null;
+-  created_at: string;
+-};
+-
+ type AgentLite = { id: string; display_name: string | null };
+ 
+ /* ============================================================ */
+@@ -200,18 +192,12 @@ function LicensingTab() {
+ 
+ /* ============================================================ */
+ function ProductionTab() {
++  const { user } = useAuth();
++  const today = useBusinessToday();
+   const { data: deals, isError: dealsError, error: dealsErr, refetch: refetchDeals } = useQuery({
+-    queryKey: ["mgr_deals_30d"],
+-    queryFn: async () => {
+-      const { data, error } = await supabase
+-        .from("deals")
+-        .select("id, agent_id, amount, carrier, status, closed_at, created_at")
+-        .gte("created_at", new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString())
+-        .order("created_at", { ascending: false })
+-        .limit(100);
+-      if (error) throw error;
+-      return data as DealRow[];
+-    },
++    queryKey: ["mgr_deals_30d", user?.id, today],
++    enabled: Boolean(user?.id),
++    queryFn: ({ signal }) => loadManagerProduction(today, signal),
+   });
+ 
+   // Secondary name-map. Declared before the error gate below so every hook runs
+@@ -233,14 +219,16 @@ function ProductionTab() {
+     return <QueryState status="error" label="production (deals)" error={dealsErr} onRetry={() => void refetchDeals()} />;
+   }
+ 
+-  const closed = (deals ?? []).filter(d => d.status === "closed_won" || d.status === "submitted" || d.status === "paid");
+-  const monthAmt = closed.reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
++  if (!deals) return <Skeleton className="h-72 w-full" aria-label="Loading verified production" />;
++  // The canonical view already applies source deduplication and dead-policy exclusions.
++  const closed = deals;
++  const monthAmt = closed.reduce((sum, d) => sum + (Number(d.annual_premium) || 0), 0);
+   const byAgent: Record<string, { count: number; amount: number }> = {};
+   closed.forEach(d => {
+     if (!d.agent_id) return;
+     if (!byAgent[d.agent_id]) byAgent[d.agent_id] = { count: 0, amount: 0 };
+     byAgent[d.agent_id].count += 1;
+-    byAgent[d.agent_id].amount += Number(d.amount) || 0;
++    byAgent[d.agent_id].amount += Number(d.annual_premium) || 0;
+   });
+   const top = Object.entries(byAgent).sort((a, b) => b[1].amount - a[1].amount).slice(0, 10);
+   const agentMap = new Map((agents ?? []).map(a => [a.id, a.display_name]));
+@@ -249,8 +237,8 @@ function ProductionTab() {
+     <div className="space-y-4">
+       {agentsError && <NameMapNotice />}
+       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+-        <StatTile label="Deals closed (30d)" value={closed.length} color="text-emerald-300" />
+-        <StatTile label="$ ALP submitted (30d)" value={`$${Math.round(monthAmt).toLocaleString()}`} color="text-emerald-300" />
++        <StatTile label="Deals posted (30d)" value={closed.length} color="text-emerald-300" />
++        <StatTile label="$ ALP posted (30d)" value={`$${Math.round(monthAmt).toLocaleString()}`} color="text-emerald-300" />
+         <StatTile label="Active producers (30d)" value={Object.keys(byAgent).length} color="text-info" />
+         <StatTile label="Avg deal" value={closed.length ? `$${Math.round(monthAmt / closed.length).toLocaleString()}` : "—"} color="text-slate-600 dark:text-slate-300" />
+       </div>
+@@ -269,7 +257,7 @@ function ProductionTab() {
+       </Card>
+ 
+       <Card>
+-        <CardHeader><CardTitle className="text-base flex items-center gap-2"><DollarSign className="w-4 h-4" /> Last 20 deals (any stage)</CardTitle></CardHeader>
++        <CardHeader><CardTitle className="text-base flex items-center gap-2"><DollarSign className="w-4 h-4" /> Last 20 posted deals</CardTitle></CardHeader>
+         <CardContent className="p-0">
+           {!deals ? <div className="p-6"><Skeleton className="h-40 w-full" /></div> :
+             <div className="overflow-x-auto"><table className="w-full text-sm">
+@@ -278,15 +266,15 @@ function ProductionTab() {
+                 <th className="text-left p-3">Carrier</th>
+                 <th className="text-left p-3 tabular-nums">Amount</th>
+                 <th className="text-left p-3">Status</th>
+-                <th className="text-left p-3">Created</th>
++                <th className="text-left p-3">Posted</th>
+               </tr></thead>
+               <tbody>{(deals ?? []).slice(0, 20).map(d => (
+-                <tr key={d.id} className="border-t border-border">
+-                  <td className="p-3">{d.agent_id ? agentMap.get(d.agent_id) ?? "—" : "—"}</td>
++                <tr key={d.row_key} className="border-t border-border">
++                  <td className="p-3">{(d.agent_id ? agentMap.get(d.agent_id) : null) ?? d.agent_name ?? "—"}</td>
+                   <td className="p-3">{d.carrier ?? "—"}</td>
+-                  <td className="p-3 tabular-nums text-emerald-300">${Math.round(Number(d.amount) || 0).toLocaleString()}</td>
++                  <td className="p-3 tabular-nums text-emerald-300">${Math.round(Number(d.annual_premium) || 0).toLocaleString()}</td>
+                   <td className="p-3"><Badge variant="secondary">{d.status}</Badge></td>
+-                  <td className="p-3 text-xs text-slate-600 dark:text-slate-300">{formatDistanceToNow(new Date(d.created_at), { addSuffix: true })}</td>
++                  <td className="p-3 text-xs text-slate-600 dark:text-slate-300">{d.posted_date ?? "—"}</td>
+                 </tr>
+               ))}</tbody>
+             </table></div>}
+diff --git a/src/pages/admin/RecoveryQueue.tsx b/src/pages/admin/RecoveryQueue.tsx
+index c16396bc..49367a7e 100644
+--- a/src/pages/admin/RecoveryQueue.tsx
++++ b/src/pages/admin/RecoveryQueue.tsx
+@@ -659,12 +659,11 @@ export default function RecoveryQueue() {
+   });
+ 
+   const logAttempt = useCallback((id: string, channel: "call" | "sms" | "email") => {
+-    void supabase
+-      .rpc("log_contact_attempt" as any, {
++    void Promise.resolve(supabase.rpc("log_contact_attempt" as any, {
+         p_application_id: id,
+         p_channel: channel,
+         p_outcome: "initiated",
+-      })
++      }))
+       .then(() => undefined)
+       // empty-catch-allow:fire-and-forget telemetry — must not block navigation
+       .catch(() => undefined);
+diff --git a/src/pages/admin/SocialMediaBot.tsx b/src/pages/admin/SocialMediaBot.tsx
+index cb489076..cd05c018 100644
+--- a/src/pages/admin/SocialMediaBot.tsx
++++ b/src/pages/admin/SocialMediaBot.tsx
+@@ -16,7 +16,7 @@ import {
+   Tabs, TabsContent, TabsList, TabsTrigger,
+ } from "@/components/ui/tabs";
+ import {
+-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
++  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+ } from "@/components/ui/dialog";
+ import {
+   Sparkles, AlertTriangle, CheckCircle2, XCircle, Send,
+@@ -34,7 +34,7 @@ type Draft = {
+   pillar: string | null; title: string; hook: string | null; body: string | null;
+   cta: string | null; caption: string | null; hashtags: string | null;
+   sound: string | null; duration_sec: number | null; file_path: string | null;
+-  status: "pending" | "approved" | "shipped" | "rejected";
++  status: "pending" | "awaiting_approval" | "awaiting_film" | "approved" | "shipped" | "rejected" | "archived";
+   approved_at: string | null; shipped_at: string | null;
+   approved_by: string | null; shipped_url: string | null; notes: string | null;
+ };
+@@ -112,8 +112,9 @@ const statusBadge = (s: string) => {
+   if (s === "shipped")  return <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">shipped</Badge>;
+   if (s === "approved") return <Badge className="bg-amber-500/20 text-amber-300 border border-amber-500/40">approved</Badge>;
+   if (s === "rejected") return <Badge className="bg-rose-500/20 text-rose-300 border border-rose-500/40">rejected</Badge>;
+-  return <Badge className="bg-zinc-700/40 text-zinc-300 border border-zinc-600/50">pending</Badge>;
++  return <Badge className="bg-zinc-700/40 text-zinc-300 border border-zinc-600/50">{s.replace(/_/g, " ")}</Badge>;
+ };
++const canReviewDraft = (status: Draft["status"]) => status === "pending" || status === "awaiting_approval" || status === "awaiting_film" || status === "rejected";
+ const severityBadge = (s: string) => {
+   if (s === "critical") return <Badge className="bg-rose-600/30 text-rose-200 border border-rose-500">CRITICAL</Badge>;
+   if (s === "high")     return <Badge className="bg-orange-500/30 text-orange-200 border border-orange-500/50">high</Badge>;
+@@ -289,8 +290,8 @@ export default function SocialMediaBot() {
+         <EmptyState
+           icon={<AlertTriangle className="h-7 w-7" />}
+           title="Social Media Bot data unavailable"
+-          description="The bot's Supabase view is unreachable. Confirm RLS + auth, or check ~/business-ops/social-media-bot/heartbeat.txt for the daemon."
+-          action={<Button onClick={() => refetch()}>Retry</Button>}
++          description="The content dashboard could not be loaded. Retry to check the current data."
++          actions={<Button onClick={() => void refetch()} disabled={isRefetching}>Retry</Button>}
+         />
+       </div>
+     );
+@@ -480,7 +481,7 @@ export default function SocialMediaBot() {
+                               2 "awaiting_film", 3 "approved". So Approve/Reject never rendered
+                               on this page at all. ContentCommand.tsx:779 already had the
+                               correct gate; this now matches it. */}
+-                          {d.status !== "approved" && d.status !== "shipped" && d.status !== "archived" && (
++                          {canReviewDraft(d.status) && (
+                             <>
+                               <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); mutateDraftStatus(d.id, "approved"); }}>
+                                 <CheckCircle2 className="h-4 w-4 mr-1" /> Approve
+@@ -852,6 +853,7 @@ export default function SocialMediaBot() {
+               })()}
+               {activeDraft?.title}
+             </DialogTitle>
++            <DialogDescription>Review the draft and its current status before taking the next action.</DialogDescription>
+           </DialogHeader>
+           {activeDraft && (
+             <div className="space-y-4 text-sm">
+@@ -906,7 +908,7 @@ export default function SocialMediaBot() {
+             </div>
+           )}
+           <DialogFooter className="gap-2">
+-            {activeDraft?.status === "pending" && (
++            {activeDraft && canReviewDraft(activeDraft.status) && (
+               <>
+                 <Button variant="ghost" onClick={() => { if (activeDraft) { mutateDraftStatus(activeDraft.id, "rejected"); setActiveDraft(null); } }}>
+                   Reject

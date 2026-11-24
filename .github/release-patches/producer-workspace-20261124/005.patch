@@ -1,0 +1,986 @@
+diff --git a/src/lib/consumerLeadImport.ts b/src/lib/consumerLeadImport.ts
+new file mode 100644
+index 00000000..19603703
+--- /dev/null
++++ b/src/lib/consumerLeadImport.ts
+@@ -0,0 +1,202 @@
++import { nationalDigits } from "@/lib/phone";
++import type { Json } from "@/integrations/supabase/types";
++import { z } from "zod";
++
++const receiptCount = z.number().int().nonnegative();
++export const consumerImportReceiptSchema = z.object({
++  batch_id: z.string().min(1), source: z.string(), received: receiptCount,
++  imported: receiptCount, matched: receiptCount, review: receiptCount,
++  duplicate: receiptCount, suppressed: receiptCount, replayed: z.boolean(),
++}).refine(r => r.imported + r.matched + r.review + r.duplicate === r.received && r.suppressed <= r.received, {
++  message: "Import receipt counts could not be verified.",
++});
++export type ConsumerImportReceipt = z.infer<typeof consumerImportReceiptSchema>;
++export const consumerImportHistorySchema = z.array(z.object({
++  id: z.string().min(1), source_name: z.string(), created_at: z.string().datetime({ offset: true }),
++  receipt: consumerImportReceiptSchema,
++}));
++export const consumerImportReviewSchema = z.array(z.object({
++  id: z.string().min(1), source_row: z.number().int().positive(), issues: z.array(z.string()),
++  source_name: z.string().optional(), source_key: z.string().optional(),
++  payload: z.object({ first_name: z.string().nullish(), last_name: z.string().nullish(), state: z.string().nullish() }),
++}));
++
++/** Explicit source layouts: all three supplied files start with a consumer, not a header. */
++export const CONSUMER_IMPORT_SOURCES = {
++  master_pos: { label: "MSTERRRR — policy owners", kind: "pos", key: "master-policy-owners" },
++  jt_pos: { label: "Jt — policy history", kind: "pos", key: "jt-policy-history" },
++  mortgage: { label: "Mortgage leads — 2021 to July 2023", kind: "mortgage", key: "mortgage-2021-july-2023" },
++} as const;
++export type ConsumerImportLayout = keyof typeof CONSUMER_IMPORT_SOURCES;
++export function consumerImportIssueLabel(issue: string): string {
++  const labels: Record<string,string> = {
++    incomplete_name: "Consumer name incomplete", invalid_phone: "Phone needs correction", state_needs_review: "State needs review",
++    invalid_email: "Email needs correction", missing_policy_reference: "Policy reference missing", invalid_dob: "Birth date needs correction",
++    invalid_source_date: "Source date needs correction", invalid_date: "Date needs correction",
++    identity_match_needs_review: "Identity needs review", conflicting_contact_identifiers: "Identifiers match different consumers",
++  };
++  return labels[issue] ?? issue.replace(/_/g," ");
++}
++export type ConsumerCell = string | number | boolean | null;
++export type ConsumerImportRow = {
++  source_row: number;
++  first_name: string;
++  last_name: string;
++  phone_digits: string | null;
++  phone_alt: string | null;
++  email: string | null;
++  state: string | null;
++  street_address: string | null;
++  dob: string | null;
++  policy_number: string | null;
++  policy_carrier: string | null;
++  policy_product: string | null;
++  policy_date: string | null;
++  original_agent: string | null;
++  original_agent_code: string | null;
++  loan_amount: number | null;
++  loan_type: string | null;
++  lender_name: string | null;
++  lead_date: string | null;
++  notes: string | null;
++  dnc: boolean;
++  last_disposition: string | null;
++  issues: string[];
++  raw: Record<string, Json>;
++};
++export const US_STATE_CODES = "AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY".split(" ");
++const STATES = new Set(US_STATE_CODES);
++const text = (v: ConsumerCell | undefined): string => v == null ? "" : String(v).trim();
++const nullable = (v: ConsumerCell | undefined): string | null => text(v) || null;
++const email = (v: ConsumerCell | undefined): string | null => {
++  const s = text(v).toLowerCase();
++  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s) ? s : null;
++};
++export const hasExplicitContactStop = (value: string): boolean =>
++  /\b(d\s*\.?\s*n\s*\.?\s*c|do\s*not\s*(call|contact|text|email)|don['’]?t\s*(call|contact|text|email)|stop\s*(calling|contacting|texting|emailing)|remove\s+(me|my\s+(number|name))|unsubscribe)\b/i.test(value);
++
++/** Dates are source dates, never a claim of a recent policy verification. */
++export function consumerSourceDate(value: ConsumerCell | undefined): string | null {
++  const s = text(value);
++  if (!s) return null;
++  let y: number, m: number, d: number;
++  if (typeof value === "number" && value > 1000 && value < 100000) {
++    const date = new Date(Date.UTC(1899, 11, 30) + Math.floor(value) * 86400000);
++    return date.toISOString().substring(0, 10);
++  }
++  const iso = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T ].*)?$/);
++  const us = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2}|\d{4})$/);
++  const named = s.match(/^(\d{1,2})[- ]([A-Za-z]+)[- ](\d{2}|\d{4})$/);
++  if (iso) [, y, m, d] = iso.map(Number);
++  else if (us) { m = Number(us[1]); d = Number(us[2]); y = Number(us[3]); if (y < 100) y += y >= 30 ? 1900 : 2000; }
++  else if (named) { d = Number(named[1]); m = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"].indexOf(named[2].substring(0,3).toLowerCase()) + 1; y = Number(named[3]); if(y < 100)y += y >= 30 ? 1900 : 2000; }
++  else return null;
++  const date = new Date(Date.UTC(y, m - 1, d));
++  return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d
++    ? date.toISOString().substring(0, 10) : null;
++}
++
++function phone(value: ConsumerCell | undefined): string | null {
++  const result = nationalDigits(text(value));
++  return result && /^[2-9]\d{2}[2-9]\d{6}$/.test(result) ? result : null;
++}
++function nameParts(name: string): [string, string] {
++  if (name.includes(",")) { const [last, ...first] = name.split(","); return [first.join(" ").trim(), last.trim()]; }
++  const [first = "", ...rest] = name.split(/\s+/); return [first, rest.join(" ")];
++}
++function amount(value: ConsumerCell | undefined): number | null {
++  const s = text(value).replace(/[$,\s]/g, "");
++  if (!s || !/^\d+(\.\d+)?$/.test(s)) return null;
++  const n = Number(s); return Number.isFinite(n) && n >= 0 ? n : null;
++}
++
++/** RFC 4180 quoting, embedded newlines and Excel TSV; never split quoted commas. */
++export function parseConsumerTable(input: string): ConsumerCell[][] {
++  const value = input.replace(/^\uFEFF/, "");
++  if (value.trim().startsWith("[")) {
++    const parsed: unknown = JSON.parse(value);
++    if (!Array.isArray(parsed) || parsed.some(row => !Array.isArray(row) || row.some(c => c != null && !["string", "number", "boolean"].includes(typeof c)))) {
++      throw new Error("JSON must contain an array of spreadsheet rows.");
++    }
++    return parsed as ConsumerCell[][];
++  }
++  const delimiter = value.split(/\r?\n/, 1)[0].includes("\t") ? "\t" : ",";
++  const rows: string[][] = []; let row: string[] = [], cell = "", quoted = false;
++  for (let i = 0; i < value.length; i++) {
++    const ch = value[i];
++    if (ch === '"') {
++      if (quoted && value[i + 1] === '"') { cell += '"'; i++; }
++      else if (quoted || cell.length === 0) quoted = !quoted;
++      else cell += ch;
++    } else if (ch === delimiter && !quoted) { row.push(cell); cell = ""; }
++    else if ((ch === "\n" || ch === "\r") && !quoted) {
++      if (ch === "\r" && value[i + 1] === "\n") i++;
++      row.push(cell); rows.push(row); row = []; cell = "";
++    } else cell += ch;
++  }
++  if (quoted) throw new Error("The file contains an unfinished quoted cell.");
++  if (cell || row.length) { row.push(cell); rows.push(row); }
++  return rows;
++}
++
++export function prepareConsumerImport(cells: ConsumerCell[][], layout: ConsumerImportLayout) {
++  if (cells.length > 10000) throw new Error("Import at most 10,000 rows at a time.");
++  const rows: ConsumerImportRow[] = []; let headersSkipped = 0, emptySkipped = 0;
++  cells.forEach((r, index) => {
++    if (r.every(c => !text(c))) { emptySkipped++; return; }
++    const lowered = r.map(c => text(c).toLowerCase());
++    if ((lowered.includes("borrower name") && lowered.includes("borr cell")) ||
++        (lowered.some(c => ["client name", "consumer name", "insured name"].includes(c)) && lowered.some(c => /^(phone|policy number|policy #)$/.test(c)))) {
++      headersSkipped++; return;
++    }
++    const master = layout === "master_pos", mortgage = layout === "mortgage";
++    const name = text(r[master ? 3 : 1]);
++    const [first_name, last_name] = nameParts(name);
++    const rawState = text(r[master ? 5 : mortgage ? 9 : 3]);
++    const state = STATES.has(rawState.toUpperCase()) ? rawState.toUpperCase() : null;
++    const rawPhone = r[master ? 6 : mortgage ? 2 : 4];
++    const primaryPhone = phone(rawPhone);
++    const altPhone = mortgage ? phone(r[3]) : null;
++    const rawEmail = master ? r[7] : mortgage ? r[4] : null;
++    const notes = mortgage ? r.slice(11).map(text).filter(Boolean).join(" · ") : master ? "" : r.slice(10).map(text).filter(Boolean).join(" · ");
++    const dnc = hasExplicitContactStop(notes);
++    const issues: string[] = [];
++    if (!first_name || !last_name) issues.push("incomplete_name");
++    if (!primaryPhone && !altPhone) issues.push("invalid_phone");
++    if (!state) issues.push("state_needs_review");
++    if (text(rawEmail) && !email(rawEmail)) issues.push("invalid_email");
++    const policy_number = mortgage ? null : nullable(r[master ? 13 : 8]);
++    if (!mortgage && !policy_number) issues.push("missing_policy_reference");
++    const sourceDate = consumerSourceDate(r[mortgage ? 0 : master ? 11 : 6]);
++    const dob = mortgage ? null : consumerSourceDate(r[master ? 8 : 5]);
++    if (!mortgage && text(r[master ? 8 : 5]) && !dob) issues.push("invalid_dob");
++    if (text(r[mortgage ? 0 : master ? 11 : 6]) && !sourceDate) issues.push("invalid_source_date");
++    const source = CONSUMER_IMPORT_SOURCES[layout];
++    rows.push({
++      source_row: index + 1, first_name, last_name,
++      phone_digits: primaryPhone ?? altPhone, phone_alt: primaryPhone && altPhone !== primaryPhone ? altPhone : null,
++      email: email(rawEmail), state, street_address: mortgage ? null : nullable(r[master ? 4 : 2]), dob,
++      policy_number, policy_carrier: master ? nullable(r[15]) : null,
++      policy_product: mortgage ? null : nullable(r[master ? 12 : 7]), policy_date: mortgage ? null : sourceDate,
++      original_agent: nullable(r[master ? 1 : mortgage ? 5 : 0]), original_agent_code: master ? nullable(r[2]) : null,
++      loan_amount: mortgage ? amount(r[7]) : null, loan_type: mortgage ? nullable(r[8]) : null,
++      lender_name: mortgage ? nullable(r[10]) : null, lead_date: mortgage ? sourceDate : null, notes: notes || null, dnc,
++      last_disposition: dnc ? "do not call" : /bad\s*(#|number)|wrong\s*number/i.test(notes) ? "bad number" : /no\s*(answer|a\b)|dint\s*answer|didn['’]?t\s*answer/i.test(notes) ? "no answer" : null,
++      issues,
++      raw: {
++        source_type: source.kind, source_key: source.key, source_layout: layout, source_row: index + 1,
++        state_evidence: state ? "supplier_explicit" : "unknown", original_state: rawState,
++        policy_ownership_claim: mortgage ? null : "supplier_reported",
++        policy_status_claim: master ? nullable(r[10]) : null, policy_status_verified_at: null,
++        supplier_amount: mortgage ? null : amount(r[master ? 14 : 9]), supplier_amount_cadence: "unknown",
++        original_phone: text(rawPhone), original_email: text(rawEmail),
++        import_review_required: issues.some(i => i !== "invalid_email"), import_issues: issues,
++      },
++    });
++  });
++  return { rows, headersSkipped, emptySkipped,
++    review: rows.filter(r => r.raw.import_review_required).length,
++    suppressed: rows.filter(r => r.dnc).length,
++    validEmails: rows.filter(r => r.email).length,
++  };
++}
+diff --git a/src/lib/contractingDownlines.ts b/src/lib/contractingDownlines.ts
+index 194bf10f..596e03ac 100644
+--- a/src/lib/contractingDownlines.ts
++++ b/src/lib/contractingDownlines.ts
+@@ -185,10 +185,11 @@ export type DownlineStage = { key: "login_pending" | "licensing" | "ready" | "ad
+ export const STAGE_ORDER: Record<DownlineStage["key"], number> = { held: 0, ready: 1, login_pending: 2, adding: 3, licensing: 4, on_sheet: 5 };
+ 
+ export function downlineStage(r: Pick<BoardRow, "agent_status" | "npn" | "on_sheet" | "ethos_state" | "ethos_note">): DownlineStage {
+-  if (r.on_sheet) return { key: "on_sheet", label: "On MGN's sheet", tone: "ok", hint: "Contracting sent. MGN/Ethos take it from here." };
++  if (r.ethos_state === "manual_review" || r.ethos_state === "failed" || r.ethos_state === "not_configured") return { key: "held", label: "Submission needs attention", tone: "warn", hint: r.ethos_note ?? (r.ethos_state === "not_configured" ? "Sheet delivery is not configured. An admin must restore it." : "Review the delivery receipt before retrying.") };
++  if (r.on_sheet) return { key: "on_sheet", label: "Submission on MGN's sheet", tone: "pending", hint: "Sheet receipt verified. Carrier approval still needs its own confirmation." };
++  if (r.ethos_state === "delivered" || r.ethos_state === "accepted") return { key: "adding", label: "Submission received", tone: "pending", hint: "Delivery has a receipt; refresh the sheet to reconcile it. Carrier approval is not confirmed here." };
+   if (r.agent_status === "intake_only") return { key: "login_pending", label: "Joined — login not made", tone: "warn", hint: "Their details are saved; an admin finishes the login." };
+   if (!r.npn) return { key: "licensing", label: "Getting licensed", tone: "muted", hint: "When they have an NPN they open your Join link again." };
+-  if (r.ethos_state === "queued" || r.ethos_state === "attempting") return { key: "adding", label: "Being added to the sheet", tone: "pending", hint: "Usually under a minute." };
+-  if (r.ethos_state === "manual_review") return { key: "held", label: "Held — needs a look", tone: "warn", hint: r.ethos_note ?? "Something on this person conflicts with another record." };
+-  return { key: "ready", label: "Ready — not on the sheet", tone: "warn", hint: "Licensed with an NPN. Tap Add to sheet." };
++  if (r.ethos_state === "queued" || r.ethos_state === "attempting") return { key: "adding", label: "Queued for MGN's sheet", tone: "pending", hint: r.ethos_note ?? "Waiting for a verified sheet receipt. This is not carrier approval." };
++  return { key: "ready", label: "NPN on file — review before submission", tone: "warn", hint: "Confirm the current life license and identity before adding the request. An NPN alone does not verify eligibility." };
+ }
+diff --git a/src/lib/dashboardRecords.ts b/src/lib/dashboardRecords.ts
+new file mode 100644
+index 00000000..84c8bfcf
+--- /dev/null
++++ b/src/lib/dashboardRecords.ts
+@@ -0,0 +1,56 @@
++import { supabase } from "@/integrations/supabase/client";
++import type { Tables } from "@/integrations/supabase/types";
++import { businessDateKey } from "@/lib/businessClock";
++
++const PAGE_SIZE = 500;
++export type ManagerProductionRow = Pick<Tables<"v_production_canonical">,
++  "row_key" | "agent_id" | "agent_name" | "annual_premium" | "carrier" | "status" | "posted_date">;
++export type PlaqueFact = Pick<Tables<"plaque_awards">, "id" | "agent_id" | "amount" | "awarded_at">;
++
++/** Fully read each bounded page; an error never becomes a partial headline total. */
++async function completeRows<T>(load: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>, key: (row: T) => string | null): Promise<T[]> {
++  const rows: T[] = [];
++  const seen = new Set<string>();
++  for (let from = 0; from < 50_000; from += PAGE_SIZE) {
++    const { data, error } = await load(from, from + PAGE_SIZE - 1);
++    if (error) throw error;
++    if (!Array.isArray(data)) throw new Error("The full record list could not be verified.");
++    for (const row of data) {
++      const id = key(row);
++      if (!id || seen.has(id)) throw new Error("The record list changed while loading. Retry to verify the totals.");
++      seen.add(id); rows.push(row);
++    }
++    if (data.length < PAGE_SIZE) return rows;
++  }
++  throw new Error("This history is too large for a verified dashboard read. A server summary is required.");
++}
++
++export async function loadManagerProduction(today: string, signal?: AbortSignal): Promise<ManagerProductionRow[]> {
++  const since = new Date(`${today}T12:00:00Z`);
++  since.setUTCDate(since.getUTCDate() - 29);
++  return completeRows((from, to) => {
++    const query = supabase.from("v_production_canonical")
++      .select("row_key,agent_id,agent_name,annual_premium,carrier,status,posted_date")
++      .gte("posted_date", since.toISOString().slice(0, 10)).lte("posted_date", today)
++      .order("posted_date", { ascending: false }).order("row_key", { ascending: true }).range(from, to);
++    return signal ? query.abortSignal(signal) : query;
++  }, row => row.row_key);
++}
++
++export async function loadPlaqueFacts(signal?: AbortSignal): Promise<PlaqueFact[]> {
++  return completeRows((from, to) => {
++    const query = supabase.from("plaque_awards").select("id,agent_id,amount,awarded_at")
++      .order("id", { ascending: true }).range(from, to);
++    return signal ? query.abortSignal(signal) : query;
++  }, row => row.id);
++}
++
++export function summarizePlaques(rows: readonly PlaqueFact[], today: string) {
++  const month = today.slice(0, 7);
++  return {
++    total: rows.length,
++    totalAwarded: rows.reduce((sum, row) => sum + Number(row.amount ?? 0), 0),
++    honorees: new Set(rows.map(row => row.agent_id)).size,
++    thisMonth: rows.filter(row => row.awarded_at && businessDateKey(new Date(row.awarded_at).getTime(), "America/Phoenix").slice(0, 7) === month).length,
++  };
++}
+diff --git a/src/lib/interviewDisposition.ts b/src/lib/interviewDisposition.ts
+new file mode 100644
+index 00000000..8d20c2f5
+--- /dev/null
++++ b/src/lib/interviewDisposition.ts
+@@ -0,0 +1,53 @@
++import { supabase } from "@/integrations/supabase/client";
++import { promoteApplicationToAgent, type HireReceipt } from "@/lib/hireToOnboarding";
++
++export type InterviewDispositionInput = { id: string; outcome: string; notes?: string; followupDueAt?: string | null };
++export type InterviewDispositionReceipt = { receipt_id: string; can_undo: boolean; hire?: HireReceipt };
++type InterviewSnapshot = { id: string; application_id: string | null; updated_at: string; outcome: string | null };
++export type InterviewDispositionDeps = {
++  load: (id: string) => Promise<InterviewSnapshot>;
++  promote: (applicationId: string) => Promise<HireReceipt>;
++  record: (params: Record<string, unknown>) => Promise<InterviewDispositionReceipt>;
++};
++const defaultDeps: InterviewDispositionDeps = {
++  load: async (id) => {
++    const { data, error } = await supabase.from("interview_events").select("id,application_id,updated_at,outcome").eq("id", id).single();
++    if (error || !data) throw new Error(error?.message ?? "Interview could not be loaded.");
++    return data;
++  },
++  promote: promoteApplicationToAgent,
++  record: async (params) => {
++    const { data, error } = await supabase.rpc("cc_record_interview_disposition" as never, params as never);
++    if (error) throw new Error(error.message);
++    const receipt = data as unknown as InterviewDispositionReceipt;
++    if (!receipt?.receipt_id) throw new Error("No outcome receipt returned. Refresh before retrying.");
++    return receipt;
++  },
++};
++
++/** Hiring provisions through add-agent first; recording an outcome cannot manufacture an agent. */
++export async function recordInterviewDisposition(input: InterviewDispositionInput, deps = defaultDeps): Promise<InterviewDispositionReceipt> {
++  if (input.outcome === "callback" && (!input.followupDueAt || !Number.isFinite(Date.parse(input.followupDueAt)) || Date.parse(input.followupDueAt) <= Date.now())) {
++    throw new Error("Choose a future callback date before saving.");
++  }
++  const row = await deps.load(input.id);
++  if (row.outcome !== null) throw new Error("This interview already has an outcome. Refresh the queue before making a correction.");
++  let hire: HireReceipt | undefined;
++  if (input.outcome === "hired") {
++    if (!row.application_id) throw new Error("Link the applicant's application before hiring so their account and onboarding can be created.");
++    hire = await deps.promote(row.application_id);
++  }
++  try {
++    const receipt = await deps.record({ p_id: row.id, p_outcome: input.outcome, p_notes: input.notes?.trim() || null,
++      p_followup_due_at: input.followupDueAt ?? null, p_expected_updated_at: row.updated_at });
++    return { ...receipt, ...(hire ? { hire, can_undo: false } : {}) };
++  } catch (error) {
++    if (hire) throw new Error(`The agent account exists, but the interview outcome was not confirmed: ${(error as Error).message}. Refresh the row; retry uses the same linked account.`);
++    throw error;
++  }
++}
++
++export async function undoInterviewDisposition(receiptId: string): Promise<void> {
++  const { error } = await supabase.rpc("cc_undo_interview_disposition" as never, { p_receipt_id: receiptId } as never);
++  if (error) throw new Error(error.message);
++}
+diff --git a/src/lib/landingLiveStats.ts b/src/lib/landingLiveStats.ts
+new file mode 100644
+index 00000000..be96e8ad
+--- /dev/null
++++ b/src/lib/landingLiveStats.ts
+@@ -0,0 +1,24 @@
++export interface LandingLiveStats {
++  active_agents: number | null;
++  applications_30d: number | null;
++  carriers_partnered: number | null;
++}
++
++/** Missing counts stay unknown. A verified zero is a valid count. */
++export function parseLandingLiveStats(value: unknown): LandingLiveStats {
++  if (!value || typeof value !== "object" || Array.isArray(value)) {
++    throw new Error("Agency numbers are unavailable.");
++  }
++  const row = value as Record<string, unknown>;
++  const count = (input: unknown): number | null =>
++    typeof input === "number" && Number.isSafeInteger(input) && input >= 0 ? input : null;
++  const stats = {
++    active_agents: count(row.active_agents),
++    applications_30d: count(row.applications_30d),
++    carriers_partnered: count(row.carriers_partnered),
++  };
++  if (Object.values(stats).every((item) => item === null)) {
++    throw new Error("Agency numbers are unavailable.");
++  }
++  return stats;
++}
+diff --git a/src/lib/leadBundles.ts b/src/lib/leadBundles.ts
+index d1ce43b9..23fdcf60 100644
+--- a/src/lib/leadBundles.ts
++++ b/src/lib/leadBundles.ts
+@@ -34,7 +34,7 @@ export const CALLED_LEAD_TIERS: ReadonlyArray<{ key: "A" | "B" | "C" | "D"; labe
+ ];
+ 
+ export function tierLabel(tier: string | null | undefined): string {
+-  if (tier === "pos") return "Policy owner";
++  if (tier === "pos") return "Sale reported";
+   if (tier === "blocked") return "Do not call";
+   if (tier === "F") return "Fresh";
+   return tier ? `Tier ${tier}` : "";
+@@ -63,7 +63,7 @@ export const FLAG_BADGE: Record<string, { label: string; cls: string }> = {
+   mortgage: { label: "Mortgage", cls: "bg-blue-500/15 border-blue-500/40 text-blue-300" },
+   veteran: { label: "Veteran", cls: "bg-emerald-500/15 border-emerald-500/40 text-emerald-300" },
+   homeowner: { label: "Homeowner", cls: "bg-cyan-500/15 border-cyan-500/40 text-cyan-300" },
+-  policyholder: { label: "Policyholder", cls: "bg-violet-500/15 border-violet-500/40 text-violet-300" },
++  policyholder: { label: "Policy owner reported", cls: "bg-violet-500/15 border-violet-500/40 text-violet-300" },
+   cc: { label: "Card on file", cls: "bg-emerald-500/15 border-emerald-500/40 text-emerald-300" },
+   direct_express: { label: "Direct Express", cls: "bg-cyan-500/15 border-cyan-500/40 text-cyan-300" },
+   bank_on_file: { label: "Bank on file", cls: "bg-emerald-500/15 border-emerald-500/40 text-emerald-300" },
+@@ -77,7 +77,7 @@ export const FLAG_BADGE: Record<string, { label: string; cls: string }> = {
+   // MP-LEAD-PHONE-READYMODE: the dial number was swapped to the one ReadyMode actually
+   // reached this client on (mat_lead_phone_fix / rewrite call link).
+   readymode_number: { label: "ReadyMode number", cls: "bg-emerald-500/15 border-emerald-500/40 text-emerald-300" },
+-  // MP-LEAD-MANAGER-RM: a phone whose policy with us still stands. Held back with do-not-call, never dropped.
++  // MP-LEAD-MANAGER-RM: a phone whose policy with us still stands. Held separately from do-not-call, never dropped.
+   current_client: { label: "Current client", cls: "bg-rose-500/15 border-rose-500/40 text-rose-300" },
+ };
+ 
+@@ -106,7 +106,7 @@ export const TIER_LEGEND: Record<string, ReadonlyArray<{ tier: string; desc: str
+   // The dialer pool is every lead in ReadyMode (MP-LEAD-MANAGER-RM, 2026-11-24), graded by what has
+   // happened on the phone so far (v_pool_dialer). F is a lead the dialer has never called.
+   dialer: [
+-    { tier: "pos", desc: "Bought on a dialer call. A policy owner to service or rewrite" },
++    { tier: "pos", desc: "Sale reported on a dialer call. Active policy standing needs confirmation" },
+     { tier: "A", desc: "Warm. Booked an appointment, or got to bank or SSN and stopped" },
+     { tier: "B", desc: "Talked to an agent, never bought" },
+     { tier: "F", desc: "Fresh. Loaded in the dialer, never called yet" },
+diff --git a/src/lib/leadManagerFilters.ts b/src/lib/leadManagerFilters.ts
+new file mode 100644
+index 00000000..9c57275b
+--- /dev/null
++++ b/src/lib/leadManagerFilters.ts
+@@ -0,0 +1,69 @@
++/** The same request is used for preview and assignment. Holds are never opt-out. */
++export type LeadWorkFilters = {
++  caller: string;
++  outcome: string;
++  touchedAfter: string;
++  touchedBefore: string;
++  minAttempts: string;
++  maxAttempts: string;
++  callbackBefore: string;
++  sourceFile: string;
++  sourceType: string;
++  policyStanding: string;
++  hold: string;
++};
++
++export const EMPTY_WORK_FILTERS: LeadWorkFilters = {
++  caller: "", outcome: "", touchedAfter: "", touchedBefore: "", minAttempts: "", maxAttempts: "",
++  callbackBefore: "", sourceFile: "", sourceType: "", policyStanding: "", hold: "",
++};
++
++export const OUTCOME_OPTIONS = [
++  ["never_called", "Never called"], ["unknown", "Dialed, outcome unknown"], ["no_answer", "No answer"], ["voicemail", "Voicemail"],
++  ["callback", "Callback"], ["appointment", "Appointment"], ["sold", "Sale reported"],
++  ["bank_objection", "Bank objection"], ["no_bank_account", "No bank account"],
++  ["ssn_objection", "SSN objection"], ["not_interested", "Not interested"],
++  ["bad_number", "Bad number"], ["spanish_speaker", "Spanish speaker"],
++  ["gave_up", "Gave up"], ["do_not_call", "Do not call"],
++] as const;
++
++export function workFilterParams(value: LeadWorkFilters): Record<string, unknown> {
++  const out: Record<string, unknown> = { exclude_dnc: true, exclude_resold: true };
++  const texts = { caller: value.caller, source_file: value.sourceFile, source_type: value.sourceType,
++    policy_standing: value.policyStanding, hold: value.hold };
++  for (const [key, text] of Object.entries(texts)) if (text.trim()) out[key] = text.trim();
++  if (value.outcome) out.outcomes = [value.outcome];
++  for (const [key, raw] of [["min_attempts", value.minAttempts], ["max_attempts", value.maxAttempts]] as const) {
++    if (raw !== "" && Number.isInteger(Number(raw)) && Number(raw) >= 0) out[key] = Number(raw);
++  }
++  // Calendar days are sent unchanged; SQL interprets the interval in America/Phoenix.
++  for (const [key, day] of [["touched_after", value.touchedAfter], ["touched_before", value.touchedBefore],
++    ["callback_before", value.callbackBefore]] as const) if (/^\d{4}-\d{2}-\d{2}$/.test(day)) out[key] = day;
++  return out;
++}
++
++export function holdLabels(flags: Record<string, unknown>): string[] {
++  const labels: string[] = [];
++  if (flags.true_dnc === true || (flags.true_dnc == null && flags.dnc === true && flags.current_client !== true)) labels.push("Do not call");
++  if (flags.current_client === true) labels.push("Existing client");
++  if (flags.in_bundle === true) labels.push("Already assigned");
++  if (flags.already_sold === true) labels.push("Previously distributed");
++  if (flags.import_review_required === true) labels.push("Import review");
++  if (flags.invalid_number === true) labels.push("Invalid number");
++  return labels;
++}
++
++export const LEAD_PACK_COLUMNS = [
++  ["first_name", "First"], ["last_name", "Last"], ["phone10", "Phone"], ["email", "Email"],
++  ["state", "State"], ["age", "Age"], ["grade", "Tier"], ["tags", "Tags"], ["status", "Status"],
++  ["source_kind", "Pool"], ["source_type", "Source type"], ["source_file", "Source file"],
++  ["source_batch_id", "Source batch"], ["policy_ownership_claim", "Ownership evidence"],
++  ["last_caller", "Last caller"], ["last_outcome", "Last outcome"], ["last_touched_at", "Last touch"],
++  ["attempts", "Attempts"], ["callback_at", "Callback at"], ["next_action", "Next action"],
++  ["policy_standing", "Policy standing"], ["policy_carrier", "Reported carrier"],
++  ["policy_product", "Reported product"], ["policy_monthly_premium", "Reported monthly premium"],
++  ["policy_face_amount", "Reported face amount"], ["last_summary", "Last call summary"],
++  ["recording_count", "Recordings"], ["work_history", "Recent work history"], ["call_history", "Recent dialer history"], ["hold_reasons", "Holds"],
++] as const;
++
++export type LeadPackRow = Record<string, string | number | boolean | null>;
+diff --git a/src/lib/looseSupabase.ts b/src/lib/looseSupabase.ts
+index b79e0697..fa6dfdcb 100644
+--- a/src/lib/looseSupabase.ts
++++ b/src/lib/looseSupabase.ts
+@@ -3,21 +3,26 @@ import { supabase } from "@/integrations/supabase/client";
+ export interface LooseResult<T> {
+   data: T | null;
+   error: Error | null;
++  count?: number | null;
+ }
+ 
+ interface LooseUpdateBuilder<T> {
+   eq(column: string, value: unknown): Promise<LooseResult<T>>;
+ }
+ 
+-interface LooseQuery<T> {
+-  select(columns: string): LooseQuery<T>;
++// PostgREST queries are awaitable builders. A filter or limit does not execute
++// the request or remove later modifiers such as range() and maybeSingle().
++interface LooseQuery<T> extends PromiseLike<LooseResult<T[]>> {
++  select(columns: string, options?: { count?: "exact" | "planned" | "estimated"; head?: boolean }): LooseQuery<T>;
+   eq(column: string, value: unknown): LooseQuery<T>;
+   is(column: string, value: null | boolean): LooseQuery<T>;
+   gte(column: string, value: string | number): LooseQuery<T>;
+   in(column: string, values: unknown[]): LooseQuery<T>;
++  or(filters: string, options?: { referencedTable?: string; foreignTable?: string }): LooseQuery<T>;
+   order(column: string, options?: Record<string, unknown>): LooseQuery<T>;
+-  limit(count: number): Promise<LooseResult<T[]>>;
+-  maybeSingle(): Promise<LooseResult<T | null>>;
++  limit(count: number): LooseQuery<T>;
++  range(from: number, to: number): LooseQuery<T>;
++  maybeSingle(): PromiseLike<LooseResult<T | null>>;
+   insert(payload: Record<string, unknown> | Record<string, unknown>[]): Promise<LooseResult<T>>;
+   upsert(payload: Record<string, unknown> | Record<string, unknown>[], options?: Record<string, unknown>): Promise<LooseResult<T>>;
+   update(payload: Record<string, unknown>): LooseUpdateBuilder<T>;
+diff --git a/src/lib/producerWorkspace.ts b/src/lib/producerWorkspace.ts
+new file mode 100644
+index 00000000..c791c54a
+--- /dev/null
++++ b/src/lib/producerWorkspace.ts
+@@ -0,0 +1,88 @@
++import { z } from "zod";
++
++const amount = z.number().finite().nonnegative();
++const count = amount.int();
++const dateKey = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
++const timestamp = z.string().datetime({ offset: true });
++const weekdays = z.array(z.number().int().min(0).max(6)).min(1).max(7);
++export const producerDaySchema = z.object({ day: dateKey, scheduled: z.boolean(), production_ap: amount, deals: count });
++export type ProducerDay = z.infer<typeof producerDaySchema>;
++
++export const producerWorkspaceSchema = z.object({
++  agent_id: z.string(), today: dateKey, period_start: dateKey, period_end: dateKey,
++  as_of: timestamp, timezone: z.literal("America/Phoenix"),
++  target_ap: z.number().finite().positive(), target_source: z.string(),
++  production_ap: amount, production_deals: count, production_updated_at: timestamp.nullable(),
++  selling_days_total: count, selling_days_elapsed: count, selling_days_remaining: count,
++  schedule: weekdays,
++  next_schedule: z.object({ effective_on: dateKey, selling_days: weekdays }).nullable(),
++  activity: z.object({ sample_days: count, sample_calls: count, sample_sold_calls: count,
++    sample_policies: count, avg_policy_ap: amount.nullable(), completed_today: count, sold_calls_today: count }),
++  carrier: z.object({ covered_policies: count, in_force_month_ap: amount.nullable(), active_90d_policies: count.nullable(),
++    updated_at: timestamp.nullable(), oldest_seen_on: dateKey.nullable(), paid_ap: amount.nullable(), paid_reason: z.string() }),
++  days: z.array(producerDaySchema),
++}).superRefine((d, ctx) => {
++  if (d.activity.sample_sold_calls > d.activity.sample_calls) ctx.addIssue({ code: "custom", message: "Call outcomes exceed the source sample." });
++  if (d.selling_days_elapsed > d.selling_days_total) ctx.addIssue({ code: "custom", message: "Selling-day counts are inconsistent." });
++});
++export type ProducerWorkspace = z.infer<typeof producerWorkspaceSchema>;
++
++/** Ratios describe the recorded sample; no agency fallback or guessed conversion. */
++export function producerPace(d: ProducerWorkspace) {
++  const remaining = Math.max(0, d.target_ap - d.production_ap);
++  const fraction = d.selling_days_total > 0 ? d.selling_days_elapsed / d.selling_days_total : null;
++  const targetToday = fraction === null ? null : d.target_ap * fraction;
++  const a = d.activity;
++  const avg = a.sample_policies >= 3 && a.avg_policy_ap !== null && a.avg_policy_ap > 0 ? a.avg_policy_ap : null;
++  const dealsRemaining = remaining === 0 ? 0 : avg === null ? null : Math.ceil(remaining / avg);
++  const measured = a.sample_calls >= 30 && a.sample_sold_calls >= 3 && a.sample_sold_calls <= a.sample_calls;
++  const callsRemaining = remaining === 0 ? 0 : measured && dealsRemaining !== null
++    ? Math.ceil(dealsRemaining * a.sample_calls / a.sample_sold_calls) : null;
++  return {
++    remaining, targetToday, averagePolicy: avg, dealsRemaining, callsRemaining,
++    completionPct: Math.min(100, d.production_ap / d.target_ap * 100),
++    apPerSellingDay: d.selling_days_remaining > 0 ? remaining / d.selling_days_remaining : null,
++    callsPerSellingDay: callsRemaining === null || d.selling_days_remaining === 0 ? null : Math.ceil(callsRemaining / d.selling_days_remaining),
++    status: remaining === 0 ? "Goal hit" : targetToday === null || targetToday === 0 ? "Ready to start"
++      : d.production_ap >= targetToday ? "On pace" : "Behind pace",
++  };
++}
++
++/** Today stays open until midnight; a rest day neither earns nor breaks a streak. */
++export function productionStreak(days: readonly ProducerDay[], today: string) {
++  const scheduled = days.filter((d) => d.scheduled && d.day <= today).sort((a, b) => a.day.localeCompare(b.day));
++  let current = 0;
++  for (let i = scheduled.length - 1; i >= 0; i--) {
++    const d = scheduled[i];
++    if (d.production_ap > 0 && d.deals > 0) current++;
++    else if (d.day !== today) break;
++  }
++  let best = 0;
++  let run = 0;
++  for (const d of scheduled) {
++    run = d.production_ap > 0 && d.deals > 0 ? run + 1 : 0;
++    best = Math.max(best, run);
++  }
++  const todayRow = scheduled.find((d) => d.day === today);
++  return { current, best, todayScheduled: Boolean(todayRow), todayEarned: Boolean(todayRow && todayRow.production_ap > 0 && todayRow.deals > 0) };
++}
++
++export function producerMilestones(production: number, target: number) {
++  return [0.25, 0.5, 0.75, 1].map((fraction) => ({ amount: target * fraction, achieved: production >= target * fraction }));
++}
++
++export const CALL_CATEGORIES = [
++  { value: "uncategorized", label: "Uncategorized" }, { value: "discovery", label: "Discovery" },
++  { value: "presentation", label: "Presentation" }, { value: "objection", label: "Objections" },
++  { value: "follow_up", label: "Follow-up" }, { value: "sale", label: "Sale" }, { value: "service", label: "Service" },
++] as const;
++export type ClientCallCategory = (typeof CALL_CATEGORIES)[number]["value"];
++export const clientCallsSchema = z.object({
++  client_id: z.string(), raw_provider_access: z.boolean(), ambiguous_phone: z.boolean(),
++  calls: z.array(z.object({ key: z.string(), source_id: z.string(), source: z.enum(["readymode", "manual"]),
++    happened_at: timestamp, category: z.enum(["uncategorized", "discovery", "presentation", "objection", "follow_up", "sale", "service"]),
++    outcome: z.string().nullable(), duration_seconds: amount.nullable(), transcript: z.string().nullable(),
++    audio_url: z.string().nullable(), transcript_access: z.enum(["available", "restricted", "not_available"]) })),
++  next_cursor: z.object({ at: timestamp, key: z.string() }).nullable(),
++});
++export type ClientCall = z.infer<typeof clientCallsSchema>["calls"][number];
+diff --git a/src/pages/AgentCommandDashboard.tsx b/src/pages/AgentCommandDashboard.tsx
+index 32ab905a..486bd623 100644
+--- a/src/pages/AgentCommandDashboard.tsx
++++ b/src/pages/AgentCommandDashboard.tsx
+@@ -177,7 +177,7 @@ export default function AgentCommandDashboard() {
+     staleTime: 55_000,
+     queryFn: async () => {
+       const { data, error } = await supabase
+-        .from("v_agent_command_center" as any).select("agent_id,agent_code,display_name,full_name,license_status,manager_name,onboarding_stage,activity_state,next_action,deals_mtd,deals_wtd,deals_30d,ap_mtd,ap_wtd,ap_30d,commission_lifetime_cents,chargebacks,lapses,presentations_mtd,presentations_wtd,hours_called_mtd,hours_called_wtd,last_production_date,apps_assigned,apps_open,apps_new_7d,apps_needing_contact,close_rate_mtd_pct,ap_trend_pct,rank_agency_mtd,rank_agency_wtd,rank_team_mtd")
++        .from("v_agent_command_center").select("agent_id,agent_code,display_name,full_name,license_status,manager_name,onboarding_stage,activity_state,next_action,deals_mtd,deals_wtd,deals_30d,ap_mtd,ap_wtd,ap_30d,commission_lifetime_cents,chargebacks,lapses,presentations_mtd,presentations_wtd,hours_called_mtd,hours_called_wtd,last_production_date,apps_assigned,apps_open,apps_new_7d,apps_needing_contact,close_rate_mtd_pct,ap_trend_pct,rank_agency_mtd,rank_agency_wtd,rank_team_mtd")
+         .eq("agent_id", agentId!)
+         .maybeSingle();
+       if (error) throw error;
+@@ -206,7 +206,7 @@ export default function AgentCommandDashboard() {
+     enabled: !isAdmin && !!agentId,
+     queryFn: async () => {
+       const { data, error } = await supabase
+-        .from("agent_lifetime_production" as any).select("lifetime_alp,lifetime_deals")
++        .from("agent_lifetime_production").select("lifetime_alp,lifetime_deals")
+         .eq("agent_id", agentId!)
+         .maybeSingle();
+       if (error) throw error;
+@@ -287,15 +287,13 @@ export default function AgentCommandDashboard() {
+   const dayOfMonth = today.getDate();
+   const monthProgressPct = (dayOfMonth / daysInMonth) * 100;
+   const incomeGoal = Number(goal.data?.income_goal ?? 0);
+-  // v26 audit fix: was falling back to 100% comp when contract not set,
+-  // wildly inflating projected commission. Default to 35% (typical agent
+-  // contract floor) and show a "not set" indicator instead.
++  // An unset personal comp rate cannot support an income projection.
+   const rawCompPct = goal.data?.comp_percentage;
+-  const hasCompSet = rawCompPct !== null && rawCompPct !== undefined;
+-  const compPct = (hasCompSet ? Number(rawCompPct) : 35) / 100;
++  const hasCompSet = rawCompPct !== null && rawCompPct !== undefined && Number.isFinite(Number(rawCompPct)) && Number(rawCompPct) >= 0;
++  const compPct = hasCompSet ? Number(rawCompPct) / 100 : null;
+   const monthApProjected = dayOfMonth > 0 ? (apMtd / dayOfMonth) * daysInMonth : 0;
+-  const monthCommissionProjected = monthApProjected * compPct;
+-  const goalProgressPct = incomeGoal > 0
++  const monthCommissionProjected = compPct === null ? null : monthApProjected * compPct;
++  const goalProgressPct = incomeGoal > 0 && monthCommissionProjected !== null
+     ? Math.min(100, (monthCommissionProjected / incomeGoal) * 100)
+     : 0;
+ 
+@@ -404,7 +402,7 @@ export default function AgentCommandDashboard() {
+ 
+       {/* ── 4 KPI TILES ───────────────────────────────────────── */}
+       {/* MP-303: this agent's production goal + pace + projected income. */}
+-      <GoalTrackerCard agentId={agentId} />
++      <GoalTrackerCard agentId={agentId} scope="personal" />
+ 
+       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+         <KpiTile
+@@ -427,8 +425,8 @@ export default function AgentCommandDashboard() {
+         <KpiTile
+           icon={CircleDollarSign}
+           label="Commission projected"
+-          value={fmtUsd(monthCommissionProjected, true)}
+-          subValue={incomeGoal > 0 ? `${fmtPct(goalProgressPct)} of $${fmtNum(incomeGoal)} goal` : "Set a monthly goal →"}
++          value={monthCommissionProjected === null ? "—" : fmtUsd(monthCommissionProjected, true)}
++          subValue={!hasCompSet ? "Set your comp rate to see an estimate" : incomeGoal > 0 ? `${fmtPct(goalProgressPct)} of $${fmtNum(incomeGoal)} goal` : "Set a monthly goal →"}
+           color="text-primary"
+           loading={cc.isLoading}
+         />
+@@ -548,10 +546,12 @@ export default function AgentCommandDashboard() {
+             <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold">Income goal · {format(today, "MMMM")}</p>
+             <Target className="h-5 w-5 text-muted-foreground" />
+           </div>
+-          {incomeGoal > 0 ? (
++          {!hasCompSet ? (
++            <p className="text-sm text-muted-foreground">Set your personal comp rate in your income goal to see a projection. Posted ALP and paid commission remain separate.</p>
++          ) : incomeGoal > 0 ? (
+             <>
+               <div className="flex items-baseline justify-between mb-2">
+-                <span className="text-3xl font-bold tabular-nums">{fmtUsd(monthCommissionProjected, true)}</span>
++                <span className="text-3xl font-bold tabular-nums">{monthCommissionProjected === null ? "—" : fmtUsd(monthCommissionProjected, true)}</span>
+                 <span className="text-sm text-muted-foreground">of {fmtUsd(incomeGoal, true)}</span>
+               </div>
+               <Progress value={goalProgressPct} className="h-2.5" />
+@@ -904,7 +904,7 @@ function AgencyCommandView() {
+     staleTime: 55_000,
+     queryFn: async () => {
+       const { data, error } = await supabase
+-        .from("v_ceo_command_center" as any).select("as_of,active_agents,ap_30d,chargebacks_30d,lapses_30d,ref_30d,ref_won,total_applications,paid_mtd,apps_wtd,uncontacted_24h,stale_new_3d,unassigned_open")
++        .from("v_ceo_command_center").select("as_of,active_agents,ap_30d,chargebacks_30d,lapses_30d,ref_30d,ref_won,total_applications,paid_mtd,apps_wtd,uncontacted_24h,stale_new_3d,unassigned_open")
+         .maybeSingle();
+       if (error) throw error;
+       return data as unknown as CeoRow | null;
+@@ -923,7 +923,7 @@ function AgencyCommandView() {
+     staleTime: 240_000,
+     queryFn: async () => {
+       const { data, error } = await supabase
+-        .from("v_active_agents_skool" as any)
++        .from("v_active_agents_skool")
+         .select("skool_members_loaded,active_current_definition,active_in_skool_and_enabled")
+         .maybeSingle();
+       if (error) throw error;
+@@ -945,7 +945,7 @@ function AgencyCommandView() {
+       const endDate = periodBounds.endIso.slice(0, 10);
+ 
+       const { data, error } = await supabase
+-        .from("v_production_unified" as any)
++        .from("v_production_unified")
+         .select("row_key, annual_premium, posted_date, agent_id")
+         .gte("posted_date", startDate)
+         .lt("posted_date", endDate);
+@@ -1012,7 +1012,7 @@ function AgencyCommandView() {
+       const startDate = periodBounds.startIso.slice(0, 10);
+       const endDate = periodBounds.endIso.slice(0, 10);
+       const { data, error } = await supabase
+-        .from("v_production_unified" as any)
++        .from("v_production_unified")
+         .select("annual_premium")
+         .gte("posted_date", startDate)
+         .lt("posted_date", endDate);
+@@ -1103,7 +1103,7 @@ function AgencyCommandView() {
+       const priorStart = new Date(start.getTime() - lengthMs);
+       const priorEnd = new Date(start.getTime());
+       const { data, error } = await supabase
+-        .from("agentlink_deals_snapshot" as any)
++        .from("agentlink_deals_snapshot")
+         .select("annual_premium")
+         .gte("effective_date", priorStart.toISOString().slice(0, 10))
+         .lt("effective_date", priorEnd.toISOString().slice(0, 10));
+@@ -1156,7 +1156,7 @@ function AgencyCommandView() {
+     staleTime: 55_000,
+     queryFn: async () => {
+       const { data, error } = await supabase
+-        .from("v_recent_hires" as any)
++        .from("v_recent_hires")
+         .select("id, display_name, agent_code, hired_on, manager_name, onboarding_stage, days_on_team, total_premium, total_policies")
+         .order("hired_on", { ascending: false })
+         .limit(12);
+@@ -1177,7 +1177,7 @@ function AgencyCommandView() {
+     queryKey: ["agency-trend-truth", periodBounds.startIso, periodBounds.endIso],
+     queryFn: async () => {
+       const { data, error } = await supabase
+-        .from("agentlink_deals_snapshot" as any)
++        .from("agentlink_deals_snapshot")
+         .select("effective_date, annual_premium")
+         .gte("effective_date", periodBounds.startIso.slice(0, 10))
+         .lte("effective_date", periodBounds.endIso.slice(0, 10))
+@@ -1285,7 +1285,7 @@ function AgencyCommandView() {
+     refetchInterval: 300_000,
+     staleTime: 4 * 60_000,
+     queryFn: async () => {
+-      const { data } = await supabase.from("v_cfo_snapshot" as any).select("*").maybeSingle();
++      const { data } = await supabase.from("v_cfo_snapshot").select("*").maybeSingle();
+       return data as unknown as {
+         ghost_ap_at_risk: string | number;
+         ica_paid_stuck: number;
+@@ -1313,7 +1313,7 @@ function AgencyCommandView() {
+     staleTime: 55_000,
+     queryFn: async () => {
+       const { data, error } = await supabase
+-        .from("applications" as any)
++        .from("applications")
+         .select("id, first_name, last_name, status, license_progress, created_at, contacted_at, course_purchased_at, licensed_at, state, phone, email, referral_source")
+         .is("terminated_at", null)
+         .order("created_at", { ascending: false, nullsFirst: false })
+@@ -1390,7 +1390,7 @@ function AgencyCommandView() {
+       const today = new Date(tzNow.getFullYear(), tzNow.getMonth(), tzNow.getDate())
+         .toISOString().slice(0, 10);
+       const { data: dealRows, error } = await supabase
+-        .from("agentlink_deals_snapshot" as any)
++        .from("agentlink_deals_snapshot")
+         .select("carrier_id, annual_premium")
+         .gte("effective_date", monthStart)
+         .lte("effective_date", today);
+@@ -1400,7 +1400,7 @@ function AgencyCommandView() {
+       const nameById = new Map<number, string>();
+       if (carrierIds.length > 0) {
+         const { data: carriers } = await supabase
+-          .from("agentlink_carriers" as any)
++          .from("agentlink_carriers")
+           .select("id, name")
+           .in("id", carrierIds);
+         for (const c of (carriers ?? []) as Array<{ id: number; name: string | null }>) {
+@@ -1441,7 +1441,7 @@ function AgencyCommandView() {
+       const weekAgo = new Date(now.getTime() - 7 * 86_400_000).toISOString().slice(0, 10);
+       const twoWeeksAgo = new Date(now.getTime() - 14 * 86_400_000).toISOString().slice(0, 10);
+       const { data, error } = await supabase
+-        .from("agentlink_deals_snapshot" as any)
++        .from("agentlink_deals_snapshot")
+         .select("user_id, annual_premium, effective_date")
+         .gte("effective_date", twoWeeksAgo)
+         .lte("effective_date", today);
+@@ -1516,7 +1516,7 @@ function AgencyCommandView() {
+     staleTime: 55_000,
+     queryFn: async () => {
+       const { data, error } = await supabase
+-        .from("culture_events" as any)
++        .from("culture_events")
+         .select("id, event_type, agent_id, annual_premium, product_sold, created_at")
+         .order("created_at", { ascending: false })
+         .limit(12);
+@@ -1594,7 +1594,7 @@ function AgencyCommandView() {
+       const tzNow = new Date();
+       const monthStart = new Date(tzNow.getFullYear(), tzNow.getMonth(), 1).toISOString();
+       const { data, error } = await supabase
+-        .from("commission_ledger" as any)
++        .from("commission_ledger")
+         .select("amount, status, expected_paid_date, actual_paid_date")
+         .gte("created_at", monthStart);
+       if (error) throw error;
+@@ -1657,12 +1657,12 @@ function AgencyCommandView() {
+         chargebacksRes,
+         producerRiskRes,
+       ] = await Promise.all([
+-        supabase.from("v_hot_licensing_prospects" as any).select("application_id", { count: "exact", head: true }),
+-        supabase.from("v_unlicensed_all" as any).select("id", { count: "exact", head: true }).is("assigned_va_id", null).gte("days_since_touch", 30),
+-        supabase.from("applications" as any).select("id", { count: "exact", head: true }).is("terminated_at", null).is("contacted_at", null),
+-        supabase.from("applications" as any).select("id", { count: "exact", head: true }).is("terminated_at", null).lt("next_action_due_at", new Date().toISOString()).not("next_action_due_at", "is", null),
+-        supabase.from("v_chargebacks_30d" as any).select("*", { count: "exact", head: true }),
+-        supabase.from("v_producer_trend_alert" as any).select("producer_id", { count: "exact", head: true }).eq("currently_dropping", true as any),
++        supabase.from("v_hot_licensing_prospects").select("application_id", { count: "exact", head: true }),
++        supabase.from("v_unlicensed_all").select("id", { count: "exact", head: true }).is("assigned_va_id", null).gte("days_since_touch", 30),
++        supabase.from("applications").select("id", { count: "exact", head: true }).is("terminated_at", null).is("contacted_at", null),
++        supabase.from("applications").select("id", { count: "exact", head: true }).is("terminated_at", null).lt("next_action_due_at", new Date().toISOString()).not("next_action_due_at", "is", null),
++        supabase.from("v_chargebacks_30d").select("*", { count: "exact", head: true }),
++        supabase.from("v_producer_trend_alert").select("producer_id", { count: "exact", head: true }).eq("currently_dropping", true as any),
+       ]);
+       return {
+         hot_licensing: hotLicensingRes.count ?? 0,
+@@ -1682,8 +1682,8 @@ function AgencyCommandView() {
+     staleTime: 4 * 60_000,
+     queryFn: async () => {
+       const [stagesRes, healthRes] = await Promise.all([
+-        supabase.from("v_licensing_stage_counts" as any).select("stage, count"),
+-        supabase.from("v_next_step_funnel_health" as any).select("stage_key, order_index, display_name, in_stage, stalled, median_days, avg_days, next_stage_count, conversion_to_next_pct").order("order_index", { ascending: true }),
++        supabase.from("v_licensing_stage_counts").select("stage, count"),
++        supabase.from("v_next_step_funnel_health").select("stage_key, order_index, display_name, in_stage, stalled, median_days, avg_days, next_stage_count, conversion_to_next_pct").order("order_index", { ascending: true }),
+       ]);
+       const stages = (stagesRes.data ?? []) as unknown as Array<{ stage: string; count: number }>;
+       const health = (healthRes.data ?? []) as unknown as Array<{
+@@ -1702,7 +1702,7 @@ function AgencyCommandView() {
+     staleTime: 4 * 60_000,
+     queryFn: async () => {
+       const { data, error } = await supabase
+-        .from("v_producer_trend_alert" as any)
++        .from("v_producer_trend_alert")
+         .select("producer_id, display_name, current_week_alp, current_week_deals, alp_1w_ago, alp_2w_ago, alp_3_weeks_ago, delta_pct, direction, currently_dropping")
+         .order("current_week_alp", { ascending: false })
+         .limit(50);
+@@ -1756,7 +1756,7 @@ function AgencyCommandView() {
+     staleTime: 4 * 60_000,
+     queryFn: async () => {
+       const { data, error } = await supabase
+-        .from("v_manager_hierarchy_mtd" as any)
++        .from("v_manager_hierarchy_mtd")
+         .select("manager_id, manager_name, team_size, team_alp_mtd, team_deals_mtd, producing_team_mtd")
+         .order("team_alp_mtd", { ascending: false });
+       // Throw, never swallow to []: a dead manager-hierarchy feed must surface as
+diff --git a/src/pages/AgentDetail.tsx b/src/pages/AgentDetail.tsx
+index 8e82e4ba..91a3a9e6 100644
+--- a/src/pages/AgentDetail.tsx
++++ b/src/pages/AgentDetail.tsx
+@@ -58,8 +58,8 @@ export default function AgentDetail() {
+         .from("agents")
+         .select(`id, status, license_status, start_date, total_policies, total_premium,
+           insuracloud_user_id, metadata,
+-          profile:profiles(full_name, email, phone, avatar_url),
+-          manager:agents!manager_id(profile:profiles(full_name))`)
++          profile:profiles!agents_profile_id_fkey(full_name, email, phone, avatar_url),
++          manager:agents!manager_id(profile:profiles!agents_profile_id_fkey(full_name))`)
+         .eq("id", id).maybeSingle();
+       if (!a) { if (!cancelled) { setAgent(null); setLoading(false); } return; }
+       const p = (a as any).profile;
+@@ -84,7 +84,7 @@ export default function AgentDetail() {
+         supabase
+           .from("deals")
+           .select(`id, client_first_name, client_last_name, annual_premium, status, effective_date, posted_at,
+-            carrier:carriers(name)`)
++            carrier:carriers!deals_carrier_id_fkey(name)`)
+           .eq("agent_id", id)
+           .order("posted_at", { ascending: false })
+           .limit(50),
+diff --git a/src/pages/AgentLinkVault.tsx b/src/pages/AgentLinkVault.tsx
+index f7d32f1f..0019795a 100644
+--- a/src/pages/AgentLinkVault.tsx
++++ b/src/pages/AgentLinkVault.tsx
+@@ -125,19 +125,19 @@ function OverviewPanel() {
+         // `not("is_dead","is",true)` is PostgREST for `is_dead IS NOT TRUE` —
+         // matches false AND null, exactly the predicate v_agentlink_book_truth
+         // uses. `.eq("is_dead", false)` would silently drop the null rows.
+-        supabase.from("v_agentlink_book_scoped" as any).select("*", { count: "exact", head: true }).not("is_dead", "is", true),
+-        supabase.from("v_agentlink_book_scoped" as any).select("*", { count: "exact", head: true }).is("is_dead", true),
+-        supabase.from("agentlink_clients" as any).select("*", { count: "exact", head: true }),
+-        supabase.from("agentlink_contracts" as any).select("*", { count: "exact", head: true }),
+-        supabase.from("agentlink_contracts" as any).select("*", { count: "exact", head: true }).eq("status", "active"),
+-        supabase.from("agentlink_agents" as any).select("*", { count: "exact", head: true }),
+-        supabase.from("agentlink_agents" as any).select("*", { count: "exact", head: true }).eq("is_producer_active", true),
++        supabase.from("v_agentlink_book_scoped").select("*", { count: "exact", head: true }).not("is_dead", "is", true),
++        supabase.from("v_agentlink_book_scoped").select("*", { count: "exact", head: true }).is("is_dead", true),
++        supabase.from("agentlink_clients").select("*", { count: "exact", head: true }),
++        supabase.from("agentlink_contracts").select("*", { count: "exact", head: true }),
++        supabase.from("agentlink_contracts").select("*", { count: "exact", head: true }).eq("status", "active"),
++        supabase.from("agentlink_agents").select("*", { count: "exact", head: true }),
++        supabase.from("agentlink_agents").select("*", { count: "exact", head: true }).eq("is_producer_active", true),
+         supabase.from("carriers").select("*", { count: "exact", head: true }),
+         supabase
+-          .from("v_agentlink_book_truth" as any)
++          .from("v_agentlink_book_truth")
+           .select("total_annual_premium")
+           .maybeSingle(),
+-        supabase.from("agentlink_raw_exports" as any).select("id, endpoint, captured_at").order("captured_at", { ascending: false }).limit(1),
++        supabase.from("agentlink_raw_exports").select("id, endpoint, captured_at").order("captured_at", { ascending: false }).limit(1),
+       ]);
+       // Supabase RESOLVES (does not reject) on a query-level error — a dropped
+       // view, renamed column, or RLS change comes back as { count: null, error }.
+@@ -246,7 +246,7 @@ function AgentsPanel() {
+     queryKey: ["alvault-agents"],
+     queryFn: async () => {
+       const { data, error } = await supabase
+-        .from("agentlink_agents" as any)
++        .from("agentlink_agents")
+         .select("insuracloud_user_id, email, first_name, last_name, phone_number, npn_number, account_status, is_producer_active, state, contract_count, team_size, joined_date, last_sign_in_at, ssn_last4, date_of_birth")
+         .order("last_name", { ascending: true });
+       if (error) throw error;
+@@ -313,7 +313,7 @@ function ClientsPanel() {
+     queryKey: ["alvault-clients"],
+     queryFn: async () => {
+       const { data, error } = await supabase
+-        .from("agentlink_clients" as any)
++        .from("agentlink_clients")
+         .select("insuracloud_pipeline_client_id, first_name, last_name, phone, email, date_of_birth, pipeline_stage, insuracloud_user_id, agent_id")
+         .order("last_name", { ascending: true })
+         .limit(2000);
+@@ -375,7 +375,7 @@ function ContractsPanel() {
+     queryKey: ["alvault-contracts"],
+     queryFn: async () => {
+       const { data, error } = await supabase
+-        .from("agentlink_contracts" as any)
++        .from("agentlink_contracts")
+         .select("insuracloud_contract_id, writing_number, secondary_writing_number, contract_number, status, commission_level, activated_date, insuracloud_user_id, insuracloud_carrier_id")
+         .order("activated_date", { ascending: false, nullsFirst: false })
+         .limit(2000);
+@@ -440,7 +440,7 @@ function BinariesPanel() {
+     queryKey: ["alvault-binaries"],
+     queryFn: async () => {
+       const { data, error } = await supabase
+-        .from("agentlink_binary_docs" as any)
++        .from("agentlink_binary_docs")
+         .select("id, doc_kind, content_type, byte_size, captured_at, agent_id, insuracloud_user_id")
+         .order("captured_at", { ascending: false });
+       if (error) throw error;
+@@ -449,7 +449,7 @@ function BinariesPanel() {
+   });
+   const download = async (id: string, kind: string, ct: string) => {
+     const { data, error } = await supabase
+-      .from("agentlink_binary_docs" as any)
++      .from("agentlink_binary_docs")
+       .select("payload_b64")
+       .eq("id", id)
+       .maybeSingle();
+@@ -511,7 +511,7 @@ function VaultPanel() {
+     queryKey: ["alvault-raw"],
+     queryFn: async () => {
+       const { data, error } = await supabase
+-        .from("agentlink_raw_exports" as any)
++        .from("agentlink_raw_exports")
+         .select("id, endpoint, upstream_status, row_count, captured_at, sync_run_id")
+         .order("captured_at", { ascending: false })
+         .limit(500);

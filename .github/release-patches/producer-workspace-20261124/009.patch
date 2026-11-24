@@ -1,0 +1,899 @@
+diff --git a/src/pages/admin/TelegramBot.tsx b/src/pages/admin/TelegramBot.tsx
+index c6752f00..2d9b4b63 100644
+--- a/src/pages/admin/TelegramBot.tsx
++++ b/src/pages/admin/TelegramBot.tsx
+@@ -390,7 +390,7 @@ export default function TelegramBot() {
+             <GlassCard className="p-5">
+               <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">Per-stage breakdown</h3>
+               {!funnel || funnel.length === 0 ? (
+-                <EmptyState title="No users yet" description="Once candidates DM the bot, they'll appear here grouped by stage." icon={Users} />
++                <EmptyState title="No users yet" description="Once candidates DM the bot, they'll appear here grouped by stage." icon={<Users className="h-7 w-7" aria-hidden />} />
+               ) : (
+                 <ul className="space-y-2">
+                   {funnel.map((f) => (
+@@ -412,7 +412,7 @@ export default function TelegramBot() {
+             <GlassCard className="p-5">
+               <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">Open escalations</h3>
+               {!escalations || escalations.length === 0 ? (
+-                <EmptyState title="No open escalations" description="The bot routes here whenever a candidate hits a hard trigger (money / contract / 'manager')." icon={CheckCircle2} />
++                <EmptyState title="No open escalations" description="The bot routes here whenever a candidate hits a hard trigger (money / contract / 'manager')." icon={<CheckCircle2 className="h-7 w-7" aria-hidden />} />
+               ) : (
+                 <ul className="space-y-2">
+                   {escalations.map((e) => (
+@@ -436,7 +436,7 @@ export default function TelegramBot() {
+             <GlassCard className="p-5">
+               <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">Stale &gt; 3d</h3>
+               {!stuck || stuck.length === 0 ? (
+-                <EmptyState title="Nothing stuck" description="All active users have moved within the last 3 days." icon={CheckCircle2} />
++                <EmptyState title="Nothing stuck" description="All active users have moved within the last 3 days." icon={<CheckCircle2 className="h-7 w-7" aria-hidden />} />
+               ) : (
+                 <ul className="space-y-2">
+                   {stuck.map((u) => (
+@@ -461,7 +461,7 @@ export default function TelegramBot() {
+                 <EmptyState
+                   title="No groups registered"
+                   description="Add the bot as admin to your Telegram groups. The bot auto-registers them here on the first message — then update type via SQL."
+-                  icon={MessageSquare}
++                  icon={<MessageSquare className="h-7 w-7" aria-hidden />}
+                 />
+               ) : (
+                 <ul className="space-y-2">
+@@ -794,7 +794,7 @@ function PreAgentHqPanel({ groups, faqs }: { groups: Group[]; faqs: PreAgentHqFa
+             <EmptyState
+               title="No HQ channels seeded"
+               description="The migration didn't apply, or the rows were deleted. Re-run 20260522000300_telegram_pre_agent_hq.sql."
+-              icon={MessageSquare}
++              icon={<MessageSquare className="h-7 w-7" aria-hidden />}
+             />
+           ) : (
+             groups.map((g) => {
+diff --git a/src/tests/components/AgedLeadImporter.test.tsx b/src/tests/components/AgedLeadImporter.test.tsx
+new file mode 100644
+index 00000000..43028346
+--- /dev/null
++++ b/src/tests/components/AgedLeadImporter.test.tsx
+@@ -0,0 +1,30 @@
++import { fireEvent, render, screen, waitFor } from "@testing-library/react";
++import { beforeEach, describe, expect, it, vi } from "vitest";
++import { supabase } from "@/integrations/supabase/client";
++import { AgedLeadImporter } from "@/components/dashboard/AgedLeadImporter";
++
++const notice = vi.hoisted(() => ({ error: vi.fn(), success: vi.fn() }));
++vi.mock("sonner", () => ({ toast: notice }));
++beforeEach(() => {
++  vi.mocked(supabase.rpc).mockReset(); vi.mocked(supabase.from).mockClear(); vi.mocked(supabase.functions.invoke).mockClear(); notice.error.mockClear();
++  HTMLElement.prototype.scrollIntoView = vi.fn();
++});
++describe("aged lead suppression verification", () => {
++  it.each([
++    { data: null, error: { message: "Suppression service unavailable" } },
++    { data: null, error: null },
++  ])("does not insert or email leads when the ban result is unverified", async result => {
++    vi.mocked(supabase.rpc).mockResolvedValue(result as never);
++    const complete = vi.fn();
++    render(<AgedLeadImporter isOpen onClose={vi.fn()} managers={[{ id: "manager-a", name: "Manager Example" }]} onImportComplete={complete} />);
++    fireEvent.keyDown(screen.getAllByRole("combobox")[0], { key: "ArrowDown" });
++    fireEvent.click(await screen.findByRole("option", { name: "Manager Example" }));
++    fireEvent.change(screen.getByRole("textbox"), { target: { value: "first_name,last_name,email,phone\nTaylor,Example,taylor@example.test,6152345678" } });
++    fireEvent.click(screen.getByRole("button", { name: "Preview Import (1 rows)" }));
++    fireEvent.click(screen.getByRole("button", { name: "Import 1 Leads" }));
++    await waitFor(() => expect(notice.error).toHaveBeenCalled());
++    expect(supabase.from).not.toHaveBeenCalled();
++    expect(supabase.functions.invoke).not.toHaveBeenCalled();
++    expect(complete).not.toHaveBeenCalled();
++  });
++});
+diff --git a/src/tests/components/ClientCallHistory.test.tsx b/src/tests/components/ClientCallHistory.test.tsx
+new file mode 100644
+index 00000000..f8dc2b62
+--- /dev/null
++++ b/src/tests/components/ClientCallHistory.test.tsx
+@@ -0,0 +1,131 @@
++import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
++import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
++import { beforeEach, describe, expect, it, vi } from "vitest";
++import { supabase } from "@/integrations/supabase/client";
++import { looseSupabase } from "@/lib/looseSupabase";
++import { ClientCallHistory } from "@/components/clients/ClientCallHistory";
++
++const auth = vi.hoisted(() => ({ user: { id: "user-a" } as { id: string } | null }));
++const notice = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
++vi.mock("@/hooks/useAuth", () => ({ useAuth: () => auth }));
++vi.mock("sonner", () => ({ toast: notice }));
++
++const rpc = vi.mocked(looseSupabase.rpc);
++const call = { key: "readymode:call-a", source_id: "call-a", source: "readymode", happened_at: "2026-11-24T16:00:00Z", category: "objection", outcome: "Bank Objection", duration_seconds: 120, transcript: null, audio_url: null, transcript_access: "restricted" };
++const page = (overrides = {}) => ({ client_id: "client-a", raw_provider_access: false, ambiguous_phone: false, calls: [], next_cursor: null, ...overrides });
++function mount(client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })) {
++  return { client, ...render(<QueryClientProvider client={client}><ClientCallHistory clientId="client-a" /></QueryClientProvider>) };
++}
++
++beforeEach(() => { rpc.mockReset(); vi.mocked(supabase.functions.invoke).mockClear(); notice.success.mockReset(); notice.error.mockReset(); auth.user = { id: "user-a" }; });
++
++describe("client call history", () => {
++  it("withholds provider text and audio when either permission layer is restricted", async () => {
++    rpc.mockResolvedValue({ data: page({ calls: [{ ...call, transcript: "Must never render", audio_url: "https://recordings.example.test/private.wav", transcript_access: "available" }] }), error: null } as never);
++    mount();
++    expect(await screen.findByText(/Raw provider transcripts and audio require existing call-access permission/)).toBeInTheDocument();
++    expect(screen.queryByText("Must never render")).toBeNull();
++    expect(screen.queryByRole("link", { name: "Open recording" })).toBeNull();
++    expect(screen.getByText("Bank Objection")).toBeInTheDocument();
++  });
++
++  it("uses stable page cursors and resets them when the category changes", async () => {
++    rpc.mockImplementation((name, args) => Promise.resolve({ data: name === "producer_client_calls" ? page({ calls: args?.p_before_at ? [{ ...call, key: "readymode:older", source_id: "older", happened_at: "2026-11-23T16:00:00Z", outcome: "Earlier call" }] : [call], next_cursor: args?.p_before_at || args?.p_category ? null : { at: call.happened_at, key: call.key } }) : null, error: null }) as never);
++    mount();
++    fireEvent.click(await screen.findByRole("button", { name: "Load earlier calls" }));
++    expect(await screen.findByText("Earlier call")).toBeInTheDocument();
++    expect(rpc).toHaveBeenCalledWith("producer_client_calls", expect.objectContaining({ p_client_id: "client-a", p_before_at: call.happened_at, p_before_key: call.key }));
++    fireEvent.change(screen.getByLabelText("Show"), { target: { value: "objection" } });
++    await waitFor(() => expect(rpc).toHaveBeenLastCalledWith("producer_client_calls", { p_client_id: "client-a", p_category: "objection", p_before_at: null, p_before_key: null }));
++    await waitFor(() => expect(screen.queryByText("Earlier call")).toBeNull());
++  });
++
++  it("saves manual transcripts to the current client without invoking transcription services", async () => {
++    rpc.mockImplementation((name) => Promise.resolve({ data: name === "producer_client_calls" ? page() : "transcript-a", error: null }) as never);
++    mount();
++    await screen.findByText("No calls or saved transcripts have been matched to this client.");
++    fireEvent.click(screen.getByText("Save a client transcript"));
++    fireEvent.change(screen.getByLabelText("Transcript"), { target: { value: "Client requested a follow-up next Tuesday." } });
++    fireEvent.change(screen.getByLabelText("Transcript category"), { target: { value: "follow_up" } });
++    fireEvent.change(screen.getByLabelText("Outcome (optional)"), { target: { value: "Follow-up agreed" } });
++    fireEvent.click(screen.getByRole("button", { name: "Save transcript" }));
++    await waitFor(() => expect(rpc).toHaveBeenCalledWith("producer_save_client_transcript", { p_client_id: "client-a", p_transcript: "Client requested a follow-up next Tuesday.", p_category: "follow_up", p_outcome: "Follow-up agreed" }));
++    await waitFor(() => expect(notice.success).toHaveBeenCalledWith("Transcript saved to this client."));
++    expect(supabase.functions.invoke).not.toHaveBeenCalled();
++    expect(screen.getByLabelText("Transcript")).toHaveValue("");
++  });
++
++  it("keeps a failed save available to retry and never reports success", async () => {
++    rpc.mockImplementation((name) => Promise.resolve({ data: name === "producer_client_calls" ? page() : null, error: name === "producer_save_client_transcript" ? new Error("Access changed") : null }) as never);
++    mount();
++    await screen.findByText("Save a client transcript");
++    fireEvent.click(screen.getByText("Save a client transcript"));
++    fireEvent.change(screen.getByLabelText("Transcript"), { target: { value: "A transcript that must remain available after a failure." } });
++    fireEvent.click(screen.getByRole("button", { name: "Save transcript" }));
++    await waitFor(() => expect(notice.error).toHaveBeenCalledWith("Access changed"));
++    expect(notice.success).not.toHaveBeenCalled();
++    expect(screen.getByLabelText("Transcript")).toHaveValue("A transcript that must remain available after a failure.");
++  });
++
++  it("shows an access state rather than claiming an empty history or permitting a save", async () => {
++    rpc.mockResolvedValue({ data: null, error: new Error("Client not found or access denied") } as never);
++    mount();
++    expect(await screen.findByRole("alert")).toHaveTextContent("Your current account does not have access");
++    expect(screen.queryByText("Save a client transcript")).toBeNull();
++    expect(screen.queryByText("No calls or saved transcripts have been matched to this client.")).toBeNull();
++  });
++
++  it("does not display another login’s cached transcript after an account change", async () => {
++    rpc.mockResolvedValueOnce({ data: page({ calls: [{ ...call, key: "manual:call-a", source: "manual", transcript: "Only the previous login may see this.", transcript_access: "available" }] }), error: null } as never);
++    const view = mount();
++    await screen.findByText("Only the previous login may see this.");
++    auth.user = { id: "user-b" };
++    rpc.mockResolvedValue({ data: null, error: new Error("Client not found or access denied") } as never);
++    view.rerender(<QueryClientProvider client={view.client}><ClientCallHistory clientId="client-a" /></QueryClientProvider>);
++    expect(screen.queryByText("Only the previous login may see this.")).toBeNull();
++    expect(await screen.findByRole("alert")).toHaveTextContent("does not have access");
++  });
++
++  it("does not carry a draft transcript or category to a different client", async () => {
++    rpc.mockImplementation((_name, args) => Promise.resolve({ data: page({ client_id: args?.p_client_id }), error: null }) as never);
++    const view = mount();
++    fireEvent.click(await screen.findByText("Save a client transcript"));
++    fireEvent.change(screen.getByLabelText("Transcript"), { target: { value: "Draft belonging only to the first client." } });
++    fireEvent.change(screen.getByLabelText("Transcript category"), { target: { value: "sale" } });
++    fireEvent.change(screen.getByLabelText("Show"), { target: { value: "objection" } });
++    view.rerender(<QueryClientProvider client={view.client}><ClientCallHistory clientId="client-b" /></QueryClientProvider>);
++    fireEvent.click(await screen.findByText("Save a client transcript"));
++    expect(screen.getByLabelText("Transcript")).toHaveValue("");
++    expect(screen.getByLabelText("Transcript category")).toHaveValue("discovery");
++    expect(screen.getByLabelText("Show")).toHaveValue("all");
++    expect(screen.getByRole("button", { name: "Save transcript" })).toBeDisabled();
++  });
++
++  it("clears draft transcript text when the signed-in account changes", async () => {
++    rpc.mockResolvedValue({ data: page(), error: null } as never);
++    const view = mount();
++    fireEvent.click(await screen.findByText("Save a client transcript"));
++    fireEvent.change(screen.getByLabelText("Transcript"), { target: { value: "Unsaved private transcript from the first login." } });
++    auth.user = { id: "user-b" };
++    view.rerender(<QueryClientProvider client={view.client}><ClientCallHistory clientId="client-a" /></QueryClientProvider>);
++    fireEvent.click(await screen.findByText("Save a client transcript"));
++    expect(screen.getByLabelText("Transcript")).toHaveValue("");
++  });
++
++  it("does not apply a previous client’s delayed save confirmation to the new client", async () => {
++    let finish!: (value: unknown) => void;
++    rpc.mockImplementation((name, args) => name === "producer_save_client_transcript"
++      ? new Promise(resolve => { finish = resolve; }) as never
++      : Promise.resolve({ data: page({ client_id: args?.p_client_id }), error: null }) as never);
++    const view = mount();
++    fireEvent.click(await screen.findByText("Save a client transcript"));
++    fireEvent.change(screen.getByLabelText("Transcript"), { target: { value: "An earlier client's transcript being saved." } });
++    fireEvent.click(screen.getByRole("button", { name: "Save transcript" }));
++    view.rerender(<QueryClientProvider client={view.client}><ClientCallHistory clientId="client-b" /></QueryClientProvider>);
++    fireEvent.click(await screen.findByText("Save a client transcript"));
++    fireEvent.change(screen.getByLabelText("Transcript"), { target: { value: "The new client's unsaved draft." } });
++    await act(async () => finish({ data: "saved-transcript", error: null }));
++    expect(screen.getByLabelText("Transcript")).toHaveValue("The new client's unsaved draft.");
++    expect(notice.success).not.toHaveBeenCalled();
++  });
++});
+diff --git a/src/tests/components/ContractingRequestsBoard.test.tsx b/src/tests/components/ContractingRequestsBoard.test.tsx
+new file mode 100644
+index 00000000..7a58d086
+--- /dev/null
++++ b/src/tests/components/ContractingRequestsBoard.test.tsx
+@@ -0,0 +1,30 @@
++import { fireEvent, render, screen, waitFor } from "@testing-library/react";
++import { MemoryRouter } from "react-router-dom";
++import { beforeEach, describe, expect, it, vi } from "vitest";
++const mocks = vi.hoisted(() => ({ sync: vi.fn(), query: vi.fn(), invalidate: vi.fn(), success: vi.fn(), warning: vi.fn(), message: vi.fn(), error: vi.fn() }));
++vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ isAdmin: true }) }));
++vi.mock("@tanstack/react-query", () => ({ useQuery: mocks.query, useQueryClient: () => ({ invalidateQueries: mocks.invalidate }) }));
++vi.mock("@/lib/contractingRequests", async (original) => ({ ...await original<typeof import("@/lib/contractingRequests")>(), syncContractingSheet: mocks.sync }));
++vi.mock("sonner", () => ({ toast: { success: mocks.success, warning: mocks.warning, message: mocks.message, error: mocks.error } }));
++import { ContractingRequestsBoard } from "@/components/contracting/ContractingRequestsBoard";
++
++beforeEach(() => {
++  vi.clearAllMocks();
++  mocks.query.mockReturnValue({ isLoading: false, isError: false, data: { agents: 0, requests: 0, rows: [], default_advance: null, sheet: { id: null, queued: 0, failed: 0, last_synced_at: null } } });
++});
++describe("contracting sheet receipts", () => {
++  it("reports partial failure even when the sync HTTP result is ok", async () => {
++    mocks.sync.mockResolvedValue({ ok: true, processed: 3, synced: 2, failed: 1 });
++    render(<MemoryRouter><ContractingRequestsBoard /></MemoryRouter>);
++    fireEvent.click(screen.getByRole("button", { name: "Sync sheet now" }));
++    await waitFor(() => expect(mocks.warning).toHaveBeenCalledWith("2 sheet writes confirmed; 1 failed. Review the affected requests."));
++    expect(mocks.success).not.toHaveBeenCalled();
++  });
++  it("reports zero confirmed writes without claiming every request is in sync", async () => {
++    mocks.sync.mockResolvedValue({ ok: true, processed: 0, synced: 0, failed: 0 });
++    render(<MemoryRouter><ContractingRequestsBoard /></MemoryRouter>);
++    fireEvent.click(screen.getByRole("button", { name: "Sync sheet now" }));
++    await waitFor(() => expect(mocks.message).toHaveBeenCalledWith("Sync finished: 0 writes confirmed, 0 checked. Check individual request receipts."));
++    expect(mocks.success).not.toHaveBeenCalled();
++  });
++});
+diff --git a/src/tests/components/EthosConsumerCampaignPanel.test.tsx b/src/tests/components/EthosConsumerCampaignPanel.test.tsx
+new file mode 100644
+index 00000000..14379dde
+--- /dev/null
++++ b/src/tests/components/EthosConsumerCampaignPanel.test.tsx
+@@ -0,0 +1,88 @@
++import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
++import { beforeEach, describe, expect, it, vi } from "vitest";
++const { invoke } = vi.hoisted(() => ({ invoke: vi.fn() }));
++vi.mock("@/integrations/supabase/client", () => ({ supabase: { functions: { invoke } } }));
++import { EthosConsumerCampaignPanel } from "@/components/leads/EthosConsumerCampaignPanel";
++
++const preview = {
++  ok: true, counts: { eligible: 1 }, already_queued: 0,
++  eligible: [{ lead_id: "lead-1", email: "pat@example.com", first_name: "Pat", state: "WI", audience_token: "review-token" }],
++  campaign: { sends_enabled: false, approved_at: null }, message: { subject: "Coverage", text: "A coverage invitation" },
++};
++beforeEach(() => { invoke.mockReset(); });
++describe("consumer campaign review", () => {
++  it("uses the selected import batch, queues only selected preview IDs, and keeps disabled sends unavailable", async () => {
++    invoke.mockResolvedValueOnce({ data: preview, error: null }).mockResolvedValueOnce({ data: { ok: true, queued: 1, already_present: 0, delivery_ids: ["delivery-1"] }, error: null });
++    render(<EthosConsumerCampaignPanel sourceBatchId="batch-1" />);
++    expect(screen.queryByLabelText("Consumer import batch")).not.toBeInTheDocument();
++    fireEvent.click(screen.getByRole("button", { name: "Preview eligible consumers" }));
++    await screen.findByText("pat@example.com");
++    fireEvent.click(screen.getByLabelText("Select pat@example.com"));
++    fireEvent.click(screen.getByRole("button", { name: "Queue 1 selected" }));
++    await screen.findByText(/1 queued, 0 already recorded/);
++    expect(invoke).toHaveBeenLastCalledWith("ethos-consumer-campaign", { body: expect.objectContaining({ source_batch_id: "batch-1", action: "queue", selections: [{ lead_id: "lead-1", audience_token: "review-token" }] }) });
++    expect(screen.queryByRole("button", { name: /Send .*reviewed invitations/ })).not.toBeInTheDocument();
++  });
++  it("changing batches discards the old preview and selection", async () => {
++    invoke.mockResolvedValue({ data: preview, error: null });
++    const view=render(<EthosConsumerCampaignPanel sourceBatchId="batch-1" />);
++    fireEvent.click(screen.getByRole("button", { name: "Preview eligible consumers" })); await screen.findByText("pat@example.com");
++    view.rerender(<EthosConsumerCampaignPanel sourceBatchId="batch-2" />);
++    expect(screen.queryByText("pat@example.com")).not.toBeInTheDocument();
++    fireEvent.click(screen.getByRole("button", { name: "Preview eligible consumers" }));
++    await waitFor(()=>expect(invoke).toHaveBeenLastCalledWith("ethos-consumer-campaign", { body: expect.objectContaining({ source_batch_id: "batch-2" }) }));
++  });
++  it("a late response from the old batch cannot restore a stale audience", async () => {
++    let resolve!: (value: unknown) => void;
++    invoke.mockReturnValue(new Promise((r)=>{resolve=r;}));
++    const view=render(<EthosConsumerCampaignPanel sourceBatchId="batch-1" />);
++    fireEvent.click(screen.getByRole("button", { name: "Preview eligible consumers" }));
++    view.rerender(<EthosConsumerCampaignPanel sourceBatchId="batch-2" />);
++    await act(async()=>resolve({ data: preview, error: null }));
++    expect(screen.queryByText("pat@example.com")).not.toBeInTheDocument();
++  });
++
++  it("requires a new review after the selected recipients change", async () => {
++    const enabled = { ...preview, campaign: { sends_enabled: true, approved_at: "2026-11-24T00:00:00Z" }, eligible: [...preview.eligible, { lead_id: "lead-2", email: "alex@example.com", first_name: "Alex", state: "WI", audience_token: "second-token" }] };
++    invoke.mockResolvedValueOnce({ data: enabled, error: null })
++      .mockResolvedValueOnce({ data: { ok: true, queued: 1, already_present: 0, delivery_ids: ["delivery-1"] }, error: null })
++      .mockResolvedValueOnce({ data: { ok: true, queued: 1, already_present: 0, delivery_ids: ["delivery-2"] }, error: null });
++    render(<EthosConsumerCampaignPanel sourceBatchId="batch-1" />);
++    fireEvent.click(screen.getByRole("button", { name: "Preview eligible consumers" }));
++    await screen.findByText("pat@example.com");
++    fireEvent.click(screen.getByLabelText("Select pat@example.com"));
++    const reviewed = screen.getByLabelText("I reviewed this message and the selected eligible consumers.");
++    fireEvent.click(reviewed);
++    fireEvent.click(screen.getByRole("button", { name: "Queue 1 selected" }));
++    await screen.findByText(/1 queued, 0 already recorded/);
++    expect(screen.getByRole("button", { name: "Send 1 reviewed invitations" })).toBeEnabled();
++    fireEvent.click(screen.getByLabelText("Select pat@example.com"));
++    fireEvent.click(screen.getByLabelText("Select alex@example.com"));
++    expect(reviewed).not.toBeChecked();
++    fireEvent.click(screen.getByRole("button", { name: "Queue 1 selected" }));
++    await screen.findByText(/1 queued, 0 already recorded/);
++    expect(screen.getByRole("button", { name: "Send 1 reviewed invitations" })).toBeDisabled();
++    expect(invoke.mock.calls.every(([, { body }]) => body.action !== "dispatch")).toBe(true);
++  });
++
++  it("does not restore an old queue receipt after sending settings change", async () => {
++    let finishQueue!: (value: unknown) => void;
++    const settings = { ok: true, campaign: { sends_enabled: false }, scope: [] };
++    invoke.mockImplementation((_name, { body }) => {
++      if (body.action === "queue") return new Promise((r) => { finishQueue = r; });
++      return Promise.resolve({ data: body.action === "preview" ? preview : settings, error: null });
++    });
++    render(<EthosConsumerCampaignPanel sourceBatchId="batch-1" />);
++    fireEvent.click(screen.getByRole("button", { name: "Preview eligible consumers" }));
++    await screen.findByText("pat@example.com");
++    fireEvent.click(screen.getByLabelText("Select pat@example.com"));
++    fireEvent.click(screen.getByRole("button", { name: "Queue 1 selected" }));
++    expect(screen.getByLabelText("Select pat@example.com")).toBeDisabled();
++    fireEvent.click(screen.getByRole("button", { name: "Licensed states and sending settings" }));
++    fireEvent.click(await screen.findByRole("button", { name: "Enable reviewed sends" }));
++    await waitFor(() => expect(screen.queryByText("pat@example.com")).not.toBeInTheDocument());
++    await act(async () => finishQueue({ data: { ok: true, queued: 1, already_present: 0, delivery_ids: ["old-delivery"] }, error: null }));
++    expect(screen.queryByText(/1 queued, 0 already recorded/)).not.toBeInTheDocument();
++    expect(screen.queryByRole("button", { name: /Send .*reviewed invitations/ })).not.toBeInTheDocument();
++  });
++});
+diff --git a/src/tests/components/EthosConsumerSettings.test.tsx b/src/tests/components/EthosConsumerSettings.test.tsx
+new file mode 100644
+index 00000000..ea763c66
+--- /dev/null
++++ b/src/tests/components/EthosConsumerSettings.test.tsx
+@@ -0,0 +1,68 @@
++import { fireEvent, render, screen, waitFor } from "@testing-library/react";
++import { beforeEach, describe, expect, it, vi } from "vitest";
++
++const { invoke } = vi.hoisted(() => ({ invoke: vi.fn() }));
++vi.mock("@/integrations/supabase/client", () => ({ supabase: { functions: { invoke } } }));
++import { EthosConsumerSettings } from "@/components/leads/EthosConsumerSettings";
++
++beforeEach(() => { invoke.mockReset(); });
++describe("consumer campaign owner settings", () => {
++  it("starts empty and saves explicit evidence before enabling without sending", async () => {
++    const changed = vi.fn();
++    const empty = { ok: true, campaign: { sends_enabled: false }, scope: [] };
++    const recorded = { ...empty, scope: [{ state: "WI", license_status: "active", license_evidence_ref: "Regulator record 123", license_expires_at: "2030-12-31T00:00:00Z", ethos_eligible: true, ethos_evidence_ref: "Ethos eligibility record 456" }] };
++    invoke.mockResolvedValueOnce({ data: empty, error: null })
++      .mockResolvedValueOnce({ data: { ok: true, sent: 0 }, error: null })
++      .mockResolvedValueOnce({ data: recorded, error: null })
++      .mockResolvedValueOnce({ data: { ok: true, sent: 0 }, error: null })
++      .mockResolvedValueOnce({ data: { ...recorded, campaign: { sends_enabled: true } }, error: null });
++    render(<EthosConsumerSettings onChanged={changed} />);
++    expect(invoke).not.toHaveBeenCalled();
++    fireEvent.click(screen.getByRole("button", { name: "Licensed states and sending settings" }));
++    await screen.findByText("No states recorded. Consumer emails remain blocked.");
++    expect(screen.getByLabelText("Licensed state code")).toHaveValue("");
++    expect(screen.getByRole("button", { name: "Save state evidence" })).toBeDisabled();
++    fireEvent.change(screen.getByLabelText("Licensed state code"), { target: { value: "wi" } });
++    fireEvent.change(screen.getByLabelText("License expiration date"), { target: { value: "2030-12-31" } });
++    fireEvent.change(screen.getByLabelText("Active life-license evidence reference"), { target: { value: "Regulator record 123" } });
++    fireEvent.change(screen.getByLabelText("Ethos state/product eligibility evidence reference"), { target: { value: "Ethos eligibility record 456" } });
++    expect(screen.getByRole("button", { name: "Save state evidence" })).toBeDisabled();
++    fireEvent.click(screen.getByLabelText("I checked the named evidence and its expiration for this state."));
++    fireEvent.click(screen.getByRole("button", { name: "Save state evidence" }));
++    await screen.findByText("WI: License and Ethos evidence recorded");
++    expect(invoke).toHaveBeenCalledWith("ethos-consumer-campaign", { body: expect.objectContaining({ action: "save_scope", state: "WI", license_evidence_ref: "Regulator record 123", license_expires_at: "2030-12-31T00:00:00Z", ethos_evidence_ref: "Ethos eligibility record 456", evidence_reviewed: true }) });
++    fireEvent.click(screen.getByRole("button", { name: "Enable reviewed sends" }));
++    await screen.findByText("Sending enabled");
++    expect(invoke).toHaveBeenCalledWith("ethos-consumer-campaign", { body: expect.objectContaining({ action: "set_enabled", enabled: true }) });
++    await waitFor(() => expect(changed).toHaveBeenCalledTimes(2));
++    expect(invoke.mock.calls.every(([, { body }]) => body.action !== "dispatch")).toBe(true);
++  });
++
++  it("shows an access failure without exposing editable settings", async () => {
++    invoke.mockResolvedValue({ data: { ok: false, error: "Only the verified campaign owner can access this audience." }, error: null });
++    render(<EthosConsumerSettings onChanged={vi.fn()} />);
++    fireEvent.click(screen.getByRole("button", { name: "Licensed states and sending settings" }));
++    expect(await screen.findByRole("alert")).toHaveTextContent("Only the verified campaign owner");
++    expect(screen.queryByRole("button", { name: "Save state evidence" })).not.toBeInTheDocument();
++    expect(screen.queryByRole("button", { name: "Enable reviewed sends" })).not.toBeInTheDocument();
++  });
++
++  it("clears previously editable settings after an access failure and supports a fresh read", async () => {
++    const changed = vi.fn();
++    const empty = { ok: true, campaign: { sends_enabled: false }, scope: [] };
++    invoke.mockResolvedValueOnce({ data: empty, error: null })
++      .mockResolvedValueOnce({ data: { ok: false, error: "Owner access is no longer available" }, error: null })
++      .mockResolvedValueOnce({ data: empty, error: null });
++    render(<EthosConsumerSettings onChanged={changed} />);
++    fireEvent.click(screen.getByRole("button", { name: "Licensed states and sending settings" }));
++    fireEvent.click(await screen.findByRole("button", { name: "Enable reviewed sends" }));
++    expect(changed).toHaveBeenCalledTimes(1);
++    expect(await screen.findByRole("alert")).toHaveTextContent("Owner access is no longer available");
++    expect(screen.queryByRole("button", { name: "Enable reviewed sends" })).not.toBeInTheDocument();
++    expect(screen.queryByRole("button", { name: "Save state evidence" })).not.toBeInTheDocument();
++    fireEvent.click(screen.getByRole("button", { name: "Retry state evidence" }));
++    await screen.findByText("No states recorded. Consumer emails remain blocked.");
++    expect(invoke).toHaveBeenLastCalledWith("ethos-consumer-campaign", { body: expect.objectContaining({ action: "settings" }) });
++    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
++  });
++});
+diff --git a/src/tests/components/LandingLiveStats.test.tsx b/src/tests/components/LandingLiveStats.test.tsx
+new file mode 100644
+index 00000000..cb01bc98
+--- /dev/null
++++ b/src/tests/components/LandingLiveStats.test.tsx
+@@ -0,0 +1,73 @@
++import { fireEvent, render, screen } from "@testing-library/react";
++import { MemoryRouter } from "react-router-dom";
++import { beforeEach, describe, expect, it, vi } from "vitest";
++import type { LandingLiveStats } from "@/lib/landingLiveStats";
++
++const facts = vi.hoisted(() => ({ data: undefined as LandingLiveStats | undefined, isError: false, isPending: true, isFetching: false, refetch: vi.fn() }));
++vi.mock("@/hooks/useLandingLiveStats", () => ({ useLandingLiveStats: () => facts }));
++vi.mock("@/shared/hooks/useInteractionGate", () => ({ useInteractionGate: () => true }));
++vi.mock("@/components/ui/animated-counter", () => ({ AnimatedCounter: ({ value }: { value: number }) => <span>{value}</span> }));
++import { LiveStatsCounterStrip } from "@/components/landing/LiveStatsCounterStrip";
++import { CareerPathwaySection } from "@/components/landing/CareerPathwaySection";
++import { CTASection } from "@/components/landing/CTASection";
++
++beforeEach(() => {
++  facts.data = undefined;
++  facts.isError = false;
++  facts.isPending = true;
++  facts.isFetching = false;
++  facts.refetch.mockReset();
++  localStorage.clear();
++});
++
++describe("public landing without live data", () => {
++  it("does not present an old browser cache as current data", () => {
++    localStorage.setItem("apex_live_stats_last_good", JSON.stringify({ applications_30d: 999, carriers_partnered: 999 }));
++    render(<LiveStatsCounterStrip />);
++    expect(screen.getByRole("status")).toHaveTextContent("Loading agency numbers");
++    expect(screen.getAllByLabelText("Not available")).toHaveLength(2);
++    expect(screen.queryByText("999")).toBeNull();
++  });
++
++  it("renders verified zero counts and offers a real retry after a failure", () => {
++    facts.data = { active_agents: 0, applications_30d: 0, carriers_partnered: 0 };
++    facts.isPending = false;
++    const view = render(<LiveStatsCounterStrip />);
++    expect(screen.getAllByText("0")).toHaveLength(2);
++    facts.isError = true;
++    view.rerender(<LiveStatsCounterStrip />);
++    expect(screen.getByRole("status")).toHaveTextContent("Last available numbers");
++    fireEvent.click(screen.getByRole("button", { name: "Retry agency numbers" }));
++    expect(facts.refetch).toHaveBeenCalledOnce();
++  });
++
++  it("does not disguise a first-load failure as continued loading", () => {
++    facts.isPending = false;
++    facts.isError = true;
++    render(<LiveStatsCounterStrip />);
++    expect(screen.getByRole("status")).toHaveTextContent("Agency numbers are unavailable right now");
++    expect(screen.queryByText(/Loading agency numbers/)).toBeNull();
++  });
++
++  it("keeps the career roadmap usable without inventing agent or carrier totals", () => {
++    render(<CareerPathwaySection />);
++    expect(screen.getByLabelText("Active Agents unavailable")).toHaveTextContent("—");
++    expect(screen.getByLabelText("Carrier Partners unavailable")).toHaveTextContent("—");
++    expect(screen.getByText(/Review carrier and product options with your manager/)).toBeInTheDocument();
++    expect(screen.queryByText("40")).toBeNull();
++  });
++
++  it("shows exact verified roadmap counts without an initial zero animation", () => {
++    facts.data = { active_agents: 7, applications_30d: 0, carriers_partnered: 3 };
++    facts.isPending = false;
++    render(<CareerPathwaySection />);
++    expect(screen.getByText("Active Agents").previousElementSibling).toHaveTextContent("7");
++    expect(screen.getByText("Carrier Partners").previousElementSibling).toHaveTextContent("3");
++  });
++
++  it("keeps the closing application link attributed without a fabricated roster claim", () => {
++    render(<MemoryRouter initialEntries={["/?ref=sample-manager"]}><CTASection /></MemoryRouter>);
++    expect(screen.getByRole("link", { name: "Start Your Application" })).toHaveAttribute("href", "/apply?ref=sample-manager");
++    expect(screen.queryByText(/agents are already moving/)).toBeNull();
++  });
++});
+diff --git a/src/tests/components/ProducerWorkspaceCard.test.tsx b/src/tests/components/ProducerWorkspaceCard.test.tsx
+new file mode 100644
+index 00000000..e420ec41
+--- /dev/null
++++ b/src/tests/components/ProducerWorkspaceCard.test.tsx
+@@ -0,0 +1,60 @@
++import { fireEvent, render, screen } from "@testing-library/react";
++import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
++import { MemoryRouter } from "react-router-dom";
++import { beforeEach, describe, expect, it, vi } from "vitest";
++import { producerWorkspaceFixture } from "@/tests/helpers/producerWorkspaceFixture";
++import type { ProducerWorkspace } from "@/lib/producerWorkspace";
++
++const facts = vi.hoisted(() => ({ data: undefined as ProducerWorkspace | undefined, isLoading: false, isError: false, refetch: vi.fn() }));
++vi.mock("@/hooks/useProducerWorkspace", () => ({ useProducerWorkspace: () => facts }));
++import { ProducerWorkspaceCard } from "@/components/dashboard/ProducerWorkspaceCard";
++
++const mount = () => render(<QueryClientProvider client={new QueryClient()}><MemoryRouter><ProducerWorkspaceCard agentId="producer-a" /></MemoryRouter></QueryClientProvider>);
++beforeEach(() => { facts.data = producerWorkspaceFixture(); facts.isLoading = false; facts.isError = false; });
++
++describe("producer workspace card", () => {
++  it("distinguishes posted ALP from partial carrier evidence and missing payment evidence", () => {
++    mount();
++    expect(screen.getByRole("heading", { name: "Your $20,000 month" })).toBeInTheDocument();
++    expect(screen.getByText("of $20,000 posted ALP")).toBeInTheDocument();
++    expect(screen.getByText(/Payment confirmation: —/)).toBeInTheDocument();
++    expect(screen.getByText("Carrier in force · written this month")).toBeInTheDocument();
++    expect(screen.getByText("Active after 90 days")).toBeInTheDocument();
++    expect(screen.getByText("20 completed calls per selling day")).toBeInTheDocument();
++    expect(screen.getByRole("link", { name: "Work my clients" })).toHaveAttribute("href", "/dashboard/agent-pipeline");
++  });
++
++  it("does not fabricate zero production or a streak when the verified read fails", () => {
++    facts.data = undefined; facts.isError = true;
++    mount();
++    expect(screen.getByText(/Your plan could not be verified/)).toBeInTheDocument();
++    expect(screen.queryByText(/selling-day production streak/)).toBeNull();
++    expect(screen.queryByText("$0")).toBeNull();
++    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
++  });
++
++  it("does not ask a producer who already hit the goal to build a calling baseline", () => {
++    facts.data!.production_ap = 21000;
++    facts.data!.activity.sample_policies = 0;
++    facts.data!.activity.sample_calls = 0;
++    facts.data!.activity.sample_sold_calls = 0;
++    mount();
++    expect(screen.getByText("Goal hit")).toBeInTheDocument();
++    expect(screen.getByText(/Your monthly production goal is complete/)).toBeInTheDocument();
++    expect(screen.queryByText(/Your calling estimate needs/)).toBeNull();
++  });
++
++  it("keeps unsaved selling days during a production refresh and disables an unchanged save", () => {
++    const view = mount();
++    fireEvent.click(screen.getByText(/Selling schedule ·/));
++    expect(screen.getByRole("button", { name: "Save schedule" })).toBeDisabled();
++    fireEvent.click(screen.getByRole("button", { name: "Sat" }));
++    expect(screen.getByRole("button", { name: "Sat" })).toHaveAttribute("aria-pressed", "true");
++    facts.data = { ...producerWorkspaceFixture(), production_ap: 6000 };
++    view.rerender(<QueryClientProvider client={new QueryClient()}><MemoryRouter><ProducerWorkspaceCard agentId="producer-a" /></MemoryRouter></QueryClientProvider>);
++    expect(screen.getByRole("button", { name: "Sat" })).toHaveAttribute("aria-pressed", "true");
++    expect(screen.getByRole("button", { name: "Save schedule" })).toBeEnabled();
++    fireEvent.click(screen.getByRole("button", { name: "Sat" }));
++    expect(screen.getByRole("button", { name: "Save schedule" })).toBeDisabled();
++  });
++});
+diff --git a/src/tests/components/ProductionAnalyticsCard.test.tsx b/src/tests/components/ProductionAnalyticsCard.test.tsx
+new file mode 100644
+index 00000000..e9d670c6
+--- /dev/null
++++ b/src/tests/components/ProductionAnalyticsCard.test.tsx
+@@ -0,0 +1,31 @@
++import { fireEvent, render, screen } from "@testing-library/react";
++import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
++import { supabase } from "@/integrations/supabase/client";
++import { ProductionAnalyticsCard } from "@/components/dashboard/ProductionAnalyticsCard";
++
++const row = { week_alp: 1000, month_alp: 2000, year_alp: 3000, week_deals: 1, month_deals: 2, year_deals: 3 };
++beforeEach(() => { vi.mocked(supabase.rpc).mockReset(); });
++afterEach(() => vi.useRealTimers());
++describe("production analytics verified reads", () => {
++  it("supports the database client’s PromiseLike result without requiring catch on it", async () => {
++    vi.mocked(supabase.rpc).mockReturnValue({ then: (resolve: (value: unknown) => unknown) => resolve({ data: [row], error: null }) } as never);
++    render(<ProductionAnalyticsCard />);
++    expect(await screen.findByText("$3.0K")).toBeInTheDocument();
++  });
++  it("shows a retry action instead of false zeros for a malformed result", async () => {
++    vi.mocked(supabase.rpc).mockResolvedValueOnce({ data: [{}], error: null } as never);
++    render(<ProductionAnalyticsCard />);
++    expect(await screen.findByText("Production figures could not be verified.")).toBeInTheDocument();
++    expect(screen.queryByText("$0")).toBeNull();
++    vi.mocked(supabase.rpc).mockResolvedValue({ data: [row], error: null } as never);
++    fireEvent.click(screen.getByRole("button", { name: "Retry production figures" }));
++    expect(await screen.findByText("$3.0K")).toBeInTheDocument();
++  });
++  it("does not shift the Phoenix month twice around midnight", async () => {
++    vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(new Date("2026-11-01T07:30:00Z"));
++    vi.mocked(supabase.rpc).mockResolvedValue({ data: [row], error: null } as never);
++    render(<ProductionAnalyticsCard />);
++    expect(screen.getByText("MTD (Nov)")).toBeInTheDocument();
++    expect(await screen.findByText("$3.0K")).toBeInTheDocument();
++  });
++});
+diff --git a/src/tests/components/RecruitingWorkspaceNav.test.tsx b/src/tests/components/RecruitingWorkspaceNav.test.tsx
+index 81a0df4c..15043684 100644
+--- a/src/tests/components/RecruitingWorkspaceNav.test.tsx
++++ b/src/tests/components/RecruitingWorkspaceNav.test.tsx
+@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
+ import { RecruitingWorkspaceNav } from "@/components/recruiting/RecruitingWorkspaceNav";
+ 
+ // The Licensed tab is staff-only (admin, VA manager, VA). null = rendered outside an AuthProvider.
+-let auth: { isAdmin: boolean; isVaManager: boolean; isVa: boolean } | null = null;
++let auth: { isAdmin: boolean; isVaManager: boolean; isVa: boolean; isRecruiter?: boolean; isManager?: boolean } | null = null;
+ vi.mock("@/hooks/useAuth", () => ({ useOptionalAuth: () => auth }));
+ beforeEach(() => { auth = null; });
+ 
+@@ -96,4 +96,16 @@ describe("RecruitingWorkspaceNav", () => {
+     expect(screen.queryByRole("link", { name: "Licensed" })).toBeNull();
+     expect(screen.getByRole("link", { name: "New hires" })).toBeTruthy();
+   });
++
++  it("does not send recruiter-only users to the manager and staff hire tracker", () => {
++    auth = { isAdmin: false, isVaManager: false, isVa: false, isRecruiter: true, isManager: false };
++    renderNav("/dashboard/recruiting");
++    expect(screen.queryByRole("link", { name: "New hires" })).toBeNull();
++    expect(screen.getByRole("link", { name: "Call list" })).toHaveAttribute("href", "/dashboard/recruiting");
++    expect(screen.getByRole("link", { name: "Pipeline" })).toHaveAttribute("href", "/dashboard/recruiting/pipeline");
++    cleanup();
++    auth = { ...auth, isManager: true };
++    renderNav("/dashboard/recruiting");
++    expect(screen.getByRole("link", { name: "New hires" })).toHaveAttribute("href", "/dashboard/recruits");
++  });
+ });
+diff --git a/src/tests/helpers/producerWorkspaceFixture.ts b/src/tests/helpers/producerWorkspaceFixture.ts
+new file mode 100644
+index 00000000..f4fb6102
+--- /dev/null
++++ b/src/tests/helpers/producerWorkspaceFixture.ts
+@@ -0,0 +1,21 @@
++import type { ProducerWorkspace } from "@/lib/producerWorkspace";
++
++/** Synthetic records only; never a fallback for a live dashboard. */
++export function producerWorkspaceFixture(): ProducerWorkspace {
++  return {
++    agent_id: "producer-a", today: "2026-11-24", period_start: "2026-11-01", period_end: "2026-11-30",
++    as_of: "2026-11-24T18:00:00Z", timezone: "America/Phoenix",
++    target_ap: 20000, target_source: "agency_standard", production_ap: 5000, production_deals: 4,
++    production_updated_at: "2026-11-24T17:00:00Z", selling_days_total: 21, selling_days_elapsed: 17,
++    selling_days_remaining: 5, schedule: [1, 2, 3, 4, 5], next_schedule: null,
++    activity: { sample_days: 60, sample_calls: 60, sample_sold_calls: 6, sample_policies: 6, avg_policy_ap: 1500, completed_today: 5, sold_calls_today: 0 },
++    carrier: { covered_policies: 0, in_force_month_ap: null, active_90d_policies: null, updated_at: null, oldest_seen_on: null, paid_ap: null, paid_reason: "No verified payment receipt is supplied by this view" },
++    days: [
++      { day: "2026-11-20", scheduled: true, production_ap: 1000, deals: 1 },
++      { day: "2026-11-21", scheduled: false, production_ap: 0, deals: 0 },
++      { day: "2026-11-22", scheduled: false, production_ap: 0, deals: 0 },
++      { day: "2026-11-23", scheduled: true, production_ap: 1500, deals: 1 },
++      { day: "2026-11-24", scheduled: true, production_ap: 0, deals: 0 },
++    ],
++  };
++}
+diff --git a/src/tests/hooks/useAuth.test.tsx b/src/tests/hooks/useAuth.test.tsx
+index a5a3c275..94913b8f 100644
+--- a/src/tests/hooks/useAuth.test.tsx
++++ b/src/tests/hooks/useAuth.test.tsx
+@@ -25,10 +25,11 @@
+  */
+ 
+ import React from "react";
+-import { describe, it, expect, vi, beforeEach } from "vitest";
++import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+ import { render, screen, act, waitFor } from "@testing-library/react";
+ import { AuthProvider, useAuth } from "@/hooks/useAuth";
+ import { supabase } from "@/integrations/supabase/client";
++import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
+ 
+ // ── Helpers ──────────────────────────────────────────────────────────────────
+ 
+@@ -51,9 +52,9 @@ function ThrowConsumer() {
+   return null;
+ }
+ 
+-function makeSession(userId = "user-001", email = "test@example.com") {
++function makeSession(userId = "user-001", email = "test@example.com"): Session {
+   return {
+-    user: { id: userId, email },
++    user: { id: userId, email, aud: "authenticated", app_metadata: {}, user_metadata: {}, created_at: "2026-01-01T00:00:00Z" },
+     access_token: "token",
+     refresh_token: "refresh",
+     expires_in: 3600,
+@@ -66,16 +67,16 @@ const mockGetSession = vi.mocked(supabase.auth.getSession);
+ const mockOnAuthStateChange = vi.mocked(supabase.auth.onAuthStateChange);
+ const mockFrom = vi.mocked(supabase.from);
+ 
+-let authStateCallback: ((event: string, session: any) => void) | null = null;
++let authStateCallback: ((event: AuthChangeEvent, session: Session | null) => void) | null = null;
+ 
+ beforeEach(() => {
+   vi.clearAllMocks();
+   authStateCallback = null;
+ 
+   // Capture the onAuthStateChange callback so we can fire events in tests
+-  mockOnAuthStateChange.mockImplementation((cb: any) => {
++  mockOnAuthStateChange.mockImplementation((cb) => {
+     authStateCallback = cb;
+-    return { data: { subscription: { unsubscribe: vi.fn() } } };
++    return { data: { subscription: { id: "test-auth-subscription", callback: cb, unsubscribe: vi.fn() } } };
+   });
+ 
+   // Default: no session
+@@ -232,22 +233,19 @@ describe("useAuth — auth state events", () => {
+   });
+ 
+   it("handles PASSWORD_RECOVERY event without throwing", async () => {
+-    // PASSWORD_RECOVERY sets window.location.href — jsdom allows this
+-    const originalLocation = window.location.href;
+-    render(
+-      <AuthProvider>
+-        <TestConsumer />
+-      </AuthProvider>
+-    );
+-    await waitFor(() =>
+-      expect(screen.getByTestId("loading").textContent).toBe("ready")
+-    );
+-
+-    expect(() => {
+-      act(() => {
+-        authStateCallback?.("PASSWORD_RECOVERY", makeSession());
+-      });
+-    }).not.toThrow();
++    // A real navigation is outside jsdom. Record the destination through a
++    // location object instead of relying on its "not implemented" error.
++    const originalLocation = window.location;
++    const location = { pathname: "/dashboard", href: "https://galaxyfinancial.org/dashboard" };
++    Object.defineProperty(window, "location", { configurable: true, writable: true, value: location });
++    try {
++      render(<AuthProvider><TestConsumer /></AuthProvider>);
++      await waitFor(() => expect(screen.getByTestId("loading").textContent).toBe("ready"));
++      expect(() => { act(() => { authStateCallback?.("PASSWORD_RECOVERY", makeSession()); }); }).not.toThrow();
++      expect(location.href).toBe("/reset-password");
++    } finally {
++      Object.defineProperty(window, "location", { configurable: true, writable: true, value: originalLocation });
++    }
+   });
+ 
+   // 2026-11-18: recovery used to hard-redirect to /dashboard/settings?recovery=true.
+diff --git a/src/tests/hooks/useContractRecords.test.tsx b/src/tests/hooks/useContractRecords.test.tsx
+new file mode 100644
+index 00000000..8fa1a1a8
+--- /dev/null
++++ b/src/tests/hooks/useContractRecords.test.tsx
+@@ -0,0 +1,47 @@
++import type { ReactNode } from "react";
++import { act, renderHook, waitFor } from "@testing-library/react";
++import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
++import { beforeEach, describe, expect, it, vi } from "vitest";
++
++const { auth, rpc } = vi.hoisted(() => ({ auth: { user: { id: "owner-one" } as { id: string } | null }, rpc: vi.fn() }));
++vi.mock("@/hooks/useAuth", () => ({ useAuth: () => auth }));
++vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc } }));
++import { useContractRows, useContractSummary } from "@/hooks/useContractRecords";
++
++beforeEach(() => { rpc.mockReset(); auth.user = { id: "owner-one" }; });
++
++describe("contract record account boundaries", () => {
++  it("loads each login's records independently and never displays the prior account during the new read", async () => {
++    const pending: Array<(value: unknown) => void> = [];
++    rpc.mockImplementation((name: string) => {
++      if (auth.user?.id === "owner-two") return new Promise((resolve) => { pending.push(resolve); });
++      return Promise.resolve({ data: name === "apex_contracts_list" ? [{ id: "contract-one", agent_name: "First owner" }] : { total: 1 }, error: null });
++    });
++    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
++    const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
++    const view = renderHook(() => ({ rows: useContractRows("mine", "all", "", 0), summary: useContractSummary("mine", "") }), { wrapper });
++    await waitFor(() => expect(view.result.current.rows.data?.[0].agent_name).toBe("First owner"));
++    expect(view.result.current.summary.data?.total).toBe(1);
++    auth.user = { id: "owner-two" }; view.rerender();
++    expect(view.result.current.rows.data).toBeUndefined();
++    expect(view.result.current.summary.data).toBeUndefined();
++    await waitFor(() => expect(pending).toHaveLength(2));
++    await act(async () => {
++      pending[0]({ data: [{ id: "contract-two", agent_name: "Second owner" }], error: null });
++      pending[1]({ data: { total: 2 }, error: null });
++    });
++    await waitFor(() => expect(view.result.current.rows.data?.[0].agent_name).toBe("Second owner"));
++    expect(view.result.current.summary.data?.total).toBe(2);
++    expect(client.getQueryData(["apex-contracts-list", "owner-one", "mine", "all", "", 0])).toEqual([expect.objectContaining({ agent_name: "First owner" })]);
++    expect(client.getQueryData(["apex-contracts-list", "owner-two", "mine", "all", "", 0])).toEqual([expect.objectContaining({ agent_name: "Second owner" })]);
++  });
++
++  it("does not request private records without a signed-in user", () => {
++    auth.user = null;
++    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
++    renderHook(() => ({ rows: useContractRows("mine", "all", "", 0), summary: useContractSummary("mine", "") }), {
++      wrapper: ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
++    });
++    expect(rpc).not.toHaveBeenCalled();
++  });
++});
+diff --git a/src/tests/hooks/useProducerWorkspace.test.tsx b/src/tests/hooks/useProducerWorkspace.test.tsx
+new file mode 100644
+index 00000000..767d4296
+--- /dev/null
++++ b/src/tests/hooks/useProducerWorkspace.test.tsx
+@@ -0,0 +1,25 @@
++import { renderHook, waitFor } from "@testing-library/react";
++import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
++import type { ReactNode } from "react";
++import { beforeEach, describe, expect, it, vi } from "vitest";
++import { looseSupabase } from "@/lib/looseSupabase";
++import { producerWorkspaceFixture } from "@/tests/helpers/producerWorkspaceFixture";
++
++vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "user-a" } }) }));
++vi.mock("@/hooks/useBusinessToday", () => ({ useBusinessToday: () => "2026-11-24" }));
++vi.mock("@/hooks/useProductionRealtime", () => ({ useProductionRealtime: () => undefined }));
++import { useProducerWorkspace } from "@/hooks/useProducerWorkspace";
++
++const rpc = vi.mocked(looseSupabase.rpc);
++beforeEach(() => { rpc.mockReset(); });
++describe("producer workspace identity", () => {
++  it("rejects a valid-looking response for another producer", async () => {
++    rpc.mockResolvedValue({ data: { ...producerWorkspaceFixture(), agent_id: "other-producer" }, error: null } as never);
++    const client = new QueryClient({ defaultOptions: { queries: { retryDelay: 0 } } });
++    const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
++    const { result } = renderHook(() => useProducerWorkspace("producer-a"), { wrapper });
++    await waitFor(() => expect(result.current.isError).toBe(true));
++    expect(result.current.data).toBeUndefined();
++    expect(result.current.error?.message).toMatch(/could not be verified for this producer/);
++  });
++});
+diff --git a/src/tests/lib/consumerLeadImport.test.ts b/src/tests/lib/consumerLeadImport.test.ts
+new file mode 100644
+index 00000000..bd7284a7
+--- /dev/null
++++ b/src/tests/lib/consumerLeadImport.test.ts
+@@ -0,0 +1,43 @@
++import { describe, expect, it } from "vitest";
++import { consumerSourceDate, hasExplicitContactStop, parseConsumerTable, prepareConsumerImport } from "@/lib/consumerLeadImport";
++
++describe("consumer source adapters", () => {
++  it("retains the first master person, their consumer email and a source-only policy claim", () => {
++    const row = [7, "Producer Example", "P7", "Taylor Example", "123 Example Way", "TN", "6152345678", "consumer@example.test", "1980-01-03", "", "Active (inforce)", "2021-02-03", "Whole life", "POLICY-DEMO", "75.00", "Example Carrier", "", "", "", "", "", "6159876543", "producer@example.test"];
++    const preview = prepareConsumerImport([row], "master_pos");
++    expect(preview.rows).toHaveLength(1);
++    expect(preview.rows[0]).toMatchObject({ email: "consumer@example.test", source_row: 1, policy_number: "POLICY-DEMO", phone_alt: null });
++    expect(preview.rows[0].raw).toMatchObject({ supplier_amount: 75, supplier_amount_cadence: "unknown", policy_status_verified_at: null });
++    expect(preview.rows[0]).not.toHaveProperty("policy_monthly_premium");
++  });
++  it("takes mortgage state from J, never from a VA loan type, and skips a header in the middle", () => {
++    const row = ["7/2/2021", "Jordan Example", "8042345678", "", "jordan@example.test", "Interviewer", "Loan contact", "$250,000", "VA", "TX", "Investor", "do not call again"];
++    const p = prepareConsumerImport([row, ["Date", "Borrower Name", "Borr Cell", "Borr Home Phone", "Borr Email"], row], "mortgage");
++    expect(p.headersSkipped).toBe(1); expect(p.rows).toHaveLength(2);
++    expect(p.rows[0]).toMatchObject({ state: "TX", loan_type: "VA", loan_amount: 250000, dnc: true, last_disposition: "do not call" });
++    expect(p.rows[0].raw.policy_ownership_claim).toBeNull();
++  });
++  it("holds Jt formula errors instead of deriving a state from the telephone", () => {
++    const p = prepareConsumerImport([["Producer", "Jamie Example", "123 Example", "#NAME?", "6152345678", "2/3/1970", "3/4/2021", "Product", "DemoP", "$50", "called dint answer"]], "jt_pos");
++    expect(p.rows[0]).toMatchObject({ state: null, last_disposition: "no answer" });
++    expect(p.rows[0].raw.import_review_required).toBe(true);
++  });
++  it("keeps RFC 4180 cells and quoted multiline notes intact", () => {
++    expect(parseConsumerTable('"Last, First",x,"one\ntwo"\r\n"a""b",y,z')).toEqual([["Last, First", "x", "one\ntwo"], ['a"b', "y", "z"]]);
++    expect(() => parseConsumerTable('"unfinished')).toThrow();
++  });
++  it("rejects invalid calendar dates, malformed JSON and non-NANP suffixes", () => {
++    expect(consumerSourceDate("2/30/2024")).toBeNull();
++    expect(consumerSourceDate("2/29/2024")).toBe("2024-02-29");
++    expect(consumerSourceDate("10-Aug-18")).toBe("2018-08-10");
++    expect(consumerSourceDate("12-September-19")).toBe("2019-09-12");
++    expect(() => parseConsumerTable('[{"phone":"x"}]')).toThrow();
++    const p = prepareConsumerImport([["Producer", "Jamie Example", "Example", "TN", "+44 20 7946 0958"]], "jt_pos");
++    expect(p.rows[0].phone_digits).toBeNull();
++  });
++  it("preserves stop-contact intent without treating no-answer as DNC", () => {
++    expect(hasExplicitContactStop("don't call again")).toBe(true);
++    expect(hasExplicitContactStop("remove my number")).toBe(true);
++    expect(hasExplicitContactStop("no answer; callback requested")).toBe(false);
++  });
++});
+diff --git a/src/tests/lib/contractingProfileEmail.test.ts b/src/tests/lib/contractingProfileEmail.test.ts
+index 7c4dddb5..66b6c4ac 100644
+--- a/src/tests/lib/contractingProfileEmail.test.ts
++++ b/src/tests/lib/contractingProfileEmail.test.ts
+@@ -114,6 +114,10 @@ describe("the retired contracting instructions stay out of what people read", ()
+     const contracts = read("src/pages/CarrierContracts.tsx");
+     const card = contracts.slice(contracts.indexOf("function ContractingLinkCard"));
+     expect(card).not.toMatch(/<Input|<input|type="email"|first_name|last_name/);
+-    expect(card).toContain("You type nothing");
++    // The invariant is a copy-only handoff, not a particular explanatory sentence.
++    // The rendered page test also copies both URLs without entering staff data.
++    expect(card).toContain("CONTRACTING_LINK_URL");
++    expect(card).toContain("CONTRACTING_PROFILE_URL");
++    expect(card).not.toMatch(/<form|onSubmit=/);
+   });
+ });

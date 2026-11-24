@@ -1,0 +1,708 @@
+diff --git a/supabase/migrations/20261124111000_lead_pipeline_identity_guard.sql b/supabase/migrations/20261124111000_lead_pipeline_identity_guard.sql
+new file mode 100644
+index 00000000..a7543540
+--- /dev/null
++++ b/supabase/migrations/20261124111000_lead_pipeline_identity_guard.sql
+@@ -0,0 +1,69 @@
++-- A lead's own source record is authoritative for contact enrichment. A shared
++-- phone alone never selects a household member's DOB/address or pipeline record.
++begin;
++create or replace function public.my_lead_to_pipeline(p_item uuid)
++returns jsonb language plpgsql security definer set search_path to 'public' set row_security to 'off' as $$
++declare v record; v_agent uuid; v_client uuid; v_addr text; v_city text; v_zip text; v_dob date;
++  v_phone_count int; v_identity_count int;
++begin
++  if auth.uid() is null then raise exception 'Authentication required' using errcode='42501'; end if;
++  select i.id,i.bundle_id,i.lead_id,i.source_kind,i.attrs,i.phone10,i.first_name,i.last_name,i.email,i.state,i.status,i.quality_tier,b.name as bundle_name
++    into v from public.lead_bundle_items i join public.lead_bundles b on b.id=i.bundle_id and b.archived_at is null
++   where i.id=p_item and i.removed_at is null;
++  if v.id is null then raise exception 'That lead is no longer in a live bundle.' using errcode='22023'; end if;
++  if not exists(select 1 from public.lead_bundle_grants g where g.bundle_id=v.bundle_id and g.user_id=auth.uid() and g.revoked_at is null) then
++    raise exception 'This lead is not assigned to you.' using errcode='42501';
++  end if;
++  if v.phone10 is null or v.phone10 !~ '^[0-9]{10}$' then raise exception 'This lead has no usable phone number.' using errcode='22023'; end if;
++  -- Same lock as suppression/assignment: a concurrent opt-out cannot be missed.
++  perform pg_advisory_xact_lock(hashtextextended(v.phone10,951));
++  if v.status='do_not_call' or exists(select 1 from public.lead_contact_dnc d where d.phone10=v.phone10 or d.phone10=v.attrs->>'replaced_phone10')
++    or exists(select 1 from public.mat_lead_pool m where m.phone10=v.phone10 and
++      (coalesce((m.flags->>'true_dnc')::boolean,m.dnc) or m.flags @> '{"current_client":true}' or m.flags @> '{"import_review_required":true}')) then
++    raise exception 'This lead is held from contact or needs review. Ask the lead administrator to review its hold reason.' using errcode='23514';
++  end if;
++  v_agent := public.get_agent_id(auth.uid());
++  if v_agent is null then raise exception 'No agent record is linked to this login. An admin can link it on the agent profile, then retry.'; end if;
++  perform pg_advisory_xact_lock(hashtextextended(v_agent::text || ':' || v.phone10,952));
++
++  if v.source_kind='marketing' and v.lead_id is not null then
++    select cl.street_address,cl.city,cl.zip,cl.dob into v_addr,v_city,v_zip,v_dob
++      from public.client_leads cl where cl.id=v.lead_id;
++  else
++    select l.address,l.city,l.zip into v_addr,v_city,v_zip from public.readymode_leads l
++     where l.phone10=v.phone10 and nullif(btrim(v.first_name),'') is not null and nullif(btrim(v.last_name),'') is not null
++       and lower(btrim(l.first_name))=lower(btrim(v.first_name)) and lower(btrim(l.last_name))=lower(btrim(v.last_name))
++     order by l.rm_lead_id desc limit 1;
++  end if;
++
++  select count(*)::int,count(*) filter(where nullif(btrim(v.first_name),'') is not null and nullif(btrim(v.last_name),'') is not null
++       and lower(btrim(c.first_name))=lower(btrim(v.first_name)) and lower(btrim(c.last_name))=lower(btrim(v.last_name))
++       and (v_dob is null or c.date_of_birth is null or c.date_of_birth=v_dob))::int
++    into v_phone_count,v_identity_count from public.agentlink_clients c where c.agent_id=v_agent
++      and right(regexp_replace(coalesce(c.phone,''),'[^0-9]','','g'),10)=v.phone10;
++  if v_identity_count=1 then
++    select c.id into v_client from public.agentlink_clients c where c.agent_id=v_agent
++      and right(regexp_replace(coalesce(c.phone,''),'[^0-9]','','g'),10)=v.phone10
++      and lower(btrim(c.first_name))=lower(btrim(v.first_name)) and lower(btrim(c.last_name))=lower(btrim(v.last_name))
++      and (v_dob is null or c.date_of_birth is null or c.date_of_birth=v_dob);
++    return jsonb_build_object('client_id',v_client,'created',false);
++  elsif v_phone_count>0 then
++    raise exception 'This phone matches a different or ambiguous client identity. A lead administrator must review the household match.' using errcode='23514';
++  end if;
++
++  insert into public.agentlink_clients(agent_id,first_name,last_name,phone,email,street_address,city,state,zip_code,date_of_birth,
++    communication_notes,pipeline_stage,external_source,created_at,updated_at)
++  values(v_agent,left(coalesce(nullif(btrim(v.first_name),''),'Lead'),120),left(coalesce(nullif(btrim(v.last_name),''),'(last name not on file)'),120),
++    v.phone10,nullif(left(btrim(coalesce(v.email,'')),254),''),nullif(left(btrim(coalesce(v_addr,'')),200),''),
++    nullif(left(btrim(coalesce(v_city,'')),100),''),case when btrim(coalesce(v.state,'')) ~ '^[A-Za-z]{2}$' then upper(btrim(v.state)) end,
++    nullif(left(btrim(coalesce(v_zip,'')),10),''),v_dob,'From My Leads: ' || v.bundle_name,'NEW_INITIAL','apex',now(),now()) returning id into v_client;
++  insert into public.client_pipeline_activity(client_id,activity_type,body,created_by)
++    values(v_client,'client_created','Added from My Leads (' || v.bundle_name || ')',auth.uid());
++  insert into public.lead_bundle_events(bundle_id,item_id,user_id,actor,action,detail)
++    values(v.bundle_id,p_item,auth.uid(),auth.uid(),'to_pipeline',jsonb_build_object('client_id',v_client,'lead_id',v.lead_id));
++  return jsonb_build_object('client_id',v_client,'created',true);
++end $$;
++revoke all on function public.my_lead_to_pipeline(uuid) from public,anon;
++grant execute on function public.my_lead_to_pipeline(uuid) to authenticated;
++notify pgrst,'reload schema';
++commit;
+diff --git a/supabase/migrations/20261124120000_producer_workspace.sql b/supabase/migrations/20261124120000_producer_workspace.sql
+new file mode 100644
+index 00000000..3b3e02b1
+--- /dev/null
++++ b/supabase/migrations/20261124120000_producer_workspace.sql
+@@ -0,0 +1,175 @@
++-- Producer workspace: personal monthly production, an evidenced activity plan, and
++-- effective-dated selling schedules. No provider calls, sends, or seeded fake activity.
++-- Canonical production uses Phoenix posted_date, matching v_production_canonical.
++
++create or replace function public.producer_can_access_agent(p_agent_id uuid)
++returns boolean language sql stable security definer set search_path to 'public' as $$
++  select auth.uid() is not null
++    and not public.fn_user_login_blocked(auth.uid())
++    and not public.fn_user_is_suspended(auth.uid())
++    and (
++      public.apex_is_admin()
++      or exists (
++        select 1 from public.agents a
++         where coalesce(a.canonical_agent_id, a.id) = p_agent_id
++           and a.user_id = auth.uid()
++           and a.is_deactivated is not true and a.is_inactive is not true
++           and coalesce(a.status,'') not in ('terminated','inactive')
++           and not public.fn_agent_is_suspended(p_agent_id)
++      )
++    )
++$$;
++revoke all on function public.producer_can_access_agent(uuid) from public, anon;
++grant execute on function public.producer_can_access_agent(uuid) to authenticated;
++
++create table if not exists public.producer_work_schedules (
++  agent_id uuid not null references public.agents(id) on delete cascade,
++  effective_on date not null,
++  selling_days integer[] not null,
++  created_by uuid not null references auth.users(id),
++  created_at timestamptz not null default now(),
++  primary key (agent_id, effective_on),
++  constraint producer_work_days_valid check (
++    cardinality(selling_days) between 1 and 7
++    and selling_days <@ array[0,1,2,3,4,5,6]
++    and array_position(selling_days, null) is null
++  )
++);
++alter table public.producer_work_schedules enable row level security;
++create policy producer_work_schedules_read on public.producer_work_schedules
++  for select to authenticated using (public.producer_can_access_agent(agent_id));
++revoke all on public.producer_work_schedules from public, anon, authenticated;
++grant select on public.producer_work_schedules to authenticated;
++
++create or replace function public.producer_set_work_schedule(p_agent_id uuid, p_selling_days integer[])
++returns jsonb language plpgsql security definer set search_path to 'public' as $$
++declare v_days integer[]; v_effective date := (now() at time zone 'America/Phoenix')::date + 1;
++begin
++  if not public.producer_can_access_agent(p_agent_id) then
++    raise exception 'Producer not found or access denied' using errcode = '42501';
++  end if;
++  select array_agg(distinct d order by d) into v_days from unnest(p_selling_days) d;
++  if v_days is null or cardinality(v_days) not between 1 and 7
++     or not (v_days <@ array[0,1,2,3,4,5,6]) or array_position(v_days, null) is not null then
++    raise exception 'Choose at least one selling day' using errcode = '22023';
++  end if;
++  -- Tomorrow is the earliest effective date. A schedule change never rewrites a
++  -- completed day or repairs a missed streak retroactively.
++  insert into public.producer_work_schedules(agent_id, effective_on, selling_days, created_by)
++  values (p_agent_id, v_effective, v_days, auth.uid())
++  on conflict (agent_id, effective_on) do update
++    set selling_days = excluded.selling_days, created_by = excluded.created_by, created_at = now();
++  return jsonb_build_object('effective_on', v_effective, 'selling_days', v_days);
++end $$;
++revoke all on function public.producer_set_work_schedule(uuid, integer[]) from public, anon;
++grant execute on function public.producer_set_work_schedule(uuid, integer[]) to authenticated;
++
++create or replace function public.producer_month_workspace(p_agent_id uuid)
++returns jsonb language plpgsql stable security definer set search_path to 'public' as $$
++declare
++  v_today date := (now() at time zone 'America/Phoenix')::date;
++  v_start date; v_end date; v_goal numeric := 20000; v_goal_source text := 'agency_standard';
++  v_result jsonb;
++begin
++  if not public.producer_can_access_agent(p_agent_id) then
++    raise exception 'Producer not found or access denied' using errcode = '42501';
++  end if;
++  v_start := date_trunc('month', v_today)::date;
++  v_end := (v_start + interval '1 month - 1 day')::date;
++  select greatest(20000, g.personal_ap_goal), 'assigned_personal_goal'
++    into v_goal, v_goal_source
++    from public.team_goals g
++   where g.agent_id = p_agent_id and g.period_start = v_start and g.period_end = v_end
++     and g.personal_ap_goal > 0 limit 1;
++  v_goal := coalesce(v_goal, 20000);
++  v_goal_source := coalesce(v_goal_source, 'agency_standard');
++
++  with production as materialized (
++    select p.* from public.v_production_canonical p
++      join public.agents pa on pa.id = p.agent_id
++     where coalesce(pa.canonical_agent_id,pa.id) = p_agent_id and p.posted_date between v_today - 179 and v_today
++  ), day_plan as (
++    select d::date as day,
++      extract(dow from d)::integer = any(coalesce((
++        select s.selling_days from public.producer_work_schedules s
++         where s.agent_id = p_agent_id and s.effective_on <= d::date
++         order by s.effective_on desc limit 1
++      ), array[1,2,3,4,5])) as scheduled
++      from generate_series((v_today - 179)::timestamp, v_end::timestamp, interval '1 day') d
++  ), production_days as (
++    select posted_date as day, sum(annual_premium) as ap, count(*) as deals
++      from production where annual_premium > 0 group by posted_date
++  ), activity_events as materialized (
++    -- Provider receipts only. Multiple imports of one provider event count once.
++    select distinct on (coalesce(nullif(c.external_call_id, ''), c.id::text))
++      coalesce(nullif(c.external_call_id, ''), c.id::text) as event_key,
++      (c.call_started_at at time zone 'America/Phoenix')::date as day,
++      c.disposition
++      from public.readymode_dialer_calls c
++      join public.agents a on a.id = c.agent_id
++     where coalesce(a.canonical_agent_id, a.id) = p_agent_id
++       and c.call_started_at >= ((v_today - 60)::timestamp at time zone 'America/Phoenix')
++       and c.call_started_at < ((v_today + 1)::timestamp at time zone 'America/Phoenix')
++       and c.call_ended_at is not null and c.duration_seconds > 0
++       and nullif(btrim(c.disposition), '') is not null
++     order by coalesce(nullif(c.external_call_id, ''), c.id::text), c.updated_at desc
++  ), activity as (
++    select count(*) filter (where day < v_today) as sample_calls,
++      count(*) filter (where day < v_today and disposition = 'Completed Sale') as sample_sold_calls,
++      count(*) filter (where day = v_today) as completed_today,
++      count(*) filter (where day = v_today and disposition = 'Completed Sale') as sold_calls_today
++      from activity_events
++  ), policy_baseline as (
++    select count(*) as sample_policies, avg(annual_premium) as avg_policy_ap
++      from production where posted_date >= v_today - 60 and posted_date < v_today and annual_premium > 0
++  ), monthly as (
++    select coalesce(sum(annual_premium),0) as ap, count(*) as deals,
++      max(synced_at) as source_updated_at
++      from production where posted_date >= v_start and annual_premium > 0
++  ), month_schedule as (
++    select count(*) filter (where scheduled and day >= v_start) as total_days,
++      count(*) filter (where scheduled and day between v_start and v_today) as elapsed_days,
++      count(*) filter (where scheduled and day >= v_today) as remaining_days
++      from day_plan
++  ), carrier as (
++    -- These are carrier-book subsets, never invented payment/retention evidence.
++    select count(*) as known_policies,
++      coalesce(sum(p.annual_premium) filter (
++        where p.status_bucket = 'active' and p.sold_on between v_start and v_today
++      ),0) as in_force_month_ap,
++      count(*) filter (
++        where p.status_bucket = 'active' and p.last_seen_on is not null
++          and p.effective_on <= least(v_today,p.last_seen_on) - 90
++      ) as active_90d_policies,
++      max(p.updated_at) as updated_at,
++      min(p.last_seen_on) as oldest_seen_on
++      from public.carrier_book_policies p
++      join public.agents a on a.id = p.agent_id
++     where coalesce(a.canonical_agent_id, a.id) = p_agent_id
++  )
++  select jsonb_build_object(
++    'agent_id', p_agent_id, 'today', v_today, 'period_start', v_start, 'period_end', v_end,
++    'as_of', now(), 'timezone', 'America/Phoenix', 'target_ap', v_goal, 'target_source', v_goal_source,
++    'production_ap', m.ap, 'production_deals', m.deals, 'production_updated_at', m.source_updated_at,
++    'selling_days_total', s.total_days, 'selling_days_elapsed', s.elapsed_days, 'selling_days_remaining', s.remaining_days,
++    'schedule', coalesce((select selling_days from public.producer_work_schedules where agent_id = p_agent_id and effective_on <= v_today order by effective_on desc limit 1), array[1,2,3,4,5]),
++    'next_schedule', (select jsonb_build_object('effective_on', effective_on, 'selling_days', selling_days) from public.producer_work_schedules where agent_id = p_agent_id and effective_on > v_today order by effective_on limit 1),
++    'activity', jsonb_build_object('sample_days', 60, 'sample_calls', a.sample_calls,
++      'sample_sold_calls', a.sample_sold_calls, 'sample_policies', b.sample_policies,
++      'avg_policy_ap', b.avg_policy_ap, 'completed_today', a.completed_today, 'sold_calls_today', a.sold_calls_today),
++    'carrier', jsonb_build_object('covered_policies', c.known_policies,
++      'in_force_month_ap', case when c.known_policies > 0 then c.in_force_month_ap end,
++      'active_90d_policies', case when c.known_policies > 0 then c.active_90d_policies end,
++      'updated_at', c.updated_at, 'oldest_seen_on', c.oldest_seen_on,
++      'paid_ap', null, 'paid_reason', 'No verified payment receipt is supplied by this view'),
++    'days', (select coalesce(jsonb_agg(jsonb_build_object(
++      'day', d.day, 'scheduled', d.scheduled, 'production_ap', coalesce(p.ap,0), 'deals', coalesce(p.deals,0)
++    ) order by d.day), '[]'::jsonb) from day_plan d left join production_days p on p.day = d.day where d.day <= v_today)
++  ) into v_result from monthly m cross join month_schedule s cross join activity a cross join policy_baseline b cross join carrier c;
++  return v_result;
++end $$;
++revoke all on function public.producer_month_workspace(uuid) from public, anon;
++grant execute on function public.producer_month_workspace(uuid) to authenticated;
++
++comment on function public.producer_month_workspace(uuid) is
++  'Personal canonical production only; team sales and ReadyMode sale dispositions never add to ALP. Carrier in-force and 90-day-active counts are explicitly partial carrier-book evidence, not payment receipts. Workday production streak inputs include rest days and retain historical schedules.';
+diff --git a/supabase/migrations/20261124121000_producer_client_calls.sql b/supabase/migrations/20261124121000_producer_client_calls.sql
+new file mode 100644
+index 00000000..4b62984c
+--- /dev/null
++++ b/supabase/migrations/20261124121000_producer_client_calls.sql
+@@ -0,0 +1,193 @@
++-- Client-owned call history. Reuse ReadyMode receipts and call_transcripts;
++-- annotations add identity/category, not another copy of a provider recording.
++-- Raw provider audio/text retains can_view_sold_calls(). No AI invocation.
++
++create or replace function public.producer_can_access_client(p_client_id uuid)
++returns boolean language sql stable security definer set search_path to 'public' as $$
++  select exists (
++    select 1 from public.agentlink_clients c join public.agents a on a.id = c.agent_id
++     where c.id = p_client_id and public.producer_can_access_agent(coalesce(a.canonical_agent_id, a.id))
++  )
++$$;
++revoke all on function public.producer_can_access_client(uuid) from public, anon;
++grant execute on function public.producer_can_access_client(uuid) to authenticated;
++
++create table if not exists public.producer_client_call_links (
++  id uuid primary key default gen_random_uuid(),
++  client_id uuid not null references public.agentlink_clients(id) on delete cascade,
++  provider_call_id uuid unique references public.readymode_dialer_calls(id) on delete cascade,
++  transcript_id uuid unique references public.call_transcripts(id) on delete cascade,
++  category text not null default 'uncategorized',
++  created_by uuid not null references auth.users(id),
++  created_at timestamptz not null default now(),
++  updated_at timestamptz not null default now(),
++  constraint producer_call_one_source check (num_nonnulls(provider_call_id, transcript_id) = 1),
++  constraint producer_call_category check (category in ('uncategorized','discovery','presentation','objection','follow_up','sale','service'))
++);
++create index if not exists producer_client_call_links_client_idx on public.producer_client_call_links(client_id);
++alter table public.producer_client_call_links enable row level security;
++create policy producer_client_call_links_read on public.producer_client_call_links
++  for select to authenticated using (public.producer_can_access_client(client_id));
++revoke all on public.producer_client_call_links from public, anon, authenticated;
++grant select on public.producer_client_call_links to authenticated;
++
++-- Existing manager-wide transcript policies remain valid for recruiting history,
++-- but cannot expose newly client-linked transcripts belonging to another producer.
++create or replace function public.producer_transcript_allowed(p_transcript_id uuid)
++returns boolean language sql stable security definer set search_path to 'public' as $$
++  select not exists (select 1 from public.producer_client_call_links l where l.transcript_id = p_transcript_id)
++    or exists (select 1 from public.producer_client_call_links l
++                where l.transcript_id = p_transcript_id and public.producer_can_access_client(l.client_id))
++$$;
++revoke all on function public.producer_transcript_allowed(uuid) from public, anon;
++grant execute on function public.producer_transcript_allowed(uuid) to authenticated;
++create policy producer_client_transcript_scope on public.call_transcripts
++  as restrictive for all to authenticated
++  using (public.producer_transcript_allowed(id))
++  with check (public.producer_transcript_allowed(id));
++
++create or replace function public.producer_call_matches_client(p_client_id uuid, p_call_id uuid)
++returns boolean language sql stable security definer set search_path to 'public' as $$
++  select public.producer_can_access_client(p_client_id) and exists (
++    select 1 from public.agentlink_clients c
++      join public.agents ca on ca.id = c.agent_id
++      join public.readymode_dialer_calls r on r.id = p_call_id
++      join public.agents ra on ra.id = r.agent_id
++     where c.id = p_client_id
++       and coalesce(ca.canonical_agent_id, ca.id) = coalesce(ra.canonical_agent_id, ra.id)
++       and (
++         exists (select 1 from public.producer_client_call_links l where l.provider_call_id = r.id and l.client_id = c.id)
++         or (
++           not exists (select 1 from public.producer_client_call_links l where l.provider_call_id = r.id)
++           and length(regexp_replace(coalesce(c.phone,''), '[^0-9]', '', 'g')) >= 10
++           and r.lead_phone10 = right(regexp_replace(c.phone, '[^0-9]', '', 'g'),10)
++           -- Shared household numbers never silently attach the call to one person.
++           and (select count(*) from public.agentlink_clients other
++                  join public.agents oa on oa.id = other.agent_id
++                 where coalesce(oa.canonical_agent_id, oa.id) = coalesce(ca.canonical_agent_id, ca.id)
++                   and right(regexp_replace(coalesce(other.phone,''), '[^0-9]', '', 'g'),10) = r.lead_phone10) = 1
++         )
++       )
++  )
++$$;
++revoke all on function public.producer_call_matches_client(uuid,uuid) from public, anon;
++grant execute on function public.producer_call_matches_client(uuid,uuid) to authenticated;
++
++create or replace function public.producer_client_calls(
++  p_client_id uuid, p_category text default null,
++  p_before_at timestamptz default null, p_before_key text default null
++)
++returns jsonb language plpgsql stable security definer set search_path to 'public' as $$
++declare v_raw boolean := public.can_view_sold_calls(); v jsonb; v_agent uuid; v_phone text; v_unique boolean;
++begin
++  if not public.producer_can_access_client(p_client_id) then
++    raise exception 'Client not found or access denied' using errcode = '42501';
++  end if;
++  if (p_before_at is null) <> (p_before_key is null) then raise exception 'Incomplete page cursor' using errcode = '22023'; end if;
++  if p_category is not null and p_category not in ('uncategorized','discovery','presentation','objection','follow_up','sale','service') then
++    raise exception 'Unknown call category' using errcode = '22023';
++  end if;
++  select coalesce(a.canonical_agent_id,a.id), right(regexp_replace(coalesce(c.phone,''),'[^0-9]','','g'),10)
++    into v_agent, v_phone from public.agentlink_clients c join public.agents a on a.id = c.agent_id where c.id = p_client_id;
++  select count(*) = 1 into v_unique from public.agentlink_clients c join public.agents a on a.id = c.agent_id
++   where coalesce(a.canonical_agent_id,a.id) = v_agent
++     and right(regexp_replace(coalesce(c.phone,''),'[^0-9]','','g'),10) = v_phone;
++
++  with records as (
++    select 'readymode:' || r.id::text as key, r.id as source_id, 'readymode'::text as source,
++      coalesce(r.call_started_at,r.imported_at) as happened_at,
++      coalesce(l.category, case
++        when r.disposition = 'Completed Sale' then 'sale'
++        when r.disposition in ('Bank Objection','No Bank Account','Social Objection') then 'objection'
++        when r.disposition = '&rArr; Appointments' then 'follow_up' else 'uncategorized' end) as category,
++      r.disposition as outcome, r.duration_seconds,
++      case when v_raw then t.raw_text else null end as transcript,
++      case when v_raw then r.recording_url else null end as audio_url,
++      case when not v_raw then 'restricted' when t.raw_text is null then 'not_available' else 'available' end as transcript_access
++      from public.readymode_dialer_calls r
++      join public.agents a on a.id = r.agent_id
++      left join public.producer_client_call_links l on l.provider_call_id = r.id
++      left join lateral (select x.raw_text from public.readymode_call_transcripts x where x.call_id = r.id order by x.transcribed_at desc limit 1) t on v_raw
++     where coalesce(a.canonical_agent_id,a.id) = v_agent
++       and (l.client_id = p_client_id or (l.id is null and v_unique and length(v_phone) = 10 and r.lead_phone10 = v_phone))
++    union all
++    select 'manual:' || t.id::text, t.id, 'manual', t.created_at, l.category,
++      t.call_outcome, t.duration_seconds, t.transcript, null::text,
++      case when t.transcript is null then 'not_available' else 'available' end
++      from public.producer_client_call_links l join public.call_transcripts t on t.id = l.transcript_id
++     where l.client_id = p_client_id
++  ), page as materialized (
++    select * from records r
++     where (p_category is null or r.category = p_category)
++       and (p_before_at is null or (r.happened_at,r.key) < (p_before_at,p_before_key))
++     order by r.happened_at desc,r.key desc limit 26
++  ), shown as (select * from page order by happened_at desc,key desc limit 25)
++  select jsonb_build_object(
++    'client_id', p_client_id, 'raw_provider_access', v_raw,
++    'ambiguous_phone', length(v_phone) = 10 and not v_unique,
++    'calls', coalesce((select jsonb_agg(to_jsonb(s) order by happened_at desc,key desc) from shown s),'[]'::jsonb),
++    'next_cursor', case when (select count(*) from page) > 25 then
++      (select jsonb_build_object('at',happened_at,'key',key) from shown order by happened_at,key limit 1) else null end
++  ) into v;
++  return v;
++end $$;
++revoke all on function public.producer_client_calls(uuid,text,timestamptz,text) from public, anon;
++grant execute on function public.producer_client_calls(uuid,text,timestamptz,text) to authenticated;
++
++create or replace function public.producer_save_client_transcript(
++  p_client_id uuid, p_transcript text, p_category text, p_outcome text default null
++)
++returns uuid language plpgsql security definer set search_path to 'public' as $$
++declare v_id uuid; v_agent uuid;
++begin
++  if not public.producer_can_access_client(p_client_id) then
++    raise exception 'Client not found or access denied' using errcode = '42501';
++  end if;
++  if p_category not in ('uncategorized','discovery','presentation','objection','follow_up','sale','service') or p_category is null then
++    raise exception 'Unknown call category' using errcode = '22023';
++  end if;
++  if length(btrim(coalesce(p_transcript,''))) not between 10 and 100000 then
++    raise exception 'Transcript must contain 10 to 100,000 characters' using errcode = '22023';
++  end if;
++  select agent_id into v_agent from public.agentlink_clients where id = p_client_id;
++  insert into public.call_transcripts(agent_id,recorded_by,transcript,call_outcome,status)
++  values (v_agent,auth.uid(),btrim(p_transcript),nullif(left(btrim(p_outcome),160),''),'completed') returning id into v_id;
++  insert into public.producer_client_call_links(client_id,transcript_id,category,created_by)
++  values (p_client_id,v_id,p_category,auth.uid());
++  insert into public.client_pipeline_activity(client_id,activity_type,body,metadata,created_by)
++  values (p_client_id,'call_transcript_saved','Call transcript saved',jsonb_build_object('transcript_id',v_id,'category',p_category),auth.uid());
++  return v_id;
++end $$;
++revoke all on function public.producer_save_client_transcript(uuid,text,text,text) from public, anon;
++grant execute on function public.producer_save_client_transcript(uuid,text,text,text) to authenticated;
++
++create or replace function public.producer_tag_client_call(p_client_id uuid,p_source text,p_source_id uuid,p_category text)
++returns void language plpgsql security definer set search_path to 'public' as $$
++begin
++  if not public.producer_can_access_client(p_client_id) then
++    raise exception 'Client not found or access denied' using errcode = '42501';
++  end if;
++  if p_category not in ('uncategorized','discovery','presentation','objection','follow_up','sale','service') or p_category is null then
++    raise exception 'Unknown call category' using errcode = '22023';
++  end if;
++  if p_source = 'readymode' then
++    if not public.producer_call_matches_client(p_client_id,p_source_id) then
++      raise exception 'Call does not belong to this client' using errcode = '42501';
++    end if;
++    insert into public.producer_client_call_links(client_id,provider_call_id,category,created_by)
++    values (p_client_id,p_source_id,p_category,auth.uid())
++    on conflict (provider_call_id) do update set category = excluded.category, updated_at = now()
++      where producer_client_call_links.client_id = excluded.client_id;
++    if not found then raise exception 'Call does not belong to this client' using errcode = '42501'; end if;
++  elsif p_source = 'manual' then
++    update public.producer_client_call_links set category = p_category,updated_at = now()
++     where client_id = p_client_id and transcript_id = p_source_id;
++    if not found then raise exception 'Call does not belong to this client' using errcode = '42501'; end if;
++  else raise exception 'Unknown call source' using errcode = '22023';
++  end if;
++end $$;
++revoke all on function public.producer_tag_client_call(uuid,text,uuid,text) from public, anon;
++grant execute on function public.producer_tag_client_call(uuid,text,uuid,text) to authenticated;
++
++comment on function public.producer_client_calls(uuid,text,timestamptz,text) is
++  'Own-client history plus admin access. Provider calls require the same canonical producer and an unambiguous phone match or existing client link. No name-only match. Existing raw transcript/audio permission stays enforced. Manual client transcripts are saved without AI and never count as verified calling activity.';
+diff --git a/supabase/migrations/20261124130000_ethos_consumer_campaign.sql b/supabase/migrations/20261124130000_ethos_consumer_campaign.sql
+new file mode 100644
+index 00000000..a8ea3824
+--- /dev/null
++++ b/supabase/migrations/20261124130000_ethos_consumer_campaign.sql
+@@ -0,0 +1,247 @@
++-- Consumer quote invitations are separate from producer recruiting/contracting.
++-- No license scope is seeded and no automatic dispatcher is installed.
++create table if not exists public.ethos_consumer_license_scope (
++  owner_user_id uuid not null references auth.users(id),
++  state text not null check (state ~ '^[A-Z]{2}$'),
++  license_status text not null default 'unverified' check (license_status in ('unverified','active','inactive')),
++  license_evidence_ref text,
++  license_verified_at timestamptz,
++  license_expires_at timestamptz,
++  ethos_eligible boolean not null default false,
++  ethos_evidence_ref text,
++  ethos_verified_at timestamptz,
++  verified_by uuid references auth.users(id),
++  primary key (owner_user_id, state),
++  check (license_status <> 'active' or (nullif(btrim(license_evidence_ref), '') is not null and license_verified_at is not null and license_expires_at is not null and verified_by is not null)),
++  check (not ethos_eligible or (nullif(btrim(ethos_evidence_ref), '') is not null and ethos_verified_at is not null and verified_by is not null))
++);
++
++create table if not exists public.ethos_consumer_campaigns (
++  campaign_key text primary key,
++  owner_user_id uuid not null references auth.users(id),
++  coverage_url text not null check (coverage_url = 'https://agents.ethoslife.com/invite/e1c102'),
++  template_version text not null check (template_version = 'coverage-invitation-v1'),
++  sends_enabled boolean not null default false,
++  approved_by uuid references auth.users(id),
++  approved_at timestamptz,
++  created_at timestamptz not null default now(),
++  check (not sends_enabled or (approved_by = owner_user_id and approved_at is not null))
++);
++
++create table if not exists public.ethos_consumer_deliveries (
++  id uuid primary key default gen_random_uuid(),
++  campaign_key text not null references public.ethos_consumer_campaigns(campaign_key),
++  lead_id uuid not null references public.client_leads(id),
++  source_batch_id text not null,
++  email text not null check (email = lower(btrim(email))),
++  state text not null,
++  audience_token text not null,
++  scope_evidence jsonb not null default '{}'::jsonb,
++  status text not null default 'queued' check (status in ('queued','attempting','provider_accepted','blocked','unknown')),
++  claim_id uuid,
++  provider_id text,
++  reason text,
++  queued_by uuid references auth.users(id),
++  queued_at timestamptz not null default now(),
++  attempted_at timestamptz,
++  settled_at timestamptz,
++  unique (campaign_key, email),
++  check (status <> 'provider_accepted' or nullif(provider_id, '') is not null)
++);
++create index if not exists ethos_consumer_queued_idx on public.ethos_consumer_deliveries (campaign_key, queued_at) where status = 'queued';
++create index if not exists client_leads_consumer_batch_idx on public.client_leads ((raw ->> 'source_batch_id'));
++
++alter table public.ethos_consumer_license_scope enable row level security;
++alter table public.ethos_consumer_campaigns enable row level security;
++alter table public.ethos_consumer_deliveries enable row level security;
++revoke all on public.ethos_consumer_license_scope, public.ethos_consumer_campaigns, public.ethos_consumer_deliveries from public, anon, authenticated;
++grant select on public.ethos_consumer_license_scope, public.ethos_consumer_campaigns, public.ethos_consumer_deliveries to authenticated;
++grant all on public.ethos_consumer_license_scope, public.ethos_consumer_campaigns, public.ethos_consumer_deliveries to service_role;
++create policy ethos_consumer_scope_owner_read on public.ethos_consumer_license_scope for select to authenticated using (owner_user_id = auth.uid());
++create policy ethos_consumer_campaign_owner_read on public.ethos_consumer_campaigns for select to authenticated using (owner_user_id = auth.uid());
++create policy ethos_consumer_delivery_owner_read on public.ethos_consumer_deliveries for select to authenticated using (exists (select 1 from public.ethos_consumer_campaigns c where c.campaign_key = ethos_consumer_deliveries.campaign_key and c.owner_user_id = auth.uid()));
++
++insert into public.ethos_consumer_campaigns (campaign_key,owner_user_id,coverage_url,template_version)
++select 'ethos-consumer-20261124-v1', public.fn_recruit_sam_user_id(), 'https://agents.ethoslife.com/invite/e1c102', 'coverage-invitation-v1'
++where public.fn_recruit_sam_user_id() is not null
++on conflict (campaign_key) do nothing;
++
++create or replace function public.set_ethos_consumer_scope(p_campaign_key text,p_actor uuid,p_state text,p_active boolean,p_license_evidence_ref text default null,p_license_expires_at timestamptz default null,p_ethos_evidence_ref text default null)
++returns jsonb language plpgsql security definer set search_path = public as $fn$
++declare v_owner uuid; v_state text:=upper(btrim(p_state)); v_license text:=nullif(btrim(p_license_evidence_ref),''); v_ethos text:=nullif(btrim(p_ethos_evidence_ref),''); r public.ethos_consumer_license_scope;
++begin
++  select owner_user_id into v_owner from public.ethos_consumer_campaigns where campaign_key=p_campaign_key;
++  if v_owner is null or p_actor is distinct from v_owner or not (coalesce(auth.role(),'')='service_role' or coalesce(auth.uid()=v_owner,false)) then raise exception 'Only the campaign owner can record state evidence' using errcode='42501'; end if;
++  if v_state is null or v_state not in ('AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY') then raise exception 'Choose a valid licensed state'; end if;
++  if p_active is not true then
++    update public.ethos_consumer_license_scope set license_status='inactive',ethos_eligible=false where owner_user_id=v_owner and state=v_state returning * into r;
++    if not found then raise exception 'No recorded state scope to deactivate'; end if;
++  else
++    if v_license is null or length(v_license)<3 or length(v_license)>2000 or p_license_expires_at is null or p_license_expires_at<=now() then raise exception 'Current license evidence and a future expiration are required'; end if;
++    if v_ethos is not null and (length(v_ethos)<3 or length(v_ethos)>2000) then raise exception 'Ethos eligibility evidence reference is incomplete'; end if;
++    insert into public.ethos_consumer_license_scope(owner_user_id,state,license_status,license_evidence_ref,license_verified_at,license_expires_at,ethos_eligible,ethos_evidence_ref,ethos_verified_at,verified_by)
++      values(v_owner,v_state,'active',v_license,now(),p_license_expires_at,v_ethos is not null,v_ethos,case when v_ethos is not null then now() end,v_owner)
++      on conflict(owner_user_id,state) do update set license_status=excluded.license_status,license_evidence_ref=excluded.license_evidence_ref,license_verified_at=excluded.license_verified_at,
++        license_expires_at=excluded.license_expires_at,ethos_eligible=excluded.ethos_eligible,ethos_evidence_ref=excluded.ethos_evidence_ref,ethos_verified_at=excluded.ethos_verified_at,verified_by=excluded.verified_by
++      returning * into r;
++  end if;
++  return to_jsonb(r);
++end $fn$;
++
++create or replace function public.set_ethos_consumer_campaign_enabled(p_campaign_key text,p_actor uuid,p_enabled boolean)
++returns jsonb language plpgsql security definer set search_path = public as $fn$
++declare r public.ethos_consumer_campaigns;
++begin
++  select * into r from public.ethos_consumer_campaigns where campaign_key=p_campaign_key for update;
++  if not found or p_actor is distinct from r.owner_user_id or not (coalesce(auth.role(),'')='service_role' or coalesce(auth.uid()=r.owner_user_id,false)) then raise exception 'Only the campaign owner can change sending' using errcode='42501'; end if;
++  if p_enabled is null then raise exception 'Choose the send state'; end if;
++  if p_enabled and not exists(select 1 from public.ethos_consumer_license_scope s where s.owner_user_id=r.owner_user_id and s.license_status='active' and s.license_verified_at<=now() and s.license_expires_at>now() and s.ethos_eligible and s.ethos_verified_at<=now()) then raise exception 'Record at least one current licensed state with verified Ethos eligibility before enabling sending'; end if;
++  update public.ethos_consumer_campaigns set sends_enabled=p_enabled,approved_by=case when p_enabled then p_actor else approved_by end,approved_at=case when p_enabled then now() else approved_at end where campaign_key=p_campaign_key returning * into r;
++  return to_jsonb(r);
++end $fn$;
++revoke all on function public.set_ethos_consumer_scope(text,uuid,text,boolean,text,timestamptz,text),public.set_ethos_consumer_campaign_enabled(text,uuid,boolean) from public,anon;
++grant execute on function public.set_ethos_consumer_scope(text,uuid,text,boolean,text,timestamptz,text),public.set_ethos_consumer_campaign_enabled(text,uuid,boolean) to authenticated,service_role;
++
++-- Full eligibility is recomputed at preview, queue, and claim. Email/state are
++-- read from the consumer record; residence/phone area code never supplies either.
++create or replace function public.ethos_consumer_batch_members(p_source_batch_id text)
++returns table(lead_id uuid,source_type text) language plpgsql security definer set search_path = public as $fn$
++begin
++  -- Import receipts are introduced by the later 20261124140000 migration.
++  -- PL/pgSQL resolves this read at execution; older installs still have the
++  -- explicit raw-source fallback. Matched imports retain their original raw.
++  if to_regclass('public.consumer_import_rows') is not null and to_regclass('public.consumer_import_batches') is not null then
++    return query select distinct r.lead_id,b.source_kind from public.consumer_import_rows r join public.consumer_import_batches b on b.id=r.batch_id
++      where r.batch_id::text=p_source_batch_id and r.status in ('matched','imported') and r.lead_id is not null;
++  end if;
++  return query select l.id,l.raw->>'source_type' from public.client_leads l where l.raw->>'source_batch_id'=p_source_batch_id;
++end $fn$;
++revoke all on function public.ethos_consumer_batch_members(text) from public,anon,authenticated;
++grant execute on function public.ethos_consumer_batch_members(text) to service_role;
++
++-- A suppression identity must never be manufactured by taking an international
++-- number's final ten digits. Match the NANP send-side normalizer's prefixes.
++create or replace function public.ethos_consumer_phone10(p_raw text)
++returns text language sql immutable set search_path=public as $fn$
++  with raw as (select btrim(coalesce(p_raw,'')) as v,regexp_replace(coalesce(p_raw,''),'[^0-9]','','g') as d),
++  normalized as (select case when left(v,1)='+' then d when left(d,3)='011' then substring(d from 4)
++    when left(d,2)='00' then substring(d from 3) when length(d)=10 then '1'||d
++    when length(d)=11 and left(d,1)='1' then d end as d from raw)
++  select case when d ~ '^1[2-9][0-9]{2}[2-9][0-9]{6}$' then substring(d from 2) end from normalized;
++$fn$;
++revoke all on function public.ethos_consumer_phone10(text) from public,anon,authenticated;
++grant execute on function public.ethos_consumer_phone10(text) to service_role;
++
++create or replace function public.ethos_consumer_candidates(p_campaign_key text, p_source_batch_id text)
++returns table (lead_id uuid,email text,first_name text,state text,reason text,audience_token text)
++language sql security definer set search_path = public as $fn$
++  with members as (select m.lead_id,max(m.source_type) as source_type from public.ethos_consumer_batch_members(p_source_batch_id) m group by m.lead_id), batch as (
++    select l.*, m.source_type as consumer_source_type, lower(btrim(coalesce(l.email,''))) as normalized_email,
++      upper(btrim(coalesce(l.state,''))) as normalized_state,
++      row_number() over (partition by lower(btrim(coalesce(l.email,''))) order by l.id) as email_rank
++    from public.client_leads l join members m on m.lead_id=l.id
++  ), checked as (
++    select l.id, l.normalized_email, l.first_name, l.normalized_state,
++      case
++        when c.campaign_key is null then 'campaign_not_configured'
++        when coalesce(l.consumer_source_type,'') not in ('pos','mortgage') then 'consumer_source_unverified'
++        when l.normalized_email !~ '^[^[:space:]@<>]+@[^[:space:]@<>]+\.[A-Za-z]{2,}$' then 'email_missing_or_invalid'
++        when l.normalized_state not in ('AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY') then 'state_missing_or_invalid'
++        when l.dnc is true or lower(coalesce(l.last_disposition,'')) in ('do_not_call','do not call','do_not_contact','unsubscribed') or l.raw ->> 'email_consent' = 'false' then 'do_not_contact'
++        when exists (select 1 from public.lead_contact_dnc d where d.phone10 in (public.ethos_consumer_phone10(l.phone_digits),public.ethos_consumer_phone10(l.phone_e164))) then 'do_not_contact'
++        when exists (select 1 from public.email_unsubscribes u where lower(btrim(u.email)) = l.normalized_email) then 'email_opt_out'
++        when exists (select 1 from public.email_suppressions s where lower(btrim(s.email)) = l.normalized_email) then 'email_suppressed'
++        when exists (select 1 from public.client_leads b where lower(btrim(coalesce(b.email,''))) = l.normalized_email and
++          (b.dnc is true or lower(coalesce(b.last_disposition,'')) in ('do_not_call','do not call','do_not_contact','unsubscribed') or b.raw->>'email_consent'='false'
++            or exists(select 1 from public.lead_contact_dnc d where d.phone10 in (public.ethos_consumer_phone10(b.phone_digits),public.ethos_consumer_phone10(b.phone_e164))))) then 'do_not_contact'
++        when exists (select 1 from public.v_leads_suppression_all s join public.client_leads b on b.id=s.lead_id where lower(btrim(coalesce(b.email,''))) = l.normalized_email) then 'lead_suppressed'
++        when (select count(distinct upper(btrim(coalesce(b.state,'')))) from public.client_leads b where lower(btrim(coalesce(b.email,''))) = l.normalized_email) > 1 then 'email_identity_conflict'
++        when l.email_rank > 1 then 'duplicate_email'
++        when s.license_status is distinct from 'active' or s.license_verified_at is null or s.license_verified_at > now() or s.license_expires_at <= now() or s.license_expires_at is null then 'licensed_state_not_verified'
++        when s.ethos_eligible is distinct from true or s.ethos_verified_at is null or s.ethos_verified_at > now() then 'ethos_state_eligibility_not_verified'
++        else 'eligible'
++      end as verdict,
++      encode(sha256(convert_to(concat_ws('|',l.id::text,l.normalized_email,l.normalized_state,p_source_batch_id,c.owner_user_id::text,c.template_version,c.coverage_url,s.license_evidence_ref,s.license_verified_at::text,s.license_expires_at::text,s.ethos_evidence_ref,s.ethos_verified_at::text),'UTF8')),'hex') as token
++    from batch l
++    left join public.ethos_consumer_campaigns c on c.campaign_key = p_campaign_key
++    left join public.ethos_consumer_license_scope s on s.owner_user_id = c.owner_user_id and s.state = l.normalized_state
++  ) select id,normalized_email,first_name,normalized_state,verdict,token from checked;
++$fn$;
++revoke all on function public.ethos_consumer_candidates(text,text) from public,anon,authenticated;
++grant execute on function public.ethos_consumer_candidates(text,text) to service_role;
++
++create or replace function public.preview_ethos_consumer_campaign(p_campaign_key text,p_source_batch_id text)
++returns jsonb language plpgsql security definer set search_path = public as $fn$
++declare v_result jsonb;
++begin
++  if coalesce(auth.role(),'') <> 'service_role' then raise exception 'service role required' using errcode='42501'; end if;
++  if nullif(btrim(p_source_batch_id),'') is null then raise exception 'source batch required'; end if;
++  with candidates as (select * from public.ethos_consumer_candidates(p_campaign_key,p_source_batch_id)),
++  grouped as (select reason,count(*) as n from candidates group by reason)
++  select jsonb_build_object(
++    'source_batch_id',p_source_batch_id,'checked_at',now(),
++    'counts',coalesce((select jsonb_object_agg(reason,n) from grouped),'{}'::jsonb),
++    'eligible',coalesce((select jsonb_agg(to_jsonb(r)) from (select lead_id,email,first_name,state,audience_token from candidates where reason='eligible' and not exists (select 1 from public.ethos_consumer_deliveries d where d.campaign_key=p_campaign_key and d.email=candidates.email) order by lead_id limit 25) r),'[]'::jsonb),
++    'already_queued',(select count(*) from public.ethos_consumer_deliveries d where d.campaign_key=p_campaign_key and d.source_batch_id=p_source_batch_id)
++  ) into v_result;
++  return v_result;
++end $fn$;
++
++create or replace function public.queue_ethos_consumer_deliveries(p_campaign_key text,p_source_batch_id text,p_selections jsonb,p_actor uuid)
++returns jsonb language plpgsql security definer set search_path = public as $fn$
++declare r record; v_owner uuid; v_queued integer:=0; v_existing integer:=0; v_rows integer; v_ids uuid[] := '{}'; v_id uuid;
++begin
++  if coalesce(auth.role(),'') <> 'service_role' then raise exception 'service role required' using errcode='42501'; end if;
++  select owner_user_id into v_owner from public.ethos_consumer_campaigns where campaign_key=p_campaign_key;
++  if v_owner is null or p_actor is distinct from v_owner then raise exception 'campaign owner required' using errcode='42501'; end if;
++  if p_selections is null or jsonb_typeof(p_selections) <> 'array' or jsonb_array_length(p_selections) not between 1 and 25 then raise exception 'select 1 to 25 preview recipients'; end if;
++  for r in select s.lead_id,s.audience_token as expected_token,c.email,c.state,c.reason,c.audience_token from jsonb_to_recordset(p_selections) as s(lead_id uuid,audience_token text)
++    left join public.ethos_consumer_candidates(p_campaign_key,p_source_batch_id) c using (lead_id)
++  loop
++    if r.reason is distinct from 'eligible' or r.expected_token is distinct from r.audience_token then raise exception 'Audience changed or recipient ineligible. Refresh the preview.'; end if;
++    insert into public.ethos_consumer_deliveries(campaign_key,lead_id,source_batch_id,email,state,audience_token,scope_evidence,queued_by)
++      values(p_campaign_key,r.lead_id,p_source_batch_id,r.email,r.state,r.audience_token,(select to_jsonb(s) from public.ethos_consumer_license_scope s where s.owner_user_id=v_owner and s.state=r.state),p_actor)
++      on conflict(campaign_key,email) do nothing;
++    get diagnostics v_rows = row_count;
++    v_queued:=v_queued+v_rows; v_existing:=v_existing+(1-v_rows);
++    select d.id into v_id from public.ethos_consumer_deliveries d where d.campaign_key=p_campaign_key and d.email=r.email and d.status='queued';
++    if v_id is not null then v_ids:=array_append(v_ids,v_id); end if;
++  end loop;
++  return jsonb_build_object('queued',v_queued,'already_present',v_existing,'delivery_ids',v_ids,'sent',0);
++end $fn$;
++
++create or replace function public.claim_ethos_consumer_deliveries(p_campaign_key text,p_delivery_ids uuid[],p_limit integer default 5)
++returns table(delivery_id uuid,claim_id uuid,email text,first_name text,state text)
++language plpgsql security definer set search_path = public as $fn$
++declare r public.ethos_consumer_deliveries; c public.ethos_consumer_campaigns; eligible record; token uuid;
++begin
++  if coalesce(auth.role(),'') <> 'service_role' then raise exception 'service role required' using errcode='42501'; end if;
++  if coalesce(cardinality(p_delivery_ids),0) not between 1 and 25 then raise exception 'exact reviewed delivery ids required'; end if;
++  select * into c from public.ethos_consumer_campaigns where campaign_key=p_campaign_key for share;
++  if not found or not c.sends_enabled or c.approved_at is null or c.approved_by is distinct from c.owner_user_id then raise exception 'Campaign sends disabled or owner approval missing. Nothing sent.'; end if;
++  for r in select d.* from public.ethos_consumer_deliveries d where d.campaign_key=p_campaign_key and d.id=any(p_delivery_ids) and d.status='queued' order by d.queued_at limit least(greatest(coalesce(p_limit,5),1),25) for update skip locked
++  loop
++    select * into eligible from public.ethos_consumer_candidates(p_campaign_key,r.source_batch_id) x where x.lead_id=r.lead_id;
++    if not found or eligible.reason is distinct from 'eligible' or eligible.audience_token is distinct from r.audience_token then
++      update public.ethos_consumer_deliveries d set status='blocked',reason=coalesce(eligible.reason,'recipient_changed'),settled_at=now() where d.id=r.id;
++      continue;
++    end if;
++    token:=gen_random_uuid();
++    update public.ethos_consumer_deliveries d set status='attempting',claim_id=token,attempted_at=now() where d.id=r.id;
++    delivery_id:=r.id; claim_id:=token; email:=r.email; first_name:=eligible.first_name; state:=r.state; return next;
++  end loop;
++end $fn$;
++
++create or replace function public.settle_ethos_consumer_delivery(p_id uuid,p_claim_id uuid,p_status text,p_provider_id text default null,p_reason text default null)
++returns void language plpgsql security definer set search_path = public as $fn$
++begin
++  if coalesce(auth.role(),'') <> 'service_role' then raise exception 'service role required' using errcode='42501'; end if;
++  if p_status not in ('provider_accepted','blocked','unknown') or (p_status='provider_accepted' and nullif(p_provider_id,'') is null) then raise exception 'invalid provider receipt'; end if;
++  update public.ethos_consumer_deliveries set status=p_status,provider_id=p_provider_id,reason=left(p_reason,300),settled_at=now() where id=p_id and claim_id=p_claim_id and status='attempting';
++  if not found then raise exception 'Claim is no longer current; reconcile its existing receipt.'; end if;
++end $fn$;
++revoke all on function public.preview_ethos_consumer_campaign(text,text),public.queue_ethos_consumer_deliveries(text,text,jsonb,uuid),public.claim_ethos_consumer_deliveries(text,uuid[],integer),public.settle_ethos_consumer_delivery(uuid,uuid,text,text,text) from public,anon,authenticated;
++grant execute on function public.preview_ethos_consumer_campaign(text,text),public.queue_ethos_consumer_deliveries(text,text,jsonb,uuid),public.claim_ethos_consumer_deliveries(text,uuid[],integer),public.settle_ethos_consumer_delivery(uuid,uuid,text,text,text) to service_role;
++
++comment on table public.ethos_consumer_license_scope is 'Evidence-backed owner life-license and Ethos eligibility scope. No residence or state dropdown is verification. Exact owner records evidence through guarded RPCs; initially empty.';
++comment on table public.ethos_consumer_deliveries is 'One attempted consumer invitation per campaign/email. A provider id means accepted, not delivered. Unknown or unfinished attempts require reconciliation and are never automatically retried.';

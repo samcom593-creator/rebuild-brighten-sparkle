@@ -1,0 +1,1052 @@
+diff --git a/src/components/landing/LiveStatsCounterStrip.tsx b/src/components/landing/LiveStatsCounterStrip.tsx
+index 65ea40b3..cf03aa79 100644
+--- a/src/components/landing/LiveStatsCounterStrip.tsx
++++ b/src/components/landing/LiveStatsCounterStrip.tsx
+@@ -1,93 +1,10 @@
+-import { useQuery } from "@tanstack/react-query";
+-import { useEffect, useMemo, useState } from "react";
++import { useEffect, useState } from "react";
+ import { FileText, Building2 } from "lucide-react";
+ import { AnimatedCounter } from "@/components/ui/animated-counter";
+ import { useInteractionGate } from "@/shared/hooks/useInteractionGate";
++import { useLandingLiveStats } from "@/hooks/useLandingLiveStats";
+ 
+-// wave-19 (2026-06-04): supabase deferred to queryFn. LiveStatsCounterStrip
+-// renders eagerly under HeroSection — the static import was the second of
+-// two anchor edges pulling vendor-supabase into the cold landing modulepreload
+-// chain (the other was RecentHiresTicker, also detached this wave). The
+-// the localStorage cache below means the numbers render real-
+-// looking before the dynamic import even resolves — no above-fold zero.
+-//
+-// wave-41 (2026-06-08): wave-19 deferred the static import but the queryFn
+-// still fired sync-on-mount, dynamic-importing vendor-supabase (45 KB gz)
+-// inside Lighthouse mobile's audit window — it consistently showed in
+-// heaviest-transfers even after wave-40 killed the AuthProvider path. Gate
+-// the query `enabled` on useInteractionGate(): first paint stays exactly
+-// the same (cache fallback), but the dynamic import only
+-// fires once the user actually interacts (pointerdown / keydown / scroll /
+-// touchstart) or the 5s safety timeout fires. Lighthouse audits never
+-// interact, so vendor-supabase finally exits the cold-landing transfer list.
+-
+-interface LiveStats {
+-  active_agents: number;
+-  hires_recent: number;
+-  applications_30d: number;
+-  applications_total: number;
+-  carriers_partnered: number;
+-  generated_at: string;
+-}
+-
+-const CACHE_KEY = "apex_live_stats_last_good";
+-// wave-X (2026-06-19): feb05b97 fixed landing_live_stats() to return truth=41
+-// active_agents (was 123 due to inactive+XAGENT placeholder pollution). But the
+-// The floor was the disease, not the cure: HARDCODED_FLOOR.active_agents was 104 and pick() upgraded any live<floor to
+-// floor — so the strip kept rendering 104 even after the DB told the truth.
+-// Floor now mirrors known truth-floor (40, one below current 41) and pick()
+-// trusts any real positive RPC result. Lying upward is the same disease as
+-// lying downward: it just kills trust later instead of now.
+-// MP-370: there is no floor any more, because a floor is a fabricated number.
+-//
+-// This strip renders under a label that says "Live · pulled from the operating
+-// system". The floor was { active_agents: 40, applications_30d: 131,
+-// carriers_partnered: 22 } and it shipped whenever the RPC errored or a cold
+-// visitor had no cache. Measured 2026-09-01: landing_live_stats() returns
+-// applications_30d = 35. The floor said 131 -- 3.7x -- under the word "Live".
+-//
+-// The floor was not a stale constant that drifted. It was correct when it was
+-// written and truth fell underneath it, which is the failure mode a constant
+-// cannot survive: it can only ever be right on the day it is typed. The
+-// check-landing-truth-floor ceiling for this key is 150 and it never moves
+-// down, so 131 passed every CI run while being nearly four times the number.
+-//
+-// A loading state is not a trust problem. An invented one is. Unknown now
+-// renders as a dash.
+-
+-function readCache(): Partial<LiveStats> | null {
+-  try {
+-    const raw = localStorage.getItem(CACHE_KEY);
+-    return raw ? JSON.parse(raw) : null;
+-  } catch { return null; }
+-}
+-function writeCache(d: LiveStats) {
+-  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ...d, _cached_at: Date.now() })); } catch { /* swallow */ } // empty-catch-allow:localstorage-incognito
+-}
+-// Live RPC wins whenever it returns a real positive count; cache is the warm
+-// fallback for a repeat visitor. There is no third option: null means "we do
+-// not know yet", and the card says so instead of inventing a figure.
+-function pick(live: number | undefined, cached: number | undefined): number | null {
+-  if (typeof live === "number" && live >= 1) return live;
+-  if (typeof cached === "number" && cached >= 1) return cached;
+-  return null;
+-}
+-
+-/**
+- * Live-counter strip rendered below the hero CTA on the public landing.
+- *
+- * Pulls real numbers from the public RPC landing_live_stats() (no PII, just
+- * counts). Numbers animate up on first mount via the existing
+- * AnimatedCounter primitive so the page feels alive on every load.
+- *
+- * Refresh cadence: 5 min — counts move slowly, no need to hammer.
+- *
+- * Resilience (2026-05-24): the RPC sometimes returns 0 on cold render or
+- * during a Supabase blip. A zero above the fold destroys the trust the
+- * deals ticker just built. So we layer three fallbacks: RPC → localStorage
+- * last-good → a dash. MP-370 deleted the hardcoded floor: an invented number
+- * under a label reading "Live" is worse than an honest loading state.
+- */
++/** Public counts share one verified response. Unavailable data stays unknown. */
+ export function LiveStatsCounterStrip() {
+   const gateOpen = useInteractionGate();
+   // 2026-06-12: gate-OR-timer · keeps Lighthouse cold-load clean (~1s) but
+@@ -97,36 +14,19 @@ export function LiveStatsCounterStrip() {
+     const t = setTimeout(() => setTimerOpen(true), 1500);
+     return () => clearTimeout(t);
+   }, []);
+-  const { data } = useQuery({
+-    queryKey: ["landing_live_stats"],
+-    queryFn: async (): Promise<LiveStats | null> => {
+-      const { supabase } = await import("@/integrations/supabase/client");
+-      const { data, error } = await supabase.rpc("landing_live_stats");
+-      if (error) throw error;
+-      return data as unknown as LiveStats;
+-    },
+-    enabled: gateOpen || timerOpen,
+-    staleTime: 60_000,
+-    refetchInterval: 300_000,
+-  });
+-
+-  const cached = useMemo(() => readCache(), []);
+-  // Persist any positive RPC result. Caching truth — even when truth is lower
+-  // than the prior cache — keeps the strip honest after roster shrinks.
+-  useEffect(() => {
+-    if (data && (data.active_agents ?? 0) >= 1) {
+-      writeCache(data);
+-    }
+-  }, [data]);
+-
+-  const apps30d = pick(data?.applications_30d, cached?.applications_30d);
+-  const carriers = pick(data?.carriers_partnered, cached?.carriers_partnered);
++  const { data, isError, isPending, refetch, isFetching } = useLandingLiveStats(gateOpen || timerOpen);
++  const apps30d = data?.applications_30d ?? null;
++  const carriers = data?.carriers_partnered ?? null;
++  const status = isError
++    ? data ? "Last available numbers · update unavailable" : "Agency numbers are unavailable right now"
++    : isPending ? "Loading agency numbers…" : "Latest available agency numbers";
+ 
+   return (
+     <div className="landing-fade-up landing-delay-400 max-w-3xl mx-auto mb-10">
+-      <p className="text-[10px] text-muted-foreground text-center mb-3 uppercase tracking-[0.3em] font-display font-semibold">
+-        {apps30d === null && carriers === null ? "Pulling from the operating system…" : "Live · pulled from the operating system"}
+-      </p>
++      <div className="mb-3 text-center">
++        <p role="status" className="text-sm text-muted-foreground font-display">{status}</p>
++        {isError && <button type="button" className="min-h-11 px-3 text-sm text-primary underline underline-offset-4" disabled={isFetching} onClick={() => void refetch()}>{isFetching ? "Retrying…" : "Retry agency numbers"}</button>}
++      </div>
+       {/* 2026-08-13 Sam: "just remove that number." The Active agents counter is
+           gone from the public strip — 56 (loose def) vs 6 (Skool-gated) was a
+           number that could only mislead a recruit, so it is not shown at all
+@@ -172,10 +72,10 @@ function CounterCard({ icon: Icon, value, label, color }: CardProps) {
+       <div className={`relative font-display font-extrabold tabular-nums ${c.text}`}
+            style={{ fontSize: "clamp(1.5rem, 4.5vw, 2.5rem)", lineHeight: 1 }}>
+         {value === null
+-          ? <span aria-label="loading" className="opacity-40">—</span>
++          ? <span aria-label="Not available" className="opacity-50">—</span>
+           : <AnimatedCounter value={value} duration={1800} />}
+       </div>
+-      <div className="relative text-[11px] sm:text-xs text-muted-foreground mt-2 font-medium uppercase tracking-wider">
++      <div className="relative text-sm text-muted-foreground mt-2 font-medium">
+         {label}
+       </div>
+     </div>
+diff --git a/src/components/leads/EthosConsumerCampaignPanel.tsx b/src/components/leads/EthosConsumerCampaignPanel.tsx
+new file mode 100644
+index 00000000..9da68d6f
+--- /dev/null
++++ b/src/components/leads/EthosConsumerCampaignPanel.tsx
+@@ -0,0 +1,107 @@
++import { useEffect, useRef, useState } from "react";
++import { supabase } from "@/integrations/supabase/client";
++import { Button } from "@/components/ui/button";
++import { Input } from "@/components/ui/input";
++import { Label } from "@/components/ui/label";
++import { GlassCard } from "@/components/ui/glass-card";
++import { EthosConsumerSettings } from "@/components/leads/EthosConsumerSettings";
++import { ETHOS_CONSUMER_CAMPAIGN_KEY } from "../../../supabase/functions/_shared/ethos-consumer-campaign";
++
++type Candidate = { lead_id: string; email: string; first_name: string | null; state: string; audience_token: string };
++type Preview = {
++  counts: Record<string, number>;
++  eligible: Candidate[];
++  already_queued: number;
++  campaign: { sends_enabled: boolean; approved_at: string | null };
++  message: { subject: string; text: string };
++};
++const REASONS: Record<string, string> = {
++  eligible: "Eligible consumers", email_missing_or_invalid: "Email missing or invalid", state_missing_or_invalid: "State missing or invalid",
++  licensed_state_not_verified: "Owner license evidence missing or expired", ethos_state_eligibility_not_verified: "Ethos state eligibility not verified",
++  do_not_contact: "Do not contact", email_opt_out: "Email opted out", email_suppressed: "Email suppressed", lead_suppressed: "Lead suppressed",
++  duplicate_email: "Duplicate email", email_identity_conflict: "Conflicting states for one email", consumer_source_unverified: "Consumer source not verified",
++};
++
++/** Consumer-only handoff, mounted by the consumer worklist. No producer invitations are sent here. */
++export function EthosConsumerCampaignPanel({ sourceBatchId = "" }: { sourceBatchId?: string }) {
++  const [batch, setBatch] = useState(sourceBatchId);
++  const [preview, setPreview] = useState<Preview | null>(null);
++  const [selected, setSelected] = useState<Set<string>>(new Set());
++  const [busy, setBusy] = useState(false);
++  const [error, setError] = useState<string | null>(null);
++  const [receipt, setReceipt] = useState<string | null>(null);
++  const [reviewed, setReviewed] = useState(false);
++  const [queuedDeliveryIds, setQueuedDeliveryIds] = useState<string[]>([]);
++  const currentBatch = useRef(sourceBatchId);
++  const requestVersion = useRef(0);
++  useEffect(() => {
++    requestVersion.current += 1;
++    currentBatch.current = sourceBatchId;
++    setBatch(sourceBatchId); setPreview(null); setSelected(new Set()); setReviewed(false); setQueuedDeliveryIds([]); setReceipt(null); setError(null); setBusy(false);
++  }, [sourceBatchId]);
++
++  const call = async (body: Record<string, unknown>) => {
++    const result = await supabase.functions.invoke("ethos-consumer-campaign", { body: { campaign_key: ETHOS_CONSUMER_CAMPAIGN_KEY, source_batch_id: batch.trim(), ...body } });
++    if (result.error) {
++      const fallbackMessage = result.error.message;
++      const response = (result.error as { context?: Response }).context;
++      if (response?.clone) {
++        const details = await response.clone().json().catch(() => { throw new Error(fallbackMessage); });
++        if (details?.error) throw new Error(String(details.error));
++      }
++      throw new Error(fallbackMessage);
++    }
++    if (!result.data?.ok && !Array.isArray(result.data?.receipts)) throw new Error(result.data?.error ?? "The campaign did not return a complete receipt.");
++    return result.data;
++  };
++  const inspect = async () => {
++    const requestedBatch = batch.trim();
++    const version = ++requestVersion.current;
++    setBusy(true); setError(null); setReceipt(null); setReviewed(false); setQueuedDeliveryIds([]); setPreview(null); setSelected(new Set());
++    try { const result = await call({ action: "preview" }) as Preview; if (requestVersion.current === version && currentBatch.current.trim() === requestedBatch) setPreview(result); }
++    catch (e) { if (requestVersion.current === version && currentBatch.current.trim() === requestedBatch) setError((e as Error).message); }
++    finally { if (requestVersion.current === version) setBusy(false); }
++  };
++  const queue = async () => {
++    if (!preview) return;
++    const requestedBatch = batch.trim();
++    const version = ++requestVersion.current;
++    setBusy(true); setError(null);
++    try {
++      const result = await call({ action: "queue", selections: preview.eligible.filter((r) => selected.has(r.lead_id)).map(({ lead_id, audience_token }) => ({ lead_id, audience_token })) });
++      if (requestVersion.current !== version || currentBatch.current.trim() !== requestedBatch) return;
++      setReceipt(`${result.queued} queued, ${result.already_present} already recorded. No email sent by this step.`);
++      setQueuedDeliveryIds(result.delivery_ids ?? []);
++    } catch (e) { if (requestVersion.current === version && currentBatch.current.trim() === requestedBatch) setError((e as Error).message); }
++    finally { if (requestVersion.current === version) setBusy(false); }
++  };
++  const dispatch = async () => {
++    const requestedBatch = batch.trim();
++    const version = ++requestVersion.current;
++    setBusy(true); setError(null);
++    try {
++      const result = await call({ action: "dispatch", confirm_campaign: ETHOS_CONSUMER_CAMPAIGN_KEY, delivery_ids: queuedDeliveryIds, limit: 25 });
++      if (requestVersion.current !== version || currentBatch.current.trim() !== requestedBatch) return;
++      const unknown = (result.receipts ?? []).filter((r: { status: string; receiptSaved: boolean }) => r.status === "unknown" || !r.receiptSaved).length;
++      setReceipt(`${result.provider_accepted} accepted by the email provider. Delivery is not yet confirmed.${unknown ? ` ${unknown} need reconciliation; do not resend them.` : ""}`);
++      setReviewed(false); setQueuedDeliveryIds([]);
++    } catch (e) { if (requestVersion.current === version && currentBatch.current.trim() === requestedBatch) setError((e as Error).message); }
++    finally { if (requestVersion.current === version) setBusy(false); }
++  };
++  return <GlassCard className="space-y-4 p-4 sm:p-5">
++    <div><h2 className="text-base font-semibold">Ethos consumer coverage email</h2><p className="mt-1 text-sm text-muted-foreground">Preview an imported consumer batch against the owner&apos;s verified license and Ethos eligibility. This sends consumers to Sam&apos;s coverage page.</p></div>
++    <EthosConsumerSettings onChanged={() => { requestVersion.current += 1; setBusy(false); setPreview(null); setSelected(new Set()); setReviewed(false); setQueuedDeliveryIds([]); setReceipt(null); }} />
++    {!sourceBatchId ? <div className="space-y-1"><Label htmlFor="ethos-consumer-batch">Consumer import batch</Label><Input id="ethos-consumer-batch" value={batch} placeholder="Exact source batch ID" onChange={(e) => { requestVersion.current += 1; currentBatch.current=e.target.value; setBusy(false); setBatch(e.target.value); setPreview(null); setReviewed(false); setQueuedDeliveryIds([]); setSelected(new Set()); setReceipt(null); setError(null); }} /></div> : null}
++    <Button type="button" variant="outline" disabled={busy || !batch.trim()} onClick={() => void inspect()}>{busy ? "Working…" : "Preview eligible consumers"}</Button>
++    {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
++    {preview ? <>
++      <div className="grid gap-2 text-sm sm:grid-cols-2">{Object.entries(preview.counts).map(([reason, count]) => <p key={reason}><span className="font-semibold tabular-nums">{count}</span> {REASONS[reason] ?? "Held for review"}</p>)}</div>
++      <p className="text-xs text-muted-foreground">{preview.already_queued} already recorded for this batch. The preview shows up to 25 new eligible recipients.</p>
++      <details className="rounded-md border border-border p-3"><summary className="cursor-pointer text-sm font-medium">Review the email</summary><p className="mt-3 text-sm font-semibold">{preview.message.subject}</p><p className="mt-2 whitespace-pre-line text-sm">{preview.message.text}</p><p className="mt-2 text-xs text-muted-foreground">The email service adds the unsubscribe link and company postal address.</p></details>
++      {preview.eligible.length ? <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr><th className="p-2">Select</th><th className="p-2">Consumer</th><th className="p-2">State</th></tr></thead><tbody>{preview.eligible.map((r) => <tr key={r.lead_id} className="border-t border-border"><td className="p-2"><input type="checkbox" aria-label={`Select ${r.email}`} disabled={busy} checked={selected.has(r.lead_id)} onChange={(e) => { setSelected((before) => { const next = new Set(before); if (e.target.checked) next.add(r.lead_id); else next.delete(r.lead_id); return next; }); setQueuedDeliveryIds([]); setReviewed(false); setReceipt(null); }} /></td><td className="p-2">{r.first_name ?? "Consumer"}<div className="text-xs text-muted-foreground">{r.email}</div></td><td className="p-2">{r.state}</td></tr>)}</tbody></table></div> : <p className="text-sm">No new eligible recipients. Resolve the evidence or contact blockers shown above before queueing.</p>}
++      <Button type="button" disabled={busy || selected.size === 0} onClick={() => void queue()}>Queue {selected.size} selected</Button>
++      {!preview.campaign.sends_enabled || !preview.campaign.approved_at ? <p className="text-sm text-muted-foreground">Sending is disabled. The owner can record evidence and enable reviewed sends in Licensed states and sending settings.</p> : <div className="space-y-2"><label className="flex gap-2 text-sm"><input type="checkbox" checked={reviewed} onChange={(e) => setReviewed(e.target.checked)} />I reviewed this message and the selected eligible consumers.</label><Button type="button" disabled={busy || !reviewed || queuedDeliveryIds.length === 0} onClick={() => void dispatch()}>Send {queuedDeliveryIds.length} reviewed invitations</Button></div>}
++    </> : null}
++    {receipt ? <p role="status" className="text-sm">{receipt}</p> : null}
++  </GlassCard>;
++}
+diff --git a/src/components/leads/EthosConsumerSettings.tsx b/src/components/leads/EthosConsumerSettings.tsx
+new file mode 100644
+index 00000000..33a59163
+--- /dev/null
++++ b/src/components/leads/EthosConsumerSettings.tsx
+@@ -0,0 +1,72 @@
++import { useEffect, useState } from "react";
++import { supabase } from "@/integrations/supabase/client";
++import { Button } from "@/components/ui/button";
++import { Input } from "@/components/ui/input";
++import { Label } from "@/components/ui/label";
++import { ETHOS_CONSUMER_CAMPAIGN_KEY } from "../../../supabase/functions/_shared/ethos-consumer-campaign";
++
++type Scope = { state: string; license_status: string; license_evidence_ref: string | null; license_expires_at: string | null; license_verified_at: string | null; ethos_eligible: boolean; ethos_evidence_ref: string | null; ethos_verified_at: string | null };
++type Settings = { campaign: { sends_enabled: boolean }; scope: Scope[] };
++
++export function EthosConsumerSettings({ onChanged }: { onChanged: () => void }) {
++  const [settings, setSettings] = useState<Settings | null>(null);
++  const [open, setOpen] = useState(false);
++  const [busy, setBusy] = useState(false);
++  const [error, setError] = useState<string | null>(null);
++  const [state, setState] = useState("");
++  const [licenseRef, setLicenseRef] = useState("");
++  const [expires, setExpires] = useState("");
++  const [ethosRef, setEthosRef] = useState("");
++  const [reviewed, setReviewed] = useState(false);
++  const [loadAttempt, setLoadAttempt] = useState(0);
++  const call = async (body: Record<string, unknown>) => {
++    const { data, error: requestError } = await supabase.functions.invoke("ethos-consumer-campaign", { body: { campaign_key: ETHOS_CONSUMER_CAMPAIGN_KEY, ...body } });
++    if (requestError) {
++      const response = (requestError as { context?: Response }).context;
++      const detail = response?.clone ? await response.clone().json().catch(() => { throw new Error(requestError.message); }) : null;
++      throw new Error(detail?.error ?? requestError.message);
++    }
++    if (!data?.ok) throw new Error(data?.error ?? "State evidence could not be loaded.");
++    return data;
++  };
++  const load = async () => { const data = await call({ action: "settings" }); setSettings(data as Settings); };
++  useEffect(() => {
++    if (!open) return;
++    let current = true;
++    setBusy(true); setError(null); setSettings(null);
++    void call({ action: "settings" }).then((data) => { if (current) setSettings(data as Settings); }).catch((e) => { if (current) { setSettings(null); setError((e as Error).message); } }).finally(() => { if (current) setBusy(false); });
++    return () => { current = false; };
++  }, [open, loadAttempt]);
++  const change = async (body: Record<string, unknown>) => {
++    setBusy(true); setError(null); onChanged(); setReviewed(false);
++    try { await call(body); await load(); }
++    catch (e) { setSettings(null); setError((e as Error).message); }
++    finally { setBusy(false); }
++  };
++  const save = () => {
++    // US state-license expiry dates are recorded conservatively at the start
++    // of the stated date in UTC; no residency or area-code inference occurs.
++    if (!expires || !Number.isFinite(Date.parse(`${expires}T00:00:00Z`))) { setError("Choose the license expiration date from the evidence."); return; }
++    void change({ action: "save_scope", state, license_evidence_ref: licenseRef.trim(), license_expires_at: `${expires}T00:00:00Z`, ethos_evidence_ref: ethosRef.trim() || null, evidence_reviewed: reviewed });
++  };
++  return <section className="rounded-lg border border-border p-3">
++    <Button type="button" variant="ghost" className="w-full justify-start" disabled={busy} onClick={() => { setSettings(null); setError(null); setOpen((v) => !v); }} aria-expanded={open}>Licensed states and sending settings</Button>
++    {open ? <div className="mt-3 space-y-4">
++      <p className="text-xs text-muted-foreground">Only the campaign owner can record evidence or change sending. These are owner-recorded verifications; a home state or dropdown choice is not evidence.</p>
++      {error ? <div className="space-y-2"><p role="alert" className="text-sm text-destructive">{error}</p><Button type="button" variant="outline" disabled={busy} onClick={() => setLoadAttempt((attempt) => attempt + 1)}>Retry state evidence</Button></div> : null}
++      {settings ? <>
++        <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm font-medium">Sending {settings.campaign.sends_enabled ? "enabled" : "disabled"}</p><Button type="button" variant="outline" disabled={busy} onClick={() => void change({ action: "set_enabled", enabled: !settings.campaign.sends_enabled })}>{settings.campaign.sends_enabled ? "Disable sending" : "Enable reviewed sends"}</Button></div>
++        <p className="text-xs text-muted-foreground">Enabling sending does not send a message. Each send uses the recipients selected from a current batch preview.</p>
++        {settings.scope.length ? <ul className="space-y-2">{settings.scope.map((s) => <li key={s.state} className="rounded-md border border-border p-2 text-sm"><div className="flex flex-wrap items-center justify-between gap-2"><span className="font-medium">{s.state}: {s.license_status !== "active" ? "Inactive" : !s.license_expires_at || Date.parse(s.license_expires_at) <= Date.now() ? "License evidence expired" : s.ethos_eligible ? "License and Ethos evidence recorded" : "Ethos eligibility evidence missing"}</span><Button type="button" variant="ghost" size="sm" disabled={busy || s.license_status !== "active"} onClick={() => void change({ action: "deactivate_scope", state: s.state })}>Deactivate {s.state}</Button></div><p className="mt-1 break-words text-xs text-muted-foreground">License: {s.license_evidence_ref ?? "Missing"}{s.license_expires_at ? ` · Expires ${s.license_expires_at.slice(0, 10)}` : ""}</p><p className="break-words text-xs text-muted-foreground">Ethos: {s.ethos_evidence_ref ?? "Not recorded"}</p></li>)}</ul> : <p className="text-sm">No states recorded. Consumer emails remain blocked.</p>}
++        <div className="grid gap-3 sm:grid-cols-2">
++          <div className="space-y-1"><Label htmlFor="ethos-scope-state">Licensed state code</Label><Input id="ethos-scope-state" maxLength={2} value={state} onChange={(e) => { setState(e.target.value.toUpperCase()); setReviewed(false); }} placeholder="WI" /></div>
++          <div className="space-y-1"><Label htmlFor="ethos-scope-expiry">License expiration date</Label><Input id="ethos-scope-expiry" type="date" value={expires} onChange={(e) => { setExpires(e.target.value); setReviewed(false); }} /></div>
++          <div className="space-y-1 sm:col-span-2"><Label htmlFor="ethos-scope-license">Active life-license evidence reference</Label><Input id="ethos-scope-license" value={licenseRef} onChange={(e) => { setLicenseRef(e.target.value); setReviewed(false); }} placeholder="Regulator record or verified license document" /></div>
++          <div className="space-y-1 sm:col-span-2"><Label htmlFor="ethos-scope-eligibility">Ethos state/product eligibility evidence reference</Label><Input id="ethos-scope-eligibility" value={ethosRef} onChange={(e) => { setEthosRef(e.target.value); setReviewed(false); }} placeholder="Verified carrier record; leave blank to keep this state blocked" /></div>
++        </div>
++        <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1" checked={reviewed} onChange={(e) => setReviewed(e.target.checked)} />I checked the named evidence and its expiration for this state.</label>
++        <Button type="button" disabled={busy || !reviewed || state.length !== 2 || !licenseRef.trim() || !expires} onClick={save}>Save state evidence</Button>
++      </> : busy ? <p role="status" className="text-sm">Loading state evidence…</p> : null}
++    </div> : null}
++  </section>;
++}
+diff --git a/src/components/recruiting/RecruitingWorkspaceNav.tsx b/src/components/recruiting/RecruitingWorkspaceNav.tsx
+index 544d2727..ef933f59 100644
+--- a/src/components/recruiting/RecruitingWorkspaceNav.tsx
++++ b/src/components/recruiting/RecruitingWorkspaceNav.tsx
+@@ -18,7 +18,7 @@ const WORKSPACE_VIEWS = [
+   { label: "Call list", detail: "Contact, outcome, next step", href: "/dashboard/recruiting", icon: Users, tone: "gold", exact: true },
+   { label: "Licensed", detail: "Licensed agents to bring on", href: "/dashboard/recruiting/licensed", icon: BadgeCheck, tone: "good", staffOnly: true },
+   { label: "Pipeline", detail: "Everyone, one view", href: "/dashboard/recruiting/pipeline", icon: LayoutList, tone: "cool" },
+-  { label: "New hires", detail: "Hire to first deal", href: "/dashboard/recruits", icon: UserCheck, tone: "good" },
++  { label: "New hires", detail: "Hire to first deal", href: "/dashboard/recruits", icon: UserCheck, tone: "good", hireTracking: true },
+   { label: "Calendar", detail: "Interviews and calls", href: "/dashboard/calendar", icon: CalendarClock, tone: "warm" },
+   { label: trainingLabel, detail: "Ramp to field", href: "/dashboard/recruiting/training", icon: BookOpenCheck, tone: "royal" },
+ ] as const;
+@@ -35,7 +35,12 @@ export function RecruitingWorkspaceNav() {
+   const { pathname } = useLocation();
+   const auth = useOptionalAuth();
+   const isStaff = !!auth && (auth.isAdmin || auth.isVaManager || auth.isVa);
+-  const views = WORKSPACE_VIEWS.filter((view) => !("staffOnly" in view && view.staffOnly) || isStaff);
++  // Recruiters can work applications, but /dashboard/recruits is restricted to
++  // managers and staff. Keep that page's existing access boundary visible here.
++  const recruiterOnly = !!auth?.isRecruiter && !isStaff && !auth.isManager;
++  const views = WORKSPACE_VIEWS.filter((view) =>
++    (!("staffOnly" in view && view.staffOnly) || isStaff)
++    && (!("hireTracking" in view && view.hireTracking) || !recruiterOnly));
+ 
+   return (
+     <nav aria-label="Recruiting workspace" className="border-b border-border sm:overflow-x-auto">
+diff --git a/src/hooks/useContractRecords.ts b/src/hooks/useContractRecords.ts
+index 7928b4d9..7588ea14 100644
+--- a/src/hooks/useContractRecords.ts
++++ b/src/hooks/useContractRecords.ts
+@@ -4,6 +4,7 @@
+  */
+ import { useQuery } from "@tanstack/react-query";
+ import { supabase } from "@/integrations/supabase/client";
++import { useAuth } from "@/hooks/useAuth";
+ 
+ export type ContractScope = "mine" | "agency" | "imo";
+ export interface ContractRow {
+@@ -26,11 +27,13 @@ export interface ContractSummary {
+   by_status: Record<string, number>;
+ }
+ const EMPTY_SUMMARY: ContractSummary = { total: 0, active: 0, requested: 0, issues: 0, by_status: {} };
+-const PAGE_SIZE = 200;
++export const CONTRACT_RECORD_PAGE_SIZE = 200;
+ 
+ export function useContractSummary(scope: ContractScope, search: string) {
++  const { user } = useAuth();
+   return useQuery({
+-    queryKey: ["apex-contracts-summary", scope, search],
++    queryKey: ["apex-contracts-summary", user?.id, scope, search],
++    enabled: !!user?.id,
+     staleTime: 60_000,
+     queryFn: async (): Promise<ContractSummary> => {
+       const { data, error } = await supabase.rpc("apex_contracts_summary" as never, {
+@@ -43,16 +46,18 @@ export function useContractSummary(scope: ContractScope, search: string) {
+   });
+ }
+ export function useContractRows(scope: ContractScope, status: string, search: string, page: number) {
++  const { user } = useAuth();
+   return useQuery({
+-    queryKey: ["apex-contracts-list", scope, status, search, page],
++    queryKey: ["apex-contracts-list", user?.id, scope, status, search, page],
++    enabled: !!user?.id,
+     staleTime: 60_000,
+     queryFn: async (): Promise<ContractRow[]> => {
+       const { data, error } = await supabase.rpc("apex_contracts_list" as never, {
+         p_scope: scope,
+         p_status: status,
+         p_search: search || null,
+-        p_limit: PAGE_SIZE,
+-        p_offset: page * PAGE_SIZE,
++        p_limit: CONTRACT_RECORD_PAGE_SIZE,
++        p_offset: page * CONTRACT_RECORD_PAGE_SIZE,
+       } as never);
+       if (error) throw error;
+       return (data ?? []) as ContractRow[];
+diff --git a/src/hooks/useLandingLiveStats.ts b/src/hooks/useLandingLiveStats.ts
+new file mode 100644
+index 00000000..62e14bad
+--- /dev/null
++++ b/src/hooks/useLandingLiveStats.ts
+@@ -0,0 +1,19 @@
++import { useQuery } from "@tanstack/react-query";
++import { parseLandingLiveStats } from "@/lib/landingLiveStats";
++
++export function useLandingLiveStats(enabled: boolean) {
++  return useQuery({
++    queryKey: ["landing_live_stats"],
++    queryFn: async () => {
++      // Keep the public landing's first paint independent of the database client.
++      const { supabase } = await import("@/integrations/supabase/client");
++      const { data, error } = await supabase.rpc("landing_live_stats");
++      if (error) throw error;
++      return parseLandingLiveStats(data);
++    },
++    enabled,
++    staleTime: 60_000,
++    refetchInterval: 300_000,
++    retry: 1,
++  });
++}
+diff --git a/src/hooks/useProducerWorkspace.ts b/src/hooks/useProducerWorkspace.ts
+new file mode 100644
+index 00000000..95cb6eec
+--- /dev/null
++++ b/src/hooks/useProducerWorkspace.ts
+@@ -0,0 +1,24 @@
++import { useQuery } from "@tanstack/react-query";
++import { useBusinessToday } from "@/hooks/useBusinessToday";
++import { useAuth } from "@/hooks/useAuth";
++import { useProductionRealtime } from "@/hooks/useProductionRealtime";
++import { looseSupabase } from "@/lib/looseSupabase";
++import { producerWorkspaceSchema } from "@/lib/producerWorkspace";
++
++export function useProducerWorkspace(agentId?: string | null, enabled = true) {
++  const today = useBusinessToday();
++  const { user } = useAuth();
++  const query = useQuery({
++    queryKey: ["producer-workspace", agentId, user?.id, today], enabled: Boolean(agentId && user?.id) && enabled,
++    staleTime: 120_000, retry: 1,
++    queryFn: async () => {
++      const { data, error } = await looseSupabase.rpc("producer_month_workspace", { p_agent_id: agentId });
++      if (error) throw error;
++      const workspace = producerWorkspaceSchema.parse(data);
++      if (workspace.agent_id !== agentId) throw new Error("Personal production could not be verified for this producer.");
++      return workspace;
++    },
++  });
++  useProductionRealtime(() => { if (agentId && user?.id && enabled) void query.refetch({ cancelRefetch: false }); }, 800);
++  return query;
++}
+diff --git a/src/integrations/supabase/types.ts b/src/integrations/supabase/types.ts
+index abf86c1d..50daccbb 100644
+--- a/src/integrations/supabase/types.ts
++++ b/src/integrations/supabase/types.ts
+@@ -54810,6 +54810,166 @@ export type Database = {
+           },
+         ]
+       }
++      consumer_import_batches: {
++        Row: {
++          batch_key: string
++          created_at: string
++          created_by: string
++          id: string
++          receipt: Json
++          source_key: string
++          source_kind: string
++          source_name: string
++        }
++        Insert: {
++          batch_key: string
++          created_at?: string
++          created_by: string
++          id?: string
++          receipt?: Json
++          source_key: string
++          source_kind: string
++          source_name: string
++        }
++        Update: {
++          batch_key?: string
++          created_at?: string
++          created_by?: string
++          id?: string
++          receipt?: Json
++          source_key?: string
++          source_kind?: string
++          source_name?: string
++        }
++        Relationships: []
++      }
++      consumer_import_rows: {
++        Row: {
++          batch_id: string
++          created_at: string
++          id: string
++          issues: string[]
++          lead_id: string | null
++          payload: Json
++          resolved_by_row_id: string | null
++          row_key: string
++          source_key: string
++          source_row: number
++          status: string
++        }
++        Insert: {
++          batch_id: string
++          created_at?: string
++          id?: string
++          issues?: string[]
++          lead_id?: string | null
++          payload: Json
++          resolved_by_row_id?: string | null
++          row_key: string
++          source_key: string
++          source_row: number
++          status: string
++        }
++        Update: {
++          batch_id?: string
++          created_at?: string
++          id?: string
++          issues?: string[]
++          lead_id?: string | null
++          payload?: Json
++          resolved_by_row_id?: string | null
++          row_key?: string
++          source_key?: string
++          source_row?: number
++          status?: string
++        }
++        Relationships: [
++          {
++            foreignKeyName: "consumer_import_rows_batch_id_fkey"
++            columns: ["batch_id"]
++            isOneToOne: false
++            referencedRelation: "consumer_import_batches"
++            referencedColumns: ["id"]
++          },
++          {
++            foreignKeyName: "consumer_import_rows_lead_id_fkey"
++            columns: ["lead_id"]
++            isOneToOne: false
++            referencedRelation: "client_leads"
++            referencedColumns: ["id"]
++          },
++          {
++            foreignKeyName: "consumer_import_rows_resolved_by_row_id_fkey"
++            columns: ["resolved_by_row_id"]
++            isOneToOne: false
++            referencedRelation: "consumer_import_rows"
++            referencedColumns: ["id"]
++          },
++        ]
++      }
++      consumer_policy_observations: {
++        Row: {
++          amount_cadence: string
++          carrier: string | null
++          id: string
++          import_row_id: string
++          lead_id: string
++          observed_at: string
++          ownership_claim: string
++          policy_number: string | null
++          product: string | null
++          source_policy_date: string | null
++          source_status: string | null
++          supplier_amount: number | null
++          verified_at: string | null
++        }
++        Insert: {
++          amount_cadence?: string
++          carrier?: string | null
++          id?: string
++          import_row_id: string
++          lead_id: string
++          observed_at?: string
++          ownership_claim?: string
++          policy_number?: string | null
++          product?: string | null
++          source_policy_date?: string | null
++          source_status?: string | null
++          supplier_amount?: number | null
++          verified_at?: string | null
++        }
++        Update: {
++          amount_cadence?: string
++          carrier?: string | null
++          id?: string
++          import_row_id?: string
++          lead_id?: string
++          observed_at?: string
++          ownership_claim?: string
++          policy_number?: string | null
++          product?: string | null
++          source_policy_date?: string | null
++          source_status?: string | null
++          supplier_amount?: number | null
++          verified_at?: string | null
++        }
++        Relationships: [
++          {
++            foreignKeyName: "consumer_policy_observations_import_row_id_fkey"
++            columns: ["import_row_id"]
++            isOneToOne: true
++            referencedRelation: "consumer_import_rows"
++            referencedColumns: ["id"]
++          },
++          {
++            foreignKeyName: "consumer_policy_observations_lead_id_fkey"
++            columns: ["lead_id"]
++            isOneToOne: false
++            referencedRelation: "client_leads"
++            referencedColumns: ["id"]
++          },
++        ]
++      }
+       contact_history: {
+         Row: {
+           agent_id: string | null
+@@ -76587,6 +76747,150 @@ export type Database = {
+           },
+         ]
+       }
++      ethos_consumer_campaigns: {
++        Row: {
++          approved_at: string | null
++          approved_by: string | null
++          campaign_key: string
++          coverage_url: string
++          created_at: string
++          owner_user_id: string
++          sends_enabled: boolean
++          template_version: string
++        }
++        Insert: {
++          approved_at?: string | null
++          approved_by?: string | null
++          campaign_key: string
++          coverage_url: string
++          created_at?: string
++          owner_user_id: string
++          sends_enabled?: boolean
++          template_version: string
++        }
++        Update: {
++          approved_at?: string | null
++          approved_by?: string | null
++          campaign_key?: string
++          coverage_url?: string
++          created_at?: string
++          owner_user_id?: string
++          sends_enabled?: boolean
++          template_version?: string
++        }
++        Relationships: []
++      }
++      ethos_consumer_deliveries: {
++        Row: {
++          attempted_at: string | null
++          audience_token: string
++          campaign_key: string
++          claim_id: string | null
++          email: string
++          id: string
++          lead_id: string
++          provider_id: string | null
++          queued_at: string
++          queued_by: string | null
++          reason: string | null
++          scope_evidence: Json
++          settled_at: string | null
++          source_batch_id: string
++          state: string
++          status: string
++        }
++        Insert: {
++          attempted_at?: string | null
++          audience_token: string
++          campaign_key: string
++          claim_id?: string | null
++          email: string
++          id?: string
++          lead_id: string
++          provider_id?: string | null
++          queued_at?: string
++          queued_by?: string | null
++          reason?: string | null
++          scope_evidence?: Json
++          settled_at?: string | null
++          source_batch_id: string
++          state: string
++          status?: string
++        }
++        Update: {
++          attempted_at?: string | null
++          audience_token?: string
++          campaign_key?: string
++          claim_id?: string | null
++          email?: string
++          id?: string
++          lead_id?: string
++          provider_id?: string | null
++          queued_at?: string
++          queued_by?: string | null
++          reason?: string | null
++          scope_evidence?: Json
++          settled_at?: string | null
++          source_batch_id?: string
++          state?: string
++          status?: string
++        }
++        Relationships: [
++          {
++            foreignKeyName: "ethos_consumer_deliveries_campaign_key_fkey"
++            columns: ["campaign_key"]
++            isOneToOne: false
++            referencedRelation: "ethos_consumer_campaigns"
++            referencedColumns: ["campaign_key"]
++          },
++          {
++            foreignKeyName: "ethos_consumer_deliveries_lead_id_fkey"
++            columns: ["lead_id"]
++            isOneToOne: false
++            referencedRelation: "client_leads"
++            referencedColumns: ["id"]
++          },
++        ]
++      }
++      ethos_consumer_license_scope: {
++        Row: {
++          ethos_eligible: boolean
++          ethos_evidence_ref: string | null
++          ethos_verified_at: string | null
++          license_evidence_ref: string | null
++          license_expires_at: string | null
++          license_status: string
++          license_verified_at: string | null
++          owner_user_id: string
++          state: string
++          verified_by: string | null
++        }
++        Insert: {
++          ethos_eligible?: boolean
++          ethos_evidence_ref?: string | null
++          ethos_verified_at?: string | null
++          license_evidence_ref?: string | null
++          license_expires_at?: string | null
++          license_status?: string
++          license_verified_at?: string | null
++          owner_user_id: string
++          state: string
++          verified_by?: string | null
++        }
++        Update: {
++          ethos_eligible?: boolean
++          ethos_evidence_ref?: string | null
++          ethos_verified_at?: string | null
++          license_evidence_ref?: string | null
++          license_expires_at?: string | null
++          license_status?: string
++          license_verified_at?: string | null
++          owner_user_id?: string
++          state?: string
++          verified_by?: string | null
++        }
++        Relationships: []
++      }
+       ethos_live_policies: {
+         Row: {
+           amount: number | null
+@@ -86027,6 +86331,84 @@ export type Database = {
+           },
+         ]
+       }
++      interview_disposition_receipts: {
++        Row: {
++          actor_user_id: string | null
++          after_application: Json | null
++          after_interview: Json
++          after_progress: Json | null
++          application_id: string | null
++          before_application: Json | null
++          before_interview: Json
++          before_progress: Json | null
++          can_undo: boolean
++          contact_log_id: string | null
++          contact_log_receipt: Json | null
++          created_at: string
++          id: string
++          interview_id: string
++          outcome: string
++          sequence: number
++          undone_at: string | null
++          undone_by: string | null
++        }
++        Insert: {
++          actor_user_id?: string | null
++          after_application?: Json | null
++          after_interview: Json
++          after_progress?: Json | null
++          application_id?: string | null
++          before_application?: Json | null
++          before_interview: Json
++          before_progress?: Json | null
++          can_undo?: boolean
++          contact_log_id?: string | null
++          contact_log_receipt?: Json | null
++          created_at?: string
++          id?: string
++          interview_id: string
++          outcome: string
++          sequence?: never
++          undone_at?: string | null
++          undone_by?: string | null
++        }
++        Update: {
++          actor_user_id?: string | null
++          after_application?: Json | null
++          after_interview?: Json
++          after_progress?: Json | null
++          application_id?: string | null
++          before_application?: Json | null
++          before_interview?: Json
++          before_progress?: Json | null
++          can_undo?: boolean
++          contact_log_id?: string | null
++          contact_log_receipt?: Json | null
++          created_at?: string
++          id?: string
++          interview_id?: string
++          outcome?: string
++          sequence?: never
++          undone_at?: string | null
++          undone_by?: string | null
++        }
++        Relationships: [
++          {
++            foreignKeyName: "interview_disposition_receipts_application_id_fkey"
++            columns: ["application_id"]
++            isOneToOne: false
++            referencedRelation: "applications"
++            referencedColumns: ["id"]
++          },
++          {
++            foreignKeyName: "interview_disposition_receipts_interview_id_fkey"
++            columns: ["interview_id"]
++            isOneToOne: false
++            referencedRelation: "interview_events"
++            referencedColumns: ["id"]
++          },
++        ]
++      }
+       interview_event_activity: {
+         Row: {
+           action: string
+@@ -91658,6 +92040,24 @@ export type Database = {
+         }
+         Relationships: []
+       }
++      lead_contact_dnc: {
++        Row: {
++          phone10: string
++          recorded_at: string
++          recorded_source: string
++        }
++        Insert: {
++          phone10: string
++          recorded_at?: string
++          recorded_source: string
++        }
++        Update: {
++          phone10?: string
++          recorded_at?: string
++          recorded_source?: string
++        }
++        Relationships: []
++      }
+       lead_counter: {
+         Row: {
+           count: number
+@@ -112133,6 +112533,93 @@ export type Database = {
+         }
+         Relationships: []
+       }
++      producer_client_call_links: {
++        Row: {
++          category: string
++          client_id: string
++          created_at: string
++          created_by: string
++          id: string
++          provider_call_id: string | null
++          transcript_id: string | null
++          updated_at: string
++        }
++        Insert: {
++          category?: string
++          client_id: string
++          created_at?: string
++          created_by: string
++          id?: string
++          provider_call_id?: string | null
++          transcript_id?: string | null
++          updated_at?: string
++        }
++        Update: {
++          category?: string
++          client_id?: string
++          created_at?: string
++          created_by?: string
++          id?: string
++          provider_call_id?: string | null
++          transcript_id?: string | null
++          updated_at?: string
++        }
++        Relationships: [
++          {
++            foreignKeyName: "producer_client_call_links_client_id_fkey"
++            columns: ["client_id"]
++            isOneToOne: false
++            referencedRelation: "agentlink_clients"
++            referencedColumns: ["id"]
++          },
++          {
++            foreignKeyName: "producer_client_call_links_provider_call_id_fkey"
++            columns: ["provider_call_id"]
++            isOneToOne: true
++            referencedRelation: "readymode_dialer_calls"
++            referencedColumns: ["id"]
++          },
++          {
++            foreignKeyName: "producer_client_call_links_transcript_id_fkey"
++            columns: ["transcript_id"]
++            isOneToOne: true
++            referencedRelation: "call_transcripts"
++            referencedColumns: ["id"]
++          },
++        ]
++      }
++      producer_work_schedules: {
++        Row: {
++          agent_id: string
++          created_at: string
++          created_by: string
++          effective_on: string
++          selling_days: number[]
++        }
++        Insert: {
++          agent_id: string
++          created_at?: string
++          created_by: string
++          effective_on: string
++          selling_days: number[]
++        }
++        Update: {
++          agent_id?: string
++          created_at?: string
++          created_by?: string
++          effective_on?: string
++          selling_days?: number[]
++        }
++        Relationships: [
++          {
++            foreignKeyName: "producer_work_schedules_agent_id_fkey"
++            columns: ["agent_id"]
++            isOneToOne: false
++            referencedRelation: "agents"
++            referencedColumns: ["id"]
++          },
++        ]
++      }
+       production_external_daily_snapshots: {
+         Row: {
+           agency_name: string
+@@ -203048,6 +203535,23 @@ export type Database = {
+           user_id: string
+         }[]
+       }
++      consumer_import_history: {
++        Args: { p_limit?: number }
++        Returns: Json
++      }
++      consumer_import_review: {
++        Args: { p_limit?: number }
++        Returns: Json
++      }
++      consumer_lead_import: {
++        Args: {
++          p_rows: Json
++          p_source_key: string
++          p_source_kind: string
++          p_source_name: string
++        }
++        Returns: Json
++      }
+       content_can_access: { Args: never; Returns: boolean }
+       content_publish_url_ok: { Args: { p_url: string }; Returns: boolean }
+       contract_review_history: {
+diff --git a/src/lib/analyticsBoot.ts b/src/lib/analyticsBoot.ts
+index ee92aac1..ba66481b 100644
+--- a/src/lib/analyticsBoot.ts
++++ b/src/lib/analyticsBoot.ts
+@@ -44,11 +44,11 @@ function loadMetaPixel(pixelId: string): void {
+   /* eslint-disable */
+   const w = window as any;
+   const d = document as any;
+-  !function(f: any,b: any,e: any,v: any,n?: any,t?: any,s?: any){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
++  (function(f: any,b: any,e: any,v: any,n?: any,t?: any,s?: any){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+   n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+   n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+   t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(w,
+-  d,'script','https://connect.facebook.net/en_US/fbevents.js');
++  d,'script','https://connect.facebook.net/en_US/fbevents.js'));
+   /* eslint-enable */
+   w.fbq("init", pixelId);
+   w.fbq("track", "PageView");

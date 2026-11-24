@@ -1,0 +1,600 @@
+diff --git a/scripts/tests/consumer-interview-receipts.mjs b/scripts/tests/consumer-interview-receipts.mjs
+new file mode 100644
+index 00000000..e2fc9f6f
+--- /dev/null
++++ b/scripts/tests/consumer-interview-receipts.mjs
+@@ -0,0 +1,173 @@
++import assert from "node:assert/strict";
++import { readFileSync } from "node:fs";
++
++// Real PostgreSQL execution in memory. Supply an existing PGlite installation;
++// this test never installs packages or connects to a production database.
++const { PGlite } = await import(process.env.PGLITE_MODULE_PATH || "@electric-sql/pglite");
++const db = new PGlite();
++const OWNER = "10000000-0000-0000-0000-000000000001";
++const APP = "20000000-0000-0000-0000-000000000001";
++const INTERVIEW = "30000000-0000-0000-0000-000000000001";
++const LEAD = "40000000-0000-0000-0000-000000000001";
++const CAMPAIGN = "ethos-consumer-20261124-v1";
++let checks = 0;
++async function check(name, fn) { await fn(); checks++; process.stdout.write(`PASS ${name}\n`); }
++async function query(sql, params = []) { return (await db.query(sql, params)).rows; }
++await db.exec(`
++create role anon; create role authenticated; create role service_role;
++create schema auth;
++create table auth.users(id uuid primary key);
++insert into auth.users values ('${OWNER}');
++create function auth.uid() returns uuid language sql as $$ select nullif(current_setting('test.uid',true),'')::uuid $$;
++create function auth.role() returns text language sql as $$ select current_setting('test.role',true) $$;
++create function public.fn_recruit_sam_user_id() returns uuid language sql as $$ select '${OWNER}'::uuid $$;
++create function public.calendar_is_scheduling_staff() returns boolean language sql as $$ select coalesce(current_setting('test.staff',true),'false')='true' $$;
++create table public.client_leads(id uuid primary key,first_name text,email text,state text,dnc boolean,last_disposition text,raw jsonb,phone_digits text,phone_e164 text);
++create table public.lead_contact_dnc(phone10 text primary key,recorded_source text);
++create table public.email_unsubscribes(email text primary key);
++create table public.email_suppressions(email text primary key);
++create table suppression_fixture(lead_id uuid,suppression_reason text);
++create view public.v_leads_suppression_all as select * from suppression_fixture;
++create type public.application_status as enum('new','interview','onboarding','contracting','approved','producing','attended_no_show','no_pickup','rejected','lapsed');
++create table public.applications(id uuid primary key,status public.application_status default 'new',closed_at timestamptz,
++ last_contacted_at timestamptz,contacted_at timestamptz,human_first_contact_at timestamptz,human_last_contact_at timestamptz,
++ last_contact_outcome text,last_contact_outcome_at timestamptz,last_contact_outcome_by uuid,last_contact_channel text,
++ next_action text,next_action_due_at timestamptz,next_action_set_at timestamptz,next_action_set_by uuid,waiting_reason text,next_review_at timestamptz,updated_at timestamptz default now());
++create table public.agents(id uuid primary key,user_id uuid,source_application_id uuid,is_deactivated boolean default false,canonical_agent_id uuid);
++create table public.interview_events(id uuid primary key,application_id uuid references public.applications,agent_id uuid references public.agents,owner_user_id uuid,
++ outcome text,outcome_at timestamptz,outcome_by uuid,notes text,followup_due_at timestamptz,contacted_at timestamptz,updated_at timestamptz default now());
++create function public.fixture_touch() returns trigger language plpgsql as $$ begin new.updated_at:=clock_timestamp(); return new; end $$;
++create trigger fixture_interview_touch before update on public.interview_events for each row execute function public.fixture_touch();
++create trigger fixture_application_touch before update on public.applications for each row execute function public.fixture_touch();
++create table public.application_contact_log(id uuid primary key default gen_random_uuid(),application_id uuid,channel text,outcome text,contact_outcome text,
++ notes text,logged_by uuid,source_surface text,next_action text,next_action_due_at timestamptz,logged_at timestamptz default now());
++create table public.next_step_progress(id uuid primary key default gen_random_uuid(),application_id uuid unique,current_stage_key text,prior_stage_key text,entered_at timestamptz,
++ completed_at timestamptz,is_stalled boolean,stalled_at timestamptz,stall_reason text,sla_due_at timestamptz,manual_stage_key text,manual_stage_at timestamptz,manual_by uuid,
++ metadata jsonb,owner_role text,owner_user_id uuid,status text,updated_at timestamptz default now());
++create function public.fn_application_has_agent(p_id uuid) returns boolean language sql as $$ select exists(select 1 from public.agents where source_application_id=p_id and not is_deactivated) $$;
++create function public.fn_log_human_contact(p_id uuid,p_channel text,p_outcome text,p_actor uuid,p_surface text,p_notes text) returns uuid language plpgsql as $$
++declare result uuid; begin
++ insert into public.application_contact_log(application_id,channel,outcome,logged_by,source_surface,notes) values(p_id,p_channel,p_outcome,p_actor,p_surface,p_notes) returning id into result;
++ update public.applications set last_contacted_at=now(),contacted_at=coalesce(contacted_at,now()),human_first_contact_at=coalesce(human_first_contact_at,now()),human_last_contact_at=now(),
++ status=case when p_outcome in ('hired','contracted') then 'contracting'::public.application_status when p_outcome='no_answer' then 'no_pickup'::public.application_status when p_outcome='completed' then 'interview'::public.application_status else status end where id=p_id;
++ return result; end $$;
++select set_config('test.role','service_role',false); select set_config('test.uid','${OWNER}',false);
++insert into public.applications(id) values('${APP}');
++insert into public.interview_events(id,application_id,owner_user_id) values('${INTERVIEW}','${APP}','${OWNER}');
++insert into public.client_leads values('${LEAD}','Pat','pat@example.com','WI',false,null,'{"source_type":"pos","source_batch_id":"fixture-batch"}','4145550100','+14145550100');
++`);
++for (const name of ["20261124130000_ethos_consumer_campaign.sql", "20261124131000_interview_disposition_receipts.sql"]) {
++  await db.exec(readFileSync(new URL(`../../supabase/migrations/${name}`, import.meta.url), "utf8"));
++}
++const candidates = () => query("select * from ethos_consumer_candidates($1,$2)", [CAMPAIGN,"fixture-batch"]);
++await check("consumer is blocked when no verified owner state exists", async () => assert.equal((await candidates())[0].reason,"licensed_state_not_verified"));
++await check("sending cannot be enabled without current state evidence",async()=>await assert.rejects(()=>query("select set_ethos_consumer_campaign_enabled($1,$2,true)",[CAMPAIGN,OWNER]),/current licensed state/));
++await check("scope saves reject missing evidence and an owner spoof",async()=>{
++  await assert.rejects(()=>query("select set_ethos_consumer_scope($1,$2,'WI',true,null,now()+interval '1 month',null)",[CAMPAIGN,OWNER]),/Current license evidence/);
++  await db.exec("select set_config('test.role','authenticated',false); select set_config('test.uid','10000000-0000-0000-0000-000000000002',false);");
++  await assert.rejects(()=>query("select set_ethos_consumer_scope($1,$2,'WI',true,'fixture-regulator',now()+interval '1 month',null)",[CAMPAIGN,OWNER]),/Only the campaign owner/);
++  await db.exec(`select set_config('test.role','service_role',false); select set_config('test.uid','${OWNER}',false);`);
++});
++await query("select set_ethos_consumer_scope($1,$2,'WI',true,'fixture-regulator',now()+interval '1 month',null)",[CAMPAIGN,OWNER]);
++await check("a license alone does not manufacture Ethos eligibility",async()=>assert.equal((await candidates())[0].reason,"ethos_state_eligibility_not_verified"));
++await query("select set_ethos_consumer_scope($1,$2,'WI',true,'fixture-regulator',now()+interval '1 month','fixture-carrier')",[CAMPAIGN,OWNER]);
++await check("verified evidence yields one reviewable eligible consumer",async()=>assert.equal((await candidates())[0].reason,"eligible"));
++await db.exec(`
++create table consumer_import_batches(id uuid primary key,source_kind text);
++create table consumer_import_rows(batch_id uuid,lead_id uuid,status text);
++insert into consumer_import_batches values('60000000-0000-0000-0000-000000000001','mortgage');
++insert into client_leads values('40000000-0000-0000-0000-000000000002','Lee','lee@example.com','WI',false,null,'{"original_source":"legacy-import"}','4145550101','+14145550101');
++insert into consumer_import_rows values('60000000-0000-0000-0000-000000000001','40000000-0000-0000-0000-000000000002','matched');
++`);
++await check("matched imports use their receipt without rewriting old raw provenance",async()=>{
++  const rows=await query("select * from ethos_consumer_candidates($1,$2)",[CAMPAIGN,"60000000-0000-0000-0000-000000000001"]);
++  assert.equal(rows.length,1); assert.equal(rows[0].reason,"eligible");
++  assert.deepEqual((await query("select raw from client_leads where email='lee@example.com'"))[0].raw,{original_source:"legacy-import"});
++});
++await check("phone suppression identity accepts NANP formats and refuses international suffixes",async()=>{
++  for (const value of ["4145550100","+1 (414) 555-0100","011 1 414 555 0100","0014145550100"]) assert.equal((await query("select ethos_consumer_phone10($1) as p",[value]))[0].p,"4145550100");
++  assert.equal((await query("select ethos_consumer_phone10('+44 414 555 0100') as p"))[0].p,null);
++});
++await check("a stop-contact record with the same email in another batch blocks this audience",async()=>{
++  await db.exec("insert into client_leads(id,first_name,email,state,dnc,raw) values('40000000-0000-0000-0000-000000000003','Pat',' PAT@example.com ','WI',true,'{\"source_batch_id\":\"other-batch\"}')");
++  assert.equal((await candidates())[0].reason,"do_not_contact");
++  await db.exec("delete from client_leads where id='40000000-0000-0000-0000-000000000003'");
++});
++const recipient=(await candidates())[0];
++const selections=JSON.stringify([{lead_id:recipient.lead_id,audience_token:recipient.audience_token}]);
++await check("changed preview evidence cannot be queued",async()=>await assert.rejects(()=>query("select queue_ethos_consumer_deliveries($1,$2,$3::jsonb,$4::uuid)",[CAMPAIGN,"fixture-batch",JSON.stringify([{lead_id:LEAD,audience_token:"stale"}]),OWNER]),/Audience changed/));
++const queued=(await query("select queue_ethos_consumer_deliveries($1,$2,$3::jsonb,$4::uuid) as r",[CAMPAIGN,"fixture-batch",selections,OWNER]))[0].r;
++await check("queueing is idempotent and never sends",async()=>{
++  assert.equal(queued.queued,1); assert.equal(queued.sent,0);
++  const again=(await query("select queue_ethos_consumer_deliveries($1,$2,$3::jsonb,$4::uuid) as r",[CAMPAIGN,"fixture-batch",selections,OWNER]))[0].r;
++  assert.equal(again.queued,0); assert.equal(again.already_present,1);
++});
++await check("disabled campaign refuses dispatch",async()=>await assert.rejects(()=>query("select * from claim_ethos_consumer_deliveries($1,$2::uuid[],5)",[CAMPAIGN,queued.delivery_ids]),/disabled/));
++await query("select set_ethos_consumer_campaign_enabled($1,$2,true)",[CAMPAIGN,OWNER]);
++await db.exec("insert into email_unsubscribes values('pat@example.com');");
++await check("opt-out added after preview blocks at claim time",async()=>{
++  assert.equal((await query("select * from claim_ethos_consumer_deliveries($1,$2::uuid[],5)",[CAMPAIGN,queued.delivery_ids])).length,0);
++  assert.equal((await query("select status,reason from ethos_consumer_deliveries"))[0].status,"blocked");
++});
++await db.exec("delete from email_unsubscribes; update ethos_consumer_deliveries set status='queued',reason=null");
++await check("a registry-only opt-out after preview blocks at claim without changing the lead",async()=>{
++  await db.exec("insert into lead_contact_dnc values('4145550100','consumer_import:quarantined-row')");
++  assert.equal((await query("select dnc from client_leads where id=$1",[LEAD]))[0].dnc,false);
++  assert.equal((await query("select * from claim_ethos_consumer_deliveries($1,$2::uuid[],5)",[CAMPAIGN,queued.delivery_ids])).length,0);
++  assert.equal((await query("select status,reason from ethos_consumer_deliveries"))[0].reason,"do_not_contact");
++  await db.exec("delete from lead_contact_dnc; update ethos_consumer_deliveries set status='queued',reason=null");
++});
++const claimed=await query("select * from claim_ethos_consumer_deliveries($1,$2::uuid[],5)",[CAMPAIGN,queued.delivery_ids]);
++await check("one claim prevents duplicate send attempts",async()=>{
++  assert.equal(claimed.length,1);
++  assert.equal((await query("select * from claim_ethos_consumer_deliveries($1,$2::uuid[],5)",[CAMPAIGN,queued.delivery_ids])).length,0);
++});
++await check("accepted needs a real matching provider receipt",async()=>{
++  await assert.rejects(()=>query("select settle_ethos_consumer_delivery($1,$2,'provider_accepted',null,null)",[claimed[0].delivery_id,claimed[0].claim_id]),/invalid provider receipt/);
++  await query("select settle_ethos_consumer_delivery($1,$2,'provider_accepted','provider-fixture',null)",[claimed[0].delivery_id,claimed[0].claim_id]);
++  assert.equal((await query("select status from ethos_consumer_deliveries"))[0].status,"provider_accepted");
++});
++
++await check("direct Hired cannot bypass canonical agent creation",async()=>{
++  await assert.rejects(()=>query("select cc_dispose_interview($1,'hired',null,null)",[INTERVIEW]),/canonical agent/);
++  assert.equal((await query("select outcome from interview_events"))[0].outcome,null);
++});
++await check("callback without deadline writes nothing",async()=>{
++  await assert.rejects(()=>query("select cc_dispose_interview($1,'callback',null,null)",[INTERVIEW]),/future callback/);
++  assert.equal((await query("select count(*)::int as n from application_contact_log"))[0].n,0);
++});
++let version=(await query("select updated_at::text as v from interview_events"))[0].v;
++const saved=(await query("select cc_record_interview_disposition($1,'callback','call tomorrow',now()+interval '1 day',$2) as r",[INTERVIEW,version]))[0].r;
++await check("callback reaches the application worklist and has an undo receipt",async()=>{
++  const app=(await query("select next_action,next_action_due_at,last_contact_outcome from applications"))[0];
++  assert.equal(app.next_action,"Call back"); assert.ok(app.next_action_due_at); assert.equal(app.last_contact_outcome,"callback"); assert.equal(saved.can_undo,true);
++});
++await check("stale disposition cannot overwrite the current outcome",async()=>await assert.rejects(()=>query("select cc_record_interview_disposition($1,'no_answer',null,null,$2)",[INTERVIEW,version]),/Interview changed/));
++await check("undo restores both records and preserves original evidence in its receipt",async()=>{
++  await query("select cc_undo_interview_disposition($1)",[saved.receipt_id]);
++  assert.equal((await query("select outcome,followup_due_at from interview_events"))[0].outcome,null);
++  const app=(await query("select next_action_due_at,last_contact_outcome,human_last_contact_at from applications"))[0];
++  assert.equal(app.next_action_due_at,null); assert.equal(app.last_contact_outcome,null); assert.equal(app.human_last_contact_at,null);
++  assert.equal((await query("select count(*)::int as n from application_contact_log"))[0].n,0);
++  const audit=(await query("select contact_log_receipt,undone_at from interview_disposition_receipts where id=$1",[saved.receipt_id]))[0];
++  assert.ok(audit.contact_log_receipt.id); assert.ok(audit.undone_at);
++});
++version=(await query("select updated_at::text as v from interview_events"))[0].v;
++const changed=(await query("select cc_record_interview_disposition($1,'no_answer',null,null,$2) as r",[INTERVIEW,version]))[0].r;
++await db.exec("update applications set next_action='Newer staff plan'");
++await check("undo refuses newer recruiting activity without partial changes",async()=>{
++  await assert.rejects(()=>query("select cc_undo_interview_disposition($1)",[changed.receipt_id]),/Recruiting activity changed/);
++  assert.equal((await query("select outcome from interview_events"))[0].outcome,"no_answer");
++  assert.equal((await query("select next_action from applications"))[0].next_action,"Newer staff plan");
++});
++await db.exec(`insert into agents values('50000000-0000-0000-0000-000000000001','${OWNER}','${APP}',false,null); update applications set status='onboarding';`);
++await query("select cc_dispose_interview($1,'hired',null,null)",[INTERVIEW]);
++await check("canonical hire preserves onboarding and cannot undo the created account",async()=>{
++  assert.equal((await query("select status from applications"))[0].status,"onboarding");
++  const receipt=(await query("select id,can_undo from interview_disposition_receipts order by sequence desc limit 1"))[0];
++  assert.equal(receipt.can_undo,false); await assert.rejects(()=>query("select cc_undo_interview_disposition($1)",[receipt.id]),/cannot be undone/);
++});
++await db.exec("select set_config('test.role','authenticated',false); select set_config('test.uid','',false); update interview_events set owner_user_id=null;");
++await check("null owner does not bypass the authorization guard",async()=>await assert.rejects(()=>query("select cc_dispose_interview($1,'no_answer',null,null)",[INTERVIEW]),/not authorized/));
++await db.close();
++process.stdout.write(`${checks} PostgreSQL receipt checks passed. No network or production writes.\n`);
+diff --git a/scripts/tests/consumer-source-import.mjs b/scripts/tests/consumer-source-import.mjs
+new file mode 100644
+index 00000000..a14ce9f6
+--- /dev/null
++++ b/scripts/tests/consumer-source-import.mjs
+@@ -0,0 +1,78 @@
++// Execute the real migration against isolated PostgreSQL (PGlite), using synthetic consumers only.
++// Usage: node scripts/tests/consumer-source-import.mjs /path/to/@electric-sql/pglite/dist/index.js
++import assert from 'node:assert/strict';
++import { readFileSync } from 'node:fs';
++import { pathToFileURL } from 'node:url';
++const { PGlite } = await import(process.argv[2] ? pathToFileURL(process.argv[2]).href : '@electric-sql/pglite');
++const db = new PGlite();
++await db.exec(`
++create role anon; create role authenticated; create schema auth;
++create table auth.users(id uuid primary key);
++insert into auth.users values ('11111111-1111-4111-8111-111111111111');
++create function auth.uid() returns uuid language sql as $$select nullif(current_setting('fixture.uid',true),'')::uuid$$;
++create function public.can_view_sold_calls() returns boolean language sql as $$select current_setting('fixture.allowed',true) = 'yes'$$;
++select set_config('fixture.uid','11111111-1111-4111-8111-111111111111',false);
++select set_config('fixture.allowed','yes',false);
++create table public.client_leads (
++id uuid primary key default gen_random_uuid(),external_id text,source_file text not null,source_files text[],
++first_name text,last_name text,phone_digits text,phone_e164 text,phone_alt text,email text,state text,street_address text,dob date,
++policy_number text,policy_carrier text,policy_product text,policy_date date,has_existing_policy boolean,
++original_agent text,original_agent_code text,loan_amount numeric,loan_type text,lender_name text,lead_date date,
++lead_type text,lead_pack text,notes text,dnc boolean,status text,last_disposition text,raw jsonb,updated_at timestamptz,
++assigned_agent_id uuid,policy_monthly_premium numeric,policy_annual_premium numeric
++);
++create table public.lead_contact_dnc(phone10 text primary key,recorded_source text not null,recorded_at timestamptz default now());
++create table public.lead_bundles(id uuid primary key, archived_at timestamptz);
++create table public.lead_bundle_items(id uuid primary key,lead_id uuid,bundle_id uuid,removed_at timestamptz,source_kind text);
++create table public.lead_bundle_grants(bundle_id uuid,user_id uuid,revoked_at timestamptz);
++`);
++await db.exec(readFileSync(new URL('../../supabase/migrations/20261124140000_consumer_source_import.sql', import.meta.url),'utf8'));
++const base = {source_row:1,first_name:'Taylor',last_name:'Example',phone_digits:'6152345678',email:'taylor@example.test',state:'TN',dob:'1980-01-01',policy_number:'DEMO-1',policy_carrier:'Example Carrier',policy_product:'Whole life',policy_date:'2020-01-01',issues:[],dnc:false,raw:{policy_status_claim:'Active (inforce)',supplier_amount:65}};
++const send=async(rows,source='fixture-source')=>(await db.query('select public.consumer_lead_import($1,$2,$3,$4::jsonb) as receipt',[source,'Synthetic policy file','pos',JSON.stringify(rows)])).rows[0].receipt;
++const first=await send([base]);assert.equal(first.imported,1);assert.equal(first.review,0);
++const replay=await send([base]);assert.equal(replay.batch_id,first.batch_id);assert.equal(replay.replayed,true);
++assert.equal((await db.query('select count(*)::int as n from public.client_leads')).rows[0].n,1);
++const sourceRepeat=await send([{...base,source_row:2}], 'fixture-source');assert.equal(sourceRepeat.duplicate,1);
++const policy2=await send([{...base,policy_number:'DEMO-2'}],'fixture-second-policy');assert.equal(policy2.matched,1);
++assert.equal((await db.query('select count(*)::int as n from public.consumer_policy_observations')).rows[0].n,2);
++const lead=(await db.query('select * from public.client_leads')).rows[0];
++assert.equal(lead.policy_number,'DEMO-1');assert.equal(lead.policy_monthly_premium,null);assert.equal(lead.policy_annual_premium,null);
++assert.equal(lead.raw.policy_status_verified_at,null);
++const collision=await send([{...base,first_name:'Different'}],'fixture-collision');assert.equal(collision.review,1);assert.equal(collision.imported,0);
++const stateRow={...base,phone_digits:'6152345679',email:'state@example.test',policy_number:'DEMO-STATE'};
++const missingState=await send([{...stateRow,state:null,issues:['state_needs_review']}],'fixture-state');assert.equal(missingState.review,1);
++const corrected=await send([stateRow],'fixture-state');assert.equal(corrected.imported,1);
++assert.equal((await db.query("select count(*)::int n from public.consumer_import_rows where source_key='fixture-state' and status='review' and resolved_by_row_id is not null")).rows[0].n,1);
++const optout=await send([{...base,state:null,dnc:false,notes:'Do not call again'}],'fixture-stop');assert.equal(optout.suppressed,1);assert.equal(optout.review,1);
++assert.equal((await db.query('select count(*)::int n from public.lead_contact_dnc')).rows[0].n,1);
++const keepStop=await send([{...base,notes:'No answer',dnc:false}],'fixture-later');assert.equal(keepStop.suppressed,1);
++assert.equal((await db.query('select dnc from public.client_leads where id=$1',[lead.id])).rows[0].dnc,true);
++const alternateRow={...base,first_name:'Morgan',phone_digits:'6152345681',phone_alt:'6152345682',email:null,policy_number:'DEMO-ALT',notes:'Do not contact'};
++assert.equal((await send([alternateRow],'fixture-alt')).suppressed,1);
++const alternateAgain=await send([{...alternateRow,phone_digits:'6152345682',phone_alt:null,notes:null}],'fixture-alt-primary');
++assert.equal(alternateAgain.matched,1);assert.equal(alternateAgain.suppressed,1);assert.equal(alternateAgain.imported,0);
++const other={...base,first_name:'Other',phone_digits:'6152345683',email:'other@example.test',policy_number:'DEMO-OTHER'};
++assert.equal((await send([other],'fixture-other')).imported,1);
++assert.equal((await send([{...base,policy_number:'DEMO-OTHER'}],'fixture-conflicting-policy')).review,1);
++const missingName={...base,first_name:'Casey',last_name:'',phone_digits:'6152345684',email:'casey@example.test',policy_number:'DEMO-NAME',issues:['incomplete_name']};
++assert.equal((await send([missingName],'fixture-name')).review,1);
++assert.equal((await send([{...missingName,last_name:'Example',issues:[]}],'fixture-name')).imported,1);
++assert.equal((await db.query("select count(*)::int n from public.consumer_import_rows where source_key='fixture-name' and status='review' and resolved_by_row_id is not null")).rows[0].n,1);
++await send([{...missingName,source_row:3,last_name:'Example',state:null,issues:['state_needs_review']}],'fixture-name');
++assert.equal((await send([{...missingName,source_row:3,last_name:'Example',issues:[]}],'fixture-name')).duplicate,1);
++assert.equal((await db.query("select count(*)::int n from public.consumer_import_rows where source_key='fixture-name' and status='review' and resolved_by_row_id is null")).rows[0].n,0);
++const review=(await db.query('select public.consumer_import_review() as rows')).rows[0].rows;
++const conflicting=review.find(row=>row.source_key==='fixture-conflicting-policy');
++assert.equal(conflicting.source_name,'Synthetic policy file');assert.equal(conflicting.source_row,1);
++assert.equal(conflicting.payload.first_name,'Taylor');assert.equal(review.some(row=>row.source_key==='fixture-name'),false);
++const history=(await db.query('select public.consumer_import_history(1) as rows')).rows[0].rows;
++assert.equal(history.length,1);assert.equal(history[0].source_name,'Synthetic policy file');
++await db.exec("select set_config('fixture.allowed','no',false)");
++await assert.rejects(()=>send([{...base,phone_digits:'6152345680'}],'fixture-forbidden'),/require lead management access/);
++await assert.rejects(()=>db.query('select public.consumer_import_review()'),/require lead management access/);
++await assert.rejects(()=>db.query('select public.consumer_import_history()'),/require lead management access/);
++await db.exec("select set_config('fixture.allowed','yes',false); select set_config('fixture.uid','',false)");
++await assert.rejects(()=>send([base],'fixture-no-auth'),/require lead management access/);
++await assert.rejects(()=>db.query('select public.consumer_import_review()'),/require lead management access/);
++await db.close();
++console.log('Consumer intake PostgreSQL fixture passed: source retry, duplicate rows, shared-contact review, policy history, corrected reviews, source-labelled review queue, history, durable stop-contact, and authorization.');
+diff --git a/scripts/tests/producer-workspace.mjs b/scripts/tests/producer-workspace.mjs
+new file mode 100644
+index 00000000..f27f931c
+--- /dev/null
++++ b/scripts/tests/producer-workspace.mjs
+@@ -0,0 +1,161 @@
++// Execute the producer migrations in isolated PostgreSQL using synthetic records.
++// Usage: node scripts/tests/producer-workspace.mjs /path/to/@electric-sql/pglite/dist/index.js
++import assert from 'node:assert/strict';
++import { readFileSync } from 'node:fs';
++import { pathToFileURL } from 'node:url';
++const { PGlite } = await import(process.argv[2] ? pathToFileURL(process.argv[2]).href : '@electric-sql/pglite');
++const db = new PGlite();
++const userA = '11111111-1111-4111-8111-111111111111';
++const userB = '22222222-2222-4222-8222-222222222222';
++const agentA = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1';
++const aliasA = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2';
++const agentB = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1';
++const clientA = 'cccccccc-cccc-4ccc-8ccc-ccccccccccc1';
++const clientB = 'cccccccc-cccc-4ccc-8ccc-ccccccccccc2';
++const sharedClient = 'cccccccc-cccc-4ccc-8ccc-ccccccccccc3';
++const providerA = 'dddddddd-dddd-4ddd-8ddd-ddddddddddd1';
++const providerB = 'dddddddd-dddd-4ddd-8ddd-ddddddddddd2';
++await db.exec(`
++create role anon; create role authenticated; create schema auth;
++create table auth.users(id uuid primary key);
++insert into auth.users values ('${userA}'),('${userB}');
++create function auth.uid() returns uuid language sql as $$select nullif(current_setting('fixture.uid',true),'')::uuid$$;
++create function public.apex_is_admin() returns boolean language sql as $$select coalesce(current_setting('fixture.role',true)='admin',false)$$;
++create function public.fn_user_login_blocked(uuid) returns boolean language sql as $$select coalesce(current_setting('fixture.blocked',true)='yes',false)$$;
++create function public.fn_user_is_suspended(uuid) returns boolean language sql as $$select coalesce(current_setting('fixture.suspended',true)='yes',false)$$;
++create function public.fn_agent_is_suspended(uuid) returns boolean language sql as $$select coalesce(current_setting('fixture.agent_suspended',true)='yes',false)$$;
++create function public.can_view_sold_calls() returns boolean language sql as $$select coalesce(current_setting('fixture.raw_access',true)='yes',false)$$;
++create table public.agents(id uuid primary key,user_id uuid,canonical_agent_id uuid,status text default 'active',is_deactivated boolean default false,is_inactive boolean default false);
++insert into public.agents(id,user_id,canonical_agent_id) values ('${agentA}','${userA}',null),('${aliasA}',null,'${agentA}'),('${agentB}','${userB}',null);
++create table public.team_goals(agent_id uuid,period_start date,period_end date,personal_ap_goal numeric,team_ap_goal numeric);
++insert into public.team_goals values ('${agentA}',date_trunc('month',now() at time zone 'America/Phoenix')::date,(date_trunc('month',now() at time zone 'America/Phoenix') + interval '1 month - 1 day')::date,10000,999999);
++-- The canonical view is an authoritative input contract, populated without customer data.
++create table public.fixture_production(row_key text,agent_id uuid,annual_premium numeric,posted_date date,synced_at timestamptz default now());
++create view public.v_production_canonical as select * from public.fixture_production;
++insert into public.fixture_production(row_key,agent_id,annual_premium,posted_date) values
++('own','${agentA}',1000,(now() at time zone 'America/Phoenix')::date),
++('alias','${aliasA}',1500,(now() at time zone 'America/Phoenix')::date),
++('other','${agentB}',9000,(now() at time zone 'America/Phoenix')::date);
++insert into public.fixture_production(row_key,agent_id,annual_premium,posted_date)
++select 'prior-'||g,'${agentA}',1200,(date_trunc('month',now() at time zone 'America/Phoenix') - interval '1 day')::date from generate_series(1,3) g;
++create table public.carrier_book_policies(agent_id uuid,status_bucket text,annual_premium numeric,sold_on date,effective_on date,updated_at timestamptz,last_seen_on date);
++create table public.agentlink_clients(id uuid primary key,agent_id uuid references public.agents(id),phone text);
++insert into public.agentlink_clients values ('${clientA}','${agentA}','+1 (602) 555-0101'),('${clientB}','${agentB}','+1 (602) 555-0101');
++create table public.readymode_dialer_calls(id uuid primary key default gen_random_uuid(),agent_id uuid,external_call_id text,call_started_at timestamptz,call_ended_at timestamptz,duration_seconds integer,disposition text,lead_phone10 text,recording_url text,imported_at timestamptz default now(),updated_at timestamptz default now());
++insert into public.readymode_dialer_calls(id,agent_id,external_call_id,call_started_at,call_ended_at,duration_seconds,disposition,lead_phone10,recording_url) values
++('${providerA}','${aliasA}','call-a',now()-interval '5 minutes',now(),300,'Completed Sale','6025550101','https://example.test/recording-a'),
++('${providerB}','${agentB}','call-b',now()-interval '5 minutes',now(),300,'Completed Sale','6025550101','https://example.test/recording-b');
++insert into public.readymode_dialer_calls(agent_id,external_call_id,call_started_at,call_ended_at,duration_seconds,disposition,lead_phone10)
++select '${agentA}','sample-'||g,now()-interval '10 days',now()-interval '10 days'+interval '2 minutes',120,case when g<=3 then 'Completed Sale' else 'Not Available' end,'6025550199' from generate_series(1,30) g;
++-- An accidental repeated source event must not inflate the activity plan.
++insert into public.readymode_dialer_calls(agent_id,external_call_id,call_started_at,call_ended_at,duration_seconds,disposition,lead_phone10)
++select agent_id,external_call_id,call_started_at,call_ended_at,duration_seconds,disposition,lead_phone10 from public.readymode_dialer_calls where external_call_id='sample-1';
++create table public.readymode_call_transcripts(id uuid primary key default gen_random_uuid(),call_id uuid,raw_text text,transcribed_at timestamptz default now());
++insert into public.readymode_call_transcripts(call_id,raw_text) values ('${providerA}','Sensitive provider transcript A'),('${providerB}','Sensitive provider transcript B');
++create table public.call_transcripts(id uuid primary key default gen_random_uuid(),agent_id uuid,recorded_by uuid,transcript text,call_outcome text,status text,duration_seconds integer,created_at timestamptz default now());
++alter table public.call_transcripts enable row level security;
++create policy legacy_manager on public.call_transcripts for all to authenticated using (current_setting('fixture.role',true) in ('manager','admin')) with check (current_setting('fixture.role',true) in ('manager','admin'));
++create policy legacy_recorder_read on public.call_transcripts for select to authenticated using (recorded_by=auth.uid());
++create policy legacy_recorder_insert on public.call_transcripts for insert to authenticated with check (recorded_by=auth.uid());
++grant select,insert,update,delete on public.call_transcripts to authenticated;
++create table public.client_pipeline_activity(id uuid default gen_random_uuid(),client_id uuid,activity_type text,body text,metadata jsonb,created_by uuid);
++`);
++await db.exec(readFileSync(new URL('../../supabase/migrations/20261124120000_producer_workspace.sql', import.meta.url), 'utf8'));
++await db.exec(readFileSync(new URL('../../supabase/migrations/20261124121000_producer_client_calls.sql', import.meta.url), 'utf8'));
++await db.query("select set_config('fixture.uid',$1,false),set_config('fixture.role','agent',false)", [userA]);
++await db.exec('set role authenticated');
++const workspace = async (agent = agentA) => (await db.query('select public.producer_month_workspace($1) as result', [agent])).rows[0].result;
++const history = async (client = clientA, category = null, cursor = null) => (await db.query('select public.producer_client_calls($1,$2,$3,$4) as result', [client, category, cursor?.at ?? null, cursor?.key ?? null])).rows[0].result;
++const first = await workspace();
++assert.equal(first.production_ap, 2500, 'Own canonical aliases count; another producer never does');
++assert.equal(first.production_deals, 2);
++assert.equal(first.target_ap, 20000, 'The personal floor must not use the manager team goal');
++assert.equal(first.activity.sample_calls, 30, 'Repeated provider event counted only once');
++assert.equal(first.activity.sample_sold_calls, 3);
++assert.equal(first.activity.sample_policies, 3);
++assert.equal(first.carrier.paid_ap, null);
++assert.equal(first.carrier.in_force_month_ap, null);
++assert.equal(first.days.length, 180);
++await assert.rejects(() => workspace(agentB), /access denied/);
++await assert.rejects(() => db.query('insert into public.producer_work_schedules(agent_id,effective_on,selling_days,created_by) values ($1,current_date,array[1],$2)', [agentA,userA]), /permission denied/);
++await assert.rejects(() => db.query('select public.producer_set_work_schedule($1,$2::integer[])', [agentA,[]]), /Choose at least one/);
++const chosen = (await db.query('select public.producer_set_work_schedule($1,$2::integer[]) as result', [agentA,[2,4,2]])).rows[0].result;
++const scheduled = await workspace();
++assert.equal(chosen.effective_on > first.today, true);
++assert.deepEqual(chosen.selling_days, [2,4]);
++assert.deepEqual(scheduled.days, first.days, 'Saving a future schedule never repairs a historical missed day');
++assert.deepEqual(scheduled.next_schedule.selling_days, [2,4]);
++
++const ownCalls = await history();
++assert.equal(ownCalls.calls.length, 1, 'Same phone on another producer must not leak their call');
++assert.equal(ownCalls.calls[0].source_id, providerA);
++assert.equal(ownCalls.calls[0].transcript, null);
++assert.equal(ownCalls.calls[0].audio_url, null);
++assert.equal(ownCalls.calls[0].transcript_access, 'restricted');
++await assert.rejects(() => history(clientB), /access denied/);
++await assert.rejects(() => db.query('select public.producer_tag_client_call($1,$2,$3,$4)', [clientA,'readymode',providerB,'sale']), /does not belong/);
++await db.query('select public.producer_tag_client_call($1,$2,$3,$4)', [clientA,'readymode',providerA,'presentation']);
++assert.equal((await history(clientA,'presentation')).calls.length, 1);
++assert.equal((await history(clientA,'sale')).calls.length, 0);
++await db.exec("select set_config('fixture.raw_access','yes',false)");
++assert.equal((await history()).calls[0].transcript, 'Sensitive provider transcript A');
++await db.exec("select set_config('fixture.raw_access','no',false)");
++const transcriptId = (await db.query('select public.producer_save_client_transcript($1,$2,$3,$4) as id', [clientA,'Synthetic follow-up transcript for this client.','follow_up','Follow-up booked'])).rows[0].id;
++assert.equal((await history(clientA,'follow_up')).calls[0].transcript, 'Synthetic follow-up transcript for this client.');
++assert.equal((await workspace()).activity.completed_today, first.activity.completed_today, 'Manual transcripts never earn provider activity');
++assert.equal((await workspace()).production_ap, 2500, 'Manual transcripts never earn production');
++await assert.rejects(() => db.query('select public.producer_save_client_transcript($1,$2,$3,$4)', [clientA,'short','sale',null]), /10 to 100/);
++
++await db.exec('reset role');
++await db.exec(`
++insert into public.carrier_book_policies values
++('${agentA}','active',2000,(now() at time zone 'America/Phoenix')::date,(now() at time zone 'America/Phoenix')::date,now(),current_date),
++('${agentA}','active',1000,(now() at time zone 'America/Phoenix')::date-120,(now() at time zone 'America/Phoenix')::date-120,now(),current_date),
++('${agentA}','active',700,(now() at time zone 'America/Phoenix')::date-120,(now() at time zone 'America/Phoenix')::date-120,now(),(now() at time zone 'America/Phoenix')::date-100),
++('${agentA}','claim',9000,(now() at time zone 'America/Phoenix')::date,(now() at time zone 'America/Phoenix')::date-120,now(),current_date),
++('${agentB}','active',50000,(now() at time zone 'America/Phoenix')::date,(now() at time zone 'America/Phoenix')::date-120,now(),current_date);
++insert into public.readymode_dialer_calls(agent_id,external_call_id,call_started_at,disposition,lead_phone10)
++select '${agentA}','page-'||g,now()-interval '1 day','Not Available','6025550101' from generate_series(1,30) g;
++`);
++await db.exec('set role authenticated');
++const carrier = (await workspace()).carrier;
++assert.equal(carrier.covered_policies, 4);
++assert.equal(carrier.in_force_month_ap, 2000, 'Claim and other-producer policies must not inflate active production');
++assert.equal(carrier.active_90d_policies, 1, 'Claims and policies last observed before their 90-day mark cannot count as active retention');
++assert.equal(carrier.paid_ap, null, 'Active status never invents a payment receipt');
++const page1 = await history();
++assert.equal(page1.calls.length, 25);
++assert.notEqual(page1.next_cursor, null);
++const page2 = await history(clientA,null,page1.next_cursor);
++assert.equal(page2.calls.length, 7);
++assert.equal(page2.next_cursor, null);
++assert.equal(new Set([...page1.calls,...page2.calls].map((call) => call.key)).size, 32, 'Equal timestamps page without dropping or repeating calls');
++await assert.rejects(() => db.query('select public.producer_client_calls($1,null,now(),null)', [clientA]), /Incomplete page cursor/);
++await db.exec('reset role');
++await db.query('update public.team_goals set personal_ap_goal=40000 where agent_id=$1', [agentA]);
++assert.equal((await workspace()).target_ap, 40000, 'A higher assigned personal target remains distinct from the team target');
++await db.query('insert into public.agentlink_clients values ($1,$2,$3)', [sharedClient,agentA,'602-555-0101']);
++assert.equal((await history(sharedClient)).ambiguous_phone, true);
++assert.equal((await history(sharedClient)).calls.length, 0, 'A shared phone cannot attach another client’s linked call');
++assert.equal((await history()).calls.length, 2, 'Shared-phone ambiguity also hides unlinked provider calls on the first client');
++await db.query('insert into public.call_transcripts(agent_id,recorded_by,transcript,status) values ($1,$2,$3,$4)', [agentA,userA,'Legacy recruiting transcript','completed']);
++await db.query("select set_config('fixture.uid',$1,false),set_config('fixture.role','manager',false)", [userB]);
++await db.exec('set role authenticated');
++await assert.rejects(() => workspace(agentA), /access denied/);
++await assert.rejects(() => history(clientA), /access denied/);
++const visible = (await db.query('select id,transcript from public.call_transcripts')).rows;
++assert.equal(visible.some((row) => row.id === transcriptId), false, 'Legacy manager-wide policies cannot expose another producer’s client transcript');
++assert.equal(visible.some((row) => row.transcript === 'Legacy recruiting transcript'), true, 'Legacy recruiting history remains compatible');
++await db.exec("select set_config('fixture.role','admin',false)");
++assert.equal((await workspace(agentA)).production_ap, 2500);
++assert.equal((await history(clientA)).calls.some((row) => row.source_id === transcriptId), true);
++await db.query("select set_config('fixture.uid',$1,false),set_config('fixture.role','agent',false),set_config('fixture.blocked','yes',false)", [userA]);
++await assert.rejects(() => workspace(), /access denied/);
++await db.exec("select set_config('fixture.blocked','no',false),set_config('fixture.suspended','yes',false)");
++await assert.rejects(() => history(), /access denied/);
++await db.exec("select set_config('fixture.suspended','no',false),set_config('fixture.agent_suspended','yes',false)");
++await assert.rejects(() => workspace(), /access denied/);
++await db.exec("select set_config('fixture.agent_suspended','no',false); reset role; set role anon");
++await assert.rejects(() => workspace(), /permission denied/);
++await db.close();
++console.log('Producer PostgreSQL fixture passed: canonical personal metrics, measured deduplicated activity, future-only schedules, producer/admin scope, restricted raw content, categories, manual transcripts, shared phones, legacy compatibility, and suspended/anonymous denial.');
+diff --git a/src/App.tsx b/src/App.tsx
+index ed1624da..f41c40a6 100644
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -305,6 +305,7 @@ const EasyResells = lazy(() => import("./pages/EasyResells"));
+ const CallTraining = lazy(() => import("./pages/CallTraining"));
+ const MyLeads = lazy(() => import("./pages/MyLeads"));
+ const LeadManager = lazy(() => import("./pages/LeadManager"));
++const ConsumerLeadImport = lazy(() => import("./pages/ConsumerLeadImport"));
+ const SocialCommandCenter = lazy(() => import("./pages/SocialCommandCenter"));
+ const ReadyModeIntegration = lazy(() => import("./pages/ReadyModeIntegration"));
+ const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+@@ -904,6 +905,7 @@ const App = () => (
+                            <Route path="/dashboard/lead-bundles" element={<ProtectedRoute requireAdmin allowManagers><LeadManager /></ProtectedRoute>} />
+                            <Route path="/dashboard/my-leads" element={<ProtectedRoute><MyLeads /></ProtectedRoute>} />
+                            <Route path="/dashboard/lead-manager" element={<ProtectedRoute requireAdmin allowManagers><LeadManager /></ProtectedRoute>} />
++                           <Route path="/dashboard/consumer-import" element={<ProtectedRoute requireAdmin allowManagers><ConsumerLeadImport /></ProtectedRoute>} />
+                            {/* Ayro Financial is off the site (Sam, 2026-11-23); an old bookmark lands on the book. */}
+                            <Route path="/dashboard/ayro-book" element={<LegacyWorkspaceRedirect to="/dashboard/book-of-business" />} />
+                            {/* Social Command Center (MP-308): Sam + Aisha, same gate as Sold Calls (can_view_sold_calls in the RPC). */}
+diff --git a/src/components/agent/StreakFlameCard.tsx b/src/components/agent/StreakFlameCard.tsx
+index 3d04d5d8..8740b121 100644
+--- a/src/components/agent/StreakFlameCard.tsx
++++ b/src/components/agent/StreakFlameCard.tsx
+@@ -1,106 +1,24 @@
+-import { useCallback, useEffect, useState } from "react";
+-import { Flame, Calendar } from "lucide-react";
+-import { supabase } from "@/integrations/supabase/client";
+-import { GlassCard } from "@/components/ui/glass-card";
+-import { cn } from "@/lib/utils";
+-import { getBusinessDayKey } from "@/lib/dateUtils";
+-import { DEAL_TRUTH_STATUS_FILTER } from "@/lib/dealTruth";
+-import { useProductionRealtime } from "@/hooks/useProductionRealtime";
+-
+-interface Props { agentId: string | null | undefined; }
+-
+-/**
+- * Gameified streak tracker. Counts consecutive days with production > 0
+- * ending today. Flame intensifies with streak length.
+- */
+-export function StreakFlameCard({ agentId }: Props) {
+-  const [streak, setStreak] = useState(0);
+-  const [bestStreak, setBestStreak] = useState(0);
+-  const [loading, setLoading] = useState(true);
+-
+-  const load = useCallback(async () => {
+-    if (!agentId) {
+-      setLoading(false);
+-      return;
+-    }
+-    setLoading(true);
+-    try {
+-      const { data } = await supabase.from("deals")
+-        .select("posted_at")
+-        .eq("agent_id", agentId)
+-        .in("status", DEAL_TRUTH_STATUS_FILTER)
+-        .order("posted_at", { ascending: false })
+-        .limit(180);
+-
+-      const days = new Set(
+-        (data ?? [])
+-          .map((r: any) => r.posted_at)
+-          .filter(Boolean)
+-          .map((postedAt: string) => getBusinessDayKey(new Date(postedAt))),
+-      );
+-
+-      let cur = 0;
+-      const today = new Date();
+-      for (let i = 0; i < 180; i++) {
+-        const d = new Date(today); d.setDate(today.getDate() - i);
+-        if (days.has(getBusinessDayKey(d))) cur++;
+-        else if (i > 0) break;
+-      }
+-
+-      let best = 0, running = 0;
+-      const sorted = Array.from(days).sort();
+-      let prev: Date | null = null;
+-      for (const ds of sorted) {
+-        const d = new Date(ds);
+-        if (prev && (d.getTime() - prev.getTime()) === 86_400_000) running++;
+-        else running = 1;
+-        best = Math.max(best, running);
+-        prev = d;
+-      }
+-
+-      setStreak(cur);
+-      setBestStreak(best);
+-    } finally {
+-      setLoading(false);
+-    }
+-  }, [agentId]);
+-
+-  useEffect(() => {
+-    load();
+-  }, [load]);
+-
+-  useProductionRealtime(load, 200);
+-
+-  if (loading || !agentId) return null;
+-
+-  const tier =
+-    streak >= 30 ? { label: "UNSTOPPABLE", color: "#ef4444", bg: "from-rose-500/20 to-amber-500/10" }
+-    : streak >= 10 ? { label: "ON FIRE",     color: "#f59e0b", bg: "from-amber-500/20 to-orange-500/10" }
+-    : streak >= 5  ? { label: "HEATING UP",  color: "#fb923c", bg: "from-orange-500/15 to-amber-500/5" }
+-    : streak >= 1  ? { label: "KEEP IT UP",  color: "#e8bb2b", bg: "from-emerald-500/15 to-transparent" }
+-    :                 { label: "START TODAY", color: "#64748b", bg: "from-muted/20 to-transparent" };
+-
++import { Flame } from "lucide-react";
++import { useProducerWorkspace } from "@/hooks/useProducerWorkspace";
++import { productionStreak, type ProducerWorkspace } from "@/lib/producerWorkspace";
++
++/** Canonical posted production on effective-dated selling days, never button taps. */
++export function StreakFlameCard({ agentId, workspace }: { agentId?: string | null; workspace?: ProducerWorkspace }) {
++  const query = useProducerWorkspace(agentId, !workspace);
++  const data = workspace ?? query.data;
++  if (!data) return <p className="text-sm text-muted-foreground">{query.isError ? "Production streak unavailable." : "Loading production streak…"}</p>;
++  const streak = productionStreak(data.days, data.today);
+   return (
+-    <GlassCard className={cn("p-5 card-tilt reveal ", tier.bg, streak >= 5 && "win-glow")}>
+-      <div className="flex items-center gap-4">
+-        <div className={cn("h-16 w-16 rounded-md flex items-center justify-center shrink-0", streak >= 5 ? "streak-flame" : "")}
+-             style={{ background: `${tier.color}22`, border: `2px solid ${tier.color}66` }}>
+-          <Flame className="h-8 w-8" style={{ color: tier.color }} />
+-        </div>
+-        <div className="flex-1 min-w-0">
+-          <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+-            <span className="text-[11px] uppercase tracking-widest font-bold" style={{ color: tier.color }}>{tier.label}</span>
+-          </div>
+-          <div className="flex items-baseline gap-3">
+-            <span className="text-4xl font-bold tabular-nums" style={{ color: tier.color }}>{streak}</span>
+-            <span className="text-sm text-muted-foreground">day{streak === 1 ? "" : "s"}</span>
+-          </div>
+-          <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5">
+-            <Calendar className="h-3 w-3" />
+-            Best streak: <span className="font-semibold text-foreground/80">{bestStreak}d</span>
+-          </div>
+-        </div>
++    <section aria-label="Production streak" className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-4">
++      <Flame className="h-7 w-7 shrink-0 text-primary" aria-hidden="true" />
++      <div className="min-w-0 flex-1">
++        <p className="font-semibold">{streak.current} selling-day production streak</p>
++        <p className="text-sm text-muted-foreground">
++          {streak.todayEarned ? "Today is earned." : streak.todayScheduled ? "Today is still open." : "Rest day. Your streak is held."}
++          {" "}Best in the last 180 days: {streak.best}.
++        </p>
+       </div>
+-    </GlassCard>
++      <p className="max-w-xs text-xs text-muted-foreground">One canonical posted policy on each scheduled selling day. Team sales and call dispositions do not count.</p>
++    </section>
+   );
+ }
+diff --git a/src/components/ai/AskApex.tsx b/src/components/ai/AskApex.tsx
+index bd03a7f9..a1f8f60e 100644
+--- a/src/components/ai/AskApex.tsx
++++ b/src/components/ai/AskApex.tsx
+@@ -62,10 +62,10 @@ export function AskApex() {
+     staleTime: 5 * 60_000,
+     queryFn: async () => {
+       const [summary, insights, top, challenges] = await Promise.all([
+-        supabase.from("v_business_analytics_summary" as any).select("*").maybeSingle(),
+-        supabase.from("v_business_analytics_insights" as any).select("*").maybeSingle(),
+-        supabase.from("v_team_analytics_producers" as any).select("agent_name, agent_code, user_id, deals_30d, premium_30d").limit(5),
+-        supabase.from("v_sales_challenges" as any).select("period, current_premium, target_premium, current_deals, target_deals"),
++        supabase.from("v_business_analytics_summary").select("*").maybeSingle(),
++        supabase.from("v_business_analytics_insights").select("*").maybeSingle(),
++        supabase.from("v_team_analytics_producers").select("agent_name, agent_code, user_id, deals_30d, premium_30d").limit(5),
++        supabase.from("v_sales_challenges").select("period, current_premium, target_premium, current_deals, target_deals"),
+       ]);
+       return {
+         summary: summary.data,

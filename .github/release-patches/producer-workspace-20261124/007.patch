@@ -1,0 +1,764 @@
+diff --git a/src/pages/ContractingDownlines.tsx b/src/pages/ContractingDownlines.tsx
+index 26ff53f8..7d0e9b0b 100644
+--- a/src/pages/ContractingDownlines.tsx
++++ b/src/pages/ContractingDownlines.tsx
+@@ -3,8 +3,10 @@ import { Link } from "react-router-dom";
+ import { useQuery, useQueryClient } from "@tanstack/react-query";
+ import { toast } from "sonner";
+ import { CheckCircle2, ClipboardCopy, Loader2, RefreshCw, Upload, UserPlus, Handshake, ListChecks } from "lucide-react";
+-import { supabase } from "@/integrations/supabase/client";
++import { useAuth } from "@/hooks/useAuth";
+ import { usePageTitle } from "@/hooks/usePageTitle";
++import { useMyRecruitingLink } from "@/components/invitations/invitationApi";
++import { ownLinkUrl, PUBLIC_SITE } from "@/lib/recruitLinks";
+ import { Button } from "@/components/ui/button";
+ import { Input } from "@/components/ui/input";
+ import { Label } from "@/components/ui/label";
+@@ -47,27 +49,26 @@ function VerdictBadge({ v }: { v: Verdict | null | undefined }) {
+ 
+ export default function ContractingDownlines() {
+   usePageTitle("Grow my team · Galaxy");
++  const { user } = useAuth();
+   const qc = useQueryClient();
+-  const actorQ = useQuery({ queryKey: ["contracting-actor"], queryFn: async () => (await contractingDownlines.actor()).data as Actor | null, staleTime: 60_000 });
+-  const boardQ = useQuery({ queryKey: ["contracting-downlines"], queryFn: async () => (await contractingDownlines.downlines()).data?.rows ?? [], enabled: !!actorQ.data?.ok });
++  const actorQ = useQuery({ queryKey: ["contracting-actor", user?.id], enabled: !!user?.id, queryFn: async () => {
++    const result = await contractingDownlines.actor();
++    if (result.error || !result.data) throw new Error(result.error ?? "Contracting access did not load.");
++    return result.data as Actor;
++  }, staleTime: 60_000 });
++  const boardQ = useQuery({ queryKey: ["contracting-downlines", user?.id], queryFn: async () => {
++    const result = await contractingDownlines.downlines();
++    if (result.error || !result.data?.ok || !Array.isArray(result.data.rows)) throw new Error(result.error ?? "Contracting submissions did not load.");
++    return result.data.rows;
++  }, enabled: !!actorQ.data?.ok });
+   const actor = actorQ.data;
+   // Step 1's link: the same ref_slug URL every other recruiting surface uses (it is what attributes the applicant).
+-  const recruitQ = useQuery({
+-    queryKey: ["my-recruiting-link"],
+-    enabled: !!actorQ.data?.ok,
+-    staleTime: 300_000,
+-    queryFn: async () => {
+-      const { data, error } = await supabase.rpc("my_recruiting_link" as never);
+-      if (error) throw new Error(error.message);
+-      return (data ?? {}) as { link?: string; active?: boolean };
+-    },
+-  });
+-  const recruitUrl = recruitQ.data?.active ? recruitQ.data.link ?? null : null;
++  const recruitQ = useMyRecruitingLink(user?.id);
++  const recruitUrl = recruitQ.data?.active ? ownLinkUrl(recruitQ.data.ref_slug) : null;
+   // One-tap "Add to sheet" for a team member who is licensed but not on MGN's sheet: first tap asks, second tap sends.
+   const [confirmAdd, setConfirmAdd] = useState<string | null>(null);
+   const [adding, setAdding] = useState<string | null>(null);
+-  const origin = typeof window !== "undefined" ? window.location.origin : "https://galaxyfinancial.org";
+-  const joinUrl = actor?.join_path ? `${origin}${actor.join_path}` : null;
++  const joinUrl = actor?.ref_slug ? `${PUBLIC_SITE}/contract/${encodeURIComponent(actor.ref_slug)}` : null;
+   const options = useMemo(() => levelOptions(actor?.cap_pct, actor?.default_pct ?? 60), [actor?.cap_pct, actor?.default_pct]);
+ 
+   // ── 1. The one link ─────────────────────────────────────────────────────────────────────────
+@@ -78,7 +79,7 @@ export default function ContractingDownlines() {
+     setSavingLink(true);
+     try {
+       const r = await contractingDownlines.setMgnLink(mgnValue.trim());
+-      if (r.data?.ok) { toast.success(mgnValue.trim() ? "MGN link saved. Your one link now lands there." : "MGN link cleared; recruits land on the MGN home page."); setMgn(null); void qc.invalidateQueries({ queryKey: ["contracting-actor"] }); }
++      if (r.data?.ok) { toast.success(mgnValue.trim() ? "MGN link saved. Your contracting join link continues there after the details are saved." : "MGN link cleared; the contracting join link continues to the MGN dashboard."); setMgn(null); void qc.invalidateQueries({ queryKey: ["contracting-actor"] }); }
+       else toast.error(r.data?.error ?? r.error ?? "Not saved.");
+     } finally { setSavingLink(false); }
+   };
+@@ -174,7 +175,7 @@ export default function ContractingDownlines() {
+         email: r.email ?? "", phone: r.phone ?? "", npn: r.npn ?? "", comp_pct: r.comp_pct, license_attested: true, eo_attested: false,
+       }]);
+       const v = res.data?.results?.[0];
+-      if (v?.ok) toast.success(`${r.display_name} is going onto MGN's sheet at ${pctLabel(v.comp_pct)}.`);
++      if (v?.ok) toast.success(`${r.display_name}: request saved at ${pctLabel(v.comp_pct)}. Check the submission receipt below.`);
+       else toast.error(v?.message ?? res.error ?? "Not added.");
+     } finally { setAdding(null); setConfirmAdd(null); void qc.invalidateQueries({ queryKey: ["contracting-downlines"] }); }
+   };
+@@ -189,11 +190,19 @@ export default function ContractingDownlines() {
+     <div className="page-enter mx-auto w-full max-w-5xl space-y-6 px-4 pb-24 pt-6 sm:px-6">
+       <header className="space-y-1">
+         <h1 className="text-xl font-semibold">Grow my team</h1>
+-        <p className="text-sm text-muted-foreground">Three steps, two links. Everything after that happens on its own.</p>
+-        {!actor.writes_enabled ? <p className="text-xs text-amber-500">Automatic sheet writes are off right now: everything is saved and queued, and goes onto MGN&apos;s sheet the moment they are switched on.</p> : null}
++        <p className="text-sm text-muted-foreground">Recruit, hire, and track the contracting request through its next step.</p>
++        {!actor.writes_enabled ? <p className="text-xs text-amber-500" role="status">Automatic sheet writes are off. Saved requests are waiting; an admin must enable delivery and verify the resulting receipt.</p> : null}
+       </header>
+ 
+-      <ol className="grid gap-4 md:grid-cols-3" aria-label="How growing your team works">
++      <nav aria-label="Team growth workspace" className="flex flex-wrap gap-2">
++        <Button asChild variant="outline"><Link to="/dashboard/recruiting">Applicants and follow-ups</Link></Button>
++        <Button asChild variant="outline"><Link to="/admin/invite-links">Personal hire invitations</Link></Button>
++        <Button asChild variant="outline"><Link to="/dashboard/recruits">Track new hires</Link></Button>
++        <Button asChild variant="outline"><Link to="/dashboard/team?view=contracting">Carrier approval review</Link></Button>
++        {actor.is_admin ? <Button asChild variant="outline"><Link to="/dashboard/contracting">Contracts management</Link></Button> : null}
++      </nav>
++
++      <ol className="grid gap-4 md:grid-cols-2" aria-label="How growing your team works">
+         <li className="space-y-3 rounded-xl border border-border bg-card p-4">
+           <div className="flex items-center gap-2"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary">1</span><UserPlus className="h-4 w-4 text-muted-foreground" aria-hidden /><h2 className="text-base font-semibold">Recruit</h2></div>
+           <p className="text-sm text-muted-foreground">Share your recruiting link anywhere. People apply, you interview them.</p>
+@@ -202,27 +211,28 @@ export default function ContractingDownlines() {
+               <Input readOnly value={recruitUrl} className="h-10 font-mono text-xs" aria-label="Your recruiting link" />
+               <div className="flex flex-wrap gap-2">
+                 <Button type="button" variant="outline" className="h-10" onClick={() => void copy(recruitUrl, "Recruiting link")}><ClipboardCopy className="mr-1 h-4 w-4" aria-hidden /> Copy</Button>
+-                <Button asChild type="button" variant="ghost" className="h-10"><Link to="/dashboard/recruits">See applicants</Link></Button>
++                <Button asChild type="button" variant="ghost" className="h-10"><Link to="/dashboard/recruiting">See applicants</Link></Button>
+               </div>
+             </div>
+-          ) : recruitQ.isLoading ? <p className="text-xs text-muted-foreground" role="status">Loading your link…</p> : <p className="text-xs text-destructive">Your recruiting link is not set up. Ask an admin.</p>}
++          ) : recruitQ.isLoading ? <p className="text-xs text-muted-foreground" role="status">Loading your link…</p> : recruitQ.isError ? <p className="text-xs text-destructive" role="alert">Your recruiting link did not load. <button type="button" className="underline" onClick={() => void recruitQ.refetch()}>Try again</button></p> : <p className="text-xs text-destructive">Your recruiting link is not set up. Ask an admin.</p>}
++          <p className="text-xs text-muted-foreground">This credits the application to you. Hiring and account creation happen afterward.</p>
+         </li>
+ 
+         <li className="space-y-3 rounded-xl border border-border bg-card p-4">
+           <div className="flex items-center gap-2"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary">2</span><Handshake className="h-4 w-4 text-muted-foreground" aria-hidden /><h2 className="text-base font-semibold">Hire &amp; contract</h2></div>
+-          <p className="text-sm text-muted-foreground">Bringing someone on? Send your <span className="font-medium text-foreground">Join link</span>. They fill it in once: their account is made under you and, if licensed, they go onto MGN&apos;s Ethos sheet at {actor.default_pct}% · {ADVANCE_TIER} and on to MGN to finish.</p>
++          <p className="text-sm text-muted-foreground">For an existing applicant, use Hire in recruiting so their application and agent account stay linked. For someone joining directly, share your contracting join link. It saves their details and reports account setup and the Ethos request separately.</p>
+           {joinUrl ? (
+             <div className="space-y-2">
+-              <Input readOnly value={joinUrl} className="h-10 font-mono text-xs" aria-label="Your Join link" />
+-              <Button type="button" variant="outline" className="h-10" onClick={() => void copy(joinUrl, "Join link")}><ClipboardCopy className="mr-1 h-4 w-4" aria-hidden /> Copy</Button>
++              <Input readOnly value={joinUrl} className="h-10 font-mono text-xs" aria-label="Your contracting join link" />
++              <Button type="button" variant="outline" className="h-10" onClick={() => void copy(joinUrl, "Contracting join link")}><ClipboardCopy className="mr-1 h-4 w-4" aria-hidden /> Copy contracting join link</Button>
+             </div>
+           ) : <p className="text-xs text-destructive">Your agent record has no link slug yet. Ask an admin.</p>}
+-          <p className="text-xs text-muted-foreground">Not licensed yet? Same link — they get the licensing course, and open it again once they have their NPN.</p>
++          <p className="text-xs text-muted-foreground">Licensed requests default to {actor.default_pct}% · {ADVANCE_TIER}, subject to the submission checks. Unlicensed people continue to licensing first.</p>
+         </li>
+ 
+         <li className="space-y-3 rounded-xl border border-border bg-card p-4">
+-          <div className="flex items-center gap-2"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary">3</span><ListChecks className="h-4 w-4 text-muted-foreground" aria-hidden /><h2 className="text-base font-semibold">Watch it happen</h2></div>
+-          <p className="text-sm text-muted-foreground">Everyone you bring on shows up below with one plain status. The only thing that ever needs you is a row marked <span className="font-medium text-amber-500">Ready</span> or <span className="font-medium text-amber-500">Held</span>.</p>
++          <div className="flex items-center gap-2"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary">3</span><ListChecks className="h-4 w-4 text-muted-foreground" aria-hidden /><h2 className="text-base font-semibold">Track submission receipts</h2></div>
++          <p className="text-sm text-muted-foreground">Use the board below to resolve account setup, missing details and delivery holds. A queued request is waiting for delivery; a sheet receipt confirms submission to MGN.</p>
+           <div className="space-y-1">
+             <Label htmlFor="mgn-url" className="text-xs">Your MGN Agent Hub link (paste once)</Label>
+             <div className="flex gap-2">
+@@ -232,6 +242,13 @@ export default function ContractingDownlines() {
+             <p className="text-xs text-muted-foreground">Where your Join link sends licensed people after Galaxy. Must start with https://mgnagenthub.com/.</p>
+           </div>
+         </li>
++
++        <li className="space-y-3 rounded-xl border border-border bg-card p-4">
++          <div className="flex items-center gap-2"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary">4</span><CheckCircle2 className="h-4 w-4 text-muted-foreground" aria-hidden /><h2 className="text-base font-semibold">Confirm carrier approval</h2></div>
++          <p className="text-sm text-muted-foreground">Check the carrier portal before marking a carrier confirmed. An application, agent account or sheet submission does not establish an appointment or authorization to write business.</p>
++          <Button asChild variant="outline" className="h-10"><Link to="/dashboard/team?view=contracting">Open carrier review</Link></Button>
++          {actor.is_admin ? <Button asChild variant="ghost" className="h-10"><Link to="/dashboard/contracting/documents">View writing numbers</Link></Button> : null}
++        </li>
+       </ol>
+ 
+       <details className="group rounded-xl border border-border bg-card">
+@@ -327,6 +344,7 @@ export default function ContractingDownlines() {
+           <h2 className="text-base font-semibold">Where everyone is ({board.length})</h2>
+           <Button type="button" variant="outline" size="sm" className="h-10" onClick={() => void boardQ.refetch()}><RefreshCw className="mr-1 h-4 w-4" aria-hidden /> Refresh</Button>
+         </div>
++        <p className="text-xs text-muted-foreground">A sheet receipt confirms submission to MGN. Carrier approval is confirmed separately on the agent&apos;s contracting review.</p>
+         {boardQ.isLoading ? <p className="text-sm text-muted-foreground" role="status">Loading…</p> : boardQ.isError ? <p className="text-sm text-destructive" role="alert">The board did not load. <button type="button" className="underline" onClick={() => void boardQ.refetch()}>Try again</button></p> : !board.length ? <p className="text-sm text-muted-foreground">No downlines yet.</p> : (
+           <div className="overflow-x-auto rounded-lg border border-border">
+             <table className="w-full text-xs">
+@@ -346,7 +364,7 @@ export default function ContractingDownlines() {
+                           <Button type="button" size="sm" className="h-9" onClick={() => setConfirmAdd(r.agent_id)}>Add to sheet</Button>
+                         )
+                       ) : null}
+-                      {r.agent_id ? <Button type="button" size="sm" variant="outline" className="ml-2 h-9" onClick={() => openEdit(r)}>Edit</Button> : null}
++                      {r.agent_id ? <><Button asChild type="button" size="sm" variant="outline" className="ml-2 h-9"><Link to={`/dashboard/team?view=contracting&review=${r.agent_id}`}>Review agent</Link></Button><Button type="button" size="sm" variant="ghost" className="ml-2 h-9" onClick={() => openEdit(r)}>Edit request</Button></> : <Button asChild type="button" size="sm" variant="outline" className="ml-2 h-9"><Link to="/dashboard/team">Resolve account setup</Link></Button>}
+                     </td>
+                   </tr>); })}
+               </tbody>
+diff --git a/src/pages/HallOfFame.tsx b/src/pages/HallOfFame.tsx
+index 91e1a29c..f17551bf 100644
+--- a/src/pages/HallOfFame.tsx
++++ b/src/pages/HallOfFame.tsx
+@@ -21,10 +21,12 @@ import {
+ } from "lucide-react";
+ import { format } from "date-fns";
+ import { supabase } from "@/integrations/supabase/client";
++import { useAuth } from "@/hooks/useAuth";
++import { useBusinessToday } from "@/hooks/useBusinessToday";
++import { loadPlaqueFacts, summarizePlaques } from "@/lib/dashboardRecords";
+ import {
+   resolveAgentNames,
+   AGENT_NAME_FALLBACK,
+-  type AgentNameSource,
+ } from "@/shared/api/agentDisplayNames";
+ import { PageHeader } from "@/components/ui/page-header";
+ import { GlassCard } from "@/components/ui/glass-card";
+@@ -53,7 +55,7 @@ interface Plaque {
+   image_svg_url: string | null;
+   image_png_url: string | null;
+   custom_photo_url: string | null;
+-  awarded_at: string;
++  awarded_at: string | null;
+   // /plaque/:slug (PlaqueShare.tsx) resolves the public page by share_slug,
+   // NOT plaque.id — copying plaque.id to the clipboard rendered a broken link.
+   share_slug: string | null;
+@@ -69,13 +71,6 @@ interface TopEarner {
+   total_amount: number;
+ }
+ 
+-interface Stats {
+-  total: number;
+-  totalAwarded: number;
+-  honorees: number;
+-  thisMonth: number;
+-}
+-
+ type Category = "all" | "personal" | "business" | "referral";
+ type Period = "all" | "month" | "quarter" | "year";
+ 
+@@ -136,6 +131,8 @@ function prettyMilestone(s: string): string {
+ 
+ // ─── Main ───────────────────────────────────────────────────────────────────
+ export default function HallOfFame() {
++  const { user } = useAuth();
++  const today = useBusinessToday();
+   const [activeCategory, setActiveCategory] = useState<Category>("all");
+   const [period, setPeriod] = useState<Period>("all");
+   const [search, setSearch] = useState("");
+@@ -143,7 +140,8 @@ export default function HallOfFame() {
+ 
+   // ── Plaques (last 240 awarded, filtered client-side) ────────────────────
+   const { data: plaques = [], isLoading: loadingPlaques, isError: plaquesError } = useQuery({
+-    queryKey: ["hof-plaques"],
++    queryKey: ["hof-plaques", user?.id],
++    enabled: Boolean(user?.id),
+     queryFn: async () => {
+       const { data, error } = await supabase
+         .from("plaque_awards")
+@@ -151,73 +149,38 @@ export default function HallOfFame() {
+           id, agent_id, milestone_type, milestone_date, amount,
+           badge_label, color_hex, image_svg_url, image_png_url,
+           custom_photo_url, awarded_at, share_slug,
+-          agent:agents!inner(id, user_id, display_name)
++          agent:agents!plaque_awards_agent_id_fkey(id, user_id, display_name)
+         `)
+         .order("awarded_at", { ascending: false })
+         .limit(240);
+       if (error) throw error;
+       const resolved = await resolveAgentNames(
+-        (data ?? []).map((row: any) => row.agent).filter(Boolean) as AgentNameSource[],
++        (data ?? []).flatMap(row => row.agent ? [row.agent] : []),
+       );
+-      return (data ?? []).map((row: any) => ({
++      return (data ?? []).map(row => ({
+         ...row,
+         agent_name: resolved.get(row.agent?.id)?.name ?? AGENT_NAME_FALLBACK,
+         agent_photo: resolved.get(row.agent?.id)?.avatarUrl ?? null,
+-      })) as Plaque[];
++      }));
+     },
+   });
+ 
+-  // ── Stats (one-shot, doesn't refetch) ───────────────────────────────────
+-  const { data: stats } = useQuery({
+-    queryKey: ["hof-stats"],
+-    queryFn: async (): Promise<Stats> => {
+-      const [{ count: total }, { data: amtRow }, { data: agentsRow }, { count: thisMonth }] = await Promise.all([
+-        supabase.from("plaque_awards").select("*", { count: "exact", head: true }),
+-        supabase.rpc("sum_plaque_amounts" as any).then(() => null).catch(() => null) || // empty-catch-allow:best-effort-fallback
+-          supabase.from("plaque_awards").select("amount").then(({ data }) => ({ data })),
+-        supabase
+-          .from("plaque_awards")
+-          .select("agent_id")
+-          .then(({ data }) => ({ data })),
+-        supabase
+-          .from("plaque_awards")
+-          .select("*", { count: "exact", head: true })
+-          .gte("awarded_at", new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()),
+-      ]);
+-      const totalAwarded = ((amtRow as any)?.data ?? []).reduce(
+-        (acc: number, r: { amount: number | null }) => acc + Number(r.amount ?? 0),
+-        0,
+-      );
+-      const honorees = new Set(((agentsRow as any)?.data ?? []).map((r: { agent_id: string }) => r.agent_id)).size;
+-      return {
+-        total: total ?? 0,
+-        totalAwarded,
+-        honorees,
+-        thisMonth: thisMonth ?? 0,
+-      };
+-    },
++  // Totals and standings share the same complete award history, not the grid window.
++  const awardFacts = useQuery({
++    queryKey: ["hof-award-facts", user?.id, today],
++    enabled: Boolean(user?.id),
++    queryFn: ({ signal }) => loadPlaqueFacts(signal),
++    staleTime: 60_000,
+   });
++  const stats = useMemo(() => awardFacts.data ? summarizePlaques(awardFacts.data, today) : null, [awardFacts.data, today]);
+ 
+-  // ── Top earners (top 10 by plaque count, server-side aggregation
+-  // via a small subquery in JS since we already loaded all rows above) ───
++  // ── Top ten by plaque count, across the complete verified history ───────
+   const { data: topEarners = [], isLoading: loadingTop, isError: topError } = useQuery({
+-    queryKey: ["hof-top-earners"],
++    queryKey: ["hof-top-earners", user?.id, awardFacts.dataUpdatedAt],
++    enabled: Boolean(user?.id && awardFacts.data) && !awardFacts.isError,
+     queryFn: async () => {
+-      // Get every plaque (cap 1000) and aggregate client-side, joining
+-      // agent names so the podium reads as people, not UUIDs.
+-      const { data, error } = await supabase
+-        .from("plaque_awards")
+-        .select(`
+-          agent_id, amount,
+-          agent:agents!inner(id, user_id, display_name)
+-        `)
+-        .limit(1000);
+-      if (error) throw error;
+-      const resolved = await resolveAgentNames(
+-        (data ?? []).map((row: any) => row.agent).filter(Boolean) as AgentNameSource[],
+-      );
+       const byAgent = new Map<string, TopEarner>();
+-      for (const row of (data ?? []) as any[]) {
++      for (const row of awardFacts.data ?? []) {
+         const id = row.agent_id;
+         const existing = byAgent.get(id);
+         const amount = Number(row.amount ?? 0);
+@@ -227,16 +190,21 @@ export default function HallOfFame() {
+         } else {
+           byAgent.set(id, {
+             agent_id: id,
+-            agent_name: resolved.get(row.agent?.id)?.name ?? AGENT_NAME_FALLBACK,
+-            avatar_url: resolved.get(row.agent?.id)?.avatarUrl ?? null,
++            agent_name: AGENT_NAME_FALLBACK,
++            avatar_url: null,
+             plaque_count: 1,
+             total_amount: amount,
+           });
+         }
+       }
+-      return Array.from(byAgent.values())
+-        .sort((a, b) => b.plaque_count - a.plaque_count)
++      const leaders = Array.from(byAgent.values())
++        .sort((a, b) => b.plaque_count - a.plaque_count || a.agent_id.localeCompare(b.agent_id))
+         .slice(0, 10);
++      if (!leaders.length) return leaders;
++      const { data: identities, error } = await supabase.from("agents").select("id,user_id,display_name").in("id", leaders.map(row => row.agent_id));
++      if (error) throw error;
++      const resolved = await resolveAgentNames(identities ?? []);
++      return leaders.map(row => ({ ...row, agent_name: resolved.get(row.agent_id)?.name ?? AGENT_NAME_FALLBACK, avatar_url: resolved.get(row.agent_id)?.avatarUrl ?? null }));
+     },
+   });
+ 
+@@ -252,7 +220,7 @@ export default function HallOfFame() {
+         const cat = CATEGORY_MAP[p.milestone_type];
+         if (cat !== activeCategory) return false;
+       }
+-      if (cutoff && new Date(p.awarded_at).getTime() < cutoff) return false;
++      if (cutoff && (!p.awarded_at || new Date(p.awarded_at).getTime() < cutoff)) return false;
+       if (search.trim()) {
+         const q = search.toLowerCase();
+         if (!p.agent_name.toLowerCase().includes(q) &&
+@@ -280,12 +248,13 @@ export default function HallOfFame() {
+       />
+ 
+       {/* ── Stats strip ───────────────────────────────────────────── */}
+-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
++      {awardFacts.isError ? <div role="alert" className="rounded-md border border-border p-4"><p>Award totals could not be verified.</p><Button variant="outline" className="mt-2" onClick={()=>void awardFacts.refetch()}>Retry award totals</Button></div> : <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+         <StatTile icon={Trophy} label="Total plaques" value={stats?.total ?? 0} loading={!stats} color="text-amber-500 dark:text-amber-400" />
+-        <StatTile icon={DollarSign} label="Total $ awarded" value={stats?.totalAwarded ?? 0} loading={!stats} color="text-emerald-500 dark:text-emerald-400" formatter={fmtUsd} />
++        <StatTile icon={DollarSign} label="Recorded award amounts" value={stats?.totalAwarded ?? 0} loading={!stats} color="text-emerald-500 dark:text-emerald-400" formatter={fmtUsd} />
+         <StatTile icon={Users} label="Honorees" value={stats?.honorees ?? 0} loading={!stats} color="text-violet-500 dark:text-violet-400" />
+         <StatTile icon={Calendar} label="This month" value={stats?.thisMonth ?? 0} loading={!stats} color="text-primary" />
+-      </div>
++      </div>}
++      <p className="text-sm text-muted-foreground">Award amounts can recognize overlapping milestones; they are not additional production or commission. The wall shows the latest 240 plaques; totals and standings use the full history.</p>
+ 
+       {/* ── Podium ────────────────────────────────────────────────── */}
+       <GlassCard className="p-5 sm:p-6">
+@@ -298,12 +267,12 @@ export default function HallOfFame() {
+           </div>
+           <Badge variant="outline" className="text-xs">by plaque count</Badge>
+         </div>
+-        {loadingTop ? (
++        {awardFacts.isLoading || loadingTop ? (
+           <div className="grid sm:grid-cols-3 gap-4">
+             {/* stable-key-allow:skeleton-static-array */}
+             {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-44 w-full" />)}
+           </div>
+-        ) : topError ? (
++        ) : awardFacts.isError || topError ? (
+           <EmptyState
+             variant="warning"
+             icon={<AlertTriangle className="h-7 w-7" />}
+@@ -690,7 +659,7 @@ function PlaqueDetail({ plaque, onClose }: PlaqueDetailProps) {
+           <div>
+             <p className="font-bold text-lg">{plaque.agent_name}</p>
+             <p className="text-xs text-muted-foreground">
+-              Awarded {format(new Date(plaque.awarded_at), "PPP")}
++              {plaque.awarded_at ? `Awarded ${format(new Date(plaque.awarded_at), "PPP")}` : "Award date unavailable"}
+             </p>
+           </div>
+         </div>
+diff --git a/src/pages/InstagramAutomation.tsx b/src/pages/InstagramAutomation.tsx
+index a57911b5..160f4a1f 100644
+--- a/src/pages/InstagramAutomation.tsx
++++ b/src/pages/InstagramAutomation.tsx
+@@ -24,23 +24,20 @@ interface Subscription {
+   agent_id: string;
+   agent_name: string;
+   status: string;
+-  amount: number;
+-  last_paid: string | null;
+-  next_due: string | null;
+ }
+ 
+ export default function InstagramAutomation() {
+   const { isAdmin } = useAuth();
+   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+   const [loading, setLoading] = useState(true);
+-  const [totalMRR, setTotalMRR] = useState(0);
++  const [loadError, setLoadError] = useState<string | null>(null);
+ 
+   useEffect(() => {
+     fetchSubscriptions();
+   }, []);
+ 
+   const fetchSubscriptions = async () => {
+-    setLoading(true);
++    setLoading(true); setLoadError(null);
+     try {
+       // Use rpc or raw query since types may not be generated yet
+       const { data, error } = await supabase
+@@ -56,7 +53,7 @@ export default function InstagramAutomation() {
+       if (agentIds.length > 0) {
+         const { data: agents } = await supabase
+           .from("agents")
+-          .select("id, display_name, profiles:profile_id(full_name)")
++          .select("id, display_name, profiles:profiles!agents_profile_id_fkey(full_name)")
+           .in("id", agentIds);
+         agents?.forEach((a: any) => {
+           agentNames[a.id] = a.display_name || a.profiles?.full_name || "Agent";
+@@ -67,16 +64,13 @@ export default function InstagramAutomation() {
+         id: s.id,
+         agent_id: s.agent_id,
+         agent_name: agentNames[s.agent_id] || "Agent",
+-        status: s.status || "active",
+-        amount: Number(s.amount) || 97,
+-        last_paid: s.last_paid,
+-        next_due: s.next_due,
++        status: s.status || "unknown",
+       }));
+ 
+       setSubscriptions(subs);
+-      setTotalMRR(subs.filter(s => s.status === "active").reduce((sum, s) => sum + s.amount, 0));
+     } catch (e) {
+-      console.error(e);
++      setSubscriptions([]);
++      setLoadError(e instanceof Error ? e.message : "Subscriptions could not be loaded.");
+     }
+     setLoading(false);
+   };
+@@ -123,8 +117,9 @@ export default function InstagramAutomation() {
+               <DollarSign className="h-5 w-5 text-primary" />
+             </div>
+             <div>
+-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Monthly MRR</p>
+-              <p className="text-2xl font-bold">${totalMRR.toLocaleString()}</p>
++              <p className="text-xs text-muted-foreground uppercase tracking-wider">Monthly recurring revenue</p>
++              <p className="text-xl font-bold">Not available</p>
++              <p className="text-sm text-muted-foreground">Verified billing amounts are needed to calculate revenue.</p>
+             </div>
+           </div>
+         </GlassCard>
+@@ -135,7 +130,7 @@ export default function InstagramAutomation() {
+             </div>
+             <div>
+               <p className="text-xs text-muted-foreground uppercase tracking-wider">Active Subscribers</p>
+-              <p className="text-2xl font-bold">{subscriptions.filter(s => s.status === "active").length}</p>
++              <p className="text-2xl font-bold">{loadError ? "Unavailable" : subscriptions.filter(s => s.status === "active").length}</p>
+             </div>
+           </div>
+         </GlassCard>
+@@ -161,11 +156,17 @@ export default function InstagramAutomation() {
+           </Button>
+         </div>
+ 
+-        {subscriptions.length === 0 ? (
++        {loadError ? (
++          <GlassCard className="space-y-3 p-6" role="alert">
++            <p className="font-medium">Subscriptions could not be loaded</p>
++            <p className="text-sm text-muted-foreground">{loadError}</p>
++            <Button type="button" variant="outline" onClick={() => void fetchSubscriptions()}>Retry subscriptions</Button>
++          </GlassCard>
++        ) : subscriptions.length === 0 ? (
+           <GlassCard className="p-8 text-center">
+             <Instagram className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+             <p className="text-muted-foreground">No Instagram automation subscriptions yet</p>
+-            <p className="text-sm text-muted-foreground mt-1">Subscriptions will appear here when agents sign up for the $97/mo service</p>
++            <p className="text-sm text-muted-foreground mt-1">Subscriptions appear here when an agent&apos;s service enrollment is recorded. Billing amounts must be verified separately.</p>
+           </GlassCard>
+         ) : (
+           <div className="grid gap-3">
+@@ -182,7 +183,7 @@ export default function InstagramAutomation() {
+                     </div>
+                     <div>
+                       <p className="font-semibold">{sub.agent_name}</p>
+-                      <p className="text-sm text-muted-foreground">${sub.amount}/mo</p>
++                      <p className="text-sm text-muted-foreground">Billing amount unavailable</p>
+                     </div>
+                   </div>
+                   <div className="flex items-center gap-3">
+@@ -192,14 +193,10 @@ export default function InstagramAutomation() {
+                     >
+                       {sub.status}
+                     </Badge>
+-                    {sub.last_paid && (
+-                      <span className="text-xs text-muted-foreground">
+-                        Last paid: {new Date(sub.last_paid).toLocaleDateString()}
+-                      </span>
+-                    )}
+                     <Button
+                       variant="ghost"
+                       size="sm"
++                      aria-label={`${sub.status === "active" ? "Pause" : "Activate"} ${sub.agent_name}'s subscription`}
+                       onClick={() => toggleSubscription(sub)}
+                     >
+                       {sub.status === "active" ? (
+diff --git a/src/pages/InterviewRecovery.tsx b/src/pages/InterviewRecovery.tsx
+index d50c1e4e..fb00f183 100644
+--- a/src/pages/InterviewRecovery.tsx
++++ b/src/pages/InterviewRecovery.tsx
+@@ -8,7 +8,7 @@
+ //
+ // Reads public.v_interview_pipeline (one bucket per interview, America/Chicago
+ // date math, nothing filtered out) and writes through cc_dispose_interview.
+-import { useCallback, useEffect, useMemo, useState } from "react";
++import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+ import { useQuery, useQueryClient } from "@tanstack/react-query";
+ import {
+   AlertTriangle,
+@@ -53,6 +53,7 @@ import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetail
+ import { RecruitingWorkspaceNav } from "@/components/recruiting/RecruitingWorkspaceNav";
+ import { RecruitingCommandHero } from "@/components/recruiting/RecruitingCommandHero";
+ import { contactLinkProps, phoneHref } from "@/lib/phone";
++import { recordInterviewDisposition, undoInterviewDisposition } from "@/lib/interviewDisposition";
+ 
+ // ---------------------------------------------------------------------------
+ // Types — mirror v_interview_pipeline
+@@ -249,6 +250,7 @@ export default function InterviewRecovery() {
+   // 0 = no follow-up scheduled. Days from now, applied on the next disposition.
+   const [followupDays, setFollowupDays] = useState(0);
+   const [busy, setBusy] = useState(false);
++  const writeInFlight = useRef(false);
+   const [visibleCount, setVisibleCount] = useState(100);
+ 
+   const pipeline = useQuery({
+@@ -382,6 +384,9 @@ export default function InterviewRecovery() {
+     await Promise.all([
+       qc.invalidateQueries({ queryKey: ["interview-pipeline"] }),
+       qc.invalidateQueries({ queryKey: ["prospect-review-queue"] }),
++      qc.invalidateQueries({ queryKey: ["recruiting-worklist"] }),
++      qc.invalidateQueries({ queryKey: ["recruiting-pipeline"] }),
++      qc.invalidateQueries({ queryKey: ["application-detail"] }),
+     ]);
+   }, [qc]);
+ 
+@@ -395,40 +400,33 @@ export default function InterviewRecovery() {
+       notes?: string,
+       followupDueAt?: string | null,
+     ) => {
++      if (writeInFlight.current) return false;
++      writeInFlight.current = true;
+       setBusy(true);
+       try {
+-        // cc_dispose_interview has always accepted p_followup_due_at; the UI hardcoded
+-        // null, so "call them back Tuesday" had nowhere to live and the callback outcome
+-        // was a dead end. Now the caller can schedule the next touch in the same tap.
+-        const { error } = await (supabase as any).rpc("cc_dispose_interview", {
+-          p_id: id,
+-          p_outcome: outcome,
+-          p_notes: notes && notes.trim() ? notes.trim() : null,
+-          p_followup_due_at: followupDueAt ?? null,
+-        });
+-        if (error) throw error;
+-
++        const receipt = await recordInterviewDisposition({ id, outcome, notes, followupDueAt });
++        if (receipt.hire?.partial) toast.warning(receipt.hire.message);
+         toast.success(`${label} → ${outcome.replace(/_/g, " ")}`, {
+-          action: {
++          action: receipt.can_undo ? {
+             label: "Undo",
+             onClick: async () => {
+-              const { error: undoErr } = await (supabase as any)
+-                .from("interview_events")
+-                .update({ outcome: null, outcome_at: null })
+-                .eq("id", id);
+-              if (undoErr) toast.error(`Undo failed: ${undoErr.message}`);
+-              else {
+-                toast.success("Reverted");
++              try {
++                await undoInterviewDisposition(receipt.receipt_id);
++                toast.success("Outcome and linked follow-up restored");
+                 await invalidateQueues();
+-              }
++              } catch (error) { toast.error(`Undo was not applied: ${(error as Error).message}`); }
+             },
+-          },
++          } : undefined,
+         });
+         await invalidateQueues();
++        return true;
+       } catch (err) {
+         // Never swallow — a silent failure here is the exact bug this page fixes.
+         toast.error(`Could not log outcome: ${(err as Error).message}`);
++        await invalidateQueues();
++        return false;
+       } finally {
++        writeInFlight.current = false;
+         setBusy(false);
+       }
+     },
+@@ -442,8 +440,8 @@ export default function InterviewRecovery() {
+   );
+ 
+   const disposeProspect = useCallback(
+-    (p: ProspectRow, outcome: Outcome) =>
+-      disposeById(p.interview_event_id, prospectName(p), outcome),
++    (p: ProspectRow, outcome: Outcome, followupDueAt?: string | null) =>
++      disposeById(p.interview_event_id, prospectName(p), outcome, undefined, followupDueAt),
+     [disposeById],
+   );
+ 
+@@ -454,7 +452,8 @@ export default function InterviewRecovery() {
+         followupDays > 0
+           ? new Date(Date.now() + followupDays * 86_400_000).toISOString()
+           : null;
+-      await dispose(current, outcome, noteDraft, due);
++      const saved = await dispose(current, outcome, noteDraft, due);
++      if (!saved) return;
+       setNoteDraft("");
+       setFollowupDays(0);
+       setCatchIndex((i) => Math.min(i + 1, Math.max(0, catchQueue.length - 2)));
+@@ -465,17 +464,16 @@ export default function InterviewRecovery() {
+   const bulkDispose = useCallback(
+     async (outcome: Outcome) => {
+       const ids = Array.from(selected);
+-      if (!ids.length) return;
++      if (!ids.length || writeInFlight.current) return;
++      writeInFlight.current = true;
+       setBusy(true);
+       let ok = 0;
+       const failures: string[] = [];
+       for (const id of ids) {
+-        const { error } = await (supabase as any).rpc("cc_dispose_interview", {
+-          p_id: id, p_outcome: outcome, p_notes: null, p_followup_due_at: null,
+-        });
+-        if (error) failures.push(error.message);
+-        else ok += 1;
++        try { await recordInterviewDisposition({ id, outcome }); ok += 1; }
++        catch (error) { failures.push((error as Error).message); }
+       }
++      writeInFlight.current = false;
+       setBusy(false);
+       setSelected(new Set());
+       await invalidateQueues();
+@@ -803,7 +801,7 @@ export default function InterviewRecovery() {
+                   <Button
+                     key={d.key}
+                     variant="outline"
+-                    disabled={busy}
++                    disabled={busy || (d.key === "hired" && !current.application_id) || (d.key === "callback" && followupDays === 0)}
+                     className={dispositionClass(d.tone)}
+                     onClick={() => void disposeAndAdvance(d.key)}
+                     aria-label={`${d.label} — ${current.display_name}`}
+@@ -1011,7 +1009,7 @@ export default function InterviewRecovery() {
+             return next;
+           })}
+           onToggleExpand={(id) => setExpandedId((cur) => (cur === id ? null : id))}
+-          onDispose={(p, o) => void disposeProspect(p, o)}
++          onDispose={(p, o, due) => void disposeProspect(p, o, due)}
+         />
+       ) : (
+         <GlassCard className="p-4">
+@@ -1084,7 +1082,7 @@ export default function InterviewRecovery() {
+                     });
+                   }}
+                   onToggleExpand={() => setExpandedId((cur) => (cur === r.id ? null : r.id))}
+-                  onDispose={(o) => void dispose(r, o)}
++                  onDispose={(o, due) => void dispose(r, o, undefined, due)}
+                   onOpenFull={() => setDetailAppId(r.application_id)}
+                 />
+               ))}
+@@ -1222,11 +1220,12 @@ function InterviewRow({
+   busy: boolean;
+   onToggleSelect: () => void;
+   onToggleExpand: () => void;
+-  onDispose: (o: Outcome) => void;
++  onDispose: (o: Outcome, followupDueAt?: string | null) => void;
+   onOpenFull: () => void;
+ }) {
+   const bucketMeta = BUCKETS.find((b) => b.key === row.bucket);
+   const reasons = priorityReasons(row);
++  const [callbackAt, setCallbackAt] = useState("");
+ 
+   return (
+     <li className={cn(
+@@ -1313,10 +1312,13 @@ function InterviewRow({
+ 
+           {!row.outcome && (
+             <div className="mt-3 flex flex-wrap gap-2">
++              <label className="w-full text-xs text-muted-foreground">Callback date and time
++                <Input type="datetime-local" className="mt-1 max-w-xs" aria-label={`Callback time for ${row.display_name}`} value={callbackAt} onChange={(e) => setCallbackAt(e.target.value)} />
++              </label>
+               {DISPOSITIONS.map((d) => (
+-                <Button key={d.key} size="sm" variant="outline" disabled={busy}
++                <Button key={d.key} size="sm" variant="outline" disabled={busy || (d.key === "hired" && !row.application_id) || (d.key === "callback" && !callbackAt)}
+                         className={dispositionClass(d.tone)}
+-                        onClick={() => onDispose(d.key)}
++                        onClick={() => onDispose(d.key, d.key === "callback" && callbackAt ? new Date(callbackAt).toISOString() : null)}
+                         aria-label={`${d.label} — ${row.display_name}`}>
+                   <d.icon className="mr-1.5 h-4 w-4 shrink-0" />{d.label}
+                 </Button>
+@@ -1354,7 +1356,7 @@ function ProspectQueue({
+   busy: boolean;
+   onToggleSelect: (id: string) => void;
+   onToggleExpand: (id: string) => void;
+-  onDispose: (p: ProspectRow, o: Outcome) => void;
++  onDispose: (p: ProspectRow, o: Outcome, followupDueAt?: string | null) => void;
+ }) {
+   if (query.isLoading) {
+     return (
+@@ -1445,7 +1447,7 @@ function ProspectQueue({
+               busy={busy}
+               onToggleSelect={() => onToggleSelect(p.interview_event_id)}
+               onToggleExpand={() => onToggleExpand(p.interview_event_id)}
+-              onDispose={(o) => onDispose(p, o)}
++              onDispose={(o, due) => onDispose(p, o, due)}
+             />
+           ))}
+         </ul>
+@@ -1463,13 +1465,14 @@ function ProspectRowCard({
+   busy: boolean;
+   onToggleSelect: () => void;
+   onToggleExpand: () => void;
+-  onDispose: (o: Outcome) => void;
++  onDispose: (o: Outcome, followupDueAt?: string | null) => void;
+ }) {
+   const name = prospectName(row);
+   const track = row.call_track ?? "other";
+   const handle = row.instagram_handle?.replace(/^@/, "") || null;
+   const matches = Math.max(0, num(row.candidate_count));
+   const stuck = Math.floor(Math.max(0, num(row.days_stuck)));
++  const [callbackAt, setCallbackAt] = useState("");
+ 
+   return (
+     <li className={cn(
+@@ -1600,10 +1603,14 @@ function ProspectRowCard({
+ 
+           {!row.outcome && (
+             <div className="mt-3 flex flex-wrap gap-2">
+-              {DISPOSITIONS.map((d) => (
+-                <Button key={d.key} size="sm" variant="outline" disabled={busy}
++              <label className="w-full text-xs text-muted-foreground">Callback date and time
++                <Input type="datetime-local" className="mt-1 max-w-xs" aria-label={`Callback time for ${name}`} value={callbackAt} onChange={(e) => setCallbackAt(e.target.value)} />
++              </label>
++              <p className="w-full text-xs text-muted-foreground">Link this person&apos;s application before hiring so onboarding can start.</p>
++              {DISPOSITIONS.filter((d) => d.key !== "hired").map((d) => (
++                <Button key={d.key} size="sm" variant="outline" disabled={busy || (d.key === "callback" && !callbackAt)}
+                         className={dispositionClass(d.tone)}
+-                        onClick={() => onDispose(d.key)}
++                        onClick={() => onDispose(d.key, d.key === "callback" && callbackAt ? new Date(callbackAt).toISOString() : null)}
+                         aria-label={`${d.label} — ${name}`}>
+                   <d.icon className="mr-1.5 h-4 w-4 shrink-0" />{d.label}
+                 </Button>

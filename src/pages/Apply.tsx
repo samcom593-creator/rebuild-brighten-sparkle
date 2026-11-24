@@ -2,10 +2,10 @@ import { useState, useEffect, useRef, useCallback, lazy, Suspense, type Componen
 import { EmailTypoHint } from "@/components/ui/email-typo-hint";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { useLandingLiveStats } from "@/hooks/useLandingLiveStats";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Crown, ArrowLeft, ArrowRight, User, FileText, Briefcase, CheckCircle2, Loader2, Instagram, Heart, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -645,26 +645,10 @@ export default function Apply() {
   const hasExperience = watch("hasInsuranceExperience");
   const licenseStatus = watch("licenseStatus");
 
-  // Live trust-ribbon numbers (carriers + active agents). Pulled from the same
-  // landing_live_stats() RPC the LiveStatsCounterStrip + CTASection use so the
-  // ribbon can never silently drift past the roster — fake-success killer.
-  const { data: liveStats } = useQuery({
-    queryKey: ["landing_live_stats"],
-    queryFn: async (): Promise<{ active_agents: number; carriers_partnered: number } | null> => {
-      const { data, error } = await supabase.rpc("landing_live_stats");
-      if (error) throw error;
-      return data as unknown as { active_agents: number; carriers_partnered: number };
-    },
-    staleTime: 60_000,
-    refetchInterval: 300_000,
-  });
-  // wave-88 (2026-06-13): truth-floor sync with LiveStatsCounterStrip (95 → 104).
-  // 104 was a stale hardcode that outlived the data — landing_live_stats() returns 41.
-  // LiveStatsCounterStrip already fixed this exact lie; Apply.tsx was missed because it
-  // is absent from check-landing-truth-floor TRACKED_FILES. Floor matches the other
-  // public surfaces (40) so the highest-intent page can never overstate the roster.
-  const liveActiveAgents = liveStats?.active_agents ?? 40;
-  const liveCarriers = liveStats?.carriers_partnered ?? 22;
+  const { data: liveStats, isError: statsError } = useLandingLiveStats(true);
+  const agencySummary = !statsError && liveStats?.carriers_partnered != null && liveStats.active_agents != null
+    ? `${liveStats.carriers_partnered} carriers · ${liveStats.active_agents} active`
+    : "Licensing · contracting · training";
 
   // Public application attribution uses a minimal, rate-limited recruiter
   // directory. The full manager endpoint remains authenticated for admin tools.
@@ -1101,7 +1085,7 @@ export default function Apply() {
               <span className="h-2 w-2 rounded-full bg-emerald-500" />
               <span className="text-emerald-700 dark:text-emerald-300">Headhunters live</span>
               <span className="text-muted-foreground">·</span>
-              <span className="text-foreground/80">{liveCarriers} carriers · {liveActiveAgents} active</span>
+              <span className="text-foreground/80">{agencySummary}</span>
             </div>
             <Link to="/" className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 text-sm text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-4 w-4" />

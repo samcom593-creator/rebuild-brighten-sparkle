@@ -54810,6 +54810,166 @@ export type Database = {
           },
         ]
       }
+      consumer_import_batches: {
+        Row: {
+          batch_key: string
+          created_at: string
+          created_by: string
+          id: string
+          receipt: Json
+          source_key: string
+          source_kind: string
+          source_name: string
+        }
+        Insert: {
+          batch_key: string
+          created_at?: string
+          created_by: string
+          id?: string
+          receipt?: Json
+          source_key: string
+          source_kind: string
+          source_name: string
+        }
+        Update: {
+          batch_key?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          receipt?: Json
+          source_key?: string
+          source_kind?: string
+          source_name?: string
+        }
+        Relationships: []
+      }
+      consumer_import_rows: {
+        Row: {
+          batch_id: string
+          created_at: string
+          id: string
+          issues: string[]
+          lead_id: string | null
+          payload: Json
+          resolved_by_row_id: string | null
+          row_key: string
+          source_key: string
+          source_row: number
+          status: string
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string
+          id?: string
+          issues?: string[]
+          lead_id?: string | null
+          payload: Json
+          resolved_by_row_id?: string | null
+          row_key: string
+          source_key: string
+          source_row: number
+          status: string
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string
+          id?: string
+          issues?: string[]
+          lead_id?: string | null
+          payload?: Json
+          resolved_by_row_id?: string | null
+          row_key?: string
+          source_key?: string
+          source_row?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consumer_import_rows_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "consumer_import_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consumer_import_rows_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "client_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consumer_import_rows_resolved_by_row_id_fkey"
+            columns: ["resolved_by_row_id"]
+            isOneToOne: false
+            referencedRelation: "consumer_import_rows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      consumer_policy_observations: {
+        Row: {
+          amount_cadence: string
+          carrier: string | null
+          id: string
+          import_row_id: string
+          lead_id: string
+          observed_at: string
+          ownership_claim: string
+          policy_number: string | null
+          product: string | null
+          source_policy_date: string | null
+          source_status: string | null
+          supplier_amount: number | null
+          verified_at: string | null
+        }
+        Insert: {
+          amount_cadence?: string
+          carrier?: string | null
+          id?: string
+          import_row_id: string
+          lead_id: string
+          observed_at?: string
+          ownership_claim?: string
+          policy_number?: string | null
+          product?: string | null
+          source_policy_date?: string | null
+          source_status?: string | null
+          supplier_amount?: number | null
+          verified_at?: string | null
+        }
+        Update: {
+          amount_cadence?: string
+          carrier?: string | null
+          id?: string
+          import_row_id?: string
+          lead_id?: string
+          observed_at?: string
+          ownership_claim?: string
+          policy_number?: string | null
+          product?: string | null
+          source_policy_date?: string | null
+          source_status?: string | null
+          supplier_amount?: number | null
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consumer_policy_observations_import_row_id_fkey"
+            columns: ["import_row_id"]
+            isOneToOne: true
+            referencedRelation: "consumer_import_rows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consumer_policy_observations_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "client_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_history: {
         Row: {
           agent_id: string | null
@@ -76587,6 +76747,150 @@ export type Database = {
           },
         ]
       }
+      ethos_consumer_campaigns: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          campaign_key: string
+          coverage_url: string
+          created_at: string
+          owner_user_id: string
+          sends_enabled: boolean
+          template_version: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          campaign_key: string
+          coverage_url: string
+          created_at?: string
+          owner_user_id: string
+          sends_enabled?: boolean
+          template_version: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          campaign_key?: string
+          coverage_url?: string
+          created_at?: string
+          owner_user_id?: string
+          sends_enabled?: boolean
+          template_version?: string
+        }
+        Relationships: []
+      }
+      ethos_consumer_deliveries: {
+        Row: {
+          attempted_at: string | null
+          audience_token: string
+          campaign_key: string
+          claim_id: string | null
+          email: string
+          id: string
+          lead_id: string
+          provider_id: string | null
+          queued_at: string
+          queued_by: string | null
+          reason: string | null
+          scope_evidence: Json
+          settled_at: string | null
+          source_batch_id: string
+          state: string
+          status: string
+        }
+        Insert: {
+          attempted_at?: string | null
+          audience_token: string
+          campaign_key: string
+          claim_id?: string | null
+          email: string
+          id?: string
+          lead_id: string
+          provider_id?: string | null
+          queued_at?: string
+          queued_by?: string | null
+          reason?: string | null
+          scope_evidence?: Json
+          settled_at?: string | null
+          source_batch_id: string
+          state: string
+          status?: string
+        }
+        Update: {
+          attempted_at?: string | null
+          audience_token?: string
+          campaign_key?: string
+          claim_id?: string | null
+          email?: string
+          id?: string
+          lead_id?: string
+          provider_id?: string | null
+          queued_at?: string
+          queued_by?: string | null
+          reason?: string | null
+          scope_evidence?: Json
+          settled_at?: string | null
+          source_batch_id?: string
+          state?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ethos_consumer_deliveries_campaign_key_fkey"
+            columns: ["campaign_key"]
+            isOneToOne: false
+            referencedRelation: "ethos_consumer_campaigns"
+            referencedColumns: ["campaign_key"]
+          },
+          {
+            foreignKeyName: "ethos_consumer_deliveries_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "client_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ethos_consumer_license_scope: {
+        Row: {
+          ethos_eligible: boolean
+          ethos_evidence_ref: string | null
+          ethos_verified_at: string | null
+          license_evidence_ref: string | null
+          license_expires_at: string | null
+          license_status: string
+          license_verified_at: string | null
+          owner_user_id: string
+          state: string
+          verified_by: string | null
+        }
+        Insert: {
+          ethos_eligible?: boolean
+          ethos_evidence_ref?: string | null
+          ethos_verified_at?: string | null
+          license_evidence_ref?: string | null
+          license_expires_at?: string | null
+          license_status?: string
+          license_verified_at?: string | null
+          owner_user_id: string
+          state: string
+          verified_by?: string | null
+        }
+        Update: {
+          ethos_eligible?: boolean
+          ethos_evidence_ref?: string | null
+          ethos_verified_at?: string | null
+          license_evidence_ref?: string | null
+          license_expires_at?: string | null
+          license_status?: string
+          license_verified_at?: string | null
+          owner_user_id?: string
+          state?: string
+          verified_by?: string | null
+        }
+        Relationships: []
+      }
       ethos_live_policies: {
         Row: {
           amount: number | null
@@ -86027,6 +86331,84 @@ export type Database = {
           },
         ]
       }
+      interview_disposition_receipts: {
+        Row: {
+          actor_user_id: string | null
+          after_application: Json | null
+          after_interview: Json
+          after_progress: Json | null
+          application_id: string | null
+          before_application: Json | null
+          before_interview: Json
+          before_progress: Json | null
+          can_undo: boolean
+          contact_log_id: string | null
+          contact_log_receipt: Json | null
+          created_at: string
+          id: string
+          interview_id: string
+          outcome: string
+          sequence: number
+          undone_at: string | null
+          undone_by: string | null
+        }
+        Insert: {
+          actor_user_id?: string | null
+          after_application?: Json | null
+          after_interview: Json
+          after_progress?: Json | null
+          application_id?: string | null
+          before_application?: Json | null
+          before_interview: Json
+          before_progress?: Json | null
+          can_undo?: boolean
+          contact_log_id?: string | null
+          contact_log_receipt?: Json | null
+          created_at?: string
+          id?: string
+          interview_id: string
+          outcome: string
+          sequence?: never
+          undone_at?: string | null
+          undone_by?: string | null
+        }
+        Update: {
+          actor_user_id?: string | null
+          after_application?: Json | null
+          after_interview?: Json
+          after_progress?: Json | null
+          application_id?: string | null
+          before_application?: Json | null
+          before_interview?: Json
+          before_progress?: Json | null
+          can_undo?: boolean
+          contact_log_id?: string | null
+          contact_log_receipt?: Json | null
+          created_at?: string
+          id?: string
+          interview_id?: string
+          outcome?: string
+          sequence?: never
+          undone_at?: string | null
+          undone_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interview_disposition_receipts_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interview_disposition_receipts_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "interview_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       interview_event_activity: {
         Row: {
           action: string
@@ -91655,6 +92037,24 @@ export type Database = {
           id?: string
           name?: string
           note?: string | null
+        }
+        Relationships: []
+      }
+      lead_contact_dnc: {
+        Row: {
+          phone10: string
+          recorded_at: string
+          recorded_source: string
+        }
+        Insert: {
+          phone10: string
+          recorded_at?: string
+          recorded_source: string
+        }
+        Update: {
+          phone10?: string
+          recorded_at?: string
+          recorded_source?: string
         }
         Relationships: []
       }
@@ -112132,6 +112532,93 @@ export type Database = {
           why?: string
         }
         Relationships: []
+      }
+      producer_client_call_links: {
+        Row: {
+          category: string
+          client_id: string
+          created_at: string
+          created_by: string
+          id: string
+          provider_call_id: string | null
+          transcript_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          client_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          provider_call_id?: string | null
+          transcript_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          client_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          provider_call_id?: string | null
+          transcript_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "producer_client_call_links_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "agentlink_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "producer_client_call_links_provider_call_id_fkey"
+            columns: ["provider_call_id"]
+            isOneToOne: true
+            referencedRelation: "readymode_dialer_calls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "producer_client_call_links_transcript_id_fkey"
+            columns: ["transcript_id"]
+            isOneToOne: true
+            referencedRelation: "call_transcripts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      producer_work_schedules: {
+        Row: {
+          agent_id: string
+          created_at: string
+          created_by: string
+          effective_on: string
+          selling_days: number[]
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          created_by: string
+          effective_on: string
+          selling_days: number[]
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          created_by?: string
+          effective_on?: string
+          selling_days?: number[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "producer_work_schedules_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       production_external_daily_snapshots: {
         Row: {
@@ -203047,6 +203534,23 @@ export type Database = {
           sticky_close_score: number
           user_id: string
         }[]
+      }
+      consumer_import_history: {
+        Args: { p_limit?: number }
+        Returns: Json
+      }
+      consumer_import_review: {
+        Args: { p_limit?: number }
+        Returns: Json
+      }
+      consumer_lead_import: {
+        Args: {
+          p_rows: Json
+          p_source_key: string
+          p_source_kind: string
+          p_source_name: string
+        }
+        Returns: Json
       }
       content_can_access: { Args: never; Returns: boolean }
       content_publish_url_ok: { Args: { p_url: string }; Returns: boolean }

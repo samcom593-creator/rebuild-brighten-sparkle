@@ -114,6 +114,10 @@ describe("the retired contracting instructions stay out of what people read", ()
     const contracts = read("src/pages/CarrierContracts.tsx");
     const card = contracts.slice(contracts.indexOf("function ContractingLinkCard"));
     expect(card).not.toMatch(/<Input|<input|type="email"|first_name|last_name/);
-    expect(card).toContain("You type nothing");
+    // The invariant is a copy-only handoff, not a particular explanatory sentence.
+    // The rendered page test also copies both URLs without entering staff data.
+    expect(card).toContain("CONTRACTING_LINK_URL");
+    expect(card).toContain("CONTRACTING_PROFILE_URL");
+    expect(card).not.toMatch(/<form|onSubmit=/);
   });
 });

@@ -19,7 +19,7 @@ describe("lead bundle labels", () => {
     expect(canDial("callback")).toBe(true);
   });
   it("labels tiers and formats", () => {
-    expect(tierLabel("pos")).toBe("Policy owner");
+    expect(tierLabel("pos")).toBe("Sale reported");
     expect(tierLabel("A")).toBe("Tier A");
     expect(formatLabel("pos")).toBe("POS");
     expect(formatLabel("called_leads")).toBe("Called leads");

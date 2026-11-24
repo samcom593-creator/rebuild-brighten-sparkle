@@ -91,7 +91,7 @@ export default function AgentPipelineSimple() {
           onboarding_stage,
           invited_by_manager_id,
           is_deactivated,
-          profiles:profile_id(full_name, email)
+          profiles:profiles!agents_profile_id_fkey(full_name, email)
         `)
         .eq("is_deactivated", false)
         .order("created_at", { ascending: false });

@@ -25,7 +25,8 @@ describe("recruiting links (MP-342)", () => {
   it("page calls the RPC and builds links only from ref_slug", () => {
     const page = read("src/pages/RecruitingLinks.tsx");
     expect(page).toMatch(/rpc\("admin_recruiting_links"/);
-    expect(page).toMatch(/\/r\/\$\{slug\}|\/r\/\$\{row\.ref_slug|`\$\{SITE\}\/r\/\$\{slug\}`/);
+    expect(page).toMatch(/const slug = row\.ref_slug\?\.trim\(\)/);
+    expect(page).toMatch(/ownLinkUrl\(slug\)/);
     expect(page).not.toMatch(/from\("agents"\)/); // never a direct table read on a public-ish surface
   });
 

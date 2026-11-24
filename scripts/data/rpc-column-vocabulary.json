@@ -151,6 +151,8 @@
   "carrier_command": "jsonb",
   "cc_dispose": "jsonb",
   "cc_dispose_interview": "interview_events",
+  "cc_record_interview_disposition": "jsonb",
+  "cc_undo_interview_disposition": "jsonb",
   "check_banned_prospect": "boolean",
   "check_monday_reminder_secret": "boolean",
   "check_rate_limit": "boolean",
@@ -164,6 +166,9 @@
   "cleanup_expired_idempotency_keys": "void",
   "client_birthday_wisher": "jsonb",
   "commission_ledger_reconcile": "jsonb",
+  "consumer_import_history": "jsonb",
+  "consumer_import_review": "jsonb",
+  "consumer_lead_import": "jsonb",
   "content_can_access": "boolean",
   "content_cards_brand_gate": "trigger",
   "content_cards_set_planned_week": "trigger",
@@ -707,6 +712,7 @@
   "lead_bundle_assign": "jsonb",
   "lead_bundle_build": "jsonb",
   "lead_bundle_create": "jsonb",
+  "lead_bundle_followup_set": "jsonb",
   "lead_bundle_grant": "jsonb",
   "lead_bundle_handoff": "jsonb",
   "lead_bundle_item_log": "jsonb",
@@ -749,6 +755,7 @@
   "my_course_progress": "jsonb",
   "my_lead_detail": "jsonb",
   "my_lead_dial_tap": "jsonb",
+  "my_lead_source_history": "jsonb",
   "my_lead_to_pipeline": "jsonb",
   "my_leads_set_state": "jsonb",
   "my_leads_state_prompt": "jsonb",
@@ -789,8 +796,13 @@
   "post_hiring_bottleneck_alert": "jsonb",
   "prelicensing_check_list": "jsonb",
   "prelicensing_set": "jsonb",
+  "producer_client_calls": "jsonb",
   "producer_deep_dive": "jsonb",
+  "producer_month_workspace": "jsonb",
   "producer_profile_detail": "jsonb",
+  "producer_save_client_transcript": "uuid",
+  "producer_set_work_schedule": "jsonb",
+  "producer_tag_client_call": "void",
   "production_can_read_agent": "boolean",
   "production_reconciliation_receipt": "jsonb",
   "promote_aged_lead_to_application": "uuid",
@@ -22055,6 +22067,30 @@
   "zz_probe.n": {
    "candidates": [],
    "body_literals": []
+  }
+ },
+ "_migration_contract_additions": {
+  "migrations": [
+   "20261124110000",
+   "20261124120000",
+   "20261124121000",
+   "20261124131000",
+   "20261124140000"
+  ],
+  "verification": "Return types from authored migrations executed in isolated PostgreSQL fixtures; live catalog timestamp above remains unchanged.",
+  "functions": {
+   "cc_record_interview_disposition": "jsonb",
+   "cc_undo_interview_disposition": "jsonb",
+   "lead_bundle_followup_set": "jsonb",
+   "my_lead_source_history": "jsonb",
+   "producer_client_calls": "jsonb",
+   "producer_month_workspace": "jsonb",
+   "producer_save_client_transcript": "uuid",
+   "producer_set_work_schedule": "jsonb",
+   "producer_tag_client_call": "void",
+   "consumer_lead_import": "jsonb",
+   "consumer_import_history": "jsonb",
+   "consumer_import_review": "jsonb"
   }
  }
 }

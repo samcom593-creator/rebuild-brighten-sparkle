@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { RecruitingWorkspaceNav } from "@/components/recruiting/RecruitingWorkspaceNav";
 
 // The Licensed tab is staff-only (admin, VA manager, VA). null = rendered outside an AuthProvider.
-let auth: { isAdmin: boolean; isVaManager: boolean; isVa: boolean } | null = null;
+let auth: { isAdmin: boolean; isVaManager: boolean; isVa: boolean; isRecruiter?: boolean; isManager?: boolean } | null = null;
 vi.mock("@/hooks/useAuth", () => ({ useOptionalAuth: () => auth }));
 beforeEach(() => { auth = null; });
 
@@ -95,5 +95,17 @@ describe("RecruitingWorkspaceNav", () => {
     renderNav("/dashboard/recruiting");
     expect(screen.queryByRole("link", { name: "Licensed" })).toBeNull();
     expect(screen.getByRole("link", { name: "New hires" })).toBeTruthy();
+  });
+
+  it("does not send recruiter-only users to the manager and staff hire tracker", () => {
+    auth = { isAdmin: false, isVaManager: false, isVa: false, isRecruiter: true, isManager: false };
+    renderNav("/dashboard/recruiting");
+    expect(screen.queryByRole("link", { name: "New hires" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Call list" })).toHaveAttribute("href", "/dashboard/recruiting");
+    expect(screen.getByRole("link", { name: "Pipeline" })).toHaveAttribute("href", "/dashboard/recruiting/pipeline");
+    cleanup();
+    auth = { ...auth, isManager: true };
+    renderNav("/dashboard/recruiting");
+    expect(screen.getByRole("link", { name: "New hires" })).toHaveAttribute("href", "/dashboard/recruits");
   });
 });

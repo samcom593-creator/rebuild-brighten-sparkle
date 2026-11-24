@@ -4,6 +4,7 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 export type ContractScope = "mine" | "agency" | "imo";
 export interface ContractRow {
@@ -26,11 +27,13 @@ export interface ContractSummary {
   by_status: Record<string, number>;
 }
 const EMPTY_SUMMARY: ContractSummary = { total: 0, active: 0, requested: 0, issues: 0, by_status: {} };
-const PAGE_SIZE = 200;
+export const CONTRACT_RECORD_PAGE_SIZE = 200;
 
 export function useContractSummary(scope: ContractScope, search: string) {
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ["apex-contracts-summary", scope, search],
+    queryKey: ["apex-contracts-summary", user?.id, scope, search],
+    enabled: !!user?.id,
     staleTime: 60_000,
     queryFn: async (): Promise<ContractSummary> => {
       const { data, error } = await supabase.rpc("apex_contracts_summary" as never, {
@@ -43,16 +46,18 @@ export function useContractSummary(scope: ContractScope, search: string) {
   });
 }
 export function useContractRows(scope: ContractScope, status: string, search: string, page: number) {
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ["apex-contracts-list", scope, status, search, page],
+    queryKey: ["apex-contracts-list", user?.id, scope, status, search, page],
+    enabled: !!user?.id,
     staleTime: 60_000,
     queryFn: async (): Promise<ContractRow[]> => {
       const { data, error } = await supabase.rpc("apex_contracts_list" as never, {
         p_scope: scope,
         p_status: status,
         p_search: search || null,
-        p_limit: PAGE_SIZE,
-        p_offset: page * PAGE_SIZE,
+        p_limit: CONTRACT_RECORD_PAGE_SIZE,
+        p_offset: page * CONTRACT_RECORD_PAGE_SIZE,
       } as never);
       if (error) throw error;
       return (data ?? []) as ContractRow[];

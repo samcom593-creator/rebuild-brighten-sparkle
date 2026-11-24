@@ -34,7 +34,7 @@ export const CALLED_LEAD_TIERS: ReadonlyArray<{ key: "A" | "B" | "C" | "D"; labe
 ];
 
 export function tierLabel(tier: string | null | undefined): string {
-  if (tier === "pos") return "Policy owner";
+  if (tier === "pos") return "Sale reported";
   if (tier === "blocked") return "Do not call";
   if (tier === "F") return "Fresh";
   return tier ? `Tier ${tier}` : "";
@@ -63,7 +63,7 @@ export const FLAG_BADGE: Record<string, { label: string; cls: string }> = {
   mortgage: { label: "Mortgage", cls: "bg-blue-500/15 border-blue-500/40 text-blue-300" },
   veteran: { label: "Veteran", cls: "bg-emerald-500/15 border-emerald-500/40 text-emerald-300" },
   homeowner: { label: "Homeowner", cls: "bg-cyan-500/15 border-cyan-500/40 text-cyan-300" },
-  policyholder: { label: "Policyholder", cls: "bg-violet-500/15 border-violet-500/40 text-violet-300" },
+  policyholder: { label: "Policy owner reported", cls: "bg-violet-500/15 border-violet-500/40 text-violet-300" },
   cc: { label: "Card on file", cls: "bg-emerald-500/15 border-emerald-500/40 text-emerald-300" },
   direct_express: { label: "Direct Express", cls: "bg-cyan-500/15 border-cyan-500/40 text-cyan-300" },
   bank_on_file: { label: "Bank on file", cls: "bg-emerald-500/15 border-emerald-500/40 text-emerald-300" },
@@ -77,7 +77,7 @@ export const FLAG_BADGE: Record<string, { label: string; cls: string }> = {
   // MP-LEAD-PHONE-READYMODE: the dial number was swapped to the one ReadyMode actually
   // reached this client on (mat_lead_phone_fix / rewrite call link).
   readymode_number: { label: "ReadyMode number", cls: "bg-emerald-500/15 border-emerald-500/40 text-emerald-300" },
-  // MP-LEAD-MANAGER-RM: a phone whose policy with us still stands. Held back with do-not-call, never dropped.
+  // MP-LEAD-MANAGER-RM: a phone whose policy with us still stands. Held separately from do-not-call, never dropped.
   current_client: { label: "Current client", cls: "bg-rose-500/15 border-rose-500/40 text-rose-300" },
 };
 
@@ -106,7 +106,7 @@ export const TIER_LEGEND: Record<string, ReadonlyArray<{ tier: string; desc: str
   // The dialer pool is every lead in ReadyMode (MP-LEAD-MANAGER-RM, 2026-11-24), graded by what has
   // happened on the phone so far (v_pool_dialer). F is a lead the dialer has never called.
   dialer: [
-    { tier: "pos", desc: "Bought on a dialer call. A policy owner to service or rewrite" },
+    { tier: "pos", desc: "Sale reported on a dialer call. Active policy standing needs confirmation" },
     { tier: "A", desc: "Warm. Booked an appointment, or got to bank or SSN and stopped" },
     { tier: "B", desc: "Talked to an agent, never bought" },
     { tier: "F", desc: "Fresh. Loaded in the dialer, never called yet" },

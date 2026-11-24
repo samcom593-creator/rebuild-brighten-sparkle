@@ -34,6 +34,7 @@ function setupFromMocks(opts: {
   insertError?: Error | null;
 } = {}) {
   const { profileName = "Alex Agent", roleValue = "agent", insertError = null } = opts;
+  const insert = vi.fn().mockResolvedValue({ data: null, error: insertError });
 
   mockFrom.mockImplementation((table: string) => {
     if (table === "profiles") {
@@ -59,11 +60,12 @@ function setupFromMocks(opts: {
     }
     if (table === "lead_activity") {
       return {
-        insert: vi.fn().mockResolvedValue({ data: null, error: insertError }),
+        insert,
       } as any;
     }
     return { select: vi.fn().mockReturnThis() } as any;
   });
+  return { insert };
 }
 
 beforeEach(() => {
@@ -94,7 +96,7 @@ describe("logLeadActivity — authenticated user", () => {
   it("inserts lead_activity row with correct field shape", async () => {
     const user = makeUser();
     mockGetUser.mockResolvedValue({ data: { user }, error: null } as any);
-    setupFromMocks({ profileName: "Alex Agent", roleValue: "agent" });
+    const { insert } = setupFromMocks({ profileName: "Alex Agent", roleValue: "agent" });
 
     await logLeadActivity({
       leadId: "lead-42",
@@ -103,8 +105,11 @@ describe("logLeadActivity — authenticated user", () => {
       details: { from: "contacted", to: "licensed" },
     });
 
-    const insertCall = mockFrom.mock.calls.find(([t]) => t === "lead_activity");
-    expect(insertCall).toBeTruthy();
+    expect(mockFrom).toHaveBeenCalledWith("lead_activity");
+    expect(insert).toHaveBeenCalledWith({
+      lead_id: "lead-42", actor_user_id: "user-001", actor_name: "Alex Agent", actor_role: "agent",
+      activity_type: "stage_update", title: "Moved to Licensed", details: { from: "contacted", to: "licensed" },
+    });
   });
 
   it("uses profile.full_name as actorName", async () => {

@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -82,14 +83,9 @@ interface GhostRow {
   carrier_name: string | null; agent_name: string | null;
   flag_no_policy_num: boolean; flag_ghost: boolean;
 }
-interface FalloffRow {
-  id: string; client_first_name: string | null; client_last_name: string | null;
-  carrier_name: string; policy_number: string | null;
-  effective_date: string | null; face_amount: number | string | null;
-  annual_premium: number | string | null;
-  agent_name: string | null;
-  approx_save_commission_usd: number | string;
-}
+type FalloffRow = Pick<Tables<"v_falloff_watch">,
+  "id" | "client_first_name" | "client_last_name" | "carrier_name" | "policy_number" |
+  "effective_date" | "agent_name" | "agent_raw" | "approx_save_commission_usd">;
 interface QualityRow {
   agent_id: string; agent_name: string | null; agent_code: string | null;
   deal_count: number; no_policy_num_count: number; ghost_deal_count: number;
@@ -199,11 +195,11 @@ export default function BookReconciliation() {
     queryKey: ["book-recon-falloff"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_falloff_watch" as any).select("id,client_first_name,client_last_name,carrier_name,policy_number,effective_date,agent_name,agent_raw,approx_save_commission_usd")
+        .from("v_falloff_watch").select("id,client_first_name,client_last_name,carrier_name,policy_number,effective_date,agent_name,agent_raw,approx_save_commission_usd")
         .order("approx_save_commission_usd", { ascending: false })
         .limit(100);
       if (error) throw error;
-      return (data ?? []) as unknown as FalloffRow[];
+      return data ?? [];
     },
   });
 

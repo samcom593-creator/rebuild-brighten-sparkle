@@ -10,7 +10,7 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const db = vi.hoisted(() => ({
   calls: [] as Array<{ fn: string; args: Record<string, unknown> }>,
@@ -27,6 +27,7 @@ vi.mock("@/integrations/supabase/client", () => {
         return ok({ marketing: { total: 195000, by_tier: { A: 70000, B: 39000, C: 65000, D: 20000 } }, dialer: { total: 380000, by_tier: { pos: 427, A: 1300, B: 430, F: 220000, C: 120000, D: 38000 } }, rewrite: { total: 213, by_tier: { S: 157 } }, winback: { total: 190, by_tier: { A: 62 } } });
       case "lead_pool_counts":
         return ok({ total: 1234, by_tier: { A: 10, F: 900 }, under_9mo: 0, dnc_excluded: 3, resold_excluded: 0, in_bundle_excluded: 0, sample: [], as_of: "2026-11-24T00:20:00Z" });
+      case "lead_pool_assign": return ok({ items: 100, agent: "Chudi" });
       case "lead_pool_facets":
         return ok(args?.p_source === "dialer"
           ? { states: [{ k: "TX", n: 45000 }, { k: "FL", n: 30000 }], no_state: 12, campaigns: [{ k: "POS", n: 600 }, { k: "Veterans-A", n: 11000 }] }
@@ -67,6 +68,11 @@ function renderPage() {
 const lastCounts = () => [...db.calls].reverse().find((c) => c.fn === "lead_pool_counts");
 
 describe("Lead Manager pools", () => {
+  beforeAll(() => {
+    vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
+    HTMLElement.prototype.scrollIntoView = vi.fn();
+  });
+  afterAll(() => vi.unstubAllGlobals());
   beforeEach(() => { db.calls.length = 0; db.signed.length = 0; localStorage.clear(); });
 
   it("shows what every tier means without a tap, for the pool on screen", async () => {
@@ -130,4 +136,23 @@ describe("Lead Manager pools", () => {
     fireEvent.click(within(card).getByRole("button", { name: /Play/ }));
     await waitFor(() => expect(db.signed).toEqual(["callcenter/2026-11-23/a.webm"]));
   });
+
+  it("uses the exact work-filter preview for assignment and waits out the debounce", async () => {
+    renderPage();
+    fireEvent.click(await screen.findByRole("combobox", { name: /Pick an agent/ }));
+    fireEvent.click(await screen.findByRole("option", { name: "Chudi" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /Drop 100 into Chudi/ })).not.toBeDisabled());
+    fireEvent.change(screen.getByLabelText("Last caller"), { target: { value: "Caller One" } });
+    fireEvent.change(screen.getByLabelText("Minimum attempts"), { target: { value: "2" } });
+    fireEvent.change(screen.getByLabelText("Callback due by"), { target: { value: "2026-11-24" } });
+    expect(screen.getByRole("button", { name: /Drop 100 into Chudi/ })).toBeDisabled();
+    await waitFor(() => expect(lastCounts()?.args.p_filters).toMatchObject({ caller: "Caller One", min_attempts: 2, callback_before: "2026-11-24", exclude_dnc: true, exclude_resold: true }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /Drop 100 into Chudi/ })).not.toBeDisabled());
+    const preview = lastCounts()?.args.p_filters;
+    fireEvent.click(screen.getByRole("button", { name: /Drop 100 into Chudi/ }));
+    await waitFor(() => expect(db.calls.find((call) => call.fn === "lead_pool_assign")?.args.p_filters).toEqual(preview));
+    expect(screen.getByRole("link", { name: "Import consumers" })).toHaveAttribute("href", "/dashboard/consumer-import");
+    expect(screen.queryByText("Hold back Do-Not-Call")).toBeNull();
+  });
+
 });

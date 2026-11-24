@@ -12,6 +12,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
+import { useAuth } from "@/hooks/useAuth";
+import { useBusinessToday } from "@/hooks/useBusinessToday";
+import { loadManagerProduction } from "@/lib/dashboardRecords";
 
 /* ------- types ------- */
 type AppRow = {
@@ -32,17 +35,6 @@ type HireRow = {
   state?: string | null;
   hired_at?: string | null;
   created_at?: string | null;
-};
-
-type DealRow = {
-  id: string;
-  agent_id: string | null;
-  agent_name?: string | null;
-  amount: number | null;
-  carrier: string | null;
-  status: string;
-  closed_at: string | null;
-  created_at: string;
 };
 
 type AgentLite = { id: string; display_name: string | null };
@@ -200,18 +192,12 @@ function LicensingTab() {
 
 /* ============================================================ */
 function ProductionTab() {
+  const { user } = useAuth();
+  const today = useBusinessToday();
   const { data: deals, isError: dealsError, error: dealsErr, refetch: refetchDeals } = useQuery({
-    queryKey: ["mgr_deals_30d"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("deals")
-        .select("id, agent_id, amount, carrier, status, closed_at, created_at")
-        .gte("created_at", new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString())
-        .order("created_at", { ascending: false })
-        .limit(100);
-      if (error) throw error;
-      return data as DealRow[];
-    },
+    queryKey: ["mgr_deals_30d", user?.id, today],
+    enabled: Boolean(user?.id),
+    queryFn: ({ signal }) => loadManagerProduction(today, signal),
   });
 
   // Secondary name-map. Declared before the error gate below so every hook runs
@@ -233,14 +219,16 @@ function ProductionTab() {
     return <QueryState status="error" label="production (deals)" error={dealsErr} onRetry={() => void refetchDeals()} />;
   }
 
-  const closed = (deals ?? []).filter(d => d.status === "closed_won" || d.status === "submitted" || d.status === "paid");
-  const monthAmt = closed.reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
+  if (!deals) return <Skeleton className="h-72 w-full" aria-label="Loading verified production" />;
+  // The canonical view already applies source deduplication and dead-policy exclusions.
+  const closed = deals;
+  const monthAmt = closed.reduce((sum, d) => sum + (Number(d.annual_premium) || 0), 0);
   const byAgent: Record<string, { count: number; amount: number }> = {};
   closed.forEach(d => {
     if (!d.agent_id) return;
     if (!byAgent[d.agent_id]) byAgent[d.agent_id] = { count: 0, amount: 0 };
     byAgent[d.agent_id].count += 1;
-    byAgent[d.agent_id].amount += Number(d.amount) || 0;
+    byAgent[d.agent_id].amount += Number(d.annual_premium) || 0;
   });
   const top = Object.entries(byAgent).sort((a, b) => b[1].amount - a[1].amount).slice(0, 10);
   const agentMap = new Map((agents ?? []).map(a => [a.id, a.display_name]));
@@ -249,8 +237,8 @@ function ProductionTab() {
     <div className="space-y-4">
       {agentsError && <NameMapNotice />}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatTile label="Deals closed (30d)" value={closed.length} color="text-emerald-300" />
-        <StatTile label="$ ALP submitted (30d)" value={`$${Math.round(monthAmt).toLocaleString()}`} color="text-emerald-300" />
+        <StatTile label="Deals posted (30d)" value={closed.length} color="text-emerald-300" />
+        <StatTile label="$ ALP posted (30d)" value={`$${Math.round(monthAmt).toLocaleString()}`} color="text-emerald-300" />
         <StatTile label="Active producers (30d)" value={Object.keys(byAgent).length} color="text-info" />
         <StatTile label="Avg deal" value={closed.length ? `$${Math.round(monthAmt / closed.length).toLocaleString()}` : "—"} color="text-slate-600 dark:text-slate-300" />
       </div>
@@ -269,7 +257,7 @@ function ProductionTab() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle className="text-base flex items-center gap-2"><DollarSign className="w-4 h-4" /> Last 20 deals (any stage)</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base flex items-center gap-2"><DollarSign className="w-4 h-4" /> Last 20 posted deals</CardTitle></CardHeader>
         <CardContent className="p-0">
           {!deals ? <div className="p-6"><Skeleton className="h-40 w-full" /></div> :
             <div className="overflow-x-auto"><table className="w-full text-sm">
@@ -278,15 +266,15 @@ function ProductionTab() {
                 <th className="text-left p-3">Carrier</th>
                 <th className="text-left p-3 tabular-nums">Amount</th>
                 <th className="text-left p-3">Status</th>
-                <th className="text-left p-3">Created</th>
+                <th className="text-left p-3">Posted</th>
               </tr></thead>
               <tbody>{(deals ?? []).slice(0, 20).map(d => (
-                <tr key={d.id} className="border-t border-border">
-                  <td className="p-3">{d.agent_id ? agentMap.get(d.agent_id) ?? "—" : "—"}</td>
+                <tr key={d.row_key} className="border-t border-border">
+                  <td className="p-3">{(d.agent_id ? agentMap.get(d.agent_id) : null) ?? d.agent_name ?? "—"}</td>
                   <td className="p-3">{d.carrier ?? "—"}</td>
-                  <td className="p-3 tabular-nums text-emerald-300">${Math.round(Number(d.amount) || 0).toLocaleString()}</td>
+                  <td className="p-3 tabular-nums text-emerald-300">${Math.round(Number(d.annual_premium) || 0).toLocaleString()}</td>
                   <td className="p-3"><Badge variant="secondary">{d.status}</Badge></td>
-                  <td className="p-3 text-xs text-slate-600 dark:text-slate-300">{formatDistanceToNow(new Date(d.created_at), { addSuffix: true })}</td>
+                  <td className="p-3 text-xs text-slate-600 dark:text-slate-300">{d.posted_date ?? "—"}</td>
                 </tr>
               ))}</tbody>
             </table></div>}

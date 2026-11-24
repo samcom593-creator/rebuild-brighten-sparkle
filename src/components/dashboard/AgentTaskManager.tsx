@@ -95,7 +95,7 @@ export function AgentTaskManager({
       // Load agents
       const { data: agentData } = await supabase
         .from("agents")
-        .select("id, display_name, profiles(full_name)")
+        .select("id, display_name, profiles!agents_profile_id_fkey(full_name)")
         .eq("is_deactivated", false);
 
       const agentList = (agentData || []).map((a: any) => ({

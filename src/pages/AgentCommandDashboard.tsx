@@ -177,7 +177,7 @@ export default function AgentCommandDashboard() {
     staleTime: 55_000,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_agent_command_center" as any).select("agent_id,agent_code,display_name,full_name,license_status,manager_name,onboarding_stage,activity_state,next_action,deals_mtd,deals_wtd,deals_30d,ap_mtd,ap_wtd,ap_30d,commission_lifetime_cents,chargebacks,lapses,presentations_mtd,presentations_wtd,hours_called_mtd,hours_called_wtd,last_production_date,apps_assigned,apps_open,apps_new_7d,apps_needing_contact,close_rate_mtd_pct,ap_trend_pct,rank_agency_mtd,rank_agency_wtd,rank_team_mtd")
+        .from("v_agent_command_center").select("agent_id,agent_code,display_name,full_name,license_status,manager_name,onboarding_stage,activity_state,next_action,deals_mtd,deals_wtd,deals_30d,ap_mtd,ap_wtd,ap_30d,commission_lifetime_cents,chargebacks,lapses,presentations_mtd,presentations_wtd,hours_called_mtd,hours_called_wtd,last_production_date,apps_assigned,apps_open,apps_new_7d,apps_needing_contact,close_rate_mtd_pct,ap_trend_pct,rank_agency_mtd,rank_agency_wtd,rank_team_mtd")
         .eq("agent_id", agentId!)
         .maybeSingle();
       if (error) throw error;
@@ -206,7 +206,7 @@ export default function AgentCommandDashboard() {
     enabled: !isAdmin && !!agentId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("agent_lifetime_production" as any).select("lifetime_alp,lifetime_deals")
+        .from("agent_lifetime_production").select("lifetime_alp,lifetime_deals")
         .eq("agent_id", agentId!)
         .maybeSingle();
       if (error) throw error;
@@ -287,15 +287,13 @@ export default function AgentCommandDashboard() {
   const dayOfMonth = today.getDate();
   const monthProgressPct = (dayOfMonth / daysInMonth) * 100;
   const incomeGoal = Number(goal.data?.income_goal ?? 0);
-  // v26 audit fix: was falling back to 100% comp when contract not set,
-  // wildly inflating projected commission. Default to 35% (typical agent
-  // contract floor) and show a "not set" indicator instead.
+  // An unset personal comp rate cannot support an income projection.
   const rawCompPct = goal.data?.comp_percentage;
-  const hasCompSet = rawCompPct !== null && rawCompPct !== undefined;
-  const compPct = (hasCompSet ? Number(rawCompPct) : 35) / 100;
+  const hasCompSet = rawCompPct !== null && rawCompPct !== undefined && Number.isFinite(Number(rawCompPct)) && Number(rawCompPct) >= 0;
+  const compPct = hasCompSet ? Number(rawCompPct) / 100 : null;
   const monthApProjected = dayOfMonth > 0 ? (apMtd / dayOfMonth) * daysInMonth : 0;
-  const monthCommissionProjected = monthApProjected * compPct;
-  const goalProgressPct = incomeGoal > 0
+  const monthCommissionProjected = compPct === null ? null : monthApProjected * compPct;
+  const goalProgressPct = incomeGoal > 0 && monthCommissionProjected !== null
     ? Math.min(100, (monthCommissionProjected / incomeGoal) * 100)
     : 0;
 
@@ -404,7 +402,7 @@ export default function AgentCommandDashboard() {
 
       {/* ── 4 KPI TILES ───────────────────────────────────────── */}
       {/* MP-303: this agent's production goal + pace + projected income. */}
-      <GoalTrackerCard agentId={agentId} />
+      <GoalTrackerCard agentId={agentId} scope="personal" />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <KpiTile
@@ -427,8 +425,8 @@ export default function AgentCommandDashboard() {
         <KpiTile
           icon={CircleDollarSign}
           label="Commission projected"
-          value={fmtUsd(monthCommissionProjected, true)}
-          subValue={incomeGoal > 0 ? `${fmtPct(goalProgressPct)} of $${fmtNum(incomeGoal)} goal` : "Set a monthly goal →"}
+          value={monthCommissionProjected === null ? "—" : fmtUsd(monthCommissionProjected, true)}
+          subValue={!hasCompSet ? "Set your comp rate to see an estimate" : incomeGoal > 0 ? `${fmtPct(goalProgressPct)} of $${fmtNum(incomeGoal)} goal` : "Set a monthly goal →"}
           color="text-primary"
           loading={cc.isLoading}
         />
@@ -548,10 +546,12 @@ export default function AgentCommandDashboard() {
             <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold">Income goal · {format(today, "MMMM")}</p>
             <Target className="h-5 w-5 text-muted-foreground" />
           </div>
-          {incomeGoal > 0 ? (
+          {!hasCompSet ? (
+            <p className="text-sm text-muted-foreground">Set your personal comp rate in your income goal to see a projection. Posted ALP and paid commission remain separate.</p>
+          ) : incomeGoal > 0 ? (
             <>
               <div className="flex items-baseline justify-between mb-2">
-                <span className="text-3xl font-bold tabular-nums">{fmtUsd(monthCommissionProjected, true)}</span>
+                <span className="text-3xl font-bold tabular-nums">{monthCommissionProjected === null ? "—" : fmtUsd(monthCommissionProjected, true)}</span>
                 <span className="text-sm text-muted-foreground">of {fmtUsd(incomeGoal, true)}</span>
               </div>
               <Progress value={goalProgressPct} className="h-2.5" />
@@ -904,7 +904,7 @@ function AgencyCommandView() {
     staleTime: 55_000,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_ceo_command_center" as any).select("as_of,active_agents,ap_30d,chargebacks_30d,lapses_30d,ref_30d,ref_won,total_applications,paid_mtd,apps_wtd,uncontacted_24h,stale_new_3d,unassigned_open")
+        .from("v_ceo_command_center").select("as_of,active_agents,ap_30d,chargebacks_30d,lapses_30d,ref_30d,ref_won,total_applications,paid_mtd,apps_wtd,uncontacted_24h,stale_new_3d,unassigned_open")
         .maybeSingle();
       if (error) throw error;
       return data as unknown as CeoRow | null;
@@ -923,7 +923,7 @@ function AgencyCommandView() {
     staleTime: 240_000,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_active_agents_skool" as any)
+        .from("v_active_agents_skool")
         .select("skool_members_loaded,active_current_definition,active_in_skool_and_enabled")
         .maybeSingle();
       if (error) throw error;
@@ -945,7 +945,7 @@ function AgencyCommandView() {
       const endDate = periodBounds.endIso.slice(0, 10);
 
       const { data, error } = await supabase
-        .from("v_production_unified" as any)
+        .from("v_production_unified")
         .select("row_key, annual_premium, posted_date, agent_id")
         .gte("posted_date", startDate)
         .lt("posted_date", endDate);
@@ -1012,7 +1012,7 @@ function AgencyCommandView() {
       const startDate = periodBounds.startIso.slice(0, 10);
       const endDate = periodBounds.endIso.slice(0, 10);
       const { data, error } = await supabase
-        .from("v_production_unified" as any)
+        .from("v_production_unified")
         .select("annual_premium")
         .gte("posted_date", startDate)
         .lt("posted_date", endDate);
@@ -1103,7 +1103,7 @@ function AgencyCommandView() {
       const priorStart = new Date(start.getTime() - lengthMs);
       const priorEnd = new Date(start.getTime());
       const { data, error } = await supabase
-        .from("agentlink_deals_snapshot" as any)
+        .from("agentlink_deals_snapshot")
         .select("annual_premium")
         .gte("effective_date", priorStart.toISOString().slice(0, 10))
         .lt("effective_date", priorEnd.toISOString().slice(0, 10));
@@ -1156,7 +1156,7 @@ function AgencyCommandView() {
     staleTime: 55_000,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_recent_hires" as any)
+        .from("v_recent_hires")
         .select("id, display_name, agent_code, hired_on, manager_name, onboarding_stage, days_on_team, total_premium, total_policies")
         .order("hired_on", { ascending: false })
         .limit(12);
@@ -1177,7 +1177,7 @@ function AgencyCommandView() {
     queryKey: ["agency-trend-truth", periodBounds.startIso, periodBounds.endIso],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("agentlink_deals_snapshot" as any)
+        .from("agentlink_deals_snapshot")
         .select("effective_date, annual_premium")
         .gte("effective_date", periodBounds.startIso.slice(0, 10))
         .lte("effective_date", periodBounds.endIso.slice(0, 10))
@@ -1285,7 +1285,7 @@ function AgencyCommandView() {
     refetchInterval: 300_000,
     staleTime: 4 * 60_000,
     queryFn: async () => {
-      const { data } = await supabase.from("v_cfo_snapshot" as any).select("*").maybeSingle();
+      const { data } = await supabase.from("v_cfo_snapshot").select("*").maybeSingle();
       return data as unknown as {
         ghost_ap_at_risk: string | number;
         ica_paid_stuck: number;
@@ -1313,7 +1313,7 @@ function AgencyCommandView() {
     staleTime: 55_000,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("applications" as any)
+        .from("applications")
         .select("id, first_name, last_name, status, license_progress, created_at, contacted_at, course_purchased_at, licensed_at, state, phone, email, referral_source")
         .is("terminated_at", null)
         .order("created_at", { ascending: false, nullsFirst: false })
@@ -1390,7 +1390,7 @@ function AgencyCommandView() {
       const today = new Date(tzNow.getFullYear(), tzNow.getMonth(), tzNow.getDate())
         .toISOString().slice(0, 10);
       const { data: dealRows, error } = await supabase
-        .from("agentlink_deals_snapshot" as any)
+        .from("agentlink_deals_snapshot")
         .select("carrier_id, annual_premium")
         .gte("effective_date", monthStart)
         .lte("effective_date", today);
@@ -1400,7 +1400,7 @@ function AgencyCommandView() {
       const nameById = new Map<number, string>();
       if (carrierIds.length > 0) {
         const { data: carriers } = await supabase
-          .from("agentlink_carriers" as any)
+          .from("agentlink_carriers")
           .select("id, name")
           .in("id", carrierIds);
         for (const c of (carriers ?? []) as Array<{ id: number; name: string | null }>) {
@@ -1441,7 +1441,7 @@ function AgencyCommandView() {
       const weekAgo = new Date(now.getTime() - 7 * 86_400_000).toISOString().slice(0, 10);
       const twoWeeksAgo = new Date(now.getTime() - 14 * 86_400_000).toISOString().slice(0, 10);
       const { data, error } = await supabase
-        .from("agentlink_deals_snapshot" as any)
+        .from("agentlink_deals_snapshot")
         .select("user_id, annual_premium, effective_date")
         .gte("effective_date", twoWeeksAgo)
         .lte("effective_date", today);
@@ -1516,7 +1516,7 @@ function AgencyCommandView() {
     staleTime: 55_000,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("culture_events" as any)
+        .from("culture_events")
         .select("id, event_type, agent_id, annual_premium, product_sold, created_at")
         .order("created_at", { ascending: false })
         .limit(12);
@@ -1594,7 +1594,7 @@ function AgencyCommandView() {
       const tzNow = new Date();
       const monthStart = new Date(tzNow.getFullYear(), tzNow.getMonth(), 1).toISOString();
       const { data, error } = await supabase
-        .from("commission_ledger" as any)
+        .from("commission_ledger")
         .select("amount, status, expected_paid_date, actual_paid_date")
         .gte("created_at", monthStart);
       if (error) throw error;
@@ -1657,12 +1657,12 @@ function AgencyCommandView() {
         chargebacksRes,
         producerRiskRes,
       ] = await Promise.all([
-        supabase.from("v_hot_licensing_prospects" as any).select("application_id", { count: "exact", head: true }),
-        supabase.from("v_unlicensed_all" as any).select("id", { count: "exact", head: true }).is("assigned_va_id", null).gte("days_since_touch", 30),
-        supabase.from("applications" as any).select("id", { count: "exact", head: true }).is("terminated_at", null).is("contacted_at", null),
-        supabase.from("applications" as any).select("id", { count: "exact", head: true }).is("terminated_at", null).lt("next_action_due_at", new Date().toISOString()).not("next_action_due_at", "is", null),
-        supabase.from("v_chargebacks_30d" as any).select("*", { count: "exact", head: true }),
-        supabase.from("v_producer_trend_alert" as any).select("producer_id", { count: "exact", head: true }).eq("currently_dropping", true as any),
+        supabase.from("v_hot_licensing_prospects").select("application_id", { count: "exact", head: true }),
+        supabase.from("v_unlicensed_all").select("id", { count: "exact", head: true }).is("assigned_va_id", null).gte("days_since_touch", 30),
+        supabase.from("applications").select("id", { count: "exact", head: true }).is("terminated_at", null).is("contacted_at", null),
+        supabase.from("applications").select("id", { count: "exact", head: true }).is("terminated_at", null).lt("next_action_due_at", new Date().toISOString()).not("next_action_due_at", "is", null),
+        supabase.from("v_chargebacks_30d").select("*", { count: "exact", head: true }),
+        supabase.from("v_producer_trend_alert").select("producer_id", { count: "exact", head: true }).eq("currently_dropping", true as any),
       ]);
       return {
         hot_licensing: hotLicensingRes.count ?? 0,
@@ -1682,8 +1682,8 @@ function AgencyCommandView() {
     staleTime: 4 * 60_000,
     queryFn: async () => {
       const [stagesRes, healthRes] = await Promise.all([
-        supabase.from("v_licensing_stage_counts" as any).select("stage, count"),
-        supabase.from("v_next_step_funnel_health" as any).select("stage_key, order_index, display_name, in_stage, stalled, median_days, avg_days, next_stage_count, conversion_to_next_pct").order("order_index", { ascending: true }),
+        supabase.from("v_licensing_stage_counts").select("stage, count"),
+        supabase.from("v_next_step_funnel_health").select("stage_key, order_index, display_name, in_stage, stalled, median_days, avg_days, next_stage_count, conversion_to_next_pct").order("order_index", { ascending: true }),
       ]);
       const stages = (stagesRes.data ?? []) as unknown as Array<{ stage: string; count: number }>;
       const health = (healthRes.data ?? []) as unknown as Array<{
@@ -1702,7 +1702,7 @@ function AgencyCommandView() {
     staleTime: 4 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_producer_trend_alert" as any)
+        .from("v_producer_trend_alert")
         .select("producer_id, display_name, current_week_alp, current_week_deals, alp_1w_ago, alp_2w_ago, alp_3_weeks_ago, delta_pct, direction, currently_dropping")
         .order("current_week_alp", { ascending: false })
         .limit(50);
@@ -1756,7 +1756,7 @@ function AgencyCommandView() {
     staleTime: 4 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_manager_hierarchy_mtd" as any)
+        .from("v_manager_hierarchy_mtd")
         .select("manager_id, manager_name, team_size, team_alp_mtd, team_deals_mtd, producing_team_mtd")
         .order("team_alp_mtd", { ascending: false });
       // Throw, never swallow to []: a dead manager-hierarchy feed must surface as

@@ -499,7 +499,7 @@ export default function BookOfBusiness() {
     try {
       // Preserve v_agentlink_book_truth as authoritative KPI source.
       const { data: truthRows, error: truthErr } = await supabase
-        .from("v_agentlink_book_truth" as any)
+        .from("v_agentlink_book_truth")
         .select(
           "total_deals, total_annual_premium, deals_today, premium_today, deals_this_week, premium_this_week, deals_this_month, premium_this_month, last_synced_at",
         )
@@ -512,7 +512,7 @@ export default function BookOfBusiness() {
       setTruth((truthRows as unknown as BookTruthRow) ?? null);
 
       const { data: segRows, error: segErr } = await supabase
-        .from("v_book_status_segments" as any)
+        .from("v_book_status_segments")
         .select("segment, policies, annual_premium, policies_30d, producers");
       if (segErr) {
         logger.warn("[BookOfBusiness] v_book_status_segments read failed", {
@@ -528,7 +528,7 @@ export default function BookOfBusiness() {
       // agency's chargeback exposure — gate the fetch to admins/managers.
       if (isAdmin || isManager) {
         const { data: cbRows, error: cbErr } = await supabase
-          .from("v_chargeback_watch" as any)
+          .from("v_chargeback_watch")
           .select(
             "deal_key, policy_number, client_name, carrier, agent_name, status, months_in_force, annual_premium, est_clawback_exposure, priority, what_this_means",
           )
@@ -548,7 +548,7 @@ export default function BookOfBusiness() {
       }
 
       const { data: persRows, error: persErr } = await supabase
-        .from("v_book_persistency" as any)
+        .from("v_book_persistency")
         .select("carrier, in_force, lapsed, in_force_alp, persistency_pct");
       if (persErr) {
         logger.warn("[BookOfBusiness] v_book_persistency read failed", {
@@ -560,7 +560,7 @@ export default function BookOfBusiness() {
       }
 
       const { data: concRows, error: concErr } = await supabase
-        .from("v_book_concentration" as any)
+        .from("v_book_concentration")
         .select(
           "dimension, name, in_force_policies, in_force_alp, pct_of_in_force_alp",
         )
@@ -589,7 +589,7 @@ export default function BookOfBusiness() {
       }
 
       let alQuery = supabase
-        .from("agentlink_deals_snapshot" as any)
+        .from("agentlink_deals_snapshot")
         .select(
           "id, user_id, pipeline_client_id, client_first_name, client_last_name, policy_number, product_sold, monthly_premium, annual_premium, effective_date, raw_status, carrier_id, snapshot_at",
           { count: "exact" },
@@ -629,8 +629,8 @@ export default function BookOfBusiness() {
       const alCarrierIds = [
         ...new Set(
           alRawRows
-            .map((r) => (r.carrier_id != null ? String(r.carrier_id) : null))
-            .filter((id): id is string => Boolean(id)),
+            .map((r) => (r.carrier_id != null ? Number(r.carrier_id) : null))
+            .filter((id): id is number => id !== null && Number.isSafeInteger(id)),
         ),
       ];
 
@@ -639,7 +639,7 @@ export default function BookOfBusiness() {
           ? supabase
               .from("agents")
               .select(
-                "id, display_name, al_user_id, profile:profiles(full_name)",
+                "id, display_name, al_user_id, profile:profiles!agents_profile_id_fkey(full_name)",
               )
               .in("al_user_id", alUserIds)
           : Promise.resolve({ data: [] } as any),
@@ -716,7 +716,7 @@ export default function BookOfBusiness() {
       });
 
       let ethosQuery = supabase
-        .from("ethos_book_policies" as any)
+        .from("ethos_book_policies")
         .select(
           "id, owner_agent_id, source_agent_names, client_first_name, client_last_name, client_address, client_phone, client_dob, face_amount, raw_status, effective_date, product_sold, policy_number, monthly_premium, annual_premium, carrier_name, source_file_name, imported_at",
           { count: "exact" },
@@ -835,7 +835,7 @@ export default function BookOfBusiness() {
         agentIds.length
           ? supabase
               .from("agents")
-              .select("id, display_name, profile:profiles(full_name)")
+              .select("id, display_name, profile:profiles!agents_profile_id_fkey(full_name)")
               .in("id", agentIds)
           : Promise.resolve({ data: [] } as any),
         carrierIds.length
@@ -956,7 +956,7 @@ export default function BookOfBusiness() {
         agentIds.length
           ? supabase
               .from("agents")
-              .select("id, display_name, profile:profiles(full_name)")
+              .select("id, display_name, profile:profiles!agents_profile_id_fkey(full_name)")
               .in("id", agentIds)
           : Promise.resolve({ data: [] } as any),
         carrierIds.length
@@ -2278,7 +2278,7 @@ function PolicyDetailDrawer({
     setClientLoading(true);
     (async () => {
       const { data } = await supabase
-        .from("agentlink_clients" as any)
+        .from("agentlink_clients")
         .select("*")
         .eq("insuracloud_pipeline_client_id", deal.pipeline_client_id)
         .maybeSingle();
@@ -2295,7 +2295,7 @@ function PolicyDetailDrawer({
     setTimelineLoading(true);
     (async () => {
       const { data } = await supabase
-        .from("application_contact_log" as any)
+        .from("application_contact_log")
         .select("id, channel, outcome, notes, logged_at, logged_by")
         .eq("application_id", deal.application_id)
         .order("logged_at", { ascending: false })

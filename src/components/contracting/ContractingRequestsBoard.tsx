@@ -57,10 +57,12 @@ export function ContractingRequestsBoard() {
     try {
       const res = await submitContractingRequest(r.agent_id);
       if (!res.ok) { toast.error(res.error ?? "Not submitted."); return; }
-      toast.success(`Submitted for ${r.display_name}. Queued for the sheet.`);
+      toast.success(`Request saved for ${r.display_name}. Waiting for a sheet receipt.`);
       refresh();
       const sync = await syncContractingSheet();
-      if (sync.ok) toast.success(`Sheet updated (${sync.synced ?? 0} row${(sync.synced ?? 0) === 1 ? "" : "s"}).`);
+      if (sync.ok && (sync.failed ?? 0) > 0) toast.warning(`${sync.synced ?? 0} sheet writes confirmed; ${sync.failed} failed. Check this request's receipt.`);
+      else if (sync.ok && (sync.synced ?? 0) > 0) toast.success(`${sync.synced} sheet write${sync.synced === 1 ? "" : "s"} confirmed. Check this request's receipt; carrier approval is separate.`);
+      else if (sync.ok) toast.message("Request saved. No new sheet write was confirmed by this sync; check the request receipt.");
       else toast.message(`Saved. Sheet sync is waiting: ${sync.blocker ?? sync.error ?? "see the sync banner"}.`);
       refresh();
     } finally { setBusy(null); }
@@ -70,7 +72,8 @@ export function ContractingRequestsBoard() {
     setBusy("sync");
     try {
       const res = await syncContractingSheet();
-      if (res.ok) toast.success(`Sheet in sync: ${res.synced ?? 0} written, ${res.processed ?? 0} checked.`);
+      if (res.ok && (res.failed ?? 0) > 0) toast.warning(`${res.synced ?? 0} sheet writes confirmed; ${res.failed} failed. Review the affected requests.`);
+      else if (res.ok) toast.message(`Sync finished: ${res.synced ?? 0} writes confirmed, ${res.processed ?? 0} checked. Check individual request receipts.`);
       else toast.error(`Sheet sync blocked: ${res.blocker ?? res.error ?? "unknown"}${res.service_email ? ` (share the sheet with ${res.service_email})` : ""}`);
       refresh();
     } finally { setBusy(null); }
@@ -213,7 +216,7 @@ export function ContractingRequestsBoard() {
                   <p className="font-semibold text-foreground">Request</p>
                   <p className="text-xs text-muted-foreground">Submitted {when(open.submitted_at)} · version {open.request_version ?? 1} · sheet {open.sheet_status ?? "—"}{open.sheet_row ? ` (row ${open.sheet_row})` : ""} · {when(open.sheet_synced_at)}</p>
                   {open.sheet_error ? <p className="mt-1 text-xs text-destructive">{open.sheet_error}</p> : null}
-                  <p className="mt-1 text-xs text-muted-foreground">The submitted snapshot is what the sheet holds; later profile edits make a new version, never a silent rewrite.</p>
+                  <p className="mt-1 text-xs text-muted-foreground">This is the saved request snapshot. Only a successful sheet receipt confirms it reached the sheet; carrier approval is a separate decision. Later profile edits require a new request version.</p>
                 </div>
               ) : null}
               <div className="flex flex-wrap gap-2">
@@ -221,12 +224,13 @@ export function ContractingRequestsBoard() {
                 {open.status === "ready_to_submit" ? <Button type="button" size="sm" className="h-10" disabled={busy === open.agent_id} onClick={() => void submit(open)}>Submit request</Button> : null}
                 {isAdmin && open.request_id && open.status === "submitted" ? (
                   <>
-                    <Button type="button" variant="outline" size="sm" className="h-10" onClick={() => void setStatus(open, "approved")}>Mark approved</Button>
-                    <Button type="button" variant="outline" size="sm" className="h-10" onClick={() => void setStatus(open, "declined")}>Mark declined</Button>
+                    <Button type="button" variant="outline" size="sm" className="h-10" onClick={() => void setStatus(open, "approved")}>Record request approval</Button>
+                    <Button type="button" variant="outline" size="sm" className="h-10" onClick={() => void setStatus(open, "declined")}>Record request decline</Button>
                   </>
                 ) : null}
                 {isAdmin && open.request_id && open.status === "approved" ? <Button type="button" variant="ghost" size="sm" className="h-10" onClick={() => void setStatus(open, "archived")}>Archive</Button> : null}
               </div>
+              {isAdmin && open.request_id && open.status === "submitted" ? <p className="text-xs text-muted-foreground">Record a decision only after checking the carrier or IMO confirmation. Then open the agent&apos;s review to confirm the applicable carrier; these request buttons do not update the carrier circles.</p> : null}
             </div>
           ) : null}
         </SheetContent>

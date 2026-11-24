@@ -62,10 +62,10 @@ export function AskApex() {
     staleTime: 5 * 60_000,
     queryFn: async () => {
       const [summary, insights, top, challenges] = await Promise.all([
-        supabase.from("v_business_analytics_summary" as any).select("*").maybeSingle(),
-        supabase.from("v_business_analytics_insights" as any).select("*").maybeSingle(),
-        supabase.from("v_team_analytics_producers" as any).select("agent_name, agent_code, user_id, deals_30d, premium_30d").limit(5),
-        supabase.from("v_sales_challenges" as any).select("period, current_premium, target_premium, current_deals, target_deals"),
+        supabase.from("v_business_analytics_summary").select("*").maybeSingle(),
+        supabase.from("v_business_analytics_insights").select("*").maybeSingle(),
+        supabase.from("v_team_analytics_producers").select("agent_name, agent_code, user_id, deals_30d, premium_30d").limit(5),
+        supabase.from("v_sales_challenges").select("period, current_premium, target_premium, current_deals, target_deals"),
       ]);
       return {
         summary: summary.data,

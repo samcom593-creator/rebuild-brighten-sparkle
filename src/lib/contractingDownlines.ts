@@ -185,10 +185,11 @@ export type DownlineStage = { key: "login_pending" | "licensing" | "ready" | "ad
 export const STAGE_ORDER: Record<DownlineStage["key"], number> = { held: 0, ready: 1, login_pending: 2, adding: 3, licensing: 4, on_sheet: 5 };
 
 export function downlineStage(r: Pick<BoardRow, "agent_status" | "npn" | "on_sheet" | "ethos_state" | "ethos_note">): DownlineStage {
-  if (r.on_sheet) return { key: "on_sheet", label: "On MGN's sheet", tone: "ok", hint: "Contracting sent. MGN/Ethos take it from here." };
+  if (r.ethos_state === "manual_review" || r.ethos_state === "failed" || r.ethos_state === "not_configured") return { key: "held", label: "Submission needs attention", tone: "warn", hint: r.ethos_note ?? (r.ethos_state === "not_configured" ? "Sheet delivery is not configured. An admin must restore it." : "Review the delivery receipt before retrying.") };
+  if (r.on_sheet) return { key: "on_sheet", label: "Submission on MGN's sheet", tone: "pending", hint: "Sheet receipt verified. Carrier approval still needs its own confirmation." };
+  if (r.ethos_state === "delivered" || r.ethos_state === "accepted") return { key: "adding", label: "Submission received", tone: "pending", hint: "Delivery has a receipt; refresh the sheet to reconcile it. Carrier approval is not confirmed here." };
   if (r.agent_status === "intake_only") return { key: "login_pending", label: "Joined — login not made", tone: "warn", hint: "Their details are saved; an admin finishes the login." };
   if (!r.npn) return { key: "licensing", label: "Getting licensed", tone: "muted", hint: "When they have an NPN they open your Join link again." };
-  if (r.ethos_state === "queued" || r.ethos_state === "attempting") return { key: "adding", label: "Being added to the sheet", tone: "pending", hint: "Usually under a minute." };
-  if (r.ethos_state === "manual_review") return { key: "held", label: "Held — needs a look", tone: "warn", hint: r.ethos_note ?? "Something on this person conflicts with another record." };
-  return { key: "ready", label: "Ready — not on the sheet", tone: "warn", hint: "Licensed with an NPN. Tap Add to sheet." };
+  if (r.ethos_state === "queued" || r.ethos_state === "attempting") return { key: "adding", label: "Queued for MGN's sheet", tone: "pending", hint: r.ethos_note ?? "Waiting for a verified sheet receipt. This is not carrier approval." };
+  return { key: "ready", label: "NPN on file — review before submission", tone: "warn", hint: "Confirm the current life license and identity before adding the request. An NPN alone does not verify eligibility." };
 }

@@ -83,7 +83,7 @@ export default function BulkDeals() {
     try {
       // Pull all agents + carriers once for lookup
       const [{ data: agents }, { data: carriers }] = await Promise.all([
-        supabase.from("agents").select("id, profile:profiles(full_name)").eq("is_deactivated", false),
+        supabase.from("agents").select("id, profile:profiles!agents_profile_id_fkey(full_name)").eq("is_deactivated", false),
         supabase.from("carriers").select("id, name").eq("is_active", true),
       ]);
       const agentByName: Record<string, string> = {};

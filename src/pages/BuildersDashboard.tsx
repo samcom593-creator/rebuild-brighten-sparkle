@@ -427,7 +427,7 @@ export default function BuildersDashboard({ mode = "builders" }: { mode?: Dashbo
     queryFn: async () => {
       const { data, error } = await (supabase as unknown as AgentDetailClient)
         .from("agents")
-        .select("id, display_name, status, license_status, onboarding_stage, invited_by_manager_id, manager_id, builder_track, created_at, updated_at, profile:profiles(full_name,email,phone,state)")
+        .select("id, display_name, status, license_status, onboarding_stage, invited_by_manager_id, manager_id, builder_track, created_at, updated_at, profile:profiles!agents_profile_id_fkey(full_name,email,phone,state)")
         .order("created_at", { ascending: false })
         .limit(1200);
       if (error) throw error;

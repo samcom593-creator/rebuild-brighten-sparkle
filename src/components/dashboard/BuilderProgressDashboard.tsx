@@ -76,7 +76,7 @@ export function BuilderProgressDashboard() {
     queryKey: ["sam-builders-dashboard"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_sam_builders_dashboard" as any)
+        .from("v_sam_builders_dashboard")
         .select("*");
       if (error) throw error;
       return (data ?? []) as BuilderRow[];

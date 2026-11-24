@@ -65,6 +65,34 @@ describe("MGN New Agents layout (MP-304)", () => {
     const out = await deliverEthosSheet("i-1", deps);
     expect(out.state).toBe("manual_review"); expect(s.calls.some((c) => c.method === "PUT")).toBe(false);
   });
+  test("formatted NANP mobile under another NPN holds the submission", async () => {
+    const s = sheets({ "New Agents": [...NEW_TAB, ["Other", "Producer", "1 (608) 609-6667", "other@example.com", "21009999", "21346366", "60%", "6 Month Advance"]] });
+    const deps: DeliveryDeps = { ...base, loadIntake: async () => INTAKE, sendEmail: async () => "x", fetchImpl: s.fetchImpl as never, loadEthosApproval: async () => APPROVAL };
+    const out = await deliverEthosSheet("i-1", deps);
+    expect(out.state).toBe("manual_review");
+    expect(s.calls.some((c) => c.method === "PUT")).toBe(false);
+  });
+  test("international mobile sharing a ten-digit suffix is not another producer's NANP identity", async () => {
+    const s = sheets({ "New Agents": [...NEW_TAB, ["Other", "Producer", "+2346086096667", "other@example.com", "21009999", "21346366", "60%", "6 Month Advance"]] });
+    const deps: DeliveryDeps = { ...base, loadIntake: async () => INTAKE, sendEmail: async () => "x", fetchImpl: s.fetchImpl as never, loadEthosApproval: async () => APPROVAL };
+    const out = await deliverEthosSheet("i-1", deps);
+    expect(out.state).toBe("delivered");
+    expect(out.receipt?.written).toBe(true);
+  });
+  test("read-back cannot accept an international number just because its suffix matches", async () => {
+    const s = sheets({ "New Agents": NEW_TAB });
+    const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
+      const response = await s.fetchImpl(url, init);
+      if ((init?.method ?? "GET") === "GET" && s.calls.some((c) => c.method === "PUT")) {
+        const body = await response.json();
+        if (body.values?.[0]) body.values[0][2] = "+2346086096667";
+        return new Response(JSON.stringify(body), { status: 200 });
+      }
+      return response;
+    });
+    const deps: DeliveryDeps = { ...base, loadIntake: async () => INTAKE, sendEmail: async () => "x", fetchImpl: fetchImpl as never, loadEthosApproval: async () => APPROVAL };
+    await expect(deliverEthosSheet("i-1", deps)).rejects.toThrow(/read-back mismatch/);
+  });
   test("header drift on New Agents → held, nothing written", async () => {
     const s = sheets({ "New Agents": [["Agent First Name", "Last", ...MGN_NEW_AGENTS_HEADERS.slice(2)]] });
     const deps: DeliveryDeps = { ...base, loadIntake: async () => INTAKE, sendEmail: async () => "x", fetchImpl: s.fetchImpl as never, loadEthosApproval: async () => APPROVAL };

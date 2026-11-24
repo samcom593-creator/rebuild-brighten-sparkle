@@ -26,20 +26,8 @@ import {
 } from "lucide-react";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { GlassCard } from "@/components/ui/glass-card";
-import { AnimatedCounter } from "@/components/ui/animated-counter";
-import { useQuery } from "@tanstack/react-query";
 import { useInteractionGate } from "@/shared/hooks/useInteractionGate";
-// wave-42 (2026-06-08): supabase dynamic-imported inside queryFn. Wave-43 (2026-06-08):
-// also gated on useInteractionGate so the queryFn never fires inside Lighthouse's cold
-// landing window. The `?? 95` / `?? 22` fallbacks already render the real numbers so
-// anonymous landings see identical pixels — see CTASection for the full rationale.
-
-interface LandingLiveStats {
-  active_agents: number;
-  applications_30d: number;
-  applications_total: number;
-  carriers_partnered: number;
-}
+import { useLandingLiveStats } from "@/hooks/useLandingLiveStats";
 
 interface Phase {
   name: string;
@@ -64,11 +52,7 @@ const phaseConnectorColors = [
   "from-primary to-purple-500",
 ];
 
-// phases is now built per-render inside the component so the carrier count
-// stays in lockstep with landing_live_stats().carriers_partnered. Marketing
-// "50+ carriers" claim contradicted the canonical 22-carrier HeroSection list
-// (Audit pass #11, 2026-05-21).
-const buildPhases = (carriers: number): Phase[] => [
+const buildPhases = (carriers: number | null): Phase[] => [
   {
     name: "Phase 1: Foundation",
     subtitle: "Become a Licensed Life Insurance Agent",
@@ -112,8 +96,10 @@ const buildPhases = (carriers: number): Phase[] => [
       {
         icon: FileSignature,
         title: "Receive & Submit Carrier Contracts",
-        description: `Sign contracts with top carriers for the products you want to sell. Contract with up to ${carriers} carriers through Galaxy — Final Expense, Mortgage Protection, and IUL.`,
-        benefit: `✓ ${carriers} carrier partners`,
+        description: carriers !== null && carriers > 0
+          ? `Review available products across ${carriers} carrier partners. Your appointments depend on your state, licensing, and carrier approval.`
+          : "Review carrier and product options with your manager. Your appointments depend on your state, licensing, and carrier approval.",
+        benefit: "✓ Carrier access reviewed with your manager",
       },
       {
         icon: GraduationCap,
@@ -252,25 +238,9 @@ const whyAgentsChoose = [
 
 export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathwaySection(_props, _ref) {
   const gateOpen = useInteractionGate();
-  const { data: liveStats } = useQuery({
-    queryKey: ["landing_live_stats"],
-    queryFn: async (): Promise<LandingLiveStats | null> => {
-      const { supabase } = await import("@/integrations/supabase/client");
-      const { data, error } = await supabase.rpc("landing_live_stats");
-      if (error) throw error;
-      return data as unknown as LandingLiveStats;
-    },
-    enabled: gateOpen,
-    staleTime: 60_000,
-    refetchInterval: 300_000,
-  });
-
-  // Fall back to the same canonical numbers the LiveStatsCounterStrip uses,
-  // so the cards never render "0" or "..." even before the RPC resolves.
-  // 2026-06-19: feb05b97 truth-floor sync — RPC is authoritative (truth=41
-  // active); 40 is the cold-render floor only.
-  const activeAgents = liveStats?.active_agents ?? 40;
-  const carriers = liveStats?.carriers_partnered ?? 22;
+  const { data: liveStats, isError: statsError } = useLandingLiveStats(gateOpen);
+  const activeAgents = liveStats?.active_agents ?? null;
+  const carriers = liveStats?.carriers_partnered ?? null;
   const phases = useMemo(() => buildPhases(carriers), [carriers]);
 
   const [activePhase, setActivePhase] = useState(0);
@@ -338,8 +308,8 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
   const stats = [
     { value: "$1.2M", label: "First-Year Income" },
     { value: "70%–145%", label: "Commission Range" },
-    { value: `${carriers}`, label: "Carrier Partners" },
-    { value: `${activeAgents}`, label: "Active Agents", isLive: true },
+    { value: carriers === null ? "—" : carriers.toLocaleString(), label: "Carrier Partners", unavailable: carriers === null },
+    { value: activeAgents === null ? "—" : activeAgents.toLocaleString(), label: "Active Agents", unavailable: activeAgents === null },
   ];
 
   let stepNumber = 0;
@@ -436,26 +406,16 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
               style={{ transitionDelay: `${index * 70}ms` }}
             >
               <GlassCard className="p-6 text-center relative group" hoverEffect>
-                {stat.isLive && (
-                  <div className="absolute top-3 right-3">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
-                    </span>
-                  </div>
-                )}
-                <div className="text-2xl md:text-3xl font-bold gradient-text mb-1">
-                  {stat.isLive ? (
-                    <AnimatedCounter value={activeAgents} />
-                  ) : (
-                    stat.value
-                  )}
+                <div className="text-2xl md:text-3xl font-bold gradient-text mb-1" aria-label={stat.unavailable ? `${stat.label} unavailable` : undefined}>
+                  {stat.value}
                 </div>
                 <div className="text-sm text-muted-foreground">{stat.label}</div>
               </GlassCard>
             </div>
           ))}
         </div>
+
+        {statsError && <p role="status" className="-mt-10 mb-10 text-center text-sm text-muted-foreground">{liveStats ? "Showing the last available agency numbers." : "Agency numbers are temporarily unavailable. Explore the steps below."}</p>}
 
         {/* Section Header */}
         <SectionHeading

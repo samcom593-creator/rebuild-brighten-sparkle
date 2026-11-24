@@ -24,23 +24,20 @@ interface Subscription {
   agent_id: string;
   agent_name: string;
   status: string;
-  amount: number;
-  last_paid: string | null;
-  next_due: string | null;
 }
 
 export default function InstagramAutomation() {
   const { isAdmin } = useAuth();
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
-  const [totalMRR, setTotalMRR] = useState(0);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSubscriptions();
   }, []);
 
   const fetchSubscriptions = async () => {
-    setLoading(true);
+    setLoading(true); setLoadError(null);
     try {
       // Use rpc or raw query since types may not be generated yet
       const { data, error } = await supabase
@@ -56,7 +53,7 @@ export default function InstagramAutomation() {
       if (agentIds.length > 0) {
         const { data: agents } = await supabase
           .from("agents")
-          .select("id, display_name, profiles:profile_id(full_name)")
+          .select("id, display_name, profiles:profiles!agents_profile_id_fkey(full_name)")
           .in("id", agentIds);
         agents?.forEach((a: any) => {
           agentNames[a.id] = a.display_name || a.profiles?.full_name || "Agent";
@@ -67,16 +64,13 @@ export default function InstagramAutomation() {
         id: s.id,
         agent_id: s.agent_id,
         agent_name: agentNames[s.agent_id] || "Agent",
-        status: s.status || "active",
-        amount: Number(s.amount) || 97,
-        last_paid: s.last_paid,
-        next_due: s.next_due,
+        status: s.status || "unknown",
       }));
 
       setSubscriptions(subs);
-      setTotalMRR(subs.filter(s => s.status === "active").reduce((sum, s) => sum + s.amount, 0));
     } catch (e) {
-      console.error(e);
+      setSubscriptions([]);
+      setLoadError(e instanceof Error ? e.message : "Subscriptions could not be loaded.");
     }
     setLoading(false);
   };
@@ -123,8 +117,9 @@ export default function InstagramAutomation() {
               <DollarSign className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Monthly MRR</p>
-              <p className="text-2xl font-bold">${totalMRR.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Monthly recurring revenue</p>
+              <p className="text-xl font-bold">Not available</p>
+              <p className="text-sm text-muted-foreground">Verified billing amounts are needed to calculate revenue.</p>
             </div>
           </div>
         </GlassCard>
@@ -135,7 +130,7 @@ export default function InstagramAutomation() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Active Subscribers</p>
-              <p className="text-2xl font-bold">{subscriptions.filter(s => s.status === "active").length}</p>
+              <p className="text-2xl font-bold">{loadError ? "Unavailable" : subscriptions.filter(s => s.status === "active").length}</p>
             </div>
           </div>
         </GlassCard>
@@ -161,11 +156,17 @@ export default function InstagramAutomation() {
           </Button>
         </div>
 
-        {subscriptions.length === 0 ? (
+        {loadError ? (
+          <GlassCard className="space-y-3 p-6" role="alert">
+            <p className="font-medium">Subscriptions could not be loaded</p>
+            <p className="text-sm text-muted-foreground">{loadError}</p>
+            <Button type="button" variant="outline" onClick={() => void fetchSubscriptions()}>Retry subscriptions</Button>
+          </GlassCard>
+        ) : subscriptions.length === 0 ? (
           <GlassCard className="p-8 text-center">
             <Instagram className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
             <p className="text-muted-foreground">No Instagram automation subscriptions yet</p>
-            <p className="text-sm text-muted-foreground mt-1">Subscriptions will appear here when agents sign up for the $97/mo service</p>
+            <p className="text-sm text-muted-foreground mt-1">Subscriptions appear here when an agent&apos;s service enrollment is recorded. Billing amounts must be verified separately.</p>
           </GlassCard>
         ) : (
           <div className="grid gap-3">
@@ -182,7 +183,7 @@ export default function InstagramAutomation() {
                     </div>
                     <div>
                       <p className="font-semibold">{sub.agent_name}</p>
-                      <p className="text-sm text-muted-foreground">${sub.amount}/mo</p>
+                      <p className="text-sm text-muted-foreground">Billing amount unavailable</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
@@ -192,14 +193,10 @@ export default function InstagramAutomation() {
                     >
                       {sub.status}
                     </Badge>
-                    {sub.last_paid && (
-                      <span className="text-xs text-muted-foreground">
-                        Last paid: {new Date(sub.last_paid).toLocaleDateString()}
-                      </span>
-                    )}
                     <Button
                       variant="ghost"
                       size="sm"
+                      aria-label={`${sub.status === "active" ? "Pause" : "Activate"} ${sub.agent_name}'s subscription`}
                       onClick={() => toggleSubscription(sub)}
                     >
                       {sub.status === "active" ? (

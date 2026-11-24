@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ClientCallWorkspace } from "@/components/clients/ClientCallWorkspace";
+import { ClientCallHistory } from "@/components/clients/ClientCallHistory";
 import { SoldCallPanel } from "@/components/clients/SoldCallPanel";
 import { SubmitDealDialog, type PostedDealReceipt } from "@/components/deals/SubmitDealDialog";
 import { cn } from "@/lib/utils";
@@ -326,6 +327,8 @@ export default function ClientDetail() {
         <div className="grid min-h-[520px] gap-3 p-3 lg:grid-cols-[minmax(0,1fr)_300px]">
           <main className="min-w-0 space-y-3">
             <ClientCallWorkspace clientId={clientId!} values={c as unknown as Record<string, unknown>} />
+
+            <ClientCallHistory key={clientId} clientId={clientId!} />
 
             <SoldCallPanel phone={c.phone} firstName={c.first_name} lastName={c.last_name} />
 

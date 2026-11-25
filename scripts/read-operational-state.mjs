@@ -65,8 +65,11 @@ function sanitize(name, value) {
       lead_pool_counts: 'public.lead_pool_counts(text,jsonb)',
       lead_pool_candidates: 'public.lead_pool_candidates(text,jsonb)',
       lead_pool_filter_matches: 'public.lead_pool_filter_matches(text,integer,text,integer,jsonb,jsonb)',
+      lead_pool_candidates_for_phones: 'public.lead_pool_candidates_for_phones(text,jsonb,text[])',
+      lead_pool_static_filter_matches: 'public.lead_pool_static_filter_matches(text,integer,text,integer,jsonb)',
     };
     const source = object(row.functions);
+    if (Object.keys(source).length !== Object.keys(contracts).length || Object.keys(source).some(key => !Object.hasOwn(contracts,key))) throw new Error('unexpected lead function set');
     const functions = Object.fromEntries(Object.entries(contracts).map(([key, signature]) => {
       const f = object(source[key]);
       if (f.signature !== signature) throw new Error('unexpected lead function signature');
@@ -78,8 +81,22 @@ function sanitize(name, value) {
         if (typeof value !== 'string' || value.length > 500 || !/^(search_path|statement_timeout|lock_timeout|work_mem|jit)=[A-Za-z0-9_ ,.$"-]+$/.test(value)) throw new Error('invalid lead function configuration');
         return value;
       });
-      return [key, { signature, present, definition: f.definition, proconfig }];
+      const flags = Object.fromEntries(['security_definer','authenticated_execute','anon_execute','public_execute'].map(key => [key,boolean(f[key])]));
+      const volatility = present ? enumeration(f.volatility,['i','s','v']) : null;
+      if (!present && (f.volatility !== null || Object.values(flags).some(Boolean))) throw new Error('missing lead function has privileges');
+      return [key, { signature, present, definition: f.definition, proconfig, ...flags, volatility }];
     }));
+    const view = object(row.candidate_view);
+    if (view.name !== 'public.v_lead_pool_candidate_base') throw new Error('unexpected lead view');
+    const viewFlags = Object.fromEntries(['present','is_view','security_invoker','authenticated_select','anon_select','public_select',
+      'authenticated_any_privilege','anon_any_privilege','public_any_privilege'].map(key => [key,boolean(view[key])]));
+    if (viewFlags.is_view) {
+      if (!viewFlags.present || typeof view.definition !== 'string' || view.definition.length > 100000 || !/^\s*(SELECT|WITH)\b/i.test(view.definition) || view.definition.includes('\u0000')) throw new Error('invalid lead view definition');
+    } else if (view.definition !== null) throw new Error('missing lead view has a definition');
+    if (!viewFlags.present && Object.values(viewFlags).some(Boolean)) throw new Error('missing lead view has metadata');
+    const migration = object(row.migration);
+    if (migration.version !== '20261125110000') throw new Error('unexpected lead migration');
+    const migrationRecorded = boolean(migration.recorded);
     const indexes = array(row.indexes).map(value => {
       const i = object(value);
       const table = enumeration(i.table, ['mat_lead_pool', 'lead_bundle_items', 'lead_bundle_events', 'lead_resale_ledger']);
@@ -87,7 +104,9 @@ function sanitize(name, value) {
       if (typeof i.definition !== 'string' || i.definition.length > 20000 || i.definition.includes('\u0000') || !i.definition.startsWith(`CREATE INDEX ${i.name} ON public.${table} `) && !i.definition.startsWith(`CREATE UNIQUE INDEX ${i.name} ON public.${table} `)) throw new Error('invalid lead index definition');
       return { table, name: i.name, definition: i.definition };
     });
-    return { application_functions_executed: false, lead_rows_read: false, auth_claims_changed: false, functions, indexes };
+    return { application_functions_executed: false, lead_rows_read: false, auth_claims_changed: false, functions, indexes,
+      candidate_view: { name: view.name, ...viewFlags, definition: view.definition },
+      migration: { version: migration.version, recorded: migrationRecorded } };
   }
   if (name === 'audio') {
     const row = object(value);

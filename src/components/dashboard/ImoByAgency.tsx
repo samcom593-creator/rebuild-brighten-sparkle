@@ -4,8 +4,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useRealtimeTable } from "@/shared/realtime/useRealtimeTable";
 import { useAuth } from "@/hooks/useAuth";
+import { useDemoNumberFields } from "@/hooks/useDemoNumberFields";
+import { agencyDemoFields, applyAgencyDemo } from "@/lib/productionDemoModels";
 import { summarizeVantageDays, type VantageDay } from "@/lib/vantageProductionApi";
 import { resolveBrand } from "@/config/brand";
+import "./dashboard-content.css";
 
 const BRAND = resolveBrand();
 
@@ -102,7 +105,12 @@ export function ImoByAgency({
       return (data ?? []) as Row[];
     },
   });
-  const imo = imoQuery.data ?? [];
+  const demo = useDemoNumberFields({
+    scopeKey: `agency:${exactWindow ? `${start}:${end}` : `summary:${phoenixToday}`}`,
+    label: `Agency breakdown · ${exactWindow ? windowLabel ?? "selected dates" : "current summary"}`,
+    fields: isAdmin ? agencyDemoFields(imoQuery.data ?? [], exactWindow) : [],
+  });
+  const imo = demo.isDemo ? applyAgencyDemo(imoQuery.data ?? [], demo.values) : imoQuery.data ?? [];
 
   const invalidateProduction = () => {
     queryClient.invalidateQueries({ queryKey: ["vantage-api-production"] }, { cancelRefetch: false });
@@ -194,44 +202,44 @@ export function ImoByAgency({
   const overrideTotal = imo.reduce((sum, a) => sum + ovrOf(a), 0);
 
   return (
-    <div>
-      <div className="mb-2 flex items-baseline justify-between">
+    <div className="agency-production">
+      <div className="agency-production__headline">
         {/* Home titles this block itself and shows the window once; it passes hideTitle. */}
-        {hideTitle ? <span /> : <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">Total IMO by Agency</p>}
-        <p className="text-xs text-muted-foreground">
-          {hideTitle ? "" : `${periodLabel} · `}{fmt(periodTotal)} ALP
-          {overrideTotal > 0 && <span className="ml-1 text-primary">· {fmt(overrideTotal)} your override</span>}
-        </p>
+        {!hideTitle && <h3 className="money-board__title">Total IMO by agency</h3>}
+        {demo.isDemo && <Badge variant="outline" role="status">Demo figures</Badge>}
+        <p className="agency-production__total">{fmt(periodTotal)}<span>ALP</span></p>
+        <p className="money-board__note">{periodLabel}</p>
+        {overrideTotal > 0 && <p className="agency-production__override">{fmt(overrideTotal)} <span>estimated override</span></p>}
       </div>
       <Card>
-        <CardContent className="space-y-3 p-4">
+        <CardContent className="p-0">
           {imo.map((a) => (
-            <div key={a.agency}>
-              <div className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-2 font-medium">
+            <div key={a.agency} className="agency-production__row">
+              <div className="agency-production__row-heading">
+                <span className="flex flex-wrap items-center gap-2 font-semibold">
                   {/* The primary book's row carries the database name, which still reads
                       APEX after the rename; the scoreboard above calls the same book Galaxy. */}
                   {a.is_primary ? BRAND.legalName : a.agency}
-                  {a.is_primary && <Badge variant="outline" className="border-primary/30 bg-primary/15 text-primary text-[11px]">MINE</Badge>}
+                  {a.is_primary && <Badge variant="outline" className="border-primary/30 bg-primary/15 text-primary text-xs">MINE</Badge>}
                 </span>
-                <span className="font-semibold tabular-nums">{fmt(a.alp)}</span>
+                <span className="agency-production__amount">{fmt(a.alp)}<span>{exactWindow ? "ALP" : "All-time ALP"}</span></span>
               </div>
-              <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted">
-                <div className="h-full rounded-full bg-primary" style={{ width: `${(a.alp / max) * 100}%` }} />
+              <div className="agency-production__bar" aria-hidden="true">
+                <div style={{ width: `${(a.alp / max) * 100}%` }} />
               </div>
               {exactWindow ? (
-                <p className="mt-0.5 text-[12px] text-muted-foreground">
+                <p className="mt-2 text-sm text-muted-foreground">
                   {a.policies.toLocaleString()} policies · {windowLabel ?? "selected period"}
                 </p>
               ) : (
-                <div className="mt-0.5 text-[12px] text-muted-foreground">
+                <div className="mt-2 text-sm text-muted-foreground">
                   <p>{(a.policies_30d ?? 0).toLocaleString()} policies · {fmt(a.alp_30d)} last 30 days</p>
                   <p>{(a.policies_mtd ?? 0).toLocaleString()} policies · {fmt(a.alp_mtd)} calendar MTD</p>
                 </div>
               )}
               {(a.owner_override_pct ?? 0) > 0 && (
-                <p className="mt-0.5 text-[12px] font-medium text-primary">
-                  Your override: {fmt(ovrOf(a))} {exactWindow ? "this window" : "MTD"}
+                <p className="mt-2 text-sm font-medium text-tone-cool">
+                  Est. override: {fmt(ovrOf(a))} {exactWindow ? "this window" : "MTD"}
                 </p>
               )}
               {a.agency === "Vantage Financial" && vantageQuery.isError && (
@@ -240,12 +248,12 @@ export function ImoByAgency({
                 </p>
               )}
               {a.agency === "Vantage Financial" && vantageDays.length > 0 && (
-                <details className="mt-2 text-xs text-muted-foreground">
-                  <summary className="cursor-pointer rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
+                <details className="money-board__details">
+                  <summary>
                     Agent Cloud · {fmt(vantageApi.placed)} placed · {vantageApi.producers.length} producers
                   </summary>
                   <p className="mt-2">API coverage: {vantageApi.start} – {vantageApi.end}. Verified {new Date(vantageApi.updatedAt).toLocaleString()}.</p>
-                  <p>These production totals are already included above. Placed premium is reported by Agent Cloud; it is not a commission payment.</p>
+                  <p>{demo.isDemo ? "Original source detail · the figures above include local demo edits." : "These production totals are already included above."} Placed premium is reported by Agent Cloud; it is not a commission payment.</p>
                   <ul className="mt-2 space-y-1" aria-label="Vantage producer totals">
                     {vantageApi.producers.map(producer => (
                       <li key={producer.name} className="flex flex-wrap justify-between gap-x-3">

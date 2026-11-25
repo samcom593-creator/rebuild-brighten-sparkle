@@ -4,11 +4,14 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import { GoalProgressRail } from "@/components/ui/kpi-stat";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Target, ExternalLink } from "lucide-react";
+import { useDemoNumberFields } from "@/hooks/useDemoNumberFields";
+import { applyManagerGoalDemo, managerGoalDemoFields } from "@/lib/goalDemoModels";
 import type { GoalScorecard } from "./GoalTrackerCard";
+import "./dashboard-content.css";
 
 // MP-303 — Sam's manager track board. Every manager's goal, what it takes to hit
 // it, their projected income, and Sam's projected override from their tree, plus
@@ -26,15 +29,15 @@ type Board = {
   error?: string;
 };
 
-const money = (n: number | null | undefined) => (n == null ? "—" : `$${Math.round(n).toLocaleString()}`);
+const money = (n: number | null | undefined) => (n == null || !Number.isFinite(n) ? "—" : `$${Math.round(n).toLocaleString("en-US")}`);
 
 const STATUS: Record<string, string> = {
-  ahead: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30",
-  on_track: "bg-sky-500/15 text-sky-600 border-sky-500/30",
-  behind: "bg-amber-500/15 text-amber-600 border-amber-500/30",
+  ahead: "bg-tone-good/10 text-tone-good border-tone-good/35",
+  on_track: "bg-tone-cool/10 text-tone-cool border-tone-cool/35",
+  behind: "bg-tone-warm/10 text-tone-warm border-tone-warm/35",
   upcoming: "bg-primary/15 text-primary border-primary/30",
-  hit: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30",
-  missed: "bg-rose-500/15 text-rose-600 border-rose-500/30",
+  hit: "bg-tone-good/10 text-tone-good border-tone-good/35",
+  missed: "bg-tone-hot/10 text-tone-hot border-tone-hot/35",
   no_goal: "bg-muted text-muted-foreground border-border",
   unmatched: "bg-muted text-muted-foreground border-dashed border-border",
 };
@@ -97,6 +100,11 @@ export function ManagerGoalBoard() {
       return b;
     },
   });
+  const demo = useDemoNumberFields({
+    scopeKey: `manager-goals:${q.data?.period_start ?? "pending"}`,
+    label: `Team goals · ${q.data?.period_label ?? "current period"}`,
+    fields: q.isError || q.isPending ? [] : managerGoalDemoFields(q.data),
+  });
 
   // isPending covers both the pre-view idle state (enabled:false) and the
   // in-flight fetch; the ref must stay mounted through both so the observer can
@@ -110,7 +118,7 @@ export function ManagerGoalBoard() {
       </Card>
     );
   }
-  const b = q.data;
+  const b = demo.isDemo ? applyManagerGoalDemo(q.data, demo.values) : q.data;
   if (!b || b.managers.length === 0) {
     return (
       <Card>
@@ -120,86 +128,73 @@ export function ManagerGoalBoard() {
     );
   }
 
-  return (
-    <Card className="overflow-hidden">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-base flex items-center gap-2"><Target className="h-4 w-4 text-primary" /> Manager goal tracker · {b.period_label}</CardTitle>
-          <Button asChild variant="ghost" size="sm" className="h-7 text-xs">
-            <a href="https://mgnagenthub.com/downlines" target="_blank" rel="noopener noreferrer">Contracting <ExternalLink className="ml-1 h-3 w-3" /></a>
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-2.5">
-        {b.managers.map((m, i) => {
-          const pct = Math.max(0, Math.min(100, m.team_ap_goal > 0 ? ((m.team_ap_actual ?? 0) / m.team_ap_goal) * 100 : 0));
-          return (
-            <div key={m.agent_id ?? `u-${i}`} className="rounded-lg border border-border/60 p-3">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-semibold truncate">{m.name}</span>
-                  <Badge variant="outline" className={`text-[10px] ${STATUS[m.status] ?? STATUS.no_goal}`}>{STATUS_LABEL[m.status] ?? "—"}</Badge>
-                </div>
-                {m.agent_id && (
-                  <Link to={`/dashboard/agent/${m.agent_id}`} className="text-xs text-muted-foreground hover:text-foreground shrink-0">Open →</Link>
-                )}
-              </div>
-              {m.unmatched ? (
-                <div className="mt-1 text-xs text-muted-foreground">
-                  Goal {money(m.team_ap_goal)}{m.recruit_goal ? ` · ${m.recruit_goal} agents` : ""} — not matched to a roster agent yet.
-                </div>
-              ) : (
-                <>
-                  <div className="mt-2 flex items-baseline justify-between text-sm">
-                    <span className="font-medium">{money(m.team_ap_actual)}</span>
-                    <span className="text-muted-foreground text-xs">of {money(m.team_ap_goal)}{m.pace_pct != null ? ` · ${m.pace_pct}% pace` : ""}</span>
-                  </div>
-                  <Progress value={pct} className="h-1.5 mt-1" />
-                  {/* the plan */}
-                  <div className="mt-1.5 text-[11px] text-muted-foreground">
-                    Needs <span className="text-foreground font-medium">{m.deals_per_week ?? "—"} deals/wk</span> ({m.deals_per_day ?? "—"}/day at {money(m.avg_deal_size)})
-                    {m.recruit_goal ? <> · <span className="text-foreground font-medium">{m.recruits_needed} more agents</span></> : null}
-                    {m.biz_days_remaining != null ? ` · ${m.biz_days_remaining} selling days` : ""}
-                  </div>
-                  <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
-                    <div>
-                      <div className="text-muted-foreground">Team</div>
-                      <div className="font-medium">{m.team_members ?? 0}{m.recruit_goal ? ` / ${m.recruit_goal}` : ""}</div>
-                    </div>
-                    <div>
-                      <div className="text-muted-foreground">Their income</div>
-                      <div className="font-medium">{money(m.projected_total_income)}</div>
-                    </div>
-                    <div>
-                      <div className="text-muted-foreground">Your override</div>
-                      <div className="font-medium text-primary">{money(m.projected_sam_override)}</div>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          );
-        })}
+  return <ManagerGoalBoardView board={b} isDemo={demo.isDemo} />;
+}
 
-        <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 mt-1">
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <div>
-              <div className="text-[11px] text-muted-foreground">Team goal</div>
-              <div className="font-semibold">{money(b.total_team_goal)}</div>
-            </div>
-            <div>
-              <div className="text-[11px] text-muted-foreground">Booked so far</div>
-              <div className="font-semibold">{money(b.total_team_actual)}</div>
-            </div>
-            <div>
-              <div className="text-[11px] text-muted-foreground">Your income at goal</div>
-              <div className="font-semibold text-primary">{money(b.total_projected_sam_override)}</div>
-            </div>
+/** Pure rendering seam shared by the live query, demo adapter and visual QA. */
+export function ManagerGoalBoardView({ board: b, isDemo = false }: { board: Board; isDemo?: boolean }) {
+  return (
+    <Card className="money-board money-board--goals">
+      <CardHeader className="money-board__header">
+        <div className="money-board__heading">
+          <div>
+            <p className="money-board__eyebrow"><Target className="h-4 w-4" aria-hidden="true" /> {b.period_label} · saved goals</p>
+            <CardTitle className="money-board__title">Team goals</CardTitle>
+          </div>
+          <div className="money-board__actions">
+            {isDemo && <Badge variant="outline" role="status">Demo figures</Badge>}
+            <Button asChild variant="outline" size="sm" className="min-h-11">
+              <a href="https://mgnagenthub.com/downlines" target="_blank" rel="noopener noreferrer">Contracting <ExternalLink className="ml-1 h-4 w-4" /></a>
+            </Button>
           </div>
         </div>
-        <p className="text-[11px] text-muted-foreground leading-snug">
-          Your income at goal = each tree's ALP goal × your contract spread over that manager. An estimate at current comp, not a guarantee.
-        </p>
+      </CardHeader>
+      <CardContent className="p-0">
+        <div className="money-board__overview">
+          <div className="money-board__stat money-board__stat--lead"><p>Posted ALP</p><strong>{money(b.total_team_actual)}</strong><span>Manager teams · {b.period_label}</span></div>
+          <div className="money-board__stat"><p>Combined goal</p><strong>{money(b.total_team_goal)}</strong><span>ALP target</span></div>
+          <div className="money-board__stat money-board__stat--estimate"><p>Est. override at goal</p><strong>{money(b.total_projected_sam_override)}</strong><span>At current contract spreads</span></div>
+        </div>
+        <div className="goal-board__rows">
+          {b.managers.map((m, i) => (
+            <article key={m.agent_id ?? `u-${i}`} className="goal-board__manager" aria-label={`${m.name ?? "Unmatched manager"} goal`}>
+              <header className="money-board__row-heading">
+                <div className="min-w-0"><h3>{m.name}</h3><Badge variant="outline" className={STATUS[m.status] ?? STATUS.no_goal}>{STATUS_LABEL[m.status] ?? "Status unavailable"}</Badge></div>
+                {m.agent_id && <Link to={`/dashboard/agent/${m.agent_id}`} className="money-board__open">Open <span aria-hidden="true">↗</span></Link>}
+              </header>
+              {m.unmatched ? (
+                <div className="mt-4"><p className="money-board__row-amount">{money(m.team_ap_goal)}</p><p className="money-board__note">ALP goal · not matched to a roster agent yet{m.recruit_goal ? ` · ${m.recruit_goal} recruiting goal` : ""}</p></div>
+              ) : (
+                <>
+                  <div className="money-board__amount-pair">
+                    <p className="money-board__row-amount">{money(m.team_ap_actual)}<span>ALP</span></p>
+                    <p className="money-board__goal-value">Goal <strong>{money(m.team_ap_goal)}</strong></p>
+                  </div>
+                  <GoalProgressRail actual={m.team_ap_actual} target={m.team_ap_goal} paceFraction={!m.upcoming && !m.ended ? m.frac : null} label={`${m.name ?? "Manager"} production goal`} />
+                  <div className="goal-board__essentials">
+                    <span><strong>{m.team_ap_goal > 0 && m.team_ap_actual != null ? money(Math.max(0, m.team_ap_goal - m.team_ap_actual)) : "—"}</strong> to goal</span>
+                    <span><strong>{m.biz_days_remaining ?? "—"}</strong> selling days left</span>
+                  </div>
+                  <details className="money-board__details">
+                    <summary>Plan & estimates</summary>
+                    <dl className="goal-board__detail-grid">
+                      <div><dt>Deals per week</dt><dd>{m.deals_per_week ?? "—"}</dd></div>
+                      <div><dt>Deals per selling day</dt><dd>{m.deals_per_day ?? "—"}</dd></div>
+                      <div><dt>Average deal</dt><dd>{money(m.avg_deal_size)} ALP</dd></div>
+                      <div><dt>Team members</dt><dd>{m.team_members ?? "—"}</dd></div>
+                      <div><dt>New hires in goal period</dt><dd>{m.recruit_actual ?? "—"}{m.recruit_goal ? ` / ${m.recruit_goal} goal` : ""}</dd></div>
+                      <div><dt>Hires still needed</dt><dd>{m.recruits_needed ?? "—"}</dd></div>
+                      <div><dt>Manager est. income at goal</dt><dd>{money(m.projected_total_income)}</dd></div>
+                      <div><dt>Your est. override at goal</dt><dd>{money(m.projected_sam_override)}</dd></div>
+                      <div><dt>Pace against target</dt><dd>{m.pace_pct != null ? `${m.pace_pct}%` : "—"}</dd></div>
+                    </dl>
+                  </details>
+                </>
+              )}
+            </article>
+          ))}
+        </div>
+        <p className="money-board__footnote">Income and override are estimates at goal using current contract spreads.</p>
       </CardContent>
     </Card>
   );

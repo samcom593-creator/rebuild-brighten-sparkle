@@ -13,6 +13,7 @@ import { ComponentErrorBoundary } from "@/components/ComponentErrorBoundary";
 import { PageSkeleton } from "@/components/ui/page-skeleton";
 import { CommandPalette } from "@/components/command/CommandPalette";
 import { CelebrationProvider } from "@/components/celebrations/CelebrationProvider";
+import { ProductionDemoProvider } from "@/components/demo/ProductionDemoProvider";
 import { RequireProfilePicture } from "@/components/profile/RequireProfilePicture";
 import { AgentCloudSetupChecklist } from "@/components/layout/AgentCloudSetupChecklist";
 import { OfflineSyncStatus } from "@/components/layout/OfflineSyncStatus";
@@ -186,6 +187,7 @@ export function AuthenticatedShell() {
       <MotionConfig reducedMotion="user">
         <TooltipProvider>
         <ConfirmProvider>
+          <ProductionDemoProvider>
           <SidebarLayout showPhoneBanner={true}>
             <SessionClockBanner />
             <OfflineSyncStatus />
@@ -204,6 +206,7 @@ export function AuthenticatedShell() {
               <AskApex />
             </Suspense>
           </SidebarLayout>
+          </ProductionDemoProvider>
         </ConfirmProvider>
         </TooltipProvider>
       </MotionConfig>

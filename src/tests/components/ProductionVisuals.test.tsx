@@ -114,10 +114,35 @@ describe("estimated earnings chart", () => {
   });
 
   it("does not render estimate values or geometry when earnings are hidden", () => {
-    const { container } = render(<EarningsMixChart direct={1500} override={500} hidden />);
+    const { container } = render(<EarningsMixChart direct={1500} override={500} externalOverride={300} hidden />);
     expect(screen.getByText("Earnings breakdown hidden for presenting")).toBeInTheDocument();
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
-    expect(container.textContent).not.toMatch(/1,500|500|75%/);
+    expect(container.textContent).not.toMatch(/1,500|500|300|External override|75%/);
+  });
+
+  it("includes a known external override in the same total and renders its third segment", () => {
+    const { container } = render(<EarningsMixChart direct={600} override={200} externalOverride={200} />);
+    expect(screen.getByRole("img")).toHaveAccessibleName("Estimated earnings split: direct $600, override $200, external override $200. Estimates, not paid commissions.");
+    expect(container.querySelector(".earnings-mix-chart__direct")).toHaveAttribute("stroke-dasharray", "60 40");
+    expect(container.querySelector(".earnings-mix-chart__override")).toHaveAttribute("stroke-dasharray", "20 80");
+    expect(container.querySelector(".earnings-mix-chart__override")).toHaveAttribute("stroke-dashoffset", "-60");
+    expect(container.querySelector(".earnings-mix-chart__external")).toHaveAttribute("stroke-dasharray", "20 80");
+    expect(container.querySelector(".earnings-mix-chart__external")).toHaveAttribute("stroke-dashoffset", "-80");
+    expect(screen.getByText("External override").parentElement).toHaveTextContent("20%");
+  });
+
+  it("does not show a zero-earnings state when only an external estimate exists", () => {
+    const { container } = render(<EarningsMixChart direct={0} override={0} externalOverride={500} />);
+    expect(container.querySelector(".earnings-mix-chart__external")).toHaveAttribute("stroke-dasharray", "100 0");
+    expect(screen.getByText("External override").parentElement).toHaveTextContent("100%");
+    expect(screen.queryByText("No estimated earnings in this window.")).not.toBeInTheDocument();
+  });
+
+  it.each([null, Number.NaN, Number.POSITIVE_INFINITY, -1])("withholds the split when the external override is unknown or invalid: %s", (externalOverride) => {
+    const { container } = render(<EarningsMixChart direct={600} override={200} externalOverride={externalOverride} />);
+    expect(screen.getByText(/earnings chart is unavailable/)).toBeInTheDocument();
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+    expect(container.querySelector(".earnings-mix-chart__legend")).toBeNull();
   });
 
   it("shows a true zero state and does not substitute values for invalid estimates", () => {

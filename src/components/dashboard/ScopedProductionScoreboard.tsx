@@ -30,6 +30,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from "@/hooks/useAuth";
 import { useBusinessToday } from "@/hooks/useBusinessToday";
+import { useDemoNumberFields } from "@/hooks/useDemoNumberFields";
+import { applyProjectionDemo, applyScoreboardDemo, projectionDemoFields, scoreboardDemoFields } from "@/lib/productionDemoModels";
 import { resolveBrand } from "@/config/brand";
 import { scoreboardWindow, type ScoreboardPeriod } from "@/lib/scoreboardPeriod";
 import { suppressDealCelebrations } from "@/lib/dealCelebrations";
@@ -467,8 +469,18 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
     refreshProduction,
   );
 
-  const data = query.data;
-  const projectionData = projection.data;
+  const productionDemo = useDemoNumberFields({
+    scopeKey: `scoreboard:${query.data?.imo ? "imo" : "personal"}:${window.start}:${window.end}`,
+    label: `Production · ${window.label}`,
+    fields: scoreboardDemoFields(query.data),
+  });
+  const projectionDemo = useDemoNumberFields({
+    scopeKey: `projection:${projection.data?.imo ? "imo" : "personal"}:${projection.data?.month_start ?? "pending"}:${projection.data?.month_end_exclusive ?? "pending"}`,
+    label: "Current month · projections",
+    fields: projectionDemoFields(projection.data),
+  });
+  const data = productionDemo.isDemo ? applyScoreboardDemo(query.data, productionDemo.values) : query.data;
+  const projectionData = projectionDemo.isDemo ? applyProjectionDemo(projection.data, projectionDemo.values) : projection.data;
   // The server returns `imo` only to admins; that is the authority for the
   // admin-only tile, not a client-side role guess.
   const isAdmin = Boolean(data?.imo);
@@ -494,11 +506,12 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
         <div className="dashboard-production__header flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="dashboard-production__title text-foreground">My production scoreboard</p>
+              <p className="dashboard-production__title text-foreground">Production</p>
+              {productionDemo.isDemo && <Badge variant="outline" role="status">Demo figures</Badge>}
               {data?.scope_label && <Badge variant="outline">{data.scope_label}</Badge>}
               <Badge variant="secondary">{query.isError ? "Refresh failed" : query.isPending ? "Loading" : query.isFetching ? "Refreshing" : "Production"} · Phoenix</Badge>
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">{window.label} · personal results and your signed-in hierarchy</p>
+            <p className="dashboard-production__date">{window.label}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {control?.hideControls ? null : (<>
@@ -564,20 +577,35 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
           <div className="p-4 text-sm text-muted-foreground">Your login is not linked to a producer profile yet. Ask an administrator to connect it before production can be attributed.</div>
         ) : (
           <>
-            {/* OVERHAUL-home: four across only from 1280px; at 1024 beside the sidebar the four money numbers were cut to "$245,3...". */}
-            <div className={cn("dashboard-production__totals", isAdmin ? "grid sm:grid-cols-2 xl:grid-cols-4" : "grid sm:grid-cols-3")}>
+            {/* One dominant total, with the overlapping scopes kept separate below it. */}
+            <div className="dashboard-production__totals" data-admin={isAdmin}>
+              {isAdmin && data.imo && (
+                <KPIStat
+                  accent
+                  prominent
+                  detail={`${policies(data.imo.policies)} · ${plural(data.by_agent.length, "producer")} in this window`}
+                  icon={Building2}
+                  label="IMO total"
+                  tone="good"
+                  unit="ALP"
+                  value={money(data.imo.ap)}
+                />
+              )}
               <KPIStat
                 detail={`${policies(data.personal.policies)} you sold`}
                 icon={TrendingUp}
                 label="My personal production"
+                prominent={!isAdmin}
                 tone="good"
+                unit="ALP"
                 value={money(data.personal.ap)}
               />
               <KPIStat
-                detail={`${policies(data.direct_team.policies)} · ${plural(data.direct_team.agents_current ?? data.direct_team.agents, "current direct agent")}${data.direct_team.agents_current != null ? ` (${data.direct_team.agents} on record)` : ""}`}
+                detail={`${policies(data.direct_team.policies)} · ${plural(data.direct_team.agents_current ?? data.direct_team.agents, "current direct agent")}`}
                 icon={Users}
                 label="My direct team"
                 tone="cool"
+                unit="ALP"
                 value={money(data.direct_team.ap)}
               />
               <KPIStat
@@ -585,20 +613,9 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
                 icon={Layers}
                 label="My team production"
                 tone="good"
+                unit="ALP"
                 value={money(data.recursive_team.ap)}
               />
-              {isAdmin && data.imo && (
-                <KPIStat
-                  accent
-                  // OVERHAUL-home (2026-10-29): "135 current agents incl. you (213 on record)" was a
-                  // roster count beside a production number, the same disease as Home's old
-                  // "Roster 68". The producers here are the rows of "Who sold" below, same window.
-                  detail={`${policies(data.imo.policies)} · ${plural(data.by_agent.length, "producer")} in this window`}
-                  icon={Building2}
-                  label="IMO total"
-                  value={money(data.imo.ap)}
-                />
-              )}
             </div>
 
             <div className="dashboard-production__pace border-t border-border p-4">
@@ -616,7 +633,8 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
                   <div>
                     <p className="dashboard-board-eyebrow"><Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> Pace / current month</p>
                     <h3 className="dashboard-board-title">Month-end projections</h3>
-                    <p className="mt-1 text-xs text-muted-foreground">Live MTD pace · Phoenix time · {projectionData.scope_label}. Separate from the selected dates above.</p>
+                    {projectionDemo.isDemo && <Badge variant="outline" role="status">Demo figures</Badge>}
+                    <p className="mt-1 text-xs text-muted-foreground">{projectionDemo.isDemo ? "Demo" : "Live"} MTD pace · Phoenix time · {projectionData.scope_label}. Separate from the selected dates above.</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <p className="text-[12px] text-muted-foreground">Day {projectionData.elapsed_calendar_days} of {projectionData.days_in_month}</p>
@@ -689,12 +707,16 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
                   <p className="dashboard-earnings-value"><Reveal on={blur.earnings}>{money(data.earnings.estimated)}</Reveal></p>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">Selected dates · estimated gross commission, not paid cash</p>
-                <EarningsMixChart direct={data.earnings.direct} override={data.earnings.override} hidden={blur.earnings} />
+                <EarningsMixChart direct={data.earnings.direct} override={data.earnings.override} externalOverride={data.earnings.external_gap_override ? data.earnings.external_gap_override.est ?? null : 0} hidden={blur.earnings} />
                 <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
                   <dt className="text-muted-foreground">Direct</dt>
                   <dd className="tabular-nums text-foreground"><Reveal on={blur.earnings}>{money(data.earnings.direct)}</Reveal> on your own policies</dd>
                   <dt className="text-muted-foreground">Override</dt>
                   <dd className="tabular-nums text-foreground"><Reveal on={blur.earnings}>{money(data.earnings.override)}</Reveal> layered through your first hop</dd>
+                  {data.earnings.external_gap_override && <>
+                    <dt className="text-muted-foreground">External agency</dt>
+                    <dd className="tabular-nums text-foreground"><Reveal on={blur.earnings}>{data.earnings.external_gap_override.est != null && Number.isFinite(data.earnings.external_gap_override.est) ? money(data.earnings.external_gap_override.est) : "—"}</Reveal> estimated override</dd>
+                  </>}
                 </dl>
                 {unknownLevels > 0 && (
                   <p className="mt-3 text-xs text-muted-foreground">
@@ -717,7 +739,9 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
                   </p>
                   <SectionEye on={blur.split} onToggle={() => toggleBlur("split")} label="agency split" />
                 </div>
-                <ProductionMixChart rows={agentGroups} hidden={blur.names || blur.split} />
+                {productionDemo.isDemo && agentGroups.length === 0 && (data.imo?.ap ?? data.personal.ap) > 0
+                  ? <p className="mt-4 text-sm text-muted-foreground">Demo total · no agent breakdown in this window.</p>
+                  : <ProductionMixChart rows={agentGroups} hidden={blur.names || blur.split} />}
                 {data.reconciliation.duplicate_candidate_groups > 0 && (
                   <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
                     {data.reconciliation.duplicate_candidate_groups} possible duplicate {data.reconciliation.duplicate_candidate_groups === 1 ? "group" : "groups"} in this window
@@ -785,7 +809,7 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
                         <TableHead>Agent</TableHead>
                         <TableHead>Agency</TableHead>
                         <TableHead className="text-right">Policies</TableHead>
-                        <TableHead className="text-right">AP</TableHead>
+                        <TableHead className="text-right">ALP</TableHead>
                         <TableHead className="text-right">Est. override</TableHead>
                         <TableHead>Last sale</TableHead>
                       </TableRow>

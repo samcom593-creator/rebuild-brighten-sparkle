@@ -18,6 +18,7 @@ import { RolePreviewMenu } from "@/components/layout/RolePreviewBubbles";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { SoundToggle } from "@/components/ui/delight/SoundToggle";
+import { DemoNumberEditorButton } from "@/components/demo/ProductionDemoProvider";
 import { agentCloudBreadcrumb } from "./agentCloudNavigation";
 import { favoriteLabelFor, useFavoriteRoutes } from "./favoriteRoutes";
 import { cn } from "@/lib/utils";
@@ -89,6 +90,7 @@ export function TopBar() {
       {/* Every control here is 44px (2026-10-28): the first-timer lens fails anything smaller,
           and the pages under this bar already meet it. The bar is 60px, so they fit. */}
       <div className="flex shrink-0 items-center gap-1">
+        <DemoNumberEditorButton />
         <Button
           variant="ghost"
           size="icon"

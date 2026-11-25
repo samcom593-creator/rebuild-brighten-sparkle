@@ -1,3 +1,4 @@
+// intentionally-orphan: Retained Galaxy content after the owner chose a two-choice-only homepage; not rendered on the current home.
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";

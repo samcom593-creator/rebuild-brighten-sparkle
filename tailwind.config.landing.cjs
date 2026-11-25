@@ -104,16 +104,18 @@ module.exports = {
     },
     extend: {
       colors: {
-        // BLACK + GOLD REBRAND — the landing bundle has its own Tailwind config,
-        // so the emerald/teal -> gold remap from tailwind.config.ts must be
-        // mirrored here or the public page keeps rendering the old teal accent.
-        emerald: {
-          50:"#fdf8e7",100:"#faefc4",200:"#f5e08d",300:"#efcd52",400:"#e8bb2b",
-          500:"#d9a41a",600:"#bb7f13",700:"#955c14",800:"#7b4a18",900:"#683e1a",950:"#3d2009",
+        // Emerald and teal retain Tailwind's green/cyan status ramps.
+        // Brand actions have a separate red fill so white action text stays legible.
+        "brand-action": {
+          DEFAULT: "hsl(var(--brand-action))",
+          foreground: "hsl(var(--brand-action-foreground))",
         },
-        teal: {
-          50:"#fdf8e7",100:"#faefc4",200:"#f5e08d",300:"#efcd52",400:"#e8bb2b",
-          500:"#d9a41a",600:"#bb7f13",700:"#955c14",800:"#7b4a18",900:"#683e1a",950:"#3d2009",
+        chart: {
+          1: "hsl(var(--chart-1))",
+          2: "hsl(var(--chart-2))",
+          3: "hsl(var(--chart-3))",
+          4: "hsl(var(--chart-4))",
+          5: "hsl(var(--chart-5))",
         },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -197,7 +199,7 @@ module.exports = {
       },
       fontFamily: {
         sans: ["Hanken Grotesk", "system-ui", "sans-serif"],
-        display: ["Syne", "system-ui", "sans-serif"],
+        display: ["Hanken Grotesk", "system-ui", "sans-serif"],
       },
       keyframes: {
         "accordion-down": {
@@ -252,20 +254,17 @@ module.exports = {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
         "gradient-conic":
           "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
-        // 2026-08-06: kept byte-identical to tailwind.config.ts. The landing
-        // config is a separate build and a rebrand that touches only one of the
-        // two configs ships a half-green site — the documented failure mode
-        // from the 2026-08-02 green→gold pass.
+        // Keep both builds on the same contrasting red action palette.
         "apex-gradient":
-          "linear-gradient(135deg, hsl(45 85% 52%), hsl(38 88% 46%))",
+          "linear-gradient(135deg, hsl(var(--brand-action)), hsl(var(--brand-action-end)))",
         "apex-gradient-soft":
-          "linear-gradient(135deg, hsl(45 85% 52% / 0.2), hsl(38 88% 46% / 0.2))",
+          "linear-gradient(135deg, hsl(var(--primary) / 0.12), hsl(var(--primary) / 0.04))",
       },
       boxShadow: {
         "apex-glow":
-          "0 0 20px hsl(45 85% 52% / 0.3), 0 0 40px hsl(45 85% 52% / 0.1)",
+          "0 1px 2px hsl(0 0% 0% / 0.18)",
         "apex-glow-strong":
-          "0 0 30px hsl(45 85% 52% / 0.4), 0 0 60px hsl(45 85% 52% / 0.2)",
+          "0 2px 4px hsl(0 0% 0% / 0.22)",
         glass: "0 8px 32px hsl(222 47% 3% / 0.5)",
       },
     },

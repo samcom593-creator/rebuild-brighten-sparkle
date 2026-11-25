@@ -1,129 +1,34 @@
-/* APEX Design Tokens — 2026-06-10 redesign
- *
- * Sam: "all white everywhere looks ugly" — the prior light theme used a
- * pure-white page bg which made cards invisible (white on white).
- *
- * This rewrite mirrors AgentLink: soft gray page bg with white cards
- * floating on top + real shadows. Real visual hierarchy, not flat. */
-
+/* Compatibility tokens share the Galaxy semantic palette in src/index.css.
+   Re-declaring aliases at each theme boundary also supports an explicitly dark public section. */
 :root,
-:root.light {
-  /* Page bg → soft warm gray (matches AgentLink #eaeaea, slightly warmer) */
-  --apex-bg:             220 16% 95%;
-  /* Cards → pure white. With the gray bg, they POP. */
-  --apex-card:           0   0% 100%;
-  /* Hover → very light gray */
-  --apex-hover:          220 14% 92%;
-  /* Secondary surface (sub-cards inside cards) */
-  --apex-surface-alt:    220 18% 97%;
+.light,
+.dark {
+  --apex-bg: var(--background);
+  --apex-card: var(--card);
+  --apex-hover: var(--muted);
+  --apex-surface-alt: var(--secondary);
+  --apex-border: var(--border);
+  --apex-border-strong: var(--input);
+  --apex-text: var(--foreground);
+  --apex-text-mute: var(--muted-foreground);
+  --apex-text-dim: var(--muted-foreground);
+  --apex-accent: var(--primary);
+  --apex-accent-soft: var(--primary) / 0.10;
+  --apex-accent-strong: var(--brand-action);
+  --apex-success: var(--success);
+  --apex-warning: var(--warning);
+  --apex-danger: var(--destructive);
+  --apex-info: var(--info);
+  --apex-neutral: var(--muted-foreground);
 
-  /* Borders — barely visible slate */
-  --apex-border:         220 14% 88%;
-  --apex-border-strong:  220 14% 78%;
-
-  /* Text — high contrast on white cards */
-  --apex-text:           220 25% 15%;       /* near-black for headings */
-  --apex-text-mute:      220 12% 40%;       /* mid for body */
-  --apex-text-dim:       220 10% 55%;       /* low for captions */
-
-  /* Accent — APEX gold. Hue/sat match --apex-gold / --primary / --ring
-     (45 85% 52%, src/index.css:85) and the emerald→gold Tailwind ramp remap
-     in tailwind.config.ts, so there is exactly one gold in the app rather
-     than a fourth near-miss shade.
-
-     Lightness is 28%, NOT the 52% used on dark. --apex-accent renders as TEXT
-     (RecruitFAQ chevron + question, GlobalSidebar hover) and as a fill behind
-     --apex-bg ink (the RecruitFAQ index pill), and gold at 52% on a white card
-     is 1.8:1 — invisible. At 28% it measures 5.4:1 on --apex-card white and
-     4.8:1 against --apex-bg ink, so both directions clear WCAG AA. The prior
-     emerald 36% was 3.0:1 and 2.7:1 — it never passed either. */
-  --apex-accent:         45 85% 28%;
-  --apex-accent-soft:    45 85% 28% / 0.10;
-  --apex-accent-strong:  45 85% 22%;
-
-  /* Status — darkened for white-bg contrast */
-  --apex-success:        150 70% 36%;
-  --apex-warning:        38  92% 45%;
-  --apex-danger:         0   75% 48%;
-  --apex-info:           220 80% 48%;
-  --apex-neutral:        220 12% 45%;
-
-  /* Type ramps */
   --type-11: 11px; --type-12: 12px; --type-14: 14px;
   --type-16: 16px; --type-20: 20px; --type-28: 28px;
-
-  /* Motion budget */
-  --motion-fast: 120ms cubic-bezier(0.4, 0, 0.2, 1);
-  --motion-base: 180ms cubic-bezier(0.4, 0, 0.2, 1);
-  --motion-slow: 240ms cubic-bezier(0.4, 0, 0.2, 1);
-
-  /* Radii — v22 sharper (AgentLink fidelity, scraped from their CSS) */
-  --apex-r-sm: 3px; --apex-r-md: 5px; --apex-r-lg: 8px;
-
-  /* Shadows — v22 minimal (AgentLink uses NO card shadows, just 1px borders).
-     shadow-1 stays subtle for cards that explicitly need lift.
-     shadow-2/-3 reserved for modals, popovers, dropdowns. */
-  --apex-shadow-1: 0 1px 2px hsl(220 30% 30% / 0.04);
-  --apex-shadow-2: 0 4px 6px hsl(220 30% 30% / 0.05),
-                   0 10px 15px hsl(220 30% 30% / 0.08);
-  --apex-shadow-3: 0 20px 25px hsl(220 30% 30% / 0.10),
-                   0 8px 10px hsl(220 30% 30% / 0.04);
-
-  /* Focus / hover rings (AgentLink pattern)
-     perf/site-wide-optimization (2026-08-06): the focus ring was
-     `hsl(var(--apex-accent) / 0.15)`. Two problems, one line:
-       1. a11y — 15% alpha is not a visible focus indicator on the dark shell
-          the app force-locks (index.html sets `class="dark"`). Because
-          button.tsx pairs this token with `focus-visible:outline-none`, it
-          also cancels the good 2px global outline at src/index.css:988. Net
-          effect: keyboard focus on the single most-used interactive primitive
-          in the app was effectively invisible, failing WCAG 2.4.11 / 1.4.11.
-       2. brand — --apex-accent is still emerald (160 84% 36%) from before the
-          black+gold rebrand, so the ring that did render rendered green.
-     Fixed by pinning the ring to --primary (gold, 45 85% 52%) and raising the
-     alpha to a perceptible level, plus a thin solid inner ring so the
-     indicator holds up against both the gold buttons and the near-black
-     canvas.
-     2026-08-06 follow-up: --apex-accent itself has now been retargeted to the
-     same gold, so --apex-hover-ring below (which deliberately stayed on
-     --apex-accent as a non-a11y-critical hover affordance) is gold too and the
-     two rings finally agree. */
-  --apex-focus-ring: 0 0 0 1px hsl(var(--background)), 0 0 0 4px hsl(var(--primary) / 0.85);
-  --apex-hover-ring: 0 0 0 3px hsl(var(--apex-accent) / 0.40);
-}
-
-/* Dark theme override */
-:root.dark {
-  --apex-bg:             220 30% 7%;
-  --apex-card:           220 25% 11%;
-  --apex-hover:          220 22% 14%;
-  --apex-surface-alt:    220 22% 13%;
-
-  --apex-border:         220 18% 18%;
-  --apex-border-strong:  220 16% 28%;
-
-  --apex-text:           220 15% 96%;
-  --apex-text-mute:      220 10% 65%;
-  --apex-text-dim:       220 8%  45%;
-
-  /* Dark shell is what the app force-locks (index.html sets class="dark"), so
-     this is the value that actually ships. 52% is the canonical --apex-gold,
-     unmodified: gold text on the near-black card measures 9.2:1, and the
-     RecruitFAQ index pill (gold fill + --apex-bg ink) measures 10.5:1 — the
-     same gold-fill/dark-ink pairing StickyMobileCTA was corrected to. */
-  --apex-accent:         45 85% 52%;
-  --apex-accent-soft:    45 85% 52% / 0.08;
-  --apex-accent-strong:  45 85% 42%;
-
-  --apex-success:        150 70% 50%;
-  --apex-warning:        38  92% 55%;
-  --apex-danger:         0   75% 55%;
-  --apex-info:           220 80% 65%;
-  --apex-neutral:        220 12% 50%;
-
-  --apex-shadow-1: 0 1px 2px hsl(220 50% 2% / 0.6);
-  --apex-shadow-2: 0 8px 24px hsl(220 50% 2% / 0.55);
-  --apex-shadow-3: 0 20px 30px hsl(220 50% 2% / 0.6);
+  --apex-r-sm: 4px; --apex-r-md: 6px; --apex-r-lg: 8px;
+  --apex-shadow-1: 0 1px 2px hsl(0 0% 0% / 0.06);
+  --apex-shadow-2: var(--elev-2);
+  --apex-shadow-3: var(--elev-3);
+  --apex-focus-ring: 0 0 0 1px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.9);
+  --apex-hover-ring: 0 0 0 3px hsl(var(--primary) / 0.3);
 }
 
 /* Global body bg switches with theme */
@@ -206,11 +111,11 @@ body {
   box-shadow: var(--apex-shadow-1);
 }
 
-/* Gold buttons use the same contrasting ink in both themes. */
+/* Primary fills use their paired foreground in each theme. */
 :root.light .bg-primary { color: hsl(var(--primary-foreground)); }
 
-:root.light [class*="bg-emerald-"]:not([class*="text-emerald-"]) {
-  color: white;
+:root.light :is(.bg-emerald-600, .bg-emerald-700, .bg-emerald-800, .bg-emerald-900, .bg-emerald-950) {
+  color: hsl(0 0% 100%);
 }
 
 /* Glass cards on light bg = opaque white card with shadow (no smoky filter) */

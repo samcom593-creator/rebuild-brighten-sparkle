@@ -59,6 +59,7 @@ import {
 import { personInitials } from "@/lib/personInitials";
 import { TONE_CLASS } from "@/lib/tones";
 import { cn } from "@/lib/utils";
+import { PeriodComparisonBars } from "@/components/dashboard/ProductionVisuals";
 
 const ICONS: Record<ConversionKind, ComponentType<{ className?: string }>> = {
   applied: UserPlus,
@@ -99,7 +100,8 @@ function Tile({ step, payload, onOpen }: { step: ConversionStep; payload: Conver
   const count = conversionCount(payload, step.kind);
   const lit = (count ?? 0) > 0;
   const late = unknownReason(payload, step.kind) !== null;
-  const trend = conversionTrend(count, conversionCount(payload, step.kind, "prior"), step.window);
+  const previous = conversionCount(payload, step.kind, "prior");
+  const trend = conversionTrend(count, previous, step.window);
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -110,7 +112,7 @@ function Tile({ step, payload, onOpen }: { step: ConversionStep; payload: Conver
           onClick={(event) => onOpen(step.kind, event.currentTarget)}
           // apex-lift (src/styles/delight.css) owns the motion: a 1px lift for a real pointer and
           // a press on touch, plus the colour transitions.
-          className="apex-lift flex min-w-0 flex-col justify-start bg-card p-3 text-left hover:bg-muted/40 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] sm:p-5"
+          className="dashboard-conversions__tile apex-lift flex min-w-0 flex-col justify-start bg-card p-3 text-left hover:bg-muted/40 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] sm:p-5"
         >
           <span className="flex min-h-10 flex-row items-center gap-2 sm:min-h-12">
             <ToneBubble tone={tone} size="sm"><Icon /></ToneBubble>
@@ -130,6 +132,7 @@ function Tile({ step, payload, onOpen }: { step: ConversionStep; payload: Conver
               <span className={TONE_CLASS[trend.tone].text}>{trend.text}</span>
             ) : null}
           </span>
+          <PeriodComparisonBars current={count} previous={previous} />
         </button>
       </TooltipTrigger>
       <TooltipContent className="max-w-xs text-sm leading-5">{step.definition}</TooltipContent>
@@ -335,7 +338,7 @@ export function HomeConversions({ range, rangeLabel }: { range?: ConversionRange
           <div className="flex min-w-0 items-center gap-3">
             <ToneBubble tone="gold" size="md" className="apex-pop"><Sparkles /></ToneBubble>
             <div className="min-w-0">
-              <h2 id="home-conversions-title" className="text-lg font-bold leading-6 text-foreground sm:text-xl">Conversions</h2>
+              <h2 id="home-conversions-title" className="dashboard-conversions__title text-foreground">Conversions</h2>
               <p className="text-sm text-muted-foreground">
                 {ranged ? "Who moved forward in the selected dates. Tap a number to see who." : "Who moved forward. Tap a number to see who."}
               </p>
@@ -348,6 +351,11 @@ export function HomeConversions({ range, rangeLabel }: { range?: ConversionRange
             <StripNotice query={query} />
           </div>
         ) : null}
+        {payload && (
+          <p className="conversion-comparison-legend" aria-label="Each chart compares its own metric across periods">
+            <span>Current period</span><span>Previous period</span>
+          </p>
+        )}
         {ranged ? (
           <div role="group" aria-label={rangeLabel ?? "Selected dates"} className="overflow-hidden rounded-2xl border border-border bg-card">
             <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 border-b border-border px-3 py-2.5 sm:px-5">

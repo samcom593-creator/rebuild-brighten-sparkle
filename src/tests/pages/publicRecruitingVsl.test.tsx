@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import Vsl from "@/pages/Vsl";
@@ -38,9 +38,10 @@ describe("focused public video page", () => {
     expect(container.querySelectorAll(".recruiting-action-primary")).toHaveLength(1);
     fireEvent.play(video);
     expect(track).toHaveBeenCalledWith("hero_vsl_play", { video: "vsl-2026-09-02", position: "vsl" });
-    fireEvent.click(screen.getByRole("link", { name: "Apply to Galaxy" }));
+    expect(screen.getByRole("heading", { level: 1, name: "The unfair advantage for serious producers" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("link", { name: "I’m ready to scale & earn more" }));
     expect(screen.getByTestId("destination")).toHaveTextContent("/apply?ref=synthetic-agent&track=licensed-producer");
-    expect(track).toHaveBeenCalledWith("hero_cta_click", { position: "vsl", cta_label: "Apply to Galaxy", partner_path: "licensed-producer" });
+    expect(track).toHaveBeenCalledWith("hero_cta_click", { position: "vsl", cta_label: "I’m ready to scale & earn more", partner_path: "licensed-producer" });
   });
 
   it("keeps the licensing audience and paid-source mode when the video cannot load", () => {
@@ -56,13 +57,19 @@ describe("focused public video page", () => {
     expect(destination.searchParams.get("utm_medium")).toBe("paid_social");
   });
 
-  it("retains the referral on its supplemental licensing roadmap and home links", () => {
-    renderVsl("?ref=synthetic-agent&track=agency-builder&utm_source=synthetic-campaign");
-    const roadmap = new URL(screen.getByRole("link", { name: "Need a license? View the roadmap" }).getAttribute("href")!, "https://galaxyfinancial.org");
-    expect(roadmap.pathname).toBe("/get-licensed");
-    expect(roadmap.searchParams.get("track")).toBe("licensing-roadmap");
-    expect(roadmap.searchParams.get("ref")).toBe("synthetic-agent");
-    expect(roadmap.searchParams.get("utm_source")).toBe("synthetic-campaign");
+  it("keeps external agency-builder context while offering only one application action", () => {
+    const { container } = renderVsl("?ref=synthetic-agent&track=agency-builder&utm_source=synthetic-campaign");
+    const links = within(screen.getByRole("main")).getAllByRole("link");
+    expect(links).toHaveLength(1);
+    const apply = new URL(links[0].getAttribute("href")!, "https://galaxyfinancial.org");
+    expect(apply.pathname).toBe("/apply");
+    expect(apply.searchParams.get("track")).toBe("agency-builder");
+    expect(apply.searchParams.get("ref")).toBe("synthetic-agent");
+    expect(apply.searchParams.get("utm_source")).toBe("synthetic-campaign");
+    expect(container.querySelector('a[href^="/get-licensed"]')).toBeNull();
     expect(screen.getByRole("link", { name: "Galaxy Financial home" })).toHaveAttribute("href", "/?ref=synthetic-agent&track=agency-builder&utm_source=synthetic-campaign");
+    const schema = JSON.parse(container.querySelector('#galaxy-vsl-schema')!.textContent!);
+    expect(schema.contentUrl).toBe(VSL_VIDEO.src);
+    expect(schema.thumbnailUrl).toBe(VSL_VIDEO.poster);
   });
 });

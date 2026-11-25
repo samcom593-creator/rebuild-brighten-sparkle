@@ -56,7 +56,7 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
   return (
     <div className="apex-app-shell agentcloud-parity min-h-dvh relative bg-background">
       {/* Mobile Header - only visible on small screens */}
-      <header className="fixed left-0 right-0 top-0 z-50 border-b border-border bg-background lg:hidden">
+      <header className="galaxy-topbar fixed left-0 right-0 top-0 z-50 border-b border-border bg-background lg:hidden">
         <div className="flex h-[calc(60px+env(safe-area-inset-top,0px))] items-center justify-between px-3 pt-[env(safe-area-inset-top)]">
           <Link to="/dashboard" className="flex min-w-0 items-center gap-2">
             {/* 2026-08-23 light/dark wave: the brand name was text-white on a
@@ -66,7 +66,7 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
                 #C9A961 on #0A0A0A; both are now tokens so the chip tracks the
                 deeper light-mode gold. */}
             <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground"><Cloud className="h-[18px] w-[18px]" /></span>
-            <span className="truncate text-sm font-semibold text-foreground">{brand.legalName}</span>
+            <span className="galaxy-wordmark truncate text-sm font-extrabold italic uppercase text-foreground">{brand.legalName}</span>
           </Link>
           <div className="ml-2 flex shrink-0 items-center gap-1">
           <Button variant="ghost" size="icon" className="h-11 w-11" aria-label="Search people and pages" onClick={() => useUIStore.getState().setCommandPaletteOpen(true)}>

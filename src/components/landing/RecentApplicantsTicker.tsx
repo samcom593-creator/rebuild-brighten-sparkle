@@ -1,3 +1,4 @@
+// intentionally-orphan: Retained Galaxy content after the owner chose a two-choice-only homepage; not rendered on the current home.
 // 2026-06-13 · Sam reported "I see no applications". Landing surfaces had
 // 0 applicant signals visible to recruiting prospects despite 522 apps in DB.
 // This component mirrors RecentHiresTicker pattern · pulls anonymized first

@@ -85,6 +85,10 @@ describe("HomeConversions", () => {
     // Spoken: the full label, the window and the comparison in full.
     expect(tile("Applied today")).toHaveAccessibleName("Applied today: 2. Up from 1 yesterday. Open the list");
     expect(tile("First deals")).toHaveAccessibleName("First deals, last 7 days: 0. Down from 1 the week before. Open the list");
+    // The chart reads these same current/prior people; it adds no request or synthetic trend.
+    const comparison = tile("Applied today").querySelector(".conversion-comparison-bars");
+    expect(comparison).toHaveAttribute("data-current", "2");
+    expect(comparison).toHaveAttribute("data-previous", "1");
     // Two groups that say when, the funnel in order, every number a button that opens a list.
     const today = screen.getByRole("group", { name: "Today" });
     const week = screen.getByRole("group", { name: "Last 7 days" });
@@ -155,6 +159,7 @@ describe("HomeConversions", () => {
       // No zero anywhere, and no comparison: an unknown number has nothing to compare.
       expect(tile(label)).not.toHaveTextContent("0");
       expect(tile(label)).not.toHaveTextContent(/Up from|Down from|No change/);
+      expect(tile(label).querySelector(".conversion-comparison-bars")).toBeNull();
     }
   });
 
@@ -172,6 +177,7 @@ describe("HomeConversions", () => {
     renderWith(<HomeConversions />);
     await waitFor(() => expect(tile("Applied today")).toHaveTextContent("2"));
     expect(tile("Bought Xcel")).toHaveTextContent(/^Bought Xcel—Xcel report is late$/);
+    expect(tile("Bought Xcel").querySelector(".conversion-comparison-bars")).toBeNull();
     fireEvent.click(tile("Bought Xcel"));
     const sheet = await screen.findByRole("dialog");
     expect(sheet).toHaveTextContent("Count unknown");

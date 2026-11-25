@@ -1,3 +1,4 @@
+// intentionally-orphan: Retained Galaxy content after the owner chose a two-choice-only homepage; not rendered on the current home.
 import { useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Menu } from "lucide-react";
@@ -17,7 +18,7 @@ export function Navbar() {
   const applyHref = buildPublicRecruitingHref("/apply", searchParams);
 
   return (
-    <nav aria-label="Main navigation" className="absolute inset-x-0 top-0 z-40 text-white">
+    <nav aria-label="Main navigation" className="relative z-40 border-y border-white/10 bg-black text-white">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-8">
         <details ref={menuRef} className="relative">
           <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-md px-2 text-sm font-semibold text-white/70 transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary [&::-webkit-details-marker]:hidden">

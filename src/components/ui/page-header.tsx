@@ -263,7 +263,7 @@ export function PageHeader({
   return (
     <header
       className={cn(
-        "apex-page-header relative mb-4 py-0.5",
+        "apex-page-header galaxy-page-header relative mb-4 py-0.5",
         className,
       )}
     >
@@ -285,7 +285,7 @@ export function PageHeader({
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               {!icon && eyebrowIcon && <span className="text-muted-foreground">{eyebrowIcon}</span>}
-              <h1 className="text-[22px] font-bold leading-7 tracking-[-0.02em] text-foreground sm:text-[26px] sm:leading-8">
+              <h1 className="text-[22px] font-extrabold italic uppercase leading-7 tracking-[-0.02em] text-foreground sm:text-[26px] sm:leading-8">
                 {title}
               </h1>
               {eyebrow && (

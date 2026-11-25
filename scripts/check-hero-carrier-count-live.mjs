@@ -58,8 +58,9 @@ import { deriveCanonical } from "./check-hero-path-claims.mjs";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const HERO_SOURCE =
+  process.env.HERO_CARRIER_CLAIMS_SOURCE ||
   process.env.HERO_CARRIER_HERO_SOURCE ||
-  resolve(__dirname, "../src/components/landing/HeroSection.tsx");
+  resolve(__dirname, "../src/lib/publicRecruitingClaims.ts");
 const SITE_ORIGIN = process.env.HERO_CARRIER_SITE_ORIGIN || "https://galaxyfinancial.org";
 const CONTROL = process.env.HERO_CARRIER_CONTROL_URL || "https://www.google.com/generate_204";
 // Test seam (HERO_CARRIER_RPC_URL/KEY): when set, resolveRpc() uses this RPC
@@ -110,7 +111,7 @@ export function decideVerdict({ canonical, liveCount, controlUp }) {
     return {
       verdict: "UNRESOLVED",
       code: 3,
-      msg: "frontend canonical carrier count could not be derived from HeroSection — the static check:hero-path-claims owns source shape; not asserting any live defect.",
+      msg: "frontend canonical carrier count could not be derived from publicRecruitingClaims — the static check:hero-path-claims owns source shape; not asserting any live defect.",
     };
   }
   if (Number.isInteger(liveCount)) {
@@ -127,7 +128,7 @@ export function decideVerdict({ canonical, liveCount, controlUp }) {
       msg:
         `Hero hardcodes ${canonical} carriers but landing_live_stats().carriers_partnered is ${liveCount} — ` +
         `CareerPathwaySection renders ${liveCount} ("Contract with up to ${liveCount} carriers" / "${liveCount} carrier partners" / "Carrier Partners" tile) while the Hero stat pill + partnerPaths prose say ${canonical}: a same-page numeric contradiction on the public recruiting funnel. ` +
-        `Update HeroSection carriers[] + stats "${canonical} carriers" + "Direct lines with ${canonical} top carriers" to ${liveCount} (and index.html meta if it restates it); the static check:hero-path-claims will re-lock them to the new count.`,
+        `Update publicRecruitingClaims carriers[] and its matching stats to ${liveCount} (and retained public copy if it restates the count); the static check:hero-path-claims verifies the visible hero binding and cross-surface consistency.`,
     };
   }
   // No authoritative live read.

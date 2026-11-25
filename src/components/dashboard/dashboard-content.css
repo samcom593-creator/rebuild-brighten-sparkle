@@ -1,0 +1,210 @@
+/* Dashboard content only. The application shell and global theme own their surfaces. */
+.dashboard-production {
+  border-color: hsl(var(--primary) / 0.55);
+  border-radius: 0.65rem;
+  background: hsl(var(--card));
+}
+
+.dashboard-production__header {
+  border-top: 0.25rem solid hsl(var(--primary));
+  background: hsl(var(--primary) / 0.08);
+}
+
+.dashboard-production__title,
+.dashboard-conversions__title {
+  font-size: clamp(1.25rem, 2.1vw, 1.75rem);
+  font-weight: 900;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+}
+
+.dashboard-production__totals > div {
+  background: hsl(var(--background) / 0.65);
+}
+
+.dashboard-production__totals > div > p:nth-child(2) {
+  font-size: clamp(1.65rem, 2.8vw, 2.15rem);
+  font-weight: 900;
+  color: hsl(var(--tone-good));
+}
+
+.dashboard-production__totals > div:last-child {
+  border-bottom: 3px solid hsl(var(--tone-good) / 0.6);
+}
+
+.production-chart-caption {
+  display: block;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.production-mix-chart {
+  margin-top: 0.75rem;
+}
+
+.production-mix-chart__rows {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.production-mix-chart__labels {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  margin-bottom: 0.4rem;
+  font-size: 0.875rem;
+}
+
+.production-mix-chart__name {
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+
+.production-mix-chart__amount {
+  font-weight: 900;
+  color: hsl(var(--tone-good));
+  font-variant-numeric: tabular-nums;
+}
+
+.production-mix-chart__track {
+  height: 0.65rem;
+  overflow: hidden;
+  background: hsl(var(--muted));
+  border-radius: 0.1rem;
+}
+
+.production-mix-chart__track > span {
+  display: block;
+  height: 100%;
+  background: hsl(var(--primary));
+  border-right: 0.2rem solid hsl(var(--foreground) / 0.7);
+  box-sizing: border-box;
+}
+
+.production-mix-chart__track > span[data-empty="true"] {
+  border: 0;
+}
+
+.production-mix-chart__policies {
+  display: block;
+  margin-top: 0.3rem;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.earnings-mix-chart {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  margin: 1rem 0;
+}
+
+.earnings-mix-chart__ring {
+  flex: 0 0 6.5rem;
+  width: 6.5rem;
+  height: 6.5rem;
+  overflow: visible;
+  transform: rotate(-90deg);
+}
+
+.earnings-mix-chart__ring circle {
+  fill: none;
+  stroke-width: 13;
+}
+
+.earnings-mix-chart__base { stroke: hsl(var(--muted)); }
+.earnings-mix-chart__direct { stroke: hsl(var(--tone-good)); }
+.earnings-mix-chart__override { stroke: hsl(var(--primary)); }
+
+.earnings-mix-chart__legend {
+  flex: 1 1 9rem;
+  min-width: 0;
+  font-size: 0.875rem;
+}
+
+.earnings-mix-chart__legend > p {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.earnings-mix-chart__legend strong {
+  margin-left: auto;
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.earnings-mix-chart__key {
+  width: 0.65rem;
+  height: 0.65rem;
+  flex-shrink: 0;
+}
+
+.earnings-mix-chart__key--direct { background: hsl(var(--tone-good)); }
+.earnings-mix-chart__key--override { background: hsl(var(--primary)); }
+
+.production-chart-hidden {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 6rem;
+  padding: 1rem 0;
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.dashboard-conversions__tile {
+  position: relative;
+  border-top: 3px solid hsl(var(--primary) / 0.75);
+}
+
+.dashboard-conversions__tile > span:nth-child(2) {
+  font-style: italic;
+  font-weight: 900;
+}
+
+.conversion-comparison-bars {
+  display: block;
+  width: 100%;
+  height: 1.125rem;
+  margin-top: 1.1rem;
+}
+
+.conversion-comparison-bars__track { fill: hsl(var(--muted)); }
+.conversion-comparison-bars__current { fill: hsl(var(--tone-good)); }
+.conversion-comparison-bars__previous { fill: hsl(var(--primary) / 0.6); }
+
+.conversion-comparison-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  font-size: 0.8125rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.conversion-comparison-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.conversion-comparison-legend > span::before {
+  content: "";
+  display: block;
+  width: 0.75rem;
+  height: 0.3rem;
+  background: hsl(var(--tone-good));
+}
+
+.conversion-comparison-legend > span:last-child::before {
+  background: hsl(var(--primary) / 0.6);
+}

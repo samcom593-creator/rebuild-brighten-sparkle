@@ -44,6 +44,7 @@ on:
       - "scripts/check-hero-carrier-count-live.mjs"
       - "scripts/check-hero-path-claims.mjs"
       - "src/components/landing/HeroSection.tsx"
+      - "src/lib/publicRecruitingClaims.ts"
       - ".github/workflows/hero-carrier-count-live.yml"
 
 jobs:

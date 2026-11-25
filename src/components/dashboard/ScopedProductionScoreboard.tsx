@@ -33,6 +33,7 @@ import { useBusinessToday } from "@/hooks/useBusinessToday";
 import { resolveBrand } from "@/config/brand";
 import { scoreboardWindow, type ScoreboardPeriod } from "@/lib/scoreboardPeriod";
 import { useRealtimeTable } from "@/shared/realtime/useRealtimeTable";
+import { EarningsMixChart, ProductionMixChart } from "@/components/dashboard/ProductionVisuals";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -483,12 +484,12 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
   }, [data]);
 
   return (
-    <Card className="overflow-hidden border-primary/35 bg-primary/[0.035]">
+    <Card className="dashboard-production overflow-hidden border-primary/35 bg-primary/[0.035]">
       <CardContent className="p-0">
-        <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="dashboard-production__header flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm font-semibold text-foreground">My production scoreboard</p>
+              <p className="dashboard-production__title text-foreground">My production scoreboard</p>
               {data?.scope_label && <Badge variant="outline">{data.scope_label}</Badge>}
               <Badge variant="secondary">{query.isError ? "Refresh failed" : query.isPending ? "Loading" : query.isFetching ? "Refreshing" : "Production"} · Phoenix</Badge>
             </div>
@@ -559,7 +560,7 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
         ) : (
           <>
             {/* OVERHAUL-home: four across only from 1280px; at 1024 beside the sidebar the four money numbers were cut to "$245,3...". */}
-            <div className={isAdmin ? "grid sm:grid-cols-2 xl:grid-cols-4" : "grid sm:grid-cols-3"}>
+            <div className={cn("dashboard-production__totals", isAdmin ? "grid sm:grid-cols-2 xl:grid-cols-4" : "grid sm:grid-cols-3")}>
               <KPIStat
                 detail={`${policies(data.personal.policies)} you sold`}
                 icon={TrendingUp}
@@ -666,6 +667,7 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
                 <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
                   <p className="text-3xl font-bold tabular-nums text-primary"><Reveal on={blur.earnings}>{money(data.earnings.estimated)}</Reveal></p>
                 </div>
+                <EarningsMixChart direct={data.earnings.direct} override={data.earnings.override} hidden={blur.earnings} />
                 <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
                   <dt className="text-muted-foreground">Direct</dt>
                   <dd className="tabular-nums text-foreground"><Reveal on={blur.earnings}>{money(data.earnings.direct)}</Reveal> on your own policies</dd>
@@ -693,17 +695,7 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
                   </p>
                   <SectionEye on={blur.split} onToggle={() => toggleBlur("split")} label="agency split" />
                 </div>
-                <dl className="mt-2 space-y-1 text-sm">
-                  {agentGroups.map((g) => (
-                    <div className="flex items-center justify-between gap-3 rounded-md px-1.5 py-1 odd:bg-muted/30" key={g.label}>
-                      <dt className="min-w-0 truncate text-muted-foreground"><Reveal on={blur.names}>{g.label}</Reveal></dt>
-                      <dd className="shrink-0 tabular-nums text-foreground">
-                        <Reveal on={blur.split}>{money(g.ap)}</Reveal> <span className="text-xs text-muted-foreground">· {policies(g.policies)}</span>
-                      </dd>
-                    </div>
-                  ))}
-                  {agentGroups.length === 0 && <p className="text-xs text-muted-foreground">No production in this window.</p>}
-                </dl>
+                <ProductionMixChart rows={agentGroups} hidden={blur.names || blur.split} />
                 {data.reconciliation.duplicate_candidate_groups > 0 && (
                   <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
                     {data.reconciliation.duplicate_candidate_groups} possible duplicate {data.reconciliation.duplicate_candidate_groups === 1 ? "group" : "groups"} in this window

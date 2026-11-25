@@ -77,22 +77,18 @@ export default {
         '12': '0.12',
       },
       colors: {
-        // ── BLACK + GOLD REBRAND ────────────────────────────────────────────
-        // The app shipped with a teal/emerald accent. Rather than rewrite the
-        // ~1,850 hardcoded emerald-*/teal-* utilities across 253 files (huge
-        // diff, huge regression surface), we remap those two Tailwind palettes
-        // onto the APEX gold ramp. Every existing `bg-emerald-400`,
-        // `text-teal-300`, `border-emerald-500/30` etc. becomes gold with zero
-        // component edits, and the change is reversible by deleting this block.
-        // Semantic `green-*` is deliberately left alone so success states stay
-        // readable as success.
-        emerald: {
-          50:"#fdf8e7",100:"#faefc4",200:"#f5e08d",300:"#efcd52",400:"#e8bb2b",
-          500:"#d9a41a",600:"#bb7f13",700:"#955c14",800:"#7b4a18",900:"#683e1a",950:"#3d2009",
+        // Emerald and teal retain Tailwind's green/cyan status ramps.
+        // Brand actions have a separate red fill so white action text stays legible.
+        "brand-action": {
+          DEFAULT: "hsl(var(--brand-action))",
+          foreground: "hsl(var(--brand-action-foreground))",
         },
-        teal: {
-          50:"#fdf8e7",100:"#faefc4",200:"#f5e08d",300:"#efcd52",400:"#e8bb2b",
-          500:"#d9a41a",600:"#bb7f13",700:"#955c14",800:"#7b4a18",900:"#683e1a",950:"#3d2009",
+        chart: {
+          1: "hsl(var(--chart-1))",
+          2: "hsl(var(--chart-2))",
+          3: "hsl(var(--chart-3))",
+          4: "hsl(var(--chart-4))",
+          5: "hsl(var(--chart-5))",
         },
         apex: {
           // v9 wave-0 tokens (single source of truth)
@@ -212,7 +208,7 @@ export default {
       },
       fontFamily: {
         sans: ["Hanken Grotesk", "system-ui", "sans-serif"],
-        display: ["Syne", "system-ui", "sans-serif"],
+        display: ["Hanken Grotesk", "system-ui", "sans-serif"],
       },
       keyframes: {
         "accordion-down": {
@@ -266,20 +262,13 @@ export default {
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
         "gradient-conic": "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
-        // 2026-08-06: these four were still teal→emerald and the emerald→gold
-        // palette remap above does NOT reach them — they are literal hsl in the
-        // config, not palette lookups. `bg-apex-gradient shadow-apex-glow` is
-        // the Login "Sign In" button, so the primary CTA of the whole app was
-        // rendering bright green with a green halo long after the rebrand.
-        // Caught by screenshotting the rendered page, not by grepping src/.
-        // Stops match --gradient-primary (src/index.css:98) exactly, and the
-        // pairing with text-primary-foreground measures 9.9:1.
-        "apex-gradient": "linear-gradient(135deg, hsl(45 85% 52%), hsl(38 88% 46%))",
-        "apex-gradient-soft": "linear-gradient(135deg, hsl(45 85% 52% / 0.2), hsl(38 88% 46% / 0.2))",
+        // Keep both builds on the same contrasting red action palette.
+        "apex-gradient": "linear-gradient(135deg, hsl(var(--brand-action)), hsl(var(--brand-action-end)))",
+        "apex-gradient-soft": "linear-gradient(135deg, hsl(var(--primary) / 0.12), hsl(var(--primary) / 0.04))",
       },
       boxShadow: {
-        "apex-glow": "0 0 20px hsl(45 85% 52% / 0.3), 0 0 40px hsl(45 85% 52% / 0.1)",
-        "apex-glow-strong": "0 0 30px hsl(45 85% 52% / 0.4), 0 0 60px hsl(45 85% 52% / 0.2)",
+        "apex-glow": "0 1px 2px hsl(0 0% 0% / 0.18)",
+        "apex-glow-strong": "0 2px 4px hsl(0 0% 0% / 0.22)",
         glass: "0 8px 32px hsl(222 47% 3% / 0.5)",
       },
     },

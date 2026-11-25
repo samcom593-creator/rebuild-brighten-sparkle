@@ -242,7 +242,7 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
   return (
     <aside
       className={cn(
-        "overflow-hidden bg-sidebar",
+        "galaxy-sidebar overflow-hidden bg-sidebar",
         mobile
           ? "relative h-full w-full"
           : "fixed inset-y-0 left-0 z-50 border-r border-border transition-[width,opacity] duration-150",
@@ -263,7 +263,7 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
             </span>
             {!collapsed && (
               <span className="min-w-0 leading-none">
-                <span className="block truncate text-[15px] font-semibold tracking-tight text-foreground">{brand.legalName}</span>
+                <span className="galaxy-wordmark block truncate text-[15px] font-extrabold italic uppercase tracking-tight text-foreground">{brand.legalName}</span>
               </span>
             )}
           </Link>

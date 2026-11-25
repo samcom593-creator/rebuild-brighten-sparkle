@@ -39,6 +39,7 @@
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { stripComments } from "./lib/strip-comments.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const COMPONENT_REL = "src/components/landing/RecruitFAQ.tsx";
@@ -98,7 +99,7 @@ export function extractIndexFaqPages(indexSrc) {
 }
 
 // Core comparison — pure, so the selftest can drive it with fixtures.
-export function faqProblems({ componentSrc, indexSrc }) {
+export function faqProblems({ componentSrc, indexSrc, homepageSrc }) {
   const problems = [];
 
   // Rule 1: the component must not re-inject its own JSON-LD (CSR-only is the
@@ -107,6 +108,22 @@ export function faqProblems({ componentSrc, indexSrc }) {
     problems.push(
       `${COMPONENT_REL} contains \`application/ld+json\` — the FAQPage schema must be STATIC in index.html, not injected by this lazy client-only component (non-JS crawlers never see a CSR-injected block).`,
     );
+  }
+
+  // A selection-only homepage must not claim to display the retired accordion.
+  // If FAQ rendering returns, the complete schema/copy parity checks below apply.
+  if (homepageSrc !== undefined) {
+    const home = stripComments(homepageSrc);
+    const rendersFaq = /<RecruitFAQ(?:\s|\/|>)/.test(home);
+    if (!rendersFaq) {
+      if (/\bRecruitFAQ\b/.test(home)) {
+        problems.push("The homepage references RecruitFAQ but its render shape is unrecognized; update this guard before accepting schema removal.");
+      }
+      if (extractIndexFaqPages(indexSrc).length > 0) {
+        problems.push("index.html publishes FAQPage schema although the homepage does not render RecruitFAQ.");
+      }
+      return problems;
+    }
   }
 
   const comp = extractComponentFaq(componentSrc);
@@ -186,6 +203,11 @@ export function RecruitFAQ() { return null; }
 
   const cases = [
     ["real tree passes", { componentSrc: good, indexSrc: goodIndex }, false],
+    ["visible FAQ still requires matching static schema", { componentSrc: good, indexSrc: goodIndex, homepageSrc: "<RecruitFAQ />" }, false],
+    ["selection-only home has no FAQ schema", { componentSrc: good, indexSrc: "<html></html>", homepageSrc: "<HeroSection />" }, false],
+    ["retired FAQ cannot leave ghost schema", { componentSrc: good, indexSrc: goodIndex, homepageSrc: "<HeroSection />" }, true],
+    ["unrecognized FAQ render does not waive coverage", { componentSrc: good, indexSrc: "<html></html>", homepageSrc: "const Faq = RecruitFAQ; <Faq />" }, true],
+    ["restored FAQ cannot omit schema", { componentSrc: good, indexSrc: "<html></html>", homepageSrc: "<RecruitFAQ />" }, true],
     [
       "CSR re-inject fails",
       {
@@ -252,14 +274,20 @@ function main() {
   }
   const componentSrc = readFileSync(join(ROOT, COMPONENT_REL), "utf8");
   const indexSrc = readFileSync(join(ROOT, INDEX_REL), "utf8");
-  const problems = faqProblems({ componentSrc, indexSrc });
+  const homepageSrc = ["src/pages/Index.tsx", "src/components/landing/HeroSection.tsx"]
+    .map((file) => readFileSync(join(ROOT, file), "utf8")).join("\n");
+  const problems = faqProblems({ componentSrc, indexSrc, homepageSrc });
   if (problems.length > 0) {
     console.error("✗ FAQ structured-data guard FAILED:\n");
     for (const p of problems) console.error("  • " + p);
     console.error(
-      "\nThe landing FAQPage schema must be served statically in index.html and byte-match RecruitFAQ.tsx's FAQ array. See this file's header.",
+      "\nFAQPage schema must match a visible homepage FAQ, and must be absent when that FAQ is removed.",
     );
     process.exit(1);
+  }
+  if (!/<RecruitFAQ(?:\s|\/|>)/.test(stripComments(homepageSrc))) {
+    console.log("✓ FAQ structured data: selection-only homepage has no FAQ accordion and no obsolete FAQPage schema.");
+    return;
   }
   const comp = extractComponentFaq(componentSrc);
   console.log(

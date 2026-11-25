@@ -4,73 +4,21 @@ import path from "path";
 import fs from "fs";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
+import { inspectVslSync } from "./scripts/check-vsl-sync.mjs";
 import {
   buildLandingCss,
   fmtBytes,
   LANDING_CSS_CEILING_GZ,
 } from "./scripts/build-landing-css.mjs";
 
-// Build-time sync invariant: the homepage, /vsl, preload, SEO metadata, and
-// cache-bust marker must all point at the same canonical hosted VSL release.
+// Use the same source-of-truth check at build time and in the normal guard.
 function vslSyncCheckPlugin() {
   return {
     name: "apex-vsl-sync-check",
     buildStart() {
-      const heroPath = path.resolve(__dirname, "src/components/landing/HeroSection.tsx");
-      const mediaPath = path.resolve(__dirname, "src/lib/vslMedia.ts");
-      const indexPath = path.resolve(__dirname, "index.html");
-      const hero = fs.readFileSync(heroPath, "utf8");
-      const media = fs.readFileSync(mediaPath, "utf8");
-      const index = fs.readFileSync(indexPath, "utf8");
-
-      const baseMatch = media.match(/const\s+VSL_MEDIA_BASE\s*=\s*["']([^"']+)["']/);
-      if (!baseMatch) {
-        throw new Error(
-          "[apex-vsl-sync-check] could not find VSL_MEDIA_BASE in src/lib/vslMedia.ts."
-        );
-      }
-      const mediaBase = baseMatch[1];
-      const release = mediaBase.slice(mediaBase.lastIndexOf("/") + 1);
-      // Derive the video + poster filenames from VSL_VIDEO itself so the
-      // single-source-of-truth contract in vslMedia.ts actually holds: a
-      // re-cut or rebrand that renames the object (e.g. apex-* -> galaxy-*)
-      // is one edit there, not a second hardcode here that silently drifts.
-      const videoFileMatch = media.match(/\bsrc:\s*`\$\{VSL_MEDIA_BASE\}\/([^`]+)`/);
-      const posterFileMatch = media.match(/\bposter:\s*`\$\{VSL_MEDIA_BASE\}\/([^`]+)`/);
-      if (!videoFileMatch || !posterFileMatch) {
-        throw new Error(
-          "[apex-vsl-sync-check] could not derive video/poster filenames from VSL_VIDEO in src/lib/vslMedia.ts."
-        );
-      }
-      const videoUrl = `${mediaBase}/${videoFileMatch[1]}`;
-      const posterUrl = `${mediaBase}/${posterFileMatch[1]}`;
-      const checks: Array<{ label: string; source: string; expected: string }> = [
-        { label: "homepage video source", source: hero, expected: "VSL_VIDEO.src" },
-        { label: "homepage video poster", source: hero, expected: "VSL_VIDEO.poster" },
-        // Route-scoped preload script; scope + no-crossorigin are asserted by
-        // scripts/check-vsl-sync.mjs (pre-commit + verify:core).
-        { label: "poster preload", source: index, expected: `l.href = "${posterUrl}"` },
-        { label: "VideoObject thumbnailUrl", source: index, expected: `"thumbnailUrl":"${posterUrl}"` },
-        { label: "VideoObject contentUrl", source: index, expected: `"contentUrl":"${videoUrl}"` },
-        { label: "VideoObject embedUrl", source: index, expected: '"embedUrl":"https://galaxyfinancial.org/vsl"' },
-      ];
-
-      const drift: string[] = [];
-      for (const { label, source, expected } of checks) {
-        if (!source.includes(expected)) drift.push(`  - ${label}: missing ${expected}`);
-      }
-
-      const bumpMatch = index.match(/var\s+BUMP_VERSION\s*=\s*"([^"]+)"/);
-      if (!bumpMatch) {
-        drift.push("  - BUMP_VERSION: could not locate `var BUMP_VERSION = \"...\"` in index.html cache-bust script");
-      } else if (!bumpMatch[1].includes(release)) {
-        drift.push(`  - BUMP_VERSION: "${bumpMatch[1]}" does not contain release ${release}`);
-      }
-
-      if (drift.length > 0) {
-        throw new Error(
-          `[apex-vsl-sync-check] homepage/index references drifted from canonical release ${release}:\n${drift.join("\n")}`
-        );
+      const { problems } = inspectVslSync(__dirname);
+      if (problems.length > 0) {
+        throw new Error(`[apex-vsl-sync-check] ${problems.join("\n")}`);
       }
     },
   };

@@ -26,3 +26,16 @@ export const VSL_VIDEO = {
   durationSeconds: DURATION_SECONDS,
   durationLabel: `${Math.floor(DURATION_SECONDS / 60)}:${String(DURATION_SECONDS % 60).padStart(2, "0")}`,
 } as const;
+
+/** Rendered only beside the actual /vsl player, never on the license-choice home. */
+export const VSL_VIDEO_SCHEMA = {
+  "@context": "https://schema.org",
+  "@type": "VideoObject",
+  name: VSL_VIDEO.title,
+  description: VSL_VIDEO.description,
+  thumbnailUrl: VSL_VIDEO.poster,
+  uploadDate: VSL_MEDIA_BASE.slice(VSL_MEDIA_BASE.lastIndexOf("/") + 1),
+  duration: `PT${Math.floor(DURATION_SECONDS / 60)}M${DURATION_SECONDS % 60}S`,
+  contentUrl: VSL_VIDEO.src,
+  embedUrl: VSL_VIDEO.pageUrl,
+} as const;

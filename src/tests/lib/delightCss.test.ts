@@ -17,8 +17,11 @@ function keyframes(name: string): string {
   return match[1];
 }
 
-/** The text of the ambient block (from .apex-ambient to the drift keyframes). */
-const ambient = css.slice(css.indexOf(".apex-ambient {"), css.indexOf("@keyframes apex-drift"));
+/** Read the actual ambient rules, including reduced-motion overrides, without requiring animation. */
+const ambient = [...css.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+  .filter(([, selector]) => selector.trim().startsWith(".apex-ambient"))
+  .map(([, , body]) => body)
+  .join("\n");
 
 describe("delight.css motion budget", () => {
   it("every one-shot animation is inside the 300ms UI budget and on the strong ease-out", () => {
@@ -38,7 +41,7 @@ describe("delight.css motion budget", () => {
     // `both` would pin the final transform and cancel every hover lift and press on a row or tile.
     expect(css).not.toMatch(/animation: apex-(rise|pop|fade) [^;]*\bboth\b/);
     expect(css).toMatch(/animation: apex-rise [^;]*backwards/);
-    for (const name of ["apex-rise", "apex-pop", "apex-bump", "apex-breathe", "apex-drift", "apex-fade", "apex-dim"]) {
+    for (const name of ["apex-rise", "apex-pop", "apex-bump", "apex-breathe", "apex-fade", "apex-dim"]) {
       const body = keyframes(name);
       expect(body, `${name} animates composite-only properties`).not.toMatch(/box-shadow|filter|width|height|margin|padding|top:|left:/);
     }
@@ -58,14 +61,30 @@ describe("delight.css motion budget", () => {
     expect(css).toMatch(/\.apex-lift:active:not\(:disabled\),\s*\.apex-press:active:not\(:disabled\) \{ transform: scale\(0\.98\); \}/);
   });
 
-  it("the ambient fields are quiet: no violet, peaks at or under 0.16 alpha, transform-only, still under reduced motion", () => {
+  it("ambient paint is static, faint, fixed at the edges, and never intercepts controls", () => {
     expect(ambient).not.toContain("--tone-royal");
-    const alphas = [...ambient.matchAll(/hsl\(var\(--tone-[a-z]+\) \/ (0\.\d+)\)/g)].map((m) => Number(m[1]));
-    expect(alphas).toHaveLength(5);
-    for (const a of alphas) expect(a).toBeLessThanOrEqual(0.16);
+    const paints = [...ambient.matchAll(/(?:^|;)\s*background(?:-color|-image)?\s*:\s*([^;]+);/g)].map((m) => m[1].trim());
+    expect(paints.length).toBeGreaterThan(0);
+    for (const paint of paints) {
+      const alpha = paint.match(/^hsl\(var\(--primary\)\s*\/\s*(0\.\d+)\)$/);
+      expect(alpha, "ambient paint uses the brand token with an explicit low alpha").not.toBeNull();
+      expect(Number(alpha?.[1])).toBeGreaterThan(0);
+      expect(Number(alpha?.[1])).toBeLessThanOrEqual(0.16);
+    }
+    const animations = [...ambient.matchAll(/(?:^|;)\s*(animation(?:-[\w-]+)?)\s*:\s*([^;]+);/g)];
+    for (const [, property, value] of animations) {
+      expect(property).toBe("animation");
+      expect(value.trim()).toBe("none");
+    }
+    expect(css).not.toContain("@keyframes apex-drift");
     expect(ambient).not.toMatch(/filter|backdrop|blur/);
     expect(ambient).toContain("pointer-events: none;");
     expect(ambient).toContain("position: fixed;");
+    expect(ambient).toContain("overflow: hidden;");
+    expect(ambient).toMatch(/\bright:\s*-\d+(?:\.\d+)?rem;/);
+    expect(ambient).toMatch(/\bleft:\s*-\d+(?:\.\d+)?rem;/);
+    expect(ambient).toMatch(/\btop:\s*\d+(?:\.\d+)?vh;/);
+    expect(ambient).toMatch(/\bbottom:\s*\d+(?:\.\d+)?vh;/);
     expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\) \{\s*\.apex-ambient > span \{ animation: none; \}/);
   });
 

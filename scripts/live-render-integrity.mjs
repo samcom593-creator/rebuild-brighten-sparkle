@@ -253,47 +253,50 @@ function scanForBadTokens(text) {
   return hits;
 }
 
-// MP-WIB-HERO-FEED (2026-11-16): the homepage hero production ticker
-// (DealsTicker.tsx — "🔥 NAME closed $X ALP", the "Numbers not slogans" bar)
-// is the site's single most prominent trust / social-proof element, and it is
-// DB-driven: a hand-rolled anon POST to the SECURITY DEFINER RPC
-// landing_deal_highlights, which returns the top producers whose deals landed
-// in public.deals in the LAST 30 DAYS (status submitted/active, ALP >= 500).
-//
-// Every assertion above catches a BROKEN number (NaN/undefined/$0) or a
-// white-screen. NONE of them catches the window going EMPTY. If the deal feed
-// freezes (the exact class that froze the YouTube sync 175d, the weekly
-// scoreboard 176d, and that retired the AgentLink sync), the 30-day window
-// drains to zero rows, the RPC returns [], and DealsTicker renders its
-// carrier-only fallback — valid tokens, no broken money, no crash — so the
-// render guard stays GREEN while the homepage silently loses all of its live
-// social proof. The CFO production-freshness pulse watches a DIFFERENT operand
-// (apex_native run-rate decline), not this public ALL-deals hero, so the two do
-// not overlap. This asserts, at the surface a visitor actually sees, that the
-// hero is NOT empty.
-//
-// Detector counts DISTINCT producer first-names (the RPC UPPERs + first-word-
-// splits them, and the component renders the list TWICE for a seamless loop, so
-// a distinct-name count is immune to that doubling). Proven both directions on
-// live prod before shipping: carrier-only text -> 0, one deal -> 1, the live
-// board -> 9 (EDWIN..CARI, exactly the RPC's rows). It is deliberately anchored
-// on the full "NAME closed $X ALP" shape so ordinary prose containing the word
-// "closed" (e.g. "our office is closed on Sundays") cannot trip it.
-const HERO_DEAL_RE = /([A-Z][A-Za-z.'’-]{1,30})\s+closed\s+\$[\d,]+\s+ALP/g;
-function countHeroProducers(text) {
-  const names = new Set();
-  let m;
-  HERO_DEAL_RE.lastIndex = 0;
-  while ((m = HERO_DEAL_RE.exec(text)) !== null) names.add(m[1].toUpperCase());
-  return names.size;
+// The homepage now has one job: two licensed/unlicensed doors to /vsl.
+// It intentionally has no production ticker, video, FAQ, or third audience CTA.
+// Grade the rendered conversion controls instead of demanding removed data.
+const HOME_CHOICES = new Map([
+  ["licensed-producer", "yes, i'm currently licensed"],
+  ["licensing-roadmap", "no, i'm unlicensed"],
+]);
+const HOME_CONTEXT_KEYS = ["ref", "source", "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "gclid", "fbclid"];
+function gradeHomeChoices(dom, pageUrl) {
+  if (!dom || !Array.isArray(dom.actions)) return ["homepage choices could not be inspected"];
+  const defects = [];
+  const incoming = new URL(pageUrl);
+  if (!dom.questionPresent) defects.push("homepage license question is missing");
+  if (dom.actions.length !== 2) defects.push(`homepage must expose exactly two recruiting choices; rendered ${dom.actions.length}`);
+  const seen = new Set();
+  for (const action of dom.actions) {
+    if (action.tag !== "A" || !action.usable || !action.href) {
+      defects.push("homepage choice is not an enabled link");
+      continue;
+    }
+    let url;
+    try { url = new URL(action.href, pageUrl); } catch { defects.push("homepage choice has an invalid destination"); continue; }
+    if (url.origin !== incoming.origin || url.pathname !== "/vsl" || url.hash) {
+      defects.push("homepage choice must open the same-origin /vsl page");
+      continue;
+    }
+    const track = url.searchParams.get("track");
+    if (!HOME_CHOICES.has(track) || url.searchParams.getAll("track").length !== 1 || seen.has(track)) {
+      defects.push("homepage choices have a missing, duplicate, or unsupported audience track");
+      continue;
+    }
+    seen.add(track);
+    const label = String(action.text || "").replace(/[’‘]/g, "'").replace(/\s+/g, " ").trim().toLowerCase();
+    if (label !== HOME_CHOICES.get(track)) defects.push("homepage license answer points at the wrong audience track");
+    for (const key of HOME_CONTEXT_KEYS) {
+      const raw = incoming.searchParams.get(key);
+      const value = key === "ref" ? raw : raw?.trim();
+      const valid = key === "ref" ? /^[a-zA-Z0-9_-]{1,64}$/.test(value || "") : value && value.length <= 200;
+      if (valid && url.searchParams.get(key) !== value) defects.push(`homepage choice lost ${key} context`);
+    }
+  }
+  for (const track of HOME_CHOICES.keys()) if (!seen.has(track)) defects.push(`homepage ${track} choice is missing`);
+  return defects;
 }
-// Default floor = 1, i.e. a DEFECT fires ONLY when the hero rendered ZERO
-// producers on EVERY leg (total collapse — the feed drained / the RPC failed /
-// the anon key rotated). A legitimately thin board (a slow sales week) is NOT a
-// defect — that run-rate question is the CFO pulse's, not this guard's — so this
-// never cries wolf; the live count is always reported so a thinning board is
-// visible without paging. Raise MIN_HERO_PRODUCERS to tighten.
-const MIN_HERO_PRODUCERS = Number(process.env.MIN_HERO_PRODUCERS || 1);
 
 // MP-WIB-FUNNEL-CANONICAL (2026-11-16, Website Integrity Bot, Check #3/SEO).
 // The per-route self-referencing canonical is injected CLIENT-SIDE by
@@ -488,10 +491,32 @@ async function probe(browser, leg, route) {
 
   const badHits = scanForBadTokens(bodyText);
 
-  // MP-WIB-HERO-FEED: only the homepage carries the production ticker. On every
-  // other route heroProducers is undefined and the cross-leg check below skips
-  // it, so this never mistakes a page that simply has no ticker for a collapse.
-  const heroProducers = route === "/" ? countHeroProducers(bodyText) : undefined;
+  // Inspect actual, visible main-content actions. The accessibility skip link
+  // lives outside main and is not a recruiting choice. No clicks or form writes.
+  let homeChoiceDefects = [], homeChoicesVerified;
+  if (route === "/") {
+    const home = await pg.evaluate(() => {
+      const main = document.querySelector("main");
+      const visible = (el) => {
+        const rect = el.getBoundingClientRect();
+        const style = getComputedStyle(el);
+        return rect.width > 0 && rect.height > 0 && style.visibility !== "hidden" && style.display !== "none";
+      };
+      const question = main?.querySelector("#recruiting-license-question");
+      return {
+        questionPresent: Boolean(question && visible(question) && question.textContent?.trim()),
+        actions: Array.from(main?.querySelectorAll('a[href], button, [role="button"]') || [])
+          .filter(visible).map((el) => ({
+            tag: el.tagName,
+            text: el.textContent,
+            href: el.getAttribute("href"),
+            usable: !el.hasAttribute("disabled") && el.getAttribute("aria-disabled") !== "true" && getComputedStyle(el).pointerEvents !== "none",
+          })),
+      };
+    }).catch(() => null);
+    homeChoiceDefects = gradeHomeChoices(home, pg.url());
+    homeChoicesVerified = homeChoiceDefects.length === 0;
+  }
 
   // MP-WIB-FUNNEL-CANONICAL: read the client-injected self-canonical from the
   // RENDERED DOM (not raw HTML — the fix is JS). Must happen before ctx.close().
@@ -526,9 +551,10 @@ async function probe(browser, leg, route) {
   const hardErrs = consoleErrs.filter((e) => /PAGEERROR|Minified React error|is not defined|Cannot read/i.test(e));
   for (const e of hardErrs) defects.push(`page error: ${e}`);
   for (const d of canonicalDefects) defects.push(d);
+  for (const d of homeChoiceDefects) defects.push(d);
 
   return { label, route, engineVendor: vendor, ok: defects.length === 0, status, overflowPx: overflow,
-           defects, consoleErrCount: consoleErrs.length, textLen: bodyText.length, heroProducers,
+           defects, consoleErrCount: consoleErrs.length, textLen: bodyText.length, homeChoicesVerified,
            bookingProbed, bookingUrl };
 }
 
@@ -581,21 +607,40 @@ if (process.argv.includes("--selftest")) {
     if (!pass) fail++;
     console.log(`${pass ? "PASS" : "FAIL"}  expectHit=${String(c.expectHit).padEnd(5)} got=${String(hit).padEnd(5)}  ${c.name}${hit ? "  -> " + JSON.stringify(hits[0].token) : ""}`);
   }
-  // MP-WIB-HERO-FEED: prove countHeroProducers both directions, no browser — the
-  // SAME function probe() runs on live DOM. Collapse -> 0 is the state that must
-  // page; a legitimate board counts its distinct producers through the component's
-  // seamless-loop doubling; ordinary prose with "closed" must not trip.
-  const heroCases = [
-    { name: "hero collapsed to carrier-only (feed drained -> DEFECT)", text: "Our agents write with\nAmerican National\n|\nOur agents write with\nMutual of Omaha", expect: 0 },
-    { name: "one live producer rendered", text: "🔥\nEDWIN\nclosed\n$39,867\nALP", expect: 1 },
-    { name: "full board (2 distinct, ticker-doubled -> still 2)", text: "🔥\nEDWIN\nclosed\n$39,867\nALP\n🔥\nJONTAY\nclosed\n$13,751\nALP\n".repeat(2), expect: 2 },
-    { name: "anti-FP: prose 'closed' + a '$' figure is NOT a deal item", text: "Our office is closed on Sundays. We invest $5,000 in every new agent.", expect: 0 },
+  // Same grader as the live DOM: correct two-choice home passes; removed,
+  // misrouted, disabled, mislabeled, external, or extra choices must fail.
+  const homeUrl = "https://galaxyfinancial.org/";
+  const choice = (track, text) => ({ tag: "A", usable: true, href: `/vsl?track=${track}`, text });
+  const goodHome = { questionPresent: true, actions: [
+    choice("licensed-producer", "Yes, I'm Currently Licensed"),
+    choice("licensing-roadmap", "No, I'm Unlicensed"),
+  ] };
+  const contextUrl = homeUrl + "?ref=synthetic-agent&source=ad&utm_medium=paid_social";
+  const withContext = { ...goodHome, actions: goodHome.actions.map((a) => ({ ...a, href: a.href + "&ref=synthetic-agent&source=ad&utm_medium=paid_social" })) };
+  const homeCases = [
+    { name: "two correct visible audience links", dom: goodHome, expectDefect: false },
+    { name: "valid referral and paid mode are preserved", dom: withContext, url: contextUrl, expectDefect: false },
+    { name: "unreadable homepage is a defect", dom: null, expectDefect: true },
+    { name: "empty main is a defect", dom: { questionPresent: true, actions: [] }, expectDefect: true },
+    { name: "missing license question", dom: { ...goodHome, questionPresent: false }, expectDefect: true },
+    { name: "one choice removed", dom: { ...goodHome, actions: goodHome.actions.slice(0, 1) }, expectDefect: true },
+    { name: "third agency-builder CTA", dom: { ...goodHome, actions: [...goodHome.actions, choice("agency-builder", "Build an agency")] }, expectDefect: true },
+    { name: "both choices route to licensed", dom: { ...goodHome, actions: [goodHome.actions[0], { ...goodHome.actions[1], href: goodHome.actions[0].href }] }, expectDefect: true },
+    { name: "labels swapped across audience tracks", dom: { ...goodHome, actions: goodHome.actions.map((a, i) => ({ ...a, text: goodHome.actions[1 - i].text })) }, expectDefect: true },
+    { name: "disabled choice", dom: { ...goodHome, actions: [{ ...goodHome.actions[0], usable: false }, goodHome.actions[1]] }, expectDefect: true },
+    { name: "button without a link", dom: { ...goodHome, actions: [{ ...goodHome.actions[0], tag: "BUTTON" }, goodHome.actions[1]] }, expectDefect: true },
+    { name: "choice skips the VSL", dom: { ...goodHome, actions: [{ ...goodHome.actions[0], href: "/apply?track=licensed-producer" }, goodHome.actions[1]] }, expectDefect: true },
+    { name: "external choice destination", dom: { ...goodHome, actions: [{ ...goodHome.actions[0], href: "https://outside.invalid/vsl?track=licensed-producer" }, goodHome.actions[1]] }, expectDefect: true },
+    { name: "audience query omitted", dom: { ...goodHome, actions: [{ ...goodHome.actions[0], href: "/vsl" }, goodHome.actions[1]] }, expectDefect: true },
+    { name: "referral and paid context lost", dom: goodHome, url: contextUrl, expectDefect: true },
+    { name: "invalid referral is intentionally dropped", dom: goodHome, url: homeUrl + "?ref=%3Cscript%3E", expectDefect: false },
   ];
-  for (const c of heroCases) {
-    const got = countHeroProducers(c.text);
-    const pass = got === c.expect;
+  for (const c of homeCases) {
+    const defs = gradeHomeChoices(c.dom, c.url || homeUrl);
+    const got = defs.length > 0;
+    const pass = got === c.expectDefect;
     if (!pass) fail++;
-    console.log(`${pass ? "PASS" : "FAIL"}  hero expect=${c.expect} got=${got}  ${c.name}`);
+    console.log(`${pass ? "PASS" : "FAIL"}  home expectDefect=${String(c.expectDefect).padEnd(5)} got=${String(got).padEnd(5)}  ${c.name}`);
   }
   // MP-WIB-FUNNEL-CANONICAL: prove gradeCanonical both directions, no browser —
   // the SAME grader probe() runs on the live rendered DOM. A funnel page still
@@ -639,8 +684,8 @@ if (process.argv.includes("--selftest")) {
     if (!pass) fail++;
     console.log(`${pass ? "PASS" : "FAIL"}  booking expectDefect=${String(c.expectDefect).padEnd(5)} got=${String(got).padEnd(5)}  ${c.name}`);
   }
-  const total = cases.length + heroCases.length + canonicalCases.length + bookingCases.length;
-  console.log(fail ? `\n❌ selftest FAILED: ${fail}/${total} case(s)` : `\n✅ selftest PASSED: ${total}/${total} — placeholder + numeric token + hero-feed + funnel-canonical + booking-gate detectors proven both directions`);
+  const total = cases.length + homeCases.length + canonicalCases.length + bookingCases.length;
+  console.log(fail ? `\n❌ selftest FAILED: ${fail}/${total} case(s)` : `\n✅ selftest PASSED: ${total}/${total} — placeholder + numeric token + two-choice-home + funnel-canonical + booking-gate detectors proven both directions`);
   process.exit(fail ? 1 : 0);
 }
 
@@ -702,24 +747,11 @@ if (process.argv.includes("--selftest")) {
   for (const r of navFailed) unavailable.push({ label: r.label, route: r.route, reason: "navigation failed twice: " + r.navErr });
   const measured = results.filter((r) => !r.navErr);
 
-  // MP-WIB-HERO-FEED cross-leg assertion: the homepage hero must render at least
-  // MIN_HERO_PRODUCERS live producers on at LEAST ONE measured leg. Taking the
-  // max across legs (not every leg) is the anti-flake guarantee — a single slow
-  // RPC on one engine cannot false-red while the other legs show the board; only
-  // a genuine feed-wide collapse (empty on all 3) trips it. If the homepage was
-  // not measured on any leg (all home legs nav-failed), homeLegs is empty and
-  // this is skipped — that state is already carried by legsNotRun / UNKNOWN, not
-  // laundered into a hero defect.
+  // Homepage choices are static and must work on each measured browser leg;
+  // failures are already in that leg's defects. Unmeasured legs remain unknown.
   const crossLegDefects = [];
-  const homeLegs = measured.filter((r) => r.route === "/" && typeof r.heroProducers === "number");
-  const bestHero = homeLegs.length ? Math.max(...homeLegs.map((r) => r.heroProducers)) : null;
-  if (homeLegs.length && bestHero < MIN_HERO_PRODUCERS) {
-    crossLegDefects.push(
-      `[all legs /] homepage hero production ticker rendered ${bestHero} live producer(s) ` +
-      `(need >= ${MIN_HERO_PRODUCERS}) — the landing_deal_highlights 30-day window has drained, ` +
-      `the public RPC failed, or the anon key is dead; the site's primary "Numbers not slogans" ` +
-      `social proof collapsed to a carrier-only bar while every broken-token / white-screen assertion stayed green`);
-  }
+  const homeLegs = measured.filter((r) => r.route === "/");
+  const homeChoicesVerified = homeLegs.length ? homeLegs.every((r) => r.homeChoicesVerified === true) : null;
 
   // MP-WIB-BOOKING cross-leg assertion: clicking through the /schedule-call gate
   // must reach a live apexfinancialempire Calendly embed on at LEAST ONE measured
@@ -745,9 +777,9 @@ if (process.argv.includes("--selftest")) {
   const legsRun = [...new Set(measured.map((r) => r.label))].join(", ");
   const routesRun = [...new Set(measured.map((r) => r.route))].join(", ");
   const bookingUrl = bestBooking ? bestBooking.bookingUrl : (bookingLegs.length ? null : undefined);
-  record({ verdict, base: BASE, legsRun, routesRun, legsNotRun: unavailable, heroProducers: bestHero, bookingUrl,
+  record({ verdict, base: BASE, legsRun, routesRun, legsNotRun: unavailable, homeChoicesVerified, bookingUrl,
     defects: [...defective.flatMap((r) => r.defects.map((d) => `[${r.label} ${r.route}] ${d}`)), ...crossLegDefects] });
-  console.log(JSON.stringify({ verdict, base: BASE, legsRun, routesRun, heroProducers: bestHero, bookingUrl,
+  console.log(JSON.stringify({ verdict, base: BASE, legsRun, routesRun, homeChoicesVerified, bookingUrl,
     legsNotRun: unavailable, results }, null, 2));
   if (defective.length || crossLegDefects.length) {
     console.error("\nRENDERED INTEGRITY DEFECTS:");
@@ -765,6 +797,6 @@ if (process.argv.includes("--selftest")) {
     process.exit(3);
   }
   console.log(`\n✅ live render integrity CLEAN — ${BASE} on [${legsRun}] × [${routesRun}]: no broken tokens, no mobile overflow, every leg on the engine it is named for` +
-    (bestHero !== null ? `, hero production ticker shows ${bestHero} live producer(s)` : ``) +
+    (homeChoicesVerified === true ? `, homepage has two valid licensed/unlicensed VSL choices` : ``) +
     (bestBooking ? `, /schedule-call gate reaches the live Calendly embed (${bestBooking.bookingUrl.replace(/^https?:\/\//, "").slice(0, 60)})` : ``) + `.`);
 })();

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { randomBytes, createCipheriv, publicEncrypt, constants } from 'node:crypto';
 
 const PROJECT = 'xrzweoneiieddzxogewk';
-const QUERY_FILES = { audio: 'audio.sql', finances: 'finances.sql', carrier_status: 'carrier-status.sql', production: 'production.sql', definitions: 'definitions.sql', release: 'release.sql', lead_performance: 'lead-performance.sql' };
+const QUERY_FILES = { audio: 'audio.sql', finances: 'finances.sql', carrier_status: 'carrier-status.sql', production: 'production.sql', definitions: 'definitions.sql', release: 'release.sql', lead_performance: 'lead-performance.sql', task_identity: 'task-identity.sql' };
 const SIGNERS = ['readymode-recording-url', 'training-recording-url', 'lead-recording-url', 'personal-task-create'];
 const AUDIO_COUNTS = [
   'dialer_calls','calls_with_provider_recording_reference','calls_linked_to_agent','calls_linked_to_application','calls_linked_to_lead',
@@ -58,6 +58,103 @@ const array = value => { if (!Array.isArray(value) || value.length > 100) throw 
 const date = value => { if (value !== null && (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value))) throw new Error('invalid aggregate date'); return value; };
 
 function sanitize(name, value) {
+  if (name === 'task_identity') {
+    const row = object(value);
+    for (const key of ['application_functions_executed','identity_rows_read','task_rows_read','auth_claims_changed']) {
+      if (row[key] !== false) throw new Error('invalid task metadata boundary');
+    }
+    const metadataText = (value, max = 100000, nullable = false) => {
+      if (nullable && value === null) return null;
+      if (typeof value !== 'string' || value.length > max || value.includes('\u0000')) throw new Error('invalid task catalog text');
+      return value;
+    };
+    const identifier = value => {
+      if (typeof value !== 'string' || !/^[A-Za-z_][A-Za-z0-9_]{0,62}$/.test(value)) throw new Error('invalid task catalog identifier');
+      return value;
+    };
+    const flags = (value, names) => Object.fromEntries(names.map(key => [key,boolean(value[key])]));
+    const config = value => value === null ? null : array(value).map(value => {
+      if (typeof value !== 'string' || value.length > 500 || !/^(search_path|statement_timeout|lock_timeout|work_mem|jit|row_security|plan_cache_mode)=[A-Za-z0-9_ ,.$"-]+$/.test(value)) throw new Error('invalid task function configuration');
+      return value;
+    });
+    const contracts = {
+      current_agent_id:'public.current_agent_id()',
+      fn_user_login_blocked:'public.fn_user_login_blocked(uuid)',
+      fn_user_is_suspended:'public.fn_user_is_suspended(uuid)',
+      fn_agent_is_suspended:'public.fn_agent_is_suspended(uuid)',
+      personal_task_identity:'public.personal_task_identity()',
+      personal_task_list:'public.personal_task_list(uuid)',
+      personal_task_set_completed:'public.personal_task_set_completed(uuid,uuid,boolean)',
+      personal_task_create:'public.personal_task_create(uuid,text,text,date,text)',
+    };
+    const source = object(row.functions);
+    if (Object.keys(source).length !== Object.keys(contracts).length || Object.keys(source).some(key => !Object.hasOwn(contracts,key))) throw new Error('unexpected task function set');
+    const functions = Object.fromEntries(Object.entries(contracts).map(([key,signature]) => {
+      const f = object(source[key]);
+      if (f.signature !== signature) throw new Error('unexpected task function signature');
+      const present = boolean(f.present);
+      const definition = metadataText(f.definition,100000,true);
+      const returnType = metadataText(f.return_type,2000,true);
+      const proconfig = config(f.proconfig);
+      const access = flags(f,['security_definer','authenticated_execute','anon_execute','public_execute']);
+      const volatility = present ? enumeration(f.volatility,['i','s','v']) : null;
+      if (present && (!definition?.startsWith(`CREATE OR REPLACE FUNCTION public.${key}(`) || !returnType)) throw new Error('invalid task function definition');
+      if (!present && (definition !== null || returnType !== null || proconfig !== null || f.volatility !== null || Object.values(access).some(Boolean))) throw new Error('missing task function has metadata');
+      return [key,{ signature,present,definition,return_type:returnType,proconfig,...access,volatility }];
+    }));
+    const tableNames = ['agents','agent_tasks'];
+    const tables = array(row.tables).map(value => {
+      const t = object(value);
+      const name = enumeration(t.name,tableNames);
+      const tableFlags = flags(t,['present','rls_enabled','rls_forced','authenticated_select','authenticated_insert','authenticated_update','authenticated_delete']);
+      const kind = tableFlags.present ? enumeration(t.kind,['r','p','v','m','f']) : null;
+      if (!tableFlags.present && (t.kind !== null || Object.values(tableFlags).some(Boolean))) throw new Error('missing task relation has metadata');
+      return { name,kind,...tableFlags };
+    });
+    if (tables.length !== 2 || new Set(tables.map(t => t.name)).size !== 2) throw new Error('invalid task relation set');
+    const identityColumns = ['id','user_id','canonical_agent_id','status','is_inactive','is_deactivated'];
+    const agentsUpdateColumns = array(row.agents_update_columns).map(value => {
+      const c = object(value);
+      const name = enumeration(c.name,identityColumns);
+      const columnFlags = flags(c,['present','authenticated_update']);
+      if (!columnFlags.present && columnFlags.authenticated_update) throw new Error('missing identity column has privileges');
+      return { name,...columnFlags };
+    });
+    if (agentsUpdateColumns.length !== identityColumns.length || new Set(agentsUpdateColumns.map(c => c.name)).size !== identityColumns.length) throw new Error('invalid identity column set');
+    const policies = array(row.policies).map(value => {
+      const p = object(value);
+      return { table:enumeration(p.table,tableNames),name:metadataText(p.name,200),
+        permissive:enumeration(p.permissive,['PERMISSIVE','RESTRICTIVE']),roles:array(p.roles).map(identifier),
+        command:enumeration(p.command,['ALL','SELECT','INSERT','UPDATE','DELETE']),
+        using_expression:metadataText(p.using_expression,30000,true),check_expression:metadataText(p.check_expression,30000,true) };
+    });
+    const triggers = array(row.agents_before_write_triggers).map(value => {
+      const t = object(value);
+      const name = identifier(t.name), functionSchema = identifier(t.function_schema), functionName = identifier(t.function_name);
+      const triggerFlags = flags(t,['internal','before_insert','before_update','security_definer']);
+      const definition = metadataText(t.definition,30000), functionDefinition = metadataText(t.function_definition,200000);
+      if (!triggerFlags.before_insert && !triggerFlags.before_update || !/^CREATE (CONSTRAINT )?TRIGGER\s/.test(definition)
+        || !functionDefinition.startsWith(`CREATE OR REPLACE FUNCTION ${functionSchema}.${functionName}(`)) throw new Error('invalid agent guard definition');
+      return { name,enabled:enumeration(t.enabled,['O','D','R','A']),...triggerFlags,definition,
+        function_schema:functionSchema,function_name:functionName,function_definition:functionDefinition,
+        volatility:enumeration(t.volatility,['i','s','v']),proconfig:config(t.proconfig) };
+    });
+    const taskColumns = array(row.task_columns).map(value => {
+      const c = object(value);
+      return { name:identifier(c.name),type:metadataText(c.type,500),not_null:boolean(c.not_null),
+        default_expression:metadataText(c.default_expression,30000,true) };
+    });
+    const taskIndexes = array(row.task_indexes).map(value => {
+      const i = object(value), name = identifier(i.name), definition = metadataText(i.definition,20000);
+      if (!definition.startsWith(`CREATE INDEX ${name} ON public.agent_tasks `) && !definition.startsWith(`CREATE UNIQUE INDEX ${name} ON public.agent_tasks `)) throw new Error('invalid task index definition');
+      return { name,definition };
+    });
+    const migration = object(row.migration);
+    if (migration.version !== '20261125120000') throw new Error('unexpected task migration');
+    return { application_functions_executed:false,identity_rows_read:false,task_rows_read:false,auth_claims_changed:false,
+      functions,tables,agents_update_columns:agentsUpdateColumns,policies,agents_before_write_triggers:triggers,
+      task_columns:taskColumns,task_indexes:taskIndexes,migration:{version:migration.version,recorded:boolean(migration.recorded)} };
+  }
   if (name === 'lead_performance') {
     const row = object(value);
     if (row.application_functions_executed !== false || row.lead_rows_read !== false || row.auth_claims_changed !== false) throw new Error('invalid lead metadata boundary');

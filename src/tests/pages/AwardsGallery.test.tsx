@@ -37,6 +37,8 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 import AwardsGallery from "@/pages/AwardsGallery";
 
 const clients: QueryClient[] = [];
+const originalClipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+const writeText = vi.fn();
 function page(client: QueryClient) {
   return <QueryClientProvider client={client}><MemoryRouter><AwardsGallery /></MemoryRouter></QueryClientProvider>;
 }
@@ -64,6 +66,8 @@ beforeEach(() => {
   db.error = null;
   db.pending = false;
   db.invoke.mockReset();
+  writeText.mockReset().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
   db.rows = [
     award("synthetic-1", "synthetic-a", "single_day", "2026-11-24", 5000),
     award("synthetic-2", "synthetic-b", "single_day_bronze", "2026-11-23", null),
@@ -74,6 +78,8 @@ beforeEach(() => {
 afterEach(() => {
   for (const client of clients.splice(0)) client.clear();
   vi.useRealTimers();
+  if (originalClipboard) Object.defineProperty(navigator, "clipboard", originalClipboard);
+  else Reflect.deleteProperty(navigator, "clipboard");
 });
 
 describe("Wins & Awards", () => {
@@ -161,5 +167,71 @@ describe("Wins & Awards", () => {
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Awards could not be loaded"));
     expect(screen.queryByRole("group", { name: "Award summary" })).not.toBeInTheDocument();
     expect(screen.queryByText("Synthetic Alpha")).not.toBeInTheDocument();
+  });
+
+  it("copies exact recorded facts and leaves unknown premium unavailable", async () => {
+    db.rows[0].amount = 1031.76;
+    renderPage();
+    const recorded = await screen.findByRole("article", { name: "Synthetic Alpha Gold award" });
+    expect(recorded).toHaveTextContent("$1,031.76");
+    fireEvent.click(within(recorded).getByRole("button", { name: "Copy stats" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(expect.stringContaining("Recorded premium: $1,031.76")));
+    expect(await within(recorded).findByText("Stats copied.")).toBeInTheDocument();
+
+    writeText.mockRejectedValueOnce(new Error("denied"));
+    const missing = screen.getByRole("article", { name: "Synthetic Beta Bronze award" });
+    fireEvent.click(within(missing).getByRole("button", { name: "Copy stats" }));
+    const field = await within(missing).findByRole("textbox", { name: /Award stats/ });
+    expect(field).toHaveAttribute("readonly");
+    expect((field as HTMLTextAreaElement).value).toContain("Recorded premium: Premium not on file");
+    expect((field as HTMLTextAreaElement).value).not.toContain("$0");
+    expect(within(missing).queryByText("Stats copied.")).not.toBeInTheDocument();
+    expect(db.invoke).not.toHaveBeenCalled();
+  });
+
+  it("labels saved artwork as the original design rather than the redesigned award face", async () => {
+    db.rows[0].image_png_url = "https://example.test/original-award.png";
+    renderPage();
+    const card = await screen.findByRole("article", { name: "Synthetic Alpha Gold award" });
+    expect(within(card).queryByRole("img", { name: /Original plaque/ })).not.toBeInTheDocument();
+    fireEvent.click(within(card).getByRole("button", { name: "Original art" }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText(/Stored artwork from the earlier design/)).toBeInTheDocument();
+    expect(within(dialog).getByRole("img", { name: "Original plaque artwork for Synthetic Alpha" })).toHaveAttribute("src", "https://example.test/original-award.png");
+    expect(db.invoke).not.toHaveBeenCalled();
+  });
+
+  it("clears selected award text immediately on an account switch", async () => {
+    const view = renderPage();
+    const card = await screen.findByRole("article", { name: "Synthetic Alpha Gold award" });
+    fireEvent.click(within(card).getByRole("button", { name: "Open award for Synthetic Alpha" }));
+    fireEvent.change(within(screen.getByRole("dialog")).getByRole("textbox", { name: /Caption text/ }), { target: { value: "Private award caption" } });
+    auth.user = { id: "synthetic-other-viewer" };
+    db.error = { message: "synthetic denied" };
+    view.rerender(page(view.client));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue("Private award caption")).not.toBeInTheDocument();
+    expect(await screen.findByRole("alert")).toHaveTextContent("Awards could not be loaded");
+  });
+
+  it("renders and copies hiring counts and monthly buckets without turning them into premium", async () => {
+    db.rows = [
+      award("daily-hires", "synthetic-a", "day_hiring_champion", "2026-11-24", 5),
+      award("monthly-hires", "synthetic-b", "month_team_builder", "2026-11-01", 7),
+      award("streak", "synthetic-a", "hot_streak", "2026-11-24", 5),
+    ];
+    renderPage();
+    await screen.findByRole("group", { name: "Award summary" });
+    expect(summaryTile("Premium not on file")).toHaveTextContent("0");
+    const daily = screen.getByRole("article", { name: "Synthetic Alpha Hiring Champion award" });
+    expect(daily).toHaveTextContent("Daily hires");
+    expect(daily).not.toHaveTextContent("$5");
+    const monthly = screen.getByRole("article", { name: "Synthetic Beta Team Builder award" });
+    expect(monthly).toHaveTextContent("November 2026");
+    fireEvent.click(within(monthly).getByRole("button", { name: "Copy stats" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(expect.stringContaining("Monthly hires: 7")));
+    expect(writeText.mock.calls.at(-1)?.[0]).toContain("Milestone month: November 2026");
+    expect(writeText.mock.calls.at(-1)?.[0]).not.toMatch(/\$|ALP|Earned:/);
+    expect(screen.getByRole("article", { name: "Synthetic Alpha Hot Streak award" })).toHaveTextContent("Streak days");
   });
 });

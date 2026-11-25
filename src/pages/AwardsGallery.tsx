@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
@@ -22,8 +22,11 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { resolveBrand } from "@/config/brand";
+import { AwardCopyActions, useOwnedAwardSelection } from "@/components/awards/AwardCopyActions";
+import { presentPlaqueDate, presentPlaqueMetric } from "@/components/awards/plaqueAwardPresentation";
+import "@/components/awards/awards.css";
 
-interface PlaqueRow {
+export interface PlaqueRow {
   id: string;
   agent_id: string;
   milestone_type: string;
@@ -141,6 +144,23 @@ const TIER_META: Record<string, TierMeta> = {
   team_week_50k:       { label: "Team Week",    accent: TONE.team,      emoji: "🏆" },
   team_two_day_20k:    { label: "Team 2-Day",   accent: TONE.team,      emoji: "⚡" },
   team_single_day_10k: { label: "Team Day",     accent: TONE.team,      emoji: "⭐" },
+  team_single_day_25k: { label: "Team Day",     accent: TONE.team,      emoji: "⭐" },
+  day_on_the_board:    { label: "On the Board", accent: TONE.team, emoji: "🏆" },
+  day_recruiter_rising: { label: "Recruiter Rising", accent: TONE.team, emoji: "🏆" },
+  day_hiring_champion: { label: "Hiring Champion", accent: TONE.team, emoji: "🏆" },
+  month_first_hire: { label: "First Hire", accent: TONE.team, emoji: "🏆" },
+  month_builder: { label: "Builder", accent: TONE.team, emoji: "🏆" },
+  month_team_builder: { label: "Team Builder", accent: TONE.team, emoji: "🏆" },
+  month_agency_builder: { label: "Agency Builder", accent: TONE.team, emoji: "🏆" },
+  month_empire_builder: { label: "Empire Builder", accent: TONE.team, emoji: "🏆" },
+  hiring_champion: { label: "Hiring Champion", accent: TONE.team, emoji: "🏆" },
+  recruiter_rising: { label: "Recruiter Rising", accent: TONE.team, emoji: "🏆" },
+  team_builder: { label: "Team Builder", accent: TONE.team, emoji: "🏆" },
+  on_fire: { label: "On Fire", accent: TONE.streak, emoji: "🔥" },
+  unstoppable: { label: "Unstoppable", accent: TONE.streak, emoji: "🔥" },
+  streak_5: { label: "5-Day Streak", accent: TONE.streak, emoji: "🔥" },
+  streak_10: { label: "10-Day Streak", accent: TONE.streak, emoji: "🔥" },
+  streak_20: { label: "20-Day Streak", accent: TONE.streak, emoji: "🔥" },
   // ── legacy hand-pasted keys, previously rendered raw ─────────────────────
   "FIRST DEAL":        { label: "First Ever Deal", accent: TONE.gold,  emoji: "🌱" },
   "10K CLUB":          { label: "$10K Club",    accent: TONE.milestone, emoji: "🎖️" },
@@ -165,22 +185,6 @@ function tierMeta(key: string): TierMeta {
   return TIER_META[key] ?? { label: titleCaseTier(key), accent: TONE.neutral, emoji: "🏅" };
 }
 
-/** Compact USD for the stat tiles, where a running total is genuinely 0-able. */
-function usdCompact(n: number): string {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}k`;
-  return `$${Math.round(n).toLocaleString()}`;
-}
-
-/** Returns null — never "$0" — when a plaque carries no amount. A plaque with
- *  no premium on file is a data gap, and rendering it as a $0 award states
- *  something about the agent that the row does not support. */
-function usdOrNull(n: number | null | undefined): string | null {
-  const v = Number(n ?? 0);
-  if (!Number.isFinite(v) || v <= 0) return null;
-  return usdCompact(v);
-}
-
 function displayName(n?: string): string {
   // Some AgentLink names arrive all-lowercase ("dudley bowman"); normalize for
   // display only — the underlying row is untouched.
@@ -190,6 +194,30 @@ function displayName(n?: string): string {
 function initialsOf(n?: string): string {
   const parts = displayName(n).split(/\s+/).filter(Boolean);
   return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "A";
+}
+
+/** Copy only the award record; thresholds and personal earnings are never inferred. */
+export function buildPlaqueCaption(row: PlaqueRow): string {
+  const metric = presentPlaqueMetric(row);
+  const date = presentPlaqueDate(row);
+  return [
+    `${displayName(row.agent_name)}. ${tierMeta(row.milestone_type).label}.`,
+    `${metric.label}: ${metric.value ?? metric.missingText}.`,
+    `${date.label}: ${date.value}.`,
+    `Earned recognition. ${BRAND.legalName}.`,
+  ].join("\n");
+}
+
+export function buildPlaqueSummary(row: PlaqueRow): string {
+  const metric = presentPlaqueMetric(row);
+  const date = presentPlaqueDate(row);
+  return [
+    BRAND.legalName,
+    `Agent: ${displayName(row.agent_name)}`,
+    `Award: ${tierMeta(row.milestone_type).label}`,
+    `${date.label}: ${date.value}`,
+    `${metric.label}: ${metric.value ?? metric.missingText}`,
+  ].join("\n");
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -221,73 +249,59 @@ function initialsOf(n?: string): string {
    stays one click away under "Original art", labelled, for anyone who wants the
    shareable asset.
 ──────────────────────────────────────────────────────────────────────────── */
-function PlaqueFace({ row }: { row: PlaqueRow }) {
+export function PlaqueFace({ row }: { row: PlaqueRow }) {
   const meta = tierMeta(row.milestone_type);
-  const amount = usdOrNull(row.amount);
+  const metric = presentPlaqueMetric(row);
   const [photoBroken, setPhotoBroken] = useState(false);
+  useEffect(() => { setPhotoBroken(false); }, [row.agent_photo]);
   const photo = !photoBroken ? row.agent_photo ?? null : null;
 
   return (
-    <div className="relative min-h-[220px] overflow-hidden rounded-lg border-2 border-primary/40 bg-background px-4 py-4">
-      {/* ghosted tier watermark — scaled to sit inside the card at any width */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-3 bottom-8 truncate text-right text-3xl font-black italic uppercase leading-none tracking-tight text-primary/[0.06]"
-      >
-        {meta.label}
-      </div>
-
-      <div className="relative flex h-full flex-col">
-        <div className="flex items-baseline gap-1.5">
-          <span className="text-[12px] font-extrabold tracking-[0.18em] text-primary">Galaxy</span>
-          <span className="text-[12px] font-medium tracking-[0.18em] text-foreground/80">FINANCIAL</span>
-        </div>
-        <div className="mt-1 h-px w-10 bg-primary/60" />
-
-        <Badge className={cn("mt-2.5 w-fit border text-sm font-bold tracking-wide", meta.accent)}>
-          {meta.emoji} {meta.label.toUpperCase()}
-        </Badge>
-
-        <div className="mt-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Winner&apos;s Circle
-        </div>
-
-        {/* The number, or an honest absence of one. */}
-        <div className="mt-0.5">
-          {amount ? (
-            <div className="text-4xl font-black italic leading-none tracking-tight text-primary tabular-nums">{amount}</div>
-          ) : (
-            <div className="py-1 text-[12px] font-semibold leading-tight text-muted-foreground">
-              Premium not on file
-            </div>
-          )}
-        </div>
-
-        <div className="mt-auto flex items-center gap-2.5 pt-4">
-          {photo ? (
-            <img
-              src={photo}
-              alt=""
-              loading="lazy"
-              onError={() => setPhotoBroken(true)}
-              className="h-11 w-11 shrink-0 rounded-full border border-primary/40 object-cover"
-            />
-          ) : (
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/40 bg-primary/10 text-xs font-bold text-primary">
-              {initialsOf(row.agent_name)}
-            </div>
-          )}
-          <div className="min-w-0">
-            <div className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">Agent</div>
-            <div className="truncate text-base font-bold text-foreground">{displayName(row.agent_name)}</div>
-          </div>
-        </div>
-
-        <div className="mt-3 border-t border-primary/30 pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Earned in the field
+    <div className="award-face">
+      <p className="award-face__brand">{BRAND.legalName}</p>
+      <h3 className="award-face__title">{meta.label}</h3>
+      {metric.value !== null ? (
+        <><p className="award-face__amount">{metric.value}</p><p className="award-face__unit">{metric.label}</p></>
+      ) : <p className="award-face__unknown">{metric.missingText}</p>}
+      <div className="award-face__recipient">
+        {photo ? (
+          <img src={photo} alt="" loading="lazy" onError={() => setPhotoBroken(true)} className="award-face__photo" />
+        ) : <span className="award-face__initials" aria-hidden="true">{initialsOf(row.agent_name)}</span>}
+        <div className="min-w-0">
+          <p className="award-face__name">{displayName(row.agent_name)}</p>
+          <span className="award-face__date">{presentPlaqueDate(row).value}</span>
         </div>
       </div>
     </div>
+  );
+}
+
+/** Recorded-row card for the gallery and synthetic visual QA; no remote actions. */
+export function AwardRecordCard({ row, onOpen, onOriginalArt, onEdit }: {
+  row: PlaqueRow;
+  onOpen?: (row: PlaqueRow) => void;
+  onOriginalArt?: (row: PlaqueRow) => void;
+  onEdit?: (row: PlaqueRow) => void;
+}) {
+  const hasArt = Boolean(row.image_png_url || row.image_svg_url);
+  const metric = presentPlaqueMetric(row);
+  return (
+    <article className="award-record-card" aria-label={`${displayName(row.agent_name)} ${tierMeta(row.milestone_type).label} award`}>
+      {onOpen ? (
+        <button type="button" className="award-record-card__preview" aria-label={`Open award for ${displayName(row.agent_name)}`} onClick={() => onOpen(row)}>
+          <PlaqueFace row={row} />
+        </button>
+      ) : <PlaqueFace row={row} />}
+      <AwardCopyActions caption={buildPlaqueCaption(row)} summary={buildPlaqueSummary(row)} />
+      <div className="award-record-card__footer">
+        {hasArt && onOriginalArt ? (
+          <Button type="button" variant="ghost" onClick={() => onOriginalArt(row)}><ImageIcon className="mr-1.5 h-4 w-4" /> Original art</Button>
+        ) : <span>{hasArt ? "Original art available" : "No stored artwork"}</span>}
+        {onEdit && <Button type="button" variant="ghost" size="icon" aria-label={`Edit award for ${displayName(row.agent_name)}`} onClick={() => onEdit(row)}><Edit3 className="h-4 w-4" /></Button>}
+        {metric.value === null && <span>{metric.missingPremium ? "no premium on file" : metric.missingText.toLowerCase()}</span>}
+        {row.email_sent_at && <span>Previously emailed</span>}
+      </div>
+    </article>
   );
 }
 
@@ -317,12 +331,14 @@ export default function AwardsGallery() {
   const [search, setSearch] = useState("");
   const [tierFilter, setTier] = useState<string>("all");
   const [emailing, setEmailing] = useState(false);
-  const [editing, setEditing] = useState<PlaqueRow | null>(null);
-  const [artOf, setArtOf] = useState<PlaqueRow | null>(null);
+  const [editing, setEditing] = useOwnedAwardSelection<PlaqueRow>(user?.id);
+  const [artOf, setArtOf] = useOwnedAwardSelection<PlaqueRow>(user?.id);
+  const [selectedAward, setSelectedAward] = useOwnedAwardSelection<PlaqueRow>(user?.id);
   const [rendering, setRendering] = useState(false);
   const [requestingPhotos, setRequestingPhotos] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
+  useEffect(() => { setPhotoFile(null); }, [user?.id]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -372,7 +388,7 @@ export default function AwardsGallery() {
   /* Plaques whose premium never made it onto the row. Surfaced as a number
      rather than left to be discovered one blank card at a time. */
   const missingAmount = useMemo(
-    () => filtered.filter(r => !usdOrNull(r.amount)).length,
+    () => filtered.filter(r => presentPlaqueMetric(r).missingPremium).length,
     [filtered],
   );
 
@@ -461,13 +477,14 @@ export default function AwardsGallery() {
   };
 
   return (
-    <div className="space-y-4 p-4 md:p-6 max-w-[1400px] mx-auto">
+    <div className="awards-stage">
       <PageHeader
+        className="awards-heading awards-hero"
         accent="primary"
         eyebrow="Earned recognition"
         eyebrowIcon={<Trophy className="h-4 w-4" />}
-        title="Wins & Awards"
-        subtitle="Real milestones. Recognize the work. Keep climbing."
+        title="The win wall."
+        subtitle="Earned milestones. Big moments. Copy the recognition."
         primaryAction={
           <Button size="sm" variant="outline" className="gap-2" onClick={() => void awards.refetch()} disabled={awards.isFetching}>
             <RefreshCw className={cn("h-4 w-4", awards.isFetching && "animate-spin")} aria-hidden="true" />
@@ -549,22 +566,22 @@ export default function AwardsGallery() {
             )}
           </GlassCard>
 
-          <div role="group" aria-label="Award summary" className="grid gap-3 sm:grid-cols-3">
-            <GlassCard className="border-l-4 border-l-primary p-4">
-              <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Awards in view</p>
-              <p className="mt-2 text-4xl font-black italic tabular-nums text-primary">{filtered.length.toLocaleString()}</p>
-              <p className="mt-2 text-sm text-muted-foreground">{windowLabel} · matching filters</p>
-            </GlassCard>
-            <GlassCard className="border-l-4 border-l-emerald-500 p-4">
-              <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Agents recognized</p>
-              <p className="mt-2 text-4xl font-black italic tabular-nums text-emerald-700 dark:text-emerald-300">{honorees.toLocaleString()}</p>
-              <p className="mt-2 text-sm text-muted-foreground">Distinct recipients in view</p>
-            </GlassCard>
-            <GlassCard className="border-l-4 border-l-amber-500 p-4">
-              <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Premium not on file</p>
-              <p className="mt-2 text-4xl font-black italic tabular-nums">{missingAmount.toLocaleString()}</p>
-              <p className="mt-2 text-sm text-muted-foreground">Awards with no recorded positive premium</p>
-            </GlassCard>
+          <div role="group" aria-label="Award summary" className="awards-summary">
+            <div className="awards-summary__tile">
+              <p>Awards in view</p>
+              <p className="awards-summary__value">{filtered.length.toLocaleString()}</p>
+              <p className="awards-summary__detail">{windowLabel} · matching filters</p>
+            </div>
+            <div className="awards-summary__tile" data-tone="cool">
+              <p>Agents recognized</p>
+              <p className="awards-summary__value">{honorees.toLocaleString()}</p>
+              <p className="awards-summary__detail">Distinct recipients in view</p>
+            </div>
+            <div className="awards-summary__tile" data-tone="warm">
+              <p>Premium not on file</p>
+              <p className="awards-summary__value">{missingAmount.toLocaleString()}</p>
+              <p className="awards-summary__detail">Premium-based awards with no positive amount</p>
+            </div>
           </div>
 
           {filtered.length > 0 && (
@@ -580,7 +597,7 @@ export default function AwardsGallery() {
                       <span className="font-semibold text-foreground">{label}</span>
                       <span className="font-bold tabular-nums text-primary">{count} {count === 1 ? "award" : "awards"}</span>
                     </div>
-                    <div aria-hidden="true" className="h-4 overflow-hidden rounded-sm bg-muted">
+                    <div aria-hidden="true" className="h-6 overflow-hidden rounded-sm bg-muted">
                       <div className="h-full rounded-sm bg-primary" style={{ width: `${count / maxCount * 100}%` }} />
                     </div>
                   </li>
@@ -603,88 +620,57 @@ export default function AwardsGallery() {
           No recorded awards match this window and these filters.
         </GlassCard>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {filtered.map(p => {
-            const meta = tierMeta(p.milestone_type);
-            const amount = usdOrNull(p.amount);
-            const hasArt = Boolean(p.image_png_url || p.image_svg_url);
-            return (
-              <GlassCard key={p.id} className={cn(
-                "p-4 relative group card-tilt reveal",
-                meta.accent.split(" ")[0],
-                p.milestone_type === "single_day_platinum" && "win-glow",
-                p.milestone_type === "single_day" && "gold-glow",
-              )}>
-                {isAdmin && (
-                  <button
-                    onClick={() => setEditing(p)}
-                    className="absolute top-3 right-3 h-7 w-7 rounded-full bg-background/80 border border-border backdrop-blur text-muted-foreground hover:text-foreground hover:bg-background opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity flex items-center justify-center z-10"
-                    title="Edit plaque"
-                  >
-                    <Edit3 className="h-3.5 w-3.5" />
-                  </button>
-                )}
-
-                <PlaqueFace row={p} />
-
-                <div className="mt-3 flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold truncate">{displayName(p.agent_name)}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {p.milestone_date ? format(new Date(p.milestone_date), "MMM d, yyyy") : "Date not on file"}
-                    </div>
-                  </div>
-                  <div className="shrink-0 text-right">
-                    {amount
-                      ? <span className="text-sm font-bold tabular-nums text-primary">{amount}</span>
-                      : <span className="text-[12px] text-muted-foreground">no premium on file</span>}
-                    {p.email_sent_at ? (
-                      <div className="mt-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">emailed</div>
-                    ) : null}
-                  </div>
-                </div>
-
-                <div className="mt-2.5 flex items-center gap-2">
-                  {hasArt ? (
-                    <Button variant="outline" size="sm" className="h-7 gap-1.5 text-[12px]"
-                      onClick={() => setArtOf(p)}>
-                      <ImageIcon className="h-3 w-3" /> Original art
-                    </Button>
-                  ) : (
-                    <span className="text-[12px] text-muted-foreground">No artwork rendered yet</span>
-                  )}
-                </div>
-              </GlassCard>
-            );
-          })}
+        <div className="awards-card-grid">
+          {filtered.map(row => (
+            <AwardRecordCard
+              key={`${user?.id}-${row.id}`}
+              row={row}
+              onOpen={setSelectedAward}
+              onOriginalArt={setArtOf}
+              onEdit={isAdmin ? setEditing : undefined}
+            />
+          ))}
         </div>
       )}
+
+      <Dialog open={!!selectedAward} onOpenChange={(open) => { if (!open) setSelectedAward(null); }}>
+        <DialogContent className="awards-dialog max-w-xl">
+          <DialogHeader className="pr-8">
+            <DialogTitle className="awards-dialog__title">Recognition kit</DialogTitle>
+            <DialogDescription>{displayName(selectedAward?.agent_name)} · {selectedAward ? presentPlaqueDate(selectedAward).value : ""}</DialogDescription>
+          </DialogHeader>
+          {selectedAward && <>
+            <PlaqueFace row={selectedAward} />
+            <AwardCopyActions key={`${user?.id}-${selectedAward.id}`} caption={buildPlaqueCaption(selectedAward)} summary={buildPlaqueSummary(selectedAward)} showText />
+          </>}
+        </DialogContent>
+      </Dialog>
 
       {/* ── Original artwork lightbox ─────────────────────────────────────
           The baked asset, shown at size and labelled for what it is. Where the
           artwork's frozen number disagrees with the row, the row is stated
           underneath rather than leaving the picture to argue its own case. */}
       <Dialog open={!!artOf} onOpenChange={(open) => { if (!open) setArtOf(null); }}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{displayName(artOf?.agent_name)}</DialogTitle>
+        <DialogContent className="awards-dialog max-w-sm">
+          <DialogHeader className="pr-8">
+            <DialogTitle>Original art · {displayName(artOf?.agent_name)}</DialogTitle>
             <DialogDescription>
               {artOf ? tierMeta(artOf.milestone_type).label : ""}
-              {artOf?.milestone_date ? ` · ${format(new Date(artOf.milestone_date), "MMM d, yyyy")}` : ""}
+              {artOf ? ` · ${presentPlaqueDate(artOf).value}` : ""}
             </DialogDescription>
           </DialogHeader>
           {artOf && (
             <div className="space-y-3">
+              <p className="awards-original-note">Stored artwork from the earlier design. The award card and copied stats use the current record.</p>
+              <p className="text-sm">{presentPlaqueMetric(artOf).label}: {presentPlaqueMetric(artOf).value ?? presentPlaqueMetric(artOf).missingText}</p>
               <img
                 src={artOf.image_png_url ?? artOf.image_svg_url ?? undefined}
-                alt={`Plaque artwork for ${displayName(artOf.agent_name)}`}
+                alt={`Original plaque artwork for ${displayName(artOf.agent_name)}`}
                 className="w-full rounded-lg border border-border"
               />
-              {!usdOrNull(artOf.amount) && (
-                <p className="text-[12px] leading-relaxed text-muted-foreground">
-                  This artwork was rendered before a premium was recorded against the award, so any
-                  figure printed on it is not backed by the row. The plaque record itself carries no
-                  premium.
+              {presentPlaqueMetric(artOf).value === null && (
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  {presentPlaqueMetric(artOf).missingText}. Any amount baked into this image is unverified against the current record.
                 </p>
               )}
             </div>
@@ -694,13 +680,13 @@ export default function AwardsGallery() {
 
       {/* ── Admin edit dialog ─────────────────────────────────────────── */}
       <Dialog open={!!editing} onOpenChange={(open) => { if (!open) { setEditing(null); setPhotoFile(null); } }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="awards-dialog max-w-md">
           <DialogHeader>
             <DialogTitle>Edit plaque</DialogTitle>
             <DialogDescription>
               {displayName(editing?.agent_name)}
               {editing ? ` · ${tierMeta(editing.milestone_type).label}` : ""}
-              {editing ? ` · ${usdOrNull(editing.amount) ?? "no premium on file"}` : ""}
+              {editing ? ` · ${presentPlaqueMetric(editing).label}: ${presentPlaqueMetric(editing).value ?? presentPlaqueMetric(editing).missingText}` : ""}
             </DialogDescription>
           </DialogHeader>
 

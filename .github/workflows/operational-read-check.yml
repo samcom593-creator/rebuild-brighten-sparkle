@@ -1,0 +1,31 @@
+name: Read operational publication and finance state
+
+on:
+  push:
+    branches: [codex/operational-read-check-20261125]
+    paths:
+      - .github/workflows/operational-read-check.yml
+      - .github/prod-write-census.json
+      - scripts/read-operational-state.mjs
+      - scripts/operational-read/*.sql
+      - scripts/operational-read/public-key.pem
+
+permissions:
+  contents: read
+
+jobs:
+  aggregates:
+    if: github.repository == 'samcom593-creator/rebuild-brighten-sparkle' && github.ref == 'refs/heads/codex/operational-read-check-20261125'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Read fixed operational aggregates
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_FUNCTIONS_TOKEN: ${{ secrets.SUPABASE_FUNCTIONS_TOKEN }}
+          APEX_BOT_TOKEN: ${{ secrets.APEX_BOT_TOKEN }}
+        run: node scripts/read-operational-state.mjs

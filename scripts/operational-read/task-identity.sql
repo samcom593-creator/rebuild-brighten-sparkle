@@ -6,6 +6,8 @@ with contracts(name,signature) as (values
   ('fn_user_is_suspended','public.fn_user_is_suspended(uuid)'),
   ('fn_agent_is_suspended','public.fn_agent_is_suspended(uuid)'),
   ('set_agent_active','public.set_agent_active(uuid[],boolean)'),
+  ('fn_guard_agent_task_identity_inputs','public.fn_guard_agent_task_identity_inputs()'),
+  ('set_agent_status','public.set_agent_status(uuid,text,text)'),
   ('personal_task_identity','public.personal_task_identity()'),
   ('personal_task_list','public.personal_task_list(uuid)'),
   ('personal_task_set_completed','public.personal_task_set_completed(uuid,uuid,boolean)'),

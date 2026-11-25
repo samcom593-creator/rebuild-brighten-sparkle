@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { randomBytes, createCipheriv, publicEncrypt, constants } from 'node:crypto';
 
 const PROJECT = 'xrzweoneiieddzxogewk';
-const QUERY_FILES = { audio: 'audio.sql', finances: 'finances.sql', carrier_status: 'carrier-status.sql', production: 'production.sql', definitions: 'definitions.sql' };
+const QUERY_FILES = { audio: 'audio.sql', finances: 'finances.sql', carrier_status: 'carrier-status.sql', production: 'production.sql', definitions: 'definitions.sql', release: 'release.sql' };
 const SIGNERS = ['readymode-recording-url', 'training-recording-url', 'lead-recording-url', 'personal-task-create'];
 const AUDIO_COUNTS = [
   'dialer_calls','calls_with_provider_recording_reference','calls_linked_to_agent','calls_linked_to_application','calls_linked_to_lead',
@@ -22,6 +22,11 @@ const LEDGER_STATUSES = ['pending','paid','clawed_back','voided','other'];
 const RATE_SOURCES = ['override','contract','carrier_default','schedule','carrier_schedule','other'];
 const CARRIERS = ['Ethos','Chubb','Combined','other'];
 const CHARGEBACK_SOURCES = ['comp_ledger','debt_outstanding','other'];
+const RELEASE_BASE_SHA = 'd0302b334f7264ed214f8aaca5d174ef3fc3fc63';
+const RELEASE_VERSIONS = ['20261125100000','20261125101000'];
+const COHORT_CONTRACT_FLAGS = ['present','jsonb_return','argument_names_exact','one_default_argument','security_definer','stable',
+  'public_search_path','authenticated_execute','anon_execute','public_execute','auth_guard','blocked_user_guard',
+  'suspended_user_guard','canonical_self_guard','exact_site_link','no_policy_number_inference','future_timestamp_guard','response_identity'];
 const POLICY_STATUSES = [
   'premium_paying','renewal_premium_processing','pending_initial_premium','pending_death_claim','grace_period','late_offer_period',
   'lapse_pending','lapsepending','lapsed','cancelled','canceled','terminated','free_look_surrendered','not_taken_initial_premium_failed',
@@ -97,12 +102,32 @@ function sanitize(name, value) {
   }
   if (name === 'definitions') {
     const row = object(value);
-    const names = ['producer_profile_detail','scoped_production_projection_uncached','agent_carrier_book','home_conversion_people_range','home_conversion_people_range_uncached'];
+    const names = ['producer_profile_detail','scoped_production_projection_uncached','agent_carrier_book','home_conversion_people_range','home_conversion_people_range_uncached','production_policy_cohort'];
     return Object.fromEntries(names.map(name => {
       const value = row[name];
       if (value !== null && (typeof value !== 'string' || value.length > 200000 || !value.startsWith('CREATE OR REPLACE FUNCTION public.'))) throw new Error('invalid function definition');
       return [name,value];
     }));
+  }
+  if (name === 'release') {
+    const row = object(value);
+    if (row.base_sha !== RELEASE_BASE_SHA || row.application_functions_executed !== false) throw new Error('invalid release readback boundary');
+    if (!Array.isArray(row.missing_base_versions) || row.missing_base_versions.length > 2000
+      || row.missing_base_versions.some(v => typeof v !== 'string' || !/^\d{14}$/.test(v))
+      || new Set(row.missing_base_versions).size !== row.missing_base_versions.length) throw new Error('invalid migration version list');
+    const expected = count(row.expected_base_count), recorded = count(row.recorded_base_count);
+    if (expected === 0 || expected > 2000 || recorded + row.missing_base_versions.length !== expected) throw new Error('migration counts do not reconcile');
+    const migrations = array(row.new_migrations).map(value => {
+      const r = object(value);
+      return { version: enumeration(r.version, RELEASE_VERSIONS), recorded: boolean(r.recorded) };
+    });
+    if (migrations.length !== RELEASE_VERSIONS.length || new Set(migrations.map(r => r.version)).size !== RELEASE_VERSIONS.length) throw new Error('invalid release migration set');
+    const f = object(row.policy_cohort);
+    if (f.arguments !== null && (typeof f.arguments !== 'string' || f.arguments.length > 500 || !/^[A-Za-z0-9_ :,().\[\]]*$/.test(f.arguments))) throw new Error('invalid cohort argument metadata');
+    if (f.definition_md5 !== null && (typeof f.definition_md5 !== 'string' || !/^[a-f0-9]{32}$/.test(f.definition_md5))) throw new Error('invalid definition hash');
+    return { base_sha: row.base_sha, expected_base_count: expected, recorded_base_count: recorded,
+      missing_base_versions: row.missing_base_versions, new_migrations: migrations, application_functions_executed: false,
+      policy_cohort: { ...Object.fromEntries(COHORT_CONTRACT_FLAGS.map(key => [key,boolean(f[key])])), arguments: f.arguments, definition_md5: f.definition_md5 } };
   }
   throw new Error('unregistered aggregate');
 }

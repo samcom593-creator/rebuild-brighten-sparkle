@@ -1,3 +1,5 @@
+import { recruitingVslForTrack, VSL_VIDEO } from "@/lib/vslMedia";
+import { LICENSING_VIDEO } from "@/lib/licensingMedia";
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -47,7 +49,11 @@ describe("today production and landing elevation", () => {
     expect(hero).toContain("buildPublicRecruitingHref(path.destination, searchParams, path.track)");
     expect(vsl).toContain('buildPublicRecruitingHref("/apply", searchParams)');
     expect(vsl).toMatch(/<Link\s+to=\{applyHref\}/);
-    expect(vsl).toContain("<source src={VSL_VIDEO.src}");
+    expect(vsl).toContain("recruitingVslForTrack(track)");
+    expect(vsl).toContain("<source src={video.src}");
+    expect(vsl).toContain("key={video.src}");
+    expect(recruitingVslForTrack("licensed-producer").video).toBe(VSL_VIDEO);
+    expect(recruitingVslForTrack("licensing-roadmap").video).toBe(LICENSING_VIDEO);
     expect(apply).toContain('defaultLicenseStatusForTrack(searchParams.get("track"))');
     expect(apply).toContain("attributionJson: partnerPath");
     expect(apply).toContain("Agent application form");

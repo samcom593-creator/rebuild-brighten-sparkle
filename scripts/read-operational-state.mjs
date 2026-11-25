@@ -97,7 +97,7 @@ function sanitize(name, value) {
   }
   if (name === 'definitions') {
     const row = object(value);
-    const names = ['producer_profile_detail','scoped_production_projection_uncached','agent_carrier_book','home_conversion_people_range'];
+    const names = ['producer_profile_detail','scoped_production_projection_uncached','agent_carrier_book','home_conversion_people_range','home_conversion_people_range_uncached'];
     return Object.fromEntries(names.map(name => {
       const value = row[name];
       if (value !== null && (typeof value !== 'string' || value.length > 200000 || !value.startsWith('CREATE OR REPLACE FUNCTION public.'))) throw new Error('invalid function definition');
@@ -125,14 +125,14 @@ async function queryRows(query) {
     if (response.ok) return { rows: await response.json(), provider: 'management-read-only' };
     // The prior read-only recording diagnostic proved this existing endpoint and repository credential.
     // Only credential rejection falls back; SQL errors/timeouts are not repeated through another route.
-    if (![401,403].includes(response.status) || !botToken) throw new Error('database query unavailable');
+    if (![401,403].includes(response.status) || !botToken) throw new Error(`database query HTTP ${response.status}: ${(await response.text()).slice(0,2000)}`);
   }
   if (!botToken) throw new Error('database credential unavailable');
   const response = await fetch(`https://${PROJECT}.supabase.co/functions/v1/bot-sql`, {
     method: 'POST', headers: { Authorization: `Bearer ${botToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ query }), signal: AbortSignal.timeout(20_000),
   });
-  if (!response.ok) throw new Error('database query unavailable');
+  if (!response.ok) throw new Error(`fixed query HTTP ${response.status}: ${(await response.text()).slice(0,2000)}`);
   const body = await response.json();
   if (body?.ok !== true || !Array.isArray(body.rows)) throw new Error('invalid aggregate response');
   return { rows: body.rows, provider: 'bot-sql-fixed-select' };
@@ -172,7 +172,7 @@ async function main() {
   results.forEach((result,index) => {
     const name = tasks[index][0];
     if (result.status === 'fulfilled') output.sections[name] = { ok: true, ...result.value.value };
-    else { output.sections[name] = { ok: false, reason: 'Read-only diagnostic unavailable or invalid aggregate response.' }; process.exitCode = 1; }
+    else { output.sections[name] = { ok: false, reason: 'Read-only diagnostic unavailable or invalid aggregate response.', detail: String(result.reason?.message ?? 'request failed').slice(0,2500) }; process.exitCode = 1; }
   });
   // This repository is public. Only ciphertext may enter Actions logs.
   // The private recipient key stays in the requesting workspace and is never uploaded.

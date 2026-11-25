@@ -678,7 +678,14 @@ export default function ProducerProfile() {
         title="Producer Profile"
         subtitle="Your contact info, bio, and license stats. Save changes below."
         actions={
-          <Button variant="outline" size="sm" onClick={() => { profile.refetch(); agent.refetch(); }}>
+          <Button variant="outline" size="sm" onClick={() => {
+            void profile.refetch();
+            void agent.refetch();
+            if (agentId) {
+              void bookRollup.refetch();
+              void qc.invalidateQueries({ queryKey: ["agent-carrier-book", agentId] });
+            }
+          }}>
             <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${profile.isFetching ? "animate-spin" : ""}`} />
             Refresh
           </Button>
@@ -933,7 +940,7 @@ export default function ProducerProfile() {
                       <span className="tabular-nums font-bold text-emerald-600 dark:text-emerald-400">{usdOrNull(bookRollup.data?.premium) ?? "—"}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Total Earnings</span>
+                      <span className="text-muted-foreground">Est. earnings<span className="block text-11">Contract estimate</span></span>
                       <span className="tabular-nums font-bold text-emerald-600 dark:text-emerald-400">{usdOrNull(bookRollup.data?.estEarnings) ?? "—"}</span>
                     </div>
                   </div>

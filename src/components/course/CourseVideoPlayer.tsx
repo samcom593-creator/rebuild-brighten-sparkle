@@ -32,7 +32,7 @@ declare global {
 
 function getYouTubeId(url: string): string | null {
   const match = url.match(
-    /(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/watch\?.+&v=))([^"&?\/\s]{11})/
+    /(?:youtu\.be\/|(?:youtube\.com|youtube-nocookie\.com)(?:\/shorts\/|\/live\/|\/embed\/|\/v\/|\/watch\?v=|\/watch\?.+&v=))([^"&?\/\s]{11})/
   );
   return match ? match[1] : null;
 }
@@ -64,7 +64,7 @@ export function CourseVideoPlayer({
     );
   }
 
-  const isYouTube = videoUrl.includes("youtube.com") || videoUrl.includes("youtu.be");
+  const isYouTube = videoUrl.includes("youtube.com") || videoUrl.includes("youtu.be") || videoUrl.includes("youtube-nocookie.com");
   const youtubeId = isYouTube ? getYouTubeId(videoUrl) : null;
   const driveId = videoUrl.match(/drive\.google\.com\/file\/d\/([^/?#]+)/)?.[1] ?? null;
   const awesomeId = videoUrl.match(/awesomescreenshot\.com\/video\/(\d+)/)?.[1] ?? null;

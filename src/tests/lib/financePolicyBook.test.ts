@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { financePolicySummary, financePolicyCoverage, financePremiumPaying, financePaidStatus, parseFinancePolicyBook, POLICY_COVERAGE_LABELS } from "@/lib/financePolicyBook";
+import { repeatedCoverageKeys, financePolicySummary, financePolicyCoverage, financePremiumPaying, financePaidStatus, parseFinancePolicyBook, POLICY_COVERAGE_LABELS } from "@/lib/financePolicyBook";
 
 const policy = (overrides: Record<string, unknown> = {}) => ({
   key: "Combined:synthetic-1", carrier: "Combined", underwriter: null, policy_number: "SYNTHETIC-1",
@@ -10,6 +10,14 @@ const policy = (overrides: Record<string, unknown> = {}) => ({
 const payload = (policies: unknown[] = [policy()]) => ({ agent_id: "agent-own", as_of: "2026-11-25T00:00:00Z", policies });
 
 describe("financial carrier policy facts", () => {
+  it("flags same-name carrier records across dates without merging money or matching missing names", () => {
+    const rows = [policy(), policy({ key: "second", client: " synthetic  POLICYHOLDER ", sold_on: "2025-01-01" }),
+      policy({ key: "other", carrier: "Ethos" }), policy({ key: "blank", client: null }), policy({ key: "blank2", client: null })];
+    const book = parseFinancePolicyBook(payload(rows), "agent-own");
+    expect([...repeatedCoverageKeys(book.policies)]).toEqual(["Combined:synthetic-1", "second"]);
+    expect(book.policies).toHaveLength(5);
+  });
+
   it("accepts a server-authorized canonical alias only when the requested identity is echoed", () => {
     const canonical = { ...payload(), agent_id: "canonical-agent", requested_agent_id: "agent-own" };
     expect(parseFinancePolicyBook(canonical, "agent-own").agentId).toBe("agent-own");

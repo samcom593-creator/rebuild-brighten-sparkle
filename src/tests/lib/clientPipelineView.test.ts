@@ -173,9 +173,9 @@ describe("numbers equal the lists they open", () => {
 });
 
 describe("the order to work them", () => {
-  it("works late promises oldest first, then today's by time, then the newest never-called, then the longest wait", () => {
+  it("works late promises oldest first, then today's by time, then quoted prospects before untouched leads", () => {
     expect(names(pipelineListRows(book(), "todo", now))).toEqual([
-      "Late Callback", "Later Late", "Today Nine", "Today Three", "New Recent", "No Phone", "New Imported", "Talked Long ago", "Talked Lately",
+      "Late Callback", "Later Late", "Today Nine", "Today Three", "Talked Long ago", "New Recent", "No Phone", "New Imported", "Talked Lately",
     ]);
   });
 

@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { QueryState, describeQuery } from "@/components/ui/query-state";
 import {
-  financePolicySummary, financePolicyCoverage, financePaidStatus, parseFinancePolicyBook, POLICY_COVERAGE_LABELS,
+  repeatedCoverageKeys, financePolicySummary, financePolicyCoverage, financePaidStatus, parseFinancePolicyBook, POLICY_COVERAGE_LABELS,
   type FinancePolicyBook, type PolicyCoverage,
 } from "@/lib/financePolicyBook";
 
@@ -73,6 +73,10 @@ export function PolicyBookView({ book, onViewPayments }: { book: FinancePolicyBo
   const [payment, setPayment] = useState("all");
   const [carrierStatus, setCarrierStatus] = useState("all");
   const [visibleCount, setVisibleCount] = useState(INITIAL_ROWS);
+  const [review, setReview] = useState("all");
+  const [soldFrom, setSoldFrom] = useState("");
+  const [soldThrough, setSoldThrough] = useState("");
+  const repeated = useMemo(() => repeatedCoverageKeys(book.policies), [book.policies]);
   const summary = useMemo(() => financePolicySummary(book.policies), [book.policies]);
   const coverageMix = useMemo(() => financePolicyCoverage(book.policies), [book.policies]);
   const statusOptions = useMemo(() => Array.from(new Set(book.policies.flatMap(policy => {
@@ -82,13 +86,16 @@ export function PolicyBookView({ book, onViewPayments }: { book: FinancePolicyBo
   const carriers = useMemo(() => Array.from(new Set(book.policies.map(policy => policy.carrier))).sort(), [book.policies]);
   const filtered = useMemo(() => {
     const needle = search.trim().toLocaleLowerCase();
-    return book.policies.filter(policy => (coverage === "all" || policy.coverage === coverage) && (carrier === "all" || policy.carrier === carrier) &&
+    return book.policies.filter(policy => (!soldFrom || (policy.soldOn !== null && policy.soldOn >= soldFrom)) &&
+      (!soldThrough || (policy.soldOn !== null && policy.soldOn <= soldThrough)) &&
+      (review !== "repeat" || repeated.has(policy.key)) &&
+      (review !== "chargeback" || (policy.chargeback !== null && policy.chargeback !== 0)) && (coverage === "all" || policy.coverage === coverage) && (carrier === "all" || policy.carrier === carrier) &&
       (payment === "all" || (payment === "paid" ? policy.payment === "paid" || policy.payment === "premium_paying" : policy.payment === payment)) &&
       (carrierStatus === "all" || (policy.rawStatus ?? policy.preStatus) === carrierStatus) && (!needle ||
       [policy.policyNumber, policy.client, policy.carrier, policy.product, policy.rawStatus, policy.preStatus, policy.statusLabel].some(value => value?.toLocaleLowerCase().includes(needle))));
-  }, [book.policies, search, coverage, carrierStatus, carrier, payment]);
-  const filteredActive = Boolean(search || carrier !== "all" || coverage !== "all" || carrierStatus !== "all" || payment !== "all");
-  const clearFilters = () => { setSearch(""); setCarrier("all"); setCoverage("all"); setCarrierStatus("all"); setPayment("all"); setVisibleCount(INITIAL_ROWS); };
+  }, [book.policies, search, coverage, carrierStatus, carrier, payment, repeated, review, soldFrom, soldThrough]);
+  const filteredActive = Boolean(soldFrom || soldThrough || review !== "all" || search || carrier !== "all" || coverage !== "all" || carrierStatus !== "all" || payment !== "all");
+  const clearFilters = () => { setReview("all"); setSoldFrom(""); setSoldThrough(""); setSearch(""); setCarrier("all"); setCoverage("all"); setCarrierStatus("all"); setPayment("all"); setVisibleCount(INITIAL_ROWS); };
   const metrics = [
     { label: "Policies", value: summary.policies.toLocaleString(), detail: "Carrier records", color: "text-cyan-700 dark:text-cyan-300" },
     { label: "In force", value: summary.inForce.toLocaleString(), detail: "Includes claim status", color: "text-emerald-700 dark:text-emerald-300" },
@@ -136,6 +143,9 @@ export function PolicyBookView({ book, onViewPayments }: { book: FinancePolicyBo
           </div>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <details className="min-w-0 text-sm"><summary className="cursor-pointer py-2 font-semibold">More filters</summary><div className="mt-2 flex flex-wrap gap-3">
+              <label>Review reason<select className="block rounded-md border bg-background p-2" value={review} onChange={e => { setReview(e.target.value); setVisibleCount(INITIAL_ROWS); }}><option value="all">All policies</option><option value="repeat">Same name and carrier ({repeated.size} records)</option><option value="chargeback">Recorded chargeback</option></select></label>
+              <label>Sold from<Input type="date" value={soldFrom} max={soldThrough || undefined} onChange={e => { setSoldFrom(e.target.value); setVisibleCount(INITIAL_ROWS); }} /></label>
+              <label>Sold through<Input type="date" value={soldThrough} min={soldFrom || undefined} onChange={e => { setSoldThrough(e.target.value); setVisibleCount(INITIAL_ROWS); }} /></label>
               <select aria-label="Carrier issue status" value={carrierStatus} onChange={event => { setCarrierStatus(event.target.value); setVisibleCount(INITIAL_ROWS); }} className="min-h-11 max-w-full rounded-md border border-input bg-background px-3 text-base text-foreground"><option value="all">All carrier statuses</option>{statusOptions.map(status => <option key={status} value={status}>{status}</option>)}</select>
               <select aria-label="Carrier payment state" value={payment} onChange={event => { setPayment(event.target.value); setVisibleCount(INITIAL_ROWS); }} className="min-h-11 max-w-full rounded-md border border-input bg-background px-3 text-base text-foreground"><option value="all">All payment states</option><option value="paid">Paid / premium paying</option><option value="awaiting_payment">Awaiting payment</option><option value="processing">Payment processing</option><option value="unknown">Payment unverified</option></select>
             </div></details>
@@ -147,7 +157,7 @@ export function PolicyBookView({ book, onViewPayments }: { book: FinancePolicyBo
             <caption className="sr-only">Carrier policy product, policy number, issue status, coverage, annual premium, effective date and recorded chargeback. No commission-payment inference.</caption>
             <thead className="bg-muted/40"><tr>{["Policy / product", "Carrier", "Status / payment", "Annual premium", "Effective date", "Recorded chargeback"].map(label => <th key={label} scope="col" className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wide text-muted-foreground">{label}</th>)}</tr></thead>
             <tbody>{filtered.slice(0, visibleCount).map(policy => <tr key={policy.key} className="border-t border-border align-top">
-              <td className="max-w-64 px-4 py-4"><p className="break-words text-base font-bold">{policy.product ?? "Product not reported"}</p><p className="mt-1 break-words font-semibold">{policy.policyNumber ?? "Policy number not reported"}</p><p className="mt-1 break-words text-muted-foreground">{policy.client ?? "Client not reported"}</p></td>
+              <td className="max-w-64 px-4 py-4"><p className="break-words text-base font-bold">{policy.product ?? "Product not reported"}</p><p className="mt-1 break-words font-semibold">{policy.policyNumber ?? "Policy number not reported"}</p><p className="mt-1 break-words text-muted-foreground">{policy.client ?? "Client not reported"}</p>{repeated.has(policy.key) && <p className="mt-1 text-sm font-semibold">Review same-name coverage with this carrier</p>}</td>
               <td className="px-4 py-4"><p className="font-semibold">{policy.carrier}</p>{policy.underwriter && <p className="mt-1 text-muted-foreground">{policy.underwriter}</p>}</td>
               <td className="max-w-64 px-4 py-4"><p className={`font-semibold ${policy.statusConflict ? "text-amber-700 dark:text-amber-300" : ""}`}>{policy.statusLabel}</p><Badge variant="outline" className="mt-2 text-sm">{POLICY_COVERAGE_LABELS[policy.coverage]}</Badge><p className="mt-2 text-sm text-muted-foreground">{policy.paymentLabel}</p><p className="mt-2 text-xs text-muted-foreground">Carrier: <span>{policy.rawStatus ?? policy.preStatus ?? "Not reported"}</span></p>{policy.closeReason && <p className="mt-2 text-muted-foreground">{policy.closeReason}</p>}{policy.changedOn && <p className="mt-2 text-muted-foreground">Changed {policy.changedOn}</p>}</td>
               <td className="px-4 py-4"><p className="font-bold tabular-nums">{currency(policy.annualPremium)}</p><p className="mt-2 text-muted-foreground">Face amount: {currency(policy.faceAmount)}</p></td>

@@ -38,7 +38,7 @@ export function localDateKey(now: Date): string {
 }
 
 export function isActivePipelineClient(client: Pick<ClientPriorityInput, "pipeline_stage">): boolean {
-  return !CLOSED_STAGES.has(client.pipeline_stage ?? "");
+  return !CLOSED_STAGES.has(client.pipeline_stage?.trim().toUpperCase() ?? "");
 }
 
 /** The client's earliest promise: a callback or a next action, whichever date comes first. An unreadable date counts as none. */
@@ -119,6 +119,15 @@ export function compareClientPriority(a: ClientPriorityInput, b: ClientPriorityI
   if (!aPriority && !bPriority) return 0;
   if (!aPriority) return 1;
   if (!bPriority) return -1;
+  // Honour promised callbacks first. Among unscheduled clients, surface recorded buying intent.
+  if (!aPriority.dueDate && !bPriority.dueDate) {
+    const intent = (client: ClientPriorityInput) => {
+      const stage = client.pipeline_stage?.trim().toUpperCase();
+      return stage === "ALMOST_THERE" ? 2 : stage === "PITCHED" ? 1 : 0;
+    };
+    const difference = intent(b) - intent(a);
+    if (difference) return difference;
+  }
   if (aPriority.rank !== bPriority.rank) return aPriority.rank - bPriority.rank;
 
   if (aPriority.dueDate !== bPriority.dueDate) {

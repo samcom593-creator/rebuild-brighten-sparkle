@@ -215,3 +215,23 @@ export function financePaidStatus(policies: readonly FinancePolicy[]) {
     otherPolicies: policies.length - matches.length,
   };
 }
+
+/** A name collision is a review signal. Keep separate policies and all monetary evidence intact. */
+export function policyNameKey(name: string) {
+  return name.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+export function repeatedCoverageKeys(policies: readonly FinancePolicy[]) {
+  const first = new Map<string, string>();
+  const matches = new Set<string>();
+  for (const policy of policies) {
+    if (!policy.client) continue;
+    const key = JSON.stringify([policyNameKey(policy.carrier), policyNameKey(policy.client)]);
+    const prior = first.get(key);
+    if (prior) {
+      matches.add(prior);
+      matches.add(policy.key);
+    } else first.set(key, policy.key);
+  }
+  return matches;
+}

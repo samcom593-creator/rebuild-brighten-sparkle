@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { invalidateOperationalTruth } from "@/lib/invalidateOperationalTruth";
 import { announcePostedDealReceipt } from "@/lib/dealCelebrations";
 import { normalizePolicyNumber, sanitizePolicyInput, isWithinPolicyNumberGrace, policyNumberGrade } from "@/lib/policyNumber";
+import { parseFinancePolicyBook, policyNameKey } from "@/lib/financePolicyBook";
 import { LEAD_TYPES } from "@/lib/leadTypes";
 import { enqueue, isOffline, isTransportError } from "@/lib/offlineQueue";
 import { TeamLookupError } from "@/components/shared/TeamLookupError";
@@ -236,6 +237,7 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
 
   const carriers = useQuery({
     queryKey: ["native-deal-carriers"],
+    enabled: open,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("carriers" as never)
@@ -257,9 +259,26 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
     if (hit) setForm((current) => (current.carrierId ? current : { ...current, carrierId: hit.id }));
   }, [open, initialDeal?.carrierName, form.carrierId, carriers.data]);
 
+  const carrierName = carriers.data?.find(option => option.id === form.carrierId)?.name;
+  const carrierBook = useQuery({
+    queryKey: ["agent-carrier-book", selectedAgentId, user?.id],
+    enabled: Boolean(open && user?.id && selectedAgentId && carrierName),
+    staleTime: 120_000,
+    queryFn: async () => {
+      const { data, error } = await rpc<unknown>("agent_carrier_book", { p_agent_id: selectedAgentId });
+      if (error) throw error;
+      return parseFinancePolicyBook(data, selectedAgentId);
+    },
+  });
+  const fullName = policyNameKey(form.clientFirstName + " " + form.clientLastName);
+  const previousPolicies = carrierBook.data?.policies.filter(policy =>
+    policy.client && form.clientFirstName.trim() && form.clientLastName.trim() &&
+    policyNameKey(policy.client) === fullName &&
+    policy.carrier.toLowerCase() === carrierName?.toLowerCase()
+  ) ?? [];
   const carrierProducts = useQuery({
     queryKey: ["native-deal-carrier-products", form.carrierId],
-    enabled: Boolean(form.carrierId),
+    enabled: open && Boolean(form.carrierId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("v_carrier_products" as never)
@@ -276,7 +295,7 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
   // Existing Client mode reads the real client mirror. agentlink_clients is
   // role-scoped by RLS, so an agent only ever searches clients they can see.
   const clientHits = useQuery({
-    queryKey: ["native-deal-client-search", clientQuery],
+    queryKey: ["native-deal-client-search", user?.id, clientQuery],
     enabled: open && clientMode === "existing" && clientQuery.trim().length >= 2,
     queryFn: async () => {
       const term = likeLiteral(clientQuery.trim());
@@ -908,6 +927,12 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
                       <SelectContent>{(carriers.data ?? []).map((carrier) => <SelectItem key={carrier.id} value={carrier.id}>{carrier.name}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
+                  {carrierBook.isError && <p role="status">Carrier history could not refresh. Verify existing coverage in the carrier portal before writing.</p>}
+                  {previousPolicies.length > 0 && <aside role="status" className="mt-3 rounded-lg border border-border p-3 text-sm">
+                    <strong>Review existing coverage before writing</strong>
+                    <p>This writing agent has carrier records under the same client name. Confirm the insured’s identity, existing coverage and reason for additional coverage with your manager. A different payment card does not distinguish policies.</p>
+                    <ul>{previousPolicies.map(policy => <li key={policy.key}>{policy.policyNumber || "Number unavailable"} · {policy.statusLabel} · {policy.soldOn || "Sale date unavailable"}{policy.chargeback ? " · Recorded chargeback" : ""}</li>)}</ul>
+                  </aside>}
                   <div className="mt-4 grid gap-4 sm:grid-cols-2">
                     <div>
                       <Field label="Product sold" id="deal-product" value={form.product} onChange={(value) => update("product", value)} placeholder="Select product…" list="deal-product-options" />

@@ -523,6 +523,8 @@ export default function Leaderboard() {
         tone="gold"
         title="Leaderboard"
         subtitle={subtitle}
+        primaryAction={<Button asChild variant="outline"><Link to="/dashboard/awards">Wins & Awards</Link></Button>}
+        secondaryActions={<Button asChild variant="outline"><Link to="/dashboard/hall-of-fame">Hall of Fame</Link></Button>}
         viewControls={<WindowSwitch value={window} onChange={pickWindow} />}
       />
 

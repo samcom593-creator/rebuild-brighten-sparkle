@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { Trophy, Search, Filter, Mail, Loader2, Edit3, Upload, RefreshCw, Camera, Image as ImageIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,6 +10,7 @@ import {
   type AgentNameSource,
 } from "@/shared/api/agentDisplayNames";
 import { useAuth } from "@/hooks/useAuth";
+import { useBusinessToday } from "@/hooks/useBusinessToday";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -36,6 +39,47 @@ interface PlaqueRow {
   custom_photo_url?: string | null;
   agent_name?: string;
   agent_photo?: string | null;
+}
+
+const AWARD_LIMIT = 500;
+const AWARD_WINDOWS = [
+  { value: "30", label: "Last 30 days" },
+  { value: "90", label: "Last 90 days" },
+  { value: "all", label: "Loaded history" },
+] as const;
+type AwardWindow = typeof AWARD_WINDOWS[number]["value"];
+
+async function loadAwards(signal: AbortSignal): Promise<{ rows: PlaqueRow[]; capped: boolean }> {
+  const { data, error } = await supabase
+    .from("plaque_awards")
+    .select("id, agent_id, milestone_type, milestone_date, amount, badge_label, color_hex, image_svg_url, image_png_url, email_sent_at, email_delivery_status, awarded_at, custom_photo_url")
+    .order("milestone_date", { ascending: false })
+    .order("id", { ascending: true })
+    .limit(AWARD_LIMIT + 1)
+    .abortSignal(signal);
+  if (error) throw error;
+  if (!Array.isArray(data)) throw new Error("The award records could not be verified.");
+
+  // The extra row identifies a truncated history without claiming a full-agency total.
+  const list = data.slice(0, AWARD_LIMIT) as PlaqueRow[];
+  const agentIds = [...new Set(list.map(row => row.agent_id).filter(Boolean))];
+  const agents: AgentNameSource[] = [];
+  if (agentIds.length) {
+    const result = await supabase.from("agents").select("id, user_id, display_name")
+      .in("id", agentIds).abortSignal(signal);
+    if (result.error) throw result.error;
+    if (!Array.isArray(result.data)) throw new Error("The award recipients could not be verified.");
+    agents.push(...result.data);
+  }
+  const resolved = await resolveAgentNames(agents);
+  return {
+    capped: data.length > AWARD_LIMIT,
+    rows: list.map(row => ({
+      ...row,
+      agent_name: resolved.get(row.agent_id)?.name ?? AGENT_NAME_FALLBACK,
+      agent_photo: row.custom_photo_url ?? resolved.get(row.agent_id)?.avatarUrl ?? null,
+    })),
+  };
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -184,11 +228,11 @@ function PlaqueFace({ row }: { row: PlaqueRow }) {
   const photo = !photoBroken ? row.agent_photo ?? null : null;
 
   return (
-    <div className="relative min-h-[184px] overflow-hidden rounded-lg border border-primary/25 bg-gradient-to-br from-primary/10 via-card to-background px-4 py-3.5">
+    <div className="relative min-h-[220px] overflow-hidden rounded-lg border-2 border-primary/40 bg-background px-4 py-4">
       {/* ghosted tier watermark — scaled to sit inside the card at any width */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-3 bottom-8 truncate text-right text-3xl font-black uppercase leading-none tracking-tight text-primary/[0.06]"
+        className="pointer-events-none absolute inset-x-3 bottom-8 truncate text-right text-3xl font-black italic uppercase leading-none tracking-tight text-primary/[0.06]"
       >
         {meta.label}
       </div>
@@ -200,18 +244,18 @@ function PlaqueFace({ row }: { row: PlaqueRow }) {
         </div>
         <div className="mt-1 h-px w-10 bg-primary/60" />
 
-        <Badge className={cn("mt-2.5 w-fit border text-[10px] tracking-[0.14em]", meta.accent)}>
+        <Badge className={cn("mt-2.5 w-fit border text-sm font-bold tracking-wide", meta.accent)}>
           {meta.emoji} {meta.label.toUpperCase()}
         </Badge>
 
-        <div className="mt-2.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        <div className="mt-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Winner&apos;s Circle
         </div>
 
         {/* The number, or an honest absence of one. */}
         <div className="mt-0.5">
           {amount ? (
-            <div className="text-3xl font-black leading-none tracking-tight text-primary tabular-nums">{amount}</div>
+            <div className="text-4xl font-black italic leading-none tracking-tight text-primary tabular-nums">{amount}</div>
           ) : (
             <div className="py-1 text-[12px] font-semibold leading-tight text-muted-foreground">
               Premium not on file
@@ -235,11 +279,11 @@ function PlaqueFace({ row }: { row: PlaqueRow }) {
           )}
           <div className="min-w-0">
             <div className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">Agent</div>
-            <div className="truncate text-xs font-bold text-foreground">{displayName(row.agent_name)}</div>
+            <div className="truncate text-base font-bold text-foreground">{displayName(row.agent_name)}</div>
           </div>
         </div>
 
-        <div className="mt-2 border-t border-primary/20 pt-1.5 text-[8px] uppercase tracking-[0.14em] text-muted-foreground">
+        <div className="mt-3 border-t border-primary/30 pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Earned in the field
         </div>
       </div>
@@ -248,9 +292,28 @@ function PlaqueFace({ row }: { row: PlaqueRow }) {
 }
 
 export default function AwardsGallery() {
-  const { isAdmin } = useAuth();
-  const [rows, setRows] = useState<PlaqueRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { isAdmin, user } = useAuth();
+  const today = useBusinessToday();
+  const [awardWindow, setAwardWindow] = useState<AwardWindow>("30");
+  const awards = useQuery({
+    queryKey: ["plaque-awards", "wins", user?.id],
+    enabled: Boolean(user?.id),
+    queryFn: ({ signal }) => loadAwards(signal),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+    retry: false,
+  });
+  const rows = awards.data?.rows ?? [];
+  const loading = awards.isPending;
+  const hasSnapshot = awards.data !== undefined;
+  const windowStart = useMemo(() => {
+    if (awardWindow === "all") return null;
+    const date = new Date(`${today}T12:00:00Z`);
+    date.setUTCDate(date.getUTCDate() - Number(awardWindow) + 1);
+    return date.toISOString().slice(0, 10);
+  }, [awardWindow, today]);
+  const windowLabel = AWARD_WINDOWS.find(window => window.value === awardWindow)!.label;
   const [search, setSearch] = useState("");
   const [tierFilter, setTier] = useState<string>("all");
   const [emailing, setEmailing] = useState(false);
@@ -261,43 +324,10 @@ export default function AwardsGallery() {
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      try {
-        const { data: pl } = await supabase
-          .from("plaque_awards")
-          .select("id, agent_id, milestone_type, milestone_date, amount, badge_label, color_hex, image_svg_url, image_png_url, email_sent_at, email_delivery_status, awarded_at, custom_photo_url")
-          .order("milestone_date", { ascending: false })
-          .limit(500);
-        const list = (pl ?? []) as PlaqueRow[];
-        const agentIds = [...new Set(list.map(p => p.agent_id).filter(Boolean))];
-        const { data: agents } = agentIds.length
-          ? await supabase.from("agents").select("id, user_id, display_name").in("id", agentIds)
-          : { data: [] } as any;
-        const resolved = await resolveAgentNames((agents ?? []) as AgentNameSource[]);
-        const nameMap: Record<string, string> = {};
-        const photoMap: Record<string, string | null> = {};
-        for (const a of (agents ?? []) as any[]) {
-          nameMap[a.id] = resolved.get(a.id)?.name ?? AGENT_NAME_FALLBACK;
-          photoMap[a.id] = resolved.get(a.id)?.avatarUrl ?? null;
-        }
-        if (!cancelled) setRows(list.map(r => ({
-          ...r,
-          agent_name: nameMap[r.agent_id] ?? AGENT_NAME_FALLBACK,
-          agent_photo: r.custom_photo_url ?? photoMap[r.agent_id] ?? null,
-        })));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows
+      .filter(r => !windowStart || (r.milestone_date >= windowStart && r.milestone_date <= today))
       .filter(r => tierFilter === "all" || r.milestone_type === tierFilter)
       .filter(r => {
         if (!q) return true;
@@ -307,7 +337,7 @@ export default function AwardsGallery() {
           || r.milestone_type.toLowerCase().includes(q)
           || tierMeta(r.milestone_type).label.toLowerCase().includes(q);
       });
-  }, [rows, search, tierFilter]);
+  }, [rows, search, tierFilter, windowStart, today]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = {};
@@ -325,10 +355,19 @@ export default function AwardsGallery() {
     [counts],
   );
 
-  const totalValue = useMemo(
-    () => filtered.reduce((s, r) => s + Number(r.amount ?? 0), 0),
-    [filtered],
-  );
+  const milestoneCounts = useMemo(() => {
+    const byLabel = new Map<string, number>();
+    for (const row of filtered) {
+      const label = tierMeta(row.milestone_type).label;
+      byLabel.set(label, (byLabel.get(label) ?? 0) + 1);
+    }
+    const ordered = [...byLabel].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+    const visible = ordered.slice(0, 6);
+    if (ordered.length > 6) visible.push(["Other milestones", ordered.slice(6).reduce((sum, [, count]) => sum + count, 0)]);
+    return visible;
+  }, [filtered]);
+  const honorees = new Set(filtered.map(row => row.agent_id).filter(Boolean)).size;
+  const maxCount = Math.max(1, ...milestoneCounts.map(([, count]) => count));
 
   /* Plaques whose premium never made it onto the row. Surfaced as a number
      rather than left to be discovered one blank card at a time. */
@@ -424,96 +463,144 @@ export default function AwardsGallery() {
   return (
     <div className="space-y-4 p-4 md:p-6 max-w-[1400px] mx-auto">
       <PageHeader
-        accent="amber"
-        eyebrow="Production · Awards"
-        eyebrowIcon={<Trophy className="h-3 w-3" />}
-        title="Awards Gallery"
-        subtitle="Every plaque earned across the agency. Filter by agent, milestone, or year."
-        actions={
-          isAdmin && (
-            <>
-              <Button size="sm" variant="outline" className="gap-1.5" onClick={renderAll} disabled={rendering}>
-                {rendering ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-                Render All
-              </Button>
-              <Button size="sm" variant="outline" className="gap-1.5" onClick={requestPhotos} disabled={requestingPhotos}>
-                {requestingPhotos ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
-                Request Photos
-              </Button>
-              <Button size="sm" variant="outline" className="gap-1.5" onClick={emailAllToMe} disabled={emailing}>
-                {emailing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
-                Email Digest
-              </Button>
-            </>
-          )
+        accent="primary"
+        eyebrow="Earned recognition"
+        eyebrowIcon={<Trophy className="h-4 w-4" />}
+        title="Wins & Awards"
+        subtitle="Real milestones. Recognize the work. Keep climbing."
+        primaryAction={
+          <Button size="sm" variant="outline" className="gap-2" onClick={() => void awards.refetch()} disabled={awards.isFetching}>
+            <RefreshCw className={cn("h-4 w-4", awards.isFetching && "animate-spin")} aria-hidden="true" />
+            {awards.isFetching ? "Refreshing…" : "Refresh awards"}
+          </Button>
         }
+        secondaryActions={isAdmin ? (
+          <>
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={renderAll} disabled={rendering}>
+              {rendering ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              Render All
+            </Button>
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={requestPhotos} disabled={requestingPhotos}>
+              {requestingPhotos ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+              Request Photos
+            </Button>
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={emailAllToMe} disabled={emailing}>
+              {emailing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+              Email Digest
+            </Button>
+          </>
+        ) : undefined}
       />
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <GlassCard className="p-3">
-          <div className="text-[12px] uppercase tracking-wide text-muted-foreground">Total Plaques</div>
-          <div className="text-2xl font-bold tabular-nums">{filtered.length}</div>
-        </GlassCard>
-        <GlassCard className="p-3">
-          <div className="text-[12px] uppercase tracking-wide text-muted-foreground">Total Value</div>
-          <div className="text-2xl font-bold tabular-nums text-primary">{usdCompact(totalValue)}</div>
-          {missingAmount > 0 && (
-            <div className="mt-0.5 text-[11px] text-muted-foreground">
-              excludes {missingAmount} with no premium on file
-            </div>
-          )}
-        </GlassCard>
-        <GlassCard className="p-3">
-          <div className="text-[12px] uppercase tracking-wide text-muted-foreground">💎 Platinum</div>
-          <div className="text-2xl font-bold tabular-nums text-primary">{counts.single_day_platinum ?? 0}</div>
-        </GlassCard>
-        <GlassCard className="p-3">
-          <div className="text-[12px] uppercase tracking-wide text-muted-foreground">🥇 Gold</div>
-          <div className="text-2xl font-bold tabular-nums text-primary">{counts.single_day ?? 0}</div>
-        </GlassCard>
-        <GlassCard className="p-3">
-          <div className="text-[12px] uppercase tracking-wide text-muted-foreground">🥉 Bronze</div>
-          <div className="text-2xl font-bold tabular-nums text-orange-700 dark:text-orange-300">{counts.single_day_bronze ?? 0}</div>
-        </GlassCard>
-      </div>
+      <nav aria-label="Recognition" className="flex flex-wrap gap-2">
+        <Button asChild variant="outline"><Link to="/dashboard/leaderboard">Leaderboard</Link></Button>
+        <Button asChild variant="outline"><Link to="/dashboard/hall-of-fame">Hall of Fame</Link></Button>
+        {isAdmin && <Button asChild variant="outline"><Link to="/awards">Win Post Studio</Link></Button>}
+      </nav>
 
-      <GlassCard className="p-3 flex flex-wrap gap-2 items-center">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search agent or tier…"
-            className="pl-9 h-9"
-          />
+      {awards.isError && (
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/50 bg-destructive/10 p-4">
+          <p className="text-base text-foreground">
+            {hasSnapshot ? "Refresh failed. Showing the last verified award records." : "Awards could not be loaded. No award counts are available."}
+          </p>
+          <Button variant="outline" onClick={() => void awards.refetch()} disabled={awards.isFetching}>Retry awards</Button>
         </div>
-        <Select value={tierFilter} onValueChange={setTier}>
-          <SelectTrigger className="w-[210px] h-9"><Filter className="h-3.5 w-3.5 mr-1.5" /><SelectValue placeholder="All tiers" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All tiers ({rows.length})</SelectItem>
-            {tierOptions.map(({ key, n, meta }) => (
-              <SelectItem key={key} value={key}>{meta.emoji} {meta.label} ({n})</SelectItem>
+      )}
+
+      {hasSnapshot && (
+        <>
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <p>Updated {format(new Date(awards.dataUpdatedAt), "MMM d, h:mm a")}. Refreshes every minute while visible.</p>
+            {awards.data.capped && (
+              <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-foreground">
+                Showing the newest {AWARD_LIMIT} awards. Counts and charts cover these loaded records; older awards are not included.
+              </p>
+            )}
+          </div>
+
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Award window">
+            {AWARD_WINDOWS.map(window => (
+              <Button key={window.value} variant={awardWindow === window.value ? "default" : "outline"}
+                aria-pressed={awardWindow === window.value} onClick={() => setAwardWindow(window.value)}>
+                {window.label}
+              </Button>
             ))}
-          </SelectContent>
-        </Select>
-        {(tierFilter !== "all" || search.trim()) && (
-          <Button variant="outline" size="sm" className="h-9"
-            onClick={() => { setTier("all"); setSearch(""); }}>
-            Clear
-          </Button>
-        )}
-      </GlassCard>
+          </div>
+
+          <GlassCard className="flex flex-wrap items-center gap-3 p-3">
+            <div className="relative min-w-0 flex-1 basis-52">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <Input aria-label="Search awards" value={search} onChange={e => setSearch(e.target.value)}
+                placeholder="Search agent or milestone…" className="h-11 pl-9" />
+            </div>
+            <Select value={tierFilter} onValueChange={setTier}>
+              <SelectTrigger aria-label="Award milestone" className="h-11 w-full sm:w-[230px]">
+                <Filter className="mr-1.5 h-4 w-4" /><SelectValue placeholder="All milestones" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All milestones</SelectItem>
+                {tierOptions.map(({ key, meta }) => (
+                  <SelectItem key={key} value={key}>{meta.emoji} {meta.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {(tierFilter !== "all" || search.trim()) && (
+              <Button variant="outline" onClick={() => { setTier("all"); setSearch(""); }}>Clear filters</Button>
+            )}
+          </GlassCard>
+
+          <div role="group" aria-label="Award summary" className="grid gap-3 sm:grid-cols-3">
+            <GlassCard className="border-l-4 border-l-primary p-4">
+              <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Awards in view</p>
+              <p className="mt-2 text-4xl font-black italic tabular-nums text-primary">{filtered.length.toLocaleString()}</p>
+              <p className="mt-2 text-sm text-muted-foreground">{windowLabel} · matching filters</p>
+            </GlassCard>
+            <GlassCard className="border-l-4 border-l-emerald-500 p-4">
+              <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Agents recognized</p>
+              <p className="mt-2 text-4xl font-black italic tabular-nums text-emerald-700 dark:text-emerald-300">{honorees.toLocaleString()}</p>
+              <p className="mt-2 text-sm text-muted-foreground">Distinct recipients in view</p>
+            </GlassCard>
+            <GlassCard className="border-l-4 border-l-amber-500 p-4">
+              <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Premium not on file</p>
+              <p className="mt-2 text-4xl font-black italic tabular-nums">{missingAmount.toLocaleString()}</p>
+              <p className="mt-2 text-sm text-muted-foreground">Awards with no recorded positive premium</p>
+            </GlassCard>
+          </div>
+
+          {filtered.length > 0 && (
+            <figure aria-labelledby="awards-chart-title" className="rounded-lg border-2 border-border bg-card p-4 sm:p-5">
+              <figcaption>
+                <h2 id="awards-chart-title" className="text-xl font-black italic uppercase text-foreground">Milestones earned</h2>
+                <p className="mt-1 text-sm text-muted-foreground">{windowLabel} · {filtered.length} awards in view. Each bar counts recorded awards.</p>
+              </figcaption>
+              <ul className="mt-5 grid gap-4 sm:grid-cols-2" aria-label="Award counts by milestone">
+                {milestoneCounts.map(([label, count]) => (
+                  <li key={label} className="min-w-0">
+                    <div className="mb-2 flex items-center justify-between gap-3 text-sm">
+                      <span className="font-semibold text-foreground">{label}</span>
+                      <span className="font-bold tabular-nums text-primary">{count} {count === 1 ? "award" : "awards"}</span>
+                    </div>
+                    <div aria-hidden="true" className="h-4 overflow-hidden rounded-sm bg-muted">
+                      <div className="h-full rounded-sm bg-primary" style={{ width: `${count / maxCount * 100}%` }} />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </figure>
+          )}
+        </>
+      )}
 
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div role="status" aria-label="Loading awards" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {Array.from({ length: 6 }).map((_, i) => (
             // stable-key-allow:skeleton
             <GlassCard key={i} className="p-4 animate-pulse h-48" />
           ))}
         </div>
-      ) : filtered.length === 0 ? (
+      ) : !hasSnapshot ? null : filtered.length === 0 ? (
         <GlassCard className="p-12 text-center text-muted-foreground">
-          No plaques match these filters yet.
+          No recorded awards match this window and these filters.
         </GlassCard>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

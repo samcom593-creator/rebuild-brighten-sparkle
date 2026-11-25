@@ -42,6 +42,7 @@
 const STORAGE_KEY = "apex.demoMode";
 
 let enabled = false;
+const modeListeners = new Set<() => void>();
 
 /** Deterministic 32-bit hash. Same input → same output, forever. */
 function hash(input: string): number {
@@ -459,6 +460,12 @@ export function isDemoMode(): boolean {
   return enabled;
 }
 
+/** Live overlays must stop before the mode toggle's full reload replaces the page. */
+export function subscribeDemoMode(listener: () => void): () => void {
+  modeListeners.add(listener);
+  return () => { modeListeners.delete(listener); };
+}
+
 export function setDemoMode(on: boolean): void {
   // Either direction ends the session that justified holding these names:
   // OFF must not leave a stale identity resident, and ON starts a fresh one.
@@ -471,6 +478,7 @@ export function setDemoMode(on: boolean): void {
   } catch {
     /* Safari private mode throws on setItem — demo mode still works this session */
   }
+  modeListeners.forEach((listener) => listener());
 }
 
 /**

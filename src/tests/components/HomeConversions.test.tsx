@@ -69,6 +69,28 @@ async function settleRetry() {
 }
 
 describe("HomeConversions", () => {
+  it("adds the dated activity chart from the same selected-range read without another request", async () => {
+    const range = { start: "2026-10-28", end: "2026-10-29" };
+    rpc.mockResolvedValue({ data: {
+      ...PAYLOAD, start: range.start, end: range.end, prior_start: "2026-10-26", prior_end: "2026-10-27",
+      people: PAYLOAD.people.filter((person) => person.kind === "applied" && person.period === "current")
+        .map((person, i) => ({ ...person, on: i === 0 ? range.start : range.end })),
+    }, error: null });
+    renderWith(<HomeConversions range={range} rangeLabel="Oct 28 – Oct 29" />);
+    await waitFor(() => expect(tile("Applications received")).toHaveTextContent("2"));
+    expect(rpc).toHaveBeenCalledWith("home_conversion_people_range", { p_start: range.start, p_end: range.end });
+    expect(rpc).toHaveBeenCalledTimes(1);
+    const activity = screen.getByRole("region", { name: "Recruiting activity" });
+    expect(activity).toHaveTextContent("Daily counts · Phoenix time");
+    expect(activity.querySelector('[data-kind="applied"]')).not.toBeNull();
+    fireEvent.click(within(activity).getByText("View counts by date"));
+    const rows = within(within(activity).getByRole("table")).getAllByRole("row");
+    expect(rows.slice(1).map((row) => within(row).getAllByRole("cell")[0].textContent)).toEqual(["1", "1"]);
+    fireEvent.click(tile("Applications received"));
+    const sheet = await screen.findByRole("dialog");
+    expect(within(within(sheet).getAllByRole("list")[0]).getAllByRole("listitem")).toHaveLength(2);
+  });
+
   it("asks for the Phoenix business day and shows every number from the one read", async () => {
     rpc.mockResolvedValue({ data: PAYLOAD, error: null } as never);
     renderWith(<HomeConversions />);

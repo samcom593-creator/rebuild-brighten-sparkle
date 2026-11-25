@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBrand } from "@/hooks/useBrand";
 import { supabase } from "@/integrations/supabase/client";
 import { invalidateOperationalTruth } from "@/lib/invalidateOperationalTruth";
+import { announcePostedDealReceipt } from "@/lib/dealCelebrations";
 import {
   flushQueue,
   isParked,
@@ -17,7 +18,7 @@ import {
   type SendResult,
 } from "@/lib/offlineQueue";
 
-type DealSubmitResponse = { dealId?: string; status?: string } | null;
+type DealSubmitResponse = { dealId?: string; status?: string; replayed?: boolean } | null;
 
 async function sendQueuedEntry(entry: QueuedEntry): Promise<SendResult> {
   if (entry.kind !== "submit_apex_deal") {
@@ -31,7 +32,10 @@ async function sendQueuedEntry(entry: QueuedEntry): Promise<SendResult> {
     entry.args,
   );
   if (error) return { ok: false, error: error.message || "Server rejected the queued deal." };
-  if (data?.dealId || data?.status === "already_recorded") return { ok: true };
+  if (data?.dealId || data?.status === "already_recorded") {
+    announcePostedDealReceipt(entry.ownerUserId, data);
+    return { ok: true };
+  }
   return { ok: false, error: "The server did not return a deal receipt." };
 }
 

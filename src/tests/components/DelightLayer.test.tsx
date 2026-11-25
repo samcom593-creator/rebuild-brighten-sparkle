@@ -137,6 +137,24 @@ describe("SoundToggle", () => {
     fireEvent.click(on);
     expect(localStorage.getItem("apex_sound_enabled")).toBe("true");
   });
+
+  it("explains first-tap readiness and keeps desktop/mobile mute controls in sync", () => {
+    const original = Object.getOwnPropertyDescriptor(window, "AudioContext");
+    Object.defineProperty(window, "AudioContext", { configurable: true, value: class {} });
+    try {
+      render(<><SoundToggle /><SoundToggle /></>);
+      const controls = screen.getAllByRole("button", { name: "Turn sounds off" });
+      expect(controls).toHaveLength(2);
+      expect(controls[0]).toHaveAttribute("aria-description", "Sounds on — tap or press a key to enable audio");
+      expect(controls[1]).toHaveAttribute("title", "Sounds on — tap or press a key to enable audio");
+      fireEvent.click(controls[0]);
+      expect(screen.getAllByRole("button", { name: "Turn sounds on" })).toHaveLength(2);
+      expect(screen.getAllByRole("button")[0]).toHaveAttribute("aria-description", "Sounds muted");
+    } finally {
+      if (original) Object.defineProperty(window, "AudioContext", original);
+      else Reflect.deleteProperty(window, "AudioContext");
+    }
+  });
 });
 
 describe("AmbientBubbles", () => {

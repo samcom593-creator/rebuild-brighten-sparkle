@@ -45,4 +45,18 @@ describe("sound preference", () => {
     expect(onChange).toHaveBeenCalledTimes(1);
     unsubscribe();
   });
+
+  it("honors mute when storage is readable but refuses writes", () => {
+    localStorage.setItem("apex_sound_enabled", "true");
+    const set = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("quota exceeded"); });
+    const onChange = vi.fn(() => isSoundEnabled());
+    const unsubscribe = subscribeSoundPreference(onChange);
+    setSoundEnabled(false);
+    expect(localStorage.getItem("apex_sound_enabled")).toBe("true");
+    expect(isSoundEnabled()).toBe(false);
+    expect(onChange).toHaveLastReturnedWith(false);
+    unsubscribe();
+    set.mockRestore();
+    setSoundEnabled(true);
+  });
 });

@@ -3,10 +3,27 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { scoreboardWindow } from "@/lib/scoreboardPeriod";
+import { groupScoreboardAgents, type ScoreboardAgentRow } from "@/components/dashboard/ScopedProductionScoreboard";
 
 const source = (file: string) => fs.readFileSync(path.resolve(__dirname, `../../${file}`), "utf8");
 
 describe("scoped production scoreboard", () => {
+  it("keeps different hierarchy IDs distinct when display names match", () => {
+    const row = (agent_id: string, first_hop_id: string, ap: number): ScoreboardAgentRow => ({
+      agent_id, name: "Synthetic producer", agency: "Galaxy", policies: 1, ap,
+      seller_pct: 80, seller_pct_provenance: "account", override_pct_for_viewer: 10, est_override: ap * 0.1,
+      is_self: false, first_hop_id, first_hop_name: "Same team name", first_hop_pct: 90,
+      first_hop_pct_provenance: "account", last_sale_date: "2026-11-24",
+    });
+    const groups = groupScoreboardAgents([row("seller-1", "head-a", 1000), row("seller-2", "head-b", 3000), row("seller-3", "head-a", 500)]);
+    expect(groups).toHaveLength(2);
+    expect(groups.map((group) => ({ id: group.id, label: group.label, ap: group.ap, policies: group.policies }))).toEqual([
+      { id: "hierarchy:head-b", label: "Same team name", ap: 3000, policies: 1 },
+      { id: "hierarchy:head-a", label: "Same team name", ap: 1500, policies: 2 },
+    ]);
+    expect(groups.flatMap((group) => group.rows)).toHaveLength(3);
+  });
+
   it("anchors every requested period to the chosen calendar date", () => {
     expect(scoreboardWindow("day", "2026-08-26")).toMatchObject({ start: "2026-08-26", end: "2026-08-27" });
     // The one-tap morning read: the single business day before the through-date,

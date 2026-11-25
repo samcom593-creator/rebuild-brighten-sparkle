@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { EarningsMixChart, PeriodComparisonBars, ProductionMixChart } from "@/components/dashboard/ProductionVisuals";
+import { EarningsMixChart, MonthPaceChart, PeriodComparisonBars, ProductionMixChart } from "@/components/dashboard/ProductionVisuals";
 
 describe("production visuals use supplied scoped results", () => {
   it("compares hierarchy ALP on one scale while preserving exact amounts and policy counts", () => {
@@ -15,7 +15,25 @@ describe("production visuals use supplied scoped results", () => {
     const bars = container.querySelectorAll(".production-mix-chart__track > span");
     expect(bars[0]).toHaveStyle({ width: "100%" });
     expect(bars[1]).toHaveStyle({ width: "25%" });
+    expect(rows[0]).toHaveTextContent("80.0% of shown ALP");
     expect(screen.getByText("ALP by hierarchy · same selected dates")).toBeInTheDocument();
+  });
+
+  it("ranks actual production in descending order, shares ties and leaves zero without a rank", () => {
+    const input = [
+      { id: "zero", label: "No production", ap: 0, policies: 0 },
+      { id: "second", label: "Second team", ap: 500, policies: 1 },
+      { id: "first-a", label: "Same name", ap: 1500, policies: 2 },
+      { id: "first-b", label: "Same name", ap: 1500, policies: 3 },
+    ];
+    const { container } = render(<ProductionMixChart rows={input} />);
+    const rows = within(screen.getByRole("list", { name: "Production by hierarchy chart" })).getAllByRole("listitem");
+    expect(rows.map((row) => row.getAttribute("data-rank"))).toEqual(["1", "1", "3", "unranked"]);
+    expect(rows[0]).toHaveTextContent("Same name$1,500");
+    expect(rows[1]).toHaveTextContent("Same name$1,500");
+    expect(rows[2]).toHaveTextContent("Second team$500");
+    expect(container.querySelectorAll(".production-mix-chart__track > span")[3]).toHaveStyle({ width: "0%" });
+    expect(input[0].id).toBe("zero");
   });
 
   it("does not draw a visible value for zero production or invent rows for an empty response", () => {
@@ -40,6 +58,47 @@ describe("production visuals use supplied scoped results", () => {
     expect(container.querySelector(".production-mix-chart__track")).toBeNull();
     rerender(<ProductionMixChart rows={[{ label: "Team", ap: -50, policies: 1 }]} />);
     expect(screen.getByText(/production chart is unavailable/)).toBeInTheDocument();
+  });
+});
+
+describe("current-month production pace", () => {
+  it("keeps posted ALP, the supplied forecast and calendar progress distinct", () => {
+    const { container } = render(<MonthPaceChart actual={12000} projected={24000} elapsedDays={15} daysInMonth={30} />);
+    expect(screen.getByRole("img")).toHaveAccessibleName(/\$12,000 posted month to date against \$24,000 projected at month end/);
+    expect(screen.getByRole("img")).toHaveAccessibleName(/estimate, not earned production or a goal/);
+    expect(container.querySelector(".production-pace-chart__actual")).toHaveStyle({ width: "50%" });
+    expect(container.querySelector(".production-pace-chart__time > span")).toHaveStyle({ width: "50%" });
+    expect(screen.getByText("$800 ALP per elapsed calendar day")).toBeInTheDocument();
+  });
+
+  it("does not extrapolate a low-confidence forecast beyond the supplied result", () => {
+    const { container } = render(<MonthPaceChart actual={3000} projected={3000} elapsedDays={2} daysInMonth={30} />);
+    expect(container.querySelector(".production-pace-chart__actual")).toHaveStyle({ width: "100%" });
+    expect(screen.getByRole("img")).toHaveAccessibleName(/\$3,000 projected at month end/);
+  });
+
+  it("removes amounts, averages and geometry while presenting", () => {
+    const { container } = render(<MonthPaceChart actual={12000} projected={24000} elapsedDays={15} daysInMonth={30} hidden />);
+    expect(screen.getByText("Production pace hidden for presenting")).toBeInTheDocument();
+    expect(container.querySelector(".production-pace-chart")).toBeNull();
+    expect(container.textContent).not.toMatch(/12,000|24,000|800|15|30/);
+  });
+
+  it("shows true zero without manufacturing progress", () => {
+    const { container } = render(<MonthPaceChart actual={0} projected={0} elapsedDays={15} daysInMonth={30} />);
+    expect(screen.getByText("No posted ALP yet this month.")).toBeInTheDocument();
+    expect(container.querySelector(".production-pace-chart")).toBeNull();
+  });
+
+  it.each([
+    { actual: Number.NaN, projected: 2000, elapsedDays: 15, daysInMonth: 30 },
+    { actual: 2000, projected: 1000, elapsedDays: 15, daysInMonth: 30 },
+    { actual: 1000, projected: 2000, elapsedDays: 0, daysInMonth: 30 },
+    { actual: 1000, projected: 2000, elapsedDays: 31, daysInMonth: 30 },
+  ])("withholds geometry when the pace inputs cannot be verified: %j", (props) => {
+    const { container } = render(<MonthPaceChart {...props} />);
+    expect(screen.getByText("Production pace is unavailable for this result.")).toBeInTheDocument();
+    expect(container.querySelector(".production-pace-chart")).toBeNull();
   });
 });
 

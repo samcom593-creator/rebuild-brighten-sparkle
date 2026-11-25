@@ -257,6 +257,7 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
     modes: [...PRODUCERS, "recruiter"],
     items: [
       { label: "Leaderboard", href: "/dashboard/leaderboard", icon: Trophy, modes: PRODUCERS },
+      { label: "Wins & Awards", href: "/dashboard/awards", icon: Crown },
       { label: "My Team", href: "/dashboard/team", icon: Users },
       // Leaders call the people under them who hold the Ethos contract; the database scopes the rows (MP-ETHOS-CALLSHEET).
       { label: "Call sheet", href: "/dashboard/ethos-call-sheet", icon: PhoneCall, modes: LEADERS },

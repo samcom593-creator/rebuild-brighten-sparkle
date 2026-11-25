@@ -10,13 +10,13 @@ const AUDIO_COUNTS = [
   'dialer_calls','calls_with_provider_recording_reference','calls_linked_to_agent','calls_linked_to_application','calls_linked_to_lead',
   'graded_calls','graded_calls_without_audio_catalog','graded_calls_with_redacted_object','audio_catalog_rows','raw_paths','raw_objects',
   'redacted_objects','redacted_nonempty_objects','redacted_objects_missing','team_visible_audio_rows','team_copy_rows',
-  'team_copies_with_audio_object','team_copies_privacy_blocked','team_visible_without_team_audio','library_eligible_before_role_and_limit',
-  'library_eligible_with_audio_object','training_rows','training_published','training_published_without_path',
-  'training_published_privacy_blocked','training_catalog_eligible_before_role','training_eligible_with_object',
-  'training_eligible_missing_object','training_eligible_nonempty_object','training_eligible_audio_mime','training_eligible_transcript_not_array',
+  'team_copies_with_audio_object','team_visible_without_team_audio','library_candidates_before_privacy',
+  'library_candidates_with_audio_object','training_rows','training_published','training_published_without_path',
+  'training_published_with_path','training_published_with_object',
+  'training_published_missing_object','training_published_nonempty_object','training_published_audio_mime','training_published_transcript_not_array',
   'readymode_bucket_objects','training_bucket_objects','call_recordings_bucket_objects',
 ];
-const AUDIO_BOOLEANS = ['readymode_bucket_private','training_bucket_private','call_recordings_bucket_private',
+const AUDIO_BOOLEANS = ['privacy_filter_evaluated','readymode_bucket_private','training_bucket_private','call_recordings_bucket_private',
   'authenticated_call_audio_rpc','anonymous_call_audio_rpc','authenticated_training_catalog_rpc','anonymous_training_catalog_rpc'];
 const LEDGER_STATUSES = ['pending','paid','clawed_back','voided','other'];
 const RATE_SOURCES = ['override','contract','carrier_default','schedule','carrier_schedule','other'];

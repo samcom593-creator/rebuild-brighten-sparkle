@@ -13,12 +13,10 @@ with objects as materialized (
   from public.readymode_call_audio a
 ), team as materialized (
   select tc.call_id, tc.audio_path is not null as has_audio_path,
-    not public.fn_training_text_leaks(public.fn_team_copy_text(tc), c.lead_first_name, c.lead_last_name) as privacy_safe,
     exists(select 1 from objects o where o.bucket_id='readymode-audio' and o.name=tc.audio_path) as audio_object
   from public.call_training_team_copy tc join public.readymode_dialer_calls c on c.id=tc.call_id
 ), training as materialized (
   select r.published, r.audio_path is not null as has_audio_path,
-    not public.fn_training_text_leaks(r.transcript::text, null, null) as privacy_safe,
     jsonb_typeof(r.transcript)='array' as transcript_array,
     exists(select 1 from objects o where o.bucket_id='training-recordings' and o.name=r.audio_path) as audio_object,
     exists(select 1 from objects o where o.bucket_id='training-recordings' and o.name=r.audio_path and o.nonempty) as audio_nonempty,
@@ -28,6 +26,7 @@ with objects as materialized (
   select distinct call_id from public.readymode_call_analysis where model='grade-v1'
 )
 select jsonb_build_object(
+  'privacy_filter_evaluated', false,
   'dialer_calls', (select count(*) from public.readymode_dialer_calls),
   'calls_with_provider_recording_reference', (select count(*) from public.readymode_dialer_calls where nullif(btrim(recording_url),'') is not null),
   'calls_linked_to_agent', (select count(*) from public.readymode_dialer_calls where agent_id is not null),
@@ -45,20 +44,18 @@ select jsonb_build_object(
   'team_visible_audio_rows', (select count(*) from published_audio where team_visible),
   'team_copy_rows', (select count(*) from team),
   'team_copies_with_audio_object', (select count(*) from team where audio_object),
-  'team_copies_privacy_blocked', (select count(*) from team where not privacy_safe),
   'team_visible_without_team_audio', (select count(*) from published_audio a left join team t on t.call_id=a.call_id where a.team_visible and (t.call_id is null or not t.has_audio_path or not t.audio_object)),
-  'library_eligible_before_role_and_limit', (select count(*) from published_audio a join team t on t.call_id=a.call_id join graded g on g.call_id=a.call_id where a.team_visible and t.has_audio_path and t.privacy_safe),
-  'library_eligible_with_audio_object', (select count(*) from published_audio a join team t on t.call_id=a.call_id join graded g on g.call_id=a.call_id where a.team_visible and t.has_audio_path and t.privacy_safe and t.audio_object),
+  'library_candidates_before_privacy', (select count(*) from published_audio a join team t on t.call_id=a.call_id join graded g on g.call_id=a.call_id where a.team_visible and t.has_audio_path),
+  'library_candidates_with_audio_object', (select count(*) from published_audio a join team t on t.call_id=a.call_id join graded g on g.call_id=a.call_id where a.team_visible and t.has_audio_path and t.audio_object),
   'training_rows', (select count(*) from training),
   'training_published', (select count(*) from training where published),
   'training_published_without_path', (select count(*) from training where published and not has_audio_path),
-  'training_published_privacy_blocked', (select count(*) from training where published and not privacy_safe),
-  'training_catalog_eligible_before_role', (select count(*) from training where published and has_audio_path and privacy_safe),
-  'training_eligible_with_object', (select count(*) from training where published and has_audio_path and privacy_safe and audio_object),
-  'training_eligible_missing_object', (select count(*) from training where published and has_audio_path and privacy_safe and not audio_object),
-  'training_eligible_nonempty_object', (select count(*) from training where published and has_audio_path and privacy_safe and audio_nonempty),
-  'training_eligible_audio_mime', (select count(*) from training where published and has_audio_path and privacy_safe and audio_mime),
-  'training_eligible_transcript_not_array', (select count(*) from training where published and has_audio_path and privacy_safe and not transcript_array),
+  'training_published_with_path', (select count(*) from training where published and has_audio_path),
+  'training_published_with_object', (select count(*) from training where published and has_audio_path and audio_object),
+  'training_published_missing_object', (select count(*) from training where published and has_audio_path and not audio_object),
+  'training_published_nonempty_object', (select count(*) from training where published and has_audio_path and audio_nonempty),
+  'training_published_audio_mime', (select count(*) from training where published and has_audio_path and audio_mime),
+  'training_published_transcript_not_array', (select count(*) from training where published and has_audio_path and not transcript_array),
   'readymode_bucket_private', exists(select 1 from storage.buckets where id='readymode-audio' and not public),
   'training_bucket_private', exists(select 1 from storage.buckets where id='training-recordings' and not public),
   'call_recordings_bucket_private', exists(select 1 from storage.buckets where id='call-recordings' and not public),

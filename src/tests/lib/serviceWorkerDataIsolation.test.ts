@@ -28,7 +28,8 @@ describe("service worker account and media isolation", () => {
       const request = new Request(url, { headers: { Authorization: "Bearer synthetic-account-a", Range: "bytes=0-1023" } });
       expect(routes.some((route) => route.urlPattern({ request, url, sameOrigin: false })), path).toBe(false);
     }
-    const asset = new URL("https://galaxyfinancial.org/assets/route-synthetic.js");
+    // This is a synthetic same-origin chunk, not a published production asset.
+    const asset = new URL("https://app.example.test/assets/route-synthetic.js");
     expect(routes.find((route) => route.urlPattern({ request: new Request(asset), url: asset, sameOrigin: true }))?.handler).toBe("CacheFirst");
   });
 

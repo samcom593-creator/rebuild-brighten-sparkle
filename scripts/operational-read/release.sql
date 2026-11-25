@@ -1,4 +1,5 @@
 -- Fixed release prerequisite/readback query. No application function is executed.
+-- Postdeployment readback for merged main 0f8caac3dc1f5715b6fba721ebc6eb30c45a7c42.
 -- Expected versions are exactly tracked origin/main d0302b334f7264ed214f8aaca5d174ef3fc3fc63.
 -- The two release versions are intentionally separate from the earlier main baseline.
 with expected_base(version) as (values

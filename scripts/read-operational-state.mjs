@@ -102,7 +102,7 @@ function sanitize(name, value) {
   }
   if (name === 'definitions') {
     const row = object(value);
-    const names = ['producer_profile_detail','scoped_production_projection_uncached','agent_carrier_book','home_conversion_people_range','home_conversion_people_range_uncached','production_policy_cohort'];
+    const names = ['producer_profile_detail','scoped_production_projection_uncached','agent_carrier_book','home_conversion_people_range','home_conversion_people_range_uncached','home_application_cohort','scoped_production_scoreboard_uncached','production_policy_cohort'];
     return Object.fromEntries(names.map(name => {
       const value = row[name];
       if (value !== null && (typeof value !== 'string' || value.length > 200000 || !value.startsWith('CREATE OR REPLACE FUNCTION public.'))) throw new Error('invalid function definition');

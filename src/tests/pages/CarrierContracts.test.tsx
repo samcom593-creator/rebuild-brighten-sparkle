@@ -14,7 +14,7 @@ vi.mock("@/hooks/useContractRecords", async (original) => ({
 vi.mock("@/hooks/useContractReview", () => ({ useContractReview: () => ({ roster: { carriers: [] }, query: { isLoading: false, isError: false } }) }));
 vi.mock("@/components/contracting/ContractingIntakeAdmin", () => ({ ContractingIntakeAdmin: () => <div>Intake history</div> }));
 vi.mock("@/components/contracting/ContractingRequestsBoard", () => ({ ContractingRequestsBoard: () => <div>Request receipts</div> }));
-vi.mock("@/components/contracting-review/ContractingReviewWorkspace", () => ({ ContractingReviewWorkspace: () => <div>Carrier review workspace</div> }));
+vi.mock("@/components/contracting-review/ContractingReviewWorkspace", () => ({ ContractingReviewWorkspace: () => <div>Current agent receipts</div>, HistoricalContractingReviewWorkspace: () => <div>Historical circle editor</div> }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 import CarrierContracts from "@/pages/CarrierContracts";
@@ -95,8 +95,35 @@ describe("contract management workflow", () => {
     await waitFor(() => expect(writeText).toHaveBeenNthCalledWith(2, CONTRACTING_PROFILE_URL));
     expect(CONTRACTING_PROFILE_URL).not.toBe(CONTRACTING_LINK_URL);
     expect(screen.getByRole("link", { name: "Grow my team" })).toHaveAttribute("href", "/dashboard/grow");
-    expect(screen.getByRole("link", { name: "Ethos submissions" })).toHaveAttribute("href", "/dashboard/grow");
-    expect(screen.getByRole("link", { name: "Requests" })).toHaveAttribute("href", "/dashboard/contracting/requests");
+    expect(screen.getByRole("link", { name: "Open MGN portal" })).toHaveAttribute("href", CONTRACTING_LINK_URL);
+    expect(screen.getByRole("link", { name: "Submissions" })).toHaveAttribute("href", "/dashboard/contracting");
+    expect(screen.getByText("Request receipts")).toBeInTheDocument();
+    expect(screen.queryByText("Historical circle editor")).not.toBeInTheDocument();
     expect(screen.getByText(/MGN opens the carrier portal/)).toHaveTextContent("Galaxy profile link collects the signed-in agent's details for review");
+  });
+
+  it("keeps historical carrier checks behind an explicit view without replacing intake history", () => {
+    renderPage("/dashboard/contracting?view=legacy");
+    expect(screen.getByRole("heading", { name: "Historical review" })).toBeInTheDocument();
+    expect(screen.getByRole("note")).toHaveTextContent("completion counts are historical");
+    expect(screen.getByText("Historical circle editor")).toBeInTheDocument();
+    expect(screen.queryByText("Request receipts")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Intake history" })).toHaveAttribute("href", "/dashboard/contracting/history");
+  });
+
+  it("opens the current agent receipt tracker without the historical circle editor", () => {
+    renderPage("/dashboard/contracting?view=receipts");
+    expect(screen.getByText("Current agent receipts")).toBeInTheDocument();
+    expect(screen.queryByText("Historical circle editor")).not.toBeInTheDocument();
+    expect(directoryHook.mock.calls.at(-1)?.[0]).toMatchObject({ enabled: false });
+  });
+
+  it("preserves arbitrary saved carrier records even when they are no longer current contracting offers", () => {
+    rowsHook.mockReturnValue(result([{ ...record(1), carrier_name: "Combined" }, { ...record(2), carrier_name: "Aflac" }, { ...record(3), carrier_name: "Guarantee Trust Life" }], { refetch: rowsRefetch }));
+    summaryHook.mockReturnValue(result({ total: 3 }, { refetch: summaryRefetch }));
+    renderPage();
+    expect(screen.getByText("Combined")).toBeInTheDocument();
+    expect(screen.getByText("Aflac")).toBeInTheDocument();
+    expect(screen.getByText("Guarantee Trust Life")).toBeInTheDocument();
   });
 });

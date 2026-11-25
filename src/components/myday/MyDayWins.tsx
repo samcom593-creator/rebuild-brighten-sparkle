@@ -3,6 +3,8 @@ import { Loader2, Plus, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { useSamPrivateAccess } from "@/hooks/useSamPrivateAccess";
+import { assertSamTaskSession, taskAuthorization } from "@/lib/privateTasks";
 
 /**
  * The three wins Sam counts by tapping (2026-10-08). Long-form video is first because it is the highest
@@ -17,37 +19,54 @@ export const WIN_KINDS = [
 export type WinKind = (typeof WIN_KINDS)[number]["kind"];
 type Counts = Record<WinKind, { today: number; week: number; total: number }>;
 
-const KEY = ["myday_counters"] as const;
-
 export function MyDayWins() {
+  const { allowed, userId } = useSamPrivateAccess();
+  if (!allowed || !userId) return null;
+  return <MyDayWinsContent key={userId} userId={userId} />;
+}
+
+function MyDayWinsContent({ userId }: { userId: string }) {
   const qc = useQueryClient();
+  const KEY = ["myday_counters", userId] as const;
+  const active = useRef(true);
+  useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
   const { data, isError, isLoading } = useQuery({
     queryKey: KEY,
     staleTime: 30_000,
+    gcTime: 0,
     queryFn: async (): Promise<Counts> => {
-      const { data: res, error } = await supabase.rpc("myday_counters");
+      const authorization = await taskAuthorization(userId, () => active.current);
+      const { data: res, error } = await supabase.rpc("myday_counters").setHeader("Authorization", authorization);
       if (error) throw new Error(error.message);
+      await taskAuthorization(userId, () => active.current);
+      if (!res || typeof res !== "object" || Array.isArray(res) || !WIN_KINDS.every(({ kind }) => {
+        const count = res[kind];
+        return count && typeof count === "object" && !Array.isArray(count)
+          && [count.today, count.week, count.total].every(value => typeof value === "number" && Number.isSafeInteger(value) && value >= 0);
+      })) throw new Error("Counts could not be verified");
       return res as unknown as Counts;
     },
   });
 
   const add = useMutation({
     mutationFn: async (kind: WinKind) => {
-      const { data: res, error } = await supabase.rpc("myday_counter_add", { p_kind: kind });
+      const authorization = await assertSamTaskSession(userId, () => active.current);
+      const { data: res, error } = await supabase.rpc("myday_counter_add", { p_kind: kind }).setHeader("Authorization", authorization);
       if (error) throw new Error(error.message);
-      if (!(res as { ok?: boolean })?.ok) throw new Error("Not saved");
+      if ((res as { ok?: boolean })?.ok !== true) throw new Error("Not saved");
     },
-    onSuccess: (_d, kind) => { toast.success(`+1 ${WIN_KINDS.find((w) => w.kind === kind)?.label}`); void qc.invalidateQueries({ queryKey: KEY }); },
-    onError: (e: Error) => toast.error(`Could not add: ${e.message}`),
+    onSuccess: (_d, kind) => { if (active.current) { toast.success(`+1 ${WIN_KINDS.find((w) => w.kind === kind)?.label}`); void qc.invalidateQueries({ queryKey: KEY }); } },
+    onError: (e: Error) => { if (active.current) toast.error(`Could not add: ${e.message}`); },
   });
   const undo = useMutation({
     mutationFn: async (kind: WinKind) => {
-      const { data: res, error } = await supabase.rpc("myday_counter_undo", { p_kind: kind });
+      const authorization = await assertSamTaskSession(userId, () => active.current);
+      const { data: res, error } = await supabase.rpc("myday_counter_undo", { p_kind: kind }).setHeader("Authorization", authorization);
       if (error) throw new Error(error.message);
-      if (!(res as { ok?: boolean })?.ok) throw new Error("Nothing recent to undo");
+      if ((res as { ok?: boolean })?.ok !== true) throw new Error("Nothing recent to undo");
     },
-    onSuccess: () => { toast.success("Removed the last tap"); void qc.invalidateQueries({ queryKey: KEY }); },
-    onError: (e: Error) => toast.error(e.message),
+    onSuccess: () => { if (active.current) { toast.success("Removed the last tap"); void qc.invalidateQueries({ queryKey: KEY }); } },
+    onError: (e: Error) => { if (active.current) toast.error(e.message); },
   });
 
   return (
@@ -87,3 +106,4 @@ export function MyDayWins() {
     </section>
   );
 }
+import { useEffect, useRef } from "react";

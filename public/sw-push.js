@@ -1,6 +1,12 @@
 // Push notification handler for service worker
 // This file is imported by the VitePWA generated service worker
 
+// Remove the retired URL-keyed API cache. Private responses must never survive
+// account changes as an offline fallback; public media uses native HTTP ranges.
+self.addEventListener("activate", (event) => {
+  event.waitUntil(caches.delete("supabase-rest"));
+});
+
 self.addEventListener("push", (event) => {
   if (!event.data) return;
 

@@ -25,12 +25,12 @@
  * record's ledger under RLS, so every ledger figure reads Unavailable there
  * (ledgerVisibility) instead of a short read passing as the whole ledger.
  */
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertCircle, Wallet } from "lucide-react";
+import { RefreshCw, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Badge } from "@/components/ui/badge";
-import { GlassCard } from "@/components/ui/glass-card";
+import { Button } from "@/components/ui/button";
+import { CommissionOverview, CommissionCharts, CommissionPolicyLedger } from "@/components/finances/CommissionWorkspace";
 import { PageHeader } from "@/components/ui/page-header";
 import { QueryState, describeQuery } from "@/components/ui/query-state";
 import { useAgentIdentity } from "@/hooks/useAgentIdentity";
@@ -39,30 +39,18 @@ import { useBusinessToday } from "@/hooks/useBusinessToday";
 import { monthStartKey } from "@/lib/businessClock";
 import { BUSINESS_TZ } from "@/lib/calendarTime";
 import {
-  closedDealPhrase,
   collectAllPages,
   commissionTypeTiles,
-  dealStatusLabel,
-  isDateKey,
   ledgerSectionStatus,
-  ledgerStatusLabel,
-  ledgerSummary,
   ledgerVisibility,
-  monthBuckets,
-  paidYearToDate,
-  rateSourcePhrase,
   rateVerdictFromContracts,
   reconcileCommissions,
-  type CommissionRow,
   type CommissionTypeFigures,
   type ContractRateRow,
-  type LedgerPart,
   type LedgerRow,
   type ProductionEstimate,
   type RateVerdict,
-  type TileFigure,
 } from "@/lib/commissionLedger";
-import { cn } from "@/lib/utils";
 
 interface RawLedgerRow {
   id: string;
@@ -120,8 +108,6 @@ const LEDGER_SELECT =
 const ESTIMATE_SELECT =
   "row_key, policy_number, annual_premium, direct_estimate, seller_comp_pct, status, posted_date, client_name, product, carrier";
 
-const INITIAL_VISIBLE_ROWS = 100;
-const SHOW_MORE_STEP = 200;
 
 function money(value: number, digits = 2): string {
   return `$${value.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits })}`;
@@ -247,56 +233,41 @@ function InlineReadNotice({ label, read, onRetry }: { label: string; read: ReadL
   return <QueryState status="ready" compact stale label={label} error={read.error} asOf={read.dataUpdatedAt} onRetry={onRetry} />;
 }
 
-const STATUS_BADGE: Record<string, string> = {
-  paid: "border-emerald-500/40 text-emerald-600 dark:text-emerald-400",
-  pending: "border-amber-500/40 text-amber-600 dark:text-amber-400",
-  clawed_back: "border-rose-500/40 text-rose-600 dark:text-rose-400",
-  voided: "border-muted-foreground/40 text-muted-foreground",
-};
-const MUTED_BADGE = "border-muted-foreground/40 text-muted-foreground";
-
-function ledgerBadgeClass(part: LedgerPart): string {
-  // A paid row without a payment date is not presented as a payment.
-  if (part.status === "paid" && !isDateKey(part.actualPaidDate)) return STATUS_BADGE.pending;
-  return STATUS_BADGE[part.status] ?? MUTED_BADGE;
-}
-
-export default function MyCommissions() {
+export default function MyCommissions({ embedded = false }: { embedded?: boolean }) {
   const me = useAgentIdentity();
-  const { isAdmin, isLoading: authLoading } = useAuth();
+  const { user, isAdmin, isLoading: authLoading } = useAuth();
   const todayKey = useBusinessToday();
   const monthKey = monthStartKey(todayKey);
-  const businessYear = todayKey.slice(0, 4);
-  const agentId = me.agentId;
-  const identity = me.identity;
+  const belongsToViewer = Boolean(user && me.userId === user.id);
+  const identity = belongsToViewer ? me.identity : undefined;
+  const agentId = !authLoading && belongsToViewer && identity?.status === "resolved" ? me.agentId : null;
   // The resolved record and, when the resolver followed a merge pointer, the login's own merged-away record.
   const recordIds = useMemo(() => {
-    if (identity?.status !== "resolved") return [] as string[];
+    if (!agentId || identity?.status !== "resolved") return [] as string[];
     return identity.mergedFromAgentId ? [identity.agentId, identity.mergedFromAgentId] : [identity.agentId];
-  }, [identity]);
-  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_ROWS);
+  }, [agentId, identity]);
 
   const ledger = useQuery({
-    queryKey: ["my-commission-ledger", ...recordIds],
+    queryKey: ["my-commission-ledger", user?.id ?? null, ...recordIds],
     enabled: recordIds.length > 0,
     queryFn: () => fetchLedger(recordIds),
   });
 
   const estimates = useQuery({
-    queryKey: ["my-production-estimates", agentId],
+    queryKey: ["my-production-estimates", user?.id ?? null, agentId],
     enabled: Boolean(agentId),
     queryFn: () => fetchEstimates(agentId as string),
   });
 
   const contract = useQuery({
-    queryKey: ["my-contract-rate", ...recordIds],
+    queryKey: ["my-contract-rate", user?.id ?? null, ...recordIds],
     enabled: recordIds.length > 0,
     staleTime: 60_000,
     queryFn: () => fetchContractRates(recordIds),
   });
 
   const commissionTypes = useQuery({
-    queryKey: ["my-commission-types", agentId, monthKey],
+    queryKey: ["my-commission-types", user?.id ?? null, agentId, monthKey],
     enabled: Boolean(agentId),
     staleTime: 120_000,
     queryFn: async () => {
@@ -323,7 +294,6 @@ export default function MyCommissions() {
     rolesLoading: authLoading,
   });
   const ledgerHiddenText = visibility === "complete" ? null : visibility === "checking" ? "Loading" : "Unavailable";
-  const ledgerHiddenDetail = visibility === "restricted" ? "not visible to this login" : "checking ledger access";
   const mergedRecordName =
     identity?.status === "resolved" ? (identity.row.display_name ?? identity.row.agent_code ?? "another agent record") : "another agent record";
 
@@ -333,29 +303,6 @@ export default function MyCommissions() {
     [ledgerRows, estimateRead, rateVerdict],
   );
   const production = reconciled.production;
-  const summary = useMemo(() => ledgerSummary(ledgerRows ?? [], todayKey), [ledgerRows, todayKey]);
-  const paidYtd = useMemo(() => paidYearToDate(ledgerRows ?? [], todayKey), [ledgerRows, todayKey]);
-  const monthly = useMemo(() => monthBuckets(reconciled.rows, todayKey), [reconciled.rows, todayKey]);
-  const monthTotals = monthly.months.reduce(
-    (acc, m) => ({
-      deals: acc.deals + m.deals,
-      ledgerOnlyRows: acc.ledgerOnlyRows + m.ledgerOnlyRows,
-      premium: acc.premium + m.premium,
-      ledger: acc.ledger + m.ledger,
-      estimate: acc.estimate + m.estimate,
-      estimateExcluded: acc.estimateExcluded + m.estimateExcluded,
-    }),
-    { deals: 0, ledgerOnlyRows: 0, premium: 0, ledger: 0, estimate: 0, estimateExcluded: 0 },
-  );
-  const leftOutOfMonths = [
-    monthly.closedLedgerOnlyCount > 0 ? plural(monthly.closedLedgerOnlyCount, "voided or clawed-back ledger row") : null,
-    monthly.closedDealLedgerOnlyCount > 0
-      ? `${plural(monthly.closedDealLedgerOnlyCount, "pending ledger row")} on closed deals, which will not be paid`
-      : null,
-    monthly.futureDatedCount > 0 ? `${plural(monthly.futureDatedCount, "row")} dated after today` : null,
-    monthly.undatedCount > 0 ? `${plural(monthly.undatedCount, "row")} without a date` : null,
-  ].filter((part): part is string => part !== null);
-
   const baseSectionStatus = ledgerSectionStatus({ ledger, estimates, contract, rowCount: reconciled.rows.length });
   // Until the admin role has loaded after a merge, it is not known whether the ledger read is whole, so nothing is called empty yet.
   const sectionStatus = baseSectionStatus !== "error" && visibility === "checking" ? "loading" : baseSectionStatus;
@@ -363,10 +310,11 @@ export default function MyCommissions() {
     void ledger.refetch();
     void estimates.refetch();
     void contract.refetch();
+    void commissionTypes.refetch();
   };
 
   let gate: ReactNode = null;
-  if (me.isLoading) {
+  if (authLoading || me.isLoading || !belongsToViewer) {
     gate = <QueryState status="loading" label="your agent record" />;
   } else if (identity?.status === "error") {
     gate = <QueryState status="error" label="your agent record" error={identity.message} onRetry={me.refetch} />;
@@ -382,40 +330,7 @@ export default function MyCommissions() {
     gate = <QueryState status="empty" title="This login has no agent record" body="Ask an admin to link it." />;
   }
 
-  let chargebackFigure: TileFigure;
-  let chargebackDetail: string;
-  if (ledgerHiddenText !== null) {
-    chargebackFigure = { kind: "text", text: ledgerHiddenText };
-    chargebackDetail = ledgerHiddenDetail;
-  } else if (ledgerRows !== undefined) {
-    chargebackFigure = { kind: "amount", amount: summary.clawedBack.total };
-    chargebackDetail = plural(summary.clawedBack.count, "ledger row");
-  } else {
-    chargebackFigure = { kind: "text", text: ledger.isPending ? "Loading" : "Unavailable" };
-    chargebackDetail = "ledger not loaded";
-  }
-  // Only Direct YTD can carry a server figure; override, trail and renewal explain why they have none (commissionTypeTiles).
-  const tiles: Array<{ id: string; label: string; figure: TileFigure; detail: string }> = [
-    ...commissionTypeTiles({ types: commissionTypes.data ?? {}, rate: rateVerdict, rateChecking, financesVisible: isAdmin }),
-    { id: "chargebacks", label: "Chargebacks (ledger)", figure: chargebackFigure, detail: chargebackDetail },
-  ];
-
-  const pendingSource = rateSourcePhrase(summary.pending.rateSources);
-  const closedPending = summary.pendingOnClosedDeals;
-  let closedPendingText: string | null = null;
-  if (closedPending.count > 0) {
-    const words = closedDealPhrase(closedPending.dealStatuses);
-    const where = closedPending.count === 1 ? `on a ${words} deal` : `on ${words} deals`;
-    closedPendingText = `${closedPending.count.toLocaleString()} more ${where} (${money(closedPending.total)}), not in this figure`;
-  }
-  const pendingDetail = [
-    plural(summary.pending.count, "row"),
-    pendingSource ? `${pendingSource}, unpaid` : null,
-    summary.pending.pastExpectedCount > 0 ? `${summary.pending.pastExpectedCount.toLocaleString()} past expected pay date` : null,
-    closedPendingText,
-  ]
-    .filter((part): part is string => part !== null)
-    .join(" · ");
+  const tiles = commissionTypeTiles({ types: commissionTypes.data ?? {}, rate: rateVerdict, rateChecking, financesVisible: isAdmin });
 
   const excludedPhrase =
     rateVerdict === "not_on_file" ? "without a rate on file" : rateVerdict === "unknown" ? "with an unverified rate" : "that could not be priced";
@@ -445,328 +360,52 @@ export default function MyCommissions() {
   const notShownText = rateVerdict === "not_on_file" ? "Not shown" : "Unavailable";
   const estimateTotalText =
     production === null ? "Unavailable" : production.estimateTotal !== null ? money(production.estimateTotal) : notShownText;
-  // Paid rows plus pending rows on open deals; pending rows on closed deals will not be paid.
-  const ledgerLiveTotal = summary.pending.total + summary.paid.total;
-
-  /** A month's (or the year's) estimate figure: Unavailable without production, never a zero for amounts that were withheld. */
-  const estimateFigure = (amount: number, rows: number, excluded: number): string => {
-    if (production === null) return "Unavailable";
-    if (rows > 0 && excluded === rows) return notShownText;
-    return excluded > 0 ? `${money(amount, 0)} (${excluded.toLocaleString()} excluded)` : money(amount, 0);
-  };
-
   return (
-    <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto page-enter">
-      <PageHeader
-        eyebrow="Production · Earnings"
-        eyebrowIcon={<Wallet className="h-3 w-3" />}
-        title="My Commissions"
-        subtitle="Paid ledger rows are actuals; pending ledger rows and posted production are estimates from different rate sources."
-      />
-
+    <div className={embedded ? "space-y-5" : "p-4 md:p-6 space-y-6 max-w-7xl mx-auto page-enter"}>
+      {!embedded && <PageHeader eyebrow="Your business" eyebrowIcon={<Wallet className="h-3 w-3" />} title="Finances" subtitle="Policies, commissions and recorded payments." />}
       {gate ?? (
-        <>
-          {identity?.status === "resolved" && identity.note && <p className="text-xs text-muted-foreground">{identity.note}</p>}
-
-          <section>
-            <div className="mb-2">
-              <h2 className="text-sm font-semibold">Commission types</h2>
-              <p className="text-xs text-muted-foreground">
-                Server estimates from your own posted production. Only a paid ledger row with a payment date is an actual payment.
-              </p>
-            </div>
-            <QueryState
-              {...describeQuery(commissionTypes)}
-              label="commission estimates"
-              onRetry={() => void commissionTypes.refetch()}
-              asOf={commissionTypes.dataUpdatedAt}
-            >
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-                {tiles.map((tile) => (
-                  <GlassCard key={tile.id} className="p-4">
-                    <p className="text-xs text-muted-foreground">{tile.label}</p>
-                    <p className="mt-1 text-xl font-bold tabular-nums">
-                      {tile.figure.kind === "amount" ? money(tile.figure.amount, 0) : tile.figure.text}
-                    </p>
-                    <p className="mt-1 text-[11px] text-muted-foreground">{tile.detail}</p>
-                  </GlassCard>
-                ))}
-              </div>
-              {rateVerdict === "not_on_file" && (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Your contract rate is not on file. The server prices Direct YTD with a default rate, so it stays hidden until a rate is saved.
-                </p>
-              )}
-              {rateVerdict === "unknown" && !rateChecking && (
-                <p className="mt-2 text-xs text-muted-foreground">Your contract rate could not be verified, so Direct YTD is hidden until it loads.</p>
-              )}
-            </QueryState>
-          </section>
-
-          <QueryState
-            {...describeQuery({ ...ledger, isEmpty: false })}
-            label="the commission ledger"
-            onRetry={() => void ledger.refetch()}
-            asOf={ledger.dataUpdatedAt}
-          >
-            {visibility === "restricted" && (
-              <p className="mb-3 text-xs text-amber-700 dark:text-amber-300">
-                This login reaches {mergedRecordName} through a merge. That record&apos;s commission ledger is visible only to its own login. Ask an
-                admin to relink this login.
-              </p>
-            )}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <GlassCard className="p-4">
-                <div className="text-xs text-muted-foreground">Pending in ledger</div>
-                <div className="text-2xl font-bold tabular-nums">{ledgerHiddenText ?? money(summary.pending.total)}</div>
-                <div className="text-xs text-muted-foreground mt-1">{ledgerHiddenText !== null ? ledgerHiddenDetail : pendingDetail}</div>
-              </GlassCard>
-              <GlassCard className="p-4">
-                <div className="text-xs text-muted-foreground">Paid YTD · {businessYear}, Phoenix business days</div>
-                <div className="text-2xl font-bold tabular-nums">{ledgerHiddenText ?? money(paidYtd.total)}</div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  {ledgerHiddenText !== null ? (
-                    ledgerHiddenDetail
-                  ) : (
-                    <>
-                      {plural(paidYtd.count, "deal")} paid since {paidYtd.yearStart}
-                      {paidYtd.undatedPaidCount > 0 && ` · ${plural(paidYtd.undatedPaidCount, "paid row")} without a payment date, not counted`}
-                      {paidYtd.futureDatedPaidCount > 0 && ` · ${plural(paidYtd.futureDatedPaidCount, "paid row")} dated after today, not counted`}
-                    </>
-                  )}
+        <section className="space-y-5" aria-label="Your issue and payment workspace">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div><h2 className="galaxy-heading text-2xl font-black italic uppercase">Issue &amp; pay</h2><p className="mt-1 text-base text-muted-foreground">Your policy commissions. Every rate, status and payment in view.</p></div>
+            <Button type="button" variant="outline" disabled={ledger.isFetching || estimates.isFetching || contract.isFetching || commissionTypes.isFetching} onClick={retryAll}><RefreshCw aria-hidden className="h-4 w-4" /> Refresh finances</Button>
+          </div>
+          {identity?.status === "resolved" && identity.note && <p className="text-sm text-muted-foreground">{identity.note}</p>}
+          <QueryState {...describeQuery({ ...ledger, isEmpty: false })} label="the commission ledger" onRetry={retryAll} asOf={ledger.dataUpdatedAt}>
+            {visibility === "restricted" && <p className="mb-4 text-sm text-amber-800 dark:text-amber-300">
+              This login reaches {mergedRecordName} through a merge. That record&apos;s commission ledger is visible only to its own login. Ask an admin to relink this login.
+            </p>}
+            <div className="space-y-5">
+              <CommissionOverview ledgerRows={ledgerRows ?? []} todayKey={todayKey} hiddenLabel={ledgerHiddenText} />
+              <QueryState status={sectionStatus} onRetry={retryAll} label="the commission ledger"
+                title={visibility === "restricted" ? "Nothing to show for this login" : "No commission rows yet"}
+                body={visibility === "restricted" ? "No posted production is on file for this agent record, and its commission ledger is not visible to this login." : "No ledger rows and no posted production are on file for this agent record."}>
+                <div className="space-y-5">
+                  <InlineReadNotice label="production estimates" read={estimates} onRetry={() => void estimates.refetch()} />
+                  <InlineReadNotice label="your contract rate" read={contract} onRetry={() => void contract.refetch()} />
+                  {visibility === "complete" && <CommissionCharts ledgerRows={ledgerRows ?? []} rows={reconciled.rows} todayKey={todayKey} />}
+                  <CommissionPolicyLedger key={`${user?.id}:${agentId}`} rows={reconciled.rows} todayKey={todayKey} ledgerHiddenText={ledgerHiddenText} hasProduction={production !== null} />
+                  <details className="rounded-xl border border-border bg-card p-4 sm:p-5">
+                    <summary className="cursor-pointer text-base font-bold">Rates, estimates &amp; record matching</summary>
+                    <div className="mt-4 space-y-4 text-sm text-muted-foreground">
+                      <p>Ledger rows use their recorded payout rate. Contract estimates are separate amounts and are never added to paid cash. A source status or an effective date does not prove an issue date or a premium payment.</p>
+                      {production === null && <p>Production estimates could not load, so this list holds ledger rows only and nothing is paired.</p>}
+                      {rateVerdict === "not_on_file" && <p>Your contract rate is not on file, so estimate amounts are not shown.</p>}
+                      {rateVerdict === "unknown" && <p>Your contract rate could not be verified, so estimate amounts are hidden until it loads.</p>}
+                      <p>{countParts.join(" · ")}</p>
+                      <p className="font-semibold text-foreground">Posted-production contract estimate: {estimateTotalText}</p>
+                      <QueryState {...describeQuery(commissionTypes)} label="commission estimates" onRetry={() => void commissionTypes.refetch()} asOf={commissionTypes.dataUpdatedAt}>
+                        <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{tiles.map(tile => <div key={tile.id} className="rounded-lg border border-border p-4">
+                          <dt className="font-semibold text-foreground">{tile.label}</dt><dd className="galaxy-stat mt-2 text-2xl font-black tabular-nums text-foreground">{tile.figure.kind === "amount" ? money(tile.figure.amount) : tile.figure.text}</dd><dd className="mt-2">{tile.detail}</dd>
+                        </div>)}</dl>
+                      </QueryState>
+                    </div>
+                  </details>
                 </div>
-              </GlassCard>
-              <GlassCard className="p-4">
-                <div className="text-xs text-muted-foreground">Clawed back (ledger)</div>
-                <div
-                  className={cn(
-                    "text-2xl font-bold tabular-nums",
-                    ledgerHiddenText === null && summary.clawedBack.total > 0 && "text-rose-600 dark:text-rose-400",
-                  )}
-                >
-                  {ledgerHiddenText ?? money(summary.clawedBack.total)}
-                </div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  {ledgerHiddenText !== null ? ledgerHiddenDetail : plural(summary.clawedBack.count, "deal")}
-                </div>
-              </GlassCard>
+              </QueryState>
             </div>
           </QueryState>
-
-          <QueryState
-            status={sectionStatus}
-            stale={ledger.isError && ledgerRows !== undefined}
-            error={ledger.error}
-            asOf={ledger.dataUpdatedAt}
-            onRetry={retryAll}
-            label="the commission ledger"
-            title={visibility === "restricted" ? "Nothing to show for this login" : "No commission rows yet"}
-            body={
-              visibility === "restricted"
-                ? "No posted production is on file for this agent record, and its commission ledger is not visible to this login."
-                : "No ledger rows and no posted production are on file for this agent record."
-            }
-          >
-            <InlineReadNotice label="production estimates" read={estimates} onRetry={() => void estimates.refetch()} />
-            <InlineReadNotice label="your contract rate" read={contract} onRetry={() => void contract.refetch()} />
-
-            <GlassCard className="border-amber-500/30 bg-amber-500/10 p-4">
-              <div className="flex items-start gap-2 text-sm text-amber-700 dark:text-amber-300">
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-                <div className="space-y-1">
-                  <p>
-                    Each deal shows its ledger row and its production estimate side by side. The ledger books each row at the rate source named on
-                    it, which can differ from your contract rate, so ledger and estimate amounts are totalled separately and never added together.
-                  </p>
-                  {production === null && <p>Production estimates could not load, so this list holds ledger rows only and nothing is paired.</p>}
-                  {rateVerdict === "not_on_file" && <p>Your contract rate is not on file, so estimate amounts are not shown.</p>}
-                  {rateVerdict === "unknown" && <p>Your contract rate could not be verified, so estimate amounts are hidden until it loads.</p>}
-                  <p className="text-xs">{countParts.join(" · ")}</p>
-                  <p className="text-xs">
-                    Ledger, paid and pending on open deals: {ledgerHiddenText ?? money(ledgerLiveTotal)} · Estimate at your comp level:{" "}
-                    {estimateTotalText}
-                  </p>
-                </div>
-              </div>
-            </GlassCard>
-
-            {monthly.months.length > 0 ? (
-              <GlassCard className="p-0 overflow-hidden">
-                <div className="px-4 py-3 border-b border-border/40 flex flex-wrap items-center justify-between gap-2 text-sm">
-                  <span className="font-semibold">
-                    By month · {businessYear} business year, Phoenix{production === null && " · ledger only, estimates unavailable"}
-                  </span>
-                  <span className="text-xs text-muted-foreground tabular-nums">
-                    {plural(monthTotals.deals, "deal")} · {plural(monthTotals.ledgerOnlyRows, "ledger-only row")} · {money(monthTotals.premium, 0)}{" "}
-                    premium · ledger {ledgerHiddenText ?? money(monthTotals.ledger)} · estimate{" "}
-                    {estimateFigure(monthTotals.estimate, monthTotals.deals, monthTotals.estimateExcluded)}
-                  </span>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
-                    <thead className="bg-muted/20">
-                      <tr>
-                        <th className="text-left px-3 py-2">Month</th>
-                        <th className="text-right px-3 py-2">Deals</th>
-                        <th className="text-right px-3 py-2">Ledger only</th>
-                        <th className="text-right px-3 py-2">Premium</th>
-                        <th className="text-right px-3 py-2">Ledger</th>
-                        <th className="text-right px-3 py-2">Estimate</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {monthly.months.map((m) => (
-                        <tr key={m.key} className="border-t border-border/20">
-                          <td className="px-3 py-1.5 font-medium">{m.label}</td>
-                          <td className="px-3 py-1.5 text-right tabular-nums">{m.deals.toLocaleString()}</td>
-                          <td className="px-3 py-1.5 text-right tabular-nums">{m.ledgerOnlyRows.toLocaleString()}</td>
-                          <td className="px-3 py-1.5 text-right tabular-nums">{money(m.premium, 0)}</td>
-                          <td className="px-3 py-1.5 text-right tabular-nums">{ledgerHiddenText ?? money(m.ledger)}</td>
-                          <td className="px-3 py-1.5 text-right tabular-nums">{estimateFigure(m.estimate, m.deals, m.estimateExcluded)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <p className="px-4 py-2 border-t border-border/40 text-[11px] text-muted-foreground">
-                  Deals are posted production rows, each counted once whether or not a ledger row is paired with it. A ledger row with no
-                  production pair is counted on its own under Ledger only and adds no premium. Ledger is paid rows and pending rows on open deals;
-                  estimate is your comp level on posted production.
-                  {leftOutOfMonths.length > 0 && ` Not in this table: ${leftOutOfMonths.join("; ")}.`}
-                </p>
-              </GlassCard>
-            ) : (
-              leftOutOfMonths.length > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  No rows fall in the {businessYear} business year so far. Not in the month table: {leftOutOfMonths.join("; ")}.
-                </p>
-              )
-            )}
-
-            <GlassCard className="p-0 overflow-hidden">
-              <div className="px-4 py-3 border-b border-border/40 text-sm font-semibold">
-                {production === null
-                  ? `Ledger rows (${reconciled.rows.length.toLocaleString()}) · ledger only, estimates unavailable`
-                  : `Ledger and estimates (${plural(reconciled.rows.length, "row")})`}
-              </div>
-              {reconciled.rows.length === 0 ? (
-                <p className="px-4 py-6 text-sm text-muted-foreground">
-                  {production === null ? "No ledger rows are on file, and production estimates could not load." : "No rows to show."}
-                </p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
-                    <thead className="bg-muted/20">
-                      <tr>
-                        <th className="text-left px-3 py-2">Date</th>
-                        <th className="text-left px-3 py-2">Client</th>
-                        <th className="text-left px-3 py-2">Carrier</th>
-                        <th className="text-left px-3 py-2">Product</th>
-                        <th className="text-right px-3 py-2">Premium</th>
-                        <th className="text-right px-3 py-2">Ledger</th>
-                        <th className="text-right px-3 py-2">Ledger rate</th>
-                        <th className="text-left px-3 py-2">Ledger status</th>
-                        <th className="text-right px-3 py-2">Estimate</th>
-                        <th className="text-right px-3 py-2">Estimate rate</th>
-                        <th className="text-left px-3 py-2">Expected pay</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {reconciled.rows.slice(0, visibleCount).map((r: CommissionRow) => {
-                        const closedLabel = r.ledger ? dealStatusLabel(r.ledger.dealStatus) : null;
-                        return (
-                          <tr key={r.id} className="border-t border-border/20 align-top">
-                            <td className="px-3 py-1.5 tabular-nums text-muted-foreground">
-                              {r.businessDate ?? "Not on file"}
-                              {r.estimate === null && r.businessDate !== null && <span className="block text-[10px]">ledger booking</span>}
-                            </td>
-                            <td className="px-3 py-1.5 font-medium">{r.clientName ?? "Not on file"}</td>
-                            <td className="px-3 py-1.5 text-muted-foreground">{r.carrierName ?? "Not on file"}</td>
-                            <td className="px-3 py-1.5 text-muted-foreground">{r.product ?? "Not on file"}</td>
-                            <td className="px-3 py-1.5 text-right tabular-nums">{r.annualPremium === null ? "Unavailable" : money(r.annualPremium)}</td>
-                            <td className="px-3 py-1.5 text-right tabular-nums">
-                              {r.ledger ? (
-                                <>
-                                  <span className="font-semibold">{money(r.ledger.amount)}</span>
-                                  {r.annualPremium !== null && r.ledger.annualPremium !== r.annualPremium && (
-                                    <span className="block text-[10px] text-muted-foreground">on {money(r.ledger.annualPremium)} premium</span>
-                                  )}
-                                </>
-                              ) : (
-                                <span className="text-muted-foreground">{ledgerHiddenText ?? "No ledger row"}</span>
-                              )}
-                            </td>
-                            <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">{r.ledger?.rateLabel}</td>
-                            <td className="px-3 py-1.5">
-                              {r.ledger && (
-                                <Badge variant="outline" className={ledgerBadgeClass(r.ledger)}>
-                                  {ledgerStatusLabel(r.ledger)}
-                                </Badge>
-                              )}
-                              {closedLabel && <span className="mt-0.5 block text-[10px] text-rose-600 dark:text-rose-400">{closedLabel}</span>}
-                              {r.ambiguous && (
-                                <span className="mt-0.5 block text-[10px] text-muted-foreground">not paired: no one-to-one production match</span>
-                              )}
-                            </td>
-                            <td className="px-3 py-1.5 text-right tabular-nums">
-                              {r.estimate ? (
-                                r.estimate.amount === null ? (
-                                  <span className="text-muted-foreground">Excluded</span>
-                                ) : (
-                                  <span className="font-semibold">{money(r.estimate.amount)}</span>
-                                )
-                              ) : (
-                                <span className="text-muted-foreground">{production === null ? "Unavailable" : "No production row"}</span>
-                              )}
-                            </td>
-                            <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">{r.estimate?.rateLabel}</td>
-                            <td className="px-3 py-1.5 text-muted-foreground">
-                              {r.ledger ? (
-                                <>
-                                  {r.ledger.expectedPaidDate ?? "Not on file"}
-                                  {r.ledger.status === "pending" &&
-                                    !r.ledger.dealClosed &&
-                                    isDateKey(r.ledger.expectedPaidDate) &&
-                                    r.ledger.expectedPaidDate < todayKey && <span className="block text-[10px]">past due, unpaid</span>}
-                                </>
-                              ) : (
-                                (ledgerHiddenText ?? "Not scheduled")
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-              {reconciled.rows.length > visibleCount && (
-                <div className="flex flex-wrap items-center justify-center gap-3 py-4 text-sm">
-                  <span className="text-muted-foreground">
-                    Showing {visibleCount.toLocaleString()} of {reconciled.rows.length.toLocaleString()}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setVisibleCount((n) => n + SHOW_MORE_STEP)}
-                    className="rounded-md border border-border bg-muted/40 px-4 py-1.5 font-medium text-foreground transition hover:bg-muted"
-                  >
-                    Show more ({(reconciled.rows.length - visibleCount).toLocaleString()} hidden)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setVisibleCount(reconciled.rows.length)}
-                    className="rounded-md px-3 py-1.5 font-medium text-primary transition hover:underline"
-                  >
-                    Show all
-                  </button>
-                </div>
-              )}
-            </GlassCard>
-          </QueryState>
-          {sectionStatus === "error" && (
-            <p className="text-xs text-muted-foreground">Production estimates are held until the ledger loads, so no deal shows without its ledger row.</p>
-          )}
-        </>
+          {sectionStatus === "error" && <p className="text-sm text-muted-foreground">Production estimates are held until the ledger loads, so no deal shows without its ledger row.</p>}
+        </section>
       )}
     </div>
   );

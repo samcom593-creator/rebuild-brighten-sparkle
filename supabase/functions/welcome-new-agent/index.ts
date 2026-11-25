@@ -161,7 +161,7 @@ const handler = async (req: Request): Promise<Response> => {
       </div>
       <div class="step">
         <h3><span class="step-number">4</span> Complete Your Contracting Profile</h3>
-        <p>Add your NPN number, first name, last name, email address, and resident state. Our team uses this to coordinate the carrier portal steps and track Combine, AFLAC, GTO, and Ethos on your profile. ${NOT_CONTRACTED_YET}</p>
+        <p>Add your NPN number, first name, last name, email address, and resident state. Our team uses this to coordinate your contracting through the MGN Agent Hub and record verified contract receipts on your profile. ${NOT_CONTRACTED_YET}</p>
         <a href="${contractingLink || CONTRACTING_PROFILE_URL}" class="button">Complete contracting profile →</a>
       </div>
       <div class="step">

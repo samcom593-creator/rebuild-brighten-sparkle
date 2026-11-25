@@ -1,0 +1,97 @@
+/* Shared operating-page typography. Imported by the lazy workspace layout so
+   public recruiting pages keep their existing payload and presentation. */
+.galaxy-workspace {
+  --galaxy-display-font: "Hanken Grotesk", system-ui, sans-serif;
+}
+
+.galaxy-workspace :is(h1, h2, h3),
+.galaxy-heading {
+  font-family: var(--galaxy-display-font, "Hanken Grotesk", system-ui, sans-serif);
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: -0.025em;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+
+/* Numbers stay readable and copyable. No skew transform, clipping, synthetic
+   graph or animated background competes with policy/payment details. */
+.galaxy-stat,
+.galaxy-workspace :is(.text-2xl, .text-3xl, .text-4xl, .text-5xl, .text-6xl).tabular-nums {
+  font-family: var(--galaxy-display-font, "Hanken Grotesk", system-ui, sans-serif);
+  font-weight: 800;
+  font-style: italic;
+  font-variant-numeric: lining-nums tabular-nums;
+  letter-spacing: -0.045em;
+  line-height: 1.05;
+}
+
+.galaxy-workspace .galaxy-card {
+  min-width: 0;
+  border-color: hsl(var(--border));
+  background-color: hsl(var(--card));
+}
+
+.galaxy-workspace .galaxy-card::before {
+  width: 3.5rem;
+  height: 3px;
+}
+
+.galaxy-workspace .galaxy-tabs {
+  gap: 0.25rem;
+  padding-block: 0.25rem;
+  scroll-snap-type: x proximity;
+  scrollbar-gutter: auto;
+}
+
+.galaxy-workspace .galaxy-tab {
+  min-height: 2.75rem;
+  font-weight: 800;
+  scroll-snap-align: start;
+}
+
+.galaxy-workspace .galaxy-tab[data-state="active"] {
+  background: hsl(var(--primary) / 0.08);
+}
+
+.galaxy-workspace .galaxy-button.bg-primary {
+  font-weight: 800;
+}
+
+.galaxy-workspace .galaxy-table thead {
+  background: hsl(var(--muted) / 0.55);
+}
+
+.galaxy-workspace .galaxy-table th {
+  font-weight: 800;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.galaxy-workspace .galaxy-table :is(th, td) {
+  font-variant-numeric: tabular-nums;
+}
+
+.galaxy-workspace :is(input, textarea, select) {
+  font-size: 1rem;
+}
+
+.galaxy-workspace :is(button, a, input, textarea, select, [role="tab"]):focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 3px;
+}
+
+.galaxy-page {
+  min-width: 0;
+  width: 100%;
+}
+
+.galaxy-page > * + * {
+  margin-top: 1.25rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .galaxy-workspace .galaxy-tabs {
+    scroll-behavior: auto;
+  }
+}

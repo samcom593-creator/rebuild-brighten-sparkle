@@ -33,6 +33,9 @@ import {
   monthLabel,
   normalizePolicyNumber,
   paidYearToDate,
+  paidCommissionTrend,
+  commissionPaymentState,
+  isDateKey,
   policyMatchKey,
   rateSourcePhrase,
   rateVerdictFromContracts,
@@ -250,7 +253,7 @@ describe("commissionTypeTiles", () => {
   it("points only admin logins at Finances, the one page with the team view", () => {
     const forAdmin = commissionTypeTiles({ types, rate: "on_file", rateChecking: false, financesVisible: true });
     const forOthers = commissionTypeTiles({ types, rate: "on_file", rateChecking: false, financesVisible: false });
-    expect(forAdmin.find((t) => t.id === "override")?.detail).toBe("Your own-production read leaves out team overrides; see Finances for the team view.");
+    expect(forAdmin.find((t) => t.id === "override")?.detail).toBe("Your own-production read leaves out team overrides; open Management in Finances for the team view.");
     expect(forOthers.find((t) => t.id === "override")?.detail).toBe("Your own-production read leaves out team overrides.");
   });
 
@@ -769,5 +772,56 @@ describe("collectAllPages", () => {
 
   it("rejects a page size that is not a positive integer", async () => {
     await expect(collectAllPages(async () => ({ data: [], error: null }), 0)).rejects.toThrow(RangeError);
+  });
+});
+
+describe("finance payment evidence and charts", () => {
+  it("uses the real payment date, never the booking date, premium or pending amount", () => {
+    const rows = [
+      ledgerRow({ id: "paid", status: "paid", amount: 200, annual_premium: 9999, created_at: "2025-03-02T10:00:00Z", actual_paid_date: "2026-11-21" }),
+      ledgerRow({ id: "pending", amount: 700, actual_paid_date: "2026-11-21" }),
+      ledgerRow({ id: "old", status: "paid", amount: 500, actual_paid_date: "2025-11-21" }),
+      ledgerRow({ id: "future", status: "paid", amount: 600, actual_paid_date: "2026-12-01" }),
+      ledgerRow({ id: "undated", status: "paid", amount: 800 }),
+      ledgerRow({ id: "invalid", status: "paid", amount: 900, actual_paid_date: "2026-02-30" }),
+    ];
+    const trend = paidCommissionTrend(rows, "2026-11-25");
+    expect(trend).toHaveLength(11);
+    expect(trend.find(month => month.key === "2026-11")).toEqual({ key: "2026-11", label: "Nov", amount: 200, count: 1 });
+    expect(trend.reduce((sum, month) => sum + month.amount, 0)).toBe(paidYearToDate(rows, "2026-11-25").total);
+    expect(trend.reduce((sum, month) => sum + month.count, 0)).toBe(1);
+    expect(paidYearToDate(rows, "2026-11-25").undatedPaidCount).toBe(2);
+  });
+
+  it("preserves recorded zero and negative amounts without fabricating chart floors", () => {
+    const trend = paidCommissionTrend([
+      ledgerRow({ id: "zero", status: "paid", amount: 0, actual_paid_date: "2026-10-01" }),
+      ledgerRow({ id: "signed", status: "paid", amount: -25, actual_paid_date: "2026-11-01" }),
+    ], "2026-11-25");
+    expect(trend[9]).toMatchObject({ amount: 0, count: 1 });
+    expect(trend[10]).toMatchObject({ amount: -25, count: 1 });
+  });
+
+  it.each([
+    ["2026-02-30", false], ["2026-13-01", false], ["2026-11-00", false], ["2024-02-29", true], ["2026-11-25", true],
+  ])("requires a real calendar payment date %s", (date, valid) => {
+    expect(isDateKey(date)).toBe(valid);
+  });
+
+  it("classifies closed pending, actual dated payments and unknown payment states independently of source issue status", () => {
+    const rows = [
+      ledgerRow({ id: "paid", status: "paid", actual_paid_date: "2026-11-21" }),
+      ledgerRow({ id: "future", status: "paid", actual_paid_date: "2026-12-01" }),
+      ledgerRow({ id: "invalid", status: "paid", actual_paid_date: "2026-02-30" }),
+      ledgerRow({ id: "issued", deal_status: "issued" }),
+      ledgerRow({ id: "closed", deal_status: "lapsed" }),
+      ledgerRow({ id: "voided", status: "voided" }),
+      ledgerRow({ id: "clawed", status: "clawed_back" }),
+      ledgerRow({ id: "unknown", status: "unrecognized" }),
+    ];
+    const reconciled = reconcileCommissions(rows, [], "on_file");
+    const states = Object.fromEntries(reconciled.rows.map(row => [row.ledger!.ledgerId, commissionPaymentState(row.ledger, "2026-11-25")]));
+    expect(states).toEqual({ paid: "paid", future: "unverified", invalid: "unverified", issued: "pending", closed: "closed", voided: "closed", clawed: "clawed_back", unknown: "unverified" });
+    expect(commissionPaymentState(null, "2026-11-25")).toBe("estimate_only");
   });
 });

@@ -2,10 +2,14 @@
 export interface DemoNumberField {
   key: string;
   label: string;
-  value: number;
+  value: number | null;
   kind: "money" | "count" | "percent";
   min?: number;
   max?: number;
+  /** Explicitly optional demonstration inputs have no live source value. */
+  allowUnknown?: boolean;
+  /** Same-scope figure this input must not exceed. Checked after the whole edit. */
+  maxFieldKey?: string;
 }
 
 export interface DemoNumberScope {
@@ -28,7 +32,7 @@ export interface ProductionDemoSnapshot {
 }
 
 type DemoStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
-export type DemoValidation = { ok: true; value: number } | { ok: false; error: string };
+export type DemoValidation = { ok: true; value: number | null } | { ok: false; error: string };
 export type DemoSaveResult = { ok: true } | { ok: false; error: string };
 
 const PREFIX = "galaxy:production-demo:v1:";
@@ -52,6 +56,9 @@ function browserStorage(): DemoStorage | null {
 }
 
 export function validateDemoNumber(field: DemoNumberField, input: unknown): DemoValidation {
+  if (field.allowUnknown && field.value === null && (input === null || (typeof input === "string" && !input.trim()))) {
+    return { ok: true, value: null };
+  }
   if ((typeof input !== "string" && typeof input !== "number") || (typeof input === "string" && !input.trim())) {
     return { ok: false, error: `${field.label}: enter a number.` };
   }
@@ -78,6 +85,7 @@ export function normalizeDemoFields(fields: readonly DemoNumberField[]): readonl
   const valid: DemoNumberField[] = [];
   for (const field of fields) {
     if (!usableKey(field.key) || !field.label?.trim() || !["money", "count", "percent"].includes(field.kind)) continue;
+    if (field.maxFieldKey && (!usableKey(field.maxFieldKey) || field.maxFieldKey === field.key)) continue;
     if (seen.has(field.key)) { duplicates.add(field.key); continue; }
     seen.add(field.key);
     if (!validateDemoNumber(field, field.value).ok) continue;
@@ -162,7 +170,7 @@ export class ProductionDemoStore {
   };
 
   save = (edits: readonly DemoNumberEdit[]): DemoSaveResult => {
-    const validated: Array<{ scopeKey: string; key: string; value: number; source: number }> = [];
+    const validated: Array<{ scopeKey: string; key: string; value: number | null; source: number | null }> = [];
     const seen = new Set<string>();
     for (const edit of edits) {
       const field = this.snapshot.scopes.find((scope) => scope.scopeKey === edit.scopeKey)?.fields.find((candidate) => candidate.key === edit.key);
@@ -177,10 +185,27 @@ export class ProductionDemoStore {
     const next: Record<string, Record<string, number>> = Object.fromEntries(Object.entries(this.overrides).map(([scope, fields]) => [scope, { ...fields }]));
     for (const edit of validated) {
       const fields = next[edit.scopeKey] ?? {};
-      if (edit.value === edit.source) delete fields[edit.key];
+      if (edit.value === null || edit.value === edit.source) delete fields[edit.key];
       else fields[edit.key] = edit.value;
       if (Object.keys(fields).length) next[edit.scopeKey] = fields;
       else delete next[edit.scopeKey];
+    }
+    // Validate the final cohort, including a lowered denominator with an
+    // existing issued/paid override. No partial edits or storage writes occur.
+    for (const scope of this.snapshot.scopes) {
+      const proposed = new Map(scope.fields.map(field => [field.key, next[scope.scopeKey]?.[field.key] ?? field.value]));
+      for (const field of scope.fields) {
+        if (!field.maxFieldKey) continue;
+        const value = proposed.get(field.key);
+        const limit = proposed.get(field.maxFieldKey);
+        if (typeof value === "number" && (typeof limit !== "number" || !Number.isFinite(limit))) {
+          return { ok: false, error: `${field.label}: the matching cohort total is unavailable. Refresh before editing.` };
+        }
+        if (typeof value === "number" && typeof limit === "number" && value > limit) {
+          const limitLabel = scope.fields.find(candidate => candidate.key === field.maxFieldKey)?.label ?? "the cohort total";
+          return { ok: false, error: `${field.label} cannot exceed ${limitLabel}.` };
+        }
+      }
     }
     this.overrides = freezeOverrides(next);
     this.persist();
@@ -231,15 +256,24 @@ export class ProductionDemoStore {
 
 /** Applies only valid registered-number overrides; source objects and unknown values stay untouched. */
 export function demoNumberValues(scopeKey: string, fields: readonly DemoNumberField[], overrides: Overrides): { values: Record<string, number>; isDemo: boolean } {
-  const values = Object.fromEntries(fields.filter((field) => usableKey(field.key)).map((field) => [field.key, field.value]));
-  let isDemo = false;
-  for (const field of normalizeDemoFields(fields)) {
+  const values: Record<string, number> = Object.fromEntries(fields.filter((field) => usableKey(field.key) && typeof field.value === "number").map((field) => [field.key, field.value as number]));
+  const applied = new Set<string>();
+  const normalized = normalizeDemoFields(fields);
+  for (const field of normalized) {
     const proposed = overrides[scopeKey]?.[field.key];
     if (proposed === undefined) continue;
     const result = validateDemoNumber(field, proposed);
-    if (result.ok === false) continue;
+    if (result.ok === false || result.value === null) continue;
     values[field.key] = result.value;
-    isDemo = true;
+    applied.add(field.key);
   }
-  return { values, isDemo };
+  // A restored session or changed live baseline cannot resurrect an invalid
+  // paid > submitted cohort. Unknown demo inputs revert to unknown.
+  for (const field of normalized) {
+    if (!field.maxFieldKey || values[field.key] === undefined || (Number.isFinite(values[field.maxFieldKey]) && values[field.key] <= values[field.maxFieldKey])) continue;
+    if (field.value === null) delete values[field.key];
+    else values[field.key] = field.value;
+    applied.delete(field.key);
+  }
+  return { values, isDemo: applied.size > 0 };
 }

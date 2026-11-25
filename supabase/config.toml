@@ -800,6 +800,22 @@ verify_jwt = true
 [functions.myday-todoist]
 verify_jwt = true
 
+# Caller-authenticated creation of an agent's own general task.
+[functions.personal-task-create]
+verify_jwt = true
+
+# Private training playback: caller JWT + exact authorized catalog row before fixed-bucket signing.
+[functions.training-recording-url]
+verify_jwt = true
+
+# Caller RPC selects the exact ReadyMode file and privacy variant before signing.
+[functions.readymode-recording-url]
+verify_jwt = true
+
+# Caller-gated lead recording receipt before signing its fixed call-recordings object.
+[functions.lead-recording-url]
+verify_jwt = true
+
 # contracting-sheet-sync: the 15-minute pg_cron reconciliation calls it with the APEX bot token, which is not a JWT, so
 # the gateway must not pre-verify; the function checks an admin JWT or the bot token itself (2026-10-14).
 [functions.contracting-sheet-sync]

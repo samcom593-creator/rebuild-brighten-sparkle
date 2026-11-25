@@ -81,11 +81,11 @@ describe("contracting call list helpers", () => {
     profile_saved: false, details_saved: false, request_status: null, lifetime_deals: 0, last_sale: null, followup: null, ...o,
   });
 
-  it("names the next step in plain words, with partial carrier progress when there is some", () => {
+  it("names saved profile evidence and labels previous checklist confirmations as historical", () => {
     expect(callReason(call(), NOW)).toBe("No contracting profile saved");
     expect(callReason(call({ reason: "opened_not_saved", last_opened_at: "2026-10-14T17:00:00Z", opens: 3 }), NOW)).toBe("Opened the link 3 h ago (3 times), saved nothing");
     expect(callReason(call({ reason: "missing_details", profile_saved: true }), NOW)).toBe("Saved their profile, still needs DOB + address");
-    expect(callReason(call({ marked_count: 3 }), NOW)).toBe("No contracting profile saved · 3 of 4 carriers confirmed");
+    expect(callReason(call({ marked_count: 3 }), NOW)).toBe("No contracting profile saved · 3 previous checklist confirmations");
   });
 
   it("treats a posted deal as contracting evidence: a seller is described by their sales, never as never-opened", () => {
@@ -94,7 +94,7 @@ describe("contracting call list helpers", () => {
   });
 
   it("says what finished a finished person instead of a step they no longer owe", () => {
-    expect(callReason(call({ bucket: "finished", marked_count: 4 }), NOW)).toBe("All four carriers confirmed");
+    expect(callReason(call({ bucket: "finished", marked_count: 4 }), NOW)).toBe("Previous checklist marked complete");
     expect(callReason(call({ bucket: "finished", request_status: "submitted" }), NOW)).toBe("Request submitted");
     expect(callReason(call({ bucket: "finished", profile_saved: true, details_saved: true }), NOW)).toBe("Profile, DOB and address saved");
   });
@@ -117,7 +117,7 @@ describe("contracting call list helpers", () => {
   });
 
   it("texts the first name and the link, and says 'there' to a record whose name is a raw email", () => {
-    expect(smsBody("Tyler Krejcha", "https://x.test/c")).toBe("Hey Tyler, your contracting isn't finished yet. Finish it here so we can get you contracted: https://x.test/c");
+    expect(smsBody("Tyler Krejcha", "https://x.test/c")).toBe("Hey Tyler, can you confirm your current contracting status and any next step you need help with? MGN Agent Hub: https://x.test/c");
     expect(smsBody("jadenselvaraj@gmail.com", "https://x.test/c")).toContain("Hey there,");
     expect(smsBody("   ", "https://x.test/c")).toContain("Hey there,");
   });

@@ -40,7 +40,7 @@ import { useConfirm } from "@/hooks/useConfirm";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { toast } from "sonner";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { PageSkeleton } from "@/components/ui/page-skeleton";
 import { PageHeader } from "@/components/ui/page-header";
 import { TonePill } from "@/components/ui/delight/ToneBubble";
@@ -792,6 +792,7 @@ export default function LaunchBoard() {
         icon={<Clapperboard />}
         tone="gold"
         title="Launch Board"
+        secondaryActions={<Button asChild variant="outline" className="min-h-11"><Link to="/dashboard/admin/social-media-bot">Social media approvals</Link></Button>}
         subtitle="Every video from idea to published."
         primaryAction={
           // Outline on purpose: the one gold button is Up next's.

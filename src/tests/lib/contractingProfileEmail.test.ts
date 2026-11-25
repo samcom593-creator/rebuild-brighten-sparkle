@@ -18,6 +18,7 @@ const BANNED: Array<[string, RegExp]> = [
   ["a spreadsheet step", /spreadsheet|ethos sheet/i],
   ["the retired intake link", /start-contracting/i],
   ["the retired checklist", /first contract/i],
+  ["the retired current-carrier promise", /Combine, AFLAC, GTO(?:,)? and Ethos/i],
 ];
 
 describe("the contracting profile email", () => {
@@ -25,7 +26,7 @@ describe("the contracting profile email", () => {
     expect(CONTRACTING_PROFILE_SUBJECT).toBe("Complete your contracting profile");
   });
 
-  it("has the exact body: the MGN hub first, the five fields, the four carriers in order, the links, the not-contracted-yet sentence and the team sign-off", () => {
+  it("has the exact body: the MGN hub first, the five fields, the links, the not-contracted-yet sentence and the team sign-off", () => {
     expect(contractingProfileEmailText("Ana")).toBe([
       "Hi Ana,",
       "",
@@ -35,7 +36,7 @@ describe("the contracting profile email", () => {
       "",
       `Complete contracting profile: ${EDGE_URL}`,
       "",
-      "Our team will use this information to coordinate the carrier portal steps and track Combine, AFLAC, GTO, and Ethos on your profile.",
+      "Our team will use this information to coordinate your contracting through the MGN Agent Hub and record verified contract receipts on your profile.",
       "",
       "Submitting your information does not mean carrier contracting is complete.",
       "",

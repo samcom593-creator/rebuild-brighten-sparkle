@@ -154,9 +154,9 @@ function DailyStrip({ daily }: { daily: PlatformPulse["daily"] }) {
   );
 }
 
-export function PlatformPulsePanel() {
+export function PlatformPulsePanel({ viewerId }: { viewerId: string }) {
   const { isAdmin } = useAuth();
-  const q = useQuery({ queryKey: ["admin-platform-pulse"], queryFn: fetchPulse, enabled: isAdmin, staleTime: 300_000 });
+  const q = useQuery({ queryKey: ["admin-platform-pulse", viewerId], queryFn: fetchPulse, enabled: isAdmin && Boolean(viewerId), staleTime: 300_000 });
   const [filter, setFilter] = useState<PulseFilter>("not_selling");
   const [showAll, setShowAll] = useState(false);
   const data = q.data;

@@ -140,7 +140,7 @@ export function ReviewDetailsDrawer({ open, onOpenChange, agent, carriers, canEd
             <p className="text-sm text-foreground">You have unsaved edits. Keep editing or discard them before closing.</p>
             <div className="flex gap-2"><Button size="sm" onClick={() => setCloseWarning(false)}>Keep editing</Button><Button size="sm" variant="outline" onClick={() => onOpenChange(false)}>Discard & close</Button></div>
           </div> : null}
-          <section aria-label="Carriers" className="space-y-2">
+          {carriers.length > 0 ? <section aria-label="Carriers" className="space-y-2">
             <h3 className="text-sm font-semibold text-foreground">Carriers</h3>
             <p className="text-xs text-muted-foreground">Contracting happens in each carrier&apos;s own portal. Confirm a circle here only after you have checked it yourself. Opening a portal does not mark anything.</p>
             <ul className="divide-y divide-border rounded-lg border border-border">
@@ -160,7 +160,7 @@ export function ReviewDetailsDrawer({ open, onOpenChange, agent, carriers, canEd
               ))}
             </ul>
             {!canEdit ? <p className="text-xs text-muted-foreground">View only. Admins and managers confirm carriers.</p> : null}
-          </section>
+          </section> : null}
 
           <section aria-label="Placement level" className="space-y-2 border-t border-border pt-4">
             <h3 className="text-sm font-semibold text-foreground">Placement level</h3>

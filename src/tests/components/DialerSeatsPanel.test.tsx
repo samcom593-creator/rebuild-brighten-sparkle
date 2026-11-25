@@ -31,7 +31,7 @@ const seats = (over: Partial<DialerSeats> = {}): DialerSeats => ({
 });
 function renderPanel() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={qc}><DialerSeatsPanel /></QueryClientProvider>);
+  return render(<QueryClientProvider client={qc}><DialerSeatsPanel viewerId="admin-viewer" /></QueryClientProvider>);
 }
 
 describe("DialerSeatsPanel", () => {

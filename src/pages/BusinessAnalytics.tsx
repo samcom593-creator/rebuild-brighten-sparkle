@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 // BusinessAnalytics — the APEX "Reports" route.
 //
 // 2026-08-19 · AGENT CLOUD composition pass. Presentation only — no query,
@@ -23,6 +24,10 @@ import { DollarSign, Trophy, Users, Target, TrendingUp, RefreshCw, Sparkles, Fla
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { useAuth } from "@/hooks/useAuth";
+import { useRolePreview } from "@/hooks/useRolePreview";
+import { AccessDeniedPanel } from "@/components/AccessDeniedPanel";
+import { PageSkeleton } from "@/components/ui/page-skeleton";
 import { PageHeader } from "@/components/ui/page-header";
 import { PlatformPulsePanel } from "@/components/dashboard/PlatformPulsePanel";
 import { DialerSeatsPanel } from "@/components/dashboard/DialerSeatsPanel";
@@ -132,13 +137,31 @@ interface Insights {
 
 export default function BusinessAnalytics() {
   usePageTitle("Business Analytics · Galaxy");
+  const { user, isLoading, isAdmin } = useAuth();
+  const { isPreviewing } = useRolePreview();
+
+  if (isLoading) return <PageSkeleton />;
+  if (!user || !isAdmin || isPreviewing) {
+    return (
+      <AccessDeniedPanel
+        pathname="/dashboard/analytics"
+        requirement={isPreviewing ? "your real admin account outside role preview" : "an admin account"}
+        homeHref="/dashboard"
+      />
+    );
+  }
+  return <BusinessAnalyticsContent key={user.id} viewerId={user.id} />;
+}
+
+function BusinessAnalyticsContent({ viewerId }: { viewerId: string }) {
 
   const summary = useQuery({
-    queryKey: ["business-analytics-summary"],
-    queryFn: async () => {
+    queryKey: ["business-analytics-summary", viewerId],
+    queryFn: async ({ signal }) => {
       const { data, error } = await supabase
         .from("v_business_analytics_summary" as any)
         .select("total_deals_mtd, total_premium_mtd, active_producers_30d, avg_deal_size, premium_last_month, growth_pct_mom")
+        .abortSignal(signal)
         .maybeSingle();
       if (error) throw error;
       return data as unknown as Summary;
@@ -147,11 +170,12 @@ export default function BusinessAnalytics() {
   });
 
   const carriers = useQuery({
-    queryKey: ["business-analytics-carriers"],
-    queryFn: async () => {
+    queryKey: ["business-analytics-carriers", viewerId],
+    queryFn: async ({ signal }) => {
       const { data, error } = await supabase
         .from("v_business_analytics_carriers" as any)
         .select("carrier_id, carrier_name, deal_count, total_premium, avg_deal_size")
+        .abortSignal(signal)
         .limit(15);
       if (error) throw error;
       return (data ?? []) as unknown as Carrier[];
@@ -160,11 +184,12 @@ export default function BusinessAnalytics() {
   });
 
   const insights = useQuery({
-    queryKey: ["business-analytics-insights"],
-    queryFn: async () => {
+    queryKey: ["business-analytics-insights", viewerId],
+    queryFn: async ({ signal }) => {
       const { data, error } = await supabase
         .from("v_business_analytics_insights" as any)
         .select("top_carrier_name, top_carrier_share_pct, top_carrier_deals, top3_producer_share_pct, team_producers, team_deals_30d, team_premium_30d, streak_days, days_in_month_elapsed")
+        .abortSignal(signal)
         .maybeSingle();
       if (error) throw error;
       return data as unknown as Insights;
@@ -174,11 +199,12 @@ export default function BusinessAnalytics() {
   const ins = insights.data;
 
   const challenges = useQuery({
-    queryKey: ["sales-challenges"],
-    queryFn: async () => {
+    queryKey: ["sales-challenges", viewerId],
+    queryFn: async ({ signal }) => {
       const { data, error } = await supabase
         .from("v_sales_challenges" as any)
-        .select("period, current_premium, target_premium, current_deals, target_deals, period_end_at");
+        .select("period, current_premium, target_premium, current_deals, target_deals, period_end_at")
+        .abortSignal(signal);
       if (error) throw error;
       return (data ?? []) as unknown as Challenge[];
     },
@@ -186,11 +212,12 @@ export default function BusinessAnalytics() {
   });
 
   const trophy = useQuery({
-    queryKey: ["trophy-cabinet"],
-    queryFn: async () => {
+    queryKey: ["trophy-cabinet", viewerId],
+    queryFn: async ({ signal }) => {
       const { data, error } = await supabase
         .from("v_trophy_cabinet" as any)
         .select("daily_wins, weekly_wins, monthly_wins, quarterly_wins, total_wins")
+        .abortSignal(signal)
         .maybeSingle();
       if (error) throw error;
       return data as unknown as TrophyCabinet;
@@ -201,11 +228,12 @@ export default function BusinessAnalytics() {
 
   // WAVE FINAL · personalized insights backing the AgentLink-style cards
   const needsAttention = useQuery({
-    queryKey: ["agents-needs-attention"],
-    queryFn: async () => {
+    queryKey: ["agents-needs-attention", viewerId],
+    queryFn: async ({ signal }) => {
       const { data, error } = await supabase
         .from("v_agents_needs_attention" as any)
-        .select("id, display_name, agent_code, deals_30d, premium_30d, potential_30d, recommendation");
+        .select("id, display_name, agent_code, deals_30d, premium_30d, potential_30d, recommendation")
+        .abortSignal(signal);
       if (error) throw error;
       return (data ?? []) as unknown as NeedsAttention[];
     },
@@ -213,11 +241,12 @@ export default function BusinessAnalytics() {
   });
 
   const learnFrom = useQuery({
-    queryKey: ["agents-learn-from"],
-    queryFn: async () => {
+    queryKey: ["agents-learn-from", viewerId],
+    queryFn: async ({ signal }) => {
       const { data, error } = await supabase
         .from("v_agents_learn_from" as any)
-        .select("user_id, display_name, agent_code, deals_30d, premium_30d, pct_above_avg");
+        .select("user_id, display_name, agent_code, deals_30d, premium_30d, pct_above_avg")
+        .abortSignal(signal);
       if (error) throw error;
       return (data ?? []) as unknown as LearnFrom[];
     },
@@ -225,11 +254,12 @@ export default function BusinessAnalytics() {
   });
 
   const inactive = useQuery({
-    queryKey: ["agents-inactive-summary"],
-    queryFn: async () => {
+    queryKey: ["agents-inactive-summary", viewerId],
+    queryFn: async ({ signal }) => {
       const { data, error } = await supabase
         .from("v_inactive_agents_summary" as any)
         .select("inactive_count, sample_names")
+        .abortSignal(signal)
         .maybeSingle();
       if (error) throw error;
       return data as unknown as InactiveSummary;
@@ -293,6 +323,7 @@ export default function BusinessAnalytics() {
         subtitle="This team's production, carriers and coaching signals, recomputed from the book every five minutes."
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            <Button asChild variant="outline" size="sm" className="min-h-11"><Link to="/dashboard/admin/performance-bot">Performance goals</Link></Button>
             <Badge variant="outline" className="uppercase tracking-wide">Last 30 days</Badge>
             {/* WAVE FINAL · AI Insights jump-to-section button · mirrors AgentLink's
                 top-right "AI Insights" header button. Scrolls to the AI section. */}
@@ -317,9 +348,9 @@ export default function BusinessAnalytics() {
       />
 
       {/* MP-BEST-2: who is really using the platform. Renders for admins only; nothing for a manager. */}
-      <PlatformPulsePanel />
+      <PlatformPulsePanel viewerId={viewerId} />
       {/* MP-SEATS-1: who holds a dialer seat and what the seat automation did. Admins only. */}
-      <DialerSeatsPanel />
+      <DialerSeatsPanel viewerId={viewerId} />
 
       {/* KPI STAT ROW · Production · Policies · Producers · Growth. Leads the page
           per the AC Reports composition; every value is live from

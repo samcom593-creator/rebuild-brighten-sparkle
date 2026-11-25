@@ -14,14 +14,14 @@
  *   ✅ Presenter with is_presenting=true accesses the route
  *   ✅ Presenter check failure (Supabase throws) → blocks access
  *   ✅ Loading skeleton shown during initial auth check
- *   ✅ Skeleton NOT shown after auth has resolved once (hasResolved guard)
+ *   ✅ Same-account refresh preserves the mounted page; a new account waits for its own roles
  *
  * Missing / not yet tested:
  *   ❌ Presenter check cancellation on unmount (no DB state corruption)
- *   ❌ allowPresenters=true + user switches mid-render (userId changes)
  */
+import { useState } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -261,5 +261,88 @@ describe("ProtectedRoute — loading state", () => {
     // The SkeletonLoader renders something; assert children are NOT shown
     expect(screen.queryByText("Protected content")).not.toBeInTheDocument();
     expect(screen.queryByText("Login page")).not.toBeInTheDocument();
+  });
+});
+
+describe("ProtectedRoute — account isolation", () => {
+  function PrivateDraft() {
+    const [draft, setDraft] = useState("");
+    return <input aria-label="Private draft" value={draft} onChange={event => setDraft(event.target.value)} />;
+  }
+  const privateRoute = () => (
+    <MemoryRouter initialEntries={["/admin"]}>
+      <ProtectedRoute requireAdmin><PrivateDraft /></ProtectedRoute>
+    </MemoryRouter>
+  );
+
+  it("keeps a same-account draft mounted during a role/session refresh", () => {
+    mockUseAuth.mockReturnValue({ ...mockUseAuth(), isAdmin: true });
+    const view = render(privateRoute());
+    fireEvent.change(screen.getByRole("textbox", { name: "Private draft" }), { target: { value: "Current account draft" } });
+    mockUseAuth.mockReturnValue({ ...mockUseAuth(), isLoading: true });
+    view.rerender(privateRoute());
+    expect(screen.getByRole("textbox", { name: "Private draft" })).toHaveValue("Current account draft");
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+
+  it("hides the old account while a new user's retained admin flag is unresolved", () => {
+    mockUseAuth.mockReturnValue({ ...mockUseAuth(), isAdmin: true });
+    const view = render(privateRoute());
+    fireEvent.change(screen.getByRole("textbox", { name: "Private draft" }), { target: { value: "Prior account draft" } });
+    mockUseAuth.mockReturnValue({ ...mockUseAuth(), user: { id: "user-2" } as any, isLoading: true });
+    view.rerender(privateRoute());
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveAttribute("aria-busy", "true");
+    mockUseAuth.mockReturnValue({ ...mockUseAuth(), isLoading: false, isAdmin: false });
+    view.rerender(privateRoute());
+    expect(screen.getByRole("alert")).toHaveTextContent("needs an admin account");
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+  });
+
+  it("remounts local private state for a different already-resolved authorized account", () => {
+    mockUseAuth.mockReturnValue({ ...mockUseAuth(), isAdmin: true });
+    const view = render(privateRoute());
+    fireEvent.change(screen.getByRole("textbox", { name: "Private draft" }), { target: { value: "Prior account draft" } });
+    mockUseAuth.mockReturnValue({ ...mockUseAuth(), user: { id: "user-2" } as any });
+    view.rerender(privateRoute());
+    expect(screen.getByRole("textbox", { name: "Private draft" })).toHaveValue("");
+  });
+
+  it("does not reuse an earlier resolution when accounts switch A to B to A while loading", () => {
+    mockUseAuth.mockReturnValue({ ...mockUseAuth(), isAdmin: true });
+    const view = render(privateRoute());
+    mockUseAuth.mockReturnValue({ ...mockUseAuth(), user: { id: "user-2" } as any, isLoading: true });
+    view.rerender(privateRoute());
+    mockUseAuth.mockReturnValue({ ...mockUseAuth(), user: { id: "user-1" } as any });
+    view.rerender(privateRoute());
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveAttribute("aria-busy", "true");
+  });
+
+  it("ignores a previous account's delayed presenter approval", async () => {
+    let finishFirst!: (value: { data: unknown[]; error: null }) => void;
+    let finishSecond!: (value: { data: unknown[]; error: null }) => void;
+    const limit = vi.fn()
+      .mockImplementationOnce(() => new Promise(resolve => { finishFirst = resolve; }))
+      .mockImplementationOnce(() => new Promise(resolve => { finishSecond = resolve; }));
+    vi.mocked(supabase.from).mockReturnValue({ select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), limit } as any);
+    const node = () => (
+      <MemoryRouter initialEntries={["/seminar"]}>
+        <ProtectedRoute requireAdmin allowPresenters><div>Protected content</div></ProtectedRoute>
+      </MemoryRouter>
+    );
+    const view = render(node());
+    await waitFor(() => expect(limit).toHaveBeenCalledTimes(1));
+    mockUseAuth.mockReturnValue({ ...mockUseAuth(), user: { id: "user-2" } as any, isLoading: true });
+    view.rerender(node());
+    expect(limit).toHaveBeenCalledTimes(1);
+    mockUseAuth.mockReturnValue({ ...mockUseAuth(), isLoading: false });
+    view.rerender(node());
+    await waitFor(() => expect(limit).toHaveBeenCalledTimes(2));
+    await act(async () => finishFirst({ data: [{ is_presenting: true }], error: null }));
+    expect(screen.queryByText("Protected content")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveAttribute("aria-busy", "true");
+    await act(async () => finishSecond({ data: [], error: null }));
+    expectAccessDenied("/seminar", "an admin or active presenter account", "/dashboard");
   });
 });

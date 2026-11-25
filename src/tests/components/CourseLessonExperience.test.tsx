@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, act } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { CourseTranscript } from "@/components/course/CourseTranscript";
@@ -96,5 +96,99 @@ describe("field-course lesson media", () => {
     );
     expect(screen.getByText("Lesson chapters")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /emotional discipline/i })).toBeDisabled();
+  });
+
+  it("resets native playback and persisted progress when the selected recording changes", () => {
+    const save = vi.fn();
+    const complete = vi.fn();
+    const { rerender } = render(<CourseVideoPlayer videoUrl="https://cdn.example.com/first.mp4" title="First" watchedPercent={60} onProgressUpdate={save} onVideoComplete={complete} />);
+    const first = screen.getByLabelText("First video") as HTMLVideoElement;
+    Object.defineProperty(first, "duration", { value: 100, configurable: true });
+    fireEvent.loadedMetadata(first);
+    expect(first.currentTime).toBe(60);
+
+    rerender(<CourseVideoPlayer videoUrl="https://cdn.example.com/second.mp4" title="Second" watchedPercent={0} onProgressUpdate={save} onVideoComplete={complete} />);
+    const second = screen.getByLabelText("Second video") as HTMLVideoElement;
+    expect(second).not.toBe(first);
+    expect(screen.getByText("0% watched")).toBeInTheDocument();
+    Object.defineProperty(second, "duration", { value: 100, configurable: true });
+    fireEvent.loadedMetadata(second);
+    second.currentTime = 10;
+    fireEvent.timeUpdate(second);
+    expect(save).toHaveBeenLastCalledWith(10);
+    expect(complete).not.toHaveBeenCalled();
+  });
+
+  it("starts a new chapter sequence at its own first chapter", () => {
+    const props = { watchedPercent: 100, onProgressUpdate: vi.fn(), onVideoComplete: vi.fn() };
+    const oldParts = [1, 2, 3].map((index) => ({ title: `Old ${index}`, url: `https://cdn.example.com/old-${index}.mp4`, duration_seconds: 100 }));
+    const nextParts = [1, 2].map((index) => ({ title: `New ${index}`, url: `https://cdn.example.com/new-${index}.mp4`, duration_seconds: 100 }));
+    const { rerender } = render(<CourseVideoPlayer {...props} title="Old" videoUrl={oldParts[0].url} videoParts={oldParts} />);
+    expect(screen.getByLabelText("Old: Old 3 video")).toBeInTheDocument();
+    rerender(<CourseVideoPlayer {...props} watchedPercent={0} title="New" videoUrl={nextParts[0].url} videoParts={nextParts} />);
+    expect(screen.getByLabelText("New: New 1 video")).toHaveAttribute("src", nextParts[0].url);
+    expect(screen.getByRole("button", { name: /New 2/i })).toBeDisabled();
+  });
+
+  it("offers native recording recovery without awarding unwatched progress", async () => {
+    const save = vi.fn();
+    const complete = vi.fn();
+    render(<CourseVideoPlayer videoUrl="https://cdn.example.com/lesson.mp4" title="Lesson" watchedPercent={0} onProgressUpdate={save} onVideoComplete={complete} />);
+    const video = screen.getByLabelText("Lesson video") as HTMLVideoElement;
+    const load = vi.spyOn(video, "load").mockImplementation(() => undefined);
+    const play = vi.spyOn(video, "play").mockResolvedValue(undefined);
+    fireEvent.error(video);
+    expect(screen.getByRole("link", { name: "Open recording" })).toHaveAttribute("href", "https://cdn.example.com/lesson.mp4");
+    fireEvent.click(screen.getByRole("button", { name: "Retry video" }));
+    expect(load).toHaveBeenCalledOnce();
+    expect(play).toHaveBeenCalledOnce();
+    await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
+    expect(save).not.toHaveBeenCalled();
+    expect(complete).not.toHaveBeenCalled();
+  });
+
+  it("retries a blocked YouTube API instead of leaving the loading screen indefinitely", async () => {
+    const save = vi.fn();
+    const complete = vi.fn();
+    window.YT = undefined;
+    render(<CourseVideoPlayer videoUrl="https://www.youtube.com/watch?v=abcdefghijk" watchedPercent={0} onProgressUpdate={save} onVideoComplete={complete} />);
+    expect(screen.getByRole("status", { name: "Loading video" })).toBeInTheDocument();
+    const first = document.querySelector<HTMLScriptElement>('script[src="https://www.youtube.com/iframe_api"]')!;
+    expect(first).not.toBeNull();
+    fireEvent.error(first);
+    await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
+    expect(screen.queryByRole("status", { name: "Loading video" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open recording" })).toHaveAttribute("href", "https://www.youtube.com/watch?v=abcdefghijk");
+    fireEvent.click(screen.getByRole("button", { name: "Retry video" }));
+    const second = document.querySelector<HTMLScriptElement>('script[src="https://www.youtube.com/iframe_api"]')!;
+    expect(second).not.toBe(first);
+    await act(async () => {
+      window.YT = { Player: vi.fn().mockImplementation(function (_id, options) {
+        options.events.onReady();
+        return { destroy: vi.fn() };
+      }) };
+      window.onYouTubeIframeAPIReady?.();
+    });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByRole("status", { name: "Loading video" })).not.toBeInTheDocument();
+    expect(save).not.toHaveBeenCalled();
+    expect(complete).not.toHaveBeenCalled();
+  });
+
+  it("bounds an iframe that never becomes ready even after the API has loaded", async () => {
+    vi.useFakeTimers();
+    window.YT = { Player: vi.fn().mockImplementation(function () { return { destroy: vi.fn() }; }) };
+    const { unmount } = render(<CourseVideoPlayer videoUrl="https://www.youtube.com/watch?v=abcdefghijk" watchedPercent={0} onProgressUpdate={vi.fn()} onVideoComplete={vi.fn()} />);
+    try {
+      await act(async () => { await Promise.resolve(); });
+      expect(screen.getByRole("status", { name: "Loading video" })).toBeInTheDocument();
+      await act(async () => { await vi.advanceTimersByTimeAsync(12_000); });
+      expect(screen.getByRole("alert")).toBeInTheDocument();
+      expect(screen.queryByRole("status", { name: "Loading video" })).not.toBeInTheDocument();
+    } finally {
+      unmount();
+      vi.useRealTimers();
+      window.YT = undefined;
+    }
   });
 });

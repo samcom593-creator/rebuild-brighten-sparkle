@@ -1,5 +1,6 @@
 import type { GoalScorecard } from "@/components/dashboard/GoalTrackerCard";
 import type { DemoNumberField } from "@/hooks/useDemoNumberFields";
+type KnownDemoNumberField = DemoNumberField & { value: number };
 
 type Values = Readonly<Record<string, number>>;
 type NumericGoalKey = { [K in keyof GoalScorecard]: NonNullable<GoalScorecard[K]> extends number ? K : never }[keyof GoalScorecard];
@@ -39,7 +40,7 @@ const valid = (value: unknown, count = false): value is number => known(value)
 const round = (value: number, places = 2) => Math.round(value * 10 ** places) / 10 ** places;
 const hasId = (id: unknown): id is string => typeof id === "string" && id.trim().length > 0;
 
-function field(key: string, label: string, value: unknown, kind: DemoNumberField["kind"]): DemoNumberField[] {
+function field(key: string, label: string, value: unknown, kind: DemoNumberField["kind"]): KnownDemoNumberField[] {
   return valid(value, kind === "count") ? [{ key, label, value, kind, min: 0, max: kind === "count" ? MAX_COUNT : MAX_MONEY }] : [];
 }
 function edit(values: Values, key: string, source: unknown, count = false): number | undefined {
@@ -61,7 +62,7 @@ const MANAGER_FIELDS = [
 ] as const;
 
 /** Only existing, identified rows and known displayed values are editable. */
-export function managerGoalDemoFields(board: ManagerGoalDemoBoard | null | undefined): DemoNumberField[] {
+export function managerGoalDemoFields(board: ManagerGoalDemoBoard | null | undefined): KnownDemoNumberField[] {
   if (!board || board.error || !Array.isArray(board.managers)) return [];
   return board.managers.flatMap((row) => {
     if (!hasId(row.agent_id) || row.unmatched || row.status === "unmatched") return [];
@@ -167,7 +168,7 @@ const TARGET_FIELDS = [
   ["ap_at_risk_mtd", "AP at risk · missing policy number", "money"],
 ] as const;
 
-export function target20kDemoFields(rows: readonly Target20kDemoRow[] | null | undefined): DemoNumberField[] {
+export function target20kDemoFields(rows: readonly Target20kDemoRow[] | null | undefined): KnownDemoNumberField[] {
   return (rows ?? []).flatMap((row) => hasId(row.agent_id)
     ? TARGET_FIELDS.flatMap(([key, label, kind]) => field(`target20k:${row.agent_id}:${key}`, `${row.name?.trim() || "Agent"} · ${label}`, row[key], kind))
     : []);

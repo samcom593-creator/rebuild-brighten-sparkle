@@ -45,7 +45,7 @@ Commission flows:
 • Renewal (Y2+): paid on policies that stay in force
 • Chargebacks: if a policy lapses in months 1-12, the carrier claws back your commission. Avoid by writing realistic budgets + checking in at 30/60/90.
 
-See /dashboard/my-commissions for every product's FY%, renewal%, and advance schedule. See /dashboard/finances for your live ledger.`,
+Open Finances (/dashboard/finances) for your policy book, recorded commissions, payment dates, and available contract-rate details. Missing carrier schedules are marked unavailable.`,
   },
   {
     key: "selling", title: "How We Sell", icon: Phone,

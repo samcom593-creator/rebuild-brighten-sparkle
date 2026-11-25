@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import Vsl from "@/pages/Vsl";
@@ -59,6 +59,32 @@ describe("focused public video page", () => {
     expect(destination.searchParams.get("utm_medium")).toBe("paid_social");
   });
 
+  it("recovers a failed source through the real player's load and play controls", async () => {
+    renderVsl("?track=licensed-producer");
+    const video = screen.getByLabelText(VSL_VIDEO.title) as HTMLVideoElement;
+    const load = vi.spyOn(video, "load").mockImplementation(() => undefined);
+    const play = vi.spyOn(video, "play").mockResolvedValue(undefined);
+    fireEvent.error(video.querySelector("source")!);
+    expect(screen.getByRole("alert")).toHaveTextContent("This video could not load");
+    expect(screen.getByRole("link", { name: "Open recording" })).toHaveAttribute("href", VSL_VIDEO.src);
+    fireEvent.click(screen.getByRole("button", { name: "Retry video" }));
+    expect(load).toHaveBeenCalledOnce();
+    expect(play).toHaveBeenCalledOnce();
+    await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
+    expect(screen.getByRole("link", { name: "I’m ready to scale & earn more" })).toBeInTheDocument();
+  });
+
+  it("keeps recovery available when retry also fails", async () => {
+    renderVsl("?track=licensing-roadmap");
+    const video = screen.getByLabelText(LICENSING_VIDEO.title) as HTMLVideoElement;
+    vi.spyOn(video, "load").mockImplementation(() => undefined);
+    vi.spyOn(video, "play").mockRejectedValue(new DOMException("Unsupported source", "NotSupportedError"));
+    fireEvent.error(video);
+    fireEvent.click(screen.getByRole("button", { name: "Retry video" }));
+    await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
+    expect(screen.getByRole("link", { name: "Open recording" })).toHaveAttribute("href", LICENSING_VIDEO.src);
+  });
+
   it("uses the unlicensed video, poster, duration, schema and play ID together", () => {
     const { container } = renderVsl("?track=licensing-roadmap");
     const video = screen.getByLabelText(LICENSING_VIDEO.title);
@@ -92,11 +118,14 @@ describe("focused public video page", () => {
     }
     render(<MemoryRouter initialEntries={["/vsl?track=licensed-producer"]}><Routes><Route path="/vsl" element={<SwitchableVsl />} /></Routes></MemoryRouter>);
     const original = screen.getByLabelText(VSL_VIDEO.title);
+    fireEvent.error(original);
+    expect(screen.getByRole("alert")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Switch to licensing" }));
     const licensing = screen.getByLabelText(LICENSING_VIDEO.title);
     expect(licensing).not.toBe(original);
     expect(original).not.toBeInTheDocument();
     expect(licensing.querySelector("source")).toHaveAttribute("src", LICENSING_VIDEO.src);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Switch to licensed" }));
     expect(screen.getByLabelText(VSL_VIDEO.title)).not.toBe(licensing);
     expect(licensing).not.toBeInTheDocument();

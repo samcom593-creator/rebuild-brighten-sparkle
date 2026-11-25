@@ -470,6 +470,7 @@ export default function CourseCatalog() {
 
                 <TabsContent value="video" className="m-0 p-3 sm:p-6">
                   <CourseVideoPlayer
+                    key={currentModule.id}
                     videoUrl={currentModule.video_url}
                     videoParts={currentModule.video_parts}
                     posterUrl={currentModule.poster_url}

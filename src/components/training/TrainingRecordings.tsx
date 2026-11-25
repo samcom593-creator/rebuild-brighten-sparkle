@@ -9,12 +9,15 @@ import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Headphones, Play, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { PrivateAudioPlayer, type PrivateAudioPlayerHandle } from "@/components/calls/PrivateAudioPlayer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { z } from "zod";
 
 interface Turn { t: number; speaker?: string; text: string }
 interface Recording {
@@ -30,23 +33,40 @@ interface Recording {
   transcript: Turn[] | null;
 }
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+const recordingSchema = z.object({
+  id: z.string().min(1), title: z.string().min(1), presenter_id: z.string().nullable(), presenter_name: z.string().nullable(),
+  topic: z.string().nullable(), description: z.string().nullable(), recorded_on: z.string().nullable(),
+  duration_seconds: z.number().finite().nonnegative().nullable(), audio_path: z.string().min(1),
+  transcript: z.array(z.object({ t: z.number().finite().nonnegative(), speaker: z.string().optional(), text: z.string() })).nullable(),
+});
 
 async function fetchRecordings(): Promise<Recording[]> {
   const { data, error } = await supabase.rpc("training_recordings_list" as never);
-  if (error) throw new Error((error as { message?: string }).message ?? "The recordings did not load.");
-  return (Array.isArray(data) ? data : []) as Recording[];
-}
-async function signedUrl(path: string): Promise<string> {
-  const signed = await supabase.storage.from("training-recordings").createSignedUrl(path, 3600);
-  if (signed.error || !signed.data?.signedUrl) throw new Error(signed.error?.message ?? "The recording could not be opened.");
-  return signed.data.signedUrl;
+  if (error) throw new Error("Recording access could not be verified.");
+  const result = z.array(recordingSchema).safeParse(data);
+  if (!result.success || new Set(result.data.map(row => row.id)).size !== result.data.length) throw new Error("The recording list could not be verified.");
+  // The runtime schema requires these fields; non-strict TypeScript infers them as optional.
+  return result.data as Recording[];
 }
 
+async function resolveTrainingAudio(recordingId: string) {
+  // The endpoint rechecks this caller's published/redacted catalog before signing its exact path.
+  const { data, error } = await supabase.functions.invoke("training-recording-url", { body: { recordingId } });
+  if (error || !data || typeof data.signedUrl !== "string" || typeof data.expiresInSeconds !== "number") throw new Error("Recording access could not be verified.");
+  return { signedUrl: data.signedUrl, expiresInSeconds: data.expiresInSeconds, variant: "client_data_removed" };
+}
 export function TrainingRecordings() {
-  const q = useQuery({ queryKey: ["training-recordings"], queryFn: fetchRecordings, staleTime: 5 * 60_000 });
+  const { user } = useAuth();
+  if (!user) return <p className="text-sm text-muted-foreground">Sign in to view training recordings.</p>;
+  return <TrainingRecordingsWorkspace key={user.id} userId={user.id} />;
+}
+
+function TrainingRecordingsWorkspace({ userId }: { userId: string }) {
+  const q = useQuery({ queryKey: ["training-recordings", userId], queryFn: fetchRecordings, staleTime: 5 * 60_000, gcTime: 0, retry: false, meta: { silent: true } });
   const [presenter, setPresenter] = useState("all");
-  const [active, setActive] = useState<Recording | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const all = useMemo(() => q.data ?? [], [q.data]);
+  const active = all.find(recording => recording.id === activeId) ?? null;
   const presenters = useMemo(() => {
     const m = new Map<string, { name: string; n: number }>();
     for (const r of all) {
@@ -60,7 +80,7 @@ export function TrainingRecordings() {
   const list = presenter === "all" ? all : all.filter((r) => (r.presenter_id ?? "unknown") === presenter);
 
   if (q.isLoading) return <div className="space-y-2">{Array.from({ length: 4 }, (_, n) => <Skeleton key={`rec-sk-${n}`} className="h-16 w-full" />)}</div>;
-  if (q.isError) return <EmptyState icon={<Headphones className="h-6 w-6" />} title="The recordings did not load" description={(q.error as Error).message} />;
+  if (q.isError) return <div className="space-y-3"><EmptyState icon={<Headphones className="h-6 w-6" />} title="The recordings did not load" description="Recording access could not be verified." /><Button variant="outline" disabled={q.isFetching} onClick={() => void q.refetch()}>Retry recordings</Button></div>;
   if (all.length === 0) return <EmptyState icon={<Headphones className="h-6 w-6" />} title="No recordings yet" description="Recorded training calls appear here once they are cleared for the team." />;
 
   return (
@@ -83,7 +103,7 @@ export function TrainingRecordings() {
       </p>
       <Card className="divide-y divide-border">
         {list.map((rec) => (
-          <button key={rec.id} type="button" onClick={() => setActive(rec)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/40">
+          <button key={rec.id} type="button" onClick={() => setActiveId(rec.id)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/40">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary"><Play className="h-4 w-4" /></span>
             <span className="min-w-0 flex-1">
               <span className="block truncate font-semibold">{rec.title}</span>
@@ -94,9 +114,9 @@ export function TrainingRecordings() {
           </button>
         ))}
       </Card>
-      <Dialog open={!!active} onOpenChange={(open) => !open && setActive(null)}>
+      <Dialog open={!!active} onOpenChange={(open) => !open && setActiveId(null)}>
         <DialogContent className="max-h-[85dvh] w-[calc(100vw-2rem)] max-w-3xl overflow-y-auto sm:w-full">
-          {active && <RecordingPlayer rec={active} />}
+          {active && <RecordingPlayer key={active.id} rec={active} />}
         </DialogContent>
       </Dialog>
     </div>
@@ -104,16 +124,12 @@ export function TrainingRecordings() {
 }
 
 function RecordingPlayer({ rec }: { rec: Recording }) {
-  const url = useQuery({ queryKey: ["training-recording-url", rec.audio_path], queryFn: () => signedUrl(rec.audio_path), staleTime: 50 * 60_000 });
-  const ref = useRef<HTMLAudioElement | null>(null);
+  const ref = useRef<PrivateAudioPlayerHandle | null>(null);
   const [now, setNow] = useState(0);
   const turns = rec.transcript ?? [];
   const current = turns.reduce((acc, t, i) => (t.t <= now ? i : acc), -1);
   const seek = (s: number) => {
-    const a = ref.current;
-    if (!a) return;
-    a.currentTime = Math.max(0, s - 1);
-    void a.play();
+    ref.current?.playFrom(Math.max(0, s - 1));
   };
   return (
     <>
@@ -124,13 +140,7 @@ function RecordingPlayer({ rec }: { rec: Recording }) {
           {rec.description ? ` — ${rec.description}` : ""}
         </DialogDescription>
       </DialogHeader>
-      {url.isLoading ? (
-        <Skeleton className="h-12 w-full" />
-      ) : url.isError || !url.data ? (
-        <p className="text-sm text-rose-700 dark:text-rose-300">The recording did not load: {(url.error as Error)?.message ?? "try again"}</p>
-      ) : (
-        <audio ref={ref} controls preload="metadata" src={url.data} className="w-full" onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)} />
-      )}
+      <PrivateAudioPlayer ref={ref} sourceKey={`training:${rec.id}:${rec.audio_path}`} resolveSource={() => resolveTrainingAudio(rec.id)} playOnLoad onTimeUpdate={setNow} />
       {turns.length > 0 && (
         <CardContent className="max-h-72 overflow-y-auto rounded-md border border-border p-2">
           {turns.map((u, i) => (

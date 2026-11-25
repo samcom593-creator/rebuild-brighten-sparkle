@@ -4,25 +4,23 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useContractReview } from "@/hooks/useContractReview";
 import { useAgentProfileDrawer } from "@/stores/agentProfileDrawer";
-import { levelText, markSentence } from "@/lib/contractReview";
+import { CarrierContractsPanel } from "@/components/team/CarrierContractsPanel";
 
 /**
- * Where contracting stands for one agent, straight from the review (the only contracting truth). Read-only here:
- * every confirmation happens on the review itself, so no second place can disagree with it. The link closes the
- * global agent drawer when it came from there (a no-op on the producer profile), so the review is not under a sheet.
+ * Saved profile details plus the existing team receipt tracker. Old portal circles are historical; their count
+ * is never presented here as current readiness. This summary remains read-only.
  */
 export function ContractingStanding({ agentId }: { agentId: string | null | undefined }) {
   const review = useContractReview(!!agentId);
   if (!agentId || !review.canRead) return null;
   const agent = review.roster?.agents.find((a) => a.agent_id === agentId);
-  const carriers = review.roster?.carriers ?? [];
   return (
     <Card>
       <CardContent className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h3 className="flex items-center gap-1.5 text-sm font-semibold text-foreground"><ShieldCheck className="h-4 w-4 text-primary" aria-hidden /> Contracting</h3>
-            <p className="text-xs text-muted-foreground">Confirmed by hand on the review after checking each carrier&apos;s portal.</p>
+            <p className="text-sm text-muted-foreground">Profile details and manually verified contract receipts.</p>
           </div>
           <Link to={`/dashboard/team?view=contracting&review=${agentId}`} onClick={() => useAgentProfileDrawer.getState().close()} className="inline-flex min-h-10 items-center gap-1 text-xs font-semibold text-primary underline-offset-2 hover:underline">
             Open in review <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
@@ -37,17 +35,9 @@ export function ContractingStanding({ agentId }: { agentId: string | null | unde
         ) : (
           <>
             <p className="text-sm text-foreground">
-              <span className="font-semibold">{agent.marked_count} of {carriers.length} carriers confirmed</span>
+              <span className="font-semibold">{agent.profile.complete ? "Profile details saved" : "Profile details incomplete"}</span>
             </p>
-            <ul className="grid gap-1 sm:grid-cols-2">
-              {carriers.map((c) => (
-                <li key={c.key} className="flex items-center justify-between gap-2 rounded-md border border-border px-2.5 py-1.5 text-xs">
-                  <span className="font-medium text-foreground">{c.label}</span>
-                  <span className={agent.marks[c.key] ? "text-foreground" : "text-muted-foreground"}>{agent.marks[c.key] ? "Confirmed" : "Not yet reviewed"}</span>
-                  <span className="sr-only">{markSentence(agent.marks[c.key] ?? null)}</span>
-                </li>
-              ))}
-            </ul>
+            <CarrierContractsPanel key={agentId} agentId={agentId} readOnly />
           </>
         )}
       </CardContent>

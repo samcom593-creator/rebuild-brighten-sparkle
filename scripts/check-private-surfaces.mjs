@@ -27,6 +27,10 @@ export const PRIVATE_PATHS = [
   "/dashboard/launch-board", // camera roll / media library clips
   "/dashboard/admin/social-media-bot", // the owner's unpublished posts, approval queue and inbound (MP-302)
   "/dashboard/system-health", // subscriptions, costs and integration accounts (MP-302)
+  "/dashboard/carrier-command",
+  "/dashboard/my-day", // Sam's recurring routine and connected Todoist account
+  "/dashboard/sam-todo",
+  "/dashboard/admin/sam",
 ];
 const ROLE_OPENERS = /\b(allowManagers|allowPresenters|allowedRoles|extraRoles|allowRoles)\b/;
 
@@ -44,6 +48,9 @@ export function audit(navSrc, appSrc) {
     for (const line of routeLines) {
       const m = line.match(ROLE_OPENERS);
       if (m) failures.push(`${APP}: route ${path} lets a role through (${m[1]}) -> ${line.trim()}`);
+      if (!/<ProtectedRoute\s+requireAdmin>/.test(line) || !line.includes("<SamOnlyRoute>")) {
+        failures.push(`${APP}: route ${path} must require the server-checked SamOnlyRoute inside the admin guard`);
+      }
     }
   }
   return failures;
@@ -56,6 +63,8 @@ function selftest(navSrc, appSrc) {
     ["samOnly dropped on Launch Board", navSrc.replace(/(href: "\/dashboard\/launch-board",[^\n]*?), samOnly: true/, "$1"), appSrc, 1],
     ["route allowManagers", navSrc, appSrc.replace('path="/dashboard/inbox/instagram" element={<ProtectedRoute requireAdmin>', 'path="/dashboard/inbox/instagram" element={<ProtectedRoute requireAdmin allowManagers>'), 1],
     ["private route deleted", navSrc, appSrc.replace(/[^\n]*path="\/dashboard\/money-inbox"[^\n]*\n/, ""), 1],
+    ["owner identity gate removed", navSrc, appSrc.replace('<Route path="/dashboard/my-day" element={<ProtectedRoute requireAdmin><SamOnlyRoute>', '<Route path="/dashboard/my-day" element={<ProtectedRoute requireAdmin>'), 1],
+    ["My Day advertised to other admins", navSrc.replace(/(href: "\/dashboard\/my-day",[^\n]*?), samOnly: true/, "$1"), appSrc, 1],
   ];
   let bad = 0;
   for (const [name, nav, app, want] of cases) {

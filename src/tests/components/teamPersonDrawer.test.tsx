@@ -31,13 +31,14 @@ describe("person drawer", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Production" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Onboarding" })).toBeInTheDocument();
-    await screen.findByText(/carriers confirmed/);
+    await screen.findByText(/Contracting profile details/);
     expect(screen.queryByText(/follow-up|overdue|first contract|agentlink|checklist/i)).toBeNull();
   });
 
-  it("says where contracting stands (carriers confirmed, level) and sends you to the review to change it", async () => {
+  it("shows profile completeness and opens the current receipt workspace without an obsolete carrier total", async () => {
     const open = mount();
-    expect(await screen.findByText(/2 of 4 carriers confirmed/)).toBeInTheDocument();
+    expect(await screen.findByText("Contracting profile details incomplete")).toBeInTheDocument();
+    expect(screen.queryByText(/of 4 carriers confirmed/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Placement level/)).toBeNull(); // the level is shown only on the review itself
     fireEvent.click(screen.getByRole("button", { name: "Open in contracting review" }));
     expect(open).toHaveBeenCalledWith("a1");
@@ -47,7 +48,7 @@ describe("person drawer", () => {
 
   it("an unknown level reads 'Not set', never 0%", async () => {
     mount(rosterRow({ agent_id: "a1" }), vi.fn(), [agent({ id: "a1" })]);
-    expect(await screen.findByText(/0 of 4 carriers confirmed/)).toBeInTheDocument();
+    expect(await screen.findByText("Contracting profile details incomplete")).toBeInTheDocument();
     expect(screen.queryByText(/Placement level/)).toBeNull();
     expect(screen.queryByText(/0%/)).toBeNull();
   });
@@ -61,7 +62,7 @@ describe("person drawer", () => {
     expect(screen.queryByText(/carriers confirmed/)).toBeNull();
     fb.state.rosterError = null;
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
-    await waitFor(() => expect(screen.getByText(/carriers confirmed/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Contracting profile details/)).toBeInTheDocument());
   });
 
   it("says a person outside the review is not in it, without inventing a status", async () => {

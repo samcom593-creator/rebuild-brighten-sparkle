@@ -214,10 +214,10 @@ export function licenseText(r: Pick<CallRow, "license_states" | "licensed_at">):
   return `Licensed${states.length ? ` ${states.join("/")}` : ""}${r.licensed_at ? ` since ${shortDay(r.licensed_at)}` : ""}`;
 }
 
-/** The next thing this person has to do, in the words to say on the phone; for a finished person, what finished it. */
+/** Saved follow-up evidence. The old checklist is historical and does not prove current carrier eligibility. */
 export function callReason(r: Pick<CallRow, "bucket" | "reason" | "last_opened_at" | "opens" | "marked_count" | "request_status" | "lifetime_deals" | "last_sale">, nowMs: number = Date.now()): string {
   if (r.bucket === "finished") {
-    return r.marked_count === 4 ? "All four carriers confirmed" : r.request_status === "submitted" || r.request_status === "approved" ? `Request ${r.request_status}` : "Profile, DOB and address saved";
+    return r.marked_count === 4 ? "Previous checklist marked complete" : r.request_status === "submitted" || r.request_status === "approved" ? `Request ${r.request_status}` : "Profile, DOB and address saved";
   }
   // A posted deal is contracting evidence the link log cannot see: link opens are only tracked from 2026-10-14.
   if (r.bucket === "selling") return `Selling · ${r.lifetime_deals} ${r.lifetime_deals === 1 ? "deal" : "deals"}${r.last_sale ? `, last ${shortDay(r.last_sale)}` : ""} · no contracting profile saved`;
@@ -226,7 +226,7 @@ export function callReason(r: Pick<CallRow, "bucket" | "reason" | "last_opened_a
     : r.reason === "opened_not_saved"
       ? `Opened the link ${ago(r.last_opened_at, nowMs)}${r.opens > 1 ? ` (${r.opens} times)` : ""}, saved nothing`
       : "No contracting profile saved";
-  return r.marked_count > 0 && r.marked_count < 4 ? `${base} · ${r.marked_count} of 4 carriers confirmed` : base;
+  return r.marked_count > 0 && r.marked_count < 4 ? `${base} · ${r.marked_count} previous checklist confirmations` : base;
 }
 
 /** "You called 2 h ago · voicemail" / "Maria texted 3 d ago". Empty when nobody has reached out. */
@@ -246,7 +246,7 @@ export function contractingLink(): string {
 export function smsBody(displayName: string, link: string = contractingLink()): string {
   const first = displayName.trim().split(/\s+/)[0] || "";
   const name = first && !first.includes("@") ? first : "there";
-  return `Hey ${name}, your contracting isn't finished yet. Finish it here so we can get you contracted: ${link}`;
+  return `Hey ${name}, can you confirm your current contracting status and any next step you need help with? MGN Agent Hub: ${link}`;
 }
 
 export async function fetchCallList(): Promise<CallListPayload> {

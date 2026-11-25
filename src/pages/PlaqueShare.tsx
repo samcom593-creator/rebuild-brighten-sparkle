@@ -13,13 +13,14 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
+import { presentPlaqueDate, presentPlaqueMetric } from "@/components/awards/plaqueAwardPresentation";
 
 interface PlaqueData {
   id: string;
   agent_id: string;
   milestone_type: string;
   milestone_date: string | null;
-  amount: number;
+  amount: number | null;
   image_png_url: string | null;
   image_svg_url: string | null;
   share_slug: string | null;
@@ -27,6 +28,17 @@ interface PlaqueData {
   badge_label: string | null;
   agent_name?: string;
   agent_instagram?: string | null;
+}
+
+export function buildPlaqueShareCaption(plaque: Pick<PlaqueData, "agent_name" | "badge_label" | "milestone_type" | "milestone_date" | "amount">) {
+  const metric = presentPlaqueMetric(plaque);
+  const milestoneDate = presentPlaqueDate({ ...plaque, milestone_date: plaque.milestone_date ?? "" });
+  return [
+    `${plaque.agent_name || "Team Member"} · ${plaque.badge_label || plaque.milestone_type.replace(/_/g, " ")}`,
+    `${metric.label}: ${metric.value ?? metric.missingText}`,
+    `${milestoneDate.label}: ${milestoneDate.value}`,
+    "Galaxy Financial",
+  ].join("\n");
 }
 
 /**
@@ -123,7 +135,7 @@ export default function PlaqueShare() {
           await navigator.share({
             files: [file],
             title: plaque.badge_label || "Galaxy Plaque",
-            text: `${plaque.agent_name} just earned ${plaque.badge_label}`,
+            text: buildPlaqueShareCaption(plaque),
           });
           return;
         }
@@ -136,9 +148,7 @@ export default function PlaqueShare() {
 
   const shareTwitter = () => {
     if (!plaque) return;
-    const text = encodeURIComponent(
-      `${plaque.agent_name} just earned ${plaque.badge_label} at Galaxy Financial! ${plaque.amount ? `$${Math.round(plaque.amount).toLocaleString()}` : ""}`,
-    );
+    const text = encodeURIComponent(buildPlaqueShareCaption(plaque));
     window.open(
       `https://twitter.com/intent/tweet?text=${text}&url=${encodeURIComponent(window.location.href)}`,
       "_blank",
@@ -179,6 +189,9 @@ export default function PlaqueShare() {
     );
   }
 
+  const metric = presentPlaqueMetric(plaque);
+  const milestoneDate = presentPlaqueDate({ ...plaque, milestone_date: plaque.milestone_date ?? "" });
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">
       <div className="max-w-3xl mx-auto px-4 py-12 space-y-8">
@@ -195,15 +208,21 @@ export default function PlaqueShare() {
           {plaque.agent_instagram && (
             <p className="text-sm text-muted-foreground">@{plaque.agent_instagram}</p>
           )}
+          <p className="text-sm text-muted-foreground">{metric.label}</p>
+          <p className="text-3xl font-bold tabular-nums">{metric.value ?? metric.missingText}</p>
+          <p className="text-sm text-muted-foreground">{milestoneDate.label}: {milestoneDate.value}</p>
         </div>
 
         <div className="rounded-md overflow-hidden border border-white/10 bg-[#111]">
           {(plaque.image_png_url || plaque.image_svg_url) ? (
-            <img
-              src={plaque.image_png_url || plaque.image_svg_url!}
-              alt={`${plaque.badge_label} plaque for ${plaque.agent_name}`}
-              className="w-full h-auto block"
-            />
+            <figure>
+              <img
+                src={plaque.image_png_url || plaque.image_svg_url!}
+                alt={`${plaque.badge_label} plaque for ${plaque.agent_name}`}
+                className="w-full h-auto block"
+              />
+              <figcaption className="p-3 text-xs text-muted-foreground">Original artwork</figcaption>
+            </figure>
           ) : (
             <div className="aspect-[4/5] flex items-center justify-center text-muted-foreground text-sm">
               Image is still rendering. Refresh in a moment.
@@ -237,7 +256,7 @@ export default function PlaqueShare() {
               1. Tap <strong>Download</strong> above · 2. Open Instagram · 3. Tap the + icon · 4. Pick the plaque image from your camera roll · 5. Post as a story or feed post
             </p>
             <p className="text-xs text-muted-foreground">
-              The image is 1080×1350 — optimized for Instagram feed posts.
+              Download the original artwork and choose its crop in Instagram.
             </p>
           </div>
         </div>

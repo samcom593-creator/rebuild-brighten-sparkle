@@ -1,15 +1,15 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-11-23T22:26:18.309Z
-Repository: `/Users/samjames/projects/rbs-mp304`
+Generated: 2026-11-25T03:34:02.352Z
+Repository: `/workspace/scratch/842b8a77170a/galaxy-finances-access`
 
 ## Inventory Summary
 
-- Total Local Edge Functions: **259**
-- Configured in `config.toml`: **260**
-- Invoked Edge Functions in Source: **101**
-- Invoked RPC Calls in Source: **310**
-- SQL Functions in Migrations: **1051**
+- Total Local Edge Functions: **264**
+- Configured in `config.toml`: **265**
+- Invoked Edge Functions in Source: **106**
+- Invoked RPC Calls in Source: **342**
+- SQL Functions in Migrations: **1124**
 
 ## Edge Function Auth & Verification Contracts
 
@@ -91,6 +91,7 @@ Repository: `/Users/samjames/projects/rbs-mp304`
 | `detect-inactive-agents` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `detect-production-gaps` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `discord-webhook-notify` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
+| `ethos-consumer-campaign` | Yes | Yes | `true` | Authenticated JWT | PASS |
 | `ethos-sheet-sync` | Yes | Yes | `true` | Authenticated JWT | PASS |
 | `free-leads-weekly-alerts` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `gcal-sync` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -116,6 +117,7 @@ Repository: `/Users/samjames/projects/rbs-mp304`
 | `interview-outcome` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `interviews-outcome` | Yes | Yes | `true` | Authenticated JWT | PASS |
 | `interviews-pipeline` | Yes | Yes | `true` | Authenticated JWT | PASS |
+| `lead-recording-url` | Yes | Yes | `true` | Authenticated JWT | PASS |
 | `license-milestone-sms-drain` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `licensing-stage-nudge` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `link-account` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -170,6 +172,7 @@ Repository: `/Users/samjames/projects/rbs-mp304`
 | `overseer-bot` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `owner-daily-overview` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `parse-schedule-image` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `personal-task-create` | Yes | Yes | `true` | Authenticated JWT | PASS |
 | `poke-pusher` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `poke-webhook` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `post-deal` | Yes | Yes | `true` | Authenticated JWT | PASS |
@@ -180,6 +183,7 @@ Repository: `/Users/samjames/projects/rbs-mp304`
 | `provision-agent-accounts` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `reactivation-send` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `readymode-ingest` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `readymode-recording-url` | Yes | Yes | `true` | Authenticated JWT | PASS |
 | `readymode-sync` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `readymode-webhook` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `render-all-plaques` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -261,6 +265,7 @@ Repository: `/Users/samjames/projects/rbs-mp304`
 | `test-email-flows` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `track-email-click` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `track-email-open` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
+| `training-recording-url` | Yes | Yes | `true` | Authenticated JWT | PASS |
 | `transcribe-call` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `trigger-new-hire-flow` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `unsubscribe` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
@@ -283,6 +288,6 @@ applied by hand through bot-sql and never round-tripped into
 `supabase/migrations`, so this directory does not model the deployed database.
 `apex-doctor` queries `pg_proc` and is the authority on deployed state.
 
-- Invoked RPCs: **310**
-- Also declared in this commit's migrations: **302**
+- Invoked RPCs: **342**
+- Also declared in this commit's migrations: **334**
 - Declared only in the database: **8**

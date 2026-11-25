@@ -1,19 +1,8 @@
-// Finances — Agent Cloud parity page.
-//
-// Overview tab mirrors AC's Finances anatomy exactly (captured at
-// ~/business-ops/agentcloud-reference/pages/finances.png): scope chips
-// (Mine / Agency / Total IMO), KPI row (Today / Forecast 90-day / MTD / YTD),
-// Commission Types quad, 12-month rolling forecast chart, Scheduled Payouts
-// with month pager + CSV export, and Breakdown tabs — all fed by ONE RPC,
-// finances_overview, whose est-earnings basis is identical to
-// leaderboard_board (AP x agent_comp_levels.avg_comp_pct, default 63) so
-// Finances and the Leaderboard can never disagree.
-//
-// Reconciliation tab preserves the CFO-bot cockpit that used to be this whole
-// page: leak detection, dup charges, stuck ICA, idle agents, commission
-// ledger, pending approvals. Nothing was deleted, it moved one tab over.
+// One finance workspace: the viewer's commission ledger and carrier policy
+// book are separate financial sources. Real admins can additionally mount
+// the existing agency estimates and CFO reconciliation; preview roles cannot.
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   DollarSign, AlertTriangle, TrendingUp, TrendingDown, RefreshCw,
@@ -25,6 +14,10 @@ import {
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { useAuth } from "@/hooks/useAuth";
+import { useRolePreview } from "@/hooks/useRolePreview";
+import MyCommissions from "@/pages/MyCommissions";
+import { PersonalPolicyBook } from "@/components/finances/PersonalPolicyBook";
 import { ImoByAgency } from "@/components/dashboard/ImoByAgency";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
+import { QueryState } from "@/components/ui/query-state";
 import { cn } from "@/lib/utils";
 
 interface CfoSnapshot {
@@ -138,6 +132,23 @@ function syncChipClass(v: string): string {
     : "bg-destructive/15 text-destructive border-destructive/30";
 }
 
+function financeRows(value: unknown, label: string): Record<string, any>[] {
+  if (!Array.isArray(value) || value.some(row => row === null || typeof row !== "object" || Array.isArray(row))) {
+    throw new Error(`${label} returned an invalid result set.`);
+  }
+  return value;
+}
+
+function financeAggregateRows(value: unknown, field: string, label: string): Record<string, any>[] {
+  if (value === null || typeof value !== "object" || Array.isArray(value) || !Object.prototype.hasOwnProperty.call(value, field)) {
+    throw new Error(`${label} returned no authorized aggregate row.`);
+  }
+  // These SQL views use json_agg without COALESCE: a present row with an
+  // explicitly null aggregate means zero matches. A missing row is not empty.
+  const aggregate = (value as Record<string, unknown>)[field];
+  return financeRows(aggregate === null ? [] : aggregate, label);
+}
+
 
 // ── AC Overview types ────────────────────────────────────────────────────
 type FinScope = "mine" | "agency" | "imo";
@@ -151,8 +162,29 @@ interface FinOverview {
   production: { policies: number; alp: number; producers: number; last_synced_at: string | null };
   commission_types: { direct_ytd: number; override_pending: number; trail_pending: number; renewal_pending: number };
   forecast: Array<{ month: string; direct: number; override: number; trail: number; renewal: number }>;
-  payouts: { month: string; total: number; rows: Array<{ date: string; agent: string | null; client: string | null; carrier: string | null; product: string | null; ap: number; est: number; component: "direct" | "override" | "team_direct" }> };
+  payouts: { month: string; total: number; rows: Array<{ date: string; agent: string | null; client: string | null; carrier: string | null; product: string | null; ap: number; est: number; component: "direct" | "override" | "team_direct" | "gap" }> };
   breakdown: Record<"by_carrier" | "by_product" | "by_month" | "by_agent_overrides", Array<{ name: string; deals: number; ap: number; est: number }>>;
+}
+
+/**
+ * The management response is a financial contract, not a source of fallback zeros.
+ * finances_overview_base emits "gap" for Vantage external daily gap estimates.
+ */
+function parseOverview(value: unknown): FinOverview {
+  const isRecord = (item: unknown): item is Record<string, unknown> => item !== null && typeof item === "object" && !Array.isArray(item);
+  const numericFields = (item: unknown, keys: string[]) => isRecord(item) && keys.every(key => typeof item[key] === "number" && Number.isFinite(item[key]));
+  if (!isRecord(value) || typeof value.scope !== "string" || typeof value.comp_note !== "string" ||
+    !numericFields(value.kpis, ["today", "forecast_90d", "mtd", "ytd"]) ||
+    !numericFields(value.team_kpis, ["today", "mtd", "ytd"]) ||
+    !numericFields(value.production, ["policies", "alp", "producers"]) ||
+    !numericFields(value.commission_types, ["direct_ytd", "override_pending", "trail_pending", "renewal_pending"]) ||
+    !Array.isArray(value.forecast) || value.forecast.some(row => !numericFields(row, ["direct", "override", "trail", "renewal"]) || typeof row.month !== "string") ||
+    !isRecord(value.payouts) || !numericFields(value.payouts, ["total"]) || typeof value.payouts.month !== "string" ||
+    !Array.isArray(value.payouts.rows) || value.payouts.rows.some(row => !numericFields(row, ["ap", "est"]) || typeof row.date !== "string" || !["direct", "override", "team_direct", "gap"].includes(row.component)) ||
+    !isRecord(value.breakdown) || ["by_carrier", "by_product", "by_month", "by_agent_overrides"].some(key => !Array.isArray(value.breakdown[key]) || value.breakdown[key].some(row => !numericFields(row, ["deals", "ap", "est"]) || typeof row.name !== "string"))) {
+    throw new Error("The finance overview returned an incomplete or invalid result.");
+  }
+  return value as unknown as FinOverview;
 }
 
 const money = (n: number | null | undefined) => `$${Math.round(Number(n ?? 0)).toLocaleString()}`;
@@ -196,12 +228,12 @@ function TypeCard({ icon: Icon, label, value, sub, tone }: { icon: React.Element
   );
 }
 
-function OverviewTab({ scope }: { scope: FinScope }) {
+function OverviewTab({ scope, viewerId }: { scope: FinScope; viewerId: string }) {
   const [month, setMonth] = useState<Date>(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
   const monthIso = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, "0")}-01`;
 
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ["finances-overview", scope, monthIso],
+    queryKey: ["finances-overview", viewerId, scope, monthIso],
     staleTime: 120_000,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("finances_overview" as never, {
@@ -209,7 +241,7 @@ function OverviewTab({ scope }: { scope: FinScope }) {
         p_month: monthIso,
       } as never);
       if (error) throw error;
-      return data as unknown as FinOverview;
+      return parseOverview(data);
     },
   });
 
@@ -308,7 +340,7 @@ function OverviewTab({ scope }: { scope: FinScope }) {
                   contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
                 />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Area type="monotone" dataKey="direct" name="Direct" stroke="#C9A961" fill="#C9A961" fillOpacity={0.16} strokeWidth={2} />
+                <Area type="monotone" dataKey="direct" name="Direct" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.16} strokeWidth={2} />
                 <Area type="monotone" dataKey="override" name="Override" stroke="hsl(var(--success))" fill="hsl(var(--success))" fillOpacity={0.12} strokeWidth={2} />
                 <Area type="monotone" dataKey="trail" name="Trail" stroke="hsl(var(--info))" fill="hsl(var(--info))" fillOpacity={0.12} strokeWidth={2} />
                 <Area type="monotone" dataKey="renewal" name="Renewal" stroke="hsl(var(--warning))" fill="hsl(var(--warning))" fillOpacity={0.12} strokeWidth={2} />
@@ -353,8 +385,8 @@ function OverviewTab({ scope }: { scope: FinScope }) {
           </div>
           {payoutRows.length === 0 ? (
             <div className="py-12 text-center">
-              <p className="text-sm font-semibold text-foreground">No commission payments scheduled yet</p>
-              <p className="mt-1 text-sm text-muted-foreground">Post your first deal to see your payout schedule here.</p>
+              <p className="text-sm font-semibold text-foreground">No estimated commission activity for this month</p>
+              <p className="mt-1 text-sm text-muted-foreground">Posted production appears here as estimates, separate from recorded payments.</p>
               <SubmitDealDialog trigger={<Button className="mt-4 bg-primary text-primary-foreground hover:bg-primary/90">Post a Deal</Button>} />
             </div>
           ) : (
@@ -442,14 +474,15 @@ function OverviewTab({ scope }: { scope: FinScope }) {
 }
 
 // ── Reconciliation tab: the CFO-bot cockpit, transplanted intact ─────────
-function ReconciliationTab() {
+function ReconciliationTab({ viewerId }: { viewerId: string }) {
   const [tab, setTab] = useState<"overview"|"anomalies"|"commissions"|"approvals">("anomalies");
 
-const snapshot = useQuery({
-    queryKey: ["cfo-snapshot"],
+  const snapshot = useQuery({
+    queryKey: ["cfo-snapshot", viewerId],
     queryFn: async () => {
       const { data, error } = await supabase.from("v_cfo_snapshot" as any).select("*").maybeSingle();
       if (error) throw error;
+      if (!data || typeof data !== "object") throw new Error("The finance snapshot is unavailable.");
       return data as unknown as CfoSnapshot;
     },
     refetchInterval: 300_000,
@@ -460,53 +493,58 @@ const snapshot = useQuery({
   // as if they were row-lists, so the Anomalies tab rendered blank junk. Pull the
   // single row and hand back its array.
   const dups = useQuery({
-    queryKey: ["cfo-dup-charges"],
+    queryKey: ["cfo-dup-charges", viewerId],
     queryFn: async () => {
-      const { data } = await supabase.from("v_cfo_dup_charge_watch" as any).select("anomalies").maybeSingle();
-      return (((data as any)?.anomalies ?? []) as any[]);
+      const { data, error } = await supabase.from("v_cfo_dup_charge_watch" as any).select("anomalies").maybeSingle();
+      if (error) throw error;
+      return financeAggregateRows(data, "anomalies", "Duplicate charges");
     },
   });
 
   const stuck = useQuery({
-    queryKey: ["cfo-stuck-paid"],
+    queryKey: ["cfo-stuck-paid", viewerId],
     queryFn: async () => {
-      const { data } = await supabase.from("v_cfo_ica_paid_stuck" as any).select("stuck_list").maybeSingle();
-      return (((data as any)?.stuck_list ?? []) as any[]);
+      const { data, error } = await supabase.from("v_cfo_ica_paid_stuck" as any).select("stuck_list").maybeSingle();
+      if (error) throw error;
+      return financeAggregateRows(data, "stuck_list", "Paid-applicant review");
     },
   });
 
   const idle = useQuery({
-    queryKey: ["cfo-idle-agents"],
+    queryKey: ["cfo-idle-agents", viewerId],
     queryFn: async () => {
-      const { data } = await supabase.from("v_cfo_agent_activation_watch" as any).select("idle_agents").maybeSingle();
-      return (((data as any)?.idle_agents ?? []) as any[]);
+      const { data, error } = await supabase.from("v_cfo_agent_activation_watch" as any).select("idle_agents").maybeSingle();
+      if (error) throw error;
+      return financeAggregateRows(data, "idle_agents", "Agent activation review");
     },
   });
 
   const commissions = useQuery({
-    queryKey: ["commission-recent"],
+    queryKey: ["commission-recent", viewerId],
     queryFn: async () => {
       // `product` does not exist on commission_ledger — selecting it 400'd the whole
       // query and silently hid every commission row.
-      const { data } = await supabase.from("commission_ledger" as any)
+      const { data, error } = await supabase.from("commission_ledger" as any)
         .select("id, agent_id, amount, carrier_id, annual_premium, rate_source, created_at, status")
         .order("created_at", { ascending: false })
         .limit(50);
-      return (data ?? []) as any[];
+      if (error) throw error;
+      return financeRows(data, "Commission ledger");
     },
   });
 
   const approvals = useQuery({
-    queryKey: ["cfo-approvals"],
+    queryKey: ["cfo-approvals", viewerId],
     queryFn: async () => {
       // Real columns are subject/body/amount_cents (not title/description/amount) —
       // the old select 400'd and left the tab permanently empty.
-      const { data } = await supabase.from("cfo_approval_requests" as any)
+      const { data, error } = await supabase.from("cfo_approval_requests" as any)
         .select("id, subject, body, amount_cents, status, created_at")
         .eq("status", "pending")
         .order("created_at", { ascending: false })
         .limit(20);
-      return (data ?? []) as any[];
+      if (error) throw error;
+      return financeRows(data, "Finance approvals");
     },
   });
 
@@ -516,9 +554,15 @@ const snapshot = useQuery({
   };
 
   const snap = snapshot.data;
+  const reads = [snapshot, dups, stuck, idle, commissions, approvals];
+  const failedRead = reads.find(read => read.isError && read.data === undefined);
+  if (failedRead) return <QueryState status="error" label="finance reconciliation" error={failedRead.error} onRetry={refreshAll} />;
+  if (reads.some(read => read.isPending)) return <QueryState status="loading" label="finance reconciliation" />;
+  const staleRead = reads.find(read => read.isError);
 
   return (
     <div className="space-y-5">
+      {staleRead && <QueryState status="ready" stale label="finance reconciliation" error={staleRead.error} asOf={staleRead.dataUpdatedAt} onRetry={refreshAll} />}
       <div className="flex items-center justify-end gap-2">
         {snap?.as_of && (
           <Badge variant="outline" className="tabular-nums">Updated {relativeTime(snap.as_of)}</Badge>
@@ -744,27 +788,23 @@ const snapshot = useQuery({
   );
 }
 
-export default function Finances() {
-  usePageTitle("Finances · Galaxy");
+function FinanceManagement({ viewerId }: { viewerId: string }) {
   const [scope, setScope] = useState<FinScope>("agency");
   const [mainTab, setMainTab] = useState<"overview" | "reconciliation">("overview");
 
   return (
-    <div className="page-enter mx-auto w-full max-w-7xl px-4 sm:px-6 pb-24 space-y-5">
-      <PageHeader
-        eyebrow="Finances"
-        eyebrowIcon={<DollarSign className="h-3 w-3" />}
-        title="Finances"
-        subtitle="Estimated commissions, forecasts and payouts"
-        actions={
-          <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1">
+    <section className="space-y-5" aria-label="Finance management">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl font-black italic uppercase">Agency finances</h2>
+          <div className="flex flex-wrap items-center gap-1 rounded-lg border border-border bg-card p-1" role="group" aria-label="Management finance scope">
             {SCOPES.map((s) => (
               <button
                 key={s.key}
                 type="button"
+                aria-pressed={scope === s.key}
                 onClick={() => setScope(s.key)}
                 className={cn(
-                  "rounded-full px-3 py-1 text-xs font-semibold transition-colors",
+                  "min-h-11 rounded-md px-3 py-2 text-sm font-semibold transition-colors",
                   scope === s.key ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
                 )}
               >
@@ -772,8 +812,7 @@ export default function Finances() {
               </button>
             ))}
           </div>
-        }
-      />
+      </div>
 
       <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as typeof mainTab)}>
         <TabsList>
@@ -781,16 +820,69 @@ export default function Finances() {
           <TabsTrigger value="reconciliation">Reconciliation</TabsTrigger>
         </TabsList>
         <TabsContent value="overview" className="mt-5 space-y-5">
-          <OverviewTab scope={scope} />
+          {mainTab === "overview" && <OverviewTab scope={scope} viewerId={viewerId} />}
           {/* Vantage + every sub-agency rolled under you, with your estimated
               override per agency (Sam 2026-08-26). Same component the dashboard
               uses, so the numbers cannot disagree between the two surfaces. */}
-          <ImoByAgency />
+          {mainTab === "overview" && <ImoByAgency />}
         </TabsContent>
         <TabsContent value="reconciliation" className="mt-5">
-          <ReconciliationTab />
+          {mainTab === "reconciliation" && <ReconciliationTab viewerId={viewerId} />}
         </TabsContent>
       </Tabs>
+    </section>
+  );
+}
+
+export type FinanceTab = "personal" | "policies" | "management";
+
+/** Pure workspace presentation, also used by isolated visual QA. */
+export function FinanceWorkspaceView({ tab, onTabChange, canManage, children }: {
+  tab: FinanceTab;
+  onTabChange: (tab: FinanceTab) => void;
+  canManage: boolean;
+  children: ReactNode;
+}) {
+  const visibleTab = tab === "management" && !canManage ? "personal" : tab;
+  return (
+    <div className="page-enter mx-auto w-full max-w-7xl space-y-5 px-4 pb-24 sm:px-6">
+      <PageHeader
+        eyebrow="Your business"
+        eyebrowIcon={<DollarSign className="h-3 w-3" />}
+        title="Finances"
+        subtitle="Policy status. Commission payments. Payout rates."
+      />
+      <Tabs value={visibleTab} onValueChange={value => {
+        if (value === "personal" || value === "policies" || (value === "management" && canManage)) onTabChange(value);
+      }}>
+        <TabsList className={`grid h-auto w-full gap-1 rounded-lg border border-border bg-card p-1 sm:inline-flex sm:w-auto ${canManage ? "grid-cols-3" : "grid-cols-2"}`}>
+          <TabsTrigger className="min-h-11 min-w-0 whitespace-normal px-2 text-sm font-bold leading-tight sm:px-4" value="personal">Issue &amp; pay</TabsTrigger>
+          <TabsTrigger className="min-h-11 min-w-0 whitespace-normal px-2 text-sm font-bold leading-tight sm:px-4" value="policies">Policy book</TabsTrigger>
+          {canManage && <TabsTrigger className="min-h-11 min-w-0 whitespace-normal px-2 text-sm font-bold leading-tight sm:px-4" value="management">Management</TabsTrigger>}
+        </TabsList>
+        <TabsContent className="mt-5" value={visibleTab}>{children}</TabsContent>
+      </Tabs>
     </div>
+  );
+}
+
+export default function Finances() {
+  usePageTitle("Finances · Galaxy");
+  const { user, isAdmin, isLoading } = useAuth();
+  const { isPreviewing } = useRolePreview();
+  const [tab, setTab] = useState<FinanceTab>("personal");
+  const canManage = Boolean(user && isAdmin && !isLoading && !isPreviewing);
+  const activeTab = tab === "management" && !canManage ? "personal" : tab;
+
+  return (
+    <FinanceWorkspaceView tab={activeTab} onTabChange={setTab} canManage={canManage}>
+      {!user || isLoading ? <QueryState status="loading" label="your finances" /> : activeTab === "management" && canManage ? (
+        <FinanceManagement key={user.id} viewerId={user.id} />
+      ) : activeTab === "policies" ? (
+        <PersonalPolicyBook key={user.id} onViewPayments={() => setTab("personal")} />
+      ) : (
+        <MyCommissions key={user.id} embedded />
+      )}
+    </FinanceWorkspaceView>
   );
 }

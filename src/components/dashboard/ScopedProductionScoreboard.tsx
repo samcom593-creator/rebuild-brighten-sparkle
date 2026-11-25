@@ -31,7 +31,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useAuth } from "@/hooks/useAuth";
 import { useBusinessToday } from "@/hooks/useBusinessToday";
 import { useDemoNumberFields } from "@/hooks/useDemoNumberFields";
-import { applyProjectionDemo, applyScoreboardDemo, projectionDemoFields, scoreboardDemoFields } from "@/lib/productionDemoModels";
+import { applyProjectionDemo, applyScoreboardDemo, projectionDemoFields, scoreboardDemoFields, scoreboardPlacementDemo, type ScoreboardPlacementDemo } from "@/lib/productionDemoModels";
 import { resolveBrand } from "@/config/brand";
 import { scoreboardWindow, type ScoreboardPeriod } from "@/lib/scoreboardPeriod";
 import { suppressDealCelebrations } from "@/lib/dealCelebrations";
@@ -191,6 +191,32 @@ const pct = (value: number | null | undefined) => {
 
 const plural = (n: number, word: string) => `${n.toLocaleString()} ${word}${n === 1 ? "" : word.endsWith("y") ? "" : "s"}`;
 const policies = (n: number) => `${n.toLocaleString()} ${n === 1 ? "policy" : "policies"}`;
+
+/** Source does not supply verified issued/paid totals. Optional demo inputs
+ * remain visibly labeled, with no values or denominator leaked in Present mode. */
+export function ScoreboardIssuePaidStrip({ metrics, hidden = false }: { metrics: ScoreboardPlacementDemo; hidden?: boolean }) {
+  const shown = (value: number | null, format: (n: number) => string) => hidden ? "Hidden" : value === null ? "Unavailable" : format(value);
+  return (
+    <section aria-label="Issued and paid placement" className="space-y-3 border-t border-border p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="dashboard-board-title">Issued &amp; paid / placement</h3>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm text-muted-foreground">{metrics.scope} {metrics.isDemo ? "demo cohort" : "scope"} · selected dates</span>
+          {metrics.isDemo && <Badge variant="outline" role="status">Demo figures</Badge>}
+        </div>
+      </div>
+      <dl className="grid gap-3 sm:grid-cols-3">
+        <div className="min-w-0 rounded-lg border border-border bg-card p-3"><dt className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Issued &amp; paid AP</dt><dd className="mt-2 break-words text-2xl font-black italic tabular-nums">{shown(metrics.issuedPaidAP, money)}</dd></div>
+        <div className="min-w-0 rounded-lg border border-border bg-card p-3"><dt className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Issued &amp; paid policies</dt><dd className="mt-2 break-words text-2xl font-black italic tabular-nums">{shown(metrics.issuedPaidPolicies, value => value.toLocaleString())}</dd></div>
+        <div className="min-w-0 rounded-lg border border-border bg-card p-3"><dt className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Placement</dt><dd className="mt-2 break-words text-2xl font-black italic tabular-nums">{shown(metrics.placementPct, pct)}</dd></div>
+      </dl>
+      <p className="text-sm text-muted-foreground">{metrics.isDemo
+        ? hidden ? "Demonstration figures and submission denominator are hidden."
+          : `Demonstration only. ${metrics.issuedPaidPolicies === null ? "Issued-and-paid policy count is unknown" : `${metrics.issuedPaidPolicies.toLocaleString()} issued-and-paid policies`} ÷ ${metrics.submittedPolicies?.toLocaleString() ?? "unknown"} displayed cohort policies, treated as submitted for this demo. Blank values stay unknown; a zero denominator has no placement rate.`
+        : "Verified issued-and-paid receipts and a matching submission cohort are not available from this production source."}</p>
+    </section>
+  );
+}
 // MP-372: freshness line formatters. Dates are business dates (no tz shift);
 // the sync instant is shown on the Phoenix clock the rest of the card uses.
 const shortDate = (ymd: string) => new Date(`${ymd}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
@@ -480,6 +506,7 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
     fields: projectionDemoFields(projection.data),
   });
   const data = productionDemo.isDemo ? applyScoreboardDemo(query.data, productionDemo.values) : query.data;
+  const issuePaidMetrics = scoreboardPlacementDemo(data, productionDemo.values, productionDemo.isDemo);
   const projectionData = projectionDemo.isDemo ? applyProjectionDemo(projection.data, projectionDemo.values) : projection.data;
   // The server returns `imo` only to admins; that is the authority for the
   // admin-only tile, not a client-side role guess.
@@ -617,6 +644,8 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
                 value={money(data.recursive_team.ap)}
               />
             </div>
+
+            <ScoreboardIssuePaidStrip metrics={issuePaidMetrics} hidden={presenting || blur.split} />
 
             <div className="dashboard-production__pace border-t border-border p-4">
               <QueryState

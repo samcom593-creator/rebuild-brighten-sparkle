@@ -12,7 +12,7 @@ const TabsList = React.forwardRef<
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      "inline-flex w-full max-w-full items-center justify-start gap-1 overflow-x-auto overscroll-x-contain border-b border-border [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+      "galaxy-tabs inline-flex w-full max-w-full items-center justify-start gap-1 overflow-x-auto overscroll-x-contain border-b border-border [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
       className,
     )}
     {...props}
@@ -27,9 +27,7 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      // 2026-08-19 AC pass: the benchmark uses a quiet underline indicator, not a
-      // filled pill. Gold rail on the active tab, muted label otherwise.
-      "relative inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-none border-b-2 border-transparent px-3 py-2 text-sm font-semibold text-muted-foreground ring-offset-background transition-colors data-[state=active]:border-primary data-[state=active]:text-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 sm:min-h-0",
+      "galaxy-tab relative inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-none border-b-2 border-transparent px-3 py-2 text-sm font-semibold text-muted-foreground ring-offset-background transition-colors data-[state=active]:border-primary data-[state=active]:text-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 sm:min-h-0",
       className,
     )}
     {...props}

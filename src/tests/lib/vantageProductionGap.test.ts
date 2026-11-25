@@ -74,7 +74,7 @@ describe("Vantage external production reconciliation", () => {
       expect(imo).toContain(`table: "${table}"`);
       expect(crm).toContain(`table: "${table}"`);
     }
-    expect(imo).toContain('queryKey: ["imo-by-agency"]');
+    expect(imo).toContain('queryKey: ["imo-by-agency", viewerId]');
     expect(imo).toContain('queryKey: ["crm-today-production"]');
   });
 

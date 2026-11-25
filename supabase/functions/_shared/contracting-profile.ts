@@ -33,7 +33,7 @@ export function contractingProfileEmailText(firstName: string, link: string = CO
     "",
     `Complete contracting profile: ${link}`,
     "",
-    "Our team will use this information to coordinate the carrier portal steps and track Combine, AFLAC, GTO, and Ethos on your profile.",
+    "Our team will use this information to coordinate your contracting through the MGN Agent Hub and record verified contract receipts on your profile.",
     "",
     NOT_CONTRACTED_YET,
     "",
@@ -50,7 +50,7 @@ export function contractingProfileEmailHtml(firstName: string, link: string = CO
 <p>Carrier contracting runs through the MGN Agent Hub. <a href="${esc(mgnLink)}">Start contracting in the MGN Agent Hub</a></p>
 <p>Then complete your contracting profile with your NPN number, first name, last name, email address, and resident state.</p>
 <p><a href="${esc(link)}">Complete contracting profile</a></p>
-<p>Our team will use this information to coordinate the carrier portal steps and track Combine, AFLAC, GTO, and Ethos on your profile.</p>
+<p>Our team will use this information to coordinate your contracting through the MGN Agent Hub and record verified contract receipts on your profile.</p>
 <p>${NOT_CONTRACTED_YET}</p>
 <p>Thank you,<br>${CONTRACTING_TEAM_NAME}</p>`;
 }

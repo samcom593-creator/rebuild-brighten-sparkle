@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { ReactNode } from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { act, render, screen, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import fs from "node:fs";
 import path from "node:path";
@@ -87,6 +87,14 @@ function group(name: string) {
   return screen.queryByRole("button", { name });
 }
 
+function openGroups(...names: string[]) {
+  for (const name of names) {
+    const trigger = screen.getByRole("button", { name });
+    if (trigger.getAttribute("aria-expanded") === "false") fireEvent.click(trigger);
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+  }
+}
+
 function setRoles(roles: Partial<typeof authState>) {
   authState.isAdmin = false;
   authState.isManager = false;
@@ -121,7 +129,9 @@ describe("GlobalSidebar · AgentCloud application navigation", () => {
   it("keeps recruiting actions inside the Grow group", () => {
     setRoles({ isAdmin: true });
     renderSidebar();
-    expect(group("Grow")).toBeTruthy();
+    expect(group("Grow")).toHaveAttribute("aria-expanded", "false");
+    expect(link("Call list")).toBeNull();
+    openGroups("Sell", "Grow", "My Business", "Learn", "Team", "Owner", "Settings");
     // Interviews / Follow-ups are tabs inside Recruit Pipeline now, never standalone sidebar destinations.
     expect(link("Interviews")).toBeNull();
     expect(link("Follow-ups")).toBeNull();
@@ -140,44 +150,53 @@ describe("GlobalSidebar · AgentCloud application navigation", () => {
   ])("shows the recruiting workspace to %s", (_label, roles) => {
     setRoles(roles as Partial<typeof authState>);
     renderSidebar();
-    expect(group("Grow")).toBeTruthy();
+    openGroups("Grow");
     expect(link("Call list")).toBeTruthy();
   });
 
   it("keeps high-frequency work discoverable to plain agents without internal contracting", () => {
+    setRoles({ isAgent: true, hasAgentRecord: true });
     renderSidebar();
-    expect(group("Grow")).toBeTruthy();
+    openGroups("Sell", "Grow", "My Business", "Learn", "Team", "Settings");
     // New hires, Call list and invite links are guarded to
     // managers and recruiting staff; a plain agent gets the open referral form.
     expect(link("New hires")).toBeNull();
     expect(link("Call list")).toBeNull();
     expect(link("Invite an agent")).toBeNull();
     expect(link("Refer a recruit")?.getAttribute("href")).toBe("/dashboard/referrals/new");
-    expect(group("Learn")).toBeTruthy();
-    expect(link("Training Home")).toBeTruthy();
+    expect(link("Training")?.getAttribute("href")).toBe("/dashboard/training/library");
     expect(link("Call Center")).toBeTruthy();
     expect(link("My Contracts")).toBeNull();
-    expect(link("Finances")).toBeNull();
+    expect(link("Finances")?.getAttribute("href")).toBe("/dashboard/finances");
+    expect(screen.getAllByRole("link", { name: "Finances" })).toHaveLength(1);
+    expect(link("Earnings")).toBeNull();
+    expect(link("My Commissions")).toBeNull();
+    expect(group("Owner")).toBeNull();
+    expect(link("Reports")).toBeNull();
   });
 
   it("keeps the complete grouped admin map visible", () => {
     setRoles({ isAdmin: true });
     renderSidebar();
     for (const label of ["Sell", "Grow", "My Business", "Learn", "Team", "Owner", "Settings"]) {
-      expect(group(label)).toBeTruthy();
+      openGroups(label);
     }
-    for (const label of ["Home", "Reports", "Finances", "Training Home", "Nova Pro", "Producer Profile"]) {
+    for (const label of ["Home", "My Tasks", "Reports", "Finances", "Training", "Producer Profile", "Account settings"]) {
       expect(link(label)).toBeTruthy();
     }
+    expect(screen.getAllByRole("link", { name: "Finances" })).toHaveLength(1);
+    expect(link("Nova Pro")).toBeNull();
+    expect(link("My Day")).toBeNull(); // An admin account is not automatically Sam.
+    expect(link("Account settings")?.getAttribute("href")).toBe("/dashboard/settings");
   });
 
   // MP-332 — mode-tailored nav. A Pure Recruiter sees recruiting, never the
   // selling surface; VA staff see the queues they work, never Clients; an
-  // Agency Owner sees Reports (a leader surface) that a plain agent does not.
+  // Agency Owner sees producer and team work; Reports remains admin-only.
   it("gives a Pure Recruiter recruiting + calendar, and hides the selling surface", () => {
     setRoles({ isRecruiter: true, effectiveMode: "recruiter" as never });
     renderSidebar();
-    expect(group("Grow")).toBeTruthy();
+    openGroups("Grow", "Team", "Settings");
     expect(link("Call list")).toBeTruthy();
     expect(link("Calendar")?.getAttribute("href")).toBe("/dashboard/calendar");
     // /admin/invite-links and /dashboard/recruits do not admit recruiters.
@@ -186,31 +205,38 @@ describe("GlobalSidebar · AgentCloud application navigation", () => {
     expect(group("Sell")).toBeNull();
     expect(link("Book of Business")).toBeNull();
     expect(link("Quoter")).toBeNull();
-    expect(link("Nova Pro")).toBeTruthy();
+    expect(link("Nova Pro")).toBeNull();
+    expect(group("My Business")).toBeNull();
+    expect(link("Finances")).toBeNull();
+    expect(link("Account settings")?.getAttribute("href")).toBe("/dashboard/settings");
     expect(link("Producer Profile")).toBeNull();
   });
 
   it("gives VA staff the call center and recruiting workspace without producer books", () => {
     setRoles({ isVa: true });
     renderSidebar();
-    expect(group("Grow")).toBeTruthy();
-    expect(group("Sell")).toBeTruthy();
+    openGroups("Grow", "Sell", "Settings");
     expect(link("Call Center")).toBeTruthy();
+    expect(link("Call list")).toBeTruthy();
+    expect(group("My Business")).toBeNull();
     expect(link("Book of Business")).toBeNull();
   });
 
   it("shows producer and team surfaces to an Agency Owner without owner-only reports", () => {
     setRoles({ isManager: true, effectiveMode: "agency_owner" as never });
     renderSidebar();
-    expect(group("Sell")).toBeTruthy();
-    expect(group("Team")).toBeTruthy();
+    openGroups("Sell", "Grow", "My Business", "Learn", "Team", "Settings");
     expect(link("My Team")).toBeTruthy();
+    expect(link("Finances")?.getAttribute("href")).toBe("/dashboard/finances");
+    expect(group("Owner")).toBeNull();
     expect(link("Reports")).toBeNull();
   });
 
   it("hides Reports from a plain agent", () => {
-    setRoles({});
+    setRoles({ isAgent: true, hasAgentRecord: true });
     renderSidebar();
+    openGroups("Sell", "Grow", "My Business", "Learn", "Team", "Settings");
+    expect(group("Owner")).toBeNull();
     expect(link("Reports")).toBeNull();
   });
 
@@ -228,6 +254,7 @@ describe("GlobalSidebar · AgentCloud application navigation", () => {
   it("puts permitted quick actions in the mobile navigation sheet", () => {
     setRoles({ isManager: true });
     renderSidebar("/dashboard", true);
+    openGroups("Settings");
     expect(screen.getByRole("button", { name: "Post a Deal" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Add Agent" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Search people and pages" })).toBeTruthy();
@@ -315,9 +342,12 @@ describe("GlobalSidebar · an active group can be collapsed (F27)", () => {
   it("still lets a group the page is not in collapse", () => {
     setRoles({ isAdmin: true });
     renderSidebar("/dashboard/call-center");
+    expect(group("Learn")).toHaveAttribute("aria-expanded", "false");
+    openGroups("Learn");
+    expect(link("Training")).toBeTruthy();
     fireEvent.click(group("Learn")!);
     expect(group("Learn")!.getAttribute("aria-expanded")).toBe("false");
-    expect(link("Call Lab")).toBeNull();
+    expect(link("Training")).toBeNull();
   });
 });
 
@@ -378,6 +408,7 @@ describe("GlobalSidebar · query-aware active state (F25)", () => {
   it("leaves it dark on an unrelated team view", () => {
     setRoles({ isVa: true });
     renderSidebar("/dashboard/team?view=link");
+    openGroups("Grow");
     expect(link("Contracting review")).not.toHaveAttribute("aria-current");
     expect(link("Contracting review")!.className).not.toMatch(ACTIVE_TINT);
   });
@@ -392,9 +423,9 @@ describe("GlobalSidebar · section tones (colour layer, 2026-10-28)", () => {
     ["/dashboard/call-center", "Call Center", "good", {}],
     ["/dashboard/recruiting", "Call list", "royal", { isManager: true }],
     ["/dashboard/production", "Book of Business", "good", {}],
-    ["/dashboard/training/library", "Training Home", "warm", {}],
+    ["/dashboard/training/library", "Training", "warm", {}],
     ["/dashboard/team", "My Team", "cool", {}],
-    ["/dashboard/settings/security", "Security", "slate", {}],
+    ["/dashboard/settings", "Account settings", "slate", {}],
   ] as const)("on %s the active item (%s) carries its section's tone, %s, and no other link is tinted", (pathname, label, tone, roles) => {
     setRoles(roles as Partial<typeof authState>);
     renderSidebar(pathname);
@@ -411,7 +442,7 @@ describe("GlobalSidebar · section tones (colour layer, 2026-10-28)", () => {
     setRoles({ isAdmin: true });
     renderSidebar("/dashboard/call-center");
     const expected: Array<[HTMLElement | null, Tone]> = [
-      [link("Home"), "gold"], [link("My Day"), "gold"], [group("Sell"), "good"], [group("Grow"), "royal"],
+      [link("Home"), "gold"], [link("My Tasks"), "gold"], [group("Sell"), "good"], [group("Grow"), "royal"],
       [group("My Business"), "good"], [group("Learn"), "warm"], [group("Team"), "cool"], [group("Owner"), "slate"],
       [group("Settings"), "slate"], [link("Producer Profile"), "slate"],
     ];
@@ -433,7 +464,7 @@ describe("GlobalSidebar · section tones (colour layer, 2026-10-28)", () => {
 
   it("gives a favourite the tone of the section that owns its page", () => {
     setRoles({ isManager: true });
-    useFavoriteRoutes.getState().toggleFavorite("/dashboard/recruiting", "Call list");
+    act(() => { useFavoriteRoutes.getState().toggleFavorite("/dashboard/recruiting", "Call list"); });
     try {
       renderSidebar("/dashboard/recruiting");
       const rows = screen.getAllByRole("link", { name: "Call list" });
@@ -443,7 +474,7 @@ describe("GlobalSidebar · section tones (colour layer, 2026-10-28)", () => {
         expect(row.className).toContain(TONE_CLASS.royal.soft);
       }
     } finally {
-      useFavoriteRoutes.getState().toggleFavorite("/dashboard/recruiting", "Call list");
+      act(() => { useFavoriteRoutes.getState().toggleFavorite("/dashboard/recruiting", "Call list"); });
     }
   });
 

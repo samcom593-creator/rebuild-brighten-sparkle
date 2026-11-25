@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { resolveBrand } from "@/config/brand";
+import { VideoPlaybackError } from "@/components/media/VideoPlaybackError";
+import { useNativeVideoRecovery } from "@/hooks/useNativeVideoRecovery";
+import { loadYouTubeAPI, YOUTUBE_PLAYER_TIMEOUT_MS } from "@/lib/youtubePlayerApi";
 
 interface CourseVideoPlayerProps {
   videoUrl: string;
@@ -25,34 +28,6 @@ declare global {
     YT: any;
     onYouTubeIframeAPIReady: (() => void) | undefined;
   }
-}
-
-let ytApiLoaded = false;
-let ytApiLoading = false;
-const ytApiCallbacks: (() => void)[] = [];
-
-function loadYouTubeAPI(): Promise<void> {
-  return new Promise((resolve) => {
-    if (ytApiLoaded && window.YT?.Player) {
-      resolve();
-      return;
-    }
-
-    ytApiCallbacks.push(resolve);
-
-    if (ytApiLoading) return;
-    ytApiLoading = true;
-
-    const tag = document.createElement("script");
-    tag.src = "https://www.youtube.com/iframe_api";
-    document.head.appendChild(tag);
-
-    window.onYouTubeIframeAPIReady = () => {
-      ytApiLoaded = true;
-      ytApiCallbacks.forEach((cb) => cb());
-      ytApiCallbacks.length = 0;
-    };
-  });
 }
 
 function getYouTubeId(url: string): string | null {
@@ -78,6 +53,7 @@ export function CourseVideoPlayer({
   if (videoParts.length > 1) {
     return (
       <SegmentedVideoPlayer
+        key={videoParts.map((part) => part.url).join("\n")}
         parts={videoParts}
         posterUrl={posterUrl}
         title={title}
@@ -108,6 +84,7 @@ export function CourseVideoPlayer({
   if (isYouTube && youtubeId) {
     return (
       <YouTubePlayer
+        key={youtubeId}
         videoId={youtubeId}
         onProgressUpdate={onProgressUpdate}
         watchedPercent={watchedPercent}
@@ -145,6 +122,7 @@ export function CourseVideoPlayer({
 
   return (
     <NativeVideoPlayer
+      key={videoUrl}
       videoUrl={videoUrl}
       posterUrl={posterUrl}
       title={title}
@@ -311,7 +289,11 @@ function YouTubePlayer({
   const playerRef = useRef<any>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [localProgress, setLocalProgress] = useState(watchedPercent);
-  const [apiReady, setApiReady] = useState(false);
+  const [apiAttempt, setApiAttempt] = useState(0);
+  const [readyAttempt, setReadyAttempt] = useState<number | null>(null);
+  const [playerReady, setPlayerReady] = useState(false);
+  const [playerFailed, setPlayerFailed] = useState(false);
+  const apiReady = readyAttempt === apiAttempt;
   const [isPlaying, setIsPlaying] = useState(false);
   const [showFallback, setShowFallback] = useState(false);
   const completedRef = useRef(watchedPercent >= UNLOCK_THRESHOLD);
@@ -320,14 +302,20 @@ function YouTubePlayer({
 
   // Load the YouTube IFrame API
   useEffect(() => {
+    let active = true;
     mountedRef.current = true;
+    setPlayerFailed(false);
+    setPlayerReady(false);
     loadYouTubeAPI().then(() => {
-      if (mountedRef.current) setApiReady(true);
+      if (active) setReadyAttempt(apiAttempt);
+    }).catch(() => {
+      if (active) setPlayerFailed(true);
     });
     return () => {
+      active = false;
       mountedRef.current = false;
     };
-  }, []);
+  }, [apiAttempt]);
 
   // Show fallback button after 30s
   useEffect(() => {
@@ -342,38 +330,62 @@ function YouTubePlayer({
   // Create the YouTube player
   useEffect(() => {
     if (!apiReady || !containerRef.current) return;
+    let active = true;
 
     const playerDiv = document.createElement("div");
     playerDiv.id = `yt-player-${videoId}`;
     containerRef.current.innerHTML = "";
     containerRef.current.appendChild(playerDiv);
 
-    playerRef.current = new window.YT.Player(playerDiv.id, {
-      videoId,
-      width: "100%",
-      height: "100%",
-      playerVars: {
-        rel: 0,
-        modestbranding: 1,
-        playsinline: 1,
-      },
-      events: {
-        onStateChange: (event: any) => {
-          if (!mountedRef.current) return;
-          const state = event.data;
-          if (state === 1) {
-            setIsPlaying(true);
-            if (!startTimeRef.current) startTimeRef.current = Date.now();
-            startPolling();
-          } else {
-            setIsPlaying(false);
-            stopPolling();
-          }
+    const readyTimer = window.setTimeout(() => {
+      if (active && mountedRef.current) setPlayerFailed(true);
+    }, YOUTUBE_PLAYER_TIMEOUT_MS);
+    try {
+      playerRef.current = new window.YT.Player(playerDiv.id, {
+        videoId,
+        width: "100%",
+        height: "100%",
+        playerVars: {
+          rel: 0,
+          modestbranding: 1,
+          playsinline: 1,
         },
-      },
-    });
+        events: {
+          onReady: () => {
+            window.clearTimeout(readyTimer);
+            if (!active || !mountedRef.current) return;
+            setPlayerReady(true);
+            setPlayerFailed(false);
+          },
+          onError: () => {
+            window.clearTimeout(readyTimer);
+            if (!active || !mountedRef.current) return;
+            stopPolling();
+            setIsPlaying(false);
+            setPlayerFailed(true);
+          },
+          onStateChange: (event: any) => {
+            if (!active || !mountedRef.current) return;
+            const state = event.data;
+            if (state === 1) {
+              setIsPlaying(true);
+              if (!startTimeRef.current) startTimeRef.current = Date.now();
+              startPolling();
+            } else {
+              setIsPlaying(false);
+              stopPolling();
+            }
+          },
+        },
+      });
+    } catch {
+      window.clearTimeout(readyTimer);
+      setPlayerFailed(true);
+    }
 
     return () => {
+      active = false;
+      window.clearTimeout(readyTimer);
       stopPolling();
       try {
         playerRef.current?.destroy();
@@ -431,75 +443,78 @@ function YouTubePlayer({
   const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
   return (
-    <div className="relative w-full aspect-video rounded-md overflow-hidden bg-white dark:bg-black">
-      {!apiReady && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white dark:bg-black z-10">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      )}
-      <div ref={containerRef} className="w-full h-full" />
+    <div className="space-y-3">
+      <div className="relative w-full aspect-video rounded-md overflow-hidden bg-white dark:bg-black">
+        {!playerReady && !playerFailed && (
+          <div role="status" aria-label="Loading video" className="absolute inset-0 flex items-center justify-center bg-white dark:bg-black z-10">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        )}
+        <div ref={containerRef} className="w-full h-full" />
 
-      {/* Speed controls */}
-      {onPlaybackRateChange && (
-        <div className="absolute top-3 left-3 z-20 flex gap-1">
-          {SPEEDS.map(s => (
-            <button
-              key={s}
-              onClick={() => {
-                onPlaybackRateChange(s);
-                try { playerRef.current?.setPlaybackRate?.(s); } catch {} // empty-catch-allow:media-api-optional
-              }}
-              className={cn(
-                "px-2 py-0.5 rounded text-[11px] font-bold transition-all",
-                (playbackRate || 1) === s
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-white dark:bg-black/60 text-white/70 hover:bg-white dark:bg-black/80"
-              )}
+        {/* Speed controls */}
+        {onPlaybackRateChange && (
+          <div className="absolute top-3 left-3 z-20 flex gap-1">
+            {SPEEDS.map(s => (
+              <button
+                key={s}
+                onClick={() => {
+                  onPlaybackRateChange(s);
+                  try { playerRef.current?.setPlaybackRate?.(s); } catch {} // empty-catch-allow:media-api-optional
+                }}
+                className={cn(
+                  "px-2 py-0.5 rounded text-[11px] font-bold transition-all",
+                  (playbackRate || 1) === s
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-white dark:bg-black/60 text-white/70 hover:bg-white dark:bg-black/80"
+                )}
+              >
+                {s}x
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Progress overlay */}
+        <div className="absolute bottom-0 left-0 right-0 p-4 bg-white dark:bg-card pointer-events-none">
+          <div className="flex items-center gap-2">
+            <Progress value={localProgress} className="flex-1 h-2" />
+            <span className="text-xs text-white/80">{localProgress}% watched</span>
+            {localProgress >= UNLOCK_THRESHOLD && (
+              <CheckCircle className="h-4 w-4 text-emerald-400" />
+            )}
+          </div>
+          <div className="flex items-center justify-between mt-2">
+            <p className="text-xs text-white/60">
+              {localProgress >= UNLOCK_THRESHOLD
+                ? "✅ Quiz unlocked! You can proceed."
+                : `Watch at least ${UNLOCK_THRESHOLD}% to unlock the quiz.`}
+            </p>
+            {isPlaying && (
+              <div className="flex items-center gap-1 text-xs text-white/60 pointer-events-none">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                Tracking
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Fallback button */}
+        {showFallback && localProgress < UNLOCK_THRESHOLD && (
+          <div className="absolute top-3 right-3 z-20 pointer-events-auto">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={handleMarkWatched}
+              className="gap-1 text-xs bg-foreground/90 text-foreground hover:bg-white"
             >
-              {s}x
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Progress overlay */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 bg-white dark:bg-card pointer-events-none">
-        <div className="flex items-center gap-2">
-          <Progress value={localProgress} className="flex-1 h-2" />
-          <span className="text-xs text-white/80">{localProgress}% watched</span>
-          {localProgress >= UNLOCK_THRESHOLD && (
-            <CheckCircle className="h-4 w-4 text-emerald-400" />
-          )}
-        </div>
-        <div className="flex items-center justify-between mt-2">
-          <p className="text-xs text-white/60">
-            {localProgress >= UNLOCK_THRESHOLD
-              ? "✅ Quiz unlocked! You can proceed."
-              : `Watch at least ${UNLOCK_THRESHOLD}% to unlock the quiz.`}
-          </p>
-          {isPlaying && (
-            <div className="flex items-center gap-1 text-xs text-white/60 pointer-events-none">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-              Tracking
-            </div>
-          )}
-        </div>
+              <Clock className="h-3 w-3" />
+              Mark as Watched
+            </Button>
+          </div>
+        )}
       </div>
-
-      {/* Fallback button */}
-      {showFallback && localProgress < UNLOCK_THRESHOLD && (
-        <div className="absolute top-3 right-3 z-20 pointer-events-auto">
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={handleMarkWatched}
-            className="gap-1 text-xs bg-foreground/90 text-foreground hover:bg-white"
-          >
-            <Clock className="h-3 w-3" />
-            Mark as Watched
-          </Button>
-        </div>
-      )}
+      {playerFailed && <VideoPlaybackError source={`https://www.youtube.com/watch?v=${videoId}`} onRetry={() => setApiAttempt((attempt) => attempt + 1)} />}
     </div>
   );
 }
@@ -672,6 +687,7 @@ function NativeVideoPlayer({
   progressMode = "lesson",
 }: NativeVideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const playback = useNativeVideoRecovery(videoUrl, videoRef);
   const [localProgress, setLocalProgress] = useState(watchedPercent);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const completedRef = useRef(watchedPercent >= UNLOCK_THRESHOLD);
@@ -777,6 +793,8 @@ function NativeVideoPlayer({
           src={videoUrl}
           poster={posterUrl || undefined}
           aria-label={`${title} video`}
+          onError={playback.onError}
+          onCanPlay={playback.onCanPlay}
           controls
           playsInline
           preload="metadata"
@@ -786,6 +804,8 @@ function NativeVideoPlayer({
           {resolveBrand().shortName} lesson
         </div>
       </div>
+
+      {playback.failed && <VideoPlaybackError source={videoUrl} onRetry={playback.retry} />}
 
       <div className="rounded-xl border border-border bg-muted/25 p-3 sm:p-4">
         <div className="flex items-center justify-between gap-3">

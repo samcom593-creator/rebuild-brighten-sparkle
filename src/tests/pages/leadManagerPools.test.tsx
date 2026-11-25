@@ -15,9 +15,11 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 const db = vi.hoisted(() => ({
   calls: [] as Array<{ fn: string; args: Record<string, unknown> }>,
   signed: [] as string[],
+  invoked: [] as Array<{ fn: string; body: unknown }>,
 }));
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "manager-a" }, isLoading: false }) }));
 vi.mock("@/integrations/supabase/client", () => {
   const rpc = (fn: string, args?: Record<string, unknown>) => {
     db.calls.push({ fn, args: args ?? {} });
@@ -55,6 +57,10 @@ vi.mock("@/integrations/supabase/client", () => {
         refreshSession: () => Promise.resolve({ data: {}, error: null }),
       },
       storage: { from: () => ({ createSignedUrl: (path: string) => { db.signed.push(path); return Promise.resolve({ data: { signedUrl: `https://signed.example/${path}` }, error: null }); } }) },
+      functions: { invoke: (fn: string, options: { body: unknown }) => {
+        db.invoked.push({ fn, body: options.body });
+        return Promise.resolve({ data: { signedUrl: "https://signed.example/verified-recording.webm", expiresInSeconds: 900 }, error: null });
+      } },
     },
   };
 });
@@ -71,9 +77,11 @@ describe("Lead Manager pools", () => {
   beforeAll(() => {
     vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
     HTMLElement.prototype.scrollIntoView = vi.fn();
+    vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
   });
-  afterAll(() => vi.unstubAllGlobals());
-  beforeEach(() => { db.calls.length = 0; db.signed.length = 0; localStorage.clear(); });
+  afterAll(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+  beforeEach(() => { db.calls.length = 0; db.signed.length = 0; db.invoked.length = 0; vi.mocked(HTMLMediaElement.prototype.play).mockClear(); localStorage.clear(); });
 
   it("shows what every tier means without a tap, for the pool on screen", async () => {
     renderPage();
@@ -134,7 +142,11 @@ describe("Lead Manager pools", () => {
     const card = await screen.findByTestId("lead-recordings");
     expect(await within(card).findByText(/Wants a call back Friday/)).toBeTruthy();
     fireEvent.click(within(card).getByRole("button", { name: /Play/ }));
-    await waitFor(() => expect(db.signed).toEqual(["callcenter/2026-11-23/a.webm"]));
+    await waitFor(() => expect(db.invoked).toEqual([{ fn: "lead-recording-url", body: { recordingId: "r-1" } }]));
+    expect(db.signed).toEqual([]);
+    const audio = await screen.findByLabelText("Call recording");
+    fireEvent.loadedMetadata(audio);
+    expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(1);
   });
 
   it("uses the exact work-filter preview for assignment and waits out the debounce", async () => {

@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Clock, Crown } from "lucide-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -5,6 +6,8 @@ import { resolveBrand } from "@/config/brand";
 import { track as trackRecruitingEvent } from "@/lib/analytics";
 import { buildPublicRecruitingHref, parsePublicRecruitingTrack } from "@/lib/publicRecruitingFlow";
 import { recruitingVslForTrack } from "@/lib/vslMedia";
+import { VideoPlaybackError } from "@/components/media/VideoPlaybackError";
+import { useNativeVideoRecovery } from "@/hooks/useNativeVideoRecovery";
 import "@/components/landing/recruiting-funnel.css";
 
 const BRAND = resolveBrand();
@@ -14,6 +17,8 @@ export default function Vsl() {
   const [searchParams] = useSearchParams();
   const track = parsePublicRecruitingTrack(searchParams.get("track"));
   const { video, schema, analyticsId, label } = recruitingVslForTrack(track);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const playback = useNativeVideoRecovery(video.src, videoRef);
   const isLicensingPath = track === "licensing-roadmap";
   const applyHref = buildPublicRecruitingHref("/apply", searchParams);
   const headline = isLicensingPath ? "Start your insurance career" : "The unfair advantage for serious producers";
@@ -44,19 +49,24 @@ export default function Vsl() {
           <div className="relative aspect-video overflow-hidden bg-black">
             <video
               key={video.src}
+              ref={videoRef}
               controls
               playsInline
               preload="metadata"
               poster={video.poster}
               aria-label={video.title}
+              onError={playback.onError}
+              onCanPlay={playback.onCanPlay}
               onPlay={() => trackRecruitingEvent("hero_vsl_play", { video: analyticsId, position: "vsl" })}
               className="absolute inset-0 h-full w-full bg-black object-contain"
             >
-              <source src={video.src} type="video/mp4" />
+              <source src={video.src} type="video/mp4" onError={playback.onError} />
               Your browser cannot play this video. You can still use the application link below.
             </video>
           </div>
         </div>
+
+        {playback.failed && <VideoPlaybackError source={video.src} onRetry={playback.retry} />}
 
         <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
           <span>{label}</span>

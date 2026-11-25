@@ -9,21 +9,12 @@ import { cn } from "@/lib/utils";
 import { MyDayWins } from "@/components/myday/MyDayWins";
 import { MyDayTodoist, pushMyDayToTodoist } from "@/components/myday/MyDayTodoist";
 import { PrelicensingCheck } from "@/components/myday/PrelicensingCheck";
+import { useSamPrivateAccess } from "@/hooks/useSamPrivateAccess";
+import { assertSamTaskSession, myDayCacheKey, taskAuthorization } from "@/lib/privateTasks";
+import { isDayCheckIds, isDayCheckRows, isDayPlanTasks, isPendingDayChecks, MyDayStorageError, readDayCache, writeDayCache, type DayPlanTask as Task, type PendingDayCheck as Pending } from "@/lib/myDayStorage";
 import { ContractingReviewBanner } from "@/components/contracting-review/ContractingReviewBanner";
 
-interface Task {
-  id: string;
-  weekday: number;
-  start_min: number;
-  duration_min: number;
-  title: string;
-  detail: string | null;
-  category: string;
-  sort: number;
-  alert: boolean;
-}
 interface Draft extends Task { hidden?: boolean; isNew?: boolean }
-interface Pending { task_id: string; day: string; done: boolean }
 type SaveState = "idle" | "saving" | "saved" | "offline";
 
 const CATEGORY_DOT: Record<string, string> = {
@@ -44,25 +35,6 @@ const Q4_FOCUS: Record<number, string> = {
 };
 const LENGTHS = [5, 10, 15, 20, 30, 45, 60, 75, 90, 120, 150, 180, 240];
 const WEEKDAY_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const PENDING_KEY = "myday:pending";
-
-function lsGet(key: string): string | null {
-  try { return localStorage.getItem(key); } catch { // empty-catch-allow:private-mode-storage
-    return null;
-  }
-}
-function lsSet(key: string, value: string) {
-  try { localStorage.setItem(key, value); } catch { // empty-catch-allow:private-mode-storage
-    return;
-  }
-}
-function readJson<T>(key: string, fallback: T): T {
-  const raw = lsGet(key);
-  if (!raw) return fallback;
-  try { return JSON.parse(raw) as T; } catch { // empty-catch-allow:corrupt-cache
-    return fallback;
-  }
-}
 
 /** Add days to a YYYY-MM-DD key without touching the local time zone. */
 function addDays(key: string, n: number): string {
@@ -111,13 +83,26 @@ function fromTimeValue(v: string): number | null {
 }
 
 export default function MyDay() {
+  const { allowed, isChecking, userId } = useSamPrivateAccess();
+  if (!allowed || !userId) return <p role="status" className="p-6 text-sm text-muted-foreground">{isChecking ? "Checking owner access…" : "Owner access required."}</p>;
+  return <MyDayContent key={userId} userId={userId} />;
+}
+
+function MyDayContent({ userId }: { userId: string }) {
+  const PENDING_KEY = myDayCacheKey(userId, "pending");
+  const active = useRef(true);
+  useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
   const [todayKey, setTodayKey] = useState(phoenixDateKey);
   const [selected, setSelected] = useState(todayKey);
   const [loadFailed, setLoadFailed] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [done, setDone] = useState<Set<string>>(new Set());
+  const [checksState, setChecksState] = useState<"loading" | "cached" | "verified" | "stale" | "unavailable">("loading");
+  const hasChecks = checksState === "cached" || checksState === "verified" || checksState === "stale";
   const [loading, setLoading] = useState(true);
   const [save, setSave] = useState<SaveState>("idle");
+  const [queueIssue, setQueueIssue] = useState<string | null>(null);
+  const [cacheUnavailable, setCacheUnavailable] = useState(false);
   const [nowMin, setNowMin] = useState(phoenixMinutes());
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Draft[]>([]);
@@ -160,30 +145,45 @@ export default function MyDay() {
   // entries that were actually sent are removed, re-read from storage, so a tap made
   // while a slow request was in flight can never be overwritten by an older copy.
   const flushPending = useCallback((): Promise<void> => {
+    if (!active.current) return Promise.resolve();
     if (flushing.current) { flushAgain.current = true; return flushing.current; }
-    const run = async () => {
+    const run = async () => { try {
       do {
         flushAgain.current = false;
-        const queue = readJson<Pending[]>(PENDING_KEY, []);
-        if (!queue.length) break;
+        const queue = readDayCache(PENDING_KEY, isPendingDayChecks) ?? [];
+        if (!queue.length || !active.current) break;
+        let authorization: string;
+        try { authorization = await assertSamTaskSession(userId, () => active.current); } catch {
+          if (active.current) setSave("offline");
+          return;
+        }
+        if (!active.current) return;
         setSave("saving");
         const sent: Pending[] = [];
         for (const p of queue) {
+          if (!active.current) return;
           const res = p.done
-            ? await supabase.from("day_plan_checks").upsert({ task_id: p.task_id, day: p.day }, { onConflict: "user_id,task_id,day" })
-            : await supabase.from("day_plan_checks").delete().eq("task_id", p.task_id).eq("day", p.day);
+            ? await supabase.from("day_plan_checks").upsert({ user_id: userId, task_id: p.task_id, day: p.day }, { onConflict: "user_id,task_id,day" }).setHeader("Authorization", authorization)
+            : await supabase.from("day_plan_checks").delete().eq("user_id", userId).eq("task_id", p.task_id).eq("day", p.day).setHeader("Authorization", authorization);
           if (!res.error) { sent.push(p); lastWriteAt.current = Date.now(); }
         }
-        const latest = readJson<Pending[]>(PENDING_KEY, []);
+        if (!active.current) return;
+        const latest = readDayCache(PENDING_KEY, isPendingDayChecks) ?? [];
         const left = latest.filter((q) => !sent.some((x) => x.task_id === q.task_id && x.day === q.day && x.done === q.done));
-        lsSet(PENDING_KEY, JSON.stringify(left));
+        writeDayCache(PENDING_KEY, left);
+        setQueueIssue(null);
         setSave(left.length ? (sent.length < queue.length ? "offline" : "saving") : "saved");
         if (sent.length < queue.length) break; // offline: the 30 s timer or 'online' retries
       } while (flushAgain.current);
+    } catch (error) {
+      if (!active.current) return;
+      if (error instanceof MyDayStorageError) setQueueIssue("Checkmark sync is paused because saved browser data could not be read or updated. Your existing queue has not been cleared.");
+      else setSave("offline");
+    }
     };
     flushing.current = run().finally(() => { flushing.current = null; });
     return flushing.current;
-  }, []);
+  }, [PENDING_KEY, userId]);
 
   useEffect(() => {
     const onOnline = () => { void flushPending(); };
@@ -194,58 +194,89 @@ export default function MyDay() {
 
   const applyPendingTo = useCallback((base: Set<string>, day: string) => {
     const next = new Set(base);
-    for (const p of readJson<Pending[]>(PENDING_KEY, [])) {
-      if (p.day !== day) continue;
-      if (p.done) next.add(p.task_id); else next.delete(p.task_id);
+    try {
+      for (const p of readDayCache(PENDING_KEY, isPendingDayChecks) ?? []) {
+        if (p.day !== day) continue;
+        if (p.done) next.add(p.task_id); else next.delete(p.task_id);
+      }
+    } catch {
+      if (active.current) setQueueIssue("Saved checkmarks could not be read. Checkmark sync is paused; no saved queue entries were sent.");
     }
     return next;
-  }, []);
+  }, [PENDING_KEY]);
 
   const load = useCallback(async () => {
+    if (!active.current) return;
     const day = selected;
     const startedAt = Date.now();
     const wd = weekdayOf(day);
-    const cachedTasks = readJson<Task[] | null>(`myday:tasks:${wd}`, null);
+    let cachedTasks: Task[] | null = null;
+    let cachedChecks: string[] | null = null;
+    try {
+      cachedTasks = readDayCache(myDayCacheKey(userId, "tasks", wd), isDayPlanTasks);
+      if (cachedTasks?.some(task => task.weekday !== wd)) throw new Error("Cached day does not match.");
+      setCacheUnavailable(false);
+    } catch {
+      cachedTasks = null;
+      setCacheUnavailable(true);
+    }
+    try { cachedChecks = readDayCache(myDayCacheKey(userId, "checks", day), isDayCheckIds); }
+    catch { setCacheUnavailable(true); }
+    setDone(applyPendingTo(new Set(cachedChecks ?? []), day));
+    setChecksState(cachedChecks === null ? "loading" : "cached");
     if (cachedTasks) {
       setTasks(cachedTasks);
-      setDone(applyPendingTo(new Set(readJson<string[]>(`myday:checks:${day}`, [])), day));
       setLoading(false);
     } else {
       setTasks([]);
-      setDone(new Set());
       setLoading(true);
     }
     try {
+      const authorization = await taskAuthorization(userId, () => active.current);
       if (!seeded.current) {
-        const { error } = await supabase.rpc("day_plan_ensure_seeded");
+        await assertSamTaskSession(userId, () => active.current);
+        if (!active.current) return;
+        const { error } = await supabase.rpc("day_plan_ensure_seeded").setHeader("Authorization", authorization);
         if (!error) seeded.current = true;
       }
+      if (!active.current) return;
       const [t, c] = await Promise.all([
         supabase.from("day_plan_tasks").select("id,weekday,start_min,duration_min,title,detail,category,sort,alert")
-          .eq("weekday", wd).eq("active", true).order("start_min", { ascending: true }).order("sort", { ascending: true }),
-        supabase.from("day_plan_checks").select("task_id").eq("day", day),
+          .eq("user_id", userId).eq("weekday", wd).eq("active", true).order("start_min", { ascending: true }).order("sort", { ascending: true }).setHeader("Authorization", authorization),
+        supabase.from("day_plan_checks").select("task_id").eq("user_id", userId).eq("day", day).setHeader("Authorization", authorization),
       ]);
       if (t.error) throw t.error;
       // Sam switched days while this was loading: this answer belongs to another day.
-      if (selectedRef.current !== day) return;
-      const rows = (t.data ?? []) as Task[];
+      if (!active.current || selectedRef.current !== day) return;
+      if (!isDayPlanTasks(t.data) || t.data.some(task => task.weekday !== wd)) throw new Error("Day response could not be verified.");
+      const rows = t.data;
       setTasks(rows);
       setLoadFailed(false);
-      lsSet(`myday:tasks:${wd}`, JSON.stringify(rows));
+      try { writeDayCache(myDayCacheKey(userId, "tasks", wd), rows); }
+      catch { setCacheUnavailable(true); }
       // Skip a checks answer that started before a tap was saved; it would undo the tap.
-      if (!c.error && lastWriteAt.current < startedAt) {
-        const ids = (c.data ?? []).map((r) => r.task_id);
-        lsSet(`myday:checks:${day}`, JSON.stringify(ids));
-        setDone(applyPendingTo(new Set(ids), day));
+      if (lastWriteAt.current < startedAt) {
+        if (c.error || !isDayCheckRows(c.data)) {
+          setChecksState(cachedChecks === null ? "unavailable" : "stale");
+        } else {
+          const ids = c.data.map((r) => r.task_id);
+          try { writeDayCache(myDayCacheKey(userId, "checks", day), ids); }
+          catch { setCacheUnavailable(true); }
+          setDone(applyPendingTo(new Set(ids), day));
+          setChecksState("verified");
+        }
       }
     } catch { // empty-catch-allow:offline-uses-cache
-      if (selectedRef.current === day && !cachedTasks) setLoadFailed(true);
-      setSave((s) => (s === "saving" ? s : "offline"));
+      if (active.current && selectedRef.current === day) {
+        if (!cachedTasks) setLoadFailed(true);
+        setChecksState(cachedChecks === null ? "unavailable" : "stale");
+      }
+      if (active.current) setSave((s) => (s === "saving" ? s : "offline"));
     } finally {
-      if (selectedRef.current === day) setLoading(false);
+      if (active.current && selectedRef.current === day) setLoading(false);
     }
     void flushPending();
-  }, [selected, applyPendingTo, flushPending]);
+  }, [selected, applyPendingTo, flushPending, userId]);
 
   // A load that failed with nothing cached retries as soon as the phone is back online.
   useEffect(() => {
@@ -258,20 +289,26 @@ export default function MyDay() {
   useEffect(() => { void load(); }, [load]);
 
   const toggle = useCallback(async (task: Task) => {
+    if (!active.current || !hasChecks) return;
     // Checking off a day that hasn't happened yet would record work that wasn't done.
     if (selected > todayKey) { toast("You can check these off on the day."); return; }
     const nextDone = !done.has(task.id);
-    setDone((prev) => {
-      const next = new Set(prev);
-      if (nextDone) next.add(task.id); else next.delete(task.id);
-      lsSet(`myday:checks:${selected}`, JSON.stringify([...next]));
-      return next;
-    });
-    const queue = readJson<Pending[]>(PENDING_KEY, []).filter((p) => !(p.task_id === task.id && p.day === selected));
-    queue.push({ task_id: task.id, day: selected, done: nextDone });
-    lsSet(PENDING_KEY, JSON.stringify(queue));
+    try {
+      const queue = (readDayCache(PENDING_KEY, isPendingDayChecks) ?? []).filter((p) => !(p.task_id === task.id && p.day === selected));
+      queue.push({ task_id: task.id, day: selected, done: nextDone });
+      writeDayCache(PENDING_KEY, queue);
+    } catch {
+      setQueueIssue("Checkmark not changed. Browser storage could not save or verify the queue. Restore browser storage, then try again.");
+      return;
+    }
+    setQueueIssue(null);
+    const next = new Set(done);
+    if (nextDone) next.add(task.id); else next.delete(task.id);
+    setDone(next);
+    try { writeDayCache(myDayCacheKey(userId, "checks", selected), [...next]); }
+    catch { setCacheUnavailable(true); }
     await flushPending();
-  }, [done, selected, todayKey, flushPending]);
+  }, [done, selected, todayKey, flushPending, PENDING_KEY, userId, hasChecks]);
 
   // Scroll to the current task once per opened day.
   const currentId = useMemo(() => {
@@ -317,47 +354,55 @@ export default function MyDay() {
     if (draft.some((r) => !r.hidden && !r.title.trim())) { toast.error("Every task needs a title"); return; }
     setSavingEdit(true);
     try {
+      const authorization = await assertSamTaskSession(userId, () => active.current);
       for (const r of draft) {
+        if (!active.current) return;
         if (r.isNew) {
           if (r.hidden) continue;
           const { data, error } = await supabase.from("day_plan_tasks").insert({
-            weekday, start_min: r.start_min, duration_min: r.duration_min, title: r.title.trim(),
+            user_id: userId, weekday, start_min: r.start_min, duration_min: r.duration_min, title: r.title.trim(),
             detail: r.detail, category: r.category, sort: r.sort, active: true, alert: r.alert,
-          }).select("id").single();
+          }).select("id").single().setHeader("Authorization", authorization);
           if (error) throw error;
+          if (!data?.id) throw new Error("Task save could not be confirmed");
           // Saved: from now on it is an existing task, so a retry after a later failure
           // updates it instead of inserting a second copy.
           patchDraft(r.id, { id: data.id, isNew: false });
         } else {
-          const { error } = await supabase.from("day_plan_tasks").update({
+          const { data, error } = await supabase.from("day_plan_tasks").update({
             start_min: r.start_min, duration_min: r.duration_min, title: r.title.trim(), active: !r.hidden,
             detail: r.detail?.trim() ? r.detail.trim() : null, category: r.category, alert: r.alert,
             updated_at: new Date().toISOString(),
-          }).eq("id", r.id);
+          }).eq("user_id", userId).eq("id", r.id).select("id").maybeSingle().setHeader("Authorization", authorization);
           if (error) throw error;
+          if (!data?.id) throw new Error("Task was not updated");
         }
       }
+      if (!active.current) return;
       toast.success("Day saved");
       setEditing(false);
       await load();
       // Keep the real to-do list and the calendar in step with what was just edited. A failure is shown,
       // never swallowed: a schedule that looks synced and is not is worse than one that says it is not.
-      void pushMyDayToTodoist().then((r) => {
+      if (!active.current) return;
+      void pushMyDayToTodoist(userId, () => active.current).then((r) => {
+        if (!active.current) return;
         if (r.ok) toast.success("Todoist and calendar updated");
         else toast.error(`Saved here, but Todoist did not update: ${r.errors?.[0] ?? r.error ?? "unknown"}`);
-      });
+      }).catch(() => { if (active.current) toast.error("Saved here, but Todoist did not update."); });
     } catch {
+      if (!active.current) return;
       toast.error("Could not save. Your edits are still here, try again.");
     } finally {
-      setSavingEdit(false);
+      if (active.current) setSavingEdit(false);
     }
   };
 
-  const status = {
+  const status = queueIssue ? <><CloudOff className="h-3.5 w-3.5 text-amber-400" /> Sync paused</> : {
     idle: null,
     saving: <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…</>,
     saved: <><Cloud className="h-3.5 w-3.5 text-emerald-400" /> Saved</>,
-    offline: <><CloudOff className="h-3.5 w-3.5 text-amber-400" /> Offline, will sync</>,
+    offline: <><CloudOff className="h-3.5 w-3.5 text-amber-400" /> Not synced; will retry</>,
   }[save];
 
   return (
@@ -399,12 +444,18 @@ export default function MyDay() {
 
       <div className="mb-5 rounded-2xl border border-border bg-card p-4">
         <div className="flex items-center justify-between text-sm">
-          <span className="font-semibold">{doneCount} of {tasks.length} done</span>
+          <span className="font-semibold">{hasChecks ? `${checksState === "verified" ? "" : "Last saved: "}${doneCount} of ${tasks.length} done` : checksState === "loading" ? "Loading checkmarks…" : "Checkmarks unavailable"}</span>
           <span className="flex items-center gap-1.5 text-muted-foreground" aria-live="polite">{status}</span>
         </div>
-        <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-muted">
+        {hasChecks ? <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-muted">
           <div className={cn("h-full rounded-full transition-all", tone.bar)} style={{ width: `${pct}%` }} />
-        </div>
+        </div> : null}
+        {checksState === "stale" || checksState === "unavailable" ? <div role="alert" className="mt-3 text-sm text-amber-600 dark:text-amber-300">
+          <p>{checksState === "stale" ? "Could not refresh checkmarks. Showing the last saved checkmarks." : "Saved checkmarks could not be loaded or verified. Completion totals are unavailable."}</p>
+          <button type="button" className="mt-1 underline" onClick={() => void load()}>Retry checkmarks</button>
+        </div> : null}
+        {queueIssue ? <p role="alert" className="mt-3 text-sm text-amber-600 dark:text-amber-300">{queueIssue}</p>
+          : cacheUnavailable ? <p role="status" className="mt-3 text-sm text-amber-600 dark:text-amber-300">Offline copies are unavailable in this browser. Only confirmed online saves are durable.</p> : null}
         <p className="mt-3 text-sm text-muted-foreground">
           If it isn't tapped done, it didn't happen. Every tap fills the scorecard on{" "}
           <Link to={weekday === 7 ? "/dashboard/admin/brand-command?review=1" : "/dashboard/admin/brand-command"} className="font-semibold text-foreground underline underline-offset-4">Brand Command</Link>.
@@ -515,8 +566,9 @@ export default function MyDay() {
                 <div
                   ref={isNow ? nowRef : undefined}
                   role="button"
-                  tabIndex={0}
-                  aria-pressed={isDone}
+                  tabIndex={hasChecks ? 0 : -1}
+                  aria-pressed={hasChecks ? isDone : "mixed"}
+                  aria-disabled={!hasChecks}
                   onClick={() => { void toggle(t); }}
                   onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); void toggle(t); } }}
                   className={cn(
@@ -526,7 +578,7 @@ export default function MyDay() {
                   )}
                 >
                   <span className={cn("mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2", isDone ? "border-primary bg-primary text-primary-foreground" : "border-border")}>
-                    {isDone ? <Check className="h-4 w-4" /> : null}
+                    {!hasChecks ? <span aria-hidden="true">?</span> : isDone ? <Check className="h-4 w-4" /> : null}
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">

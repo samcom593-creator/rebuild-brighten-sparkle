@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { legacyRedirectTarget } from "@/lib/legacyRedirect";
 
 const src = (rel: string) => fs.readFileSync(path.resolve(__dirname, `../../${rel}`), "utf8");
 
@@ -65,9 +66,38 @@ describe("account mode → home screen routing", () => {
     expect(sidebar).toContain("const seesAll = isAdmin && !isPreviewing;");
   });
 
-  it("recruiting routes admit the recruiter role", () => {
+  it("canonical recruiting routes admit recruiters and training aliases preserve their guarded destinations", () => {
     const app = src("App.tsx");
-    const hits = app.match(/path="\/dashboard\/recruiting[^"]*"[^\n]*allowRoles=\{\["va_manager", "va", "recruiter"\]\}/g) ?? [];
-    expect(hits.length).toBeGreaterThanOrEqual(6);
+    const route = (pathname: string) => {
+      const matches = app.split("\n").filter(line => line.includes(`<Route path="${pathname}" `));
+      expect(matches, pathname).toHaveLength(1);
+      return matches[0];
+    };
+    for (const [pathname, page] of [
+      ["/dashboard/recruiting", "DashboardApplicants"],
+      ["/dashboard/recruiting/pipeline", "RecruitingPipeline"],
+      ["/dashboard/recruiting/interviews", "Interviews"],
+      ["/dashboard/recruiting/follow-ups", "InterviewRecovery"],
+      ["/dashboard/recruiting/hires", "DashboardApplicants"],
+      ["/dashboard/training/progress", "CourseProgress"],
+      ["/dashboard/training/content", "CourseContent"],
+    ]) {
+      expect(route(pathname), pathname).toContain(`<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va", "recruiter"]}><${page} /></ProtectedRoute>`);
+    }
+    for (const [suffix, page, staffOnly] of [
+      ["", "ApexTrainingEntry", false],
+      ["/library", "TrainingHub", false],
+      ["/library/course/:courseId", "TrainingHubCourse", false],
+      ["/sales-course", "CourseCatalog", false],
+      ["/progress", "CourseProgress", true],
+      ["/content", "CourseContent", true],
+      ["/annuities", "AnnuityTraining", false],
+    ] as const) {
+      const canonical = `/dashboard/training${suffix}`;
+      expect(route(`/dashboard/recruiting/training${suffix}`)).toContain(`element={<LegacyWorkspaceRedirect to="${canonical}" />}`);
+      if (!staffOnly) expect(route(canonical)).toContain(`<ProtectedRoute><${page} /></ProtectedRoute>`);
+      expect(legacyRedirectTarget(canonical, { search: "?tab=team&filter=retained", hash: "#lesson" }, { courseId: "course one" }))
+        .toBe(`${canonical.replace(":courseId", "course%20one")}?tab=team&filter=retained#lesson`);
+    }
   });
 });

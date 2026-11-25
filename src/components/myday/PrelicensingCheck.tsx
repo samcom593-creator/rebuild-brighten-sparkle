@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { formatPhoneDisplay } from "@/lib/phone";
 import { cn } from "@/lib/utils";
+import { useSamPrivateAccess } from "@/hooks/useSamPrivateAccess";
+import { assertSamTaskSession, taskAuthorization } from "@/lib/privateTasks";
 
 /**
  * Pre-licensing check. Everyone who bought the licensing course, plus every active unlicensed hire, with two
@@ -16,32 +18,49 @@ export type PrelicensingRow = {
   bought_at: string | null; xcel_pct: number | null; xcel_status: string | null;
   in_slack: boolean; prelicensing_done: boolean; note: string | null;
 };
-const KEY = ["prelicensing_check_list"] as const;
 const SOURCE_LABEL: Record<PrelicensingRow["source"], string> = { course_buyer: "Bought course", unlicensed_hire: "Unlicensed hire", both: "Hire + bought course" };
 
 export function PrelicensingCheck({ defaultOpen = false }: { defaultOpen?: boolean }) {
+  const { allowed, userId } = useSamPrivateAccess();
+  if (!allowed || !userId) return null;
+  return <PrelicensingCheckContent key={userId} userId={userId} defaultOpen={defaultOpen} />;
+}
+
+function PrelicensingCheckContent({ defaultOpen, userId }: { defaultOpen: boolean; userId: string }) {
   const [open, setOpen] = useState(defaultOpen);
   const qc = useQueryClient();
+  const KEY = ["prelicensing_check_list", userId] as const;
+  const active = useRef(true);
+  useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
   const { data, isError, isLoading, refetch } = useQuery({
     queryKey: KEY,
     enabled: open,
     staleTime: 30_000,
+    gcTime: 0,
     queryFn: async (): Promise<PrelicensingRow[]> => {
-      const { data: res, error } = await supabase.rpc("prelicensing_check_list");
+      const authorization = await taskAuthorization(userId, () => active.current);
+      const { data: res, error } = await supabase.rpc("prelicensing_check_list").setHeader("Authorization", authorization);
       if (error) throw new Error(error.message);
+      await taskAuthorization(userId, () => active.current);
+      if (!Array.isArray(res) || !res.every(row => row && typeof row === "object" && !Array.isArray(row)
+        && typeof row.email_key === "string" && row.email_key.trim() && typeof row.in_slack === "boolean" && typeof row.prelicensing_done === "boolean"
+        && typeof row.source === "string" && ["course_buyer", "unlicensed_hire", "both"].includes(row.source)
+        && [row.name, row.phone, row.bought_at, row.xcel_status, row.note].every(value => value === null || typeof value === "string")
+        && (row.xcel_pct === null || (typeof row.xcel_pct === "number" && Number.isFinite(row.xcel_pct))))) throw new Error("List could not be verified");
       return res as unknown as PrelicensingRow[];
     },
   });
 
   const save = useMutation({
     mutationFn: async (v: { row: PrelicensingRow; in_slack: boolean; done: boolean }) => {
+      const authorization = await assertSamTaskSession(userId, () => active.current);
       const { data: res, error } = await supabase.rpc("prelicensing_set", {
         p_email_key: v.row.email_key, p_in_slack: v.in_slack, p_done: v.done,
-      });
-      if (error || !(res as { ok?: boolean })?.ok) throw new Error(error?.message ?? "Not saved");
+      }).setHeader("Authorization", authorization);
+      if (error || (res as { ok?: boolean })?.ok !== true) throw new Error(error?.message ?? "Not saved");
     },
-    onSuccess: () => { void qc.invalidateQueries({ queryKey: KEY }); },
-    onError: (e: Error) => toast.error(`Could not save: ${e.message}`),
+    onSuccess: () => { if (active.current) void qc.invalidateQueries({ queryKey: KEY }); },
+    onError: (e: Error) => { if (active.current) toast.error(`Could not save: ${e.message}`); },
   });
 
   const todo = (data ?? []).filter((r) => !(r.in_slack && r.prelicensing_done)).length;

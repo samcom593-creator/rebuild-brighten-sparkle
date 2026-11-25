@@ -349,8 +349,8 @@ export default function ClientPipeline() {
           </Button>
         }
         secondaryActions={isAdmin ? (
-          <Button type="button" variant="outline" className="h-11 bg-card" onClick={() => navigate("/dashboard/import")}>
-            <Upload className="h-4 w-4" aria-hidden /> Import
+          <Button type="button" variant="outline" className="h-11 bg-card" onClick={() => navigate("/dashboard/consumer-import")}>
+            <Upload className="h-4 w-4" aria-hidden /> Import consumers
           </Button>
         ) : undefined}
       />

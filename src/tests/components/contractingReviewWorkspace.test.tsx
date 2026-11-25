@@ -12,7 +12,7 @@ vi.mock("sonner", () => ({ toast }));
 const backend = vi.hoisted(() => ({ current: null as null | { rpc: (n: string, a?: Record<string, unknown>) => Promise<unknown> } }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc: (n: string, a?: Record<string, unknown>) => backend.current!.rpc(n, a) } }));
 
-import { ContractingReviewWorkspace } from "@/components/contracting-review/ContractingReviewWorkspace";
+import { HistoricalContractingReviewWorkspace as ContractingReviewWorkspace } from "@/components/contracting-review/ContractingReviewWorkspace";
 
 let fb: ReturnType<typeof fakeBackend>;
 const mount = (agents = [agent({ id: "ann", display_name: "Ann Lee" }), agent({ id: "bo", display_name: "Bo Chen", marked: ["aflac"] })]) => {

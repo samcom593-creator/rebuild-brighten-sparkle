@@ -27,7 +27,7 @@ const FAQ: FaqItem[] = [
   { category: "Getting Started", q: "I just got hired. What's the very first thing I do?",
     a: "1) Schedule your prelicensing course immediately. 2) Pass your state exam (most people do it in 14 days if serious). 3) The day you're licensed, your manager onboards you, runs your carrier contracts, and gives you your first lead block. Until you're licensed you can't write business, so don't waste days." },
   { category: "Getting Started", q: "Where do I find my carrier contracting links?",
-    a: "Carrier contracting runs through the MGN Agent Hub at mgnagenthub.com/dashboard — set up your account there and complete each carrier. Also complete your contracting profile at /dashboard/contracting-profile with your NPN number, first and last name, email and resident state so your team can confirm Combine, AFLAC, GTO and Ethos with you. If something is missing, open the Support Desk tab on this page." },
+    a: "Carrier contracting runs through the MGN Agent Hub at mgnagenthub.com/dashboard. Confirm the available carriers and complete their steps there. Also complete your contracting profile at /dashboard/contracting-profile with your NPN number, first and last name, email and resident state so your team can coordinate setup and record verified contract receipts. If something is missing, open the Support Desk tab on this page." },
   { category: "Getting Started", q: "What's the agent code on my profile?",
     a: "Your agent code is your internal identifier across recruiting, contracting, production, and reporting. You can see it on /dashboard/profile." },
 
@@ -51,11 +51,11 @@ const FAQ: FaqItem[] = [
 
   // Commission + Payouts
   { category: "Commission + Payouts", q: "When do I get paid?",
-    a: "Carrier-direct commissions hit your account on the carrier's schedule (usually weekly or daily after the policy is in force and the first premium clears). Check My Commissions (/dashboard/my-commissions) for your live ledger." },
+    a: "Carrier-direct commissions follow the carrier's payment schedule. Open Finances (/dashboard/finances) for recorded commission status and payment dates. An issued policy alone does not confirm a commission payment." },
   { category: "Commission + Payouts", q: "What's a chargeback and how do I avoid them?",
     a: "If a policy lapses within the first 6-12 months, the carrier claws back the commission. To avoid: solid fact-finding + realistic budgeting + post-sale check-in calls at 30/60/90 days." },
   { category: "Commission + Payouts", q: "Where do I see my real numbers?",
-    a: "Use Book of Business (/dashboard/production) for policies and production, My Commissions (/dashboard/my-commissions) for earnings, Leaderboard (/dashboard/leaderboard) for your standing, and the home scoreboard for personal production, team production, policies, and estimated earnings based on your saved comp." },
+    a: "Open Finances (/dashboard/finances) for policies, commissions, payment dates, and rate details. Book of Business (/dashboard/production) keeps the production view, Leaderboard (/dashboard/leaderboard) shows your standing, and Home tracks personal and team goals." },
 
   // Carriers
   { category: "Carriers", q: "How do I request a carrier contract?",

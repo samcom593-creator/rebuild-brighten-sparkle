@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useRealtimeTable } from "@/shared/realtime/useRealtimeTable";
 import { useAuth } from "@/hooks/useAuth";
+import { useRolePreview } from "@/hooks/useRolePreview";
 import { useDemoNumberFields } from "@/hooks/useDemoNumberFields";
 import { agencyDemoFields, applyAgencyDemo } from "@/lib/productionDemoModels";
 import { summarizeVantageDays, type VantageDay } from "@/lib/vantageProductionApi";
@@ -38,12 +39,24 @@ function fmt(n: number | null | undefined): string {
   return `$${Number(n).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 }
 
-export function ImoByAgency({
+type ImoByAgencyProps = { start?: string; end?: string; windowLabel?: string; hideTitle?: boolean };
+
+export function ImoByAgency(props: ImoByAgencyProps = {}) {
+  const { user, isAdmin, isLoading } = useAuth();
+  const { isPreviewing } = useRolePreview();
+  // Keep agency-wide production, owner estimates, demo fields, and realtime
+  // readers unmounted until this account's real admin access has resolved.
+  if (!user || !isAdmin || isLoading || isPreviewing) return null;
+  return <ImoByAgencyContent key={user.id} {...props} viewerId={user.id} />;
+}
+
+function ImoByAgencyContent({
   start,
   end,
   windowLabel,
   hideTitle = false,
-}: { start?: string; end?: string; windowLabel?: string; hideTitle?: boolean } = {}) {
+  viewerId,
+}: ImoByAgencyProps & { viewerId: string }) {
   // OWNER-ONLY. This card is the whole IMO's production plus Sam's personal
   // override on each sub-agency — agency-wide ALP and owner comp. It was
   // rendering for every signed-in agent, because /dashboard has no admin gate
@@ -54,7 +67,6 @@ export function ImoByAgency({
   // AgentCommandDashboard, Finances) so a fourth mount cannot reintroduce the
   // leak. Returning null before the query also means a non-admin never even
   // requests the data.
-  const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const exactWindow = Boolean(start && end);
   const phoenixToday = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Phoenix", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
@@ -64,15 +76,15 @@ export function ImoByAgency({
   // disclosure keyed off vantageDays.length, so a dead snapshots read silently
   // omitted the Vantage breakdown. vantageQuery.isError now surfaces it.
   const vantageQuery = useQuery({
-    enabled: isAdmin,
-    queryKey: ["vantage-api-production", apiStart, apiEnd],
+    queryKey: ["vantage-api-production", viewerId, apiStart, apiEnd],
     staleTime: 60_000,
     retry: 1,
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const base = supabase.from("production_external_daily_snapshots" as never)
         .select("business_date, reported_alp, reported_policies, updated_at, metadata")
         .eq("source", "agentcloud_production_api").eq("agency_name", "Vantage Financial")
-        .gte("business_date", apiStart);
+        .gte("business_date", apiStart)
+        .abortSignal(signal);
       // A passed window is end-exclusive (scoreboardWindow): .lte added the next day's snapshot.
       // The summary window ends today, inclusive.
       const { data, error } = await (exactWindow ? base.lt("business_date", apiEnd) : base.lte("business_date", apiEnd));
@@ -83,24 +95,24 @@ export function ImoByAgency({
   const vantageDays = vantageQuery.data ?? [];
   const vantageApi = summarizeVantageDays(vantageDays);
   const imoQuery = useQuery({
-    enabled: isAdmin,
-    queryKey: ["imo-by-agency", start ?? "summary", end ?? "summary"],
+    queryKey: ["imo-by-agency", viewerId, start ?? "summary", end ?? "summary"],
     staleTime: 60_000,
     retry: 1,
     retryDelay: 4_000,
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (start && end) {
         const { data, error } = await supabase.rpc("imo_by_agency_period" as never, {
           p_start: start,
           p_end: end,
-        } as never);
+        } as never).abortSignal(signal);
         if (error) throw error;
         return (data ?? []) as unknown as Row[];
       }
       const { data, error } = await supabase
         .from("v_imo_by_agency")
         .select("agency, is_primary, policies, alp, alp_mtd, policies_mtd, policies_30d, alp_30d, owner_override_pct, est_owner_override_alp, est_owner_override_mtd, est_owner_override_30d")
-        .order("alp", { ascending: false });
+        .order("alp", { ascending: false })
+        .abortSignal(signal);
       if (error) throw error;
       return (data ?? []) as Row[];
     },
@@ -108,15 +120,15 @@ export function ImoByAgency({
   const demo = useDemoNumberFields({
     scopeKey: `agency:${exactWindow ? `${start}:${end}` : `summary:${phoenixToday}`}`,
     label: `Agency breakdown · ${exactWindow ? windowLabel ?? "selected dates" : "current summary"}`,
-    fields: isAdmin ? agencyDemoFields(imoQuery.data ?? [], exactWindow) : [],
+    fields: agencyDemoFields(imoQuery.data ?? [], exactWindow),
   });
   const imo = demo.isDemo ? applyAgencyDemo(imoQuery.data ?? [], demo.values) : imoQuery.data ?? [];
 
   const invalidateProduction = () => {
-    queryClient.invalidateQueries({ queryKey: ["vantage-api-production"] }, { cancelRefetch: false });
+    queryClient.invalidateQueries({ queryKey: ["vantage-api-production", viewerId] }, { cancelRefetch: false });
     // MP-431: cancelRefetch:false — an in-flight heavy call is reused, never
     // aborted and re-issued while the database still runs the abandoned one.
-    queryClient.invalidateQueries({ queryKey: ["imo-by-agency"] }, { cancelRefetch: false });
+    queryClient.invalidateQueries({ queryKey: ["imo-by-agency", viewerId] }, { cancelRefetch: false });
     queryClient.invalidateQueries({ queryKey: ["crm-today-production"] }, { cancelRefetch: false });
     queryClient.invalidateQueries({ queryKey: ["apex-home-dashboard"] }, { cancelRefetch: false });
     queryClient.invalidateQueries({ queryKey: ["scoped-production-scoreboard"] }, { cancelRefetch: false });
@@ -160,21 +172,16 @@ export function ImoByAgency({
   // production_attribution_exceptions read silently hid attribution gaps.
   // exceptionsQuery.isError now surfaces the failure instead.
   const exceptionsQuery = useQuery({
-    enabled: Boolean(isAdmin),
-    queryKey: ["production-attribution-exceptions", excStart, excEnd],
+    queryKey: ["production-attribution-exceptions", viewerId, excStart, excEnd],
     staleTime: 60_000,
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc("production_attribution_exceptions" as never, { p_start: excStart, p_end: excEnd } as never);
+    queryFn: async ({ signal }) => {
+      const { data, error } = await supabase.rpc("production_attribution_exceptions" as never, { p_start: excStart, p_end: excEnd } as never).abortSignal(signal);
       if (error) throw error;
       return (data ?? []) as unknown as Array<{ kind: string; policies: number; alp: number; largest_label: string; largest_alp: number }>;
     },
   });
   const exceptions = exceptionsQuery.data ?? [];
 
-  // Second half of the gate: render nothing at all for a non-admin. The
-  // disabled query above already prevents the fetch; this makes sure no
-  // heading, skeleton or empty shell of an owner-only card is shown either.
-  if (!isAdmin) return null;
   // Loading, a failed read and an empty window used to all render nothing, so the block
   // vanished from Home with no word of why (the Day period makes empty windows common).
   if (imo.length === 0) {

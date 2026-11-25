@@ -44,7 +44,7 @@ const pulse = (): PlatformPulse => ({
 
 function renderPanel() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={qc}><PlatformPulsePanel /></QueryClientProvider>);
+  return render(<QueryClientProvider client={qc}><PlatformPulsePanel viewerId="admin-viewer" /></QueryClientProvider>);
 }
 const rosterNames = () => within(screen.getByTestId("pulse-roster")).getAllByRole("listitem").map((li) => li.querySelector("p")?.textContent);
 

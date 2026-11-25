@@ -5,7 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
+import { useSamPrivateAccess } from "@/hooks/useSamPrivateAccess";
+import { assertSamTaskSession, taskAuthorization } from "@/lib/privateTasks";
 import { ExternalLink, X } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -34,81 +36,96 @@ function sourceBadge(src: string): string {
 }
 
 export default function SamTodo() {
+  const { allowed, isChecking, userId } = useSamPrivateAccess();
+  if (!allowed || !userId) return <p role="status" className="p-6 text-sm text-muted-foreground">{isChecking ? "Checking owner access…" : "Owner access required."}</p>;
+  return <SamTodoContent key={userId} userId={userId} />;
+}
+
+function SamTodoContent({ userId }: { userId: string }) {
   const qc = useQueryClient();
+  const key = ["sam-todo", userId] as const;
+  const active = useRef(true);
+  useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["sam-todo"],
+    queryKey: key,
     queryFn: async () => {
-      // RPCs added after last supabase-types regen. Cast bypasses stale union.
-      const { data, error } = await (supabase as unknown as {
-        rpc: (name: string) => Promise<{ data: TodoRow[] | null; error: { message: string } | null }>;
-      }).rpc("sam_todo_list");
+      const authorization = await taskAuthorization(userId, () => active.current);
+      const { data, error } = await supabase.rpc("sam_todo_list").setHeader("Authorization", authorization);
       if (error) throw new Error(error.message);
       return (data ?? []) as TodoRow[];
     },
     refetchInterval: 300_000,
+    gcTime: 0,
   });
 
   const dismiss = useMutation({
     mutationFn: async (row: TodoRow) => {
-      const { error } = await (supabase as unknown as {
-        rpc: (name: string, args: Record<string, unknown>) => Promise<{ error: { message: string } | null }>;
-      }).rpc("sam_todo_dismiss", {
+      const authorization = await assertSamTaskSession(userId, () => active.current);
+      if (!active.current) throw new Error("This task list is no longer open.");
+      const { error } = await supabase.rpc("sam_todo_dismiss", {
         p_source: row.source,
         p_source_id: row.source_id,
-      });
+      }).setHeader("Authorization", authorization);
       if (error) throw new Error(error.message);
     },
     onMutate: async (row) => {
-      await qc.cancelQueries({ queryKey: ["sam-todo"] });
-      const prev = qc.getQueryData<TodoRow[]>(["sam-todo"]) ?? [];
+      await qc.cancelQueries({ queryKey: key });
+      if (!active.current) return;
+      const prev = qc.getQueryData<TodoRow[]>(key) ?? [];
       qc.setQueryData<TodoRow[]>(
-        ["sam-todo"],
+        key,
         prev.filter((r) => !(r.source === row.source && r.source_id === row.source_id)),
       );
       return { prev };
     },
     onError: (_err, _row, ctx) => {
-      if (ctx?.prev) qc.setQueryData(["sam-todo"], ctx.prev);
+      if (!active.current) return;
+      if (ctx?.prev) qc.setQueryData(key, ctx.prev);
       toast.error("Could not dismiss");
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["sam-todo"] });
+      if (!active.current) return;
+      qc.invalidateQueries({ queryKey: key });
     },
   });
 
   const snooze = useMutation({
     mutationFn: async (row: TodoRow) => {
-      const { error } = await (supabase as unknown as {
-        rpc: (name: string, args: Record<string, unknown>) => Promise<{ error: { message: string } | null }>;
-      }).rpc("sam_todo_snooze", {
+      const authorization = await assertSamTaskSession(userId, () => active.current);
+      if (!active.current) throw new Error("This task list is no longer open.");
+      const { error } = await supabase.rpc("sam_todo_snooze", {
         p_source: row.source,
         p_source_id: row.source_id,
         p_hours: 4,
-      });
+      }).setHeader("Authorization", authorization);
       if (error) throw new Error(error.message);
     },
     onMutate: async (row) => {
-      await qc.cancelQueries({ queryKey: ["sam-todo"] });
-      const prev = qc.getQueryData<TodoRow[]>(["sam-todo"]) ?? [];
+      await qc.cancelQueries({ queryKey: key });
+      if (!active.current) return;
+      const prev = qc.getQueryData<TodoRow[]>(key) ?? [];
       qc.setQueryData<TodoRow[]>(
-        ["sam-todo"],
+        key,
         prev.filter((r) => !(r.source === row.source && r.source_id === row.source_id)),
       );
       return { prev };
     },
     onError: (_err, _row, ctx) => {
-      if (ctx?.prev) qc.setQueryData(["sam-todo"], ctx.prev);
+      if (!active.current) return;
+      if (ctx?.prev) qc.setQueryData(key, ctx.prev);
       toast.error("Could not snooze");
     },
     onSuccess: () => {
+      if (!active.current) return;
       toast.success("Snoozed 4h");
-      qc.invalidateQueries({ queryKey: ["sam-todo"] });
+      qc.invalidateQueries({ queryKey: key });
     },
   });
 
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFired = useRef(false);
+  useEffect(() => () => { if (longPressTimer.current) clearTimeout(longPressTimer.current); }, []);
 
   function handlePressStart(row: TodoRow) {
     longPressFired.current = false;

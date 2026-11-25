@@ -80,6 +80,15 @@ describe("agentCloudItemIsActive", () => {
     expect(agentCloudItemIsActive(at("/dashboard"), { href: "/dashboard" })).toBe(true);
     expect(agentCloudItemIsActive(at("/dashboard/team"), { href: "/dashboard" })).toBe(false);
   });
+
+  it("keeps Contracting active through its current records without claiming Grow my team", () => {
+    const contracts = item("Owner", "Contracting");
+    for (const path of ["/dashboard/contracting", "/dashboard/contracting/carriers", "/dashboard/contracting/documents", "/dashboard/contracting/history"]) {
+      expect(agentCloudItemIsActive(at(path), contracts)).toBe(true);
+    }
+    expect(agentCloudItemIsActive(at("/dashboard/grow"), contracts)).toBe(false);
+    expect(agentCloudItemIsActive(at("/dashboard/contracting/downlines"), contracts)).toBe(false);
+  });
 });
 
 describe("agentCloudGroupIsActive", () => {
@@ -119,10 +128,10 @@ describe("isApplicantViewer", () => {
 });
 
 describe("sidebar group expansion", () => {
-  it("opens every group by default, the active one included", () => {
+  it("opens the current section and keeps unrelated sections compact by default", () => {
     const state = initialGroupExpansion(["Sell"]);
     expect(isNavGroupOpen(state, "Sell")).toBe(true);
-    expect(isNavGroupOpen(state, "Grow")).toBe(true);
+    expect(isNavGroupOpen(state, "Grow")).toBe(false);
   });
 
   it("lets the user collapse the active group and keeps it collapsed while the route stays inside it", () => {
@@ -137,7 +146,7 @@ describe("sidebar group expansion", () => {
   });
 
   it("reopens a group when the route enters it and leaves every other choice alone", () => {
-    let state = toggleNavGroup(toggleNavGroup(initialGroupExpansion(["Sell"]), "Sell"), "Grow");
+    let state = toggleNavGroup(toggleNavGroup(toggleNavGroup(initialGroupExpansion(["Sell"]), "Sell"), "Grow"), "Grow");
     expect(isNavGroupOpen(state, "Grow")).toBe(false);
     state = reconcileGroupExpansion(state, ["Grow"]);
     expect(isNavGroupOpen(state, "Grow")).toBe(true);
@@ -146,7 +155,12 @@ describe("sidebar group expansion", () => {
     expect(isNavGroupOpen(state, "Sell")).toBe(false);
     state = reconcileGroupExpansion(state, ["Sell"]);
     expect(isNavGroupOpen(state, "Sell")).toBe(true);
-    expect(isNavGroupOpen(state, "Grow")).toBe(true);
+    expect(isNavGroupOpen(state, "Grow")).toBe(false);
+  });
+
+  it("keeps an explicitly opened secondary section available while navigating", () => {
+    const chosen = toggleNavGroup(initialGroupExpansion(["Sell"]), "Learn");
+    expect(isNavGroupOpen(reconcileGroupExpansion(chosen, ["Grow"]), "Learn")).toBe(true);
   });
 
   it("treats the active set as a set, not a sequence", () => {

@@ -82,7 +82,7 @@ export default function ContractingProfile() {
       <header className="space-y-1">
         <h1 className="text-xl font-semibold text-foreground">Complete your contracting profile</h1>
         <p className="text-sm text-muted-foreground">
-          Add your NPN number, first name, last name, email address and resident state. Our team uses this to coordinate the carrier portal steps and track Combine, AFLAC, GTO and Ethos on your profile.
+          Add your NPN number, first name, last name, email address and resident state. Our team uses these details to coordinate your contracting through the MGN Agent Hub.
         </p>
       </header>
 

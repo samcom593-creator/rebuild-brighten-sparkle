@@ -24,7 +24,7 @@ const SonnerToaster = lazy(() =>
 // (2) Index's lower lazy Suspense block, and (3) the App-level `QueryShell` layout
 // route that wraps every non-landing path. The shared singleton queryClient still
 // lives in `@/shared/api/queryClient` so every QCP mount points at the same cache.
-import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation, useParams } from "react-router-dom";
 // a11y (2026-09-15): framer-motion drives its animations through JS/WAAPI, which the
 // prefers-reduced-motion CSS override in index.css cannot reach. MotionConfig
 // reducedMotion="user" makes all 117 motion surfaces honour the OS setting.
@@ -67,6 +67,7 @@ const SupabaseHealthBanner = lazy(() =>
 import { initTelemetry } from "@/shared/telemetry/track";
 
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+const SamOnlyRoute = lazy(() => import("@/components/SamOnlyRoute").then((module) => ({ default: module.SamOnlyRoute })));
 import { DemoModeBanner } from "@/components/DemoModeBanner";
 import { RecruitingShortLink } from "@/components/RecruitingShortLink";
 import { legacyRedirectTarget } from "@/lib/legacyRedirect";
@@ -82,7 +83,8 @@ initTelemetry();
 // src/tests/lib/appRoutingContract.test.ts keeps both from coming back.
 function LegacyWorkspaceRedirect({ to }: { to: string }) {
   const location = useLocation();
-  return <Navigate to={legacyRedirectTarget(to, location)} replace state={{ migratedFrom: location.pathname }} />;
+  const params = useParams();
+  return <Navigate to={legacyRedirectTarget(to, location, params)} replace state={{ migratedFrom: location.pathname }} />;
 }
 
 // Eagerly loaded pages (critical path) — only the literal landing.
@@ -267,11 +269,10 @@ const XcelImport = lazy(() => import("./pages/admin/XcelImport"));
 const AgentDetail = lazy(() => import("./pages/AgentDetail"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
 const BoardLive = lazy(() => import("./pages/BoardLive"));
-const Rewards = lazy(() => import("./pages/Rewards"));
 const AgentManagement = lazy(() => import("./pages/AgentManagement"));
 const SystemHealth = lazy(() => import("./pages/SystemHealth"));
 const PrelicensingManager = lazy(() => import("./pages/PrelicensingManager"));
-const MyCommissions = lazy(() => import("./pages/MyCommissions"));
+const MyTasks = lazy(() => import("./pages/MyTasks"));
 const HiringManagerAssignments = lazy(() => import("./pages/HiringManagerAssignments"));
 const GettingStarted = lazy(() => import("./pages/GettingStarted"));
 const InactiveAgents = lazy(() => import("./pages/InactiveAgents"));
@@ -450,6 +451,8 @@ const App = () => (
                     carrier marquee) does NOT pull vendor-query into the cold-landing
                     preload chain. wave-23 (2026-06-06). */}
                 <Route path="/" element={<Index />} />
+                {/* The public video page has no queries and can render before QueryShell loads. */}
+                <Route path="/vsl" element={<Vsl />} />
                 {/* QueryShell layout — every non-landing path inherits the lazy
                     QueryClientProvider. log-numbers redirect + NotFound stay outside
                     because they make zero useQuery calls. */}
@@ -470,7 +473,6 @@ const App = () => (
                       assigned manager, next seminar, status step. Powered by
                       get_application_status() RPC (SECURITY DEFINER, anon-callable). */}
                   <Route path="/status/:applicationId" element={<ApplicationStatus />} />
-                  <Route path="/vsl" element={<Vsl />} />
                   <Route path="/get-licensed" element={<GetLicensed />} />
                   {/* Mirror of apex-resources.vercel.app harvest — courses,
                       PDFs, scripts, and recorded presentations, on-site. */}
@@ -515,8 +517,11 @@ const App = () => (
                       gets a one-tap Google Calendar TEMPLATE URL. No login. */}
                   <Route path="/assistant/interviews" element={<AssistantInterviewForm />} />
                   <Route path="/pending-approval" element={<PendingApproval />} />
+                  {/* Legal compatibility URLs stay public and retain query/hash context. */}
                   <Route path="/privacy" element={<Privacy />} />
+                  <Route path="/privacy-policy" element={<LegacyWorkspaceRedirect to="/privacy" />} />
                   <Route path="/terms" element={<Terms />} />
+                  <Route path="/terms-of-service" element={<LegacyWorkspaceRedirect to="/terms" />} />
                   <Route path="/disclosures" element={<Disclosures />} />
                   <Route path="/install" element={<Install />} />
                   {/* Cross-agent search and edits are an admin operation. Agents
@@ -573,20 +578,20 @@ const App = () => (
                     <Route path="/dashboard/recruiting/interviews" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va", "recruiter"]}><Interviews /></ProtectedRoute>} />
                     <Route path="/dashboard/recruiting/follow-ups" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va", "recruiter"]}><InterviewRecovery /></ProtectedRoute>} />
                     <Route path="/dashboard/recruiting/hires" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va", "recruiter"]}><DashboardApplicants /></ProtectedRoute>} />
-                    <Route path="/dashboard/recruiting/training" element={<ProtectedRoute><ApexTrainingEntry /></ProtectedRoute>} />
-                    <Route path="/dashboard/recruiting/training/library" element={<ProtectedRoute><TrainingHub /></ProtectedRoute>} />
-                    <Route path="/dashboard/recruiting/training/library/course/:courseId" element={<ProtectedRoute><TrainingHubCourse /></ProtectedRoute>} />
-                    <Route path="/dashboard/recruiting/training/sales-course" element={<ProtectedRoute><CourseCatalog /></ProtectedRoute>} />
-                    <Route path="/dashboard/recruiting/training/progress" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va", "recruiter"]}><CourseProgress /></ProtectedRoute>} />
-                    <Route path="/dashboard/recruiting/training/content" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va", "recruiter"]}><CourseContent /></ProtectedRoute>} />
-                    <Route path="/dashboard/recruiting/training/annuities" element={<ProtectedRoute><AnnuityTraining /></ProtectedRoute>} />
+                    <Route path="/dashboard/recruiting/training" element={<LegacyWorkspaceRedirect to="/dashboard/training" />} />
+                    <Route path="/dashboard/recruiting/training/library" element={<LegacyWorkspaceRedirect to="/dashboard/training/library" />} />
+                    <Route path="/dashboard/recruiting/training/library/course/:courseId" element={<LegacyWorkspaceRedirect to="/dashboard/training/library/course/:courseId" />} />
+                    <Route path="/dashboard/recruiting/training/sales-course" element={<LegacyWorkspaceRedirect to="/dashboard/training/sales-course" />} />
+                    <Route path="/dashboard/recruiting/training/progress" element={<LegacyWorkspaceRedirect to="/dashboard/training/progress" />} />
+                    <Route path="/dashboard/recruiting/training/content" element={<LegacyWorkspaceRedirect to="/dashboard/training/content" />} />
+                    <Route path="/dashboard/recruiting/training/annuities" element={<LegacyWorkspaceRedirect to="/dashboard/training/annuities" />} />
                     {/* MP-338: training lives at a findable URL. It was filed
                         under /dashboard/recruiting/* — "recruiting other
                         agents" — which is exactly why an agent hunting for a
                         script never opened it. These are the canonical paths
                         the sidebar and the dashboard card now link; the
-                        /dashboard/recruiting/training/* routes above stay
-                        mounted so every link already shared keeps working. */}
+                        /dashboard/recruiting/training/* routes above redirect
+                        here so every shared link keeps its filter and course. */}
                     <Route path="/dashboard/training" element={<ProtectedRoute><ApexTrainingEntry /></ProtectedRoute>} />
                     <Route path="/dashboard/training/library" element={<ProtectedRoute><TrainingHub /></ProtectedRoute>} />
                     <Route path="/dashboard/training/library/course/:courseId" element={<ProtectedRoute><TrainingHubCourse /></ProtectedRoute>} />
@@ -600,7 +605,7 @@ const App = () => (
                     <Route path="/dashboard/team" element={<ProtectedRoute><DashboardCRM /></ProtectedRoute>} />
                     {/* MP-ETHOS-CALLSHEET: any signed-in agent may open it; ethos_call_sheet() decides whose rows they get (owner: all, leader: own hierarchy, anyone else: none). */}
                     <Route path="/dashboard/ethos-call-sheet" element={<ProtectedRoute><EthosCallSheet /></ProtectedRoute>} />
-                    <Route path="/dashboard/carrier-command" element={<ProtectedRoute><CarrierCommand /></ProtectedRoute>} />
+                    <Route path="/dashboard/carrier-command" element={<ProtectedRoute requireAdmin><SamOnlyRoute><CarrierCommand /></SamOnlyRoute></ProtectedRoute>} />
                   <Route path="/dashboard/recruiting-links" element={<ProtectedRoute requireAdmin><RecruitingLinks /></ProtectedRoute>} />
                   {/* §11: the Content page (approval queue + invite list) is the Launch Board's Queue tab now. Single hop. */}
                   <Route path="/dashboard/content" element={<LegacyWorkspaceRedirect to="/dashboard/launch-board?tab=queue" />} />
@@ -613,12 +618,12 @@ const App = () => (
                     {/* MP-304: a manager's Ethos lane — their one link, add/upload downlines, the board. Scoped in SQL. */}
                     <Route path="/dashboard/grow" element={<ProtectedRoute><ContractingDownlines /></ProtectedRoute>} />
                     {/* The first name of the page; kept so a link already shared still opens it. */}
-                    <Route path="/dashboard/contracting/downlines" element={<ProtectedRoute><ContractingDownlines /></ProtectedRoute>} />
+                    <Route path="/dashboard/contracting/downlines" element={<ProtectedRoute><LegacyWorkspaceRedirect to="/dashboard/grow" /></ProtectedRoute>} />
                     {/* The retired process's pages (contracts board, operations, audit, Aflac sends, cases, Ethos sheet) go to the review. */}
                     <Route path="/dashboard/contracting/contracts" element={<LegacyWorkspaceRedirect to="/dashboard/contracting/documents" />} />
                     <Route path="/dashboard/contracting/carriers" element={<ProtectedRoute requireAdmin><CarrierContracts /></ProtectedRoute>} />
                     <Route path="/dashboard/contracting/ops" element={<LegacyWorkspaceRedirect to="/dashboard/contracting" />} />
-                    <Route path="/dashboard/contracting/requests" element={<ProtectedRoute requireAdmin><CarrierContracts /></ProtectedRoute>} />
+                    <Route path="/dashboard/contracting/requests" element={<ProtectedRoute requireAdmin><LegacyWorkspaceRedirect to="/dashboard/contracting" /></ProtectedRoute>} />
                     <Route path="/dashboard/contracting/history" element={<ProtectedRoute requireAdmin><CarrierContracts /></ProtectedRoute>} />
                     <Route path="/dashboard/contracting/documents" element={<ProtectedRoute requireAdmin><CarrierContracts /></ProtectedRoute>} />
                     <Route path="/dashboard/contracting/audit" element={<LegacyWorkspaceRedirect to="/dashboard/contracting" />} />
@@ -632,7 +637,7 @@ const App = () => (
                       itself had none either, so any logged-in agent could open it. The
                       views behind it are staff-guarded now too — this is the second lock,
                       not the only one. */}
-                  <Route path="/dashboard/analytics" element={<ProtectedRoute requireAdmin allowManagers><BusinessAnalytics /></ProtectedRoute>} />
+                  <Route path="/dashboard/analytics" element={<ProtectedRoute requireAdmin><BusinessAnalytics /></ProtectedRoute>} />
                     <Route path="/dashboard/community" element={<ProtectedRoute><Announcements /></ProtectedRoute>} />
                     <Route path="/dashboard/resources" element={<LegacyWorkspaceRedirect to="/dashboard/training/library" />} />
                     <Route path="/dashboard/import" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager"]}><XcelImport /></ProtectedRoute>} />
@@ -642,8 +647,8 @@ const App = () => (
                         accounts. Admins + va_manager role only. */}
                     <Route path="/va-team" element={<ProtectedRoute requireAdmin allowRoles={["va_manager"]}><VaManagerPortal /></ProtectedRoute>} />
                     <Route path="/dashboard/apex-control" element={<ProtectedRoute requireAdmin><ApexControl /></ProtectedRoute>} />
-                    <Route path="/dashboard/launch-board" element={<ProtectedRoute><ContentAccessGate><LaunchBoard /></ContentAccessGate></ProtectedRoute>} />
-                    <Route path="/dashboard/money-inbox" element={<ProtectedRoute><MoneyInbox /></ProtectedRoute>} />
+                    <Route path="/dashboard/launch-board" element={<ProtectedRoute requireAdmin><SamOnlyRoute><ContentAccessGate><LaunchBoard /></ContentAccessGate></SamOnlyRoute></ProtectedRoute>} />
+                    <Route path="/dashboard/money-inbox" element={<ProtectedRoute requireAdmin><SamOnlyRoute><MoneyInbox /></SamOnlyRoute></ProtectedRoute>} />
                     <Route path="/dashboard/agencies" element={<ProtectedRoute requireAdmin><Agencies /></ProtectedRoute>} />
                     <Route path="/dashboard/builders" element={<ProtectedRoute requireAdmin><BuildersDashboard mode="builders" /></ProtectedRoute>} />
                     <Route path="/dashboard/builders/:builderId" element={<ProtectedRoute requireAdmin><BuildersDashboard mode="builders" /></ProtectedRoute>} />
@@ -685,7 +690,7 @@ const App = () => (
                     {/* 2026-06-15 — Sam clarified by voice: "CRM" in his head = AGENT CRM
                         (the team view at DashboardCRM), NOT the client book of business.
                         Restored direct mount; /dashboard/clients stays for the client pipeline. */}
-                    <Route path="/dashboard/clients" element={<ProtectedRoute><ClientPipeline /></ProtectedRoute>} />
+                    <Route path="/dashboard/clients" element={<LegacyWorkspaceRedirect to="/dashboard/agent-pipeline" />} />
                     <Route path="/dashboard/crm" element={<LegacyWorkspaceRedirect to="/dashboard/team" />} />
                     <Route path="/dashboard/aged-leads" element={<DashboardAgedLeads />} />
                     <Route path="/dashboard/command" element={<LegacyWorkspaceRedirect to="/dashboard/admin" />} />
@@ -716,7 +721,7 @@ const App = () => (
                     {/* XCEL import writes bulk data — va_manager yes, sub-VAs no. */}
                     <Route path="/admin/xcel-import" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager"]}><XcelImport /></ProtectedRoute>} />
                     {/* 2026-07-01 Sam: producer weekly trend + 3-week drop alert — Daniel-didn't-know use case */}
-                    <Route path="/admin/producer-trends" element={<ProtectedRoute requireAdmin><AdminProducerTrends /></ProtectedRoute>} />
+                    <Route path="/admin/producer-trends" element={<ProtectedRoute requireAdmin><LegacyWorkspaceRedirect to="/dashboard/producer-trends" /></ProtectedRoute>} />
                     <Route path="/dashboard/producer-trends" element={<ProtectedRoute requireAdmin><AdminProducerTrends /></ProtectedRoute>} />
                     {/* MP-230 (2026-07-01): AgentLink Backfill UI removed per Sam directive; keep redirect for old bookmarks. */}
                     <Route path="/admin/agentlink-backfill" element={<LegacyWorkspaceRedirect to="/dashboard/book-of-business" />} />
@@ -724,7 +729,7 @@ const App = () => (
                     {/* Seminar control: admins, managers, and active presenters
                         explicitly flagged with agents.is_presenting=true. */}
                     <Route path="/dashboard/seminar" element={<ProtectedRoute requireAdmin allowManagers allowPresenters><SeminarControl /></ProtectedRoute>} />
-                    <Route path="/dashboard/seminar-control" element={<ProtectedRoute requireAdmin allowManagers allowPresenters><SeminarControl /></ProtectedRoute>} />
+                    <Route path="/dashboard/seminar-control" element={<ProtectedRoute requireAdmin allowManagers allowPresenters><LegacyWorkspaceRedirect to="/dashboard/seminar" /></ProtectedRoute>} />
                     <Route path="/dashboard/my-inbox" element={<ProtectedRoute requireAdmin><SamInbox /></ProtectedRoute>} />
                     {/* Manager referral pipeline: admin or manager. */}
                     <Route path="/dashboard/referrals" element={<ProtectedRoute requireAdmin allowManagers><ReferralPipeline /></ProtectedRoute>} />
@@ -746,7 +751,7 @@ const App = () => (
                         (recordings / courses / library). Content API stays the
                         apex-resources admin portal; progress in hub_course_progress. */}
                     <Route path="/dashboard/training-hub" element={<LegacyWorkspaceRedirect to="/dashboard/training/library" />} />
-                    <Route path="/dashboard/training-hub/course/:courseId" element={<ProtectedRoute><TrainingHubCourse /></ProtectedRoute>} />
+                    <Route path="/dashboard/training-hub/course/:courseId" element={<LegacyWorkspaceRedirect to="/dashboard/training/library/course/:courseId" />} />
                     <Route path="/course-progress" element={<LegacyWorkspaceRedirect to="/dashboard/training/progress" />} />
                     <Route path="/course-progress/content" element={<LegacyWorkspaceRedirect to="/dashboard/training/content" />} />
                     <Route path="/numbers" element={<Numbers />} />
@@ -772,16 +777,16 @@ const App = () => (
                      <Route path="/dashboard/challenges" element={<ProtectedRoute><Challenges /></ProtectedRoute>} />
                      <Route path="/dashboard/recruiter" element={<RecruiterDashboard />} />
                      {/* Recruit pipeline — applicants/license/contracting flow. Was /agent-pipeline. */}
-                     <Route path="/recruit-pipeline" element={<ProtectedRoute><AgentPipeline /></ProtectedRoute>} />
+                     <Route path="/recruit-pipeline" element={<ProtectedRoute><LegacyWorkspaceRedirect to="/dashboard/recruit-pipeline" /></ProtectedRoute>} />
                      <Route path="/dashboard/recruit-pipeline" element={<ProtectedRoute><AgentPipeline /></ProtectedRoute>} />
                      {/* Agent Pipeline — client/policy servicing book of business. */}
-                     <Route path="/agent-pipeline" element={<ProtectedRoute><ClientPipeline /></ProtectedRoute>} />
+                     <Route path="/agent-pipeline" element={<LegacyWorkspaceRedirect to="/dashboard/agent-pipeline" />} />
                      <Route path="/dashboard/agent-pipeline" element={<ProtectedRoute><ClientPipeline /></ProtectedRoute>} />
-                     <Route path="/dashboard/client-pipeline" element={<LegacyWorkspaceRedirect to="/dashboard/clients" />} />
+                     <Route path="/dashboard/client-pipeline" element={<LegacyWorkspaceRedirect to="/dashboard/agent-pipeline" />} />
                      <Route path="/dashboard/inbound-leads" element={<LegacyWorkspaceRedirect to="/dashboard/admin" />} />
                      <Route path="/dashboard/inbound" element={<LegacyWorkspaceRedirect to="/dashboard/admin" />} />
                      <Route path="/dashboard/calendar" element={<CalendarPage />} />
-                     <Route path="/dashboard/my-day" element={<ProtectedRoute requireAdmin><MyDay /></ProtectedRoute>} />
+                     <Route path="/dashboard/my-day" element={<ProtectedRoute requireAdmin><SamOnlyRoute><MyDay /></SamOnlyRoute></ProtectedRoute>} />
                      <Route path="/dashboard/notifications" element={<ProtectedRoute requireAdmin><NotificationHub /></ProtectedRoute>} />
                      <Route path="/dashboard/planner" element={<ProtectedRoute requireAdmin><AdminCalendar /></ProtectedRoute>} />
                      <Route path="/dashboard/headhunters-calendar" element={<LegacyWorkspaceRedirect to="/dashboard/admin" />} />
@@ -799,13 +804,13 @@ const App = () => (
                        <Route path="/dashboard/business-analytics" element={<LegacyWorkspaceRedirect to="/dashboard/analytics" />} />
                        <Route path="/dashboard/carriers" element={<LegacyWorkspaceRedirect to="/dashboard/book-of-business" />} />
                        <Route path="/dashboard/announcements" element={<LegacyWorkspaceRedirect to="/dashboard/community" />} />
-                       <Route path="/dashboard/finances" element={<ProtectedRoute requireAdmin><Finances /></ProtectedRoute>} />
+                       <Route path="/dashboard/finances" element={<ProtectedRoute><Finances /></ProtectedRoute>} />
                        <Route path="/dashboard/scripts" element={<ProtectedRoute><Scripts /></ProtectedRoute>} />
                        <Route path="/dashboard/profile" element={<ProtectedRoute><ProducerProfile /></ProtectedRoute>} />
                        <Route path="/dashboard/help" element={<ProtectedRoute><HelpCenter /></ProtectedRoute>} />
                        <Route path="/dashboard/transfers" element={<ProtectedRoute><TransferRequests /></ProtectedRoute>} />
                        <Route path="/dashboard/handbook" element={<ProtectedRoute><AgentHandbook /></ProtectedRoute>} />
-                       <Route path="/dashboard/annuity-training" element={<ProtectedRoute><AnnuityTraining /></ProtectedRoute>} />
+                       <Route path="/dashboard/annuity-training" element={<ProtectedRoute><LegacyWorkspaceRedirect to="/dashboard/training/annuities" /></ProtectedRoute>} />
                        <Route path="/dashboard/client-marketing" element={<ProtectedRoute><ClientMarketing /></ProtectedRoute>} />
                        <Route path="/dashboard/calling-cards" element={<ProtectedRoute><CallingCards /></ProtectedRoute>} />
                        <Route path="/dashboard/landing-page" element={<ProtectedRoute><MyLandingPage /></ProtectedRoute>} />
@@ -816,16 +821,10 @@ const App = () => (
                        <Route path="/dashboard/team-analytics" element={<LegacyWorkspaceRedirect to="/dashboard/admin" />} />
                        <Route path="/dashboard/awards" element={<ProtectedRoute><AwardsGallery /></ProtectedRoute>} />
                        <Route path="/dashboard/hall-of-fame" element={<ProtectedRoute><HallOfFame /></ProtectedRoute>} />
-                       <Route path="/hall-of-fame" element={<HallOfFame />} />
-                       {/* /privacy and /terms are the public legal pages above. These two older URLs sat
-                           inside the signed-in shell (a visitor had to log in to read the privacy policy) and
-                           rendered a second copy whose "Last updated" was always today's date. One hop to the
-                           public page, query preserved (platform redesign route board, 2026-10-28). */}
-                       <Route path="/privacy-policy" element={<LegacyWorkspaceRedirect to="/privacy" />} />
-                       <Route path="/terms-of-service" element={<LegacyWorkspaceRedirect to="/terms" />} />
+                       <Route path="/hall-of-fame" element={<LegacyWorkspaceRedirect to="/dashboard/hall-of-fame" />} />
                        <Route path="/bot-token" element={<ProtectedRoute requireAdmin><BotToken /></ProtectedRoute>} />
                        <Route path="/dashboard/bot-token" element={<ProtectedRoute requireAdmin><BotToken /></ProtectedRoute>} />
-                       <Route path="/dashboard/inbox/instagram" element={<ProtectedRoute requireAdmin><InstagramInbox /></ProtectedRoute>} />
+                       <Route path="/dashboard/inbox/instagram" element={<ProtectedRoute requireAdmin><SamOnlyRoute><InstagramInbox /></SamOnlyRoute></ProtectedRoute>} />
                        {/* The alias carried a looser guard than the canonical route (any signed-in user vs
                            admin + manager). An alias never renders the page itself now: one hop to the
                            canonical route, which owns the gate (route board finding 4, 2026-10-28). */}
@@ -837,26 +836,26 @@ const App = () => (
                        <Route path="/dashboard/recruit" element={<LegacyWorkspaceRedirect to="/dashboard/recruiting" />} />
                        <Route path="/recruit" element={<LegacyWorkspaceRedirect to="/dashboard/recruiting" />} />
                        <Route path="/dashboard/team-chat" element={<ProtectedRoute><TeamChat /></ProtectedRoute>} />
-                       <Route path="/team-chat" element={<ProtectedRoute><TeamChat /></ProtectedRoute>} />
+                       <Route path="/team-chat" element={<ProtectedRoute><LegacyWorkspaceRedirect to="/dashboard/team-chat" /></ProtectedRoute>} />
                        <Route path="/dashboard/bulk-deals" element={<ProtectedRoute requireAdmin allowManagers><BulkDeals /></ProtectedRoute>} />
-                       <Route path="/bulk-deals" element={<ProtectedRoute requireAdmin allowManagers><BulkDeals /></ProtectedRoute>} />
+                       <Route path="/bulk-deals" element={<ProtectedRoute requireAdmin allowManagers><LegacyWorkspaceRedirect to="/dashboard/bulk-deals" /></ProtectedRoute>} />
                        {/* AgentLinkSync writes the shared agency cookie (system_settings.agent_link_session_cookie
                            + agent_link_live_agent_id) that every AgentLink pull runs against — admin-only
                            per SAM-REDESIGN-P0-2026-07-25 audit row L65. Matches AgentLinkVault's gate below. */}
                        <Route path="/dashboard/agentlink-sync" element={<ProtectedRoute requireAdmin><AgentLinkSync /></ProtectedRoute>} />
                        <Route path="/dashboard/agent-link-sync" element={<LegacyWorkspaceRedirect to="/dashboard/agentlink-sync" />} />
-                       <Route path="/agentlink-sync" element={<ProtectedRoute requireAdmin><AgentLinkSync /></ProtectedRoute>} />
+                       <Route path="/agentlink-sync" element={<ProtectedRoute requireAdmin><LegacyWorkspaceRedirect to="/dashboard/agentlink-sync" /></ProtectedRoute>} />
                        <Route path="/dashboard/agentlink-vault" element={<ProtectedRoute requireAdmin><AgentLinkVault /></ProtectedRoute>} />
                        <Route path="/setup" element={<ProtectedRoute requireAdmin><Setup /></ProtectedRoute>} />
                        <Route path="/dashboard/setup" element={<ProtectedRoute requireAdmin><Setup /></ProtectedRoute>} />
                        <Route path="/dashboard/agent/:id" element={<ProtectedRoute><AgentDetail /></ProtectedRoute>} />
                        <Route path="/dashboard/agents" element={<LegacyWorkspaceRedirect to="/dashboard/team" />} />
-                       <Route path="/dashboard/agents/:id" element={<ProtectedRoute><AgentDetail /></ProtectedRoute>} />
+                       <Route path="/dashboard/agents/:id" element={<ProtectedRoute><LegacyWorkspaceRedirect to="/dashboard/agent/:id" /></ProtectedRoute>} />
                        <Route path="/dashboard/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
-                       <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
+                       <Route path="/leaderboard" element={<ProtectedRoute><LegacyWorkspaceRedirect to="/dashboard/leaderboard" /></ProtectedRoute>} />
                        <Route path="/board" element={<ProtectedRoute><BoardLive /></ProtectedRoute>} />
-                       <Route path="/dashboard/rewards" element={<ProtectedRoute><Rewards /></ProtectedRoute>} />
-                       <Route path="/rewards" element={<ProtectedRoute><Rewards /></ProtectedRoute>} />
+                       <Route path="/dashboard/rewards" element={<ProtectedRoute><LegacyWorkspaceRedirect to="/dashboard/my-plaques?source=reward" /></ProtectedRoute>} />
+                       <Route path="/rewards" element={<ProtectedRoute><LegacyWorkspaceRedirect to="/dashboard/my-plaques?source=reward" /></ProtectedRoute>} />
                        <Route path="/dashboard/automation-health" element={<ProtectedRoute requireAdmin><AutomationHealth /></ProtectedRoute>} />
                         {/* /dashboard/hierarchy = Hierarchy (line 473) per Sam's 2026-06-15 directive. Pre-existing TeamHierarchy retired here to kill duplicate-route landmine. */}
                         <Route path="/dashboard/pipeline-simple" element={<AgentPipelineSimple />} />
@@ -865,8 +864,9 @@ const App = () => (
                           <Route path="/dashboard/admin/board-access" element={<ProtectedRoute requireAdmin><AdminBoardAccess /></ProtectedRoute>} />
                            <Route path="/dashboard/prelicensing" element={<ProtectedRoute><PrelicensingManager /></ProtectedRoute>} />
                            <Route path="/dashboard/agent-management" element={<ProtectedRoute requireAdmin><AgentManagement /></ProtectedRoute>} />
-                           <Route path="/dashboard/system-health" element={<ProtectedRoute requireAdmin><SystemHealth /></ProtectedRoute>} />
-                           <Route path="/dashboard/my-commissions" element={<ProtectedRoute><MyCommissions /></ProtectedRoute>} />
+                           <Route path="/dashboard/system-health" element={<ProtectedRoute requireAdmin><SamOnlyRoute><SystemHealth /></SamOnlyRoute></ProtectedRoute>} />
+                           <Route path="/dashboard/my-commissions" element={<LegacyWorkspaceRedirect to="/dashboard/finances" />} />
+                           <Route path="/dashboard/my-tasks" element={<ProtectedRoute><MyTasks /></ProtectedRoute>} />
                            <Route path="/dashboard/hiring-routing" element={<ProtectedRoute requireAdmin><HiringManagerAssignments /></ProtectedRoute>} />
                            <Route path="/dashboard/getting-started" element={<ProtectedRoute><GettingStarted /></ProtectedRoute>} />
                            <Route path="/dashboard/inactive-agents" element={<ProtectedRoute><InactiveAgents /></ProtectedRoute>} />
@@ -875,7 +875,7 @@ const App = () => (
                            <Route path="/dashboard/comp-tiers" element={<ProtectedRoute requireAdmin><CompTiersSettings /></ProtectedRoute>} />
                            <Route path="/dashboard/integrations" element={<ProtectedRoute requireAdmin><IntegrationsSettings /></ProtectedRoute>} />
                            <Route path="/dashboard/my-team" element={<LegacyWorkspaceRedirect to="/dashboard/team" />} />
-                           <Route path="/dashboard/my-deals" element={<ProtectedRoute><MyDeals /></ProtectedRoute>} />
+                           <Route path="/dashboard/my-deals" element={<LegacyWorkspaceRedirect to="/dashboard/production" />} />
                            {/* ContentWheel — personal-brand + recruiting Content OS (admin-only). */}
                            <Route path="/admin/contentwheel" element={<ProtectedRoute requireAdmin><ContentWheel /></ProtectedRoute>} />
                            {/* Content Command — unified draft queue + approval command center */}
@@ -902,7 +902,7 @@ const App = () => (
                            <Route path="/dashboard/easy-resells" element={<ProtectedRoute requireAdmin allowManagers><EasyResells /></ProtectedRoute>} />
                            <Route path="/dashboard/call-training" element={<ProtectedRoute requireAdmin allowManagers><CallTraining /></ProtectedRoute>} />
                            {/* MP-LEAD-MANAGER: old dialer-only Lead Bundles merged into the unified Lead Manager; URL kept so bookmarks/links still work. */}
-                           <Route path="/dashboard/lead-bundles" element={<ProtectedRoute requireAdmin allowManagers><LeadManager /></ProtectedRoute>} />
+                           <Route path="/dashboard/lead-bundles" element={<ProtectedRoute requireAdmin allowManagers><LegacyWorkspaceRedirect to="/dashboard/lead-manager" /></ProtectedRoute>} />
                            <Route path="/dashboard/my-leads" element={<ProtectedRoute><MyLeads /></ProtectedRoute>} />
                            <Route path="/dashboard/lead-manager" element={<ProtectedRoute requireAdmin allowManagers><LeadManager /></ProtectedRoute>} />
                            <Route path="/dashboard/consumer-import" element={<ProtectedRoute requireAdmin allowManagers><ConsumerLeadImport /></ProtectedRoute>} />
@@ -918,12 +918,12 @@ const App = () => (
                            {/* Performance bot (MP-PERF-BOT): goal pace, lead yield, downline gaps, policy-number queue. Admin only. */}
                            <Route path="/dashboard/admin/performance-bot" element={<ProtectedRoute requireAdmin><PerformanceBot /></ProtectedRoute>} />
                            <Route path="/dashboard/admin/brand-command" element={<ProtectedRoute requireAdmin><BrandCommand /></ProtectedRoute>} />
-                           <Route path="/dashboard/admin/social-media-bot" element={<ProtectedRoute requireAdmin><SocialMediaCenter /></ProtectedRoute>} />
+                           <Route path="/dashboard/admin/social-media-bot" element={<ProtectedRoute requireAdmin><SamOnlyRoute><SocialMediaCenter /></SamOnlyRoute></ProtectedRoute>} />
                            {/* Telegram Bot — APEX pre-hire + onboarding operating layer */}
                            <Route path="/dashboard/admin/telegram-bot" element={<ProtectedRoute requireAdmin><TelegramBot /></ProtectedRoute>} />
                            {/* Sam HQ — Sam's command surface: today's tasks, week strip, what shipped, leaks, bots */}
-                           <Route path="/dashboard/admin/sam" element={<ProtectedRoute requireAdmin><SamHQ /></ProtectedRoute>} />
-                          <Route path="/dashboard/sam-todo" element={<ProtectedRoute requireAdmin><SamTodo /></ProtectedRoute>} />
+                           <Route path="/dashboard/admin/sam" element={<ProtectedRoute requireAdmin><SamOnlyRoute><SamHQ /></SamOnlyRoute></ProtectedRoute>} />
+                          <Route path="/dashboard/sam-todo" element={<ProtectedRoute requireAdmin><SamOnlyRoute><SamTodo /></SamOnlyRoute></ProtectedRoute>} />
                            {/* Unclaimed Leads — bulk reassign + per-row claim back to Sam */}
                            <Route path="/dashboard/admin/unclaimed" element={<ProtectedRoute requireAdmin><UnclaimedLeads /></ProtectedRoute>} />
                            {/* Manager Command — 3 tabs (Recruiting / Licensing / Production) for any manager */}

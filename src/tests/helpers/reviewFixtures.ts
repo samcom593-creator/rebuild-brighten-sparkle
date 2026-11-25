@@ -99,6 +99,11 @@ export function fakeBackend(initial: ReviewAgent[]) {
       }
       case "contract_review_history":
         return { data: { ok: true, events: [{ id: 1, event_type: "marked", carrier_key: "aflac", detail: {}, acted_at: "2026-10-08T18:00:00Z", acted_by_name: "Mia Manager" }] }, error: null };
+      case "team_carrier_contract_status": {
+        const a = find(args.p_agent_id);
+        const at = a?.marks.ethos?.at ?? null;
+        return { data: { chubb: false, chubb_at: null, ethos: at !== null, ethos_at: at, ahl: false, ahl_at: null, ahl_exempt: false }, error: null };
+      }
       case "get_my_contracting_profile":
         return { data: state.me, error: null };
       case "save_my_contracting_profile":

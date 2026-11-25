@@ -23,69 +23,54 @@
   animation-duration: 120ms;
 }
 
-/* 2026-08-12: controls use the clean UI face, not the display face.
-   Syne is a display type — forcing it (at 700) onto every button, nav link,
-   badge and label made the whole app read like a wall of marketing headlines
-   instead of a financial operations tool, and it overrode each primitive's own
-   font-medium/font-semibold. Syne is now reserved for real headings and the
-   explicit .font-display opt-in (see the h1..h6 rule below). Controls inherit
-   DM Sans from body and keep the weight their component sets. */
-
-/* APEX Financial Empire Design System
-   Dark theme with teal/emerald accents, glass morphism effects
-   All colors MUST be HSL.
-*/
-
+/* Galaxy visual system: neutral surfaces, red brand accents, semantic status colours.
+   HSL channel tokens serve Tailwind and SVG charts in both themes. */
 @layer base {
-  :root {
-    /* Light mode. 2026-08-31, Sam: "fix white mode it's too bright".
-       The glare was PURE WHITE cards (--card was 0 0% 100%) sitting on a 92%
-       background — maximum luminance with almost no contrast step, which reads
-       as a lit panel rather than a surface. Cards are now a warm 95% and the
-       page sits at 87%, so the card still lifts off the background but nothing
-       on screen is pure white. Foreground/border/ring values are untouched, so
-       text contrast does not drop. */
-    --background: 44 24% 87%;
-    --foreground: 43 14% 11%;
+  :root,
+  .light {
+    --background: 220 10% 93%;
+    --foreground: 240 8% 12%;
+    --card: 0 0% 99%;
+    --card-foreground: 240 8% 12%;
+    --popover: 0 0% 99%;
+    --popover-foreground: 240 8% 12%;
 
-    --card: 44 30% 95%;
-    --card-foreground: 43 14% 11%;
-
-    --popover: 44 30% 95%;
-    --popover-foreground: 43 14% 11%;
-
-    --primary: 41 52% 45%;
-    --primary-foreground: 47 100% 5%;
-
-    --secondary: 44 26% 90%;
-    --secondary-foreground: 43 14% 11%;
-
-    --muted: 44 26% 90%;
-    --muted-foreground: 45 8% 39%;
-
-    --accent: 43 24% 87%;
-    --accent-foreground: 43 14% 11%;
-
-    --destructive: 1 65% 54%;
+    --primary: 0 74% 42%;
+    --primary-foreground: 0 0% 100%;
+    /* Filled actions use deeper red in both themes; coral remains readable as dark-mode text. */
+    --brand-action: 0 74% 42%;
+    --brand-action-end: 352 74% 37%;
+    --brand-action-foreground: 0 0% 100%;
+    --secondary: 220 9% 88%;
+    --secondary-foreground: 240 8% 12%;
+    --muted: 220 9% 89%;
+    --muted-foreground: 220 5% 38%;
+    --accent: 0 48% 93%;
+    --accent-foreground: 0 66% 32%;
+    --destructive: 352 74% 37%;
     --destructive-foreground: 0 0% 100%;
+    --border: 220 7% 79%;
+    --input: 220 6% 56%;
+    --ring: 0 74% 42%;
 
-    --border: 45 24% 86%;
-    --input: 45 24% 86%;
-    --ring: 41 52% 45%;
-    --success: 133 54% 40%;
+    --success: 145 66% 27%;
     --success-foreground: 0 0% 100%;
-    --warning: 37 78% 42%;
-    --warning-foreground: 47 100% 5%;
-    --info: 210 53% 50%;
+    --warning: 35 86% 31%;
+    --warning-foreground: 0 0% 100%;
+    --info: 190 94% 27%;
     --info-foreground: 0 0% 100%;
-    --gold: 41 52% 45%;
-    --gold-bright: 41 56% 31%;
-    --gold-dim: 42 30% 47%;
+    /* Legacy brand names stay compatible with existing callers. */
+    --gold: var(--primary);
+    --gold-bright: 0 76% 36%;
+    --gold-dim: 0 56% 34%;
 
-    --radius: 0.75rem;
+    --chart-1: 0 74% 42%;
+    --chart-2: 145 66% 27%;
+    --chart-3: 190 94% 27%;
+    --chart-4: 35 86% 31%;
+    --chart-5: 270 62% 42%;
 
-    /* === Design Tokens v2 — spacing / motion / elevation === */
-    /* Spacing scale (rem) — use as var(--space-3) etc. */
+    --radius: 0.625rem;
     --space-1: 0.25rem;
     --space-2: 0.5rem;
     --space-3: 0.75rem;
@@ -94,183 +79,108 @@
     --space-8: 2rem;
     --space-12: 3rem;
     --space-16: 4rem;
-
-    /* Motion scale */
     --motion-fast: 120ms;
     --motion-base: 200ms;
-    --motion-slow: 320ms;
+    --motion-slow: 240ms;
     --motion-shimmer: 1.6s;
     --ease-standard: cubic-bezier(0.2, 0, 0, 1);
     --ease-emphasized: cubic-bezier(0.3, 0, 0.1, 1);
+    --elev-1: 0 1px 2px hsl(240 8% 12% / 0.04);
+    --elev-2: 0 2px 8px hsl(240 8% 12% / 0.08);
+    --elev-3: 0 8px 24px hsl(240 8% 12% / 0.12);
+    --elev-4: 0 16px 48px hsl(240 8% 12% / 0.16);
 
-    /* Elevation scale (light mode) */
-    --elev-1: 0 1px 2px hsl(220 15% 25% / 0.04);
-    --elev-2: 0 2px 8px hsl(220 15% 25% / 0.06), 0 1px 2px hsl(220 15% 25% / 0.04);
-    --elev-3: 0 8px 24px hsl(220 15% 25% / 0.08), 0 2px 6px hsl(220 15% 25% / 0.04);
-    --elev-4: 0 16px 48px hsl(220 15% 25% / 0.12), 0 4px 12px hsl(220 15% 25% / 0.06);
+    --apex-navy: 240 6% 6%;
+    --apex-navy-light: 240 5% 12%;
+    --apex-navy-lighter: 240 5% 18%;
+    --apex-slate: 220 6% 32%;
+    --apex-teal: 190 94% 27%;
+    --apex-teal-light: 190 82% 35%;
+    --apex-teal-glow: 190 82% 44%;
+    --apex-emerald: 145 66% 27%;
+    --apex-gold: var(--primary);
+    --apex-error: var(--destructive);
 
-    /* Custom APEX tokens - softer for light mode */
-    --apex-navy: 222 47% 6%;
-    --apex-navy-light: 222 40% 12%;
-    --apex-navy-lighter: 222 35% 18%;
-    --apex-slate: 220 20% 30%;
-    --apex-teal: 45 78% 46%;
-    --apex-teal-light: 45 85% 52%;
-    --apex-teal-glow: 45 92% 58%;
-    --apex-emerald: 45 78% 46%;
-    --apex-gold: 41 52% 45%;
-    --apex-success: 142 65% 36%;
-    --apex-warning: 38 85% 50%;
-    --apex-error: 0 70% 52%;
+    --glass-bg: var(--card);
+    --glass-bg-opacity: 0.98;
+    --glass-border: var(--border);
+    --glass-border-opacity: 1;
+    --glass-shadow: none;
+    --gradient-primary: linear-gradient(135deg, hsl(var(--brand-action)), hsl(var(--brand-action-end)));
+    --gradient-hero: linear-gradient(180deg, hsl(var(--background)), hsl(var(--card)));
+    --gradient-card: linear-gradient(145deg, hsl(var(--card)), hsl(var(--card)));
+    --gradient-glow: radial-gradient(ellipse at center, hsl(var(--primary) / 0.05), transparent 70%);
 
-    /* Glass morphism - warm soft cream (full hsl values for light mode) */
-    --glass-bg: 45 22% 98%;
-    --glass-bg-opacity: 0.92;
-    --glass-border: 44 18% 72%;
-    --glass-border-opacity: 0.35;
-    --glass-shadow: 0 4px 24px hsl(220 15% 35% / 0.04);
-
-    /* Gradients - softer, warmer */
-    --gradient-primary: linear-gradient(135deg, hsl(45 85% 52%), hsl(38 88% 46%));
-    --gradient-hero: linear-gradient(180deg, hsl(220 14% 89%) 0%, hsl(220 12% 87%) 100%);
-    --gradient-card: linear-gradient(145deg, hsl(45 20% 96%) 0%, hsl(45 16% 94%) 100%);
-    --gradient-glow: radial-gradient(ellipse at center, hsl(45 70% 45% / 0.05) 0%, transparent 70%);
-
-    /* Sidebar - soft warm gray */
-    --sidebar-background: 44 28% 93%;  /* was pure white: a full-height glare panel */
-    --sidebar-foreground: 43 14% 11%;
-    --sidebar-primary: 41 52% 45%;
-    --sidebar-primary-foreground: 47 100% 5%;
-    --sidebar-accent: 44 31% 93%;
-    --sidebar-accent-foreground: 43 14% 11%;
-    --sidebar-border: 45 24% 86%;
-    --sidebar-ring: 41 52% 45%;
-  }
-
-  .light {
-    /* ULTRA SOFT light mode: Muted warm gray background + soft cream cards (zero eye strain) */
-    --background: 44 24% 87%;
-    --foreground: 43 14% 11%;
-
-    --card: 44 30% 95%;
-    --card-foreground: 43 14% 11%;
-
-    --popover: 44 30% 95%;
-    --popover-foreground: 43 14% 11%;
-
-    --primary: 41 52% 45%;
-    --primary-foreground: 47 100% 5%;
-
-    --secondary: 44 26% 90%;
-    --secondary-foreground: 43 14% 11%;
-
-    --muted: 44 26% 90%;
-    --muted-foreground: 45 8% 39%;
-
-    --accent: 43 24% 87%;
-    --accent-foreground: 43 14% 11%;
-
-    --destructive: 1 65% 54%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 45 24% 86%;
-    --input: 45 24% 86%;
-    --ring: 41 52% 45%;
-    --success: 133 54% 40%;
-    --success-foreground: 0 0% 100%;
-    --warning: 37 78% 42%;
-    --warning-foreground: 47 100% 5%;
-    --info: 210 53% 50%;
-    --info-foreground: 0 0% 100%;
-    --gold: 41 52% 45%;
-    --gold-bright: 41 56% 31%;
-    --gold-dim: 42 30% 47%;
-
-    /* Sidebar - soft warm gray */
-    --sidebar-background: 44 28% 93%;  /* was pure white: a full-height glare panel */
-    --sidebar-foreground: 43 14% 11%;
-    --sidebar-primary: 41 52% 45%;
-    --sidebar-primary-foreground: 47 100% 5%;
-    --sidebar-accent: 44 31% 93%;
-    --sidebar-accent-foreground: 43 14% 11%;
-    --sidebar-border: 45 24% 86%;
-    --sidebar-ring: 41 52% 45%;
-
-    /* Glass morphism - warm soft cream (full hsl values for light mode) */
-    --glass-bg: 45 22% 98%;
-    --glass-bg-opacity: 0.92;
-    --glass-border: 44 18% 72%;
-    --glass-border-opacity: 0.35;
-    --glass-shadow: 0 4px 24px hsl(220 15% 35% / 0.04);
+    --sidebar-background: 220 10% 96%;
+    --sidebar-foreground: var(--foreground);
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: 0 48% 93%;
+    --sidebar-accent-foreground: 0 66% 32%;
+    --sidebar-border: var(--border);
+    --sidebar-ring: var(--ring);
   }
 
   .dark {
-    /* 2026-08-18 APEX shell reskin: warm 40-45deg blacks + gold-tinted
-     * hairlines swapped for the cool-neutral palette measured in the approved
-     * apex-shell template (ground #0A0B0D / surface #141619 / hairline #23262C).
-     * Gold primary is untouched - the template was derived FROM it. */
-    /* Bumped 2026-05-17: was too close to card bg, surfaces blended into each
-     * other. Body slightly darker, card noticeably lighter for clear depth. */
-    /* 2026-10-06 Sam: pure black + bright white hurt his eyes. Warm charcoal + off-white keeps the
-       black/gold brand with far less glare. Light mode (sun icon) is unchanged. */
-    --background: 30 6% 11%;
-    --foreground: 40 18% 90%;
+    --background: 240 6% 6%;
+    --foreground: 0 0% 96%;
+    --card: 240 5% 10%;
+    --card-foreground: 0 0% 96%;
+    --popover: 240 5% 12%;
+    --popover-foreground: 0 0% 96%;
+    --primary: 4 90% 67%;
+    --primary-foreground: 240 8% 7%;
+    --brand-action: 0 74% 42%;
+    --brand-action-end: 352 74% 37%;
+    --brand-action-foreground: 0 0% 100%;
+    --secondary: 240 4% 16%;
+    --secondary-foreground: 0 0% 96%;
+    --muted: 240 4% 16%;
+    --muted-foreground: 220 7% 72%;
+    --accent: 0 18% 18%;
+    --accent-foreground: 0 0% 96%;
+    --destructive: 4 90% 72%;
+    --destructive-foreground: 240 8% 7%;
+    --border: 240 4% 26%;
+    --input: 240 4% 39%;
+    --ring: 4 90% 67%;
+    --success: 145 72% 60%;
+    --success-foreground: 240 8% 7%;
+    --warning: 43 90% 64%;
+    --warning-foreground: 240 8% 7%;
+    --info: 190 88% 64%;
+    --info-foreground: 240 8% 7%;
+    --gold: var(--primary);
+    --gold-bright: 4 94% 75%;
+    --gold-dim: 0 70% 60%;
 
-    --card: 30 6% 14%;
-    --card-foreground: 40 18% 90%;
+    --chart-1: 4 90% 67%;
+    --chart-2: 142 72% 60%;
+    --chart-3: 190 88% 64%;
+    --chart-4: 43 90% 64%;
+    --chart-5: 270 85% 76%;
+    --apex-teal: 190 88% 64%;
+    --apex-teal-light: 190 90% 74%;
+    --apex-teal-glow: 190 90% 80%;
+    --apex-emerald: 145 72% 60%;
+    --apex-gold: var(--primary);
+    --apex-error: 4 90% 72%;
 
-    --popover: 30 6% 15%;
-    --popover-foreground: 40 18% 90%;
-
-    --primary: 46 68% 47%;
-    --primary-foreground: 47 100% 6%;
-
-    --secondary: 30 6% 17%;
-    --secondary-foreground: 40 18% 90%;
-
-    --muted: 30 6% 17%;
-    --muted-foreground: 35 8% 72%;
-
-    --accent: 30 6% 19%;
-    --accent-foreground: 40 18% 90%;
-
-    --destructive: 1 60% 52%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 30 6% 24%;
-    --input: 30 6% 20%;
-    --ring: 46 68% 47%;
-    --success: 137 50% 46%;
-    --success-foreground: 0 0% 100%;
-    --warning: 39 72% 52%;
-    --warning-foreground: 47 100% 6%;
-    --info: 211 62% 58%;
-    --info-foreground: 0 0% 100%;
-    --gold: 46 68% 47%;
-    --gold-bright: 46 72% 56%;
-    --gold-dim: 44 45% 44%;
-
-    /* Warm black + gold — kills the last cool blue-gray/teal remnants so the
-     * left rail matches the gold brand instead of fighting it. */
-    --sidebar-background: 30 6% 9%;
-    --sidebar-foreground: 40 15% 88%;
-    --sidebar-primary: 46 68% 47%;
-    --sidebar-primary-foreground: 47 100% 6%;
-    --sidebar-accent: 30 6% 15%;
-    --sidebar-accent-foreground: 40 18% 90%;
-    --sidebar-border: 30 6% 18%;
-    --sidebar-ring: 46 68% 47%;
-
-    /* Glass morphism - dark mode (warm-tinted) */
-    --glass-bg: hsl(40 12% 8% / 0.88);
-    --glass-border: hsl(45 22% 18% / 0.55);
-    --glass-shadow: 0 8px 32px hsl(40 40% 1% / 0.6);
-
-    /* Elevation scale (dark mode — warm deep shadows) */
-    --elev-1: 0 1px 2px hsl(40 40% 0% / 0.45);
-    --elev-2: 0 2px 8px hsl(40 40% 0% / 0.55), 0 1px 2px hsl(40 40% 0% / 0.45);
-    --elev-3: 0 8px 24px hsl(40 40% 0% / 0.6), 0 2px 6px hsl(40 40% 0% / 0.5);
-    --elev-4: 0 16px 48px hsl(40 40% 0% / 0.65), 0 4px 12px hsl(40 40% 0% / 0.55);
+    --sidebar-background: 240 6% 5%;
+    --sidebar-foreground: var(--foreground);
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: 0 18% 18%;
+    --sidebar-accent-foreground: var(--foreground);
+    --sidebar-border: 240 4% 21%;
+    --sidebar-ring: var(--ring);
+    --glass-bg: var(--card);
+    --glass-border: var(--border);
+    --glass-shadow: none;
+    --elev-1: 0 1px 2px hsl(0 0% 0% / 0.3);
+    --elev-2: 0 2px 8px hsl(0 0% 0% / 0.4);
+    --elev-3: 0 8px 24px hsl(0 0% 0% / 0.5);
+    --elev-4: 0 16px 48px hsl(0 0% 0% / 0.6);
   }
 }
 
@@ -309,19 +219,16 @@
     font-family: 'Hanken Grotesk', system-ui, sans-serif;
   }
 
-  /* Controls deliberately do NOT restate a display font here. They inherit
-     DM Sans from body. Kept as a no-op anchor so the intent is visible: if a
-     future edit wants a control in the display face, it opts in with
-     .font-display on that element, never globally. */
+  /* Form controls retain the readable UI face; expressive type is opt-in. */
 }
 
 @layer utilities {
   /* Glass morphism utilities */
   .glass {
-    background: var(--glass-bg);
+    background: hsl(var(--glass-bg) / var(--glass-bg-opacity));
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border: 1px solid var(--glass-border);
+    border: 1px solid hsl(var(--glass-border) / var(--glass-border-opacity));
   }
 
   .glass-strong {
@@ -350,24 +257,24 @@
   }
 
   .light .stat-card:hover {
-    box-shadow: 0 3px 16px hsl(45 80% 48% / 0.10), 0 1px 4px hsl(40 20% 35% / 0.03);
+    box-shadow: 0 3px 16px hsl(var(--primary) / 0.10), 0 1px 4px hsl(40 20% 35% / 0.03);
   }
 
   /* Glow effects */
   .glow-teal {
-    box-shadow: 0 0 20px hsl(45 85% 52% / 0.3), 
-                0 0 40px hsl(45 85% 52% / 0.1);
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.3),
+                0 0 40px hsl(var(--primary) / 0.1);
   }
 
   .glow-teal-strong {
-    box-shadow: 0 0 30px hsl(45 85% 52% / 0.4), 
-                0 0 60px hsl(45 85% 52% / 0.2),
-                0 0 100px hsl(45 85% 52% / 0.1);
+    box-shadow: 0 0 30px hsl(var(--primary) / 0.4),
+                0 0 60px hsl(var(--primary) / 0.2),
+                0 0 100px hsl(var(--primary) / 0.1);
   }
 
   .text-glow {
-    text-shadow: 0 0 20px hsl(45 85% 52% / 0.5),
-                 0 0 40px hsl(45 85% 52% / 0.3);
+    text-shadow: 0 0 20px hsl(var(--primary) / 0.5),
+                 0 0 40px hsl(var(--primary) / 0.3);
   }
 
   /* Carbon fiber texture */
@@ -435,7 +342,7 @@
 
   /* Gradient text */
   .gradient-text {
-    background: linear-gradient(135deg, hsl(45 92% 60%), hsl(40 90% 50%), hsl(48 95% 62%));
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(40 90% 50%), hsl(48 95% 62%));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -453,7 +360,7 @@
     position: absolute;
     inset: -1px;
     border-radius: inherit;
-    background: linear-gradient(135deg, hsl(45 88% 52%), hsl(40 85% 46%), hsl(48 90% 54%));
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(40 85% 46%), hsl(48 90% 54%));
     z-index: -1;
     opacity: 0.5;
   }
@@ -502,10 +409,10 @@
 /* Animation keyframes */
 @keyframes pulse-glow {
   0%, 100% {
-    box-shadow: 0 0 20px hsl(45 85% 52% / 0.3);
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.3);
   }
   50% {
-    box-shadow: 0 0 40px hsl(45 85% 52% / 0.5);
+    box-shadow: 0 0 40px hsl(var(--primary) / 0.5);
   }
 }
 
@@ -680,13 +587,13 @@
 
 /* Input focus pulse animation */
 @keyframes input-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 hsl(45 85% 52% / 0); }
-  50% { box-shadow: 0 0 0 6px hsl(45 85% 52% / 0.15); }
+  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0); }
+  50% { box-shadow: 0 0 0 6px hsl(var(--primary) / 0.15); }
 }
 
 @keyframes rank-glow {
   0%, 100% { filter: brightness(1) drop-shadow(0 0 0 transparent); }
-  50% { filter: brightness(1.15) drop-shadow(0 0 8px hsl(45 93% 58% / 0.5)); }
+  50% { filter: brightness(1.15) drop-shadow(0 0 8px hsl(var(--primary) / 0.5)); }
 }
 
 @keyframes value-pop {
@@ -714,8 +621,8 @@
 
 /* Focus glow for inputs */
 .input-focus-glow:focus {
-  box-shadow: 0 0 0 3px hsl(45 85% 52% / 0.2), 0 0 20px hsl(45 85% 52% / 0.15);
-  border-color: hsl(45 85% 52%);
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.2), 0 0 20px hsl(var(--primary) / 0.15);
+  border-color: hsl(var(--primary));
 }
 
 /* Mobile number input improvements */
@@ -1040,7 +947,7 @@ html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 body { text-rendering: optimizeLegibility; }
 
 /* Emerald selection — anywhere the user highlights text */
-::selection { background: hsl(45 85% 52% / 0.35); color: #f8fafc; }
+::selection { background: hsl(var(--primary) / 0.35); color: #f8fafc; }
 
 /* Sleek scrollbar — matches sidebar style, applied globally */
 *::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -1541,8 +1448,8 @@ header[class*="bg-gradient-to-br"] h1 {
 /* ── Text gradient brand — for any element with .brand-gradient ──── */
 .brand-gradient {
   background: linear-gradient(135deg,
-    hsl(45 90% 72%) 0%,
-    hsl(45 85% 52%) 50%,
+    hsl(var(--primary)) 0%,
+    hsl(var(--primary)) 50%,
     hsl(40 72% 38%) 100%);
   -webkit-background-clip: text;
   background-clip: text;
@@ -1671,7 +1578,7 @@ aside a:hover {
   position: absolute;
   inset: -3px;
   border-radius: 50%;
-  border: 2px solid hsl(45 85% 55%);
+  border: 2px solid hsl(var(--primary));
   animation: live-ring 1.8s ease-out infinite;
 }
 @keyframes live-ring {
@@ -1691,16 +1598,16 @@ header[class*="bg-gradient-to-br"] > div > div > .inline-flex {
 .dark [class*="GlassCard"],
 .dark .glass-card {
   box-shadow:
-    inset 0 1px 0 hsl(45 90% 70% / 0.06),
+    inset 0 1px 0 hsl(var(--primary) / 0.06),
     0 8px 30px hsl(40 40% 0% / 0.45),
-    0 0 0 1px hsl(45 60% 50% / 0.08);
+    0 0 0 1px hsl(var(--primary) / 0.08);
 }
 .dark [class*="GlassCard"]:hover,
 .dark .glass-card:hover {
   box-shadow:
-    inset 0 1px 0 hsl(45 90% 70% / 0.10),
-    0 14px 40px hsl(45 85% 50% / 0.16),
-    0 0 0 1px hsl(45 85% 52% / 0.35);
+    inset 0 1px 0 hsl(var(--primary) / 0.10),
+    0 14px 40px hsl(var(--primary) / 0.16),
+    0 0 0 1px hsl(var(--primary) / 0.35);
 }
 
 /* ── New: input/textarea floating focus ring (more visible) ─────── */
@@ -1712,36 +1619,28 @@ input:focus, textarea:focus, select:focus {
 
 /* ── New: bold scrollbar in dark mode ───────────────────────────── */
 .dark *::-webkit-scrollbar-thumb {
-  background: hsl(45 80% 50% / 0.35);
+  background: hsl(var(--primary) / 0.35);
 }
 .dark *::-webkit-scrollbar-thumb:hover {
-  background: hsl(45 80% 52% / 0.6);
+  background: hsl(var(--primary) / 0.6);
 }
 
 /* ── Sidebar pulse dot — bigger glow ────────────────────────────── */
 aside[style*="emerald"] {
-  filter: drop-shadow(0 0 8px hsl(45 85% 52% / 0.6));
+  filter: drop-shadow(0 0 8px hsl(var(--primary) / 0.6));
 }
 
 /* ═══════════════════════════════════════════════════════════════════ */
 /* ═══  APEX v3.2 — PAGE HEADERS + GRADIENT TYPE + 3D TILT (final)  ═══ */
 /* ═══════════════════════════════════════════════════════════════════ */
 
-/* PageHeader h1 — keep crisp solid color in light mode; gradient only in dark */
-.dark header[class*="bg-gradient-to-br"] h1 {
-  background: linear-gradient(135deg,
-    hsl(48 95% 72%) 0%,
-    hsl(45 90% 60%) 40%,
-    hsl(40 88% 54%) 72%,
-    hsl(38 90% 62%) 100%) !important;
-  -webkit-background-clip: text !important;
-  background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-  letter-spacing: -0.025em !important;
-}
+/* Display headings use solid ink; painted accents stay outside the letters. */
+.dark header[class*="bg-gradient-to-br"] h1,
 .light header[class*="bg-gradient-to-br"] h1 {
-  color: hsl(var(--foreground)) !important;
-  letter-spacing: -0.02em !important;
+  background: none;
+  color: hsl(var(--foreground));
+  -webkit-text-fill-color: currentColor;
+  letter-spacing: -0.025em;
 }
 
 /* ── EVERY PageHeader gets a subtle perspective tilt on hover ───── */
@@ -1806,8 +1705,8 @@ button[class*="border-emerald"]:hover {
 /* ── Active sidebar item: glow shadow ────────────────────────────── */
 .nav-item-active {
   box-shadow:
-    inset 3px 0 0 hsl(45 85% 52%),
-    inset 0 0 40px hsl(45 85% 52% / 0.07);
+    inset 3px 0 0 hsl(var(--primary)),
+    inset 0 0 40px hsl(var(--primary) / 0.07);
 }
 
 /* ── Readable minimum: bump any tiny arbitrary text-[Xpx] to 10px floor.
@@ -1841,17 +1740,9 @@ button[class*="border-emerald"]:hover {
 .light .text-blue-200,   .light .text-blue-300    { color: hsl(215 75% 45%) !important; }
 .light .text-sky-200,    .light .text-sky-300     { color: hsl(200 75% 38%) !important; }
 .light .text-cyan-200,   .light .text-cyan-300    { color: hsl(190 80% 32%) !important; }
-/* 2026-08-06: these two lines were the last place a `text-emerald-*` or
- * `text-teal-*` utility still rendered actually-green. tailwind.config.ts
- * remaps both palettes onto the APEX gold ramp so ~1,850 existing utilities
- * became gold with no component edits — and then this light-mode rescue layer
- * forced them straight back to teal/emerald with !important. Retargeted to the
- * dark gold used by --apex-accent in light mode (5.4:1 on a white card, AA for
- * normal text; the old teal was 4.0:1 and the old emerald 3.6:1). green-* on
- * the next line stays green on purpose — it is the semantic success colour,
- * not brand chrome. */
-.light .text-teal-200,   .light .text-teal-300    { color: hsl(45 85% 28%)  !important; }
-.light .text-emerald-200,.light .text-emerald-300 { color: hsl(45 85% 28%)  !important; }
+/* Light status text uses deep semantic colours rather than the former gold remap. */
+.light .text-teal-200,   .light .text-teal-300    { color: hsl(185 84% 25%) !important; }
+.light .text-emerald-200,.light .text-emerald-300 { color: hsl(152 64% 26%) !important; }
 .light .text-green-200,  .light .text-green-300   { color: hsl(140 65% 32%) !important; }
 .light .text-lime-200,   .light .text-lime-300    { color: hsl(85 70% 32%)  !important; }
 .light .text-yellow-200, .light .text-yellow-300  { color: hsl(40 90% 38%)  !important; }
@@ -2022,12 +1913,6 @@ button[class*="border-emerald"]:hover {
 
 .apex-header-scan {
   animation: apex-rail-scan 3.8s ease-in-out infinite alternate;
-}
-
-.apex-page-header h1,
-h1,
-.h1 {
-  letter-spacing: 0 !important;
 }
 
 .apex-card {
@@ -2279,4 +2164,131 @@ h1,
 @media (prefers-reduced-motion: reduce) {
   .page-skeleton { animation: none; }
   .page-skeleton-bar::after { animation: none; width: 100%; opacity: 0.5; }
+}
+
+/* Galaxy shared finish. The edge marks are static and never sit behind form or chart content. */
+html.dark,
+.dark body,
+.dark #root {
+  background-color: hsl(var(--background)) !important;
+}
+.dark body {
+  background-image: none;
+  background-attachment: scroll;
+}
+
+::selection {
+  background: hsl(var(--brand-action));
+  color: hsl(var(--brand-action-foreground));
+}
+
+h1,
+.h1,
+.galaxy-display {
+  font-style: italic;
+  font-weight: 800;
+}
+.font-display {
+  font-family: "Hanken Grotesk", system-ui, sans-serif;
+}
+
+.gradient-text,
+.brand-gradient,
+h1.apex-headline,
+h1.page-title {
+  background: none;
+  color: hsl(var(--foreground));
+  -webkit-text-fill-color: currentColor;
+}
+
+/* GradientButton is a legacy public primitive; its new deep-red fill needs white ink. */
+.bg-apex-gradient {
+  color: hsl(var(--brand-action-foreground));
+}
+
+/* Keep the shared primary-action class contract; caller background overrides
+   remove bg-primary through class merging and therefore opt out of this fill. */
+.galaxy-button.bg-primary {
+  background-color: hsl(var(--brand-action));
+  color: hsl(var(--brand-action-foreground));
+}
+
+.galaxy-card {
+  position: relative;
+  border-radius: 8px;
+}
+.galaxy-card::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: 14px;
+  width: 44px;
+  height: 3px;
+  background: hsl(var(--primary));
+  clip-path: polygon(4% 0, 100% 0, 94% 100%, 0 80%);
+  pointer-events: none;
+}
+
+/* Legacy card classes use the same quiet canvas as the shared primitives. */
+.glass,
+.glass-strong,
+.glass-card,
+[class*="GlassCard"],
+.dark .glass-card,
+.dark [class*="GlassCard"] {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.glass-card:hover,
+[class*="GlassCard"]:hover,
+.dark .glass-card:hover,
+.dark [class*="GlassCard"]:hover {
+  border-color: hsl(var(--border));
+  box-shadow: none;
+  transform: none;
+}
+
+main::before,
+.metric-tile::before,
+header[class*="bg-gradient-to-br"]::before,
+header[class*="bg-gradient-to-br"]::after {
+  content: none;
+}
+.nav-item-active {
+  box-shadow: inset 3px 0 0 hsl(var(--primary));
+}
+.nav-item-active::before,
+.nav-item-active::after {
+  content: none;
+}
+
+/* Remove old decorative looping/glow effects; loading and state indicators remain independent. */
+.gold-glow,
+.rank-1,
+.animate-pulse-glow,
+.animate-float,
+.float-gentle {
+  animation: none;
+}
+.glow-teal,
+.glow-teal-strong {
+  box-shadow: none;
+}
+.text-glow {
+  text-shadow: none;
+}
+input:focus,
+textarea:focus,
+select:focus {
+  box-shadow: var(--apex-focus-ring);
+}
+.dark *::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.35);
+}
+.dark *::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.55);
 }

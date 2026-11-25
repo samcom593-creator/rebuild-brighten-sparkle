@@ -42,7 +42,7 @@ export const GlassCard = forwardRef<HTMLDivElement, GlassCardProps>(
       <div
         ref={ref}
         className={cn(
-          "rounded-md transition-colors",
+          "galaxy-card rounded-lg text-card-foreground transition-colors duration-150",
           variants[variant],
           hoverEffect && "hover:bg-muted/50 cursor-pointer",
           className,

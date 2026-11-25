@@ -2,12 +2,11 @@ import { useState, useEffect, useRef, useCallback, lazy, Suspense, type Componen
 import { EmailTypoHint } from "@/components/ui/email-typo-hint";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { useLandingLiveStats } from "@/hooks/useLandingLiveStats";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Badge } from "@/components/ui/badge";
-import { Crown, ArrowLeft, ArrowRight, User, FileText, Briefcase, CheckCircle2, Loader2, Instagram, Heart, Info } from "lucide-react";
+import { Crown, User, FileText, Briefcase, CheckCircle2, Loader2, Instagram, Heart, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { GradientButton } from "@/components/ui/gradient-button";
@@ -23,6 +22,7 @@ import { createFieldProgressTracker } from "@/shared/telemetry/applyFieldProgres
 import { createDebouncedWriter, type DebouncedWriter } from "@/shared/lib/debouncedWriter";
 import { QuickQualifyStep } from "@/pages/apply/QuickQualifyStep";
 import type { ApplySelectProps } from "@/pages/apply/ApplyRadixFields";
+import "./apply/application-funnel.css";
 
 // PL-WIB-APPLY-RADIX (2026-10-06): radix Select/Checkbox live behind this
 // lazy module so vendor-radix (163 KB raw) loads after step 1 paints instead
@@ -271,6 +271,9 @@ export default function Apply() {
   // loud above the agent picker instead of silently applying unattributed.
   const [refLinkNotice, setRefLinkNotice] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [currentStep]);
   const activeSteps = isQuickQualifyTraffic
     ? [{ id: 1, title: "Quick Qualify", icon: User }, ...steps.map((step) => ({ ...step, id: step.id + 1 }))]
     : steps;
@@ -645,11 +648,6 @@ export default function Apply() {
 
   const hasExperience = watch("hasInsuranceExperience");
   const licenseStatus = watch("licenseStatus");
-
-  const { data: liveStats, isError: statsError } = useLandingLiveStats(true);
-  const agencySummary = !statsError && liveStats?.carriers_partnered != null && liveStats.active_agents != null
-    ? `${liveStats.carriers_partnered} carriers · ${liveStats.active_agents} active`
-    : "Licensing · contracting · training";
 
   // Public application attribution uses a minimal, rate-limited recruiter
   // directory. The full manager endpoint remains authenticated for admin tools.
@@ -1070,89 +1068,41 @@ export default function Apply() {
   };
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-background ops-surface ops-fade-in">
-      {/* v26 audit fix: triple-stacked header collapsed into ONE bar.
-          Was: live ribbon (40px) + glass-strong header (64px) + (founder
-          credit rendered elsewhere). Now: single 56px bar with brand on
-          left + live stats inline + Back-to-Home on right. */}
-      <header className="border-b border-border bg-white dark:bg-card">
-        <div className="container mx-auto px-4 py-3">
+    <div className="dark recruiting-application min-h-screen overflow-x-hidden bg-background">
+      <header className="application-header">
+        <div className="application-header-inner">
           <div className="flex items-center justify-between gap-4">
-            <Link to="/" className="flex min-h-11 items-center gap-2">
-              <Crown className="h-7 w-7 text-primary" />
-              <span className="text-lg font-bold">Galaxy Financial</span>
+            <Link to="/" className="application-wordmark flex min-h-11 items-center gap-2">
+              <Crown className="h-6 w-6 text-primary" aria-hidden="true" />
+              <span>Galaxy Financial</span>
             </Link>
-            <div className="hidden md:flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] font-display font-semibold">
-              <span className="h-2 w-2 rounded-full bg-emerald-500" />
-              <span className="text-emerald-700 dark:text-emerald-300">Headhunters live</span>
-              <span className="text-muted-foreground">·</span>
-              <span className="text-foreground/80">{agencySummary}</span>
-            </div>
-            <Link to="/" className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-              <ArrowLeft className="h-4 w-4" />
-              <span className="sr-only sm:hidden">Back to Home</span>
-              <span className="hidden sm:inline">Back to Home</span>
+            <Link to="/" className="application-back-link inline-flex min-h-11 items-center justify-center text-sm text-muted-foreground hover:text-foreground">
+              Back to Home
             </Link>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto max-w-full px-4 py-12">
+      <main className="application-main">
         <h1 className="sr-only">Agent application form</h1>
-        <div className="w-full max-w-3xl mx-auto">
-          {/* Founder credit — Brand Bible: "the face IS the brand". Trust signal
-              on the conversion page, just under the page header. */}
-          <div className="flex items-start sm:items-center justify-start sm:justify-center gap-3 mb-10 max-w-full">
-            {/* 2026-09-08 (Sam): the founder avatar here was a shirtless photo —
-                pulled from the public conversion page. Monogram until a
-                professional headshot is provided. */}
-            <div
-              aria-label="Samuel James, Founder of Galaxy Financial"
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/15 ring-2 ring-primary/40 text-sm font-bold text-primary"
-            >
-              SJ
-            </div>
-            <div className="text-left min-w-0">
-              <p className="text-sm font-bold leading-tight">You're applying directly to Samuel James</p>
-              <p className="text-[11px] text-muted-foreground uppercase tracking-[0.08em] sm:tracking-wider leading-snug">
-                <span className="block">Founder · $1.2M income in first year</span>
-                <span className="block">Every application reviewed personally</span>
-              </p>
-            </div>
-          </div>
-          {/* Progress Steps */}
+        <div className="application-content">
           <>
-          <div className="mb-12">
-            <div className="flex items-center justify-between relative">
-              <div className="absolute top-5 left-0 right-0 h-0.5 bg-border" />
-              <div 
-                className="absolute top-5 left-0 h-0.5 bg-primary transition-all duration-500"
-                style={{ width: `${((currentStep - 1) / (activeSteps.length - 1)) * 100}%` }}
-              />
-              
-              {activeSteps.map((step) => (
-                <div key={step.id} className="relative z-10 flex flex-col items-center">
-                  <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
-                      currentStep >= step.id
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    <step.icon className="h-5 w-5" />
-                  </div>
-                  <span className={`text-xs mt-2 font-medium hidden sm:block ${
-                    currentStep >= step.id ? "text-foreground" : "text-muted-foreground"
-                  }`}>
-                    {step.title}
-                  </span>
-                </div>
-              ))}
+          <div className="application-progress">
+            <div className="application-progress-label">
+              <span>Step {currentStep} of {activeSteps.length}</span>
+              <span>{activeSteps[currentStep - 1]?.title}</span>
             </div>
-            {/* Mobile step label */}
-            <p className="text-center text-sm text-muted-foreground mt-3 sm:hidden">
-              Step {currentStep} of {activeSteps.length}: {activeSteps[currentStep - 1]?.title}
-            </p>
+            <div
+              className="application-progress-track"
+              role="progressbar"
+              aria-label="Application progress"
+              aria-valuemin={1}
+              aria-valuemax={activeSteps.length}
+              aria-valuenow={currentStep}
+              aria-valuetext={`Step ${currentStep} of ${activeSteps.length}: ${activeSteps[currentStep - 1]?.title}`}
+            >
+              <span style={{ width: `${(currentStep / activeSteps.length) * 100}%` }} />
+            </div>
           </div>
 
           {/* F01: an unknown, inactive or uncheckable ?ref= link is said on the first
@@ -1213,7 +1163,7 @@ export default function Apply() {
                     : undefined
                 }
               >
-                <GlassCard className="p-4 sm:p-8">
+                <GlassCard className="application-panel p-5 sm:p-8">
                   {isQuickQualifyTraffic && currentStep === 1 && (
                     <QuickQualifyStep
                       firstNameInput={register("firstName")}
@@ -1669,14 +1619,13 @@ export default function Apply() {
                   )}
 
                   {/* Navigation Buttons */}
-                  <div className="flex items-center justify-between mt-8 pt-6 border-t border-border">
+                  <div className="application-actions flex items-center justify-between mt-8 pt-6 border-t border-border">
                     {currentStep > 1 && currentStep <= activeSteps.length ? (
                       <GradientButton
                         type="button"
                         variant="outline"
                         onClick={prevStep}
                       >
-                        <ArrowLeft className="h-4 w-4 mr-2" />
                         Previous
                       </GradientButton>
                     ) : (
@@ -1693,7 +1642,6 @@ export default function Apply() {
                         ) : (
                           <>
                             {isQuickQualifyTraffic && currentStep === 1 ? "Continue" : "Next Step"}
-                            <ArrowRight className="h-4 w-4 ml-2" />
                           </>
                         )}
                       </GradientButton>

@@ -1,75 +1,31 @@
-/* APEX colour, motion and sound layer (2026-10-28).
- *
- * Sam, looking at the live Grow pages: "Lack of color. The text is small and ugly. No
- * animation ... resembles a terminal ... Make it animated. Add the bubbles and effects
- * ... and sound effects. Just make the entire website pleasant ... cute and easy to use,
- * and very functional."
- *
- * Loaded by the authenticated shell only (src/components/layout/AuthenticatedShell.tsx),
- * never by the public landing routes, so nothing here counts toward the landing CSS
- * ceiling (scripts/check-landing-css-size.mjs).
- *
- * The rules live in docs/DESIGN_SYSTEM.md, "Colour, motion and sound":
- *   - colour carries meaning: a tone names a state and the word is always beside it;
- *   - motion is short and happens once: entrances 240ms, pops 220ms, presses 120ms, counts
- *     tween; the only looping motion is the ambient background and one live indicator per
- *     page, and both go still under prefers-reduced-motion;
- *   - celebrations mark a win the person just made, never a page load.
- *
- * Motion review (2026-10-28, docs/audits/2026-10-28-motion-review.md): every duration is
- * inside the 300ms UI budget, entrances and presses run on a strong ease-out, the stagger
- * is 30ms a row and stops at row 14, every loop animates transform and opacity only, hover
- * motion is gated to a real pointer, and reduced motion keeps a 200ms fade instead of
- * switching the layer off.
- */
-
-/* ── Motion tokens for this layer ──────────────────────────────────────────────────────── */
-/* index.css owns --motion-fast/--motion-base and the two Material curves (--ease-standard,
-   --ease-emphasized). Both start at zero velocity: measured at 4x in the harness, the standard
-   curve has covered 11% of the distance after 10% of the time and the first visible pixel moves
-   at 13%, which reads as a pause before an entrance. The strong ease-out below has covered 35%
-   at 10% and moves at 5%: it is the curve for anything that enters, pops or is pressed. It
-   belongs beside the others in index.css's motion scale when that file is next touched. */
+/* Galaxy operating surfaces. Loaded by the authenticated shell only.
+   Status colours remain distinct; brand paint is static, non-interactive, and limited to edges. */
 :root {
   --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-/* ── Tones: seven meaning-carrying colours, tuned per theme for contrast on cards ───────── */
 :root,
 :root.light {
-  --tone-good: 152 62% 26%;   /* going well: showed, producing, alive            */
-  --tone-warm: 33 92% 33%;    /* needs a nudge: warm lead, waiting, field training */
-  --tone-hot: 4 70% 36%;      /* act now: hot lead, no-show, dead lane            */
-  --tone-cool: 211 78% 35%;   /* new or scheduled: new lead, cold lead, booked    */
-  --tone-royal: 262 58% 50%;  /* paperwork: contracting, onboarding               */
-  --tone-gold: 42 70% 25%;    /* the brand moment: Monday start, hired, Sam's own */
-  --tone-slate: 220 10% 36%;  /* quiet: inactive, answered, not set               */
-  --ambient-opacity: 0.42;
+  --tone-good: 145 66% 27%;
+  --tone-warm: 35 86% 31%;
+  --tone-hot: 352 74% 37%;
+  --tone-cool: 190 94% 27%;
+  --tone-royal: 270 62% 42%;
+  --tone-gold: var(--primary);
+  --tone-slate: 220 5% 38%;
+  --ambient-opacity: 0.45;
 }
 :root.dark {
-  --tone-good: 150 62% 54%;
-  --tone-warm: 40 94% 60%;
-  --tone-hot: 6 86% 78%;
-  --tone-cool: 206 90% 68%;
-  --tone-royal: 262 82% 74%;
-  --tone-gold: 45 86% 58%;
-  --tone-slate: 220 10% 64%;
-  --ambient-opacity: 0.7;
+  --tone-good: 142 72% 60%;
+  --tone-warm: 43 90% 64%;
+  --tone-hot: 4 90% 72%;
+  --tone-cool: 190 88% 64%;
+  --tone-royal: 270 85% 76%;
+  --tone-gold: var(--primary);
+  --tone-slate: 220 7% 72%;
+  --ambient-opacity: 0.6;
 }
 
-/* ── Ambient bubbles: soft colour fields drifting behind the operating canvas ──────────── */
-/* The canvas is its own stacking context so a z-index of -1 sits above the shell's
-   background and below every card, row and control. Nothing here takes a click, nothing
-   here is in the layout (position: fixed), and nothing here animates anything but
-   transform: each field is one composited layer rastered once.
-
-   Quiet by design (motion review): each field's peak stop is at most 0.16 alpha and the
-   layer is 0.55 (light) / 0.7 (dark), so the strongest tint under any text is 11% of a tone
-   colour; every centre sits outside the viewport, so only the soft tail of a field reaches
-   the page, and none of them sits under the page title, the subtitle or the tab row. There
-   is no violet field: a purple radial haze is the one background impeccable names as the
-   tell of a generated page. Measured with impeccable detect on both routes, both themes,
-   390x844 and 1440x900 (docs/audits/2026-10-28-motion-review.md). */
 .apex-main-canvas {
   isolation: isolate;
 }
@@ -83,45 +39,56 @@
 }
 .apex-ambient > span {
   position: absolute;
-  width: 46vmax;
-  height: 46vmax;
-  border-radius: 9999px;
-  animation: apex-drift var(--drift-time, 36s) ease-in-out infinite alternate;
+  background: hsl(var(--primary) / 0.08);
+  clip-path: polygon(8% 0, 100% 8%, 90% 78%, 0 100%, 5% 40%);
 }
 .apex-ambient > span:nth-child(1) {
-  right: -24vmax; top: -22vmax;
-  background: radial-gradient(circle at center, hsl(var(--tone-gold) / 0.16), transparent 62%);
-  --drift-time: 38s;
+  right: -8rem;
+  top: 16vh;
+  width: 18rem;
+  height: 4rem;
+  transform: rotate(-18deg);
 }
 .apex-ambient > span:nth-child(2) {
-  left: -10vmax; top: 34vmax;
-  background: radial-gradient(circle at center, hsl(var(--tone-cool) / 0.14), transparent 62%);
-  --drift-time: 46s; animation-delay: -12s;
+  left: -7rem;
+  bottom: 12vh;
+  width: 15rem;
+  height: 3rem;
+  transform: rotate(-18deg);
 }
-.apex-ambient > span:nth-child(3) {
-  right: -8vmax; bottom: -22vmax;
-  background: radial-gradient(circle at center, hsl(var(--tone-good) / 0.12), transparent 62%);
-  --drift-time: 42s; animation-delay: -20s;
+.apex-ambient > span:nth-child(n + 3) {
+  display: none;
 }
-.apex-ambient > span:nth-child(4) {
-  left: 30vmax; bottom: -26vmax;
-  background: radial-gradient(circle at center, hsl(var(--tone-warm) / 0.11), transparent 62%);
-  --drift-time: 52s; animation-delay: -30s;
+
+.galaxy-sidebar::before,
+.galaxy-topbar::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 8rem;
+  height: 3px;
+  background: hsl(var(--primary));
+  clip-path: polygon(0 0, 100% 0, 94% 100%, 0 70%);
+  pointer-events: none;
 }
-.apex-ambient > span:nth-child(5) {
-  left: 62vmax; top: -14vmax; width: 32vmax; height: 32vmax;
-  background: radial-gradient(circle at center, hsl(var(--tone-hot) / 0.1), transparent 62%);
-  --drift-time: 48s; animation-delay: -6s;
+.galaxy-wordmark {
+  letter-spacing: -0.035em;
 }
-/* An oscillation, so ease-in-out: the field slows into each turn instead of bouncing off it.
-   One full cycle is 76 to 104 seconds, far below the 0.2 Hz band that bothers people. */
-@keyframes apex-drift {
-  from { transform: translate3d(0, 0, 0) scale(1); }
-  to   { transform: translate3d(-5vmax, 4vmax, 0) scale(1.06); }
+.apex-page-header.galaxy-page-header {
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid hsl(var(--border));
 }
-@media (max-width: 640px) {
-  .apex-ambient > span:nth-child(4),
-  .apex-ambient > span:nth-child(5) { display: none; }
+.apex-page-header.galaxy-page-header::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 5.25rem;
+  height: 4px;
+  background: hsl(var(--primary));
+  clip-path: polygon(0 0, 100% 18%, 92% 100%, 3% 76%);
+  pointer-events: none;
 }
 
 /* ── Entrances: one rise for lists, tiles and sections, staggered by position ──────────── */
@@ -215,11 +182,11 @@
 
 /* ── Bigger operating type. Sam: "the text is small." Signed-in pages only. ────────────── */
 /* Tailwind's text-xs (12px) and text-sm (14px) are the two sizes almost every row, label and
-   hint on the operating surfaces use. They move to 13px and 15px here. An element that
+   hint on the operating surfaces use. They move to 14px and 15px here. An element that
    already sets a breakpoint-specific size is left exactly as its author tuned it. */
 .apex-page-slot .text-xs:not([class*="sm:text-"]):not([class*="md:text-"]):not([class*="lg:text-"]) {
-  font-size: 13px;
-  line-height: 18px;
+  font-size: 14px;
+  line-height: 20px;
 }
 .apex-page-slot .text-sm:not([class*="sm:text-"]):not([class*="md:text-"]):not([class*="lg:text-"]) {
   font-size: 15px;
@@ -231,7 +198,7 @@
 }
 
 /* ── Reduced motion: gentler, not zero ─────────────────────────────────────────────────── */
-/* Every movement goes: the drift stands still, rows and bubbles no longer rise or scale,
+/* Rows and bubbles no longer rise or scale,
    the ring is gone, lift and press are flat. What stays is a 200ms fade on entrances and a
    short dip on a number that changed, so a change is still legible. The !important is
    needed because index.css's global reduced-motion rule forces every animation to 0.01ms;
@@ -264,11 +231,9 @@
   .apex-press:active:not(:disabled) { transform: none; }
 }
 
-/* Operating-surface contrast measured on tinted rows as well as bare cards. */
-:root.light .apex-app-shell { --muted-foreground: 45 8% 33%; }
+/* Tone labels preserve the semantic error signal on operating surfaces. */
 .apex-app-shell .text-destructive { color: hsl(var(--tone-hot)); }
-:root.light .apex-app-shell .text-primary { color: hsl(var(--tone-gold)); }
-.apex-app-shell .nav-section-label { font-size: 13px; }
+.apex-app-shell .nav-section-label { font-size: 14px; }
 
 /* Touch capability matters on tablets as well as narrow phones. */
 @media (pointer: coarse) {

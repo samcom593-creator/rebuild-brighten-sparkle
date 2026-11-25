@@ -28,6 +28,9 @@ import { stripComments } from "./lib/strip-comments.mjs";
 // fail) against synthetic fixtures so every commit re-verifies the logic.
 
 const SURFACE = "src/components/landing/HeroSection.tsx";
+// The owner narrowed home to two license answers, with no metric strip. Shared
+// facts remain canonical for retained public pages and any later numeric claim.
+const CANONICAL_SOURCE = "src/lib/publicRecruitingClaims.ts";
 
 // Sibling public landing surfaces that INDEPENDENTLY restate the same two
 // numbers (carrier count + comp range) as hardcoded literals. HeroSection is
@@ -74,21 +77,21 @@ function arrayBlock(src, name) {
 export function deriveCanonical(src) {
   const carriersBlock = arrayBlock(src, "carriers");
   if (carriersBlock === null) {
-    throw new Error(`could not find \`const carriers = [ ... ]\` in ${SURFACE} — re-point check-hero-path-claims.mjs`);
+    throw new Error(`could not find \`const carriers = [ ... ]\` in ${CANONICAL_SOURCE} — re-point check-hero-path-claims.mjs`);
   }
   const carrierCount = (carriersBlock.match(/"[^"]+"/g) || []).length;
   if (carrierCount === 0) {
-    throw new Error(`\`carriers\` array parsed to 0 entries in ${SURFACE} — re-point check-hero-path-claims.mjs`);
+    throw new Error(`\`carriers\` array parsed to 0 entries in ${CANONICAL_SOURCE} — re-point check-hero-path-claims.mjs`);
   }
 
   const statsBlock = arrayBlock(src, "stats");
   if (statsBlock === null) {
-    throw new Error(`could not find \`const stats = [ ... ]\` in ${SURFACE} — re-point check-hero-path-claims.mjs`);
+    throw new Error(`could not find \`const stats = [ ... ]\` in ${CANONICAL_SOURCE} — re-point check-hero-path-claims.mjs`);
   }
   // comp range value like "70%–145%" or "70%-145%" (en-dash or hyphen).
   const compMatch = statsBlock.match(/(\d+)\s*%\s*[–-]\s*(\d+)\s*%/);
   if (!compMatch) {
-    throw new Error(`could not find a comp range (e.g. "70%–145%") in \`stats\` of ${SURFACE} — re-point check-hero-path-claims.mjs`);
+    throw new Error(`could not find a comp range (e.g. "70%–145%") in \`stats\` of ${CANONICAL_SOURCE} — re-point check-hero-path-claims.mjs`);
   }
   const compTop = Math.max(Number(compMatch[1]), Number(compMatch[2]));
   const compBottom = Math.min(Number(compMatch[1]), Number(compMatch[2]));
@@ -98,15 +101,15 @@ export function deriveCanonical(src) {
 
 /** Validate partnerPaths descriptions against canonical facts.
  *  Returns an array of violation strings (empty = clean). */
-export function findViolations(src) {
-  const { carrierCount, compTop } = deriveCanonical(src);
+export function findViolations(src, canonical = deriveCanonical(src)) {
+  const { carrierCount, compTop } = canonical;
   const pathsBlock = arrayBlock(src, "partnerPaths");
   if (pathsBlock === null) {
     throw new Error(`could not find \`const partnerPaths = [ ... ]\` in ${SURFACE} — re-point check-hero-path-claims.mjs`);
   }
 
   const violations = [];
-  const descRe = /description:\s*"((?:[^"\\]|\\.)*)"/g;
+  const descRe = /(?:title|description):\s*"((?:[^"\\]|\\.)*)"/g;
   let m;
   while ((m = descRe.exec(pathsBlock)) !== null) {
     const desc = m[1];
@@ -138,6 +141,19 @@ export function findViolations(src) {
   return violations;
 }
 
+/** If a carrier metric is rendered, it must consume the shared list. */
+export function findHeroBindingViolations(src) {
+  const clean = stripComments(src);
+  const imported = /import\s*\{[^}]*\bcarriers\b[^}]*\}\s*from\s*["']@\/lib\/publicRecruitingClaims["']/.test(clean);
+  const hasMetric = imported || /\bdraftMetrics\b|\bCarrier partners\b|\bcarriers\.length\b|\b\d+\s+(?:top\s+)?carriers\b/i.test(clean);
+  if (!hasMetric) return [];
+  const metric = /label:\s*"Carrier partners"\s*,\s*value:\s*carriers\.length\.toString\(\)/.test(clean);
+  const rendered = /draftMetrics\.map\(/.test(clean) && /<strong>\{item\.value\}<\/strong>/.test(clean);
+  return imported && metric && rendered ? [] : [
+    `${SURFACE} must render its carrier metric from the imported publicRecruitingClaims carriers list.`,
+  ];
+}
+
 /** Comp-range + carrier-count claim checks shared by every non-canonical
  *  surface (JS siblings and static SEO HTML). `text` must already have its
  *  surface-appropriate comments removed by the caller. Returns violations. */
@@ -153,7 +169,7 @@ function claimViolationsInText(text, canonical, label) {
     if (lo !== compBottom || hi !== compTop) {
       violations.push(
         `${label} states comp range "${cm[0].trim()}" but the canonical range is ` +
-        `${compBottom}%–${compTop}% (${SURFACE} stats). Say "${compBottom}%–${compTop}%".`,
+        `${compBottom}%–${compTop}% (${CANONICAL_SOURCE} stats). Say "${compBottom}%–${compTop}%".`,
       );
     }
   }
@@ -166,7 +182,7 @@ function claimViolationsInText(text, canonical, label) {
     if (stated !== carrierCount) {
       violations.push(
         `${label} states "${cm[0].trim()}" but the canonical carrier count is ${carrierCount} ` +
-        `(${SURFACE}). Use the live \`carriers\` value or ${carrierCount}.`,
+        `(${CANONICAL_SOURCE}). Use the live \`carriers\` value or ${carrierCount}.`,
       );
     }
   }
@@ -269,6 +285,23 @@ const partnerPaths = [
     else console.error(`  ✗ ${name}: expected a throw, got none`);
   }
 
+  const boundHero = `import { carriers } from "@/lib/publicRecruitingClaims";
+    const draftMetrics = [{ label: "Carrier partners", value: carriers.length.toString() }];
+    draftMetrics.map((item) => <strong>{item.value}</strong>);`;
+  const bindingCases = [
+    ["two-choice home without metrics needs no hidden carrier facts", 'const partnerPaths = [{ track: "licensed-producer" }, { track: "licensing-roadmap" }];', 0],
+    ["unused canonical import is not a metric removal", 'import { carriers } from "@/lib/publicRecruitingClaims";', 1],
+    ["shared carrier facts render in hero", boundHero, 0],
+    ["stale hero carrier literal fails", boundHero.replace("carriers.length.toString()", '"99"'), 1],
+    ["unused carrier metric fails", boundHero.replace("draftMetrics.map(", "otherMetrics.map("), 1],
+    ["unreadable carrier import fails", boundHero.replace("@/lib/publicRecruitingClaims", "@/lib/other"), 1],
+  ];
+  for (const [name, src, want] of bindingCases) {
+    const got = findHeroBindingViolations(src).length;
+    if (got === want) { pass++; console.log(`  ✓ ${name}`); }
+    else console.error(`  ✗ ${name}: expected ${want} violation(s), got ${got}`);
+  }
+
   // ── sibling-surface logic (findSiblingViolations) ──
   const canon = { carrierCount: 22, compTop: 145, compBottom: 70 };
   const siblingCases = [
@@ -327,7 +360,7 @@ const partnerPaths = [
     }
   }
 
-  const total = cases.length + derivationGuards.length + siblingCases.length + seoCases.length;
+  const total = cases.length + derivationGuards.length + bindingCases.length + siblingCases.length + seoCases.length;
   if (pass === total) {
     console.log(`\n✓ check:hero-path-claims --selftest ${pass}/${total} PASS`);
     process.exit(0);
@@ -341,22 +374,24 @@ function main() {
 
   const repoRoot = path.resolve(import.meta.dirname, "..");
 
-  // Canonical truth comes from HeroSection. If it can't be read or derived, fail
+  // Canonical truth comes from the shared public facts. If it can't be derived, fail
   // loud (a refactor must re-point this guard, never silently pass).
   const heroAbs = path.join(repoRoot, SURFACE);
-  let heroSrc;
+  let heroSrc, canonicalSrc;
   try {
     heroSrc = fs.readFileSync(heroAbs, "utf8");
+    canonicalSrc = fs.readFileSync(path.join(repoRoot, CANONICAL_SOURCE), "utf8");
   } catch {
-    console.error(`✗ check:hero-path-claims — ${SURFACE} not found; re-point this guard.`);
+    console.error(`✗ check:hero-path-claims — ${SURFACE} or ${CANONICAL_SOURCE} not found; re-point this guard.`);
     process.exit(1);
   }
 
   const surfaces = []; // { label, violations }
   let canonical;
   try {
-    canonical = deriveCanonical(heroSrc);
-    surfaces.push({ label: SURFACE, violations: findViolations(heroSrc) });
+    canonical = deriveCanonical(canonicalSrc);
+    surfaces.push({ label: CANONICAL_SOURCE, violations: findSiblingViolations(canonicalSrc, canonical, CANONICAL_SOURCE) });
+    surfaces.push({ label: SURFACE, violations: [...findViolations(heroSrc, canonical), ...findHeroBindingViolations(heroSrc)] });
   } catch (e) {
     console.error(`✗ check:hero-path-claims — ${e.message}`);
     process.exit(1);

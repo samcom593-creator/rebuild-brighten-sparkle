@@ -12,7 +12,7 @@
  *  1. Cascade guard: render the real card and fail when a theme rule (scoped
  *     to .light / .dark, or !important, so it beats a one-class utility) that
  *     sets a color or background matches any of its elements. The guard is
- *     shown failing on the old classes first.
+ *     shown failing on explicitly injected historical rules and old classes first.
  *  2. Token math: the ratios from the --card, --card-foreground,
  *     --muted-foreground and --primary values in src/index.css, which only
  *     describe what renders while the guard holds.
@@ -74,12 +74,16 @@ const SETS_COLOR = /(^|[\s;])(color|background|background-color)\s*:|@apply[^;]*
 const THEME_SCOPED = /\.(light|dark)(?![\w-])/;
 
 /** Theme rules that set a color or background and outrank a one-class Tailwind utility. */
-const overrideRules: CssRule[] = STYLESHEETS.flatMap(flatRules).filter(
-  (rule) => SETS_COLOR.test(rule.body) && (THEME_SCOPED.test(rule.selector) || rule.body.includes("!important")),
-);
+function colorOverrideRules(rules: CssRule[]): CssRule[] {
+  return rules.filter(
+    (rule) => SETS_COLOR.test(rule.body) && (THEME_SCOPED.test(rule.selector) || rule.body.includes("!important")),
+  );
+}
+
+const overrideRules = colorOverrideRules(STYLESHEETS.flatMap(flatRules));
 
 /** Every override rule that matches an element under `container` with the theme class on <html>. */
-function overrideHits(container: HTMLElement, theme: Theme): string[] {
+function overrideHits(container: HTMLElement, theme: Theme, rules: CssRule[] = overrideRules): string[] {
   // A detached element has no :root ancestor, so every ":root.light ..." rule
   // would silently miss it and the guard would pass while checking nothing.
   if (!container.isConnected) throw new Error("overrideHits needs an element attached to the document.");
@@ -89,7 +93,7 @@ function overrideHits(container: HTMLElement, theme: Theme): string[] {
   const hits: string[] = [];
   try {
     const elements = [container, ...Array.from(container.querySelectorAll<HTMLElement>("*"))];
-    for (const rule of overrideRules) {
+    for (const rule of rules) {
       // A pseudo-element selector styles generated content, never the element itself.
       if (rule.selector.includes("::")) continue;
       for (const el of elements) {
@@ -177,20 +181,37 @@ afterEach(() => {
 });
 
 describe("MyReferralLinkCard contrast (F39)", () => {
-  it("the cascade guard flags the classes that rendered white text and a white card", () => {
+  it("the cascade guard detects injected historical rules that rendered white text and a white card", () => {
+    // The broad emerald rule was removed from production CSS. Keep the detector's
+    // adversarial proof explicit, so fixing that rule does not require retaining the bug.
+    const historicalRules = colorOverrideRules([
+      { file: "historical fixture", selector: ':root.light [class*="bg-emerald-"]:not([class*="text-emerald-"])', body: "color: white;" },
+      { file: "historical fixture", selector: ":root.light .bg-card\\/80", body: "background-color: white;" },
+    ]);
     const old = document.createElement("div");
     old.innerHTML = '<div class="border-border/60 bg-card/80"><p class="text-muted-foreground">Loading</p></div><div class="text-muted-foreground border-emerald-500/40 bg-emerald-500/10">live</div>';
-    expect(() => overrideHits(old, "light")).toThrow(/attached/);
+    expect(() => overrideHits(old, "light", historicalRules)).toThrow(/attached/);
     document.body.appendChild(old);
-    const hits = overrideHits(old, "light");
+    const hits = overrideHits(old, "light", historicalRules);
     old.remove();
     expect(hits.some((hit) => hit.includes('[class*="bg-emerald-"]:not([class*="text-emerald-"])'))).toBe(true);
     expect(hits.some((hit) => hit.includes(".bg-card\\/80"))).toBe(true);
     // The dark theme has no such rule, which is why the dark badge always read fine.
     document.body.appendChild(old);
-    const darkHits = overrideHits(old, "dark");
+    const darkHits = overrideHits(old, "dark", historicalRules);
     old.remove();
     expect(darkHits.filter((hit) => hit.includes("bg-emerald-") || hit.includes("bg-card\\/80"))).toEqual([]);
+  });
+
+  it("the actual stylesheet does not force white text on a translucent emerald badge", () => {
+    const badge = document.createElement("div");
+    badge.className = "text-muted-foreground border-emerald-500/40 bg-emerald-500/10";
+    document.body.appendChild(badge);
+    try {
+      for (const theme of THEMES) expect(overrideHits(badge, theme)).toEqual([]);
+    } finally {
+      badge.remove();
+    }
   });
 
   it("no theme rule repaints any element of the rendered card, active or loading, in either theme", async () => {

@@ -65,7 +65,7 @@ export function TopBar() {
   const isDark = theme === "dark";
 
   return (
-    <header className="sticky top-0 z-40 hidden h-[60px] items-center justify-between border-b border-border bg-background px-5 lg:flex">
+    <header className="galaxy-topbar sticky top-0 z-40 hidden h-[60px] items-center justify-between border-b border-border bg-background px-5 lg:flex">
       <div className="flex min-w-0 items-center gap-3">
         <Button variant="ghost" size="icon" className="h-11 w-11 text-muted-foreground hover:bg-accent hover:text-foreground" onClick={toggleSidebar} aria-label="Toggle navigation">
           <Menu className="h-5 w-5" />

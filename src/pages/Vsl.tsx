@@ -1,10 +1,10 @@
 import { Link, useSearchParams } from "react-router-dom";
-import { Clock } from "lucide-react";
+import { Clock, Crown } from "lucide-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { resolveBrand } from "@/config/brand";
 import { track as trackRecruitingEvent } from "@/lib/analytics";
 import { buildPublicRecruitingHref, parsePublicRecruitingTrack } from "@/lib/publicRecruitingFlow";
-import { VSL_VIDEO } from "@/lib/vslMedia";
+import { VSL_VIDEO, VSL_VIDEO_SCHEMA } from "@/lib/vslMedia";
 import "@/components/landing/recruiting-funnel.css";
 
 const BRAND = resolveBrand();
@@ -15,29 +15,27 @@ export default function Vsl() {
   const track = parsePublicRecruitingTrack(searchParams.get("track"));
   const isLicensingPath = track === "licensing-roadmap";
   const applyHref = buildPublicRecruitingHref("/apply", searchParams);
-  const licensingHref = buildPublicRecruitingHref("/get-licensed", searchParams, "licensing-roadmap");
-  const headline = isLicensingPath ? "Start your insurance career" : VSL_VIDEO.title;
+  const headline = isLicensingPath ? "Start your insurance career" : "The unfair advantage for serious producers";
+  const ctaLabel = isLicensingPath ? "Start my application" : "I’m ready to scale & earn more";
   usePageTitle(`${headline} · ${BRAND.legalName}`);
 
   return (
     <div className="recruiting-funnel dark recruiting-vsl-page">
+      <script id="galaxy-vsl-schema" type="application/ld+json">{JSON.stringify(VSL_VIDEO_SCHEMA)}</script>
       <header className="recruiting-vsl-header">
-        <Link to={buildPublicRecruitingHref("/", searchParams)} className="font-display text-lg font-semibold tracking-tight text-foreground" aria-label={`${BRAND.legalName} home`}>
-          {BRAND.legalName}
+        <Link to={buildPublicRecruitingHref("/", searchParams)} className="recruiting-wordmark" aria-label={`${BRAND.legalName} home`}>
+          <Crown className="recruiting-wordmark-crown" aria-hidden="true" strokeWidth={1.5} />
+          <span>{BRAND.legalName}</span>
         </Link>
-        <span className="text-sm font-medium uppercase tracking-[0.16em] text-muted-foreground">Agency overview</span>
       </header>
 
       <main className="recruiting-vsl-shell">
         <div className="text-center">
-          <p className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-primary">
-            {isLicensingPath ? "For aspiring insurance agents" : track === "agency-builder" ? "For agency builders" : track === "licensed-producer" ? "For licensed producers" : "The agency opportunity"}
-          </p>
           <h1 className="recruiting-vsl-heading">{headline}</h1>
           <p className="recruiting-vsl-lead">
             {isLicensingPath
               ? "Explore the agency and what comes next. Start an application to share your goals and where you are in the licensing process."
-              : "Get a closer look at the platform, the paths, and how a producer starts. Then take the next step with your application."}
+              : "Watch the Galaxy overview. See the platform, the support, and your next step as a producer."}
           </p>
         </div>
 
@@ -69,16 +67,13 @@ export default function Vsl() {
             className="recruiting-action recruiting-action-primary"
             onClick={() => trackRecruitingEvent("hero_cta_click", {
               position: "vsl",
-              cta_label: isLicensingPath ? "Start my application" : `Apply to ${BRAND.shortName}`,
+              cta_label: ctaLabel,
               partner_path: track ?? "unspecified",
             })}
           >
-            {isLicensingPath ? "Start my application" : `Apply to ${BRAND.shortName}`}
+            {ctaLabel}
           </Link>
           <p className="recruiting-vsl-note">Apply whenever you’re ready.</p>
-          <Link to={licensingHref} className="recruiting-text-link">
-            {isLicensingPath ? "View the licensing roadmap" : "Need a license? View the roadmap"}
-          </Link>
         </div>
       </main>
     </div>

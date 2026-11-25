@@ -1,3 +1,4 @@
+// intentionally-orphan: Retained Galaxy content after the owner chose a two-choice-only homepage; not rendered on the current home.
 import { useState } from "react";
 import { BadgeCheck, BarChart3, FileCheck2, GraduationCap, Network, UserPlus } from "lucide-react";
 import { SectionHeading } from "@/components/ui/section-heading";

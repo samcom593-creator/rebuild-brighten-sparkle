@@ -26,8 +26,8 @@ match() {
 }
 
 # ---------- check-vsl-sync (wave-28) ----------
-# Trigger: index.html / HeroSection.tsx / the script itself / vite.config.ts
-if match '^(index\.html|src/components/landing/HeroSection\.tsx|scripts/check-vsl-sync\.mjs|vite\.config\.ts)$'; then
+# Trigger: actual player, media/schema module, homepage, shell, guard, or build plugin
+if match '^(index\.html|src/components/landing/HeroSection\.tsx|src/pages/Vsl\.tsx|src/lib/vslMedia\.ts|scripts/check-vsl-sync\.mjs|vite\.config\.ts)$'; then
   echo "[pre-commit] VSL-affecting file staged — running check:vsl-sync…"
   node scripts/check-vsl-sync.mjs
 fi

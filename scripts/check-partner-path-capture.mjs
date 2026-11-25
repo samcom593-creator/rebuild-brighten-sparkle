@@ -4,7 +4,7 @@
  * must be CAPTURED by /apply, not just fired into analytics and dropped.
  *
  * WHY THIS EXISTS (MP-WIB-PARTNER-PATH-CAPTURE, 2026-11-21). The landing hero
- * (src/components/landing/HeroSection.tsx) renders three partner-path cards and
+ * (src/components/landing/HeroSection.tsx) renders two license choices and
  * sends a recruit to `/apply?...&track=<agency-builder|licensed-producer>` so
  * they SELF-DECLARE which audience they are before they ever touch the form.
  * "agency builder" (wants to scale a downline = override income) is the single
@@ -190,6 +190,12 @@ function selftest() {
     const applyHref = buildPublicRecruitingHref("/apply", searchParams);
     return <Link to={applyHref}>Apply</Link>;`;
   ok(evaluate(HERO_HELPER, APPLY_FULL, FLOW_FULL, VSL_FULL).code === "ok", "HELPER: actual track argument, query write and VSL relay -> ok");
+  const HERO_TWO_CHOICES = HERO_HELPER.replace(
+    'const partnerPaths = [{ track: "licensed-producer" }];',
+    'const partnerPaths = [{ track: "licensed-producer" }, { track: "licensing-roadmap" }];',
+  );
+  ok(evaluate(HERO_TWO_CHOICES, APPLY_FULL, FLOW_FULL, VSL_FULL).code === "ok", "TWO CHOICES: both home audiences retain the full relay and capture");
+  ok(evaluate(HERO_TWO_CHOICES.replace(', path.track', ''), APPLY_FULL, FLOW_FULL, VSL_FULL).code === "dropped", "TWO CHOICES DROP: reducing home to two choices does not waive explicit audience capture");
   const HERO_BARE_VSL = HERO_HELPER.replace('buildPublicRecruitingHref("/vsl", searchParams, path.track)', '"/vsl"');
   const bareVslResult = evaluate(HERO_BARE_VSL, APPLY_FULL, FLOW_FULL, VSL_FULL);
   ok(bareVslResult.code === "dropped", "HERO DROP: retained choices with a bare /vsl link are not FEATURE-REMOVED");

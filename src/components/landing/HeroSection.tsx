@@ -25,6 +25,7 @@ export function HeroSection() {
 
   return (
     <section className="dark recruiting-funnel recruiting-hero" aria-labelledby="recruiting-headline">
+      <Link to="/login" className="recruiting-login">Agent Login</Link>
       <div className="recruiting-hero-intro">
         <div className="recruiting-wordmark" aria-label={brand.legalName}>
           <Crown className="recruiting-wordmark-crown" aria-hidden="true" strokeWidth={1.5} />

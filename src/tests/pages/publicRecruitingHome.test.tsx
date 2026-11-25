@@ -32,12 +32,13 @@ beforeEach(() => {
 });
 
 describe("two-choice public recruiting home", () => {
-  it("offers exactly two answers with no navigation, floating CTA or extra page sections", () => {
+  it("offers two recruiting answers and agent login without extra page sections", () => {
     const { container } = renderHome();
     const main = screen.getByRole("main");
     expect(within(main).getAllByRole("link").map((link) => link.textContent)).toEqual([
-      "Yes, I'm Currently Licensed", "No, I'm Unlicensed",
+      "Agent Login", "Yes, I'm Currently Licensed", "No, I'm Unlicensed",
     ]);
+    expect(screen.getByRole("link", { name: "Agent Login" })).toHaveAttribute("href", "/login");
     expect(container.querySelectorAll("main section")).toHaveLength(1);
     expect(container.querySelector("video, nav, footer")).toBeNull();
     expect(screen.queryByText("Building an agency?")).toBeNull();

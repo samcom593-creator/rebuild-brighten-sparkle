@@ -253,7 +253,7 @@ function scanForBadTokens(text) {
   return hits;
 }
 
-// The homepage now has one job: two licensed/unlicensed doors to /vsl.
+// The homepage has two licensed/unlicensed doors to /vsl plus agent login.
 // It intentionally has no production ticker, video, FAQ, or third audience CTA.
 // Grade the rendered conversion controls instead of demanding removed data.
 const HOME_CHOICES = new Map([
@@ -266,15 +266,24 @@ function gradeHomeChoices(dom, pageUrl) {
   const defects = [];
   const incoming = new URL(pageUrl);
   if (!dom.questionPresent) defects.push("homepage license question is missing");
-  if (dom.actions.length !== 2) defects.push(`homepage must expose exactly two recruiting choices; rendered ${dom.actions.length}`);
+  if (dom.actions.length !== 3) defects.push(`homepage must expose exactly two recruiting choices and one Agent Login link; rendered ${dom.actions.length}`);
   const seen = new Set();
+  let loginCount = 0;
   for (const action of dom.actions) {
     if (action.tag !== "A" || !action.usable || !action.href) {
-      defects.push("homepage choice is not an enabled link");
+      defects.push("homepage action is not an enabled link");
       continue;
     }
     let url;
     try { url = new URL(action.href, pageUrl); } catch { defects.push("homepage choice has an invalid destination"); continue; }
+    const label = String(action.text || "").replace(/[’‘]/g, "'").replace(/\s+/g, " ").trim().toLowerCase();
+    if (label === "agent login" || url.pathname === "/login") {
+      loginCount++;
+      if (label !== "agent login" || url.origin !== incoming.origin || url.pathname !== "/login" || url.search || url.hash) {
+        defects.push("homepage Agent Login must open the same-origin /login page without query or fragment");
+      }
+      continue;
+    }
     if (url.origin !== incoming.origin || url.pathname !== "/vsl" || url.hash) {
       defects.push("homepage choice must open the same-origin /vsl page");
       continue;
@@ -285,7 +294,6 @@ function gradeHomeChoices(dom, pageUrl) {
       continue;
     }
     seen.add(track);
-    const label = String(action.text || "").replace(/[’‘]/g, "'").replace(/\s+/g, " ").trim().toLowerCase();
     if (label !== HOME_CHOICES.get(track)) defects.push("homepage license answer points at the wrong audience track");
     for (const key of HOME_CONTEXT_KEYS) {
       const raw = incoming.searchParams.get(key);
@@ -294,6 +302,7 @@ function gradeHomeChoices(dom, pageUrl) {
       if (valid && url.searchParams.get(key) !== value) defects.push(`homepage choice lost ${key} context`);
     }
   }
+  if (loginCount !== 1) defects.push(`homepage must expose exactly one enabled Agent Login link; rendered ${loginCount}`);
   for (const track of HOME_CHOICES.keys()) if (!seen.has(track)) defects.push(`homepage ${track} choice is missing`);
   return defects;
 }
@@ -607,31 +616,44 @@ if (process.argv.includes("--selftest")) {
     if (!pass) fail++;
     console.log(`${pass ? "PASS" : "FAIL"}  expectHit=${String(c.expectHit).padEnd(5)} got=${String(hit).padEnd(5)}  ${c.name}${hit ? "  -> " + JSON.stringify(hits[0].token) : ""}`);
   }
-  // Same grader as the live DOM: correct two-choice home passes; removed,
+  // Same grader as the live DOM: two choices plus agent login pass; removed,
   // misrouted, disabled, mislabeled, external, or extra choices must fail.
   const homeUrl = "https://galaxyfinancial.org/";
   const choice = (track, text) => ({ tag: "A", usable: true, href: `/vsl?track=${track}`, text });
-  const goodHome = { questionPresent: true, actions: [
+  const login = { tag: "A", usable: true, href: "/login", text: "Agent Login" };
+  const choices = [
     choice("licensed-producer", "Yes, I'm Currently Licensed"),
     choice("licensing-roadmap", "No, I'm Unlicensed"),
-  ] };
+  ];
+  const homeWith = (audienceChoices = choices, utilityLinks = [login]) => ({ questionPresent: true, actions: [...utilityLinks, ...audienceChoices] });
+  const goodHome = homeWith();
   const contextUrl = homeUrl + "?ref=synthetic-agent&source=ad&utm_medium=paid_social";
-  const withContext = { ...goodHome, actions: goodHome.actions.map((a) => ({ ...a, href: a.href + "&ref=synthetic-agent&source=ad&utm_medium=paid_social" })) };
+  const withContext = homeWith(choices.map((a) => ({ ...a, href: a.href + "&ref=synthetic-agent&source=ad&utm_medium=paid_social" })));
   const homeCases = [
-    { name: "two correct visible audience links", dom: goodHome, expectDefect: false },
+    { name: "two correct visible audience links plus agent login", dom: goodHome, expectDefect: false },
+    { name: "absolute same-origin agent login", dom: homeWith(choices, [{ ...login, href: homeUrl + "login" }]), expectDefect: false },
     { name: "valid referral and paid mode are preserved", dom: withContext, url: contextUrl, expectDefect: false },
     { name: "unreadable homepage is a defect", dom: null, expectDefect: true },
     { name: "empty main is a defect", dom: { questionPresent: true, actions: [] }, expectDefect: true },
     { name: "missing license question", dom: { ...goodHome, questionPresent: false }, expectDefect: true },
-    { name: "one choice removed", dom: { ...goodHome, actions: goodHome.actions.slice(0, 1) }, expectDefect: true },
-    { name: "third agency-builder CTA", dom: { ...goodHome, actions: [...goodHome.actions, choice("agency-builder", "Build an agency")] }, expectDefect: true },
-    { name: "both choices route to licensed", dom: { ...goodHome, actions: [goodHome.actions[0], { ...goodHome.actions[1], href: goodHome.actions[0].href }] }, expectDefect: true },
-    { name: "labels swapped across audience tracks", dom: { ...goodHome, actions: goodHome.actions.map((a, i) => ({ ...a, text: goodHome.actions[1 - i].text })) }, expectDefect: true },
-    { name: "disabled choice", dom: { ...goodHome, actions: [{ ...goodHome.actions[0], usable: false }, goodHome.actions[1]] }, expectDefect: true },
-    { name: "button without a link", dom: { ...goodHome, actions: [{ ...goodHome.actions[0], tag: "BUTTON" }, goodHome.actions[1]] }, expectDefect: true },
-    { name: "choice skips the VSL", dom: { ...goodHome, actions: [{ ...goodHome.actions[0], href: "/apply?track=licensed-producer" }, goodHome.actions[1]] }, expectDefect: true },
-    { name: "external choice destination", dom: { ...goodHome, actions: [{ ...goodHome.actions[0], href: "https://outside.invalid/vsl?track=licensed-producer" }, goodHome.actions[1]] }, expectDefect: true },
-    { name: "audience query omitted", dom: { ...goodHome, actions: [{ ...goodHome.actions[0], href: "/vsl" }, goodHome.actions[1]] }, expectDefect: true },
+    { name: "missing agent login", dom: homeWith(choices, []), expectDefect: true },
+    { name: "duplicate agent login", dom: homeWith(choices, [login, login]), expectDefect: true },
+    { name: "disabled agent login", dom: homeWith(choices, [{ ...login, usable: false }]), expectDefect: true },
+    { name: "agent login is a button", dom: homeWith(choices, [{ ...login, tag: "BUTTON" }]), expectDefect: true },
+    { name: "external agent login", dom: homeWith(choices, [{ ...login, href: "https://outside.invalid/login" }]), expectDefect: true },
+    { name: "misrouted agent login", dom: homeWith(choices, [{ ...login, href: "/dashboard" }]), expectDefect: true },
+    { name: "mislabeled agent login", dom: homeWith(choices, [{ ...login, text: "Apply now" }]), expectDefect: true },
+    { name: "login redirect query is rejected", dom: homeWith(choices, [{ ...login, href: "/login?redirect=https://outside.invalid" }]), expectDefect: true },
+    { name: "login fragment is rejected", dom: homeWith(choices, [{ ...login, href: "/login#other" }]), expectDefect: true },
+    { name: "one choice removed", dom: homeWith(choices.slice(0, 1)), expectDefect: true },
+    { name: "third agency-builder CTA", dom: homeWith([...choices, choice("agency-builder", "Build an agency")]), expectDefect: true },
+    { name: "both choices route to licensed", dom: homeWith([choices[0], { ...choices[1], href: choices[0].href }]), expectDefect: true },
+    { name: "labels swapped across audience tracks", dom: homeWith(choices.map((a, i) => ({ ...a, text: choices[1 - i].text }))), expectDefect: true },
+    { name: "disabled choice", dom: homeWith([{ ...choices[0], usable: false }, choices[1]]), expectDefect: true },
+    { name: "button without a link", dom: homeWith([{ ...choices[0], tag: "BUTTON" }, choices[1]]), expectDefect: true },
+    { name: "choice skips the VSL", dom: homeWith([{ ...choices[0], href: "/apply?track=licensed-producer" }, choices[1]]), expectDefect: true },
+    { name: "external choice destination", dom: homeWith([{ ...choices[0], href: "https://outside.invalid/vsl?track=licensed-producer" }, choices[1]]), expectDefect: true },
+    { name: "audience query omitted", dom: homeWith([{ ...choices[0], href: "/vsl" }, choices[1]]), expectDefect: true },
     { name: "referral and paid context lost", dom: goodHome, url: contextUrl, expectDefect: true },
     { name: "invalid referral is intentionally dropped", dom: goodHome, url: homeUrl + "?ref=%3Cscript%3E", expectDefect: false },
   ];

@@ -2,7 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, TrendingUp, Target, AlertTriangle } from "lucide-react";
+import { GoalProgressRail } from "@/components/ui/kpi-stat";
+import { Loader2, Target, AlertTriangle } from "lucide-react";
+import { useBusinessToday } from "@/hooks/useBusinessToday";
+import { useDemoNumberFields } from "@/hooks/useDemoNumberFields";
+import { applyTarget20kDemo, target20kDemoFields } from "@/lib/goalDemoModels";
+import "./dashboard-content.css";
 
 // Sam's $20K-per-agent-per-month target board.
 // Replaces the "type in a date" production widget.
@@ -29,17 +34,19 @@ type Row = {
 };
 
 const VERDICT_STYLE: Record<Row["pace_verdict"], { label: string; cls: string }> = {
-  hit_20k:        { label: "Hit $20K ✓",   cls: "bg-emerald-600/15 text-emerald-400 border-emerald-600/40" },
-  on_pace_20k:    { label: "On pace",      cls: "bg-info/15 text-info border-info/30" },
-  below_pace:     { label: "Below pace",   cls: "bg-amber-600/15 text-amber-300 border-amber-600/40" },
-  new_hire_grace: { label: "New (≤30d)",   cls: "bg-zinc-600/15 text-zinc-300 border-zinc-600/40" },
-  zero_mtd:       { label: "Zero this mo", cls: "bg-rose-600/15 text-rose-300 border-rose-600/40" },
+  hit_20k:        { label: "Hit $20K",     cls: "bg-tone-good/10 text-tone-good border-tone-good/35" },
+  on_pace_20k:    { label: "On pace",      cls: "bg-tone-cool/10 text-tone-cool border-tone-cool/35" },
+  below_pace:     { label: "Below pace",   cls: "bg-tone-warm/10 text-tone-warm border-tone-warm/35" },
+  new_hire_grace: { label: "New · 30 days", cls: "bg-muted text-muted-foreground border-border" },
+  zero_mtd:       { label: "No ALP yet",  cls: "bg-muted text-muted-foreground border-border" },
 };
 
-const fmtMoney = (n: number) =>
-  n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+const fmtMoney = (n: number | null | undefined) => n != null && Number.isFinite(n)
+  ? n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }) : "—";
+const fmtCount = (n: number | null | undefined) => n != null && Number.isFinite(n) ? n.toLocaleString("en-US") : "—";
 
 export function Target20kPaceWidget() {
+  const today = useBusinessToday();
   const { data, isLoading, isError } = useQuery({
     queryKey: ["v_agent_20k_target_leaderboard"],
     queryFn: async () => {
@@ -53,6 +60,11 @@ export function Target20kPaceWidget() {
     },
     refetchInterval: 300_000,
     staleTime: 30_000,
+  });
+  const demo = useDemoNumberFields({
+    scopeKey: `target20k:${today.slice(0, 7)}`,
+    label: "$20K pace board · current month",
+    fields: isError || isLoading ? [] : target20kDemoFields(data),
   });
 
   if (isLoading) {
@@ -98,95 +110,72 @@ export function Target20kPaceWidget() {
     );
   }
 
-  const rows = data ?? [];
+  const rows = demo.isDemo ? applyTarget20kDemo(data ?? [], demo.values) : data ?? [];
+  return <Target20kBoardView rows={rows} isDemo={demo.isDemo} />;
+}
+
+/** Existing rows only; the demo adapter and visual QA use this same presentation. */
+export function Target20kBoardView({ rows, isDemo = false }: { rows: readonly Row[]; isDemo?: boolean }) {
   const hit = rows.filter((r) => r.pace_verdict === "hit_20k").length;
   const onPace = rows.filter((r) => r.pace_verdict === "on_pace_20k").length;
-  const apAtRiskTotal = rows.reduce((a, r) => a + (r.ap_at_risk_mtd || 0), 0);
-  const apMtdTotal = rows.reduce((a, r) => a + (r.ap_mtd || 0), 0);
+  const apAtRiskTotal = rows.every((r) => Number.isFinite(r.ap_at_risk_mtd)) ? rows.reduce((a, r) => a + r.ap_at_risk_mtd, 0) : null;
+  const apMtdTotal = rows.every((r) => Number.isFinite(r.ap_mtd)) ? rows.reduce((a, r) => a + r.ap_mtd, 0) : null;
+  const ranked = [...rows].sort((a, b) => (Number.isFinite(b.ap_mtd) ? b.ap_mtd : -1) - (Number.isFinite(a.ap_mtd) ? a.ap_mtd : -1) || a.agent_id.localeCompare(b.agent_id));
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex flex-wrap items-center justify-between gap-2">
-          <span className="flex items-center gap-2">
-            <Target className="h-5 w-5" /> $20K Pace Board
-          </span>
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            <Badge variant="outline" className="border-emerald-600/40 text-emerald-400">
-              {hit} hit $20K
-            </Badge>
-            <Badge variant="outline" className="border-info/30 text-info">
-              {onPace} on pace
-            </Badge>
-            <Badge variant="outline" className="border-rose-600/40 text-rose-300">
-              {fmtMoney(apAtRiskTotal)} at risk (no policy #)
-            </Badge>
-            <Badge variant="outline" className="border-zinc-600/40 text-muted-foreground">
-              {fmtMoney(apMtdTotal)} team MTD
-            </Badge>
+    <Card className="money-board money-board--target">
+      <CardHeader className="money-board__header">
+        <div className="money-board__heading">
+          <div>
+            <p className="money-board__eyebrow"><Target className="h-4 w-4" aria-hidden="true" /> Monthly producer target</p>
+            <CardTitle className="money-board__title">$20K pace board</CardTitle>
           </div>
-        </CardTitle>
+          <div className="money-board__actions">
+            {isDemo && <Badge variant="outline" role="status">Demo figures</Badge>}
+            <Badge variant="outline" className="border-tone-good/35 text-tone-good">{hit} hit goal</Badge>
+            <Badge variant="outline" className="border-tone-cool/35 text-tone-cool">{onPace} on pace</Badge>
+          </div>
+        </div>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="max-h-[480px] overflow-y-auto" tabIndex={0} role="region" aria-label="Pace to $20K">
-          <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-background z-10 border-b">
-              <tr className="text-xs uppercase text-muted-foreground">
-                <th className="text-left p-2">Agent</th>
-                <th className="text-right p-2">Deals</th>
-                <th className="text-right p-2">AP MTD</th>
-                <th className="text-right p-2">Projected EOM</th>
-                <th className="text-right p-2">Gap to $20K</th>
-                <th className="text-right p-2">
-                  <span className="inline-flex items-center gap-1">
-                    <AlertTriangle className="h-3 w-3" />At risk
-                  </span>
-                </th>
-                <th className="text-right p-2">Pace</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => {
-                const style = VERDICT_STYLE[r.pace_verdict];
-                return (
-                  <tr key={r.agent_id} className="border-b last:border-0 hover:bg-muted/30">
-                    <td className="p-2 font-medium">{r.name}</td>
-                    <td className="p-2 text-right tabular-nums">{r.deals_mtd}</td>
-                    <td className="p-2 text-right tabular-nums">{fmtMoney(r.ap_mtd)}</td>
-                    <td className="p-2 text-right tabular-nums text-muted-foreground">
-                      <span className="inline-flex items-center gap-1">
-                        <TrendingUp className="h-3 w-3" />
-                        {fmtMoney(r.projected_eom_ap)}
-                      </span>
-                    </td>
-                    <td className="p-2 text-right tabular-nums">
-                      {r.ap_to_20k > 0 ? fmtMoney(r.ap_to_20k) : "—"}
-                    </td>
-                    <td className="p-2 text-right tabular-nums">
-                      {r.ap_at_risk_mtd > 0 ? (
-                        <span className="text-rose-300">{fmtMoney(r.ap_at_risk_mtd)}</span>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </td>
-                    <td className="p-2 text-right">
-                      <Badge variant="outline" className={style.cls}>
-                        {style.label}
-                      </Badge>
-                    </td>
-                  </tr>
-                );
-              })}
-              {rows.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="p-6 text-center text-muted-foreground">
-                    No production data yet for this month.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <div className="money-board__overview">
+          <div className="money-board__stat money-board__stat--lead"><p>Shown agents · MTD</p><strong>{fmtMoney(apMtdTotal)}</strong><span>ALP · {rows.length} agents shown</span></div>
+          <div className="money-board__stat"><p>Monthly target / agent</p><strong>$20,000</strong><span>ALP</span></div>
+          <div className="money-board__stat money-board__stat--estimate"><p>Needs policy number</p><strong>{fmtMoney(apAtRiskTotal)}</strong><span>ALP on the shown rows</span></div>
         </div>
+        <div className="target-pace-board__rows" tabIndex={0} role="region" aria-label="Pace to $20K">
+          <ol aria-label="Producer pace rankings">
+            {ranked.map((r) => {
+              const style = VERDICT_STYLE[r.pace_verdict] ?? { label: "Pace unavailable", cls: "text-muted-foreground" };
+              const rank = Number.isFinite(r.ap_mtd) && r.ap_mtd > 0 ? ranked.findIndex((row) => row.ap_mtd === r.ap_mtd) + 1 : null;
+              return (
+                <li key={r.agent_id} className="target-pace-board__producer">
+                  <header className="money-board__row-heading">
+                    <div className="target-pace-board__identity"><span className="target-pace-board__rank" aria-label={rank ? `Rank ${rank}` : "No production rank"}>{rank ? String(rank).padStart(2, "0") : "—"}</span><h3>{r.name}</h3></div>
+                    <Badge variant="outline" className={style.cls}>{style.label}</Badge>
+                  </header>
+                  <div className="money-board__amount-pair">
+                    <p className="money-board__row-amount">{fmtMoney(r.ap_mtd)}<span>ALP MTD</span></p>
+                    <p className="money-board__goal-value"><strong>{fmtCount(r.deals_mtd)}</strong> posted deals</p>
+                  </div>
+                  <GoalProgressRail actual={r.ap_mtd} target={20000} label={`${r.name} progress to $20,000 ALP`} />
+                  <details className="money-board__details">
+                    <summary>Projection & policy details</summary>
+                    <dl className="goal-board__detail-grid">
+                      <div><dt>Projected month-end ALP</dt><dd>{fmtMoney(r.projected_eom_ap)}</dd></div>
+                      <div><dt>Remaining to $20,000</dt><dd>{fmtMoney(r.ap_to_20k)}</dd></div>
+                      <div><dt>ALP missing policy numbers</dt><dd>{fmtMoney(r.ap_at_risk_mtd)}</dd></div>
+                      <div><dt>Deals missing policy numbers</dt><dd>{fmtCount(r.deals_no_policy_mtd)}</dd></div>
+                    </dl>
+                    <p className="money-board__note">Projection is an estimate at the current pace. Missing policy numbers do not establish a loss.</p>
+                  </details>
+                </li>
+              );
+            })}
+          </ol>
+          {rows.length === 0 && <p className="money-board__empty">No production data yet for this month.</p>}
+        </div>
+        <p className="money-board__footnote">Current-month posted ALP · up to 100 agents shown · annualized premium, not income.</p>
       </CardContent>
     </Card>
   );

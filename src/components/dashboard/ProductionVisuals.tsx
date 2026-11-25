@@ -98,32 +98,36 @@ export function MonthPaceChart({ actual, projected, elapsedDays, daysInMonth, hi
   );
 }
 
-/** Direct and override come from the same existing earnings estimate, never paid cash. */
-export function EarningsMixChart({ direct, override, hidden = false }: {
+/** Every known part of the same earnings estimate, never paid cash. */
+export function EarningsMixChart({ direct, override, externalOverride = 0, hidden = false }: {
   direct: number;
   override: number;
+  externalOverride?: number | null;
   hidden?: boolean;
 }) {
   if (hidden) return <ChartHidden label="Earnings breakdown hidden for presenting" />;
-  if (![direct, override].every((value) => Number.isFinite(value) && value >= 0)) {
+  if (externalOverride === null || ![direct, override, externalOverride].every((value) => Number.isFinite(value) && value >= 0)
+    || !Number.isFinite(direct + override + externalOverride)) {
     return <p className="mt-3 text-sm text-muted-foreground">The earnings chart is unavailable for this result. Read the estimate amounts below.</p>;
   }
-  const total = direct + override;
+  const total = direct + override + externalOverride;
   if (total === 0) return <p className="mt-3 text-sm text-muted-foreground">No estimated earnings in this window.</p>;
   const directShare = direct / total * 100;
-  const overrideShare = 100 - directShare;
+  const overrideShare = override / total * 100;
+  const externalShare = externalOverride / total * 100;
   return (
     <div className="earnings-mix-chart">
       <svg
         viewBox="0 0 120 120"
         className="earnings-mix-chart__ring"
         role="img"
-        aria-label={`Estimated earnings split: direct ${money(direct)}, override ${money(override)}. Estimates, not paid commissions.`}
+        aria-label={`Estimated earnings split: direct ${money(direct)}, override ${money(override)}${externalOverride > 0 ? `, external override ${money(externalOverride)}` : ""}. Estimates, not paid commissions.`}
       >
         <g transform="rotate(-90 60 60)">
           <circle cx="60" cy="60" r="46" pathLength="100" className="earnings-mix-chart__base" />
           <circle cx="60" cy="60" r="46" pathLength="100" className="earnings-mix-chart__direct" strokeDasharray={`${directShare} ${100 - directShare}`} />
           <circle cx="60" cy="60" r="46" pathLength="100" className="earnings-mix-chart__override" strokeDasharray={`${overrideShare} ${100 - overrideShare}`} strokeDashoffset={-directShare} />
+          {externalOverride > 0 && <circle cx="60" cy="60" r="46" pathLength="100" className="earnings-mix-chart__external" strokeDasharray={`${externalShare} ${100 - externalShare}`} strokeDashoffset={-(directShare + overrideShare)} />}
         </g>
         <text x="60" y="58" textAnchor="middle" className="earnings-mix-chart__center" aria-hidden="true">EST.</text>
         <text x="60" y="73" textAnchor="middle" className="earnings-mix-chart__center-label" aria-hidden="true">EARNINGS</text>
@@ -131,6 +135,7 @@ export function EarningsMixChart({ direct, override, hidden = false }: {
       <div className="earnings-mix-chart__legend">
         <p><span className="earnings-mix-chart__key earnings-mix-chart__key--direct" aria-hidden="true" /><span>Direct</span><strong>{directShare.toFixed(0)}%</strong></p>
         <p><span className="earnings-mix-chart__key earnings-mix-chart__key--override" aria-hidden="true" /><span>Override</span><strong>{overrideShare.toFixed(0)}%</strong></p>
+        {externalOverride > 0 && <p><span className="earnings-mix-chart__key earnings-mix-chart__key--external" aria-hidden="true" /><span>External override</span><strong>{externalShare.toFixed(0)}%</strong></p>}
         <span className="production-chart-caption">Estimated split · not paid commissions</span>
       </div>
     </div>

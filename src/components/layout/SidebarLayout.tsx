@@ -16,6 +16,7 @@ import { useBrand } from "@/hooks/useBrand";
 import { useUIStore } from "@/shared/store/uiStore";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { SoundToggle } from "@/components/ui/delight/SoundToggle";
+import { DemoNumberEditorButton } from "@/components/demo/ProductionDemoProvider";
 
 interface SidebarLayoutProps {
   children: ReactNode;
@@ -70,6 +71,7 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
             <span className="galaxy-wordmark truncate text-sm font-extrabold italic uppercase text-foreground">{brand.legalName}</span>
           </Link>
           <div className="ml-2 flex shrink-0 items-center gap-1">
+          <DemoNumberEditorButton compact className="shrink-0" />
           <SoundToggle className="shrink-0" />
           <Button variant="ghost" size="icon" className="h-11 w-11" aria-label="Search people and pages" onClick={() => useUIStore.getState().setCommandPaletteOpen(true)}>
             <Search className="h-5 w-5" />

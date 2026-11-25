@@ -5,6 +5,7 @@ import { PrivateAudioPlayer } from "@/components/calls/PrivateAudioPlayer";
 import { CallAudioPlayer } from "@/components/calls/CallAudioPlayer";
 import { ClientCallHistory } from "@/components/clients/ClientCallHistory";
 import { TrainingRecordings } from "@/components/training/TrainingRecordings";
+import { GradeBreakdown } from "@/components/calltraining/GradeBreakdown";
 
 const auth = vi.hoisted(() => ({ user: { id: "user-a" } as { id: string } | null, isLoading: false }));
 const db = vi.hoisted(() => ({ sign: vi.fn(), bucket: vi.fn(), rpc: vi.fn(), history: vi.fn(), invoke: vi.fn() }));
@@ -15,6 +16,8 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const source = async () => ({ bucket: "readymode-audio" as const, path: "calls/private.mp3" });
 const signed = (n: number) => ({ data: { signedUrl: `https://storage.example.test/private.mp3?token=secret-${n}` }, error: null });
+const availability = (data: unknown, error: unknown = null) => ({ abortSignal: vi.fn().mockResolvedValue({ data, error }) });
+const availableCall = (callId: string) => ({ call_id: callId, path: "redacted/private.mp3", variant: "numbers_muted" });
 function mount(content = <PrivateAudioPlayer sourceKey="call:a" resolveSource={source} />) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   const wrapper = (children: React.ReactNode) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
@@ -27,13 +30,14 @@ beforeEach(() => {
   auth.isLoading = false;
   db.sign.mockReset(); db.bucket.mockReset(); db.rpc.mockReset(); db.history.mockReset(); db.invoke.mockReset();
   db.bucket.mockReturnValue({ createSignedUrl: db.sign });
+  db.rpc.mockImplementation((_name: string, args: { p_call_ids: string[] }) => availability(args.p_call_ids.map(availableCall)));
   db.sign.mockImplementation(async () => signed(db.sign.mock.calls.length));
   db.invoke.mockImplementation(async () => ({ data: { signedUrl: signed(db.invoke.mock.calls.length).data.signedUrl, expiresInSeconds: 900, variant: "full" }, error: null }));
   vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
   vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
   vi.spyOn(HTMLMediaElement.prototype, "load").mockImplementation(() => undefined);
 });
-afterEach(() => { cleanup(); focusManager.setFocused(undefined); onlineManager.setOnline(true); vi.restoreAllMocks(); });
+afterEach(() => { cleanup(); focusManager.setFocused(undefined); onlineManager.setOnline(true); vi.useRealTimers(); vi.restoreAllMocks(); });
 
 describe("private recording playback", () => {
   it("starts playback after the first compact Play click and metadata, without a second click", async () => {
@@ -67,6 +71,7 @@ describe("private recording playback", () => {
 
   it("claims a timestamp request once when the same call appears in two panels", async () => {
     mount(<><CallAudioPlayer callId="call-a" compact /><CallAudioPlayer callId="call-a" compact /></>);
+    await waitFor(() => expect(screen.getAllByRole("button", { name: "Play call" })).toHaveLength(2));
     act(() => window.dispatchEvent(new CustomEvent("call-audio-seek", { detail: { callId: "call-a", seconds: 60 } })));
     const element = await media();
     expect(screen.getAllByLabelText("Call recording")).toHaveLength(1);
@@ -74,6 +79,22 @@ describe("private recording playback", () => {
     fireEvent.loadedMetadata(element);
     expect(element.currentTime).toBe(57);
     expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(1);
+  });
+
+  it("preserves the first timestamp click while authorized audio availability is still loading", async () => {
+    let finish!: (value: { data: ReturnType<typeof availableCall>[]; error: null }) => void;
+    db.rpc.mockReturnValue({ abortSignal: () => new Promise(resolve => { finish = resolve; }) });
+    mount(<CallAudioPlayer callId="call-a" compact />);
+    act(() => window.dispatchEvent(new CustomEvent("call-audio-seek", { detail: { callId: "call-a", seconds: 60 } })));
+    expect(db.invoke).not.toHaveBeenCalled();
+    await act(async () => finish({ data: [availableCall("call-a")], error: null }));
+    const element = await media();
+    fireEvent.loadedMetadata(element);
+    expect(element.currentTime).toBe(57);
+    expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(1);
+    element.currentTime = 102;
+    fireEvent.timeUpdate(element);
+    expect(HTMLMediaElement.prototype.pause).toHaveBeenCalled();
   });
 
   it("pauses the other recording when a second native player starts", async () => {
@@ -135,6 +156,61 @@ describe("private recording playback", () => {
     expect(db.sign).toHaveBeenCalledTimes(2);
     fireEvent.click(screen.getByRole("button", { name: "Retry recording" }));
     await waitFor(() => expect(screen.getByLabelText("Call recording")).toHaveAttribute("src", signed(3).data.signedUrl));
+  });
+
+  it("bounds a signing request that never settles and cancels it before offering retry", async () => {
+    vi.useFakeTimers();
+    let requestSignal: AbortSignal | undefined;
+    const lookup = vi.fn((signal: AbortSignal) => {
+      requestSignal = signal;
+      return new Promise<null>(() => {});
+    });
+    mount(<PrivateAudioPlayer sourceKey="call:pending" resolveSource={lookup} />);
+    await act(async () => { await vi.advanceTimersByTimeAsync(20_005); });
+    expect(requestSignal?.aborted).toBe(true);
+    expect(screen.getByRole("alert")).toHaveTextContent("The recording did not load");
+    expect(screen.getByRole("button", { name: "Retry recording" })).toBeEnabled();
+    expect(db.sign).not.toHaveBeenCalled();
+  });
+
+  it("recovers a never-ready media response once, then exposes retry instead of loading forever", async () => {
+    vi.useFakeTimers();
+    mount(<PrivateAudioPlayer sourceKey="call:stalled" resolveSource={source} playOnLoad />);
+    await act(async () => { await vi.advanceTimersByTimeAsync(5); });
+    // A stalled event begins the watchdog even if no metadata or media error arrives.
+    fireEvent.stalled(screen.getByLabelText("Call recording"));
+    await act(async () => { await vi.advanceTimersByTimeAsync(20_005); });
+    expect(db.sign).toHaveBeenCalledTimes(2);
+    await act(async () => { await vi.advanceTimersByTimeAsync(20_005); });
+    expect(screen.getByRole("alert")).toHaveTextContent("This recording could not play");
+    expect(db.sign).toHaveBeenCalledTimes(2);
+    expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
+  });
+
+  it("clears a buffering deadline when playback advances and does not interrupt the recording", async () => {
+    mount();
+    const element = await media();
+    vi.useFakeTimers();
+    fireEvent.play(element);
+    fireEvent.waiting(element);
+    await act(async () => { await vi.advanceTimersByTimeAsync(10_000); });
+    element.currentTime = 12;
+    fireEvent.timeUpdate(element);
+    await act(async () => { await vi.advanceTimersByTimeAsync(20_005); });
+    expect(db.sign).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("does not restart a recording after the listener pauses during buffering", async () => {
+    mount();
+    const element = await media();
+    vi.useFakeTimers();
+    fireEvent.play(element);
+    fireEvent.waiting(element);
+    fireEvent.pause(element);
+    await act(async () => { await vi.advanceTimersByTimeAsync(20_005); });
+    expect(db.sign).toHaveBeenCalledTimes(1);
+    expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
   });
 
   it("resumes an interrupted recording at its prior position after one fresh signature", async () => {
@@ -290,12 +366,45 @@ describe("private recording playback", () => {
     expect(db.sign).not.toHaveBeenCalled();
   });
 
+  it.each([null, {}, [availableCall("another-call")], [availableCall("call-a"), availableCall("call-a")], [{ ...availableCall("call-a"), path: null }]])("keeps invalid audio availability distinct from a verified unpublished recording: %j", async data => {
+    db.rpc.mockReturnValue(availability(data));
+    mount(<CallAudioPlayer callId="call-a" compact />);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Recording availability could not be checked");
+    expect(screen.queryByRole("button", { name: "Play call" })).toBeNull();
+    expect(screen.queryByText("This call's recording is not published for your account yet.")).toBeNull();
+    expect(db.invoke).not.toHaveBeenCalled();
+  });
+
+  it("keeps grade timestamps as text until this account has a published private copy", async () => {
+    db.rpc.mockReturnValueOnce(availability([]));
+    const grade = <GradeBreakdown callId="call-a" scores={{ discovery: 8 }} reasons={{ discovery: { t: "0:10", quote: "Discovery question" } }} scriptScore={8} scriptFollowed="discovery" steps={[]} />;
+    mount(<><CallAudioPlayer callId="call-a" compact />{grade}</>);
+    expect(await screen.findByText("This call's recording is not published for your account yet.")).toBeInTheDocument();
+    expect(screen.getByText("[0:10]").tagName).toBe("SPAN");
+    expect(db.rpc).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: "Check recording again" }));
+    await screen.findByRole("button", { name: "Play call" });
+    expect(screen.getByText("[0:10]").tagName).toBe("BUTTON");
+    expect(db.invoke).not.toHaveBeenCalled();
+  });
+
+  it("drops account-specific availability before rendering another account's calls", async () => {
+    const view = mount(<CallAudioPlayer callId="call-a" compact />);
+    await screen.findByRole("button", { name: "Play call" });
+    auth.user = { id: "user-b" };
+    db.rpc.mockReturnValue(availability([]));
+    view.rerender(view.wrapper(<CallAudioPlayer callId="call-a" compact />));
+    expect(screen.queryByRole("button", { name: "Play call" })).toBeNull();
+    expect(await screen.findByText("This call's recording is not published for your account yet.")).toBeInTheDocument();
+    expect(db.invoke).not.toHaveBeenCalled();
+  });
+
   it("plays an authorized client-history call by callId without a provider URL or ReadyMode login", async () => {
     db.history.mockResolvedValue({ data: { client_id: "client-a", raw_provider_access: true, ambiguous_phone: false, next_cursor: null, calls: [{ key: "readymode:call-a", source_id: "call-a", source: "readymode", happened_at: "2026-11-24T16:00:00Z", category: "objection", outcome: "Bank Objection", duration_seconds: 120, transcript: null, audio_url: null, transcript_access: "not_available" }] }, error: null });
     mount(<ClientCallHistory clientId="client-a" />);
     fireEvent.click(await screen.findByRole("button", { name: "Play call" }));
     expect(await media()).toHaveAttribute("src", signed(1).data.signedUrl);
-    expect(db.invoke).toHaveBeenCalledWith("readymode-recording-url", { body: { callId: "call-a" } });
+    expect(db.invoke).toHaveBeenCalledWith("readymode-recording-url", { body: { callId: "call-a" }, signal: expect.any(AbortSignal) });
     expect(db.bucket).not.toHaveBeenCalled();
     expect(db.sign).not.toHaveBeenCalled();
     expect(screen.queryByRole("link", { name: "Open recording" })).toBeNull();
@@ -307,7 +416,7 @@ describe("private recording playback", () => {
     mount(<ClientCallHistory clientId="client-a" />);
     fireEvent.click(await screen.findByRole("button", { name: "Play call" }));
     expect(await media()).toHaveAttribute("src", signed(1).data.signedUrl);
-    expect(db.invoke).toHaveBeenCalledWith("readymode-recording-url", { body: { callId: "call-a" } });
+    expect(db.invoke).toHaveBeenCalledWith("readymode-recording-url", { body: { callId: "call-a" }, signal: expect.any(AbortSignal) });
     expect(db.sign).not.toHaveBeenCalled();
     expect(screen.getByText("Spoken numbers are muted for privacy.")).toBeInTheDocument();
     expect(screen.queryByText("Raw client details must remain hidden")).toBeNull();
@@ -317,10 +426,11 @@ describe("private recording playback", () => {
 
   it("does not sign or expose a source when the client-history viewer has no authorized copy", async () => {
     db.history.mockResolvedValue({ data: { client_id: "client-a", raw_provider_access: false, ambiguous_phone: false, next_cursor: null, calls: [{ key: "readymode:call-a", source_id: "call-a", source: "readymode", happened_at: "2026-11-24T16:00:00Z", category: "objection", outcome: "Bank Objection", duration_seconds: 120, transcript: "Restricted raw transcript", audio_url: "https://provider.example.test/raw-private-call.mp3", transcript_access: "restricted" }] }, error: null });
-    db.invoke.mockResolvedValue({ data: { recording: null }, error: null });
+    db.rpc.mockReturnValue(availability([]));
     mount(<ClientCallHistory clientId="client-a" />);
-    fireEvent.click(await screen.findByRole("button", { name: "Play call" }));
     expect(await screen.findByText("This call's recording is not published for your account yet.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Play call" })).toBeNull();
+    expect(db.invoke).not.toHaveBeenCalled();
     expect(screen.queryByLabelText("Call recording")).toBeNull();
     expect(db.sign).not.toHaveBeenCalled();
     expect(document.body.innerHTML).not.toContain("provider.example.test");
@@ -332,7 +442,7 @@ describe("private recording playback", () => {
     const view = mount(<TrainingRecordings />);
     fireEvent.click(await screen.findByRole("button", { name: /Discovery example/ }));
     expect(await media()).toHaveAttribute("src", signed(1).data.signedUrl);
-    expect(db.invoke).toHaveBeenCalledWith("training-recording-url", { body: { recordingId: "training-a" } });
+    expect(db.invoke).toHaveBeenCalledWith("training-recording-url", { body: { recordingId: "training-a" }, signal: expect.any(AbortSignal) });
     expect(db.sign).not.toHaveBeenCalled();
     expect(db.bucket).not.toHaveBeenCalled();
     fireEvent.loadedMetadata(await media());

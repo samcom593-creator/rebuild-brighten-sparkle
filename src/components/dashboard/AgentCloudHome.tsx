@@ -55,7 +55,7 @@ const HomeAnalyticsPanel = lazy(() =>
 // Nothing in this file constructs a Date or formats one.
 
 export function AgentCloudHome() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const queryClient = useQueryClient();
   // The Phoenix business day, kept live across midnight and tab wake-ups.
   const todayKey = useBusinessToday();
@@ -99,7 +99,7 @@ export function AgentCloudHome() {
   // afterwards, so re-opening does not refetch the chunk or lose chart state.
   const [analyticsOpened, setAnalyticsOpened] = useState(false);
   const home = useQuery({
-    queryKey: ["apex-home-dashboard", win.start, win.end],
+    queryKey: ["apex-home-dashboard", win.start, win.end, user?.id],
     // OVERHAUL-home (2026-10-29): the trend chart and policy status under Reports are the
     // only things left on Home that read this RPC (the vanity roster tiles that also read
     // it are gone), so it waits until that panel is opened instead of costing every visit

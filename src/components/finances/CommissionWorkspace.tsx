@@ -31,29 +31,20 @@ export function CommissionOverview({ ledgerRows, todayKey, hiddenLabel = null }:
   const summary = ledgerSummary(ledgerRows, todayKey);
   const paid = paidYearToDate(ledgerRows, todayKey);
   const metrics = [
-    { label: `Commission paid · ${todayKey.slice(0, 4)}`, value: hiddenLabel ?? money(paid.total), color: "text-emerald-700 dark:text-emerald-300", detail: hiddenLabel ? "Ledger access is incomplete" : quantity(paid.count, "dated ledger payment") },
-    { label: "Awaiting commission", value: hiddenLabel ?? money(summary.pending.total), color: "text-amber-700 dark:text-amber-300", detail: hiddenLabel ? "Ledger access is incomplete" : `${quantity(summary.pending.count, "open ledger row")}${summary.pending.pastExpectedCount ? ` · ${summary.pending.pastExpectedCount} past expected date` : ""}` },
-    { label: "Clawed back", value: hiddenLabel ?? money(summary.clawedBack.total), color: "text-rose-700 dark:text-rose-300", detail: hiddenLabel ? "Ledger access is incomplete" : quantity(summary.clawedBack.count, "recorded ledger row") },
+    { label: `Commission paid · ${todayKey.slice(0, 4)}`, value: hiddenLabel ?? (paid.count ? money(paid.total) : "Not recorded"), color: "text-emerald-700 dark:text-emerald-300", detail: hiddenLabel ? "Ledger access is incomplete" : paid.count ? quantity(paid.count, "dated ledger payment") : "No dated payments in this ledger for the selected year" },
+    { label: "Open commission ledger", value: hiddenLabel ?? (summary.pending.count ? money(summary.pending.total) : "No open records"), color: "text-amber-700 dark:text-amber-300", detail: hiddenLabel ? "Ledger access is incomplete" : `${quantity(summary.pending.count, "open ledger row")}${summary.pending.pastExpectedCount ? ` · ${summary.pending.pastExpectedCount} past expected date` : ""}` },
+    { label: "Ledger clawbacks", value: hiddenLabel ?? (summary.clawedBack.count ? money(summary.clawedBack.total) : "Not recorded"), color: "text-rose-700 dark:text-rose-300", detail: hiddenLabel ? "Ledger access is incomplete" : "Carrier-recorded chargebacks are shown in Policy book" },
   ];
   return (
     <section aria-label="Commission payment totals" className="space-y-3">
       <div className="grid min-w-0 gap-3 md:grid-cols-3">
         {metrics.map(metric => <div key={metric.label} className="min-w-0 rounded-xl border-2 border-border bg-card p-5">
           <p className="text-sm font-bold uppercase tracking-wide text-muted-foreground">{metric.label}</p>
-          <p className={`galaxy-stat mt-3 break-words text-4xl font-black italic tabular-nums xl:text-5xl ${metric.color}`}>{metric.value}</p>
+          <p className={`galaxy-stat mt-3 break-words text-3xl font-black tabular-nums ${metric.color}`}>{metric.value}</p>
           <p className="mt-3 text-sm text-muted-foreground">{metric.detail}</p>
         </div>)}
       </div>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm">
-        <span className="font-bold uppercase">Issued &amp; paid AP</span>
-        <Badge variant="outline" className="text-sm">Unavailable</Badge>
-        <span className="text-muted-foreground">No verified premium-payment receipt is supplied. Commission cash and policy coverage remain separate.</span>
-      </div>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm">
-        <span className="font-bold uppercase">Placement rate</span>
-        <Badge variant="outline" className="text-sm">Unavailable</Badge>
-        <span className="text-muted-foreground">Issued-and-paid policies ÷ submitted policies in the same cohort. Commission payment counts cannot supply that numerator or denominator.</span>
-      </div>
+      <p className="text-sm text-muted-foreground">Recorded ledger amounts. Open rows are calculated bookings; a carrier statement is needed to confirm the amount payable. Missing payment records do not mean no commission was earned.</p>
       {!hiddenLabel && (paid.undatedPaidCount + paid.futureDatedPaidCount > 0 || summary.pendingOnClosedDeals.count > 0) && <p className="text-sm text-muted-foreground">
         {paid.undatedPaidCount > 0 && `${paid.undatedPaidCount} marked paid without a valid payment date. `}
         {paid.futureDatedPaidCount > 0 && `${paid.futureDatedPaidCount} future-dated payment records. `}

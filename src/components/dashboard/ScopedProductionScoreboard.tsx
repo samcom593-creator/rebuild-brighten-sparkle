@@ -34,6 +34,8 @@ import { useDemoNumberFields } from "@/hooks/useDemoNumberFields";
 import { applyProjectionDemo, applyScoreboardDemo, projectionDemoFields, scoreboardDemoFields, scoreboardPlacementDemo, type ScoreboardPlacementDemo } from "@/lib/productionDemoModels";
 import { resolveBrand } from "@/config/brand";
 import { scoreboardWindow, type ScoreboardPeriod } from "@/lib/scoreboardPeriod";
+import { productionRunRate } from "@/lib/productionRunRate";
+import { CarrierPolicyCohortCard } from "@/components/dashboard/CarrierPolicyCohortCard";
 import { suppressDealCelebrations } from "@/lib/dealCelebrations";
 import { useRealtimeTable } from "@/shared/realtime/useRealtimeTable";
 import { EarningsMixChart, MonthPaceChart, ProductionMixChart } from "@/components/dashboard/ProductionVisuals";
@@ -54,7 +56,9 @@ interface ProjectionMetric {
   mtd_ap: number;
   policies: number;
   active_days: number;
-  projected_ap: number;
+  projected_ap: number | null;
+  completed_ap?: number;
+  completed_active_days?: number;
   confidence: "low" | "medium" | "high";
 }
 
@@ -63,6 +67,9 @@ interface ProductionProjection {
   month_start: string;
   month_end_exclusive: string;
   elapsed_calendar_days: number;
+  completed_calendar_days?: number;
+  method?: string;
+  team_includes_personal?: boolean;
   days_in_month: number;
   has_producer_profile: boolean;
   scope_label: string;
@@ -115,6 +122,8 @@ export interface ScoreboardData {
   personal: Totals;
   direct_team: TeamTotals;
   recursive_team: TeamTotals;
+  /** Named recursive descendants only; never personal or an admin's unrelated agency scope. */
+  downline_only?: TeamTotals;
   /** Compatibility alias: same numbers as recursive_team. */
   team: Totals;
   /** Admin only; null for everyone else. */
@@ -334,6 +343,7 @@ export function groupScoreboardAgents(rows: ScoreboardAgentRow[]) {
 }
 
 export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDateControl } = {}) {
+  const { user, isManager } = useAuth();
   // Default to month-to-date, not "day". The board / leaderboard on the same
   // page show MTD, so a "day" default made this card read ~$0 while KJ's team's
   // monthly deals sat right below it on the board — the recurring "my dashboard
@@ -367,7 +377,8 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
   const window = useMemo(() => scoreboardWindow(period, throughDate, customStart), [period, throughDate, customStart]);
 
   const query = useQuery({
-    queryKey: ["scoped-production-scoreboard", window.start, window.end],
+    queryKey: ["scoped-production-scoreboard", window.start, window.end, user?.id],
+    enabled: Boolean(user?.id),
     staleTime: 120_000,
     // No refetchInterval. MEASURED: scoped_production_scoreboard was the single
     // most expensive call on the platform — 18,739 calls averaging 2,155ms, or
@@ -392,7 +403,8 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
   });
 
   const projection = useQuery({
-    queryKey: ["scoped-production-projection"],
+    queryKey: ["scoped-production-projection", user?.id, businessToday],
+    enabled: Boolean(user?.id),
     staleTime: 120_000,
     refetchOnWindowFocus: false,
     retry: 1,
@@ -413,7 +425,8 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
   // and the reader of that chat had no credential from 2026-07-29 with nothing
   // on any surface saying so. This is the RPC's verdict, never a client guess.
   const feed = useQuery({
-    queryKey: ["discord-deal-feed-health"],
+    queryKey: ["discord-deal-feed-health", user?.id],
+    enabled: Boolean(user?.id),
     staleTime: 300_000,
     retry: 1,
     retryDelay: 4_000,
@@ -431,8 +444,8 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
   const blockedFeedsMissingIngestTimestamp = blockedFeeds.every((f) => !f.last_ingested_at);
 
   const freshness = useQuery({
-    queryKey: ["production-book-freshness"],
-    enabled: windowIsEmpty,
+    queryKey: ["production-book-freshness", user?.id],
+    enabled: windowIsEmpty && Boolean(user?.id),
     staleTime: 120_000,
     refetchOnWindowFocus: false,
     queryFn: async () => {
@@ -518,7 +531,6 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
   // above the caller's own level. Showing a control the server would refuse is
   // a worse failure than hiding one it would allow, so `is_self` is excluded
   // here as well rather than relying on the round trip to say no.
-  const { isManager } = useAuth();
   const unknownLevels = data?.comp.unknown_levels_in_scope ?? 0;
 
   // Group the who-sold rows by hierarchy so Sam can collapse/expand each sub-agency (Sam 2026-09-24:
@@ -610,7 +622,7 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
                 <KPIStat
                   accent
                   prominent
-                  detail={`${policies(data.imo.policies)} · ${plural(data.by_agent.length, "producer")} in this window`}
+                  detail={`${policies(data.imo.policies)} · ${plural(data.by_agent.filter(row => !row.external).length, "producer")} in this window`}
                   icon={Building2}
                   label="IMO total"
                   tone="good"
@@ -636,16 +648,17 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
                 value={money(data.direct_team.ap)}
               />
               <KPIStat
-                detail={`${policies(data.recursive_team.policies)} · ${data.scope_label}`}
+                detail={data.downline_only ? `${policies(data.downline_only.policies)} · personal sales excluded` : "Downline scope has not been verified"}
                 icon={Layers}
                 label="My team production"
                 tone="good"
                 unit="ALP"
-                value={money(data.recursive_team.ap)}
+                value={data.downline_only ? money(data.downline_only.ap) : "Unavailable"}
               />
             </div>
 
-            <ScoreboardIssuePaidStrip metrics={issuePaidMetrics} hidden={presenting || blur.split} />
+            {issuePaidMetrics.isDemo && <ScoreboardIssuePaidStrip metrics={issuePaidMetrics} hidden={presenting || blur.split} />}
+            <div className="border-t border-border p-4"><CarrierPolicyCohortCard start={window.start} endExclusive={window.end} hidden={presenting || blur.split} /></div>
 
             <div className="dashboard-production__pace border-t border-border p-4">
               <QueryState
@@ -663,10 +676,10 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
                     <p className="dashboard-board-eyebrow"><Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> Pace / current month</p>
                     <h3 className="dashboard-board-title">Month-end projections</h3>
                     {projectionDemo.isDemo && <Badge variant="outline" role="status">Demo figures</Badge>}
-                    <p className="mt-1 text-xs text-muted-foreground">{projectionDemo.isDemo ? "Demo" : "Live"} MTD pace · Phoenix time · {projectionData.scope_label}. Separate from the selected dates above.</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{projectionDemo.isDemo ? "Demo" : "Recorded"} MTD pace · Phoenix time · {projectionData.scope_label}. Current month only; separate from the selected dates above.</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <p className="text-[12px] text-muted-foreground">Day {projectionData.elapsed_calendar_days} of {projectionData.days_in_month}</p>
+                    <p className="text-[12px] text-muted-foreground">{projectionData.completed_calendar_days ?? "—"} completed days of {projectionData.days_in_month}</p>
                     <SectionEye on={blur.projection} onToggle={() => toggleBlur("projection")} label="projection" />
                   </div>
                 </div>
@@ -676,23 +689,28 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
                     { key: "personal", label: "My projected production", metric: projectionData.personal },
                     { key: "team", label: "My team projected", metric: projectionData.team },
                     ...(projectionData.imo ? [{ key: "imo", label: "Full IMO projected", metric: projectionData.imo }] : []),
-                  ].map(({ key, label, metric }) => (
+                  ].map(({ key, label, metric }) => {
+                    const runRate = productionRunRate(metric, projectionData.completed_calendar_days, projectionData.days_in_month);
+                    return (
                     <div className="dashboard-pace-card min-w-0 rounded-lg border border-border/70 bg-card p-3" key={key}>
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-                        <Badge variant={metric.confidence === "low" ? "outline" : "secondary"}>{metric.confidence} confidence</Badge>
+                        <Badge variant="outline">{runRate.amount === null ? "Insufficient sample" : "Run-rate estimate"}</Badge>
                       </div>
-                      <p className="dashboard-pace-card__value mt-3"><Reveal on={blur.projection}>{money(metric.projected_ap)}</Reveal></p>
-                      <p className="mt-1 text-xs text-muted-foreground">MTD <Reveal on={blur.projection}>{money(metric.mtd_ap)} · {policies(metric.policies)} · {metric.active_days} selling days</Reveal></p>
+                      <p className="dashboard-pace-card__value mt-3"><Reveal on={blur.projection}>{runRate.amount === null ? "Unavailable" : money(runRate.amount)}</Reveal></p>
+                      <p className="mt-1 text-xs text-muted-foreground">MTD <Reveal on={blur.projection}>{money(metric.mtd_ap)} · {policies(metric.policies)} · {metric.active_days} days with posted production</Reveal></p>
                       <MonthPaceChart
                         actual={metric.mtd_ap}
-                        projected={metric.projected_ap}
-                        elapsedDays={projectionData.elapsed_calendar_days}
+                        projected={runRate.amount}
+                        elapsedDays={projectionData.completed_calendar_days ?? 0}
+                        completedAP={metric.completed_ap}
                         daysInMonth={projectionData.days_in_month}
                         hidden={blur.projection}
                       />
+                      {runRate.reason && <p className="mt-2 text-xs text-muted-foreground">{runRate.reason}</p>}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {projectionData.agencies.length > 0 && (
@@ -706,8 +724,8 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
                             <p className="text-[12px] text-muted-foreground">MTD <Reveal on={blur.projection}>{money(agency.mtd_ap)} · {policies(agency.policies)}</Reveal></p>
                           </div>
                           <div className="shrink-0 text-right">
-                            <p className="font-bold tabular-nums text-foreground"><Reveal on={blur.projection}>{money(agency.projected_ap)}</Reveal></p>
-                            <p className="text-[13px] uppercase text-muted-foreground">projected · {agency.confidence}</p>
+                            <p className="font-bold tabular-nums text-foreground"><Reveal on={blur.projection}>{(() => { const amount = productionRunRate(agency, projectionData.completed_calendar_days, projectionData.days_in_month).amount; return amount === null ? "Unavailable" : money(amount); })()}</Reveal></p>
+                            <p className="text-[13px] uppercase text-muted-foreground">arithmetic run rate</p>
                           </div>
                         </div>
                       ))}
@@ -806,7 +824,7 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
               <div className="flex items-center justify-between gap-2 px-4 pt-3">
                 <p className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">Who sold · by agency</p>
                 <div className="flex items-center gap-2">
-                  <p className="hidden text-xs text-muted-foreground sm:block">{data.by_agent.length} producers · {agentGroups.length} agencies</p>
+                  <p className="hidden text-xs text-muted-foreground sm:block">{data.by_agent.filter(row => !row.external).length} producers · {agentGroups.length} agencies</p>
                   <SectionEye on={blur.names} onToggle={() => toggleBlur("names")} label="names" />
                 </div>
               </div>

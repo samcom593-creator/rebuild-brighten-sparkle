@@ -53,13 +53,26 @@ describe("sidebar items only reach routes their audience can open", () => {
 
   it("offers Sold Calls only to a viewer holding the sold_calls grant (admins and Aisha), in her manager mode too", () => {
     const soldCalls = (grants?: ReadonlySet<AgentCloudNavGrant>) =>
-      flattenAgentCloudNav(filterAgentCloudNav([...AGENT_CLOUD_PRIMARY_NAV, ...AGENT_CLOUD_ACCOUNT_NAV], { seesAll: false, viewMode: "manager", grants }))
+      flattenAgentCloudNav(filterAgentCloudNav([...AGENT_CLOUD_PRIMARY_NAV, ...AGENT_CLOUD_ACCOUNT_NAV], { seesAll: false, viewMode: "manager", isManager: true, grants }))
         .some((link) => link.href === "/dashboard/sold-calls");
     expect(soldCalls()).toBe(false);
     expect(soldCalls(new Set())).toBe(false);
     expect(soldCalls(new Set<AgentCloudNavGrant>(["sold_calls"]))).toBe(true);
     const admin = flattenAgentCloudNav(filterAgentCloudNav([...AGENT_CLOUD_PRIMARY_NAV, ...AGENT_CLOUD_ACCOUNT_NAV], { seesAll: true, viewMode: "manager" }));
     expect(admin.some((link) => link.href === "/dashboard/sold-calls")).toBe(true);
+  });
+
+  it("does not advertise admin-or-manager workflows to a grantee without the manager role", () => {
+    const grants = new Set<AgentCloudNavGrant>(["sold_calls"]);
+    for (const viewMode of ["agent", "agency_owner", "manager", "recruiter", "va"] as AccountMode[]) {
+      const links = flattenAgentCloudNav(filterAgentCloudNav(AGENT_CLOUD_PRIMARY_NAV, { seesAll: false, isManager: false, viewMode, grants }));
+      for (const href of ["/dashboard/sold-calls", "/dashboard/lead-manager", "/dashboard/retention", "/dashboard/social-command", "/dashboard/easy-resells", "/dashboard/call-training"]) {
+        expect(links.map((link) => link.href)).not.toContain(href);
+      }
+    }
+    // An actual manager may choose a producer account mode; the route still admits that role.
+    const manager = flattenAgentCloudNav(filterAgentCloudNav(AGENT_CLOUD_PRIMARY_NAV, { seesAll: false, isManager: true, viewMode: "agent", grants }));
+    expect(manager.map((link) => link.href)).toContain("/dashboard/lead-manager");
   });
 
   it("shows Money Inbox only to Sam with admin navigation, ahead of Launch Board", () => {

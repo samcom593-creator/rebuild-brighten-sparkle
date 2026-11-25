@@ -11,7 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/ui/page-header";
 import { QueryState } from "@/components/ui/query-state";
@@ -19,7 +19,10 @@ import { PrivateAudioPlayer } from "@/components/calls/PrivateAudioPlayer";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { TIER_STYLE, flagBadges, tierLegendFor } from "@/lib/leadBundles";
-import { EMPTY_WORK_FILTERS, LEAD_PACK_COLUMNS, OUTCOME_OPTIONS, holdLabels, workFilterParams, type LeadPackRow, type LeadWorkFilters } from "@/lib/leadManagerFilters";
+import { EMPTY_WORK_FILTERS, LEAD_PACK_COLUMNS, OUTCOME_OPTIONS, holdLabels, leadFilterProblems, workFilterParams, type LeadPackRow, type LeadWorkFilters } from "@/lib/leadManagerFilters";
+import { LeadPagination, LeadSearchField } from "@/components/leads/LeadWorklistControls";
+import { useLeadPagination } from "@/hooks/useLeadPagination";
+import { matchesLeadQuery } from "@/lib/leadWorklist";
 import { formatTimeAgo } from "@/lib/dateUtils";
 import {
   Popover, PopoverContent, PopoverTrigger,
@@ -30,7 +33,7 @@ import {
 import {
   Layers, Send, Download, Archive, DollarSign, AlertTriangle, UserRound, X,
   Trophy, Phone, RotateCcw, Boxes, ClipboardList, Users as UsersIcon, Check,
-  ChevronsUpDown, Mic, Pause, Play, Undo2, Hourglass,
+  ChevronDown, ChevronsUpDown, Mic, Pause, Play, Undo2, Hourglass,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -340,6 +343,7 @@ function AgentDropdown({
 }
 
 export default function LeadManager() {
+  const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const [pool, setPool] = useState<PoolKey>("marketing");
 
@@ -352,18 +356,28 @@ export default function LeadManager() {
   const [maxAge, setMaxAge] = useState("");
   const [vantageOnly, setVantageOnly] = useState(false);
   const [workFilters, setWorkFilters] = useState<LeadWorkFilters>({ ...EMPTY_WORK_FILTERS });
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [sort, setSort] = useState("tier");
   const [limit, setLimit] = useState(100);
   const [note, setNote] = useState("");
   // Sam 2026-11-10: a button to hide the packs that ARE being worked, so the ones an
   // agent is sitting on (dropped, still untouched) are all that's left on screen.
   const [notWorkedOnly, setNotWorkedOnly] = useState(false);
+  const workFilterCount = Object.values(workFilters).filter((value) => value.trim()).length;
+  const filterCount = tiers.size + flags.size + states.size + campaigns.size + Number(!!minAge) + Number(!!maxAge)
+    + Number(vantageOnly) + workFilterCount + Number(sort !== "tier");
+  const filterProblems = leadFilterProblems(workFilters, minAge, maxAge);
+  const resetFilters = () => {
+    setTiers(new Set()); setFlags(new Set()); setStates(new Set()); setCampaigns(new Set());
+    setMinAge(""); setMaxAge(""); setVantageOnly(false); setWorkFilters({ ...EMPTY_WORK_FILTERS }); setSort("tier");
+  };
 
   // reset tier/flag selections when switching pools (they differ per pool)
   useEffect(() => {
     setTiers(new Set()); setFlags(new Set()); setVantageOnly(false);
     setStates(new Set()); setCampaigns(new Set()); setMinAge(""); setMaxAge("");
     setWorkFilters({ ...EMPTY_WORK_FILTERS });
+    setAdvancedOpen(false);
   }, [pool]);
 
   const [agent, setAgent] = useState<AssignableAgent | null>(null);
@@ -409,10 +423,12 @@ export default function LeadManager() {
 
   const countsQuery = useQuery<PoolCounts>({
     queryKey: ["lead-pool", pool, debouncedFilters],
+    enabled: filterProblems.length === 0,
     queryFn: async () => {
       const { data, error } = await rpc("lead_pool_counts", { p_source: pool, p_filters: debouncedFilters });
       if (error) throw error;
-      return (data as PoolCounts) ?? { total: 0, by_tier: {}, under_9mo: 0, dnc_excluded: 0, resold_excluded: 0, in_bundle_excluded: 0, sample: [] };
+      if (!data || typeof (data as PoolCounts).total !== "number") throw new Error("The matching lead count was not returned. Retry the preview.");
+      return data as PoolCounts;
     },
     staleTime: 60_000,
     // A marketing count reads the 10-min snapshot (~0.5s; the live scan it
@@ -423,7 +439,13 @@ export default function LeadManager() {
   });
 
   const { data: counts, isFetching } = countsQuery;
-  const previewCurrent = filters === debouncedFilters && !isFetching && !countsQuery.isPlaceholderData && !countsQuery.isError;
+  const previewCurrent = filterProblems.length === 0 && !!counts && filters === debouncedFilters && !isFetching && !countsQuery.isPlaceholderData && !countsQuery.isError;
+  const countValue = (key: keyof PoolCounts) => {
+    if (filterProblems.length || countsQuery.isError) return "—";
+    if (!previewCurrent) return "…";
+    const value = counts?.[key];
+    return typeof value === "number" ? value.toLocaleString() : "—";
+  };
 
   // The states and campaigns that can be picked in this pool, with counts. Read from the same
   // 10-minute snapshot as the counts; cached per pool.
@@ -546,7 +568,10 @@ export default function LeadManager() {
         title="Lead Manager"
         subtitle="Pick a pool, filter it, tap an agent in the drop-down, drop the pack into their portal."
       />
-      <Button asChild variant="outline"><Link to="/dashboard/consumer-import">Import consumers</Link></Button>
+      <div className="flex flex-wrap gap-2">
+        <Button asChild variant="outline" className="h-11"><Link to="/dashboard/consumer-import">Import consumers</Link></Button>
+        {isAdmin && <Button asChild variant="outline" className="h-11"><Link to="/admin/policy-leads">Policy review leads</Link></Button>}
+      </div>
 
       {/* POOL SWITCH */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -591,8 +616,12 @@ export default function LeadManager() {
 
       {/* FILTER + PREVIEW */}
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Filter the {POOLS.find((p) => p.key === pool)?.label} pool</CardTitle>
+        <CardHeader className="flex-row flex-wrap items-center justify-between gap-3 space-y-0 pb-3">
+          <div>
+            <CardTitle className="text-base">Filter the {POOLS.find((p) => p.key === pool)?.label} pool</CardTitle>
+            <p className="mt-1 text-sm text-muted-foreground">{filterCount ? `${filterCount} active filter${filterCount === 1 ? "" : "s"}` : "Start with tier, state and age. Add work history when needed."}</p>
+          </div>
+          {filterCount > 0 && <Button type="button" variant="ghost" className="h-11" onClick={resetFilters}><RotateCcw className="mr-2 h-4 w-4" />Reset filters</Button>}
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -601,7 +630,7 @@ export default function LeadManager() {
               {tierOpts.map((t) => {
                 const on = tiers.has(t.v);
                 return (
-                  <Button key={t.v} type="button" size="sm" variant={on ? "default" : "outline"} className="rounded-full"
+                  <Button key={t.v} type="button" size="sm" variant={on ? "default" : "outline"} className="h-11 rounded-full" aria-pressed={on}
                     onClick={() => toggleIn(setTiers)(t.v)}>
                     {t.label}
                     {counts?.by_tier?.[t.v] != null && <span className="ml-1.5 text-xs opacity-70">{counts.by_tier[t.v].toLocaleString()}</span>}
@@ -630,7 +659,7 @@ export default function LeadManager() {
                 {flagOpts.map((f) => {
                   const on = flags.has(f.key);
                   return (
-                    <Button key={f.key} type="button" size="sm" variant={on ? "default" : "outline"} className="rounded-full"
+                    <Button key={f.key} type="button" size="sm" variant={on ? "default" : "outline"} className="h-11 rounded-full" aria-pressed={on}
                       onClick={() => toggleIn(setFlags)(f.key)}>
                       {f.label}
                     </Button>
@@ -654,17 +683,17 @@ export default function LeadManager() {
               </div>
             )}
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Min age</Label>
-              <Input type="number" inputMode="numeric" value={minAge} onChange={(e) => setMinAge(e.target.value)} placeholder="Any" />
+              <Label htmlFor="lead-min-age" className="text-sm text-muted-foreground">Min age</Label>
+              <Input id="lead-min-age" type="number" min="0" step="1" inputMode="numeric" value={minAge} onChange={(e) => setMinAge(e.target.value)} placeholder="Any" className="h-11" />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Max age</Label>
-              <Input type="number" inputMode="numeric" value={maxAge} onChange={(e) => setMaxAge(e.target.value)} placeholder="Any" />
+              <Label htmlFor="lead-max-age" className="text-sm text-muted-foreground">Max age</Label>
+              <Input id="lead-max-age" type="number" min="0" step="1" inputMode="numeric" value={maxAge} onChange={(e) => setMaxAge(e.target.value)} placeholder="Any" className="h-11" />
             </div>
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">Sort</Label>
               <Select value={sort} onValueChange={setSort}>
-                <SelectTrigger aria-label="Sort order"><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Sort order" className="h-11"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="tier">Best tier first</SelectItem>
                   <SelectItem value="chargeback">Chargeback window first</SelectItem>
@@ -674,7 +703,15 @@ export default function LeadManager() {
             </div>
           </div>
 
-          <WorkFilterControls value={workFilters} onChange={setWorkFilters} />
+          <div className="rounded-xl border border-border/70">
+            <Button type="button" variant="ghost" className="h-12 w-full justify-between rounded-xl px-4" aria-expanded={advancedOpen} aria-controls="lead-work-filters" onClick={() => setAdvancedOpen((value) => !value)}>
+              <span>Work history and source filters{workFilterCount > 0 ? ` (${workFilterCount})` : ""}</span><ChevronDown className={cn("h-4 w-4 transition-transform", advancedOpen && "rotate-180")} />
+            </Button>
+            {advancedOpen && <div id="lead-work-filters"><WorkFilterControls value={workFilters} onChange={setWorkFilters} /></div>}
+          </div>
+          {filterProblems.length > 0 && <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+            <p className="font-medium">Fix these filters to preview or assign leads.</p><ul className="mt-1 list-inside list-disc">{filterProblems.map((problem) => <li key={problem}>{problem}</li>)}</ul>
+          </div>}
           <p className="text-xs text-muted-foreground">Do not call, current-client, review and allocation holds stay protected. Select a hold reason to inspect those records. Imported ownership and dialer sales do not verify an active policy.</p>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
             {pool === "winback" && (
@@ -687,20 +724,25 @@ export default function LeadManager() {
               <span className="text-muted-foreground">Pack size</span>
               <Input type="number" inputMode="numeric" value={limit}
                 onChange={(e) => setLimit(Math.max(1, Math.min(5000, Number(e.target.value) || 1)))}
-                className="h-9 w-24" aria-label="Pack size" />
+                className="h-11 w-24" aria-label="Pack size" />
             </div>
           </div>
 
           {/* STAT TILES */}
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <StatTile label="Ready to drop" value={isFetching ? "…" : (counts?.total ?? 0).toLocaleString()} accent />
-            <StatTile label="Under 9 months" value={(counts?.under_9mo ?? 0).toLocaleString()} warn={!!counts?.under_9mo} />
-            <StatTile label="Held: Do-Not-Call" value={(counts?.dnc_excluded ?? 0).toLocaleString()} />
-            <StatTile label="Held: existing client" value={(counts?.client_excluded ?? 0).toLocaleString()} />
-            <StatTile label="Held: assigned" value={(counts?.in_bundle_excluded ?? 0).toLocaleString()} />
-            <StatTile label="Held: distributed" value={(counts?.resold_excluded ?? 0).toLocaleString()} />
-            <StatTile label="Held: import review" value={(counts?.review_excluded ?? 0).toLocaleString()} />
+            <StatTile label="Ready to drop" value={countValue("total")} accent />
+            <StatTile label="Under 9 months" value={countValue("under_9mo")} warn={!!counts?.under_9mo} />
+            <StatTile label="Held: Do-Not-Call" value={countValue("dnc_excluded")} />
+            <StatTile label="Held: existing client" value={countValue("client_excluded")} />
+            <StatTile label="Held: assigned" value={countValue("in_bundle_excluded")} />
+            <StatTile label="Held: distributed" value={countValue("resold_excluded")} />
+            <StatTile label="Held: import review" value={countValue("review_excluded")} />
           </div>
+          {!previewCurrent && filterProblems.length === 0 && !countsQuery.isError && <p role="status" className="text-sm text-muted-foreground">Updating the matching leads preview…</p>}
+          {previewCurrent && counts?.total === 0 && <div className="rounded-lg border border-dashed border-border p-4 text-sm">
+            <p className="font-medium">No assignable leads match these filters.</p><p className="mt-1 text-muted-foreground">Broaden the filters or inspect the hold totals above.</p>
+            {filterCount > 0 && <Button type="button" variant="outline" className="mt-3 h-11" onClick={resetFilters}>Clear pool filters</Button>}
+          </div>}
           {countsQuery.isError && <QueryState status="error" label="matching leads" error={countsQuery.error} onRetry={() => void countsQuery.refetch()} compact />}
           {facetsQuery.isError && (
             <QueryState status="error" label="the state and campaign lists" error={facetsQuery.error} onRetry={() => void facetsQuery.refetch()} compact />
@@ -714,7 +756,7 @@ export default function LeadManager() {
             </p>
           )}
 
-          {(counts?.sample?.length ?? 0) > 0 && (
+          {previewCurrent && (counts?.sample?.length ?? 0) > 0 && (
             <div className="overflow-x-auto rounded-lg border border-border/60">
               <table className="w-full text-sm">
                 <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
@@ -1152,7 +1194,7 @@ function MultiPick({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button type="button" variant="outline" role="combobox" aria-expanded={open} aria-label={label}
-          className="h-10 w-full justify-between px-3 font-normal">
+          className="h-11 w-full justify-between px-3 font-normal">
           <span className={cn("truncate", picked.length === 0 && "text-muted-foreground")}>
             {picked.length === 0 ? placeholder : picked.length <= 3 ? picked.join(", ") : `${picked.length} picked`}
           </span>
@@ -1161,11 +1203,11 @@ function MultiPick({
       </PopoverTrigger>
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] min-w-60 p-0" align="start">
         <Command>
-          <CommandInput placeholder={`Search ${label.toLowerCase()}…`} />
+          <CommandInput aria-label={`Search ${label.toLowerCase()}`} placeholder={`Search ${label.toLowerCase()}…`} />
           <CommandList className="max-h-72">
             <CommandEmpty>Nothing matches.</CommandEmpty>
             {options.map((o) => (
-              <CommandItem key={o.k} value={o.k} onSelect={() => onToggle(o.k)} className="gap-2 py-2">
+              <CommandItem key={o.k} value={o.k} onSelect={() => onToggle(o.k)} className="min-h-11 gap-2 py-2">
                 <Check className={cn("h-4 w-4 shrink-0", selected.has(o.k) ? "text-primary opacity-100" : "opacity-0")} />
                 <span className="flex-1 truncate">{o.k}</span>
                 <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{o.n.toLocaleString()}</span>
@@ -1355,8 +1397,8 @@ function RecordingsCard() {
               </div>
               {r.summary && <p className="mt-1 text-xs text-muted-foreground">{r.summary}</p>}
               {playing === r.id && (
-                <PrivateAudioPlayer sourceKey={`lead:${r.id}`} resolveSource={async () => {
-                  const { data, error } = await supabase.functions.invoke("lead-recording-url", { body: { recordingId: r.id } });
+                <PrivateAudioPlayer sourceKey={`lead:${r.id}`} resolveSource={async (signal) => {
+                  const { data, error } = await supabase.functions.invoke("lead-recording-url", { body: { recordingId: r.id }, signal });
                   if (error || !data || typeof data.signedUrl !== "string" || typeof data.expiresInSeconds !== "number") throw new Error("Recording access could not be verified.");
                   return { signedUrl: data.signedUrl, expiresInSeconds: data.expiresInSeconds };
                 }} playOnLoad />
@@ -1384,19 +1426,19 @@ function WorkFilterControls({ value, onChange }: { value: LeadWorkFilters; onCha
     ["hold", "Hold reason", [["ready", "Ready to assign"], ["true_dnc", "Do not call"], ["current_client", "Existing client"], ["assigned", "Already assigned"], ["resold", "Previously distributed"], ["review", "Import review"]]],
   ];
   return (
-    <div className="grid gap-3 rounded-lg border border-border/60 p-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-3 border-t border-border/60 p-4 sm:grid-cols-2 lg:grid-cols-4">
       {textFields.map(([key, label, type]) => (
         <div key={key} className="space-y-1">
-          <Label htmlFor={`lead-filter-${key}`} className="text-xs text-muted-foreground">{label}</Label>
+          <Label htmlFor={`lead-filter-${key}`} className="text-sm text-muted-foreground">{label}</Label>
           <Input id={`lead-filter-${key}`} type={type} min={type === "number" ? 0 : undefined}
-            value={value[key]} onChange={(e) => set(key, e.target.value)} />
+            step={type === "number" ? 1 : undefined} className="h-11" value={value[key]} onChange={(e) => set(key, e.target.value)} />
         </div>
       ))}
       {choices.map(([key, label, options]) => (
         <div key={key} className="space-y-1">
-          <Label className="text-xs text-muted-foreground">{label}</Label>
+          <Label className="text-sm text-muted-foreground">{label}</Label>
           <Select value={value[key] || "__all"} onValueChange={(next) => set(key, next === "__all" ? "" : next)}>
-            <SelectTrigger aria-label={label}><SelectValue /></SelectTrigger>
+            <SelectTrigger aria-label={label} className="h-11"><SelectValue /></SelectTrigger>
             <SelectContent><SelectItem value="__all">All</SelectItem>
               {options.map(([v, title]) => <SelectItem key={v} value={v}>{title}</SelectItem>)}
             </SelectContent>
@@ -1420,17 +1462,23 @@ function PackDetails({ bundle }: { bundle: RecentBundle }) {
       return (data ?? []) as LeadPackRow[];
     },
   });
-  const rows = (q.data ?? []).filter((row) => [row.first_name, row.last_name, row.phone10].join(" ").toLowerCase().includes(search.trim().toLowerCase()));
+  const rows = (q.data ?? []).filter((row) => matchesLeadQuery(search, [row.first_name, row.last_name, row.email, row.state, row.source_file], [row.phone10]));
+  const pagination = useLeadPagination(rows, JSON.stringify([bundle.bundle_id, search, open]));
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild><Button type="button" size="sm" variant="outline">Details</Button></DialogTrigger>
       <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto">
-        <DialogHeader><DialogTitle>{bundle.name}</DialogTitle></DialogHeader>
-        <p className="text-xs text-muted-foreground">Source claims, call history and next actions travel with the lead. A reported sale does not verify an active policy. Held records are excluded from the downloadable pack.</p>
-        <Input aria-label="Search pack details" placeholder="Search name or phone" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <DialogHeader><DialogTitle>{bundle.name}</DialogTitle>
+          <DialogDescription>Source claims, call history and next actions travel with the lead. A reported sale does not verify an active policy. Held records are excluded from the downloadable pack.</DialogDescription>
+        </DialogHeader>
+        <LeadSearchField label="Search pack details" placeholder="Search name, phone, email, state or source…" value={search} onChange={setSearch} />
         {q.isError ? <QueryState status="error" label="pack details" error={q.error} onRetry={() => void q.refetch()} compact />
           : q.isLoading ? <p>Loading details…</p> : <div className="space-y-3">
-            {rows.slice(0, 100).map((row) => <div key={String(row.phone10)} className="rounded-lg border p-3">
+            {rows.length === 0 && <div className="rounded-lg border border-dashed p-4 text-sm">
+              <p>{search.trim() ? "No leads in this pack match your search." : "No lead details are available for this pack."}</p>
+              {search.trim() && <Button type="button" variant="outline" className="mt-3 h-11" onClick={() => setSearch("")}>Show all pack leads</Button>}
+            </div>}
+            {pagination.items.map((row) => <div key={String(row.phone10)} className="rounded-lg border p-3">
               <h3 className="font-medium">{[row.first_name, row.last_name].filter(Boolean).join(" ") || row.phone10}</h3>
               <dl className="mt-2 grid gap-x-4 gap-y-2 text-sm sm:grid-cols-2">
                 {LEAD_PACK_COLUMNS.filter(([key]) => !["first_name", "last_name"].includes(key) && row[key] != null && row[key] !== "").map(([key, label]) => <div key={key}>
@@ -1438,7 +1486,7 @@ function PackDetails({ bundle }: { bundle: RecentBundle }) {
                 </div>)}
               </dl>
             </div>)}
-            <p className="text-xs text-muted-foreground">Showing {Math.min(rows.length, 100)} of {rows.length} matches. Search to narrow the pack.</p>
+            <LeadPagination {...pagination} onPageChange={pagination.setPage} label="Pack details" />
           </div>}
       </DialogContent>
     </Dialog>

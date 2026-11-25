@@ -865,7 +865,7 @@ const App = () => (
                            <Route path="/dashboard/prelicensing" element={<ProtectedRoute><PrelicensingManager /></ProtectedRoute>} />
                            <Route path="/dashboard/agent-management" element={<ProtectedRoute requireAdmin><AgentManagement /></ProtectedRoute>} />
                            <Route path="/dashboard/system-health" element={<ProtectedRoute requireAdmin><SamOnlyRoute><SystemHealth /></SamOnlyRoute></ProtectedRoute>} />
-                           <Route path="/dashboard/my-commissions" element={<LegacyWorkspaceRedirect to="/dashboard/finances" />} />
+                           <Route path="/dashboard/my-commissions" element={<LegacyWorkspaceRedirect to="/dashboard/finances?tab=commissions" />} />
                            <Route path="/dashboard/my-tasks" element={<ProtectedRoute><MyTasks /></ProtectedRoute>} />
                            <Route path="/dashboard/hiring-routing" element={<ProtectedRoute requireAdmin><HiringManagerAssignments /></ProtectedRoute>} />
                            <Route path="/dashboard/getting-started" element={<ProtectedRoute><GettingStarted /></ProtectedRoute>} />

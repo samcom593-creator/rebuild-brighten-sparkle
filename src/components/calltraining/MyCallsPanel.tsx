@@ -15,6 +15,7 @@ import { AgentCoachingCard } from "@/components/calltraining/AgentCoachingCard";
 import { momentsFrom } from "@/lib/callAudio";
 import { dispositionLabel } from "@/lib/readymodeDispositions";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
 interface MyCall {
   call_id: string;
@@ -54,8 +55,9 @@ const tone = (n: number | null) =>
   n == null ? "text-muted-foreground" : n >= 80 ? "text-emerald-700 dark:text-emerald-300" : n >= 60 ? "text-amber-700 dark:text-amber-300" : "text-rose-700 dark:text-rose-300";
 
 export function MyCallsPanel() {
-  const calls = useQuery({ queryKey: ["my-graded-calls"], queryFn: fetchMine, staleTime: 5 * 60_000 });
-  const coach = useQuery({ queryKey: ["my-coaching-name"], queryFn: fetchMyCoachingName, staleTime: 10 * 60_000 });
+  const { user, isLoading } = useAuth();
+  const calls = useQuery({ queryKey: ["my-graded-calls", user?.id], queryFn: fetchMine, enabled: !!user && !isLoading, staleTime: 5 * 60_000, gcTime: 0 });
+  const coach = useQuery({ queryKey: ["my-coaching-name", user?.id], queryFn: fetchMyCoachingName, enabled: !!user && !isLoading, staleTime: 10 * 60_000, gcTime: 0 });
   const [openId, setOpenId] = useState<string | null>(null);
   const list = calls.data ?? [];
   // Nothing graded about this agent yet: the team library below still teaches.
@@ -69,7 +71,7 @@ export function MyCallsPanel() {
           <div className="px-4 py-3">
             <p className="inline-flex items-center gap-2 text-sm font-semibold"><Mic className="h-4 w-4 text-primary" /> Your graded calls</p>
             <p className="text-xs text-muted-foreground">
-              {list.length} recent call{list.length === 1 ? "" : "s"}{avg != null ? ` · average ${avg}/100` : ""}. Tap one to hear it and see why it got its grade.
+              {list.length} recent call{list.length === 1 ? "" : "s"}{avg != null ? ` · average ${avg}/100` : ""}. Open a call for its grade and available recording.
             </p>
           </div>
           <ul className="divide-y divide-border/60 border-t border-border/60 text-sm">

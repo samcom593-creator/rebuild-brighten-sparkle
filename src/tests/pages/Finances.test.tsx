@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -22,9 +22,14 @@ const overview = () => ({
   breakdown: { by_carrier: [], by_product: [], by_month: [], by_agent_overrides: [] },
 });
 
-function mount() {
+function LocationProbe() {
+  const location = useLocation();
+  return <output data-testid="finance-location">{location.pathname}{location.search}</output>;
+}
+
+function mount(entry = "/dashboard/finances") {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const node = () => <QueryClientProvider client={client}><MemoryRouter><Finances /></MemoryRouter></QueryClientProvider>;
+  const node = () => <QueryClientProvider client={client}><MemoryRouter initialEntries={[entry]}><Finances /><LocationProbe /></MemoryRouter></QueryClientProvider>;
   return { client, ...render(node()), node };
 }
 function selectTab(name: string) {
@@ -41,15 +46,34 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllGlobals(); });
 
 describe("unified Finances permissions", () => {
+  it("opens commission bookmarks and preserves unrelated filters when switching views", () => {
+    mount("/dashboard/finances?tab=commissions&month=2026-11");
+    expect(screen.getByText("Personal ledger embedded")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Commissions" })).toHaveAttribute("data-state", "active");
+    selectTab("Policy book");
+    expect(screen.getByText("Personal carrier policy book")).toBeInTheDocument();
+    expect(screen.getByTestId("finance-location")).toHaveTextContent("/dashboard/finances?tab=policies&month=2026-11");
+    selectTab("Commissions");
+    expect(screen.getByTestId("finance-location")).toHaveTextContent("/dashboard/finances?tab=commissions&month=2026-11");
+  });
+
+  it("resolves an unauthorized management bookmark to the personal policy book without querying management", () => {
+    mount("/dashboard/finances?tab=management&month=2026-11");
+    expect(screen.getByText("Personal carrier policy book")).toBeInTheDocument();
+    expect(screen.getByTestId("finance-location")).toHaveTextContent("/dashboard/finances?tab=policies&month=2026-11");
+    expect(supabase.rpc).not.toHaveBeenCalled();
+    expect(supabase.from).not.toHaveBeenCalled();
+  });
+
   it("renders one header and personal sections without mounting any management query for an agent", () => {
     mount();
     expect(screen.getAllByRole("heading", { level: 1, name: "Finances" })).toHaveLength(1);
-    expect(screen.getByText("Personal ledger embedded")).toBeInTheDocument();
-    expect(screen.queryByRole("tab", { name: "Management" })).not.toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Issue & pay" })).toHaveAttribute("data-state", "active");
-    selectTab("Policy book");
     expect(screen.getByText("Personal carrier policy book")).toBeInTheDocument();
-    expect(screen.queryByText("Personal ledger embedded")).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Management" })).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Policy book" })).toHaveAttribute("data-state", "active");
+    selectTab("Commissions");
+    expect(screen.getByText("Personal ledger embedded")).toBeInTheDocument();
+    expect(screen.queryByText("Personal carrier policy book")).not.toBeInTheDocument();
     expect(supabase.rpc).not.toHaveBeenCalled();
     expect(supabase.from).not.toHaveBeenCalled();
   });
@@ -78,7 +102,8 @@ describe("unified Finances permissions", () => {
     view.rerender(view.node());
     expect(screen.queryByText("Admin agency breakdown")).not.toBeInTheDocument();
     expect(screen.queryByText("Estimated commission · today")).not.toBeInTheDocument();
-    expect(screen.getByText("Personal ledger embedded")).toBeInTheDocument();
+    expect(screen.getByText("Personal carrier policy book")).toBeInTheDocument();
+    expect(screen.getByTestId("finance-location")).toHaveTextContent("/dashboard/finances?tab=policies");
     expect(supabase.rpc).toHaveBeenCalledTimes(1);
   });
 

@@ -20,7 +20,9 @@ describe("producer workspace card", () => {
     expect(screen.getByText(/Payment confirmation: —/)).toBeInTheDocument();
     expect(screen.getByText("Carrier in force · written this month")).toBeInTheDocument();
     expect(screen.getByText("Active after 90 days")).toBeInTheDocument();
-    expect(screen.getByText("20 completed calls per selling day")).toBeInTheDocument();
+    expect(screen.getByText(/Recorded sale-disposition rate: 10%/)).toBeInTheDocument();
+    expect(screen.getByText(/Required calls are unavailable because provider sale dispositions are not linked/)).toBeInTheDocument();
+    expect(screen.queryByText("20 completed calls per selling day")).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Work my clients" })).toHaveAttribute("href", "/dashboard/agent-pipeline");
   });
 

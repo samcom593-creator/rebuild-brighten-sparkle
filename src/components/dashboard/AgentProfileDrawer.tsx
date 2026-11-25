@@ -241,7 +241,7 @@ function statusBadgeColor(status: string | null | undefined): string {
 // now enforces this at commit time.
 
 export function AgentProfileDrawer() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const askConfirm = useConfirm();
@@ -270,7 +270,7 @@ export function AgentProfileDrawer() {
   }, []);
 
   const { data: agent, isLoading } = useQuery<AgentRow | null>({
-    queryKey: ["agent-profile-drawer", agentId],
+    queryKey: ["agent-profile-drawer", agentId, user?.id],
     enabled: !!agentId,
     queryFn: async () => {
       if (!agentId) return null;
@@ -349,7 +349,7 @@ const qnum = (v: number | string | null | undefined): number | null => {
 };
 
   const { data: activity } = useQuery<ActivityRow | null>({
-    queryKey: ["agent-profile-drawer-activity", agentId, isAdmin],
+    queryKey: ["agent-profile-drawer-activity", agentId, user?.id, isAdmin],
     enabled: !!agentId,
     queryFn: async () => {
       if (!agentId) return null;
@@ -390,7 +390,7 @@ const qnum = (v: number | string | null | undefined): number | null => {
   // the book is actually made of — how much of it sticks, how much never issued,
   // and how concentrated it is on one carrier.
   const { data: quality } = useQuery<DealQualityRow | null>({
-    queryKey: ["agent-drawer-deal-quality", agentId],
+    queryKey: ["agent-drawer-deal-quality", agentId, user?.id],
     enabled: !!agentId,
     staleTime: 60_000,
     queryFn: async () => {
@@ -416,7 +416,7 @@ const qnum = (v: number | string | null | undefined): number | null => {
 
   // Full carrier breakdown — what "top carrier" alone cannot show.
   const { data: carrierMix } = useQuery<CarrierMixRow[] | null>({
-    queryKey: ["agent-drawer-carrier-mix", agentId],
+    queryKey: ["agent-drawer-carrier-mix", agentId, user?.id],
     enabled: !!agentId,
     staleTime: 60_000,
     queryFn: async () => {
@@ -435,7 +435,7 @@ const qnum = (v: number | string | null | undefined): number | null => {
   // insuracloud_payouts have never had a row), so this is premium x contract %
   // and is labelled as an estimate wherever it renders.
   const { data: earnings } = useQuery<EarningsRow | null>({
-    queryKey: ["agent-drawer-earnings-estimate", agentId],
+    queryKey: ["agent-drawer-earnings-estimate", agentId, user?.id],
     enabled: !!agentId,
     staleTime: 60_000,
     queryFn: async () => {
@@ -454,7 +454,7 @@ const qnum = (v: number | string | null | undefined): number | null => {
   // Monthly production: IT (deals this month), AV (annual volume this month), Legs.
   // Sam directive 2026-06-16 voice — recruit profile DB hero tiles.
   const { data: monthly } = useQuery<MonthlyProductionRow | null>({
-    queryKey: ["agent-profile-drawer-monthly", agentId],
+    queryKey: ["agent-profile-drawer-monthly", agentId, user?.id],
     enabled: !!agentId,
     queryFn: async () => {
       if (!agentId) return null;
@@ -473,31 +473,12 @@ const qnum = (v: number | string | null | undefined): number | null => {
     staleTime: 30_000,
   });
 
-  // 2026-06-18 — pace_verdict from v_agent_20k_target_leaderboard.
-  // Shows "Hit $20K" / "On pace $20K" / "Below pace" / etc. as a colored pill
-  // so Sam instantly sees if an agent is tracking for the $20K MTD target.
-  const { data: pace } = useQuery<PaceVerdictRow | null>({
-    queryKey: ["agent-profile-drawer-pace", agentId],
-    enabled: !!agentId,
-    queryFn: async () => {
-      if (!agentId) return null;
-      const { data, error } = await supabase
-        .from("v_agent_20k_target_leaderboard" as any)
-        .select("agent_id, ap_mtd, projected_eom_ap, pace_verdict")
-        .eq("agent_id", agentId)
-        .maybeSingle();
-      if (error || !data) return null;
-      return data as any;
-    },
-    staleTime: 60_000,
-  });
-
   // 2026-07-01 — producer weekly trend chip. Reads v_producer_trend_alert
   // (populated from agentlink_deals_snapshot). currently_dropping = 3 strict
   // consecutive weekly ALP drops → shows a red "DROPPING 3W" chip so the
   // Daniel-didn't-know slip mode gets caught on any drawer open.
   const { data: trend } = useQuery<TrendAlertRow | null>({
-    queryKey: ["agent-profile-drawer-trend", agentId],
+    queryKey: ["agent-profile-drawer-trend", agentId, user?.id],
     enabled: !!agentId,
     queryFn: async () => {
       if (!agentId) return null;
@@ -515,7 +496,7 @@ const qnum = (v: number | string | null | undefined): number | null => {
   // Call notes timeline: merged call_activity + agent_notes via SECURITY INVOKER RPC.
   // Sam directive 2026-06-16 voice — "notes from the call" surfaced in profile.
   const { data: timeline } = useQuery<CallTimelineRow[]>({
-    queryKey: ["agent-profile-drawer-timeline", agentId],
+    queryKey: ["agent-profile-drawer-timeline", agentId, user?.id],
     enabled: !!agentId,
     queryFn: async () => {
       if (!agentId) return [];
@@ -757,30 +738,10 @@ const qnum = (v: number | string | null | undefined): number | null => {
             {/* MP-CARRIER-BOOK-TRUTH: the live Ethos + Combined book, policy by policy — first thing on tap. */}
             <AgentCarrierBookPanel agentId={agent.id} />
 
-            {/* 2026-06-18 — pace verdict from v_agent_20k_target_leaderboard.
-                Instant visual: 🔥 hit_20k · 📈 on_pace_20k · 📉 below_pace ·
-                🆕 new_hire_grace · 😴 zero_mtd. */}
-            {pace && pace.pace_verdict && (
-              <div className={cn(
-                "rounded-full border px-3 py-2 flex items-center justify-between gap-2 text-xs",
-                pace.pace_verdict === "hit_20k" && "border-emerald-500/40 bg-emerald-500/10 text-emerald-500",
-                pace.pace_verdict === "on_pace_20k" && "border-info/30 bg-info/10 text-info",
-                pace.pace_verdict === "below_pace" && "border-amber-500/40 bg-amber-500/10 text-amber-500",
-                pace.pace_verdict === "new_hire_grace" && "border-slate-500/40 bg-slate-500/10 text-muted-foreground",
-                pace.pace_verdict === "zero_mtd" && "border-rose-500/40 bg-rose-500/10 text-rose-500",
-              )}>
-                <span className="font-semibold tabular-nums">
-                  {pace.pace_verdict === "hit_20k" && "🔥 Hit $20K MTD"}
-                  {pace.pace_verdict === "on_pace_20k" && "📈 On pace for $20K"}
-                  {pace.pace_verdict === "below_pace" && "📉 Below $20K pace"}
-                  {pace.pace_verdict === "new_hire_grace" && "🆕 New hire grace"}
-                  {pace.pace_verdict === "zero_mtd" && "😴 0 MTD"}
-                </span>
-                {pace.projected_eom_ap != null && pace.pace_verdict !== "new_hire_grace" && (
-                  <span className="text-muted-foreground tabular-nums">
-                    EOM proj {fmtUSDCompact(pace.projected_eom_ap)}
-                  </span>
-                )}
+            {monthly?.production_visible && monthly.annual_volume_this_month != null && (
+              <div className="rounded-xl border border-border bg-muted/30 p-3 text-sm">
+                <p className="font-semibold">Personal monthly production</p>
+                <p className="mt-1 text-muted-foreground">{fmtUSD(monthly.annual_volume_this_month)} posted ALP · {fmtUSD(Math.max(0, 20000 - monthly.annual_volume_this_month))} remaining to $20K.</p>
               </div>
             )}
 
@@ -829,25 +790,25 @@ const qnum = (v: number | string | null | undefined): number | null => {
             <div className="rounded-3xl border border-border bg-card/40 grid grid-cols-3 divide-x divide-border overflow-hidden">
               <div className="min-w-0 px-3 py-4">
                 <p className="text-[11px] uppercase tracking-wider text-emerald-500/80 font-semibold flex items-center gap-1">
-                  <Calendar className="h-2.5 w-2.5" /> IT
+                  <Calendar className="h-2.5 w-2.5" /> Policies
                 </p>
                 <p className="mt-1 text-3xl font-black tabular-nums leading-none text-emerald-500 dark:text-emerald-400">
-                  {monthly && !monthly.production_visible ? "—" : (monthly?.items_this_month ?? 0).toLocaleString()}
+                  {monthly?.production_visible && monthly.items_this_month != null ? monthly.items_this_month.toLocaleString() : "—"}
                 </p>
                 <p className="mt-1 text-[11px] text-muted-foreground">items · this month</p>
               </div>
               <div className="min-w-0 px-3 py-4">
                 <p className="text-[11px] uppercase tracking-wider text-amber-500/80 font-semibold flex items-center gap-1">
-                  <TrendingUp className="h-2.5 w-2.5" /> AV
+                  <TrendingUp className="h-2.5 w-2.5" /> Posted ALP
                 </p>
                 <p className="mt-1 text-3xl font-black tabular-nums leading-none text-amber-500 dark:text-amber-400">
-                  {monthly && !monthly.production_visible ? "—" : fmtUSDCompact(monthly?.annual_volume_this_month ?? 0)}
+                  {monthly?.production_visible ? fmtUSDCompact(monthly.annual_volume_this_month) : "—"}
                 </p>
                 <p className="mt-1 text-[11px] text-muted-foreground">premium · this month</p>
               </div>
               <div className="min-w-0 px-3 py-4">
                 <p className="text-[11px] uppercase tracking-wider text-info/80 font-semibold flex items-center gap-1">
-                  <Users className="h-2.5 w-2.5" /> Legs
+                  <Users className="h-2.5 w-2.5" /> Downline
                 </p>
                 <p className="mt-1 text-3xl font-black tabular-nums leading-none text-info dark:text-info">
                   {monthly?.legs == null ? "—" : monthly.legs.toLocaleString()}

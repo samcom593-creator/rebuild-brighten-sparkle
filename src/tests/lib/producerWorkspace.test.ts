@@ -3,9 +3,9 @@ import { clientCallsSchema, producerMilestones, producerPace, producerWorkspaceS
 import { producerWorkspaceFixture } from "@/tests/helpers/producerWorkspaceFixture";
 
 describe("personal production pace", () => {
-  it("uses personal posted AP and measured samples to round up the remaining work", () => {
+  it("uses personal posted AP for the policy estimate but does not convert call dispositions into policies", () => {
     const result = producerPace(producerWorkspaceFixture());
-    expect(result).toMatchObject({ remaining: 15000, completionPct: 25, averagePolicy: 1500, dealsRemaining: 10, callsRemaining: 100, callsPerSellingDay: 20, apPerSellingDay: 3000, status: "Behind pace" });
+    expect(result).toMatchObject({ remaining: 15000, completionPct: 25, averagePolicy: 1500, dealsRemaining: 10, callsRemaining: null, callsPerSellingDay: null, saleDispositionRate: 10, apPerSellingDay: 3000, status: "Behind pace" });
     expect(result.targetToday).toBeCloseTo(20000 * 17 / 21);
   });
 
@@ -21,11 +21,11 @@ describe("personal production pace", () => {
     expect(producerPace(d).dealsRemaining).toBeNull();
   });
 
-  it("rounds fractional policies and calls up without adding posted production", () => {
+  it("rounds policy estimates without inventing an unlinked call-to-policy conversion", () => {
     const d = producerWorkspaceFixture();
     d.production_ap = 19000; d.activity.avg_policy_ap = 600;
     d.activity.sample_calls = 31; d.activity.sample_sold_calls = 3;
-    expect(producerPace(d)).toMatchObject({ dealsRemaining: 2, callsRemaining: 21, callsPerSellingDay: 5, completionPct: 95 });
+    expect(producerPace(d)).toMatchObject({ dealsRemaining: 2, callsRemaining: null, callsPerSellingDay: null, saleDispositionRate: 9.7, completionPct: 95 });
     expect(d.production_ap).toBe(19000);
   });
 

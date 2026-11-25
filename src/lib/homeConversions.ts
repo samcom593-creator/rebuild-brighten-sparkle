@@ -19,6 +19,7 @@
  */
 import { formatClock, formatDay } from "@/lib/calendarTime";
 import type { Tone } from "@/lib/tones";
+import { parseRecruitingCohort, type RecruitingCohort } from "@/lib/recruitingCohort";
 
 export const CONVERSION_KINDS = [
   "applied",
@@ -65,6 +66,8 @@ export interface ConversionPerson {
 }
 
 export interface ConversionPayload {
+  viewer_user_id?: string | null;
+  cohort?: RecruitingCohort | null;
   as_of: string;
   /** The Phoenix business day the server answered for. */
   today: string;
@@ -174,9 +177,9 @@ export const RANGE_STEPS: readonly ConversionStep[] = [
     emptyAction: { label: "Open the Call list", to: "/dashboard/recruiting" },
   },
   {
-    kind: "hired", label: "New hires", short: "New hires", window: "range",
+    kind: "hired", label: "Producer records created", short: "Producer records", window: "range",
     definition: "People whose agent record was created in the selected dates. Test and placeholder records are not counted.",
-    emptyText: "No new hires in these dates.",
+    emptyText: "No producer records were created in these dates.",
     emptyAction: { label: "Open New hires", to: "/dashboard/recruits" },
   },
   {
@@ -293,6 +296,8 @@ export function parseConversionPayload(raw: unknown): ConversionPayload | null {
     });
   }
   return {
+    viewer_user_id: str(o.viewer_user_id),
+    cohort: parseRecruitingCohort(o.cohort),
     as_of: str(o.as_of) ?? "",
     today,
     week_start: dayKey(o.week_start) ?? today,

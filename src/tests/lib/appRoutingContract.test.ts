@@ -106,7 +106,7 @@ describe("App.tsx routing contract", () => {
       expect(index).toBeGreaterThan(-1);
       expect(index).toBeLessThan(shell);
     }
-    expect(table.redirects.get("/dashboard/my-commissions")?.to).toBe("/dashboard/finances");
+    expect(table.redirects.get("/dashboard/my-commissions")?.to).toBe("/dashboard/finances?tab=commissions");
     expect(table.redirects.get("/dashboard/my-deals")?.to).toBe("/dashboard/production");
     expect(table.redirects.get("/dashboard/clients")?.to).toBe("/dashboard/agent-pipeline");
     expect(table.redirects.get("/dashboard/recruiting/training/library/course/:courseId")?.to).toBe("/dashboard/training/library/course/:courseId");

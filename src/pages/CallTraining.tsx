@@ -138,13 +138,13 @@ async function fetchAgents(): Promise<AgentRow[]> {
 }
 
 export default function CallTraining() {
-  const { isManager } = useAuth();
+  const { user, isLoading, isManager } = useAuth();
   // Admins + call_access_grants rows see the agency; an upline sees their own team (RLS through my_downline_agent_ids); agents get the library.
   const { canView: leadership } = useCanViewSoldCalls();
   const canView = leadership || !!isManager;
   usePageTitle("Call Training");
-  const q = useQuery({ queryKey: ["call-training"], queryFn: fetchGraded, staleTime: 60_000, enabled: canView });
-  const agentsQ = useQuery({ queryKey: ["call-training-agents"], queryFn: fetchAgents, staleTime: 60_000, enabled: canView });
+  const q = useQuery({ queryKey: ["call-training", user?.id], queryFn: fetchGraded, staleTime: 60_000, gcTime: 0, enabled: canView && !!user && !isLoading });
+  const agentsQ = useQuery({ queryKey: ["call-training-agents", user?.id], queryFn: fetchAgents, staleTime: 60_000, gcTime: 0, enabled: canView && !!user && !isLoading });
   const [view, setView] = useState("great");
   const [agent, setAgent] = useState("all");
   const [tag, setTag] = useState("all");

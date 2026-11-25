@@ -1,0 +1,435 @@
+# Galaxy navigation and workflow audit — 2026-11-25
+
+## Scope and evidence
+
+This is a source and focused-test audit of the repair branch based on main `d0302b334f7264ed214f8aaca5d174ef3fc3fc63`. It inventories every registered route in `src/App.tsx` and every entry in the primary, applicant and account navigation manifests. It also traces the lead worklists, shared navigation visibility, command palette, mobile navigation, recruiting/training section navigation and the affected read/mutation contracts.
+
+The source census contains **304 route declarations: 82 explicit route redirects and 222 component entries, including the wildcard recovery route**. The `AgentDetail` component now performs an additional compatibility redirect to the canonical producer profile; it remains a component entry in this AST census. Of these, 247 inherit `AuthenticatedShell`, whose own `ProtectedRoute` requires a session. The sidebar manifests contain **47 entries and 43 unique hrefs** across role variants. Every sidebar href resolves to a registered path after removing its query string. The complete path inventory appears below; a path sharing a component is not automatically redundant, because contracting and settings use the path to select different work.
+
+Evidence was read from `src/App.tsx`, `src/components/ProtectedRoute.tsx`, `src/components/layout/AuthenticatedShell.tsx`, `src/components/layout/agentCloudNavigation.ts`, `GlobalSidebar.tsx`, `MobileBottomNav.tsx`, `src/components/command/CommandPalette.tsx`, page source modules, and the relevant database migration. **Authenticated live rendering, actual user roles/grants, live database row counts, conversion outcomes and route usage were not verified by this audit.** No route is declared unused merely because a static reference was not found. No historical KJ data or access/routing rules were changed.
+
+## Findings implemented in this repair
+
+| Finding | Operational consequence | Change and evidence |
+| --- | --- | --- |
+| My Leads search disappeared at eight or fewer assignments; raw phone handling was inconsistent. | The same task required different gestures depending on pack size; copied formatted phone numbers could fail. | Always-available labeled search; one-tap clear; case/diacritic-aware multi-field text matching and formatted US phone matching. `MyLeads.tsx`, `LeadWorklistControls.tsx`, `leadWorklist.ts`. |
+| My Leads had no state or pack filter and rendered the entire worklist. | Agents could not isolate a cohort; large packs produced long mobile pages. | State and pack selectors, status counts for the matching cohort, reset, explicit results, 25-row pages and reachable next/previous controls. `useLeadPagination.ts` and `MyLeads.tsx`. |
+| Work leads ignored the active search and selected every fresh lead in the pack. | A user could filter to a state/person and begin work on somebody outside that selection. | Work mode snapshots the matching item IDs. Status updates preserve that selection while server calling-hour and hold checks continue to apply. Covered by the combined state/pack/work-mode regression. |
+| Lead Manager displayed all work-history/source controls at once and did not reject inverted ranges. | The main assignment path was harder to scan; an invalid filter could be ignored by serialization and broaden a request. | Accessible expandable advanced section, active-filter count/reset, labeled age inputs, whole-number/calendar/range validation. Preview and assignment stay blocked until a valid current preview exists. Mandatory DNC/resold restrictions remain. |
+| Pack details stopped after 100 matching rows. | Leads beyond the cap had no next-page action. | Search across loaded contact/source fields, 25-row pagination through the entire returned pack, true no-match state, clear and an accessible dialog description. Test reaches Contact 105. |
+| Consumer policy leads reported no leads when a filter simply matched nothing, and failed stats appeared as zero. | Users could mistake a search miss or failed feed for an empty business queue. | Distinct empty/no-match/error states, stats unavailable marker and retry, state/status/sort/search controls, result count, reset and pagination. `AdminPolicyLeads.tsx`. |
+| Policy review leads had no contextual entry in the reviewed lead workflow. | An admin had to know the URL. | An admin-only Policy review leads link now appears beside Import consumers in Lead Manager. The existing route remains admin-only. |
+| Six sold_calls-granted navigation destinations could be offered to a grantee lacking the manager role even though their routes require admin or manager. | A permitted data grant could still lead to an access-denied route. | Shared navigation filtering now requires the actual manager role plus the grant, or admin. Sidebar and command palette provide the same role/preview context. No route or backend permission was widened. Manager account mode alone is not treated as a manager role. |
+| The manager assignment link and the agent worklist both used variations of Leads. | Their purposes were easy to confuse. | The management destination is now labeled Lead Manager; My Leads retains the agent worklist name. Mobile agent Leads still opens My Leads. |
+
+New controls use semantic background/foreground/border/primary tokens, visible labels or accessible names, and 44–48 px main touch targets. The brand palette, existing status actions, recording capture, pipeline mutation and calling restrictions remain in their existing workflow. The only recording-adapter change forwards the shared player’s AbortSignal to the authorized signed-source request, coordinated with the playback owner.
+
+## Verified source limits and follow-through
+
+| Priority | Evidence-backed limit or overlap | Concrete disposition |
+| --- | --- | --- |
+| P1 | `phc_admin_leads()` returns the latest 500 records; its migration exposes read-only admin RPCs, not a status mutation. | The page now explicitly says search/filtering applies to the loaded recent cohort and status is read-only. Full-history server filtering/pagination and a status-writing contract need a separately defined backend operation; no fabricated outcome action was added. Source: `supabase/migrations/20260807064411_phc_admin_leads_rpc.sql`. |
+| P1 | Lead Manager’s pool preview is a masked sample; it is not the complete inventory. | Keep structured server filters and preview/drop parity. No local text box was added that would falsely search only the first 12 preview rows. Pack details and My Leads search their complete returned arrays. |
+| P2 | Consumer intake intentionally lists up to 50 unresolved review rows and 40 recent source receipts. It directs correction in the original source and re-import with receipts. | Keep the explicit bounds and receipt workflow. A global review-queue search requires server pagination, not filtering the visible 50 as if they were the entire queue. Source: `src/pages/ConsumerLeadImport.tsx`. |
+| P2 | Multiple recruiting implementations remain mounted: current call list/pipeline/new hires; older recruit-pipeline, interview recovery, hiring and prelicensing variants. | Keep current sidebar work destinations. Audit write semantics and historical data ownership before converting remaining direct mounts into redirects. Do not introduce additional top-level pipeline labels. |
+| P2 | `/dashboard/pipeline-simple` explicitly presents an older agent/deal view, while `/dashboard/agent-pipeline` is the client servicing pipeline. | Keep the simple page outside main navigation. Consolidation requires confirming its agent/deal-specific use; do not merge client and recruiting records based on the URL name. |
+| P2 | `/dashboard/quoter` uses local illustrative rate tables, not a carrier pricing API. | Keep outside the primary navigation and retain its illustrative disclosure. Do not promote it as verified carrier pricing. Source: `src/pages/Quoter.tsx`. |
+| P2 | Account management, licensing, daily planning and diagnostic surfaces each have older parallel entries. | Maintain the canonical sidebar destinations; use the inventory to add contextual links only where a distinct operation is required. Static absence alone does not authorize deletion of emailed/shared or role-specific links. |
+| P2 | Settings and contracting share components across multiple URLs. | Retain these section URLs: `Settings` resolves path/query modes; `CarrierContracts` distinguishes submissions, receipts, writing numbers, directory and history. These are intentional sections, not duplicate content solely because the import is shared. |
+| Validation | Live authenticated mobile/desktop navigation and role grants were unavailable to this source audit. | Release owner should check the changed lead controls and permitted/denied navigation in the available authorized session. This document does not claim those live checks occurred. |
+
+## Navigation purpose and relevance
+
+All listed destinations have a concrete registered route. Role variants intentionally repeat Home, Training and Support; Calendar appears in different groups for producers and recruiting staff, with the owner duplicate suppressed. Owner-only and Sam-only boundaries are retained. The table includes every manifest entry, not just the owner’s screen.
+
+| Manifest / section | Label | Destination | Intended audience | Purpose / decision |
+| --- | --- | --- | --- | --- |
+| Primary | Home | `/dashboard` | all | Role-specific daily operating overview and next actions. Keep. |
+| Primary | My Tasks | `/dashboard/my-tasks` | all | Personal assigned tasks and completion. Keep. |
+| Primary | My Day | `/dashboard/my-day` | Sam with admin access | Sam’s private daily routine. Keep. |
+| Primary / Sell | My Pipeline | `/dashboard/agent-pipeline` | Agent, manager, agency owner | Client follow-up and servicing pipeline. Keep. |
+| Primary / Sell | Call Center | `/dashboard/call-center` | Agent, manager, agency owner, va, va_manager | Work the permitted calling queues and record contact outcomes. Keep. |
+| Primary / Sell | Calendar | `/dashboard/calendar` | Agent, manager, agency owner | Appointments, interviews and follow-ups. Keep. |
+| Primary / Grow | Social Command | `/dashboard/social-command` | Admin, or actual manager with sold_calls grant | Rank social conversations and review content/recruiting activity. Keep. |
+| Primary / Grow | Call list | `/dashboard/recruiting` | manager, recruiter, va, va_manager | Applicant call list with contact outcomes and next steps. Keep. |
+| Primary / Grow | New hires | `/dashboard/recruits` | manager, va, va_manager | Move hired recruits through activation milestones. Keep. |
+| Primary / Grow | Invite an agent | `/admin/invite-links` | manager | Create and share authorized application or hiring invitations. Keep. |
+| Primary / Grow | Instagram | `/dashboard/inbox/instagram` | Sam with admin access | Sam’s private Instagram inbox. Keep. |
+| Primary / Grow | Refer a recruit | `/dashboard/referrals/new` | agent, agency_owner | Submit or share a recruiting referral. Keep. |
+| Primary / Grow | Calendar | `/dashboard/calendar` | recruiter, va, va_manager; hidden in full owner nav | Appointments, interviews and follow-ups. Keep. |
+| Primary / Grow | Staff accounts | `/va-team` | va_manager | Create, monitor and disable permitted staff accounts. Keep. |
+| Primary / Grow | Contracting review | `/dashboard/team?view=contracting` | va, va_manager; hidden in full owner nav | Review team contracting requirements in the existing scoped view. Keep. |
+| Primary / My Business | Book of Business | `/dashboard/production` | Agent, manager, agency owner | Policy and production records in the user’s book. Keep. |
+| Primary / My Business | Easy Resells | `/dashboard/easy-resells` | Admin, or actual manager with sold_calls grant | Prioritize recorded resale/recovery opportunities. Keep. |
+| Primary / My Business | Sold Calls | `/dashboard/sold-calls` | Admin, or actual manager with sold_calls grant | Inspect recorded call context and follow-up opportunities. Keep. |
+| Primary / My Business | Call Training | `/dashboard/call-training` | Admin, or actual manager with sold_calls grant | Review graded call training examples. Keep. |
+| Primary / My Business | Lead Manager | `/dashboard/lead-manager` | Admin, or actual manager with sold_calls grant | Filter protected lead pools, preview a pack and assign it. Keep. |
+| Primary / My Business | My Leads | `/dashboard/my-leads` | Agent, manager, agency owner | Work assigned leads, capture results and maintain client follow-up. Keep. |
+| Primary / My Business | Finances | `/dashboard/finances` | Agent, manager, agency owner | Policy status, paid commission and compensation information. Keep. |
+| Primary / My Business | Retention | `/dashboard/retention` | Admin, or actual manager with sold_calls grant | Agency book and retention work under the existing privileged gate. Keep. |
+| Primary / Learn | Training | `/dashboard/training/library` | Agent, manager, agency owner | Training library and the ordered agent learning path. Keep. |
+| Primary / Team | Leaderboard | `/dashboard/leaderboard` | Agent, manager, agency owner | Compare attributed production and team results. Keep. |
+| Primary / Team | Wins & Awards | `/dashboard/awards` | Agent, manager, agency owner, recruiter | Earned recognition and award gallery. Keep. |
+| Primary / Team | My Team | `/dashboard/team` | Agent, manager, agency owner, recruiter | People, team scope and each person’s next step. Keep. |
+| Primary / Team | Call sheet | `/dashboard/ethos-call-sheet` | Manager, agency owner | Call permitted downline agents who hold the relevant contract. Keep. |
+| Primary / Team | Grow my team | `/dashboard/grow` | Manager, agency owner | Manager recruiting and contracting downline workflow. Keep. |
+| Primary / Owner | Money Inbox | `/dashboard/money-inbox` | Sam with admin access | Sam’s private financial correspondence. Keep. |
+| Primary / Owner | Launch Board | `/dashboard/launch-board` | Sam with admin access | Sam’s content library and publishing workflow. Keep. |
+| Primary / Owner | Brand Command | `/dashboard/admin/brand-command` | Admin | Agency brand scorecard and content operations. Keep. |
+| Primary / Owner | Carrier Command | `/dashboard/carrier-command` | Sam with admin access | Owner carrier book, sync and reconciliation overview. Keep. |
+| Primary / Owner | Reports | `/dashboard/analytics` | Admin | Agency business analytics and attention queues. Keep. |
+| Primary / Owner | Contracting | `/dashboard/contracting` | Admin | Current contracting submissions and receipts. Keep. |
+| Primary / Owner | Import | `/dashboard/import` | Admin | XCEL licensing import, distinct from consumer-lead import. Keep. |
+| Primary / Owner | Agent Duplicates | `/admin/agent-duplicates` | Admin | Resolve canonical agent identity duplicates. Keep. |
+| Primary / Owner | Strikes | `/dashboard/strikes` | Admin | Admin conduct issue and resolution workflow. Keep. |
+| Primary / Owner | System | `/dashboard/system-health` | Sam with admin access | Owner integration and diagnostic health. Keep. |
+| Applicant | Home | `/dashboard` | all | Role-specific daily operating overview and next actions. Keep. |
+| Applicant | Get licensed | `/get-licensed` | all | Licensing next steps for an applicant. Keep. |
+| Applicant | Training | `/dashboard/training/library` | all | Training library and the ordered agent learning path. Keep. |
+| Applicant | Support desk | `/dashboard/help?tab=desk` | all | Tracked support requests and help. Keep. |
+| Account / Settings | Account settings | `/dashboard/settings` | all | Account preferences and scoped settings sections. Keep. |
+| Account / Settings | Support desk | `/dashboard/help?tab=desk` | all | Tracked support requests and help. Keep. |
+| Account / Settings | Install Galaxy app | `/install` | all | Install instructions for the application. Keep. |
+| Account | Producer Profile | `/dashboard/profile` | Agent, manager, agency owner | Canonical producer profile and supporting details. Keep. |
+
+## Repeated component mounts
+
+These are the direct-mount families in the source census; the 82 explicit redirects are separately identified in the full inventory. Shared-component families with distinct path modes must remain separate views. Compatibility entries should not be duplicated in the primary menu.
+
+| Component | Registered paths | Disposition |
+| --- | --- | --- |
+| `ClaimAccount` | `/claim`, `/activate` | Compatibility/parallel mounts; preserve shared links and prefer one canonical menu entry. |
+| `LeadsLanding` | `/leads`, `/get-leads`, `/dialer` | Compatibility/parallel mounts; preserve shared links and prefer one canonical menu entry. |
+| `DataDeletion` | `/data-deletion`, `/delete-my-data` | Compatibility/parallel mounts; preserve shared links and prefer one canonical menu entry. |
+| `ApplicantCheckin` | `/checkin`, `/daily-checkin` | Compatibility/parallel mounts; preserve shared links and prefer one canonical menu entry. |
+| `DashboardApplicants` | `/dashboard/recruiting`, `/dashboard/recruiting/hires` | Compatibility/parallel mounts; preserve shared links and prefer one canonical menu entry. |
+| `CarrierContracts` | `/dashboard/contracting`, `/dashboard/contracting/carriers`, `/dashboard/contracting/history`, `/dashboard/contracting/documents` | Path or mode selects a distinct section/lane; retain and use contextual navigation. |
+| `BookOfBusiness` | `/dashboard/retention`, `/dashboard/book-of-business` | Compatibility/parallel mounts; preserve shared links and prefer one canonical menu entry. |
+| `XcelImport` | `/dashboard/import`, `/admin/xcel-import` | Compatibility/parallel mounts; preserve shared links and prefer one canonical menu entry. |
+| `HelpCenter` | `/dashboard/nova`, `/dashboard/help` | Compatibility/parallel mounts; preserve shared links and prefer one canonical menu entry. |
+| `DashboardCommandCenter` | `/dashboard/admin`, `/dashboard/legacy` | Compatibility/parallel mounts; preserve shared links and prefer one canonical menu entry. |
+| `BuildersDashboard` | `/dashboard/builders`, `/dashboard/builders/:builderId`, `/dashboard/agency-owners` | Path or mode selects a distinct section/lane; retain and use contextual navigation. |
+| `Settings` | `/dashboard/settings`, `/dashboard/settings/agency`, `/dashboard/settings/notifications`, `/dashboard/settings/security`, `/dashboard/settings/billing`, `/dashboard/settings/nova-pro` | Path or mode selects a distinct section/lane; retain and use contextual navigation. |
+| `AgentCommandDashboard` | `/agent-portal`, `/agent-dashboard` | Compatibility/parallel mounts; preserve shared links and prefer one canonical menu entry. |
+| `BotToken` | `/bot-token`, `/dashboard/bot-token` | Compatibility/parallel mounts; preserve shared links and prefer one canonical menu entry. |
+| `Setup` | `/setup`, `/dashboard/setup` | Compatibility/parallel mounts; preserve shared links and prefer one canonical menu entry. |
+| `OldApplicants` | `/dashboard/old-applicants/managers`, `/dashboard/old-applicants/licensed-recruiters` | Path or mode selects a distinct section/lane; retain and use contextual navigation. |
+
+## Complete registered-route inventory
+
+Every path below was extracted from the actual JSX Route declarations, with its import and explicit guard. Access is the frontend route boundary, not a claim that every underlying read/write was live-authorized. “Entry; component/token checks” means there is no route-level session wrapper in this declaration. “Discovery review” means no literal reference was found in scanned runtime source outside App and the sidebar; computed links, section helpers, external messages and usage analytics can still explain the route.
+
+| Route | Purpose and implementation evidence | Frontend access | Relevance / action |
+| --- | --- | --- | --- |
+| `/` | Public recruiting entry with licensed and unlicensed choices; `src/pages/Index.tsx` | Entry; component/token checks | Keep entry/funnel/legal utility; validate in its entry journey, not the dashboard menu. |
+| `/vsl` | Public recruiting video selected by track; `src/pages/Vsl.tsx` | Entry; component/token checks | Keep entry/funnel/legal utility; validate in its entry journey, not the dashboard menu. |
+| `/careers` | State career directory; `src/pages/CareersIndex.tsx` | Entry; component/token checks | Keep entry/funnel/legal utility; validate in its entry journey, not the dashboard menu. |
+| `/careers/:state` | State-specific recruiting information; `src/pages/StateCareerLanding.tsx` | Entry; component/token checks | Keep contextual detail/share route; no top-level sidebar item needed. |
+| `/apply` | Career application; `src/pages/Apply.tsx` | Entry; component/token checks | Keep entry/funnel/legal utility; validate in its entry journey, not the dashboard menu. |
+| `/share/:token` | Token-scoped shared media; `src/pages/SharePage.tsx` | Entry; component/token checks | Keep contextual detail/share route; no top-level sidebar item needed. |
+| `/start-contracting` | Redirect to `/dashboard/contracting-profile` | Entry; component/token checks | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/apply/success` | Application Received · Galaxy Financial; `src/pages/ApplySuccess.tsx` | Entry; component/token checks | Keep entry/funnel/legal utility; validate in its entry journey, not the dashboard menu. |
+| `/apply/success/licensed` | Schedule Your Call · Galaxy Financial; `src/pages/ApplySuccessLicensed.tsx` | Entry; component/token checks | Keep entry/funnel/legal utility; validate in its entry journey, not the dashboard menu. |
+| `/apply/success/unlicensed` | How to Get Your Life Insurance License · Galaxy Financial; `src/pages/ApplySuccessUnlicensed.tsx` | Entry; component/token checks | Keep entry/funnel/legal utility; validate in its entry journey, not the dashboard menu. |
+| `/unlicensed-overview` | Your first 2 months at Galaxy — from unlicensed to first check; `src/pages/UnlicensedOverview.tsx` | Entry; component/token checks | Keep entry/funnel/legal utility; validate in its entry journey, not the dashboard menu. |
+| `/status/:applicationId` | Your Galaxy Application Status; `src/pages/ApplicationStatus.tsx` | Entry; component/token checks | Keep contextual detail/share route; no top-level sidebar item needed. |
+| `/get-licensed` | Licensing next steps for an applicant; `src/pages/GetLicensed.tsx` | Entry; component/token checks | Keep: primary role-scoped destination. |
+| `/resources/licensing` | Galaxy Resources · Training + Licensing; `src/pages/ResourcesLicensing.tsx` | Entry; component/token checks | Keep entry/funnel/legal utility; validate in its entry journey, not the dashboard menu. |
+| `/training` | Training · Galaxy Financial; `src/pages/TrainingIndex.tsx` | Entry; component/token checks | Keep entry/funnel/legal utility; validate in its entry journey, not the dashboard menu. |
+| `/login` | Sign in · Galaxy Financial; `src/pages/Login.tsx` | Entry; component/token checks | Keep entry/funnel/legal utility; validate in its entry journey, not the dashboard menu. |
+| `/reset-password` | Reset password · Galaxy Financial; `src/pages/ResetPassword.tsx` | Entry; component/token checks | Keep entry/funnel/legal utility; validate in its entry journey, not the dashboard menu. |
+| `/signup` | Manager Signup · Galaxy Financial; `src/pages/Signup.tsx` | Entry; component/token checks | Keep entry/funnel/legal utility; validate in its entry journey, not the dashboard menu. |
+| `/join` | Join Galaxy; `src/pages/Join.tsx` | Entry; component/token checks | Keep entry/funnel/legal utility; validate in its entry journey, not the dashboard menu. |
+| `/hire/:token` | Activate your Galaxy account; `src/pages/HireLink.tsx` | Entry; component/token checks | Keep contextual detail/share route; no top-level sidebar item needed. |
+| `/join/:token` | Join Galaxy; `src/pages/JoinLink.tsx` | Entry; component/token checks | Keep contextual detail/share route; no top-level sidebar item needed. |
+| `/contract/:slug` | Join the team · Galaxy; `src/pages/ContractJoin.tsx` | Entry; component/token checks | Keep contextual detail/share route; no top-level sidebar item needed. |
+| `/agent-signup` | Create your Galaxy Agent account; `src/pages/AgentSignup.tsx` | Entry; component/token checks | Keep entry/funnel/legal utility; validate in its entry journey, not the dashboard menu. |
+| `/unsubscribe` | Unsubscribe; `src/pages/Unsubscribe.tsx` | Entry; component/token checks | Keep entry/funnel/legal utility; validate in its entry journey, not the dashboard menu. |
+| `/claim` | Claim Account; `src/pages/ClaimAccount.tsx` | Entry; component/token checks | Keep entry/funnel/legal utility; validate in its entry journey, not the dashboard menu. |
+| `/activate` | Claim Account; `src/pages/ClaimAccount.tsx` | Entry; component/token checks | Compatibility mount: preserve; prefer canonical destination for new navigation. |
+| `/agent-login` | Agent Login · Galaxy Daily Numbers; `src/pages/AgentNumbersLogin.tsx` | Entry; component/token checks | Keep entry/funnel/legal utility; validate in its entry journey, not the dashboard menu. |
+| `/agent/:userId` | Public Agent Landing; `src/pages/PublicAgentLanding.tsx` | Entry; component/token checks | Keep contextual detail/share route; no top-level sidebar item needed. |
+| `/magic-login` | Secure Login Link · Galaxy Financial; `src/pages/MagicLogin.tsx` | Entry; component/token checks | Keep entry/funnel/legal utility; validate in its entry journey, not the dashboard menu. |
+| `/schedule-call` | Schedule a Call · Galaxy Financial; `src/pages/ScheduleCall.tsx` | Entry; component/token checks | Keep entry/funnel/legal utility; validate in its entry journey, not the dashboard menu. |
+| `/assistant/interviews` | Galaxy Interview Intake; `src/pages/AssistantInterviewForm.tsx` | Entry; component/token checks | Keep entry/funnel/legal utility; validate in its entry journey, not the dashboard menu. |
+| `/pending-approval` | Pending Approval · Galaxy Financial; `src/pages/PendingApproval.tsx` | Entry; component/token checks | Keep entry/funnel/legal utility; validate in its entry journey, not the dashboard menu. |
+| `/privacy` | Privacy Policy · APEX Financial; `src/pages/Privacy.tsx` | Entry; component/token checks | Keep entry/funnel/legal utility; validate in its entry journey, not the dashboard menu. |
+| `/privacy-policy` | Redirect to `/privacy` | Entry; component/token checks | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/terms` | Terms of Service · APEX Financial; `src/pages/Terms.tsx` | Entry; component/token checks | Keep entry/funnel/legal utility; validate in its entry journey, not the dashboard menu. |
+| `/terms-of-service` | Redirect to `/terms` | Entry; component/token checks | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/disclosures` | Disclosures · APEX Financial; `src/pages/Disclosures.tsx` | Entry; component/token checks | Keep entry/funnel/legal utility; validate in its entry journey, not the dashboard menu. |
+| `/install` | Install instructions for the application; `src/pages/Install.tsx` | Entry; component/token checks | Keep: primary role-scoped destination. |
+| `/apex-daily-numbers` | Admin cross-agent activity-number entry; `src/pages/LogNumbers.tsx` | Admin | Keep entry/funnel/legal utility; validate in its entry journey, not the dashboard menu. |
+| `/links` | Sam James · Links; `src/pages/LinksPage.tsx` | Entry; component/token checks | Keep entry/funnel/legal utility; validate in its entry journey, not the dashboard menu. |
+| `/seminar` | Redirect to `/apply` | Entry; component/token checks | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/leads` | Galaxy Leads & Dialer · Daily Warm Leads; `src/pages/LeadsLanding.tsx` | Entry; component/token checks | Keep entry/funnel/legal utility; validate in its entry journey, not the dashboard menu. |
+| `/contact` | Contact Galaxy Financial; `src/pages/Contact.tsx` | Entry; component/token checks | Keep entry/funnel/legal utility; validate in its entry journey, not the dashboard menu. |
+| `/storefront` | Galaxy Storefront · Subscribe; `src/pages/Storefront.tsx` | Entry; component/token checks | Keep entry/funnel/legal utility; validate in its entry journey, not the dashboard menu. |
+| `/get-leads` | Galaxy Leads & Dialer · Daily Warm Leads; `src/pages/LeadsLanding.tsx` | Entry; component/token checks | Compatibility mount: preserve; prefer canonical destination for new navigation. |
+| `/dialer` | Galaxy Leads & Dialer · Daily Warm Leads; `src/pages/LeadsLanding.tsx` | Entry; component/token checks | Compatibility mount: preserve; prefer canonical destination for new navigation. |
+| `/data-deletion` | Delete My Data · Galaxy Financial; `src/pages/DataDeletion.tsx` | Entry; component/token checks | Keep entry/funnel/legal utility; validate in its entry journey, not the dashboard menu. |
+| `/delete-my-data` | Delete My Data · Galaxy Financial; `src/pages/DataDeletion.tsx` | Entry; component/token checks | Compatibility mount: preserve; prefer canonical destination for new navigation. |
+| `/checkin` | Daily Licensing Check-In · Galaxy Financial; `src/pages/ApplicantCheckin.tsx` | Entry; component/token checks | Compatibility mount: preserve; prefer canonical destination for new navigation. |
+| `/daily-checkin` | Daily Licensing Check-In · Galaxy Financial; `src/pages/ApplicantCheckin.tsx` | Entry; component/token checks | Keep entry/funnel/legal utility; validate in its entry journey, not the dashboard menu. |
+| `/agent-flow` | Agent Onboarding Flow · Galaxy Financial; `src/pages/AgentFlow.tsx` | Entry; component/token checks | Keep entry/funnel/legal utility; validate in its entry journey, not the dashboard menu. |
+| `/awards` | Ready to post; `src/pages/WinPostStudio.tsx` | Admin | Keep entry/funnel/legal utility; validate in its entry journey, not the dashboard menu. |
+| `/awards/legacy` | Award Graphics; `src/pages/AwardGraphics.tsx` | Admin | Keep entry/funnel/legal utility; validate in its entry journey, not the dashboard menu. |
+| `/plaque/:slug` | Plaque Share; `src/pages/PlaqueShare.tsx` | Entry; component/token checks | Keep contextual detail/share route; no top-level sidebar item needed. |
+| `/r/:code` | Recruiting Short Link; `src/components/RecruitingShortLink.tsx` | Entry; component/token checks | Keep contextual detail/share route; no top-level sidebar item needed. |
+| `/dashboard` | Role-specific daily operating overview and next actions; `src/pages/Dashboard.tsx` | Signed in | Keep: primary role-scoped destination. |
+| `/dashboard/recruiting` | Applicant call list with contact outcomes and next steps; `src/pages/DashboardApplicants.tsx` | Admin or manager or va_manager,  va,  recruiter | Keep: primary role-scoped destination. |
+| `/dashboard/recruiting/pipeline` | Recruit pipeline worklist; `src/pages/RecruitingPipeline.tsx` | Admin or manager or va_manager,  va,  recruiter | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/recruiting/licensed` | Licensed prospect calling queue; `src/pages/LicensedInbox.tsx` | Admin or va_manager,  va | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/recruiting/interviews` | Interview outcome and hiring workspace; `src/pages/Interviews.tsx` | Admin or manager or va_manager,  va,  recruiter | Consolidation review: retain until data/actions are accounted for; do not add another sidebar item. |
+| `/dashboard/recruiting/follow-ups` | Interview recovery queue retained outside current navigation; `src/pages/InterviewRecovery.tsx` | Admin or manager or va_manager,  va,  recruiter | Consolidation review: retain until data/actions are accounted for; do not add another sidebar item. |
+| `/dashboard/recruiting/hires` | Same applicant call-list component as /dashboard/recruiting; `src/pages/DashboardApplicants.tsx` | Admin or manager or va_manager,  va,  recruiter | Compatibility mount: preserve; prefer canonical destination for new navigation. |
+| `/dashboard/recruiting/training` | Redirect to `/dashboard/training` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/recruiting/training/library` | Redirect to `/dashboard/training/library` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/recruiting/training/library/course/:courseId` | Redirect to `/dashboard/training/library/course/:courseId` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/recruiting/training/sales-course` | Redirect to `/dashboard/training/sales-course` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/recruiting/training/progress` | Redirect to `/dashboard/training/progress` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/recruiting/training/content` | Redirect to `/dashboard/training/content` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/recruiting/training/annuities` | Redirect to `/dashboard/training/annuities` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/training` | Staff recruit progress entry or producer training entry; `src/pages/ApexTrainingEntry.tsx` | Signed in | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/training/library` | Training library and the ordered agent learning path; `src/pages/TrainingHub.tsx` | Signed in | Keep: primary role-scoped destination. |
+| `/dashboard/training/library/course/:courseId` | Selected library course and progress; `src/pages/TrainingHubCourse.tsx` | Signed in | Keep contextual detail/share route; no top-level sidebar item needed. |
+| `/dashboard/training/sales-course` | Field sales course; `src/pages/CourseCatalog.tsx` | Signed in | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/training/progress` | Staff course progress management; `src/pages/CourseProgress.tsx` | Admin or manager or va_manager,  va,  recruiter | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/training/content` | Staff course-content view; `src/pages/CourseContent.tsx` | Admin or manager or va_manager,  va,  recruiter | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/training/annuities` | Annuity learning material; `src/pages/AnnuityTraining.tsx` | Signed in | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/team` | People, team scope and each person’s next step; `src/pages/DashboardCRM.tsx` | Signed in | Keep: primary role-scoped destination. |
+| `/dashboard/ethos-call-sheet` | Call permitted downline agents who hold the relevant contract; `src/pages/EthosCallSheet.tsx` | Signed in | Keep: primary role-scoped destination. |
+| `/dashboard/carrier-command` | Owner carrier book, sync and reconciliation overview; `src/pages/CarrierCommand.tsx` | Admin; Sam only | Keep: primary role-scoped destination. |
+| `/dashboard/recruiting-links` | Recruiting Links; `src/pages/RecruitingLinks.tsx` | Admin | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/content` | Redirect to `/dashboard/launch-board?tab=queue` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/call-lab` | Practice-call scenarios; `src/pages/CallLab.tsx` | Signed in | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/call-lab/live/:id` | Active practice-call session; `src/pages/CallLabLive.tsx` | Signed in | Keep contextual detail/share route; no top-level sidebar item needed. |
+| `/dashboard/call-lab/report/:id` | Practice-call feedback report; `src/pages/CallLabReport.tsx` | Signed in | Keep contextual detail/share route; no top-level sidebar item needed. |
+| `/dashboard/contracting` | Current contracting submissions and receipts; `src/pages/CarrierContracts.tsx` | Admin | Keep: primary role-scoped destination. |
+| `/dashboard/contracting-profile` | Agent contracting profile intake; `src/pages/ContractingProfile.tsx` | Signed in | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/grow` | Manager recruiting and contracting downline workflow; `src/pages/ContractingDownlines.tsx` | Signed in | Keep: primary role-scoped destination. |
+| `/dashboard/contracting/downlines` | Redirect to `/dashboard/grow` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/contracting/contracts` | Redirect to `/dashboard/contracting/documents` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/contracting/carriers` | Current carrier directory; `src/pages/CarrierContracts.tsx` | Admin | Keep as section-specific view; shared component selects pathname/query mode. |
+| `/dashboard/contracting/ops` | Redirect to `/dashboard/contracting` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/contracting/requests` | Redirect to `/dashboard/contracting` | Admin | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/contracting/history` | Historical intake records; `src/pages/CarrierContracts.tsx` | Admin | Keep as section-specific view; shared component selects pathname/query mode. |
+| `/dashboard/contracting/documents` | Issued writing and contract numbers; `src/pages/CarrierContracts.tsx` | Admin | Keep as section-specific view; shared component selects pathname/query mode. |
+| `/dashboard/contracting/audit` | Redirect to `/dashboard/contracting` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/contracting/ethos` | Redirect to `/dashboard/team?view=contracting` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/contracting/aflac` | Redirect to `/dashboard/contracting` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/contracting/cases` | Redirect to `/dashboard/team?view=contracting` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/retention` | Agency book and retention work under the existing privileged gate; `src/pages/BookOfBusiness.tsx` | Admin or manager | Keep: primary role-scoped destination. |
+| `/dashboard/production` | Policy and production records in the user’s book; `src/pages/MyDeals.tsx` | Signed in | Keep: primary role-scoped destination. |
+| `/dashboard/analytics` | Agency business analytics and attention queues; `src/pages/BusinessAnalytics.tsx` | Admin | Keep: primary role-scoped destination. |
+| `/dashboard/community` | Announcements and celebrations; `src/pages/Announcements.tsx` | Signed in | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/resources` | Redirect to `/dashboard/training/library` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/import` | XCEL licensing import, distinct from consumer-lead import; `src/pages/admin/XcelImport.tsx` | Admin or manager or va_manager | Keep: primary role-scoped destination. |
+| `/dashboard/nova` | Alternate Help Center entry; `src/pages/HelpCenter.tsx` | Signed in | Compatibility mount: preserve; prefer canonical destination for new navigation. |
+| `/dashboard/admin` | Legacy agency command workspace used by current links; `src/pages/DashboardCommandCenter.tsx` | Admin | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/va-team` | Create, monitor and disable permitted staff accounts; `src/pages/VaManagerPortal.tsx` | Admin or va_manager | Keep: primary role-scoped destination. |
+| `/dashboard/apex-control` | Galaxy Control; `src/pages/ApexControl.tsx` | Admin | Discovery review: no literal source reference in scanned runtime files; verify dynamic/external entry before changing. |
+| `/dashboard/launch-board` | Sam’s content library and publishing workflow; `src/pages/LaunchBoard.tsx` | Admin; Sam only; content access | Keep: primary role-scoped destination. |
+| `/dashboard/money-inbox` | Sam’s private financial correspondence; `src/pages/MoneyInbox.tsx` | Admin; Sam only | Keep: primary role-scoped destination. |
+| `/dashboard/agencies` | Agencies; `src/pages/Agencies.tsx` | Admin | Discovery review: no literal source reference in scanned runtime files; verify dynamic/external entry before changing. |
+| `/dashboard/builders` | Active agents by builder; `src/pages/BuildersDashboard.tsx` | Admin | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/builders/:builderId` | Selected builder’s operating view; `src/pages/BuildersDashboard.tsx` | Admin | Keep contextual detail/share route; no top-level sidebar item needed. |
+| `/dashboard/managers` | Redirect to `/dashboard/team` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/billers` | Redirect to `/dashboard/team` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/agency-owners` | Active agents by builder; `src/pages/BuildersDashboard.tsx` | Admin | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/legacy` | Second mount of the legacy agency command workspace; `src/pages/DashboardCommandCenter.tsx` | Admin | Compatibility mount: preserve; prefer canonical destination for new navigation. |
+| `/dashboard/today` | Daily task and appointment aggregation; `src/pages/DashboardToday.tsx` | Signed in | Consolidation review: retain until data/actions are accounted for; do not add another sidebar item. |
+| `/dashboard/applicants` | Redirect to `/dashboard/recruiting` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/admin/my-applicants` | My Applicants · Galaxy Financial; `src/pages/admin/MyApplicants.tsx` | Admin or manager | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/admin/add-referral` | Add Referral · Galaxy Financial; `src/pages/admin/AddReferral.tsx` | Admin or manager | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/admin/invite-links` | Create and share authorized application or hiring invitations; `src/pages/admin/InviteLinks.tsx` | Admin or manager | Keep: primary role-scoped destination. |
+| `/admin/recruiting-inbox` | Redirect to `/dashboard/admin` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/admin/agent-duplicates` | Resolve canonical agent identity duplicates; `src/pages/admin/AgentDuplicates.tsx` | Admin | Keep: primary role-scoped destination. |
+| `/dashboard/stale-recovery` | Stale Applicant Recovery; `src/pages/StaleRecovery.tsx` | Admin or manager | Discovery review: no literal source reference in scanned runtime files; verify dynamic/external entry before changing. |
+| `/dashboard/accounts` | User account and role management; `src/pages/DashboardAccounts.tsx` | Admin | Consolidation review: retain until data/actions are accounted for; do not add another sidebar item. |
+| `/dashboard/offers` | Offers; `src/pages/OffersPage.tsx` | Admin | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/xcel-pipeline` | Xcel Pipeline · Galaxy Financial; `src/pages/XcelPipeline.tsx` | Admin | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/settings` | Account preferences and scoped settings sections; `src/pages/Settings.tsx` | Signed in | Keep: primary role-scoped destination. |
+| `/dashboard/settings/agency` | Agency identity and workspace configuration; `src/pages/Settings.tsx` | Admin | Keep as section-specific view; shared component selects pathname/query mode. |
+| `/dashboard/settings/notifications` | Notification preferences; `src/pages/Settings.tsx` | Signed in | Keep as section-specific view; shared component selects pathname/query mode. |
+| `/dashboard/settings/security` | Account security settings; `src/pages/Settings.tsx` | Signed in | Keep as section-specific view; shared component selects pathname/query mode. |
+| `/dashboard/settings/billing` | Admin billing settings; `src/pages/Settings.tsx` | Admin | Keep as section-specific view; shared component selects pathname/query mode. |
+| `/dashboard/settings/nova-pro` | Assistant settings; `src/pages/Settings.tsx` | Signed in | Keep as section-specific view; shared component selects pathname/query mode. |
+| `/dashboard/settings/deleted-leads` | Deleted Leads Vault; `src/pages/DeletedLeadsVault.tsx` | Admin | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/clients` | Redirect to `/dashboard/agent-pipeline` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/crm` | Redirect to `/dashboard/team` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/aged-leads` | Aged Leads; `src/pages/DashboardAgedLeads.tsx` | Signed in | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/command` | Redirect to `/dashboard/admin` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/team/next-step` | Manager Next Step Board; `src/pages/ManagerNextStepBoard.tsx` | Admin or manager | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/recruits` | Move hired recruits through activation milestones; `src/pages/RecruitPipeline.tsx` | Admin or manager or va_manager,  va | Keep: primary role-scoped destination. |
+| `/admin/next-step/stuck` | Admin Stuck Pool; `src/pages/AdminStuckPool.tsx` | Admin | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/admin/next-step/funnel-health` | Next stage; `src/pages/AdminFunnelHealth.tsx` | Admin | Discovery review: no literal source reference in scanned runtime files; verify dynamic/external entry before changing. |
+| `/admin/recruit-funnel` | Recruit funnel; `src/pages/admin/RecruitFunnel.tsx` | Admin | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/admin/email-gaps` | Email Gaps · Galaxy Admin; `src/pages/AdminEmailGaps.tsx` | Admin | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/admin/policy-leads` | Consumer policy-review inbound list; read-only status and contact links; `src/pages/AdminPolicyLeads.tsx` | Admin | Fixed: admin-only Lead Manager entry; honest loaded scope, filtering and failure states. Status remains read-only. |
+| `/admin/missing-al-link` | Missing AgentLink · Galaxy; `src/pages/AdminMissingAlLink.tsx` | Admin | Discovery review: no literal source reference in scanned runtime files; verify dynamic/external entry before changing. |
+| `/dashboard/onboarding-ladder` | Onboarding queue; `src/pages/OnboardingLadder.tsx` | Admin or manager or va_manager,  va | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/admin/licensed-inbox` | Redirect to `/dashboard/recruiting/licensed` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/admin/apex-toolkit` | Redirect to `/dashboard/training` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/admin/recovery-queue` | License Push · Galaxy; `src/pages/admin/RecoveryQueue.tsx` | Admin or manager or va_manager,  va | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/admin/unlicensed-all` | Unlicensed Queue · Galaxy; `src/pages/admin/UnlicensedAll.tsx` | Admin or manager or va_manager,  va | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/admin/xcel-import` | Alternate XCEL licensing-import entry; `src/pages/admin/XcelImport.tsx` | Admin or manager or va_manager | Compatibility mount: preserve; prefer canonical destination for new navigation. |
+| `/admin/producer-trends` | Redirect to `/dashboard/producer-trends` | Admin | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/producer-trends` | Producer Trends; `src/pages/AdminProducerTrends.tsx` | Admin | Discovery review: no literal source reference in scanned runtime files; verify dynamic/external entry before changing. |
+| `/admin/agentlink-backfill` | Redirect to `/dashboard/book-of-business` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/clients/:clientId` | Selected client detail and servicing history; `src/pages/ClientDetail.tsx` | Signed in | Keep contextual detail/share route; no top-level sidebar item needed. |
+| `/dashboard/seminar` | Seminar Control · Galaxy; `src/pages/SeminarControl.tsx` | Admin or manager or active presenter | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/seminar-control` | Redirect to `/dashboard/seminar` | Admin or manager or active presenter | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/my-inbox` | Recruiting triage · Galaxy; `src/pages/SamInbox.tsx` | Admin | Discovery review: no literal source reference in scanned runtime files; verify dynamic/external entry before changing. |
+| `/dashboard/referrals` | Referral pipeline · Galaxy; `src/pages/ReferralPipeline.tsx` | Admin or manager | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/referrals/mine` | My referrals · Galaxy; `src/pages/MyReferrals.tsx` | Signed in | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/referrals/new` | Submit or share a recruiting referral; `src/pages/ReferralSubmit.tsx` | Signed in | Keep: primary role-scoped destination. |
+| `/dashboard/notifications/mine` | My Notifications · Galaxy; `src/pages/MyNotifications.tsx` | Signed in | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/agent-portal` | Agent command dashboard compatibility entry; `src/pages/AgentCommandDashboard.tsx` | Signed in | Compatibility mount: preserve; prefer canonical destination for new navigation. |
+| `/agent-dashboard` | Second agent command dashboard compatibility entry; `src/pages/AgentCommandDashboard.tsx` | Signed in | Compatibility mount: preserve; prefer canonical destination for new navigation. |
+| `/agent-portal/legacy` | Older agent portal; `src/pages/AgentPortal.tsx` | Signed in | Consolidation review: retain until data/actions are accounted for; do not add another sidebar item. |
+| `/onboarding-course` | Redirect to `/dashboard/training/sales-course` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/course-catalog` | Redirect to `/dashboard/training/sales-course` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/training-hub` | Redirect to `/dashboard/training/library` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/training-hub/course/:courseId` | Redirect to `/dashboard/training/library/course/:courseId` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/course-progress` | Redirect to `/dashboard/training/progress` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/course-progress/content` | Redirect to `/dashboard/training/content` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/numbers` | Personal activity-number entry; `src/pages/Numbers.tsx` | Signed in | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/purchase-leads` | Purchase Leads; `src/pages/PurchaseLeads.tsx` | Signed in | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/call-center` | Work the permitted calling queues and record contact outcomes; `src/pages/CallCenter.tsx` | Signed in | Keep: primary role-scoped destination. |
+| `/dashboard/leads` | Redirect to `/dashboard/admin` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/social` | Social · Galaxy; `src/pages/SocialDashboard.tsx` | Admin | Discovery review: no literal source reference in scanned runtime files; verify dynamic/external entry before changing. |
+| `/dashboard/calls-today` | Calls Today · Galaxy; `src/pages/CallsTodayCockpit.tsx` | Signed in | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/whales` | Whale Recruiting · Galaxy; `src/pages/WhaleRecruiting.tsx` | Admin | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/contracts` | Redirect to `/dashboard/contracting` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/challenges` | Challenges · Galaxy; `src/pages/Challenges.tsx` | Signed in | Discovery review: no literal source reference in scanned runtime files; verify dynamic/external entry before changing. |
+| `/dashboard/recruiter` | Recruiter-specific operating view; `src/pages/RecruiterDashboard.tsx` | Signed in | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/recruit-pipeline` | Redirect to `/dashboard/recruit-pipeline` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/recruit-pipeline` | Older agent/recruit pipeline implementation; `src/pages/AgentPipeline.tsx` | Signed in | Consolidation review: retain until data/actions are accounted for; do not add another sidebar item. |
+| `/agent-pipeline` | Redirect to `/dashboard/agent-pipeline` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/agent-pipeline` | Client follow-up and servicing pipeline; `src/pages/ClientPipeline.tsx` | Signed in | Keep: primary role-scoped destination. |
+| `/dashboard/client-pipeline` | Redirect to `/dashboard/agent-pipeline` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/inbound-leads` | Redirect to `/dashboard/admin` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/inbound` | Redirect to `/dashboard/admin` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/calendar` | Appointments, interviews and follow-ups; `src/pages/CalendarPage.tsx` | Signed in | Keep: primary role-scoped destination. |
+| `/dashboard/my-day` | Sam’s private daily routine; `src/pages/MyDay.tsx` | Admin; Sam only | Keep: primary role-scoped destination. |
+| `/dashboard/notifications` | Call; `src/pages/NotificationHub.tsx` | Admin | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/planner` | Admin calendar-block planner; `src/pages/AdminCalendar.tsx` | Admin | Consolidation review: retain until data/actions are accounted for; do not add another sidebar item. |
+| `/dashboard/headhunters-calendar` | Redirect to `/dashboard/admin` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/interviews` | Redirect to `/dashboard/calendar` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/interview-recovery` | Redirect to `/dashboard/recruiting` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/reactivation` | Producer Reactivation; `src/pages/ProducerReactivation.tsx` | Admin or manager | Consolidation review: retain until data/actions are accounted for; do not add another sidebar item. |
+| `/dashboard/hierarchy` | Redirect to `/dashboard/team` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/team-hierarchy` | Redirect to `/dashboard/team` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/inbox` | Inbox; `src/pages/InboxPage.tsx` | Admin | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/automation` | Admin automation settings; `src/pages/AutomationHub.tsx` | Admin | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/book-of-business` | Alternate privileged retention/book entry; `src/pages/BookOfBusiness.tsx` | Admin or manager | Compatibility mount: preserve; prefer canonical destination for new navigation. |
+| `/dashboard/business-analytics` | Redirect to `/dashboard/analytics` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/carriers` | Redirect to `/dashboard/book-of-business` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/announcements` | Redirect to `/dashboard/community` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/finances` | Policy status, paid commission and compensation information; `src/pages/Finances.tsx` | Signed in | Keep: primary role-scoped destination. |
+| `/dashboard/scripts` | Scripts · Galaxy; `src/pages/Scripts.tsx` | Signed in | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/profile` | Canonical producer profile and supporting details; `src/pages/ProducerProfile.tsx` | Signed in | Keep: primary role-scoped destination. |
+| `/dashboard/help` | Help Center · Galaxy; `src/pages/HelpCenter.tsx` | Signed in | Keep: primary role-scoped destination. |
+| `/dashboard/transfers` | Transfer Requests · Galaxy; `src/pages/TransferRequests.tsx` | Signed in | Discovery review: no literal source reference in scanned runtime files; verify dynamic/external entry before changing. |
+| `/dashboard/handbook` | Agent Handbook · Galaxy; `src/pages/AgentHandbook.tsx` | Signed in | Discovery review: no literal source reference in scanned runtime files; verify dynamic/external entry before changing. |
+| `/dashboard/annuity-training` | Redirect to `/dashboard/training/annuities` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/client-marketing` | Recruiting milestone/funnel view despite the client-marketing URL; `src/pages/ClientMarketing.tsx` | Signed in | Discovery review: no literal source reference in scanned runtime files; verify dynamic/external entry before changing. |
+| `/dashboard/calling-cards` | Calling Cards · Galaxy; `src/pages/CallingCards.tsx` | Signed in | Discovery review: no literal source reference in scanned runtime files; verify dynamic/external entry before changing. |
+| `/dashboard/landing-page` | My Landing Page · Galaxy; `src/pages/MyLandingPage.tsx` | Signed in | Discovery review: no literal source reference in scanned runtime files; verify dynamic/external entry before changing. |
+| `/dashboard/recruiting-funnels` | Redirect to `/dashboard/admin` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/recruiting-tracker` | Redirect to `/dashboard/admin` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/needs-analysis` | DIME coverage-needs calculator; `src/pages/NeedsAnalysis.tsx` | Signed in | Discovery review: no literal source reference in scanned runtime files; verify dynamic/external entry before changing. |
+| `/dashboard/quoter` | Illustrative premium estimator using local rate tables; `src/pages/Quoter.tsx` | Signed in | Consolidation review: retain until data/actions are accounted for; do not add another sidebar item. |
+| `/dashboard/team-analytics` | Redirect to `/dashboard/admin` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/awards` | Earned recognition and award gallery; `src/pages/AwardsGallery.tsx` | Signed in | Keep: primary role-scoped destination. |
+| `/dashboard/hall-of-fame` | Hall of Fame; `src/pages/HallOfFame.tsx` | Signed in | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/hall-of-fame` | Redirect to `/dashboard/hall-of-fame` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/bot-token` | Admin integration token setup; `src/pages/BotToken.tsx` | Admin | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/bot-token` | Alternate integration token setup; `src/pages/BotToken.tsx` | Admin | Compatibility mount: preserve; prefer canonical destination for new navigation. |
+| `/dashboard/inbox/instagram` | Sam’s private Instagram inbox; `src/pages/InstagramInbox.tsx` | Admin; Sam only | Keep: primary role-scoped destination. |
+| `/dashboard/instagram-inbox` | Redirect to `/dashboard/inbox/instagram` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/today` | Redirect to `/dashboard/today` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/recruit` | Redirect to `/dashboard/recruiting` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/recruit` | Redirect to `/dashboard/recruiting` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/team-chat` | Legacy internal team messaging; `src/pages/TeamChat.tsx` | Signed in | Consolidation review: retain until data/actions are accounted for; do not add another sidebar item. |
+| `/team-chat` | Redirect to `/dashboard/team-chat` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/bulk-deals` | Bulk Deal Import; `src/pages/BulkDeals.tsx` | Admin or manager | Discovery review: no literal source reference in scanned runtime files; verify dynamic/external entry before changing. |
+| `/bulk-deals` | Redirect to `/dashboard/bulk-deals` | Admin or manager | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/agentlink-sync` | Historical AgentLink import synchronization; `src/pages/AgentLinkSync.tsx` | Admin | Discovery review: no literal source reference in scanned runtime files; verify dynamic/external entry before changing. |
+| `/dashboard/agent-link-sync` | Redirect to `/dashboard/agentlink-sync` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/agentlink-sync` | Redirect to `/dashboard/agentlink-sync` | Admin | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/agentlink-vault` | Historical mirrored AgentLink book; `src/pages/AgentLinkVault.tsx` | Admin | Discovery review: no literal source reference in scanned runtime files; verify dynamic/external entry before changing. |
+| `/setup` | Admin diagnostic setup; `src/pages/admin/Setup.tsx` | Admin | Discovery review: no literal source reference in scanned runtime files; verify dynamic/external entry before changing. |
+| `/dashboard/setup` | Alternate admin diagnostic setup; `src/pages/admin/Setup.tsx` | Admin | Compatibility mount: preserve; prefer canonical destination for new navigation. |
+| `/dashboard/agent/:id` | Component redirect to `/dashboard/profile?agentId=:id`; `src/pages/AgentDetail.tsx` | Signed in | Compatibility route: the selected producer, other query parameters and hash are preserved. Use the canonical producer profile for new links. |
+| `/dashboard/agents` | Redirect to `/dashboard/team` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/agents/:id` | Redirect to `/dashboard/agent/:id`, then canonical producer profile | Signed in | Compatibility chain: retain original URL and query/hash handling. New links should use `/dashboard/profile?agentId=:id`. |
+| `/dashboard/leaderboard` | Compare attributed production and team results; `src/pages/Leaderboard.tsx` | Signed in | Keep: primary role-scoped destination. |
+| `/leaderboard` | Redirect to `/dashboard/leaderboard` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/board` | Live board display; `src/pages/BoardLive.tsx` | Signed in | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/rewards` | Redirect to `/dashboard/my-plaques?source=reward` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/rewards` | Redirect to `/dashboard/my-plaques?source=reward` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/automation-health` | Cron inventory and run health; `src/pages/AutomationHealth.tsx` | Admin | Discovery review: no literal source reference in scanned runtime files; verify dynamic/external entry before changing. |
+| `/dashboard/pipeline-simple` | Older lightweight agent/deal view; `src/pages/AgentPipelineSimple.tsx` | Signed in | Consolidation review: retain until data/actions are accounted for; do not add another sidebar item. |
+| `/dashboard/instagram-automation` | Instagram Automation; `src/pages/InstagramAutomation.tsx` | Admin | Discovery review: no literal source reference in scanned runtime files; verify dynamic/external entry before changing. |
+| `/dashboard/hiring-pipeline` | Hiring Pipeline; `src/pages/HiringPipeline.tsx` | Admin or manager | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/admin/board-access` | Manager board permission configuration; `src/pages/AdminBoardAccess.tsx` | Admin | Discovery review: no literal source reference in scanned runtime files; verify dynamic/external entry before changing. |
+| `/dashboard/prelicensing` | Prelicensing contact worklist; `src/pages/PrelicensingManager.tsx` | Signed in | Consolidation review: retain until data/actions are accounted for; do not add another sidebar item. |
+| `/dashboard/agent-management` | Agent portal-link and account management; `src/pages/AgentManagement.tsx` | Admin | Consolidation review: retain until data/actions are accounted for; do not add another sidebar item. |
+| `/dashboard/system-health` | Owner integration and diagnostic health; `src/pages/SystemHealth.tsx` | Admin; Sam only | Keep: primary role-scoped destination. |
+| `/dashboard/my-commissions` | Redirect to `/dashboard/finances?tab=commissions` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/my-tasks` | Personal assigned tasks and completion; `src/pages/MyTasks.tsx` | Signed in | Keep: primary role-scoped destination. |
+| `/dashboard/hiring-routing` | Hiring-manager assignment configuration; `src/pages/HiringManagerAssignments.tsx` | Admin | Discovery review: no literal source reference in scanned runtime files; verify dynamic/external entry before changing. |
+| `/dashboard/getting-started` | Getting Started Tracker; `src/pages/GettingStarted.tsx` | Signed in | Consolidation review: retain until data/actions are accounted for; do not add another sidebar item. |
+| `/dashboard/inactive-agents` | Inactive Agent Recovery; `src/pages/InactiveAgents.tsx` | Signed in | Consolidation review: retain until data/actions are accounted for; do not add another sidebar item. |
+| `/dashboard/my-plaques` | Historical earned awards; `src/pages/MyPlaques.tsx` | Signed in | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/email-log` | Email Delivery Log; `src/pages/EmailDeliveryLog.tsx` | Admin | Discovery review: no literal source reference in scanned runtime files; verify dynamic/external entry before changing. |
+| `/dashboard/comp-tiers` | Comp Tiers Settings; `src/pages/admin/CompTiersSettings.tsx` | Admin | Discovery review: no literal source reference in scanned runtime files; verify dynamic/external entry before changing. |
+| `/dashboard/integrations` | Integrations Settings; `src/pages/admin/IntegrationsSettings.tsx` | Admin | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/my-team` | Redirect to `/dashboard/team` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/my-deals` | Redirect to `/dashboard/production` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/admin/contentwheel` | ContentWheel; `src/pages/ContentWheel.tsx` | Admin | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/admin/content-command` | Content Command; `src/pages/admin/ContentCommand.tsx` | Admin | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/strikes` | Admin conduct issue and resolution workflow; `src/pages/AdminStrikes.tsx` | Admin | Keep: primary role-scoped destination. |
+| `/dashboard/my-strikes` | User’s own conduct record; `src/pages/MyStrikes.tsx` | Signed in | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/charges-audit` | Redirect to `/dashboard` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/admin/charges-audit` | Redirect to `/dashboard` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/lead-payments` | Lead-pack payment ledger; `src/pages/LeadPayments.tsx` | Admin | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/old-applicants/managers` | Historical applicant manager lane; `src/pages/OldApplicants.tsx` | Admin or manager | Discovery review: no literal source reference in scanned runtime files; verify dynamic/external entry before changing. |
+| `/dashboard/old-applicants/licensed-recruiters` | Historical licensed-recruiter applicant lane; `src/pages/OldApplicants.tsx` | Admin or manager | Discovery review: no literal source reference in scanned runtime files; verify dynamic/external entry before changing. |
+| `/dashboard/conduct` | Redirect to `/dashboard/strikes` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/pre-licensing` | XCEL course progress report; `src/pages/PreLicensing.tsx` | Admin or manager | Consolidation review: retain until data/actions are accounted for; do not add another sidebar item. |
+| `/dashboard/book-quality` | Carrier/book reconciliation workspace; `src/pages/BookReconciliation.tsx` | Admin or manager | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/books` | Book-flip recovery worklist; `src/pages/BookFlips.tsx` | Admin or manager | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/sold-calls` | Inspect recorded call context and follow-up opportunities; `src/pages/SoldCalls.tsx` | Admin or manager | Keep: primary role-scoped destination. |
+| `/dashboard/easy-resells` | Prioritize recorded resale/recovery opportunities; `src/pages/EasyResells.tsx` | Admin or manager | Keep: primary role-scoped destination. |
+| `/dashboard/call-training` | Review graded call training examples; `src/pages/CallTraining.tsx` | Admin or manager | Keep: primary role-scoped destination. |
+| `/dashboard/lead-bundles` | Redirect to `/dashboard/lead-manager` | Admin or manager | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/my-leads` | Work assigned leads, capture results and maintain client follow-up; `src/pages/MyLeads.tsx` | Signed in | Fixed: search/filter/paging workflow; keep distinct assignment and agent-work purposes. |
+| `/dashboard/lead-manager` | Filter protected lead pools, preview a pack and assign it; `src/pages/LeadManager.tsx` | Admin or manager | Fixed: search/filter/paging workflow; keep distinct assignment and agent-work purposes. |
+| `/dashboard/consumer-import` | Consumer source preview, identity review and import receipts; `src/pages/ConsumerLeadImport.tsx` | Admin or manager | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/ayro-book` | Redirect to `/dashboard/book-of-business` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/social-command` | Rank social conversations and review content/recruiting activity; `src/pages/SocialCommandCenter.tsx` | Admin or manager | Keep: primary role-scoped destination. |
+| `/dashboard/admin/book-quality` | Redirect to `/dashboard/book-quality` | Signed in | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `/dashboard/readymode` | ReadyMode · Galaxy; `src/pages/ReadyModeIntegration.tsx` | Admin | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/admin/performance-bot` | Performance bot; `src/pages/admin/PerformanceBot.tsx` | Admin | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/admin/brand-command` | Agency brand scorecard and content operations; `src/pages/admin/BrandCommand.tsx` | Admin | Keep: primary role-scoped destination. |
+| `/dashboard/admin/social-media-bot` | Social Media Center; `src/pages/admin/SocialMediaCenter.tsx` | Admin; Sam only | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/admin/telegram-bot` | Galaxy Telegram Bot; `src/pages/admin/TelegramBot.tsx` | Admin | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/admin/sam` | Sam private operating workspace; `src/pages/admin/SamHQ.tsx` | Admin; Sam only | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/sam-todo` | Sam todo aggregation; `src/pages/SamTodo.tsx` | Admin; Sam only | Consolidation review: retain until data/actions are accounted for; do not add another sidebar item. |
+| `/dashboard/admin/unclaimed` | Unclaimed Leads; `src/pages/admin/UnclaimedLeads.tsx` | Admin | Keep contextual/admin utility; source references exist outside App and sidebar. |
+| `/dashboard/admin/manager` | Manager Command; `src/pages/admin/ManagerDashboard.tsx` | Admin or manager | Discovery review: no literal source reference in scanned runtime files; verify dynamic/external entry before changing. |
+| `/dashboard/admin/licensing` | Licensing-stage tracker; `src/pages/admin/LicensingTracker.tsx` | Admin or manager | Consolidation review: retain until data/actions are accounted for; do not add another sidebar item. |
+| `/dashboard/admin/commission-recovery` | Missing policy/premium data recovery; `src/pages/admin/CommissionRecovery.tsx` | Admin | Discovery review: no literal source reference in scanned runtime files; verify dynamic/external entry before changing. |
+| `/log-numbers` | Redirect to `/apex-daily-numbers` | Entry; component/token checks | Compatibility redirect: retain original URL and query/hash handling; use destination for new links. |
+| `*` | Unknown-route recovery; `src/pages/NotFound.tsx` | Entry; component/token checks | Keep recovery page. |
+
+## Validation record
+
+The focused lead/navigation run passed **112 tests in 11 files**. It includes My Leads worklist and page-boundary result advancement, dial taps and recording/pipeline regressions; Lead Manager preview/assignment parity, invalid ranges and >100-row pack navigation; consumer search/filter/empty/error behavior; shared search; role-based sidebar guards; active navigation; account-mode routing; and mobile navigation. Log: `/tmp/galaxy-lead-navigation-tests.log` in the validation workspace.
+
+Passed source guards: `check-dead-internal-links.mjs` (304 declarations; all literal internal links resolve), `check-admin-dashboard-render-health.mjs`, `check-private-surfaces.mjs`, and `check-parse-health.mjs`. The link scan separately reported four runtime-constructed targets in Apply/MagicLogin as unprovable by static inspection; it did not report missing literal targets. Full-tree TypeScript/build and live deployment verification belong to release coordination and are not claimed by this source audit.
+
+The fixed behavior is covered in `src/tests/pages/myLeadsWorkList.test.tsx`, `src/tests/pages/leadManagerPools.test.tsx`, `src/tests/pages/adminPolicyLeadsWorklist.test.tsx`, `src/tests/lib/leadWorklist.test.ts`, `src/tests/lib/leadManagerFilters.test.ts`, and `src/tests/lib/agentCloudNavigationGuards.test.ts`. Existing recording and call-safety tests remain passing. No remote commit, push or publication was performed by this audit task.

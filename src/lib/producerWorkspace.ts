@@ -27,7 +27,7 @@ export const producerWorkspaceSchema = z.object({
 });
 export type ProducerWorkspace = z.infer<typeof producerWorkspaceSchema>;
 
-/** Ratios describe the recorded sample; no agency fallback or guessed conversion. */
+/** Provider sale dispositions and posted policies are separate, unlinked samples. */
 export function producerPace(d: ProducerWorkspace) {
   const remaining = Math.max(0, d.target_ap - d.production_ap);
   const fraction = d.selling_days_total > 0 ? d.selling_days_elapsed / d.selling_days_total : null;
@@ -35,11 +35,13 @@ export function producerPace(d: ProducerWorkspace) {
   const a = d.activity;
   const avg = a.sample_policies >= 3 && a.avg_policy_ap !== null && a.avg_policy_ap > 0 ? a.avg_policy_ap : null;
   const dealsRemaining = remaining === 0 ? 0 : avg === null ? null : Math.ceil(remaining / avg);
-  const measured = a.sample_calls >= 30 && a.sample_sold_calls >= 3 && a.sample_sold_calls <= a.sample_calls;
-  const callsRemaining = remaining === 0 ? 0 : measured && dealsRemaining !== null
-    ? Math.ceil(dealsRemaining * a.sample_calls / a.sample_sold_calls) : null;
+  const saleDispositionRate = a.sample_calls > 0 && a.sample_sold_calls <= a.sample_calls
+    ? Math.round(a.sample_sold_calls / a.sample_calls * 1000) / 10 : null;
+  // A Completed Sale disposition is not evidence of one posted policy. Without
+  // call-to-policy links there is no supported required-call calculation.
+  const callsRemaining = remaining === 0 ? 0 : null;
   return {
-    remaining, targetToday, averagePolicy: avg, dealsRemaining, callsRemaining,
+    remaining, targetToday, averagePolicy: avg, dealsRemaining, callsRemaining, saleDispositionRate,
     completionPct: Math.min(100, d.production_ap / d.target_ap * 100),
     apPerSellingDay: d.selling_days_remaining > 0 ? remaining / d.selling_days_remaining : null,
     callsPerSellingDay: callsRemaining === null || d.selling_days_remaining === 0 ? null : Math.ceil(callsRemaining / d.selling_days_remaining),

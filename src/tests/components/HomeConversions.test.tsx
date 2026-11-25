@@ -118,7 +118,7 @@ describe("HomeConversions", () => {
     expect(week).toHaveTextContent("compared with the 7 days before");
     expect(within(today).getAllByRole("button").map((b) => b.textContent?.replace(/\d.*$/, ""))).toEqual(["Applied", "Interviews booked"]);
     expect(within(week).getAllByRole("button").map((b) => b.textContent?.replace(/\d.*$/, ""))).toEqual(["Bought Xcel", "Passed the test", "Newly licensed", "First deals"]);
-    const all = within(screen.getByRole("region", { name: "Conversions" })).getAllByRole("button");
+    const all = within(screen.getByRole("region", { name: "Recruiting activity & conversion" })).getAllByRole("button");
     expect(all.map((b) => b.getAttribute("aria-haspopup"))).toEqual(["dialog", "dialog", "dialog", "dialog", "dialog", "dialog"]);
   });
 

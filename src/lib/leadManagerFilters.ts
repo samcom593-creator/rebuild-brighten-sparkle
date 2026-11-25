@@ -18,6 +18,21 @@ export const EMPTY_WORK_FILTERS: LeadWorkFilters = {
   callbackBefore: "", sourceFile: "", sourceType: "", policyStanding: "", hold: "",
 };
 
+/** Reject impossible ranges before preview or assignment can use a different filter set. */
+export function leadFilterProblems(value: LeadWorkFilters, minAge: string, maxAge: string): string[] {
+  const problems: string[] = [];
+  for (const [label, raw] of [["Minimum age", minAge], ["Maximum age", maxAge], ["Minimum attempts", value.minAttempts], ["Maximum attempts", value.maxAttempts]]) {
+    if (raw.trim() && (!Number.isInteger(Number(raw)) || Number(raw) < 0)) problems.push(`${label} must be a whole number of zero or more.`);
+  }
+  if (minAge.trim() && maxAge.trim() && Number(minAge) > Number(maxAge)) problems.push("Minimum age cannot exceed maximum age.");
+  if (value.minAttempts.trim() && value.maxAttempts.trim() && Number(value.minAttempts) > Number(value.maxAttempts)) problems.push("Minimum attempts cannot exceed maximum attempts.");
+  for (const [label, day] of [["First touch date", value.touchedAfter], ["Last touch date", value.touchedBefore], ["Callback date", value.callbackBefore]]) {
+    if (day && (!/^\d{4}-\d{2}-\d{2}$/.test(day) || Number.isNaN(Date.parse(`${day}T00:00:00Z`)) || new Date(`${day}T00:00:00Z`).toISOString().slice(0, 10) !== day)) problems.push(`${label} must be a valid calendar date.`);
+  }
+  if (value.touchedAfter && value.touchedBefore && value.touchedAfter > value.touchedBefore) problems.push("The first touch date cannot be after the last touch date.");
+  return problems;
+}
+
 export const OUTCOME_OPTIONS = [
   ["never_called", "Never called"], ["unknown", "Dialed, outcome unknown"], ["no_answer", "No answer"], ["voicemail", "Voicemail"],
   ["callback", "Callback"], ["appointment", "Appointment"], ["sold", "Sale reported"],

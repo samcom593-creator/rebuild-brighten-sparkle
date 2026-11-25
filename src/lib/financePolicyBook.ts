@@ -1,4 +1,5 @@
 import { isDateKey } from "@/lib/commissionLedger";
+import { carrierPolicyStatus, type CarrierPayment } from "@/lib/carrierPolicyStatus";
 
 export const POLICY_COVERAGE_LABELS = {
   pending: "Pending",
@@ -9,6 +10,8 @@ export const POLICY_COVERAGE_LABELS = {
   not_taken: "Not taken",
   declined: "Declined",
   abandoned: "Abandoned",
+  started: "Application started",
+  quote: "Quote",
   unknown: "Unknown",
 } as const;
 
@@ -22,7 +25,13 @@ export interface FinancePolicy {
   client: string | null;
   product: string | null;
   coverage: PolicyCoverage;
+  sourceCoverage: PolicyCoverage;
   rawStatus: string | null;
+  preStatus: string | null;
+  statusLabel: string;
+  payment: CarrierPayment;
+  paymentLabel: string;
+  statusConflict: boolean;
   closeReason: string | null;
   annualPremium: number | null;
   faceAmount: number | null;
@@ -30,12 +39,15 @@ export interface FinancePolicy {
   effectiveOn: string | null;
   changedOn: string | null;
   chargeback: number | null;
+  lastSeenOn: string | null;
 }
 
 export interface FinancePolicyBook {
   agentId: string;
   asOf: string | null;
   policies: FinancePolicy[];
+  carrierSources: Array<{ carrier: string; policyCount: number; lastSeenOn: string | null }>;
+  chargebacks: { count: number; amount: number; outstandingDebt: number | null } | null;
   /** Latest ALL_TIME hierarchical Ethos portal report for a matched NPN.
    * It is not the policy-row total and is not evidence of premium receipts. */
   ethosPortal: {
@@ -79,7 +91,9 @@ function day(value: unknown): string | null {
 
 /** Validate both the RPC contract and the identity before any financial facts render. */
 export function parseFinancePolicyBook(value: unknown, expectedAgentId: string): FinancePolicyBook {
-  if (!object(value) || value.agent_id !== expectedAgentId || !Array.isArray(value.policies)) {
+  if (!object(value) || typeof value.agent_id !== "string" || !value.agent_id ||
+    (value.agent_id !== expectedAgentId && value.requested_agent_id !== expectedAgentId) ||
+    (value.requested_agent_id != null && value.requested_agent_id !== expectedAgentId) || !Array.isArray(value.policies)) {
     throw new Error("The policy book did not return a valid result for your agent record.");
   }
   const asOf = text(value.as_of);
@@ -93,13 +107,20 @@ export function parseFinancePolicyBook(value: unknown, expectedAgentId: string):
     if (typeof row.bucket !== "string" || !Object.prototype.hasOwnProperty.call(POLICY_COVERAGE_LABELS, row.bucket)) {
       throw new Error("The policy book returned an unknown coverage category.");
     }
+    const carrier = text(row.carrier, true)!;
+    const rawStatus = text(row.status_raw);
+    const preStatus = text(row.status_pre);
+    const chargeback = amount(row.chargeback);
+    const status = carrierPolicyStatus({ carrier, bucket: row.bucket, rawStatus, preStatus, chargeback });
     return {
-      key, carrier: text(row.carrier, true)!, underwriter: text(row.underwriter),
+      key, carrier, underwriter: text(row.underwriter),
       policyNumber: text(row.policy_number), client: text(row.client), product: text(row.product),
-      coverage: row.bucket as PolicyCoverage, rawStatus: text(row.status_raw), closeReason: text(row.close_reason),
+      coverage: status.coverage, sourceCoverage: row.bucket as PolicyCoverage, rawStatus, preStatus,
+      statusLabel: status.statusLabel, payment: status.payment, paymentLabel: status.paymentLabel,
+      statusConflict: status.conflict, closeReason: text(row.close_reason),
       annualPremium: amount(row.annual_premium), faceAmount: amount(row.face_amount),
       soldOn: day(row.sold_on), effectiveOn: day(row.effective_on), changedOn: day(row.changed_on),
-      chargeback: amount(row.chargeback),
+      chargeback, lastSeenOn: day(row.last_seen_on),
     };
   });
   let ethosPortal: FinancePolicyBook["ethosPortal"] = null;
@@ -113,7 +134,26 @@ export function parseFinancePolicyBook(value: unknown, expectedAgentId: string):
     }
     ethosPortal = { issuedAnnualPremium, inforceIssuedAnnualPremium };
   }
-  return { agentId: expectedAgentId, asOf, policies, ethosPortal };
+  const carrierSources: FinancePolicyBook["carrierSources"] = [];
+  if (value.carrier_sources != null) {
+    if (!Array.isArray(value.carrier_sources)) throw new Error("The policy book returned invalid carrier coverage.");
+    for (const source of value.carrier_sources) {
+      if (!object(source)) throw new Error("The policy book returned invalid carrier coverage.");
+      const policyCount = amount(source.policy_count);
+      if (policyCount === null || !Number.isInteger(policyCount) || policyCount < 0) throw new Error("The policy book returned invalid carrier coverage.");
+      carrierSources.push({ carrier: text(source.carrier, true)!, policyCount, lastSeenOn: day(source.last_seen_on) });
+    }
+  }
+  let chargebacks: FinancePolicyBook["chargebacks"] = null;
+  if (object(value.summary) && value.summary.chargebacks != null && value.summary.chargeback_amount != null) {
+    const count = amount(value.summary.chargebacks);
+    const total = amount(value.summary.chargeback_amount);
+    const outstandingDebt = amount(value.summary.debt_outstanding);
+    if (count === null || !Number.isInteger(count) || count < 0 || total === null || total < 0 ||
+      (outstandingDebt !== null && outstandingDebt < 0)) throw new Error("The carrier returned invalid chargeback totals.");
+    chargebacks = { count, amount: total, outstandingDebt };
+  }
+  return { agentId: expectedAgentId, asOf, policies, carrierSources, chargebacks, ethosPortal };
 }
 
 /** Counts reflect returned carrier policies. No policy/ledger join or payment inference. */
@@ -148,7 +188,7 @@ export function financePolicyCoverage(policies: readonly FinancePolicy[]) {
  * Unknown or contradictory facts remain outside the observed subtotal.
  */
 export function financePremiumPaying(policies: readonly FinancePolicy[]) {
-  const matches = policies.filter(policy => policy.carrier === "Ethos" && policy.coverage === "active" &&
+  const matches = policies.filter(policy => !policy.statusConflict && policy.carrier === "Ethos" && policy.coverage === "active" &&
     policy.rawStatus?.trim().toUpperCase() === "PREMIUM_PAYING");
   const known = matches.filter(policy => policy.annualPremium !== null && policy.annualPremium >= 0);
   return {
@@ -156,6 +196,22 @@ export function financePremiumPaying(policies: readonly FinancePolicy[]) {
     annualPremium: known.length === matches.length ? known.reduce((sum, policy) => sum + policy.annualPremium!, 0) : null,
     knownAnnualPremium: known.reduce((sum, policy) => sum + policy.annualPremium!, 0),
     missingPremium: matches.length - known.length,
+    otherPolicies: policies.length - matches.length,
+  };
+}
+
+/** Explicit carrier-paid states only. AP is annualized production, never cash. */
+export function financePaidStatus(policies: readonly FinancePolicy[]) {
+  const matches = policies.filter(policy => !policy.statusConflict && policy.coverage === "active" &&
+    (policy.payment === "paid" || policy.payment === "premium_paying"));
+  const known = matches.filter(policy => policy.annualPremium !== null && policy.annualPremium >= 0);
+  const knownAnnualPremium = known.reduce((sum, policy) => sum + policy.annualPremium!, 0);
+  return {
+    policies: matches.length,
+    annualPremium: known.length === matches.length ? knownAnnualPremium : null,
+    knownAnnualPremium,
+    missingPremium: matches.length - known.length,
+    carriers: [...new Set(matches.map(policy => policy.carrier))].sort(),
     otherPolicies: policies.length - matches.length,
   };
 }

@@ -147,7 +147,7 @@ export function MobileBottomNav() {
   const seesAll = isAdmin && !isPreviewing;
   const toneEntries = isApplicant
     ? APPLICANT_NAV
-    : filterAgentCloudNav([...AGENT_CLOUD_PRIMARY_NAV, ...AGENT_CLOUD_ACCOUNT_NAV], { seesAll, viewMode: effectiveMode });
+    : filterAgentCloudNav([...AGENT_CLOUD_PRIMARY_NAV, ...AGENT_CLOUD_ACCOUNT_NAV], { seesAll, viewMode: effectiveMode, isManager: isPreviewing ? effectiveMode === "manager" : isManager });
 
   if (!isMobile) return null;
 

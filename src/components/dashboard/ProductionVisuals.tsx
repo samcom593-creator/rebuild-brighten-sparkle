@@ -62,15 +62,16 @@ export function ProductionMixChart({ rows, hidden = false }: {
 }
 
 /** Posted MTD versus the server's estimate. This is a pace graphic, never a goal or daily history. */
-export function MonthPaceChart({ actual, projected, elapsedDays, daysInMonth, hidden = false }: {
+export function MonthPaceChart({ actual, projected, elapsedDays, daysInMonth, completedAP, hidden = false }: {
   actual: number;
-  projected: number;
+  projected: number | null;
+  completedAP?: number;
   elapsedDays: number;
   daysInMonth: number;
   hidden?: boolean;
 }) {
   if (hidden) return <ChartHidden label="Production pace hidden for presenting" />;
-  if (![actual, projected, elapsedDays, daysInMonth].every(Number.isFinite)
+  if (projected === null || ![actual, projected, elapsedDays, daysInMonth].every(Number.isFinite)
     || actual < 0 || projected < actual || elapsedDays < 1 || elapsedDays > daysInMonth
     || !Number.isInteger(elapsedDays) || !Number.isInteger(daysInMonth)) {
     return <p className="production-chart-caption mt-3">Production pace is unavailable for this result.</p>;
@@ -93,7 +94,7 @@ export function MonthPaceChart({ actual, projected, elapsedDays, daysInMonth, hi
         <span>Calendar elapsed</span><strong>{elapsedDays} / {daysInMonth} days</strong>
       </div>
       <div className="production-pace-chart__time" aria-hidden="true"><span style={{ width: `${calendarShare}%` }} /></div>
-      <p className="production-chart-caption">{money(actual / elapsedDays)} ALP per elapsed calendar day</p>
+      <p className="production-chart-caption">{money((completedAP ?? actual) / elapsedDays)} ALP per {completedAP === undefined ? "elapsed" : "completed"} calendar day</p>
     </div>
   );
 }

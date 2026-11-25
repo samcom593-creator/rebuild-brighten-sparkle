@@ -72,7 +72,7 @@ describe("personal finance ledger", () => {
     mount();
     await screen.findByText("POL-PAID");
     expect(screen.getByText("Commission paid · 2026").parentElement).toHaveTextContent("$200.00");
-    expect(screen.getByText("Awaiting commission").parentElement).toHaveTextContent("$50.00");
+    expect(screen.getByText("Open commission ledger").parentElement).toHaveTextContent("$50.00");
     expect(within(screen.getByText("POL-PENDING").closest("tr")!).getAllByRole("cell")[6]).toHaveTextContent("No confirmed payment");
     expect(within(screen.getByText("POL-UNDATED").closest("tr")!).getByText("Marked paid; payment date missing or invalid")).toBeInTheDocument();
     expect(within(screen.getByText("POL-FUTURE").closest("tr")!).getByText("Future-dated; not counted as paid")).toBeInTheDocument();
@@ -120,7 +120,7 @@ describe("personal finance ledger", () => {
     expect(screen.queryByText("POL-UNDATED")).not.toBeInTheDocument();
     expect(screen.queryByText("POL-FUTURE")).not.toBeInTheDocument();
     expect(screen.getByText("1 of 4 records")).toBeInTheDocument();
-    expect(screen.getByText("Awaiting commission").parentElement).toHaveTextContent("$50.00");
+    expect(screen.getByText("Open commission ledger").parentElement).toHaveTextContent("$50.00");
     fireEvent.change(screen.getByRole("combobox", { name: "Commission payment status" }), { target: { value: "unverified" } });
     expect(screen.queryByText("POL-PAID")).not.toBeInTheDocument();
     expect(screen.getByText("POL-UNDATED")).toBeInTheDocument();
@@ -136,9 +136,45 @@ describe("personal finance ledger", () => {
     results.set("commission_ledger", { data: [paid], error: null });
     mount();
     await screen.findByText("POL-PAID");
-    expect(screen.getByText("Issued & paid AP").parentElement).toHaveTextContent("Unavailable");
-    expect(screen.getByText("Issued & paid AP").parentElement).not.toHaveTextContent("$1,200");
+    expect(screen.queryByText("Issued & paid AP")).not.toBeInTheDocument();
+    expect(screen.getByText("Commission paid · 2026").parentElement).toHaveTextContent("$200.00");
+    expect(screen.getByText("Commission paid · 2026").parentElement).not.toHaveTextContent("$1,200");
     expect(within(screen.getByText("POL-PAID").closest("tr")!).getByText("issued")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: /Nov: \$200.00 from 1 payment/ })).toBeInTheDocument();
+  });
+
+  it("shows missing payment evidence instead of three authoritative zero balances", async () => {
+    results.set("commission_ledger", { data: [], error: null });
+    mount();
+    await screen.findByText("POL-PAID");
+    expect(screen.getByText("Commission paid · 2026").parentElement).toHaveTextContent("Not recorded");
+    expect(screen.getByText("Open commission ledger").parentElement).toHaveTextContent("No open records");
+    expect(screen.getByText("Ledger clawbacks").parentElement).toHaveTextContent("Not recorded");
+    expect(screen.getByRole("region", { name: "Posted production commission estimate" })).toHaveTextContent("$600.00");
+    expect(screen.getByRole("region", { name: "Commission payment totals" })).not.toHaveTextContent("$0.00");
+  });
+
+  it("marks a partial estimate as incomplete and exposes excluded records beside the known subtotal", async () => {
+    const priced = results.get("v_production_comp_truth")!.data![0] as Record<string, unknown>;
+    results.set("v_production_comp_truth", { data: [priced, { ...priced, row_key: "unpriced-deal", policy_number: "POL-UNPRICED", direct_estimate: null }, { ...priced, row_key: null }], error: null });
+    mount();
+    await screen.findByText("POL-PAID");
+    const estimate = screen.getByRole("region", { name: "Posted production commission estimate" });
+    expect(estimate).toHaveTextContent("Incomplete");
+    expect(estimate).toHaveTextContent("Known subtotal $600.00 · 1 priced record");
+    expect(estimate).toHaveTextContent("1 estimate that could not be priced");
+    expect(estimate).toHaveTextContent("1 production row without a record key");
+    expect(estimate).toHaveTextContent("3 production records");
+  });
+
+  it("does not promote an all-unpriced production cohort to a zero estimate", async () => {
+    const unpriced = results.get("v_production_comp_truth")!.data![0] as Record<string, unknown>;
+    results.set("v_production_comp_truth", { data: [{ ...unpriced, direct_estimate: null }], error: null });
+    mount();
+    await screen.findByText("POL-PAID");
+    const estimate = screen.getByRole("region", { name: "Posted production commission estimate" });
+    expect(estimate).toHaveTextContent("Unavailable");
+    expect(estimate).toHaveTextContent("1 estimate that could not be priced");
+    expect(estimate).not.toHaveTextContent("$0.00");
   });
 });

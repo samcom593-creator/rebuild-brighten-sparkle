@@ -11,6 +11,7 @@ const { PGlite } = await import(pathToFileURL(modulePath).href);
 const db = new PGlite();
 const migration = await readFile(new URL('../supabase/migrations/20261124110000_lead_context_and_filters.sql', import.meta.url), 'utf8');
 const pipelineMigration = await readFile(new URL('../supabase/migrations/20261124111000_lead_pipeline_identity_guard.sql', import.meta.url), 'utf8');
+const previewCostMigration = await readFile(new URL('../supabase/migrations/20261125110000_lead_pool_preview_cost.sql', import.meta.url), 'utf8');
 const previous = await readFile(new URL('../supabase/migrations/20261124020000_lead_manager_readymode_all.sql', import.meta.url), 'utf8');
 const admin = '00000000-0000-0000-0000-000000000001';
 const agent = '00000000-0000-0000-0000-000000000002';
@@ -84,6 +85,7 @@ try {
   // trigger declarations, privileges and indexes, against isolated typed fixtures.
   await db.exec(migration);
   await db.exec(pipelineMigration);
+  await db.exec(previewCostMigration);
   await db.query('insert into public.agents(user_id,display_name) values($1,$2),($3,$4)', [agent, 'Caller One', other, 'Caller Two']);
   await user(admin);
   const phones = Array.from({ length: 8 }, (_, i) => `20255511${String(i + 1).padStart(2, '0')}`);
@@ -179,11 +181,123 @@ try {
   assert.equal(tiles.marketing.total, (await invoke('lead_pool_counts', ['marketing', {}])).total);
   await db.query("update lead_bundle_items set phone10='2025551199' where id=$1", [item.id]);
   assert.equal(await scalar("select count(*)::int as n from lead_contact_dnc where phone10='2025551199'"),1,'A phone correction preserves DNC and does not abort the snapshot repair path');
+
+  // Exact old/new response parity, including rows where one copy of a phone is
+  // held through its replaced number but another copy remains eligible. Dedupe
+  // must happen after eligibility, and overlapping exclusions stay independent.
+  const parityBundle = await scalar("insert into lead_bundles(name) values('Synthetic parity pack') returning id as n");
+  await db.query("insert into lead_bundle_items(bundle_id,phone10) values($1,'2025551203')", [parityBundle]);
+  const touchedItem = await scalar("insert into lead_bundle_items(bundle_id,phone10,status,status_at,status_by,callback_at,next_action,removed_at) values($1,'2025551204','callback','2021-01-01',$2,'2021-01-03','Synthetic next action',now()) returning id as n", [parityBundle, agent]);
+  await db.query("insert into lead_bundle_events(bundle_id,item_id,actor,action,at) values($1,$2,$3,'dial_tap','2022-01-01')", [parityBundle,touchedItem,other]);
+  await db.exec(`
+    insert into lead_contact_dnc values('2025551299','synthetic replaced phone',now());
+    insert into lead_resale_ledger values('2025551203');
+    insert into mat_lead_pool(rid,source,phone10,first_name,state,age,tier,flags,lead_age_days,under_9mo,dnc) values
+      ('parity-held-copy','rewrite','2025551201','Held copy','TX',50,'S','{"true_dnc":false,"replaced_phone10":"2025551299"}',1,false,false),
+      ('parity-ready-b','rewrite','2025551201','Ready B','TX',50,'B','{"true_dnc":false}',100,false,false),
+      ('parity-ready-a','rewrite','2025551201','Ready A','TX',50,'A','{"true_dnc":false}',90,true,false),
+      ('parity-explicit-false','rewrite','2025551202','Explicit false','CA',60,'A','{"true_dnc":false,"current_client":true}',80,false,true),
+      ('parity-overlap','rewrite','2025551203','Overlap','TX',55,'B','{"true_dnc":false}',70,false,false),
+      ('parity-cross-source','dialer','2025551203','Cross-source hold','TX',55,'B','{"true_dnc":true,"current_client":true,"import_review_required":true}',70,false,true),
+      ('parity-touched','rewrite','2025551204','Work context','TX',45,'B','{"true_dnc":false,"last_caller":"Source caller","last_outcome":"never_called","times_called":2,"last_touched_at":"2020-01-01T00:00:00Z"}',5,false,false),
+      ('parity-unknown-tier','rewrite','2025551205','Unknown tier',null,null,'Z','{"true_dnc":false}',null,false,false);
+  `);
+  const parityFilters = [
+    {}, null, { exclude_dnc:true,exclude_resold:true,sort:'tier' }, { exclude_dnc:false,exclude_resold:false,sort:'age' },
+    { tiers:[] }, { states:[] }, { tiers:['A','B'] }, { tiers:['Z'] }, { states:['TX'],min_age:45,max_age:55 },
+    { states:['NY'] }, { min_age:80,max_age:40 }, { max_lead_age_days:90 }, { min_age:50 }, { max_age:50 },
+    ...['ready','true_dnc','current_client','review','assigned','resold'].map(hold=>({hold})),
+    { caller:'Caller Two' }, { caller:'Source caller' }, { caller:'%' }, { outcomes:['callback'] },
+    { states:['TX'],caller:'Caller Two',min_attempts:3,max_attempts:3 },
+    { touched_after:'2022-01-01',touched_before:'2022-01-01' }, { callback_before:'2021-01-03' },
+    { require_flags:['current_client'] }, { policy_standing:'current_client' }, { source_type:'absent' },
+  ];
+  for (const name of ['lead_pool_filter_matches','lead_pool_candidates','lead_pool_counts']) await db.exec(definition(migration,name));
+  const originalResponses = [];
+  for (const filters of parityFilters) originalResponses.push(await invoke('lead_pool_counts',['rewrite',filters]));
+  await db.exec(previewCostMigration);
+  for (let index=0;index<parityFilters.length;index++) {
+    const actual = await invoke('lead_pool_counts',['rewrite',parityFilters[index]]);
+    assert.deepEqual(actual,originalResponses[index],`Exact preview parity for ${JSON.stringify(parityFilters[index])}`);
+    assert(actual.sample.every(row=>!('replaced_phone10' in row.flags)), 'Raw replaced phones never reach the preview');
+  }
+  assert.equal(originalResponses[0].total,3); assert.equal(originalResponses[0].matching,5);
+  assert.equal(originalResponses[0].dnc_excluded,2); assert.equal(originalResponses[0].client_excluded,2);
+  assert.equal(originalResponses[0].review_excluded,1); assert.equal(originalResponses[0].resold_excluded,1);
+  assert.equal(originalResponses[0].in_bundle_excluded,1); assert.equal(originalResponses[0].under_9mo,1);
+  assert.deepEqual(originalResponses[0].by_tier,{A:1,B:1,Z:1});
+  const contextSample=originalResponses[0].sample.find(row=>row.first_name==='Work context');
+  assert.equal(contextSample.flags.last_caller,'Caller Two'); assert.equal(contextSample.flags.times_called,3);
+  assert.equal(contextSample.flags.last_outcome,'callback'); assert.equal(contextSample.flags.next_action,'Synthetic next action');
+
+  for (const role of ['anon','authenticated']) {
+    assert.equal(await scalar("select has_table_privilege($1,'public.v_lead_pool_candidate_base','SELECT')::int as n",[role]),0);
+    for (const signature of ['public.lead_pool_candidates_for_phones(text,jsonb,text[])','public.lead_pool_static_filter_matches(text,integer,text,integer,jsonb)']) {
+      assert.equal(await scalar("select has_function_privilege($1,$2,'EXECUTE')::int as n",[role,signature]),0);
+    }
+  }
   await db.exec('set role authenticated');
   await assert.rejects(invoke('lead_pool_candidates', ['marketing', {}]), /permission denied/);
+  await assert.rejects(invoke('lead_pool_candidates_for_phones', ['marketing', {}, ['2025551201']]), /permission denied/);
+  await assert.rejects(db.query('select * from public.v_lead_pool_candidate_base limit 1'), /permission denied/);
   await assert.rejects(invoke('sellable_pool', ['marketing', {}]), /permission denied/);
   await db.exec('reset role');
   await user(agent);
   await assert.rejects(invoke('lead_pool_counts', ['marketing', {}]), /Only lead administrators/);
-  console.log('PASS: complete migrations and real PostgreSQL filter parity, independent holds, immutable DNC, guarded assignment/transfer, callback history, safe rich export, pipeline identity safety, scope and snapshot statistics.');
+  console.log(`PASS: complete migrations; ${parityFilters.length} exact old/new preview responses; independent/overlapping holds; immutable DNC; guarded assignment/transfer; callback history; export/pipeline safety; private helper ACLs; scope; snapshot statistics.`);
+
+  // Optional measured scale check; synthetic-only and excluded from normal CI.
+  // Timings are comparative local PostgreSQL/WASM evidence, not live latency.
+  if (process.env.LEAD_POOL_BENCH_ROWS) {
+    const rows=Number(process.env.LEAD_POOL_BENCH_ROWS);
+    assert(Number.isSafeInteger(rows)&&rows>=1000&&rows<=250000,'Bounded synthetic row count');
+    await user(admin);
+    await db.query(`insert into mat_lead_pool(rid,source,phone10,first_name,state,age,tier,flags,lead_age_days,under_9mo,dnc)
+      select 'bench-'||g,'winback',(3030000000::bigint+g)::text,'Synthetic '||g,
+        (array['TX','FL','CA','NY','WA','PA','GA','OH','IL','AZ'])[g%10+1],30+g%50,
+        (array['S','pos','A','B','F','C','D'])[g%7+1],
+        '{"true_dnc":false,"last_caller":"Synthetic caller","last_outcome":"never_called","times_called":0,"last_touched_at":"2020-01-01T00:00:00Z"}'::jsonb,
+        g,g%4=0,false from generate_series(1,$1::integer) g`,[rows]);
+    await db.exec('create index if not exists mat_bench_source_tier on mat_lead_pool(source,tier); create index if not exists mat_bench_source_state on mat_lead_pool(source,state); create index if not exists bench_resale_phone on lead_resale_ledger(phone10); analyze');
+    const defaults={exclude_dnc:true,exclude_resold:true,sort:'tier'};
+    for (const name of ['lead_pool_filter_matches','lead_pool_candidates','lead_pool_counts']) await db.exec(definition(migration,name));
+    let started=performance.now();
+    const original=await invoke('lead_pool_counts',['winback',defaults]);
+    console.log(JSON.stringify({benchmark:'original-default',synthetic_rows:rows,ms:Math.round(performance.now()-started)}));
+    await db.exec(previewCostMigration);
+    const benchmarks=[
+      ['optimized-default',defaults],
+      ['optimized-common',{...defaults,states:['TX'],tiers:['A','B'],min_age:40,max_age:60}],
+      ['optimized-no-match',{...defaults,states:['ZZ']}],
+      ['optimized-advanced-narrowed',{...defaults,states:['TX'],caller:'Synthetic caller'}],
+    ];
+    for (const [label,filters] of benchmarks) {
+      started=performance.now(); const result=await invoke('lead_pool_counts',['winback',filters]);
+      if(label==='optimized-default') assert.deepEqual(result,original);
+      if(label==='optimized-no-match') { assert.equal(result.total,0); assert.deepEqual(result.sample,[]); }
+      if(label==='optimized-advanced-narrowed') assert.equal(result.total,Math.floor(rows/10));
+      if(label==='optimized-common') {
+        let expected=0;
+        for(let g=1;g<=rows;g++) if(g%10===0&&[2,3].includes(g%7)&&g%50>=10&&g%50<=30) expected++;
+        assert.equal(result.total,expected);
+      }
+      console.log(JSON.stringify({benchmark:label,synthetic_rows:rows,matching_rows:result.total,ms:Math.round(performance.now()-started)}));
+    }
+    // Nontrivial live history must not turn 25 sample enrichments back into a
+    // full-history aggregation. Removed items still contribute work/tap context.
+    const historicalPhones=Math.min(20000,rows);
+    await db.query(`insert into lead_bundle_items(bundle_id,phone10,status,status_at,status_by,callback_at,next_action,removed_at)
+      select $1,(3030000000::bigint+g)::text,'callback','2023-01-01',$2,'2024-01-03','Synthetic scaled follow-up',now()
+      from generate_series(1,$3::integer) g`,[parityBundle,agent,historicalPhones]);
+    await db.query(`insert into lead_bundle_events(bundle_id,item_id,actor,action,at)
+      select i.bundle_id,i.id,$1,'dial_tap','2024-01-01'::timestamptz+n*interval '1 hour'
+      from lead_bundle_items i cross join generate_series(1,3) n
+      where i.phone10>='3030000001' and i.phone10<=($2::bigint+3030000000)::text`,[other,historicalPhones]);
+    await db.exec('analyze lead_bundle_items; analyze lead_bundle_events');
+    started=performance.now();
+    const historyResult=await invoke('lead_pool_counts',['winback',defaults]);
+    assert.equal(historyResult.total,rows);
+    assert(historyResult.sample.every(row=>row.flags.last_caller==='Caller Two'&&row.flags.times_called===3&&row.flags.next_action==='Synthetic scaled follow-up'));
+    console.log(JSON.stringify({benchmark:'optimized-default-with-history',synthetic_rows:rows,historical_phones:historicalPhones,dial_tap_events:historicalPhones*3,ms:Math.round(performance.now()-started)}));
+  }
 } finally { await db.close(); }

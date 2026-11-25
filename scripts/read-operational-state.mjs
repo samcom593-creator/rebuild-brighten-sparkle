@@ -82,6 +82,7 @@ function sanitize(name, value) {
       fn_user_login_blocked:'public.fn_user_login_blocked(uuid)',
       fn_user_is_suspended:'public.fn_user_is_suspended(uuid)',
       fn_agent_is_suspended:'public.fn_agent_is_suspended(uuid)',
+      set_agent_active:'public.set_agent_active(uuid[],boolean)',
       personal_task_identity:'public.personal_task_identity()',
       personal_task_list:'public.personal_task_list(uuid)',
       personal_task_set_completed:'public.personal_task_set_completed(uuid,uuid,boolean)',

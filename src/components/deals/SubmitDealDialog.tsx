@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { invalidateOperationalTruth } from "@/lib/invalidateOperationalTruth";
+import { announcePostedDealReceipt } from "@/lib/dealCelebrations";
 import { normalizePolicyNumber, sanitizePolicyInput, isWithinPolicyNumberGrace, policyNumberGrade } from "@/lib/policyNumber";
 import { LEAD_TYPES } from "@/lib/leadTypes";
 import { enqueue, isOffline, isTransportError } from "@/lib/offlineQueue";
@@ -638,6 +639,7 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
       dealStatus?: string;
       downstreamState?: string;
       correlationId?: string;
+      replayed?: boolean;
     }>("submit_apex_deal", queuedArgs);
     if (error || !data?.dealId) {
       if (error && isTransportError(error)) queueCurrentDeal();
@@ -652,6 +654,7 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
       correlationId: data.correlationId || "recorded",
     };
     setReceipt(nextReceipt);
+    if (user?.id) announcePostedDealReceipt(user.id, data);
     onPosted?.({
       dealId: data.dealId,
       status: nextReceipt.status,

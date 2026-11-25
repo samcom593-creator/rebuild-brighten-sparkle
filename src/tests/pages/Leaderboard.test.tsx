@@ -141,6 +141,8 @@ describe("Leaderboard", () => {
   it("states the $5,000 rule on the board and shows no lead spend anywhere", async () => {
     renderPage();
     expect(await screen.findByText("Jontay Taylor")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Wins & Awards" })).toHaveAttribute("href", "/dashboard/awards");
+    expect(screen.getByRole("link", { name: "Hall of Fame" })).toHaveAttribute("href", "/dashboard/hall-of-fame");
     expect(screen.getByText(/The \$5,000 rule\./)).toBeInTheDocument();
     expect(screen.getByText(/Only agents with \$5,000 or more in sales in October are ranked\. Anyone under \$5,000 for the month is not ranked or counted\./)).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/lead spend|after leads/i);

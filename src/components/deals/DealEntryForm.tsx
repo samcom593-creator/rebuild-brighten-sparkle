@@ -1,11 +1,9 @@
 import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { invalidateOperationalTruth } from "@/lib/invalidateOperationalTruth";
-import { resolveBrand } from "@/config/brand";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
-const BRAND = resolveBrand();
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DollarSign, Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { celebrateDeal } from "@/lib/gameFx";
+import { announcePostedDealReceipt } from "@/lib/dealCelebrations";
 import { normalizePolicyNumber, sanitizePolicyInput } from "@/lib/policyNumber";
 import { QueryState } from "@/components/ui/query-state";
 
@@ -106,7 +104,7 @@ export function DealEntryForm({ onSaved }: { onSaved?: () => void }) {
       const agentRow = rows.find((r) => !r.canonical_agent_id) ?? rows[0] ?? null;
       if (!agentRow?.id) throw new Error("No agent record found for your account");
 
-      const { error } = await supabase.from("deals" as any).insert({
+      const { data, error } = await supabase.from("deals").insert({
         agent_id: agentRow.id,
         carrier_id: form.carrier_id || null,
         client_first_name: form.client_first_name,
@@ -123,19 +121,16 @@ export function DealEntryForm({ onSaved }: { onSaved?: () => void }) {
         policy_term_months: form.policy_term_months ? parseInt(form.policy_term_months) : null,
         notes: form.notes || null,
         status,
-      });
+      }).select("id").single();
       if (error) throw error;
 
       toast.success(
         status === "draft"
           ? "Saved as draft"
-          : `Deal submitted — ${BRAND.platformName} production is updating now`,
+          : "Deal submitted",
       );
 
-      // Celebrate closed deals: coin rain + gold flash + level-up banner
-      if (status !== "draft") {
-        celebrateDeal(parseFloat(form.monthly_premium) || 0);
-      }
+      if (status !== "draft" && data?.id) announcePostedDealReceipt(user.id, { dealId: data.id, status });
 
       setForm(blank);
       invalidateOperationalTruth(queryClient);

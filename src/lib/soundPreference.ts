@@ -10,8 +10,10 @@ const KEY = "apex_sound_enabled";
 const EVENT = "apex:sound-preference";
 
 let memoryChoice: boolean | undefined;
+let failedWriteChoice: boolean | undefined;
 
 export function isSoundEnabled(): boolean {
+  if (failedWriteChoice !== undefined) return failedWriteChoice;
   try {
     return localStorage.getItem(KEY) !== "false";
   } catch { return memoryChoice ?? true; } // empty-catch-allow:localstorage-incognito
@@ -21,14 +23,20 @@ export function setSoundEnabled(on: boolean): void {
   memoryChoice = on;
   try {
     localStorage.setItem(KEY, String(on));
-  } catch { /* private mode: the choice lasts for this page */ } // empty-catch-allow:localstorage-incognito
+    failedWriteChoice = undefined;
+  } catch { failedWriteChoice = on; } // A readable store can still reject writes (quota/private mode).
   if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent(EVENT, { detail: on }));
 }
 
 /** Calls back whenever the preference changes, in this tab or another. Returns the unsubscribe. */
 export function subscribeSoundPreference(onChange: () => void): () => void {
   if (typeof window === "undefined") return () => undefined;
-  const onStorage = (event: StorageEvent) => { if (event.key === KEY) onChange(); };
+  const onStorage = (event: StorageEvent) => {
+    if (event.key !== KEY && event.key !== null) return;
+    failedWriteChoice = undefined;
+    memoryChoice = event.key === null || event.newValue !== "false";
+    onChange();
+  };
   window.addEventListener(EVENT, onChange);
   window.addEventListener("storage", onStorage);
   return () => {

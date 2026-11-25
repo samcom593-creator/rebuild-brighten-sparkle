@@ -503,7 +503,9 @@ export default function AwardGraphics() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredBatches.map((batch) => (
+                  {filteredBatches.map((batch) => {
+                    const artifactUrl = getStorageUrl(batch.top_producer_file);
+                    return (
                     <TableRow key={batch.id} className="hover:bg-muted/20 transition-colors">
                       <TableCell className="text-xs text-muted-foreground">{format(new Date(batch.created_at), "MMM d, yyyy h:mm a")}</TableCell>
                       <TableCell>
@@ -523,9 +525,9 @@ export default function AwardGraphics() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
-                          {batch.top_producer_file && (
+                          {artifactUrl && (
                             <Button asChild variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-primary/10" aria-label="Download top producer graphic">
-                              <a href={getStorageUrl(batch.top_producer_file) || "#"} target="_blank" rel="noopener noreferrer"><Download className="h-3.5 w-3.5" /></a>
+                              <a href={artifactUrl} target="_blank" rel="noopener noreferrer"><Download className="h-3.5 w-3.5" /></a>
                             </Button>
                           )}
                           <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-primary/10" onClick={() => regenerateMutation.mutate(batch)} disabled={regenerateMutation.isPending}>
@@ -534,7 +536,8 @@ export default function AwardGraphics() {
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

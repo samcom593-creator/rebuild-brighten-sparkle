@@ -60,6 +60,7 @@ import { personInitials } from "@/lib/personInitials";
 import { TONE_CLASS } from "@/lib/tones";
 import { cn } from "@/lib/utils";
 import { PeriodComparisonBars } from "@/components/dashboard/ProductionVisuals";
+import { RecruitingActivityChart } from "@/components/dashboard/RecruitingActivityChart";
 
 const ICONS: Record<ConversionKind, ComponentType<{ className?: string }>> = {
   applied: UserPlus,
@@ -113,6 +114,7 @@ function Tile({ step, payload, onOpen }: { step: ConversionStep; payload: Conver
           // apex-lift (src/styles/delight.css) owns the motion: a 1px lift for a real pointer and
           // a press on touch, plus the colour transitions.
           className="dashboard-conversions__tile apex-lift flex min-w-0 flex-col justify-start bg-card p-3 text-left hover:bg-muted/40 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] sm:p-5"
+          data-tone={tone}
         >
           <span className="flex min-h-10 flex-row items-center gap-2 sm:min-h-12">
             <ToneBubble tone={tone} size="sm"><Icon /></ToneBubble>
@@ -338,6 +340,7 @@ export function HomeConversions({ range, rangeLabel }: { range?: ConversionRange
           <div className="flex min-w-0 items-center gap-3">
             <ToneBubble tone="gold" size="md" className="apex-pop"><Sparkles /></ToneBubble>
             <div className="min-w-0">
+              <p className="dashboard-board-eyebrow">Recruiting / pipeline</p>
               <h2 id="home-conversions-title" className="dashboard-conversions__title text-foreground">Conversions</h2>
               <p className="text-sm text-muted-foreground">
                 {ranged ? "Who moved forward in the selected dates. Tap a number to see who." : "Who moved forward. Tap a number to see who."}
@@ -387,6 +390,7 @@ export function HomeConversions({ range, rangeLabel }: { range?: ConversionRange
           ))}
         </div>
         )}
+        {ranged && <RecruitingActivityChart payload={payload} />}
       </section>
       <ConversionListSheet kind={open} payload={payload} onClose={close} returnFocusTo={opener} rangeLabel={ranged ? rangeLabel ?? "Selected dates" : undefined} />
     </TooltipProvider>

@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 import {
@@ -32,8 +32,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBusinessToday } from "@/hooks/useBusinessToday";
 import { resolveBrand } from "@/config/brand";
 import { scoreboardWindow, type ScoreboardPeriod } from "@/lib/scoreboardPeriod";
+import { suppressDealCelebrations } from "@/lib/dealCelebrations";
 import { useRealtimeTable } from "@/shared/realtime/useRealtimeTable";
-import { EarningsMixChart, ProductionMixChart } from "@/components/dashboard/ProductionVisuals";
+import { EarningsMixChart, MonthPaceChart, ProductionMixChart } from "@/components/dashboard/ProductionVisuals";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -286,6 +287,24 @@ export interface ScoreboardDateControl {
   hideControls?: boolean;
 }
 
+/** Canonical first-hop identity keeps separate teams distinct even when their names match. */
+export function groupScoreboardAgents(rows: ScoreboardAgentRow[]) {
+  const groups = new Map<string, { id: string; label: string; rows: ScoreboardAgentRow[]; policies: number; ap: number; est: number }>();
+  for (const row of rows) {
+    const vantage = /vantage/i.test(row.agency);
+    const firstHop = row.first_hop_name && row.first_hop_id && row.first_hop_id !== row.agent_id && !row.is_self;
+    const id = vantage ? "agency:vantage" : firstHop ? `hierarchy:${row.first_hop_id}` : "agency:direct";
+    const label = vantage ? "Vantage Financial" : firstHop ? row.first_hop_name! : `${BRAND.shortName} — direct`;
+    const group = groups.get(id) ?? { id, label, rows: [], policies: 0, ap: 0, est: 0 };
+    group.rows.push(row);
+    group.policies += row.policies;
+    group.ap += row.ap;
+    group.est += row.est_override;
+    groups.set(id, group);
+  }
+  return Array.from(groups.values()).sort((a, b) => b.ap - a.ap || a.label.localeCompare(b.label) || a.id.localeCompare(b.id));
+}
+
 export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDateControl } = {}) {
   // Default to month-to-date, not "day". The board / leaderboard on the same
   // page show MTD, so a "day" default made this card read ~$0 while KJ's team's
@@ -306,6 +325,9 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
   // Present mode: blur the things Sam doesn't post (names / projection / agency split / earnings).
   const [blur, setBlur] = useState({ names: false, projection: false, split: false, earnings: false, comp: false });
   const presenting = blur.names && blur.projection && blur.split && blur.earnings && blur.comp;
+  useEffect(() => {
+    if (presenting) return suppressDealCelebrations();
+  }, [presenting]);
   const toggleAll = () => {
     const next = !presenting;
     setBlur({ names: next, projection: next, split: next, earnings: next, comp: next });
@@ -464,24 +486,7 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
   // "separate Vantage, Apex, and whoever has a hierarchy — OB, Judy — make it collapsible"). Vantage is
   // its own group; everyone else groups under the sub-agency head who sits one hop below Sam; Sam's own
   // direct sellers group under "<Brand> — direct". Sorted by AP so the biggest agency leads.
-  const agentGroups = useMemo(() => {
-    const rows = data?.by_agent ?? [];
-    const groups = new Map<string, { label: string; rows: typeof rows; policies: number; ap: number; est: number }>();
-    for (const row of rows) {
-      const label = /vantage/i.test(row.agency)
-        ? "Vantage Financial"
-        : row.first_hop_name && row.first_hop_id && row.first_hop_id !== row.agent_id && !row.is_self
-          ? row.first_hop_name
-          : `${BRAND.shortName} — direct`;
-      const g = groups.get(label) ?? { label, rows: [], policies: 0, ap: 0, est: 0 };
-      g.rows.push(row);
-      g.policies += row.policies;
-      g.ap += row.ap;
-      g.est += row.est_override;
-      groups.set(label, g);
-    }
-    return Array.from(groups.values()).sort((a, b) => b.ap - a.ap);
-  }, [data]);
+  const agentGroups = useMemo(() => groupScoreboardAgents(data?.by_agent ?? []), [data]);
 
   return (
     <Card className="dashboard-production overflow-hidden border-primary/35 bg-primary/[0.035]">
@@ -565,18 +570,21 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
                 detail={`${policies(data.personal.policies)} you sold`}
                 icon={TrendingUp}
                 label="My personal production"
+                tone="good"
                 value={money(data.personal.ap)}
               />
               <KPIStat
                 detail={`${policies(data.direct_team.policies)} · ${plural(data.direct_team.agents_current ?? data.direct_team.agents, "current direct agent")}${data.direct_team.agents_current != null ? ` (${data.direct_team.agents} on record)` : ""}`}
                 icon={Users}
                 label="My direct team"
+                tone="cool"
                 value={money(data.direct_team.ap)}
               />
               <KPIStat
                 detail={`${policies(data.recursive_team.policies)} · ${data.scope_label}`}
                 icon={Layers}
                 label="My team production"
+                tone="good"
                 value={money(data.recursive_team.ap)}
               />
               {isAdmin && data.imo && (
@@ -593,18 +601,22 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
               )}
             </div>
 
-            {projectionData?.has_producer_profile && (
-              <details className="group/projections border-t border-border bg-background/40 p-4">
-                <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm font-medium text-foreground">
-                  <Sparkles className="h-4 w-4 text-primary" /> Month-end projections
-                  <ChevronDown className="ml-auto h-4 w-4 group-open/projections:rotate-180" />
-                </summary>
-                <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <div className="dashboard-production__pace border-t border-border p-4">
+              <QueryState
+                {...describeQuery(projection)}
+                label="month-end projections"
+                asOf={projection.dataUpdatedAt}
+                onRetry={() => void projection.refetch({ cancelRefetch: false })}
+                title="Month-end projections are unavailable"
+                body="The selected-period production above is still shown."
+              >
+              {projectionData?.has_producer_profile && (
+              <section aria-label="Month-end projections">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                   <div>
-                    <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                      <Sparkles className="h-3.5 w-3.5 text-primary" /> Projected month-end production
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">Live MTD pace · Phoenix time · {projectionData.scope_label}</p>
+                    <p className="dashboard-board-eyebrow"><Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> Pace / current month</p>
+                    <h3 className="dashboard-board-title">Month-end projections</h3>
+                    <p className="mt-1 text-xs text-muted-foreground">Live MTD pace · Phoenix time · {projectionData.scope_label}. Separate from the selected dates above.</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <p className="text-[12px] text-muted-foreground">Day {projectionData.elapsed_calendar_days} of {projectionData.days_in_month}</p>
@@ -612,51 +624,60 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
                   </div>
                 </div>
 
-                <div className={projectionData.imo ? "mt-3 grid gap-2 sm:grid-cols-3" : "mt-3 grid gap-2 sm:grid-cols-2"}>
+                <div className={projectionData.imo ? "mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3" : "mt-4 grid gap-3 sm:grid-cols-2"}>
                   {[
                     { key: "personal", label: "My projected production", metric: projectionData.personal },
                     { key: "team", label: "My team projected", metric: projectionData.team },
                     ...(projectionData.imo ? [{ key: "imo", label: "Full IMO projected", metric: projectionData.imo }] : []),
                   ].map(({ key, label, metric }) => (
-                    <div className="rounded-lg border border-border/70 bg-card p-3" key={key}>
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+                    <div className="dashboard-pace-card min-w-0 rounded-lg border border-border/70 bg-card p-3" key={key}>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
                         <Badge variant={metric.confidence === "low" ? "outline" : "secondary"}>{metric.confidence} confidence</Badge>
                       </div>
-                      <p className="mt-2 text-2xl font-bold tabular-nums text-primary"><Reveal on={blur.projection}>{money(metric.projected_ap)}</Reveal></p>
-                      <p className="mt-1 text-xs text-muted-foreground">MTD <Reveal on={blur.projection}>{money(metric.mtd_ap)}</Reveal> · {policies(metric.policies)} · {metric.active_days} selling days</p>
+                      <p className="dashboard-pace-card__value mt-3"><Reveal on={blur.projection}>{money(metric.projected_ap)}</Reveal></p>
+                      <p className="mt-1 text-xs text-muted-foreground">MTD <Reveal on={blur.projection}>{money(metric.mtd_ap)} · {policies(metric.policies)} · {metric.active_days} selling days</Reveal></p>
+                      <MonthPaceChart
+                        actual={metric.mtd_ap}
+                        projected={metric.projected_ap}
+                        elapsedDays={projectionData.elapsed_calendar_days}
+                        daysInMonth={projectionData.days_in_month}
+                        hidden={blur.projection}
+                      />
                     </div>
                   ))}
                 </div>
 
                 {projectionData.agencies.length > 0 && (
-                  <div className="mt-3 rounded-lg border border-border/70 bg-card p-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Agency projections</p>
+                  <details className="dashboard-agency-projections mt-3 rounded-lg border border-border/70 bg-card p-3">
+                    <summary className="min-h-11 cursor-pointer text-sm font-semibold uppercase tracking-wide text-muted-foreground">Agency projections</summary>
                     <div className="mt-2 divide-y divide-border/70">
                       {projectionData.agencies.map((agency) => (
                         <div className="flex items-center justify-between gap-3 py-2 first:pt-0 last:pb-0" key={agency.agency}>
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-medium text-foreground">{agency.agency}</p>
-                            <p className="text-[12px] text-muted-foreground">MTD {money(agency.mtd_ap)} · {policies(agency.policies)}</p>
+                            <p className="truncate text-sm font-medium text-foreground"><Reveal on={blur.names || blur.split}>{agency.agency}</Reveal></p>
+                            <p className="text-[12px] text-muted-foreground">MTD <Reveal on={blur.projection}>{money(agency.mtd_ap)} · {policies(agency.policies)}</Reveal></p>
                           </div>
                           <div className="shrink-0 text-right">
                             <p className="font-bold tabular-nums text-foreground"><Reveal on={blur.projection}>{money(agency.projected_ap)}</Reveal></p>
-                            <p className="text-[11px] uppercase text-muted-foreground">projected · {agency.confidence}</p>
+                            <p className="text-[13px] uppercase text-muted-foreground">projected · {agency.confidence}</p>
                           </div>
                         </div>
                       ))}
                     </div>
-                  </div>
+                  </details>
                 )}
 
                 <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">{projectionData.basis}</p>
-              </details>
-            )}
+              </section>
+              )}
+              </QueryState>
+            </div>
 
             <div className="grid border-t border-border lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
               <div className="border-b border-border p-4 lg:border-b-0 lg:border-r">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  <p className="dashboard-board-eyebrow">
                     <CircleDollarSign className="h-3.5 w-3.5" /> My estimated earnings
                   </p>
                   <div className="flex items-center gap-1.5">
@@ -665,8 +686,9 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
                   </div>
                 </div>
                 <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                  <p className="text-3xl font-bold tabular-nums text-primary"><Reveal on={blur.earnings}>{money(data.earnings.estimated)}</Reveal></p>
+                  <p className="dashboard-earnings-value"><Reveal on={blur.earnings}>{money(data.earnings.estimated)}</Reveal></p>
                 </div>
+                <p className="mt-1 text-xs text-muted-foreground">Selected dates · estimated gross commission, not paid cash</p>
                 <EarningsMixChart direct={data.earnings.direct} override={data.earnings.override} hidden={blur.earnings} />
                 <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
                   <dt className="text-muted-foreground">Direct</dt>
@@ -690,8 +712,8 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
 
               <div className="p-4">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                    <Building2 className="h-3.5 w-3.5" /> Production by hierarchy
+                  <p className="dashboard-board-eyebrow">
+                    <Building2 className="h-3.5 w-3.5" /> Hierarchy / production ranks
                   </p>
                   <SectionEye on={blur.split} onToggle={() => toggleBlur("split")} label="agency split" />
                 </div>
@@ -729,7 +751,7 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
                 </div>
               )}
               <div className="flex items-center justify-between gap-2 px-4 pt-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Who sold · by agency</p>
+                <p className="text-sm font-semibold uppercase tracking-[0.08em] text-muted-foreground">Who sold · by agency</p>
                 <div className="flex items-center gap-2">
                   <p className="hidden text-xs text-muted-foreground sm:block">{data.by_agent.length} producers · {agentGroups.length} agencies</p>
                   <SectionEye on={blur.names} onToggle={() => toggleBlur("names")} label="names" />
@@ -770,12 +792,12 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
                     </TableHeader>
                     <TableBody>
                       {agentGroups.map((group) => {
-                        const collapsed = collapsedGroups[group.label];
+                        const collapsed = collapsedGroups[group.id];
                         return (
-                        <Fragment key={group.label}>
+                        <Fragment key={group.id}>
                         <TableRow
                           className="cursor-pointer bg-muted/40 hover:bg-muted/70"
-                          onClick={() => setCollapsedGroups((c) => ({ ...c, [group.label]: !c[group.label] }))}
+                          onClick={() => setCollapsedGroups((c) => ({ ...c, [group.id]: !c[group.id] }))}
                         >
                           <TableCell colSpan={2} className="font-semibold text-foreground">
                             <span className="inline-flex items-center gap-1.5">
@@ -786,7 +808,6 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
                           </TableCell>
                           <TableCell className="text-right tabular-nums">{group.policies.toLocaleString()}</TableCell>
                           <TableCell className="text-right font-semibold tabular-nums text-foreground">{money(group.ap)}</TableCell>
-                          <TableCell colSpan={2} />
                           <TableCell className="text-right tabular-nums text-muted-foreground">{money(group.est)}</TableCell>
                           <TableCell />
                         </TableRow>

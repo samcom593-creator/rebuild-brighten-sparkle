@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { randomBytes, createCipheriv, publicEncrypt, constants } from 'node:crypto';
 
 const PROJECT = 'xrzweoneiieddzxogewk';
-const QUERY_FILES = { audio: 'audio.sql', finances: 'finances.sql', carrier_status: 'carrier-status.sql', production: 'production.sql', definitions: 'definitions.sql', release: 'release.sql' };
+const QUERY_FILES = { audio: 'audio.sql', finances: 'finances.sql', carrier_status: 'carrier-status.sql', production: 'production.sql', definitions: 'definitions.sql', release: 'release.sql', lead_performance: 'lead-performance.sql' };
 const SIGNERS = ['readymode-recording-url', 'training-recording-url', 'lead-recording-url', 'personal-task-create'];
 const AUDIO_COUNTS = [
   'dialer_calls','calls_with_provider_recording_reference','calls_linked_to_agent','calls_linked_to_application','calls_linked_to_lead',
@@ -58,6 +58,37 @@ const array = value => { if (!Array.isArray(value) || value.length > 100) throw 
 const date = value => { if (value !== null && (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value))) throw new Error('invalid aggregate date'); return value; };
 
 function sanitize(name, value) {
+  if (name === 'lead_performance') {
+    const row = object(value);
+    if (row.application_functions_executed !== false || row.lead_rows_read !== false || row.auth_claims_changed !== false) throw new Error('invalid lead metadata boundary');
+    const contracts = {
+      lead_pool_counts: 'public.lead_pool_counts(text,jsonb)',
+      lead_pool_candidates: 'public.lead_pool_candidates(text,jsonb)',
+      lead_pool_filter_matches: 'public.lead_pool_filter_matches(text,integer,text,integer,jsonb,jsonb)',
+    };
+    const source = object(row.functions);
+    const functions = Object.fromEntries(Object.entries(contracts).map(([key, signature]) => {
+      const f = object(source[key]);
+      if (f.signature !== signature) throw new Error('unexpected lead function signature');
+      const present = boolean(f.present);
+      if (present) {
+        if (typeof f.definition !== 'string' || f.definition.length > 100000 || !f.definition.startsWith(`CREATE OR REPLACE FUNCTION public.${key}(`) || f.definition.includes('\u0000')) throw new Error('invalid lead function definition');
+      } else if (f.definition !== null || f.proconfig !== null) throw new Error('missing lead function has metadata');
+      const proconfig = f.proconfig === null ? null : array(f.proconfig).map(value => {
+        if (typeof value !== 'string' || value.length > 500 || !/^(search_path|statement_timeout|lock_timeout|work_mem|jit)=[A-Za-z0-9_ ,.$"-]+$/.test(value)) throw new Error('invalid lead function configuration');
+        return value;
+      });
+      return [key, { signature, present, definition: f.definition, proconfig }];
+    }));
+    const indexes = array(row.indexes).map(value => {
+      const i = object(value);
+      const table = enumeration(i.table, ['mat_lead_pool', 'lead_bundle_items', 'lead_bundle_events', 'lead_resale_ledger']);
+      if (typeof i.name !== 'string' || !/^[A-Za-z_][A-Za-z0-9_]{0,62}$/.test(i.name)) throw new Error('invalid lead index name');
+      if (typeof i.definition !== 'string' || i.definition.length > 20000 || i.definition.includes('\u0000') || !i.definition.startsWith(`CREATE INDEX ${i.name} ON public.${table} `) && !i.definition.startsWith(`CREATE UNIQUE INDEX ${i.name} ON public.${table} `)) throw new Error('invalid lead index definition');
+      return { table, name: i.name, definition: i.definition };
+    });
+    return { application_functions_executed: false, lead_rows_read: false, auth_claims_changed: false, functions, indexes };
+  }
   if (name === 'audio') {
     const row = object(value);
     return Object.fromEntries([...AUDIO_COUNTS.map(key => [key, count(row[key])]), ...AUDIO_BOOLEANS.map(key => [key, boolean(row[key])])]);

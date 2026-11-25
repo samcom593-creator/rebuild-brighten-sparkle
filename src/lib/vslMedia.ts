@@ -1,4 +1,6 @@
 import { resolveBrand } from "@/config/brand";
+import { LICENSING_VIDEO } from "@/lib/licensingMedia";
+import type { PublicRecruitingTrack } from "@/lib/publicRecruitingFlow";
 
 const VSL_MEDIA_BASE =
   "https://xrzweoneiieddzxogewk.supabase.co/storage/v1/object/public/training-videos/vsl/2026-09-02";
@@ -39,3 +41,34 @@ export const VSL_VIDEO_SCHEMA = {
   contentUrl: VSL_VIDEO.src,
   embedUrl: VSL_VIDEO.pageUrl,
 } as const;
+
+/** The same licensing object used by /get-licensed, described on this public entry page. */
+export const LICENSING_VSL_SCHEMA = {
+  "@context": "https://schema.org",
+  "@type": "VideoObject",
+  name: LICENSING_VIDEO.title,
+  description: LICENSING_VIDEO.description,
+  thumbnailUrl: LICENSING_VIDEO.poster,
+  uploadDate: LICENSING_VIDEO.src.split("/").at(-2),
+  duration: `PT${Math.floor(LICENSING_VIDEO.durationSeconds / 60)}M${LICENSING_VIDEO.durationSeconds % 60}S`,
+  contentUrl: LICENSING_VIDEO.src,
+  embedUrl: `${VSL_VIDEO.pageUrl}?track=licensing-roadmap`,
+} as const;
+
+/** Preserve the generic/agency-builder overview; the explicit unlicensed door gets licensing. */
+export function recruitingVslForTrack(track: PublicRecruitingTrack | null) {
+  if (track === "licensing-roadmap") {
+    return {
+      video: LICENSING_VIDEO,
+      schema: LICENSING_VSL_SCHEMA,
+      analyticsId: "licensing-2026-09-15",
+      label: "Licensing walkthrough",
+    } as const;
+  }
+  return {
+    video: VSL_VIDEO,
+    schema: VSL_VIDEO_SCHEMA,
+    analyticsId: "vsl-2026-09-02",
+    label: `${BRAND.shortName} producer overview`,
+  } as const;
+}

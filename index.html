@@ -11,10 +11,10 @@
       // making admins (Sam) see zero leads even after the fix shipped.
       // BUMP_VERSION below — increment whenever a cache-eviction is needed.
       //
-      // BUMP_VERSION includes the canonical VSL release date. The build-time
+      // BUMP_VERSION includes both canonical recruiting-video release dates. The build-time
       // VSL sync guard ensures a new cut also evicts stale browser bundles.
       (function() {
-        var BUMP_VERSION = "2026-09-02-final-apex-vsl";
+        var BUMP_VERSION = "2026-11-25-audience-vsl-2026-09-02-2026-09-15";
         try {
           // ⚠️ NEVER touch the Supabase auth token here. This block used to
           // collect EVERY localStorage key containing the project ref
@@ -175,17 +175,20 @@
     <link rel="preconnect" href="https://xrzweoneiieddzxogewk.supabase.co" />
     <link rel="dns-prefetch" href="https://xrzweoneiieddzxogewk.supabase.co" />
 
-    <!-- The native player lives on /vsl only. Its no-cors poster preload
+    <!-- The native player lives on /vsl only. Its audience-matched no-cors poster preload
          must not consume bandwidth on the two-choice homepage or app routes. -->
     <script>
       (function() {
         var p = location.pathname.replace(/\/+$/, '') || '/';
         if (p !== '/vsl') return;
+        var track = (new URLSearchParams(location.search).get('track') || '').trim().toLowerCase();
         var l = document.createElement('link');
         l.rel = 'preload';
         l.as = 'image';
         l.setAttribute('fetchpriority', 'high');
-        l.href = "https://xrzweoneiieddzxogewk.supabase.co/storage/v1/object/public/training-videos/vsl/2026-09-02/galaxy-vsl-poster.jpg";
+        l.href = track === 'licensing-roadmap'
+          ? "https://xrzweoneiieddzxogewk.supabase.co/storage/v1/object/public/training-videos/licensing/2026-09-15/how-to-get-your-life-insurance-license-poster.jpg"
+          : "https://xrzweoneiieddzxogewk.supabase.co/storage/v1/object/public/training-videos/vsl/2026-09-02/galaxy-vsl-poster.jpg";
         document.head.appendChild(l);
       })();
     </script>

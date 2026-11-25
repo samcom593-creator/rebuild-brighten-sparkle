@@ -2,6 +2,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getRefSlug } from "@/lib/refSlug";
+import { LICENSING_VIDEO } from "@/lib/licensingMedia";
 import { VSL_VIDEO } from "@/lib/vslMedia";
 
 const auth = vi.hoisted(() => ({ user: null as null | { id: string }, isLoading: false }));
@@ -52,12 +53,15 @@ describe("two-choice public recruiting home", () => {
   });
 
   it.each([
-    ["Yes, I'm Currently Licensed", "licensed-producer"],
-    ["No, I'm Unlicensed", "licensing-roadmap"],
-  ])("carries %s through the real VSL and into the application with campaign context", (answer, track) => {
+    ["Yes, I'm Currently Licensed", "licensed-producer", VSL_VIDEO],
+    ["No, I'm Unlicensed", "licensing-roadmap", LICENSING_VIDEO],
+  ] as const)("carries %s through the real VSL and into the application with campaign context", (answer, track, video) => {
     renderHome("?ref=synthetic-agent&track=agency-builder&source=ad&utm_medium=paid_social&gclid=synthetic-click&email=private@example.invalid");
     fireEvent.click(screen.getByRole("link", { name: answer }));
-    expect(screen.getByLabelText(VSL_VIDEO.title)).toHaveAttribute("controls");
+    const player = screen.getByLabelText(video.title);
+    expect(player).toHaveAttribute("controls");
+    expect(player).toHaveAttribute("poster", video.poster);
+    expect(player.querySelector("source")).toHaveAttribute("src", video.src);
     const applyLinks = within(screen.getByRole("main")).getAllByRole("link");
     expect(applyLinks).toHaveLength(1);
     fireEvent.click(applyLinks[0]);

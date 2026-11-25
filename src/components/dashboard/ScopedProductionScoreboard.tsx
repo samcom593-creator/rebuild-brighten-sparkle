@@ -594,7 +594,7 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
               <KPIStat
                 detail={`${policies(data.personal.policies)} you sold`}
                 icon={TrendingUp}
-                label="My production"
+                label="My personal production"
                 prominent={!isAdmin}
                 tone="good"
                 unit="ALP"
@@ -611,7 +611,7 @@ export function ScopedProductionScoreboard({ control }: { control?: ScoreboardDa
               <KPIStat
                 detail={`${policies(data.recursive_team.policies)} · ${data.scope_label}`}
                 icon={Layers}
-                label="My full team"
+                label="My team production"
                 tone="good"
                 unit="ALP"
                 value={money(data.recursive_team.ap)}

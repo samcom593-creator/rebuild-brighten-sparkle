@@ -164,6 +164,9 @@ function sanitize(name, value) {
       lead_pool_filter_matches: 'public.lead_pool_filter_matches(text,integer,text,integer,jsonb,jsonb)',
       lead_pool_candidates_for_phones: 'public.lead_pool_candidates_for_phones(text,jsonb,text[])',
       lead_pool_static_filter_matches: 'public.lead_pool_static_filter_matches(text,integer,text,integer,jsonb)',
+      lead_pool_preview_candidates: 'public.lead_pool_preview_candidates(text,jsonb)',
+      lead_pool_assign: 'public.lead_pool_assign(text,jsonb,integer,uuid,text,text)',
+      sellable_pool: 'public.sellable_pool(text,jsonb)',
     };
     const source = object(row.functions);
     if (Object.keys(source).length !== Object.keys(contracts).length || Object.keys(source).some(key => !Object.hasOwn(contracts,key))) throw new Error('unexpected lead function set');
@@ -194,6 +197,9 @@ function sanitize(name, value) {
     const migration = object(row.migration);
     if (migration.version !== '20261125110000') throw new Error('unexpected lead migration');
     const migrationRecorded = boolean(migration.recorded);
+    const advancedMigration = object(row.advanced_migration);
+    if (advancedMigration.version !== '20261125130000') throw new Error('unexpected advanced lead migration');
+    const advancedMigrationRecorded = boolean(advancedMigration.recorded);
     const indexes = array(row.indexes).map(value => {
       const i = object(value);
       const table = enumeration(i.table, ['mat_lead_pool', 'lead_bundle_items', 'lead_bundle_events', 'lead_resale_ledger']);
@@ -203,7 +209,8 @@ function sanitize(name, value) {
     });
     return { application_functions_executed: false, lead_rows_read: false, auth_claims_changed: false, functions, indexes,
       candidate_view: { name: view.name, ...viewFlags, definition: view.definition },
-      migration: { version: migration.version, recorded: migrationRecorded } };
+      migration: { version: migration.version, recorded: migrationRecorded },
+      advanced_migration: { version: advancedMigration.version, recorded: advancedMigrationRecorded } };
   }
   if (name === 'audio') {
     const row = object(value);

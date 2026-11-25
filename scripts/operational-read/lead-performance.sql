@@ -5,7 +5,10 @@ with contracts(name, signature) as (values
   ('lead_pool_candidates', 'public.lead_pool_candidates(text,jsonb)'),
   ('lead_pool_filter_matches', 'public.lead_pool_filter_matches(text,integer,text,integer,jsonb,jsonb)'),
   ('lead_pool_candidates_for_phones', 'public.lead_pool_candidates_for_phones(text,jsonb,text[])'),
-  ('lead_pool_static_filter_matches', 'public.lead_pool_static_filter_matches(text,integer,text,integer,jsonb)')
+  ('lead_pool_static_filter_matches', 'public.lead_pool_static_filter_matches(text,integer,text,integer,jsonb)'),
+  ('lead_pool_preview_candidates', 'public.lead_pool_preview_candidates(text,jsonb)'),
+  ('lead_pool_assign', 'public.lead_pool_assign(text,jsonb,integer,uuid,text,text)'),
+  ('sellable_pool', 'public.sellable_pool(text,jsonb)')
 ), functions as (
   select c.name, c.signature, p.oid, p.proconfig, p.prosecdef, p.provolatile, p.proacl, p.proowner
   from contracts c left join pg_catalog.pg_proc p on p.oid = to_regprocedure(c.signature)
@@ -52,6 +55,9 @@ select jsonb_build_object(
   ) from candidate_view v),
   'migration',jsonb_build_object('version','20261125110000','recorded',exists (
     select 1 from supabase_migrations.schema_migrations where version::text='20261125110000'
+  )),
+  'advanced_migration',jsonb_build_object('version','20261125130000','recorded',exists (
+    select 1 from supabase_migrations.schema_migrations where version::text='20261125130000'
   )),
   'indexes', (select coalesce(jsonb_agg(jsonb_build_object(
     'table', i.tablename, 'name', i.indexname, 'definition', i.indexdef

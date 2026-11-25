@@ -122,6 +122,7 @@ export function applyScoreboardDemo(data: ScoreboardData | undefined, values: Va
   const total = <T extends Totals>(input: T): T => ({ ...input, ap: scaled(input.ap, apRatio), policies: scaled(input.policies, countRatio, true) });
   const next: ScoreboardData = {
     ...data,
+    ...(data.downline_only ? { downline_only: total(data.downline_only) } : {}),
     personal: total(data.personal), direct_team: total(data.direct_team), recursive_team: total(data.recursive_team),
     team: total(data.team), imo: data.imo ? total(data.imo) : null,
     earnings: { ...data.earnings },
@@ -223,10 +224,11 @@ export function applyScoreboardDemo(data: ScoreboardData | undefined, values: Va
   return next;
 }
 
-type ProjectionMetric = { mtd_ap: number; projected_ap: number; policies: number; active_days?: number };
+type ProjectionMetric = { mtd_ap: number; projected_ap: number | null; policies: number; active_days?: number; completed_ap?: number };
 export type DemoProjection = {
   has_producer_profile: boolean;
   elapsed_calendar_days: number;
+  team_includes_personal?: boolean;
   days_in_month: number;
   personal: ProjectionMetric;
   team: ProjectionMetric;
@@ -254,7 +256,7 @@ export function applyProjectionDemo<T extends DemoProjection>(data: T | undefine
   const apRatio = ap !== undefined && source.mtd_ap > 0 ? ap / source.mtd_ap : 1;
   const countRatio = policyCount !== undefined && source.policies > 0 ? policyCount / source.policies : 1;
   const metric = <M extends ProjectionMetric>(input: M): M => ({
-    ...input, mtd_ap: scaled(input.mtd_ap, apRatio), projected_ap: scaled(input.projected_ap, apRatio), policies: scaled(input.policies, countRatio, true),
+    ...input, mtd_ap: scaled(input.mtd_ap, apRatio), projected_ap: input.projected_ap === null ? null : scaled(input.projected_ap, apRatio), ...(input.completed_ap === undefined ? {} : { completed_ap: scaled(input.completed_ap, apRatio) }), policies: scaled(input.policies, countRatio, true),
   });
   const next = {
     ...data, personal: metric(data.personal), team: metric(data.team), imo: data.imo ? metric(data.imo) : null,
@@ -272,7 +274,7 @@ export function applyProjectionDemo<T extends DemoProjection>(data: T | undefine
     // manufacture those days, confidence, or uncapped calendar extrapolation.
     target.projected_ap = projectZero(source, ap);
   }
-  if (primary === "personal") {
+  if (primary === "personal" && data.team_includes_personal !== false) {
     if (source.mtd_ap === 0 && ap !== undefined && valid(data.team.mtd_ap)) {
       next.team.mtd_ap = cash(data.team.mtd_ap + ap);
       if (valid(data.team.projected_ap)) next.team.projected_ap = data.team.mtd_ap > 0
@@ -280,12 +282,12 @@ export function applyProjectionDemo<T extends DemoProjection>(data: T | undefine
     }
     if (source.policies === 0 && policyCount !== undefined && valid(data.team.policies, true)) next.team.policies = data.team.policies + policyCount;
   } else if (data.imo && next.imo) {
-    for (const key of ["mtd_ap", "projected_ap", "policies"] as const) if (data.team[key] === data.imo[key]) next.team[key] = next.imo[key];
+    for (const key of ["mtd_ap", "projected_ap", "policies"] as const) if (data.team_includes_personal !== false && data.team[key] === data.imo[key]) next.team[key] = next.imo[key];
   }
   const beforeScope = data.imo ?? data.team;
   const afterScope = next.imo ?? next.team;
   for (const key of ["mtd_ap", "projected_ap", "policies"] as const) {
-    allocateCompleteSeries(data.agencies, next.agencies, key, beforeScope[key], afterScope[key], key === "policies");
+    if (typeof beforeScope[key] === "number" && typeof afterScope[key] === "number") allocateCompleteSeries(data.agencies, next.agencies, key, beforeScope[key], afterScope[key], key === "policies");
   }
   return next;
 }

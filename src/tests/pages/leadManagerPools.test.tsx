@@ -16,10 +16,13 @@ const db = vi.hoisted(() => ({
   calls: [] as Array<{ fn: string; args: Record<string, unknown> }>,
   signed: [] as string[],
   invoked: [] as Array<{ fn: string; body: unknown }>,
+  recent: [] as Array<Record<string, unknown>>,
+  packRows: [] as Array<Record<string, unknown>>,
+  isAdmin: false,
 }));
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
-vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "manager-a" }, isLoading: false }) }));
+vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "manager-a" }, isAdmin: db.isAdmin, isLoading: false }) }));
 vi.mock("@/integrations/supabase/client", () => {
   const rpc = (fn: string, args?: Record<string, unknown>) => {
     db.calls.push({ fn, args: args ?? {} });
@@ -30,6 +33,8 @@ vi.mock("@/integrations/supabase/client", () => {
       case "lead_pool_counts":
         return ok({ total: 1234, by_tier: { A: 10, F: 900 }, under_9mo: 0, dnc_excluded: 3, resold_excluded: 0, in_bundle_excluded: 0, sample: [], as_of: "2026-11-24T00:20:00Z" });
       case "lead_pool_assign": return ok({ items: 100, agent: "Chudi" });
+      case "lead_bundle_recent": return ok(db.recent);
+      case "lead_bundle_export_detail": return ok(db.packRows);
       case "lead_pool_facets":
         return ok(args?.p_source === "dialer"
           ? { states: [{ k: "TX", n: 45000 }, { k: "FL", n: 30000 }], no_state: 12, campaigns: [{ k: "POS", n: 600 }, { k: "Veterans-A", n: 11000 }] }
@@ -81,7 +86,7 @@ describe("Lead Manager pools", () => {
     vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
   });
   afterAll(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
-  beforeEach(() => { db.calls.length = 0; db.signed.length = 0; db.invoked.length = 0; vi.mocked(HTMLMediaElement.prototype.play).mockClear(); localStorage.clear(); });
+  beforeEach(() => { db.calls.length = 0; db.signed.length = 0; db.invoked.length = 0; db.recent = []; db.packRows = []; db.isAdmin = false; vi.mocked(HTMLMediaElement.prototype.play).mockClear(); localStorage.clear(); });
 
   it("shows what every tier means without a tap, for the pool on screen", async () => {
     renderPage();
@@ -154,6 +159,7 @@ describe("Lead Manager pools", () => {
     fireEvent.click(await screen.findByRole("combobox", { name: /Pick an agent/ }));
     fireEvent.click(await screen.findByRole("option", { name: "Chudi" }));
     await waitFor(() => expect(screen.getByRole("button", { name: /Drop 100 into Chudi/ })).not.toBeDisabled());
+    fireEvent.click(screen.getByRole("button", { name: /Work history and source filters/ }));
     fireEvent.change(screen.getByLabelText("Last caller"), { target: { value: "Caller One" } });
     fireEvent.change(screen.getByLabelText("Minimum attempts"), { target: { value: "2" } });
     fireEvent.change(screen.getByLabelText("Callback due by"), { target: { value: "2026-11-24" } });
@@ -164,7 +170,49 @@ describe("Lead Manager pools", () => {
     fireEvent.click(screen.getByRole("button", { name: /Drop 100 into Chudi/ }));
     await waitFor(() => expect(db.calls.find((call) => call.fn === "lead_pool_assign")?.args.p_filters).toEqual(preview));
     expect(screen.getByRole("link", { name: "Import consumers" })).toHaveAttribute("href", "/dashboard/consumer-import");
+    expect(screen.queryByRole("link", { name: "Policy review leads" })).toBeNull();
     expect(screen.queryByText("Hold back Do-Not-Call")).toBeNull();
+  });
+
+  it("gives an admin a contextual route to policy review leads", async () => {
+    db.isAdmin = true;
+    renderPage();
+    expect(await screen.findByRole("link", { name: "Policy review leads" })).toHaveAttribute("href", "/admin/policy-leads");
+  });
+
+  it("blocks assignment for invalid ranges and restores the default preview with Reset filters", async () => {
+    renderPage();
+    fireEvent.click(await screen.findByRole("combobox", { name: /Pick an agent/ }));
+    fireEvent.click(await screen.findByRole("option", { name: "Chudi" }));
+    const drop = screen.getByRole("button", { name: /Drop 100 into Chudi/ });
+    await waitFor(() => expect(drop).not.toBeDisabled());
+    fireEvent.change(screen.getByLabelText("Min age"), { target: { value: "65" } });
+    fireEvent.change(screen.getByLabelText("Max age"), { target: { value: "40" } });
+    expect(screen.getByRole("alert")).toHaveTextContent("Minimum age cannot exceed maximum age.");
+    expect(drop).toBeDisabled();
+    fireEvent.click(drop);
+    expect(db.calls.some((call) => call.fn === "lead_pool_assign")).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Reset filters" }));
+    await waitFor(() => expect(drop).not.toBeDisabled());
+    expect(screen.getByLabelText("Min age")).toHaveValue(null);
+    expect(lastCounts()?.args.p_filters).toEqual({ exclude_dnc: true, exclude_resold: true, sort: "tier" });
+  });
+
+  it("lets pack details reach leads beyond the former 100-row cap and search formatted phones", async () => {
+    db.recent = [{ bundle_id: "pack-1", name: "Large test pack", created_at: "2026-11-25T12:00:00Z", archived_at: null,
+      live_items: 105, sold: 0, under_9mo: 0, resold: false, worked: 0, dialed: 0, last_worked_at: null, holders: [] }];
+    db.packRows = Array.from({ length: 105 }, (_, i) => ({ first_name: `Contact ${i + 1}`, last_name: "Test", phone10: `602555${String(i + 1).padStart(4, "0")}`, state: "AZ" }));
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Details" }));
+    const dialog = await screen.findByRole("dialog");
+    await within(dialog).findByRole("heading", { name: "Contact 1 Test" });
+    for (let page = 0; page < 4; page += 1) fireEvent.click(within(dialog).getByRole("button", { name: "Next pack details page" }));
+    expect(within(dialog).getByRole("heading", { name: "Contact 105 Test" })).toBeTruthy();
+    expect(within(dialog).getAllByRole("heading", { level: 3 })).toHaveLength(5);
+    fireEvent.change(within(dialog).getByLabelText("Search pack details"), { target: { value: "+1 (602) 555-0002" } });
+    expect(within(dialog).getByRole("heading", { name: "Contact 2 Test" })).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Clear search pack details" }));
+    await waitFor(() => expect(within(dialog).getByRole("heading", { name: "Contact 1 Test" })).toBeTruthy());
   });
 
 });

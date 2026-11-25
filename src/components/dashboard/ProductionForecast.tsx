@@ -1,112 +1,27 @@
-import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { TrendingDown, TrendingUp, Minus } from "lucide-react";
+import { TrendingUp } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
-import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
-import { cn } from "@/lib/utils";
-import { countDistinctBusinessDays, projectMonthEndAlp, sumAnnualPremium } from "@/lib/metricTruth";
-import { getBusinessMonthBounds } from "@/lib/dateUtils";
-import { DEAL_TRUTH_STATUS_FILTER } from "@/lib/dealTruth";
+import { useProducerProductionMetrics } from "@/hooks/useProducerProductionMetrics";
+import { productionRunRate } from "@/lib/productionRunRate";
 
-interface ProductionForecastProps {
-  agentId: string;
-}
+const money = (amount: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(amount);
 
-export function ProductionForecast({ agentId }: ProductionForecastProps) {
-  const { data: production } = useQuery({
-    queryKey: ["production-forecast-agent", agentId],
-    queryFn: async () => {
-      const monthBounds = getBusinessMonthBounds();
-      const [dealsRes, presRes] = await Promise.all([
-        supabase
-          .from("deals")
-          .select("posted_at, annual_premium")
-          .eq("agent_id", agentId)
-          .gte("posted_at", monthBounds.startIso)
-          .lt("posted_at", monthBounds.endIso)
-          .in("status", DEAL_TRUTH_STATUS_FILTER),
-        supabase
-          .from("daily_production")
-          .select("presentations")
-          .eq("agent_id", agentId)
-          .gte("production_date", monthBounds.startIso.slice(0, 10))
-          .lte("production_date", monthBounds.endIso.slice(0, 10)),
-      ]);
-
-      const dealRows = (dealsRes.data ?? []) as Array<{ posted_at?: string | null; annual_premium?: number | null }>;
-      const totalAlp = sumAnnualPremium(dealRows);
-      const activeDays = countDistinctBusinessDays(dealRows);
-      const projection = projectMonthEndAlp(totalAlp, activeDays);
-      const presentations = (presRes.data ?? []).reduce((sum, row: { presentations?: number | null }) => sum + Number(row.presentations ?? 0), 0);
-
-      return {
-        totalAlp,
-        activeDays,
-        projection,
-        deals: dealRows.length,
-        presentations,
-      };
-    },
-    staleTime: 120_000,
-    refetchInterval: 300_000,
-  });
-
-  const trend = useMemo(() => {
-    if (!production) return "flat" as const;
-    if (production.projection.projection > production.totalAlp) return "up" as const;
-    if (production.projection.projection < production.totalAlp) return "down" as const;
-    return "flat" as const;
-  }, [production]);
-
-  if (!production) return null;
-
-  const TrendIcon = trend === "up" ? TrendingUp : trend === "down" ? TrendingDown : Minus;
-  const trendColor = trend === "up" ? "text-emerald-400" : trend === "down" ? "text-rose-400" : "text-muted-foreground";
-
+export function ProductionForecast({ agentId }: { agentId: string }) {
+  const query = useProducerProductionMetrics(agentId);
+  const data = query.data;
+  const runRate = data ? productionRunRate({ mtd_ap: data.mtd_ap, completed_ap: data.completed_ap, completed_active_days: data.completed_active_days }, data.completed_calendar_days, data.days_in_month) : null;
   return (
     <GlassCard className="p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <h4 className="flex items-center gap-2 text-sm font-semibold">
-          <TrendingUp className="h-4 w-4 text-primary" />
-          Month-end ALP forecast
-        </h4>
-        <Badge
-          variant="outline"
-          className={cn(
-            "text-[11px]",
-            production.projection.confidence === "high" ? "border-emerald-500/30 text-emerald-400" :
-            production.projection.confidence === "medium" ? "border-amber-500/30 text-amber-400" :
-            "text-muted-foreground"
-          )}
-        >
-          {production.projection.confidence} confidence
-        </Badge>
-      </div>
-
-      <div className="grid grid-cols-3 gap-3">
-        <div className="text-center">
-          <p className="text-[11px] text-muted-foreground">This Month</p>
-          <p className="text-lg font-bold">${production.totalAlp.toLocaleString()}</p>
+      <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold"><TrendingUp className="h-4 w-4 text-primary" />Personal posted ALP · month run rate</h4>
+      {query.isLoading ? <p className="text-sm text-muted-foreground">Loading verified production…</p> : !data ? <p className="text-sm text-muted-foreground">Production could not be verified. Run rate unavailable.</p> : <>
+        {query.isError && <p role="status" className="mb-3 text-xs text-destructive">Latest refresh failed. Showing the last verified read.</p>}
+        <div className="grid grid-cols-3 gap-3">
+          <div><p className="text-xs text-muted-foreground">Posted this month</p><p className="mt-1 text-lg font-bold tabular-nums">{money(data.mtd_ap)}</p></div>
+          <div><p className="text-xs text-muted-foreground">Completed sale days</p><p className="mt-1 text-lg font-bold tabular-nums">{data.completed_active_days}</p></div>
+          <div><p className="text-xs text-muted-foreground">Month run rate</p><p className="mt-1 text-lg font-bold tabular-nums">{runRate?.amount == null ? "Unavailable" : money(runRate.amount)}</p></div>
         </div>
-        <div className="text-center">
-          <p className="text-[11px] text-muted-foreground">Posted Sales Days</p>
-          <p className="text-lg font-bold">{production.activeDays}</p>
-        </div>
-        <div className="text-center">
-          <p className="text-[11px] text-muted-foreground">Projected Month</p>
-          <div className="flex items-center justify-center gap-1">
-            <p className="text-lg font-bold">${production.projection.projection.toLocaleString()}</p>
-            <TrendIcon className={cn("h-4 w-4", trendColor)} />
-          </div>
-        </div>
-      </div>
-
-      <p className="mt-3 text-[12px] text-muted-foreground">
-        {production.projection.activeDays < 3
-          ? "Projection stays pinned to current MTD until at least 3 posted-sales days exist."
-          : `${production.deals} deals written this month · ${production.presentations} presentations logged.`}
-      </p>
+        <p className="mt-3 text-xs text-muted-foreground">{runRate?.reason ?? `${money(data.completed_ap)} posted through yesterday ÷ ${data.completed_calendar_days} completed Phoenix days × ${data.days_in_month} days in the month; at least current MTD.`}</p>
+        <p className="mt-2 text-xs text-muted-foreground">{data.mtd_policies} posted policies through {data.as_of}. Arithmetic estimate only; it does not predict issued, paid or commission cash.</p>
+      </>}
     </GlassCard>
   );
 }

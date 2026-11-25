@@ -61,6 +61,7 @@ import { TONE_CLASS } from "@/lib/tones";
 import { cn } from "@/lib/utils";
 import { PeriodComparisonBars } from "@/components/dashboard/ProductionVisuals";
 import { RecruitingActivityChart } from "@/components/dashboard/RecruitingActivityChart";
+import { RecruitingCohortCard } from "@/components/dashboard/RecruitingCohortCard";
 
 const ICONS: Record<ConversionKind, ComponentType<{ className?: string }>> = {
   applied: UserPlus,
@@ -341,9 +342,9 @@ export function HomeConversions({ range, rangeLabel }: { range?: ConversionRange
             <ToneBubble tone="gold" size="md" className="apex-pop"><Sparkles /></ToneBubble>
             <div className="min-w-0">
               <p className="dashboard-board-eyebrow">Recruiting / pipeline</p>
-              <h2 id="home-conversions-title" className="dashboard-conversions__title text-foreground">Conversions</h2>
+              <h2 id="home-conversions-title" className="dashboard-conversions__title text-foreground">Recruiting activity &amp; conversion</h2>
               <p className="text-sm text-muted-foreground">
-                {ranged ? "Who moved forward in the selected dates. Tap a number to see who." : "Who moved forward. Tap a number to see who."}
+                {ranged ? "Linked cohort conversion and dated activity. Tap an activity count to see its records." : "Dated recruiting activity. Tap a count to see its records."}
               </p>
             </div>
           </div>
@@ -354,6 +355,7 @@ export function HomeConversions({ range, rangeLabel }: { range?: ConversionRange
             <StripNotice query={query} />
           </div>
         ) : null}
+        {ranged && <RecruitingCohortCard cohort={payload?.cohort} />}
         {payload && (
           <p className="conversion-comparison-legend" aria-label="Each chart compares its own metric across periods">
             <span>Current period</span><span>Previous period</span>

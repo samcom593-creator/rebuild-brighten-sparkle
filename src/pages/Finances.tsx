@@ -2,8 +2,9 @@
 // book are separate financial sources. Real admins can additionally mount
 // the existing agency estimates and CFO reconciliation; preview roles cannot.
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import {
   DollarSign, AlertTriangle, TrendingUp, TrendingDown, RefreshCw,
   Activity, ShieldCheck, ShieldAlert, Users, Clock, CheckCircle2,
@@ -843,7 +844,7 @@ export function FinanceWorkspaceView({ tab, onTabChange, canManage, children }: 
   canManage: boolean;
   children: ReactNode;
 }) {
-  const visibleTab = tab === "management" && !canManage ? "personal" : tab;
+  const visibleTab = tab === "management" && !canManage ? "policies" : tab;
   return (
     <div className="page-enter mx-auto w-full max-w-7xl space-y-5 px-4 pb-24 sm:px-6">
       <PageHeader
@@ -856,8 +857,8 @@ export function FinanceWorkspaceView({ tab, onTabChange, canManage, children }: 
         if (value === "personal" || value === "policies" || (value === "management" && canManage)) onTabChange(value);
       }}>
         <TabsList className={`grid h-auto w-full gap-1 rounded-lg border border-border bg-card p-1 sm:inline-flex sm:w-auto ${canManage ? "grid-cols-3" : "grid-cols-2"}`}>
-          <TabsTrigger className="min-h-11 min-w-0 whitespace-normal px-2 text-sm font-bold leading-tight sm:px-4" value="personal">Issue &amp; pay</TabsTrigger>
           <TabsTrigger className="min-h-11 min-w-0 whitespace-normal px-2 text-sm font-bold leading-tight sm:px-4" value="policies">Policy book</TabsTrigger>
+          <TabsTrigger className="min-h-11 min-w-0 whitespace-normal px-2 text-sm font-bold leading-tight sm:px-4" value="personal">Commissions</TabsTrigger>
           {canManage && <TabsTrigger className="min-h-11 min-w-0 whitespace-normal px-2 text-sm font-bold leading-tight sm:px-4" value="management">Management</TabsTrigger>}
         </TabsList>
         <TabsContent className="mt-5" value={visibleTab}>{children}</TabsContent>
@@ -870,9 +871,25 @@ export default function Finances() {
   usePageTitle("Finances · Galaxy");
   const { user, isAdmin, isLoading } = useAuth();
   const { isPreviewing } = useRolePreview();
-  const [tab, setTab] = useState<FinanceTab>("personal");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = searchParams.get("tab");
+  const tab: FinanceTab = requestedTab === "commissions" || requestedTab === "personal" ? "personal" : requestedTab === "management" ? "management" : "policies";
   const canManage = Boolean(user && isAdmin && !isLoading && !isPreviewing);
-  const activeTab = tab === "management" && !canManage ? "personal" : tab;
+  const activeTab = tab === "management" && !canManage ? "policies" : tab;
+  const setTab = (next: FinanceTab) => setSearchParams(previous => {
+    const params = new URLSearchParams(previous);
+    params.set("tab", next === "personal" ? "commissions" : next);
+    return params;
+  }, { replace: true });
+
+  useEffect(() => {
+    if (isLoading || requestedTab !== "management" || canManage) return;
+    setSearchParams(previous => {
+      const params = new URLSearchParams(previous);
+      params.set("tab", "policies");
+      return params;
+    }, { replace: true });
+  }, [isLoading, requestedTab, canManage, setSearchParams]);
 
   return (
     <FinanceWorkspaceView tab={activeTab} onTabChange={setTab} canManage={canManage}>
@@ -881,7 +898,7 @@ export default function Finances() {
       ) : activeTab === "policies" ? (
         <PersonalPolicyBook key={user.id} onViewPayments={() => setTab("personal")} />
       ) : (
-        <MyCommissions key={user.id} embedded />
+        <MyCommissions key={user.id} embedded onViewPolicies={() => setTab("policies")} />
       )}
     </FinanceWorkspaceView>
   );

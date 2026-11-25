@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EMPTY_WORK_FILTERS, LEAD_PACK_COLUMNS, holdLabels, workFilterParams } from "@/lib/leadManagerFilters";
+import { EMPTY_WORK_FILTERS, LEAD_PACK_COLUMNS, holdLabels, leadFilterProblems, workFilterParams } from "@/lib/leadManagerFilters";
 
 describe("lead context and holds", () => {
   it("distinguishes the old conflated client hold from a real recorded DNC", () => {
@@ -22,5 +22,17 @@ describe("lead context and holds", () => {
     const keys = LEAD_PACK_COLUMNS.map(([key]) => key);
     expect(keys).toEqual(expect.arrayContaining(["source_batch_id", "policy_ownership_claim", "last_caller", "last_outcome", "callback_at", "next_action", "policy_standing", "work_history", "call_history", "last_summary", "hold_reasons"]));
     expect(keys.some((key) => /ssn|bank_account|raw|token/.test(key))).toBe(false);
+  });
+  it("rejects invalid or inverted ranges instead of silently broadening the assignment", () => {
+    expect(leadFilterProblems(EMPTY_WORK_FILTERS, "", "")).toEqual([]);
+    expect(leadFilterProblems({ ...EMPTY_WORK_FILTERS, minAttempts: "2", maxAttempts: "0" }, "65", "40")).toEqual([
+      "Minimum age cannot exceed maximum age.", "Minimum attempts cannot exceed maximum attempts.",
+    ]);
+    expect(leadFilterProblems({ ...EMPTY_WORK_FILTERS, minAttempts: "1.5", touchedAfter: "2026-02-30" }, "-1", "")).toEqual([
+      "Minimum age must be a whole number of zero or more.", "Minimum attempts must be a whole number of zero or more.", "First touch date must be a valid calendar date.",
+    ]);
+    expect(leadFilterProblems({ ...EMPTY_WORK_FILTERS, touchedAfter: "2026-11-25", touchedBefore: "2026-11-24" }, "0", "100")).toEqual([
+      "The first touch date cannot be after the last touch date.",
+    ]);
   });
 });

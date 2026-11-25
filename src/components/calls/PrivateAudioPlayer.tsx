@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toSeconds, type AudioMoment } from "@/lib/callAudio";
+import { recordingRequest } from "@/lib/recordingRequest";
 
 export type PrivateAudioSource = {
   bucket: "readymode-audio" | "call-recordings"; path: string; variant?: string;
@@ -14,7 +15,7 @@ export type PrivateAudioSource = {
 export interface PrivateAudioPlayerHandle { playFrom: (seconds: number) => void }
 interface Props {
   sourceKey: string;
-  resolveSource: () => Promise<PrivateAudioSource | null>;
+  resolveSource: (signal: AbortSignal) => Promise<PrivateAudioSource | null>;
   compact?: boolean;
   playOnLoad?: boolean;
   playLabel?: string;
@@ -27,6 +28,7 @@ interface Props {
 type Playback = { seconds: number; play: boolean; stopAt: number | null };
 const URL_LIFETIME_SECONDS = 3600;
 const REFRESH_BEFORE_EXPIRY_MS = 30_000;
+const MEDIA_WAIT_TIMEOUT_MS = 20_000;
 const FAILED_MEDIA = "This recording could not play. Retry the recording to check its availability again.";
 const FAILED_ACCESS = "The recording could not be opened for this account. Retry, or ask an administrator to check recording access.";
 const RECORDING_PLAY_EVENT = "private-recording-play";
@@ -48,6 +50,7 @@ export const RecordingPlayback = forwardRef<PrivateAudioPlayerHandle, Props & { 
   const [armed, setArmed] = useState(!compact);
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [blocked, setBlocked] = useState(false);
+  const [awaitingPlayback, setAwaitingPlayback] = useState(playOnLoad);
   const [revision, setRevision] = useState(0);
   const audio = useRef<HTMLAudioElement | null>(null);
   const setAudio = useCallback((element: HTMLAudioElement | null) => {
@@ -75,25 +78,27 @@ export const RecordingPlayback = forwardRef<PrivateAudioPlayerHandle, Props & { 
     meta: { silent: true },
     queryFn: async ({ signal }) => {
       try {
-        const source = await resolveSource();
-        if (signal.aborted) throw new Error(FAILED_ACCESS);
-        if (!source) return null;
-        let url: string;
-        let expiresInSeconds: number;
-        if ("signedUrl" in source) {
-          url = source.signedUrl;
-          expiresInSeconds = source.expiresInSeconds;
-        } else {
-          if (!source.path?.trim() || /^(?:https?:)?\/\//i.test(source.path)) throw new Error(FAILED_ACCESS);
-          const signed = await supabase.storage.from(source.bucket).createSignedUrl(source.path, URL_LIFETIME_SECONDS);
-          if (signed.error || !signed.data?.signedUrl) throw new Error(FAILED_ACCESS);
-          url = signed.data.signedUrl;
-          expiresInSeconds = URL_LIFETIME_SECONDS;
-        }
-        if (signal.aborted || !Number.isFinite(expiresInSeconds) || expiresInSeconds <= 0 || expiresInSeconds > URL_LIFETIME_SECONDS) throw new Error(FAILED_ACCESS);
-        const parsed = new URL(url);
-        if (!["https:", "http:"].includes(parsed.protocol) || parsed.username || parsed.password) throw new Error(FAILED_ACCESS);
-        return { url, variant: source.variant, expiresAt: Date.now() + expiresInSeconds * 1000 };
+        return await recordingRequest(signal, async (requestSignal) => {
+          const source = await resolveSource(requestSignal);
+          if (requestSignal.aborted) throw new Error(FAILED_ACCESS);
+          if (!source) return null;
+          let url: string;
+          let expiresInSeconds: number;
+          if ("signedUrl" in source) {
+            url = source.signedUrl;
+            expiresInSeconds = source.expiresInSeconds;
+          } else {
+            if (!source.path?.trim() || /^(?:https?:)?\/\//i.test(source.path)) throw new Error(FAILED_ACCESS);
+            const signed = await supabase.storage.from(source.bucket).createSignedUrl(source.path, URL_LIFETIME_SECONDS);
+            if (signed.error || !signed.data?.signedUrl) throw new Error(FAILED_ACCESS);
+            url = signed.data.signedUrl;
+            expiresInSeconds = URL_LIFETIME_SECONDS;
+          }
+          if (requestSignal.aborted || !Number.isFinite(expiresInSeconds) || expiresInSeconds <= 0 || expiresInSeconds > URL_LIFETIME_SECONDS) throw new Error(FAILED_ACCESS);
+          const parsed = new URL(url);
+          if (!["https:", "http:"].includes(parsed.protocol) || parsed.username || parsed.password) throw new Error(FAILED_ACCESS);
+          return { url, variant: source.variant, expiresAt: Date.now() + expiresInSeconds * 1000 };
+        });
       } catch {
         // Errors can contain private paths or signed URLs; keep UI and query telemetry generic.
         throw new Error(FAILED_ACCESS);
@@ -106,10 +111,12 @@ export const RecordingPlayback = forwardRef<PrivateAudioPlayerHandle, Props & { 
     const attempt = ++playAttempt.current;
     setBlocked(false);
     setMediaError(null);
+    setAwaitingPlayback(true);
     intendsPlayback.current = true;
     const failed = (error: unknown) => {
       if (!live.current || audio.current !== element || attempt !== playAttempt.current) return;
       if ((error as { name?: string })?.name === "AbortError") return;
+      setAwaitingPlayback(false);
       if ((error as { name?: string })?.name === "NotAllowedError") {
         setBlocked(true);
         setMediaError("Your browser paused playback. Press Play recording to listen.");
@@ -141,6 +148,14 @@ export const RecordingPlayback = forwardRef<PrivateAudioPlayerHandle, Props & { 
     } finally { refreshing.current = false; }
   }, [refetch, snapshot]);
 
+  // Browsers can remain in a pending play()/metadata/buffering state without emitting a media error.
+  // Recover once through the same authorized signer; keep position and user intent just as for onError.
+  useEffect(() => {
+    if (!awaitingPlayback || !q.data || q.isFetching || blocked || mediaError) return;
+    const timeout = setTimeout(() => void renew("media", pending.current ?? snapshot()), MEDIA_WAIT_TIMEOUT_MS);
+    return () => clearTimeout(timeout);
+  }, [awaitingPlayback, q.data, q.isFetching, blocked, mediaError, revision, renew, snapshot]);
+
   const applyPlayback = useCallback((element: HTMLAudioElement, request: Playback) => {
     const position = Number.isFinite(element.duration) && element.duration > 0
       ? Math.min(request.seconds, Math.max(0, element.duration - 0.01)) : request.seconds;
@@ -157,6 +172,7 @@ export const RecordingPlayback = forwardRef<PrivateAudioPlayerHandle, Props & { 
     const request = { seconds: Math.max(0, seconds), play: true, stopAt: snippet ? Math.max(0, seconds) + 45 : null };
     pending.current = request;
     setMediaError(null);
+    setAwaitingPlayback(true);
     if (!armed) { setArmed(true); return; }
     const element = audio.current;
     if (!element || !q.data || refreshing.current) return;
@@ -172,6 +188,7 @@ export const RecordingPlayback = forwardRef<PrivateAudioPlayerHandle, Props & { 
       const playing = (event as CustomEvent<{ element?: HTMLAudioElement }>).detail?.element;
       if (!playing || playing === audio.current) return;
       intendsPlayback.current = false;
+      setAwaitingPlayback(false);
       if (pending.current) pending.current = { ...pending.current, play: false };
       audio.current?.pause();
     };
@@ -210,17 +227,21 @@ export const RecordingPlayback = forwardRef<PrivateAudioPlayerHandle, Props & { 
       }}
       onPlay={(event) => {
         intendsPlayback.current = true;
+        setAwaitingPlayback(true);
         if (Date.now() >= q.data.expiresAt - REFRESH_BEFORE_EXPIRY_MS) {
           void renew("expired", { ...snapshot(), play: true }); return;
         }
         lastPosition.current = event.currentTarget.currentTime;
         window.dispatchEvent(new CustomEvent(RECORDING_PLAY_EVENT, { detail: { element: event.currentTarget } }));
       }}
-      onPlaying={() => { if (!refreshing.current) { setMediaError(null); setBlocked(false); onPlay?.(); } }}
-      onPause={(event) => { if (!refreshing.current && !event.currentTarget.error) intendsPlayback.current = false; }}
-      onEnded={() => { intendsPlayback.current = false; stopAt.current = null; }}
+      onPlaying={() => { if (!refreshing.current) { setAwaitingPlayback(false); setMediaError(null); setBlocked(false); onPlay?.(); } }}
+      onWaiting={() => { if (intendsPlayback.current) setAwaitingPlayback(true); }}
+      onStalled={() => { if (pending.current?.play || intendsPlayback.current) setAwaitingPlayback(true); }}
+      onPause={(event) => { if (!refreshing.current && !event.currentTarget.error) { intendsPlayback.current = false; setAwaitingPlayback(false); } }}
+      onEnded={() => { intendsPlayback.current = false; stopAt.current = null; setAwaitingPlayback(false); }}
       onTimeUpdate={(event) => {
         const element = event.currentTarget;
+        if (intendsPlayback.current && element.currentTime > lastPosition.current) setAwaitingPlayback(false);
         if (!pending.current) lastPosition.current = element.currentTime;
         onTimeUpdate?.(element.currentTime);
         if (stopAt.current !== null && element.currentTime >= stopAt.current) { element.pause(); stopAt.current = null; }
@@ -233,6 +254,7 @@ export const RecordingPlayback = forwardRef<PrivateAudioPlayerHandle, Props & { 
       onSeeked={() => { scriptedSeek.current = null; }}
     />
     {q.isFetching && <p role="status" className="text-sm text-muted-foreground">Refreshing recording access…</p>}
+    {awaitingPlayback && !q.isFetching && !blocked && !mediaError && <p role="status" className="text-sm text-muted-foreground">Loading audio…</p>}
     {mediaError && <div className="space-y-2"><p role="alert" className="text-sm text-destructive">{mediaError}</p><Button type="button" size="sm" variant="outline" disabled={q.isFetching} onClick={() => blocked && audio.current ? play(audio.current) : void renew("manual")}>{blocked ? "Play recording" : "Retry recording"}</Button></div>}
     {q.data.variant === "numbers_muted" && <p className="text-sm text-muted-foreground">Spoken numbers are muted for privacy.</p>}
     {q.data.variant === "client_data_removed" && <p className="text-sm text-muted-foreground">Client names, addresses and numbers are muted. Silent gaps are normal.</p>}

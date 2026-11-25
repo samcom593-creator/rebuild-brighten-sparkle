@@ -4,12 +4,15 @@ import { RefreshCw, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAgentIdentity } from "@/hooks/useAgentIdentity";
 import { useAuth } from "@/hooks/useAuth";
+import { useBusinessToday } from "@/hooks/useBusinessToday";
+import { monthStartKey, shiftDateKey, shiftMonthKey } from "@/lib/businessClock";
+import { CarrierPolicyCohortCard } from "@/components/dashboard/CarrierPolicyCohortCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { QueryState, describeQuery } from "@/components/ui/query-state";
 import {
-  financePolicySummary, financePolicyCoverage, financePremiumPaying, parseFinancePolicyBook, POLICY_COVERAGE_LABELS,
+  financePolicySummary, financePolicyCoverage, financePaidStatus, parseFinancePolicyBook, POLICY_COVERAGE_LABELS,
   type FinancePolicyBook, type PolicyCoverage,
 } from "@/lib/financePolicyBook";
 
@@ -17,46 +20,47 @@ const currency = (value: number | null) => value === null ? "Not reported" : val
 const INITIAL_ROWS = 100;
 const COVERAGE_COLORS: Record<PolicyCoverage, string> = {
   active: "bg-emerald-500", claim: "bg-emerald-300", pending: "bg-cyan-400", at_risk: "bg-amber-400",
-  lapsed: "bg-rose-500", not_taken: "bg-orange-400", declined: "bg-red-600", abandoned: "bg-violet-400", unknown: "bg-slate-400",
+  lapsed: "bg-rose-500", not_taken: "bg-orange-400", declined: "bg-red-600", abandoned: "bg-violet-400", unknown: "bg-slate-400", started: "bg-sky-300", quote: "bg-slate-300",
 };
 
-/** The source supplies issued totals and explicit current premium-paying
- * states, but no dated premium receipts or matching submission denominator. */
+/** Carrier policy outcomes and recorded chargebacks remain separate from commission cash. */
 export function PolicyFinancialEvidence({ book }: { book: FinancePolicyBook }) {
-  const paying = financePremiumPaying(book.policies);
+  const paying = financePaidStatus(book.policies);
   const portal = book.ethosPortal;
   return (
     <section className="space-y-4 rounded-xl border border-border bg-card p-4 sm:p-5" aria-label="Issue and placement evidence">
       <div>
-        <h3 className="galaxy-heading text-xl font-black italic uppercase">Issue, payment &amp; placement</h3>
-        <p className="mt-1 text-sm text-muted-foreground">Current carrier book and latest available portal report. These are separate sources, not one combined production total.</p>
+        <h3 className="galaxy-heading text-xl font-bold">Carrier financial records</h3>
+        <p className="mt-1 text-sm text-muted-foreground">Your linked policies across all returned carriers. Annual premium and commission dollars have separate totals.</p>
       </div>
-      <div className={`grid gap-3 ${portal ? "lg:grid-cols-3" : "sm:grid-cols-2"}`}>
+      <div className="grid gap-3 lg:grid-cols-3">
         <div className="min-w-0 rounded-lg border border-border bg-muted/20 p-4">
-          <p className="text-sm font-bold uppercase tracking-wide text-muted-foreground">Premium-paying AP · carrier status</p>
-          <p className="galaxy-stat mt-3 break-words text-3xl font-black italic tabular-nums text-emerald-700 dark:text-emerald-300">{paying.annualPremium === null ? "Incomplete" : currency(paying.annualPremium)}</p>
-          <p className="mt-2 text-sm text-muted-foreground">{paying.policies.toLocaleString()} {paying.policies === 1 ? "policy reports" : "policies report"} an explicit Ethos premium-paying status.</p>
+          <p className="text-sm font-bold text-muted-foreground">Paid / premium-paying AP · carrier status</p>
+          <p className="galaxy-stat mt-3 break-words text-3xl font-black tabular-nums text-emerald-700 dark:text-emerald-300">{paying.policies === 0 ? "No confirmed statuses" : paying.annualPremium === null ? "Incomplete" : currency(paying.annualPremium)}</p>
+          <p className="mt-2 text-sm text-muted-foreground">{paying.policies.toLocaleString()} {paying.policies === 1 ? "policy" : "policies"}{paying.carriers.length > 0 ? ` · ${paying.carriers.join(", ")}` : " with an explicit paid or premium-paying status"}.</p>
           {paying.missingPremium > 0 && <p className="mt-2 text-sm text-muted-foreground">Known AP: {currency(paying.knownAnnualPremium)} · {paying.missingPremium} missing premium.</p>}
-          <p className="mt-2 text-sm text-muted-foreground">{paying.otherPolicies.toLocaleString()} other carrier {paying.otherPolicies === 1 ? "record is" : "records are"} excluded. This is annual premium associated with current status, not premium cash received.</p>
+          <p className="mt-2 text-sm text-muted-foreground">{paying.otherPolicies.toLocaleString()} other {paying.otherPolicies === 1 ? "policy has" : "policies have"} no confirmed paid status. Annualized premium; no commission payment is implied.</p>
         </div>
-        {portal && <>
-          <div className="min-w-0 rounded-lg border border-border bg-muted/20 p-4">
-            <p className="text-sm font-bold uppercase tracking-wide text-muted-foreground">Ethos issued AP · portal</p>
-            <p className="galaxy-stat mt-3 break-words text-3xl font-black italic tabular-nums">{portal.issuedAnnualPremium === null ? "Unavailable" : currency(portal.issuedAnnualPremium)}</p>
-            <p className="mt-2 text-sm text-muted-foreground">All-time issued annual premium reported by Ethos.</p>
-          </div>
-          <div className="min-w-0 rounded-lg border border-border bg-muted/20 p-4">
-            <p className="text-sm font-bold uppercase tracking-wide text-muted-foreground">Ethos in-force AP · portal</p>
-            <p className="galaxy-stat mt-3 break-words text-3xl font-black italic tabular-nums text-cyan-700 dark:text-cyan-300">{portal.inforceIssuedAnnualPremium === null ? "Unavailable" : currency(portal.inforceIssuedAnnualPremium)}</p>
-            <p className="mt-2 text-sm text-muted-foreground">Issued premium currently reported in force by Ethos.</p>
-          </div>
-        </>}
+        <div className="min-w-0 rounded-lg border border-border bg-muted/20 p-4">
+          <p className="text-sm font-bold text-muted-foreground">Carrier-recorded chargebacks</p>
+          <p className="galaxy-stat mt-3 break-words text-3xl font-black tabular-nums text-rose-700 dark:text-rose-300">{book.chargebacks?.count ? currency(book.chargebacks.amount) : "Not recorded"}</p>
+          <p className="mt-2 text-sm text-muted-foreground">{book.chargebacks ? `${book.chargebacks.count.toLocaleString()} carrier compensation records · all available history` : "Carrier compensation records were not supplied."}</p>
+          <p className="mt-2 text-sm text-muted-foreground">Lapsed policies alone do not create this amount.</p>
+        </div>
+        <div className="min-w-0 rounded-lg border border-border bg-muted/20 p-4">
+          <p className="text-sm font-bold text-muted-foreground">Outstanding carrier debt</p>
+          <p className="galaxy-stat mt-3 break-words text-3xl font-black tabular-nums">{book.chargebacks?.outstandingDebt ? currency(book.chargebacks.outstandingDebt) : "Not recorded"}</p>
+          <p className="mt-2 text-sm text-muted-foreground">Separate debt snapshot. It can overlap chargebacks and is not added to them.</p>
+        </div>
       </div>
-      {portal && <p className="text-sm text-muted-foreground">Portal totals belong to the matched carrier NPN and may include its downline. They are not added to your policy-row totals. This response does not include the portal snapshot date.</p>}
-      <div className="grid gap-3 border-t border-border pt-4 sm:grid-cols-2">
-        <div><div className="text-sm font-bold">Issued &amp; paid AP <Badge variant="outline" className="ml-2 text-sm">Unavailable</Badge></div><p className="mt-2 text-sm text-muted-foreground">No verified premium-payment receipts or issue/payment dates are supplied.</p></div>
-        <div><div className="text-sm font-bold">Placement rate <Badge variant="outline" className="ml-2 text-sm">Unavailable</Badge></div><p className="mt-2 text-sm text-muted-foreground">Requires issued-and-paid policies and submitted policies from the same cohort. In-force share and retention are different measures.</p></div>
-      </div>
+      {portal && <details className="border-t border-border pt-4 text-sm text-muted-foreground">
+        <summary className="cursor-pointer font-semibold text-foreground">Ethos portal totals · separate reporting scope</summary>
+        <div className="mt-3 grid gap-4 sm:grid-cols-2">
+          <div><p className="font-semibold">Ethos issued AP · portal</p><p className="mt-1 text-xl font-bold tabular-nums text-foreground">{currency(portal.issuedAnnualPremium)}</p></div>
+          <div><p className="font-semibold">Ethos in-force AP · portal</p><p className="mt-1 text-xl font-bold tabular-nums text-foreground">{currency(portal.inforceIssuedAnnualPremium)}</p></div>
+        </div>
+        <p className="mt-3">Portal totals belong to the matched carrier NPN and may include its downline. These all-time totals are excluded from your personal policy-row totals; the response supplies no portal snapshot date.</p>
+      </details>}
     </section>
   );
 }
@@ -65,16 +69,26 @@ export function PolicyFinancialEvidence({ book }: { book: FinancePolicyBook }) {
 export function PolicyBookView({ book, onViewPayments }: { book: FinancePolicyBook; onViewPayments?: () => void }) {
   const [search, setSearch] = useState("");
   const [coverage, setCoverage] = useState<"all" | PolicyCoverage>("all");
+  const [carrier, setCarrier] = useState("all");
+  const [payment, setPayment] = useState("all");
   const [carrierStatus, setCarrierStatus] = useState("all");
   const [visibleCount, setVisibleCount] = useState(INITIAL_ROWS);
   const summary = useMemo(() => financePolicySummary(book.policies), [book.policies]);
   const coverageMix = useMemo(() => financePolicyCoverage(book.policies), [book.policies]);
-  const statusOptions = useMemo(() => Array.from(new Set(book.policies.flatMap(policy => policy.rawStatus ? [policy.rawStatus] : []))).sort(), [book.policies]);
+  const statusOptions = useMemo(() => Array.from(new Set(book.policies.flatMap(policy => {
+    const status = policy.rawStatus ?? policy.preStatus;
+    return status ? [status] : [];
+  }))).sort(), [book.policies]);
+  const carriers = useMemo(() => Array.from(new Set(book.policies.map(policy => policy.carrier))).sort(), [book.policies]);
   const filtered = useMemo(() => {
     const needle = search.trim().toLocaleLowerCase();
-    return book.policies.filter(policy => (coverage === "all" || policy.coverage === coverage) && (carrierStatus === "all" || policy.rawStatus === carrierStatus) && (!needle ||
-      [policy.policyNumber, policy.client, policy.carrier, policy.product, policy.rawStatus].some(value => value?.toLocaleLowerCase().includes(needle))));
-  }, [book.policies, search, coverage, carrierStatus]);
+    return book.policies.filter(policy => (coverage === "all" || policy.coverage === coverage) && (carrier === "all" || policy.carrier === carrier) &&
+      (payment === "all" || (payment === "paid" ? policy.payment === "paid" || policy.payment === "premium_paying" : policy.payment === payment)) &&
+      (carrierStatus === "all" || (policy.rawStatus ?? policy.preStatus) === carrierStatus) && (!needle ||
+      [policy.policyNumber, policy.client, policy.carrier, policy.product, policy.rawStatus, policy.preStatus, policy.statusLabel].some(value => value?.toLocaleLowerCase().includes(needle))));
+  }, [book.policies, search, coverage, carrierStatus, carrier, payment]);
+  const filteredActive = Boolean(search || carrier !== "all" || coverage !== "all" || carrierStatus !== "all" || payment !== "all");
+  const clearFilters = () => { setSearch(""); setCarrier("all"); setCoverage("all"); setCarrierStatus("all"); setPayment("all"); setVisibleCount(INITIAL_ROWS); };
   const metrics = [
     { label: "Policies", value: summary.policies.toLocaleString(), detail: "Carrier records", color: "text-cyan-700 dark:text-cyan-300" },
     { label: "In force", value: summary.inForce.toLocaleString(), detail: "Includes claim status", color: "text-emerald-700 dark:text-emerald-300" },
@@ -92,6 +106,13 @@ export function PolicyBookView({ book, onViewPayments }: { book: FinancePolicyBo
         </div>)}
       </div>
       <PolicyFinancialEvidence book={book} />
+      <div className="flex flex-wrap gap-2" aria-label="Carriers represented in your policy book">
+        {carriers.map(name => {
+          const source = book.carrierSources.find(item => item.carrier === name);
+          const count = book.policies.filter(policy => policy.carrier === name).length;
+          return <Button key={name} variant={carrier === name ? "default" : "outline"} type="button" aria-pressed={carrier === name} onClick={() => { setCarrier(carrier === name ? "all" : name); setVisibleCount(INITIAL_ROWS); }} className="h-auto min-h-11 flex-wrap gap-x-2 py-2"><span>{name} · {count.toLocaleString()}</span>{source?.lastSeenOn && <span className="text-xs opacity-75">Oldest snapshot {source.lastSeenOn}</span>}</Button>;
+        })}
+      </div>
       {book.policies.length > 0 && <section className="rounded-xl border border-border bg-card p-5" aria-label="Carrier coverage distribution">
         <div className="mb-5 flex flex-wrap items-baseline justify-between gap-2"><h3 className="galaxy-heading text-xl font-black italic uppercase">Carrier coverage</h3><p className="text-sm text-muted-foreground">Policy counts · known annual premium</p></div>
         <div role="img" aria-label={`${coverageMix.map(group => `${group.label}: ${group.count}`).join(", ")}. Annual premium: ${coverageMix.map(group => `${group.label}: ${group.missingPremium === group.count ? "unavailable" : currency(group.annualPremium)}${group.missingPremium > 0 && group.missingPremium < group.count ? " partial" : ""}`).join(", ")}.`} className="space-y-4">
@@ -102,7 +123,7 @@ export function PolicyBookView({ book, onViewPayments }: { book: FinancePolicyBo
         </div>
       </section>}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-4">
-        <p className="max-w-3xl text-sm text-muted-foreground"><strong className="text-foreground">Coverage is not payment.</strong> Raw carrier status is shown below. This source has no commission-payment receipts or issue dates.</p>
+        <p className="max-w-3xl text-sm text-muted-foreground">Review each policy's carrier status, payment state and recorded chargeback below. Commission payment dates are in Commissions.</p>
         {onViewPayments && <Button type="button" variant="outline" onClick={onViewPayments}>View commission payments</Button>}
       </div>
       <section className="min-w-0 overflow-hidden rounded-xl border border-border bg-card" aria-label="Carrier policy details">
@@ -110,34 +131,45 @@ export function PolicyBookView({ book, onViewPayments }: { book: FinancePolicyBo
           <div className="flex flex-wrap items-baseline justify-between gap-2"><h3 className="galaxy-heading text-2xl font-black italic uppercase">Policy details</h3><p className="text-sm text-muted-foreground">{filtered.length.toLocaleString()} of {book.policies.length.toLocaleString()} policies</p></div>
           <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto]">
             <div className="relative min-w-0"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" aria-hidden /><Input value={search} onChange={event => { setSearch(event.target.value); setVisibleCount(INITIAL_ROWS); }} className="h-11 pl-9 text-base" aria-label="Search your policies" placeholder="Policy, product, client or carrier" /></div>
-            <select aria-label="Carrier issue status" value={carrierStatus} onChange={event => { setCarrierStatus(event.target.value); setVisibleCount(INITIAL_ROWS); }} className="min-h-11 min-w-0 rounded-md border border-input bg-background px-3 text-base text-foreground md:max-w-52"><option value="all">All carrier statuses</option>{statusOptions.map(status => <option key={status} value={status}>{status}</option>)}</select>
+            <select aria-label="Policy carrier" value={carrier} onChange={event => { setCarrier(event.target.value); setVisibleCount(INITIAL_ROWS); }} className="min-h-11 min-w-0 rounded-md border border-input bg-background px-3 text-base text-foreground"><option value="all">All carriers</option>{carriers.map(name => <option key={name} value={name}>{name}</option>)}</select>
             <select aria-label="Coverage" value={coverage} onChange={event => { setCoverage(event.target.value as "all" | PolicyCoverage); setVisibleCount(INITIAL_ROWS); }} className="min-h-11 min-w-0 rounded-md border border-input bg-background px-3 text-base text-foreground"><option value="all">All coverage</option>{Object.entries(POLICY_COVERAGE_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>
+          </div>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <details className="min-w-0 text-sm"><summary className="cursor-pointer py-2 font-semibold">More filters</summary><div className="mt-2 flex flex-wrap gap-3">
+              <select aria-label="Carrier issue status" value={carrierStatus} onChange={event => { setCarrierStatus(event.target.value); setVisibleCount(INITIAL_ROWS); }} className="min-h-11 max-w-full rounded-md border border-input bg-background px-3 text-base text-foreground"><option value="all">All carrier statuses</option>{statusOptions.map(status => <option key={status} value={status}>{status}</option>)}</select>
+              <select aria-label="Carrier payment state" value={payment} onChange={event => { setPayment(event.target.value); setVisibleCount(INITIAL_ROWS); }} className="min-h-11 max-w-full rounded-md border border-input bg-background px-3 text-base text-foreground"><option value="all">All payment states</option><option value="paid">Paid / premium paying</option><option value="awaiting_payment">Awaiting payment</option><option value="processing">Payment processing</option><option value="unknown">Payment unverified</option></select>
+            </div></details>
+            {filteredActive && <Button variant="ghost" type="button" onClick={clearFilters}>Clear filters</Button>}
           </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[950px] text-sm">
             <caption className="sr-only">Carrier policy product, policy number, issue status, coverage, annual premium, effective date and recorded chargeback. No commission-payment inference.</caption>
-            <thead className="bg-muted/40"><tr>{["Policy / product", "Carrier", "Issue / coverage status", "Annual premium", "Effective date", "Recorded chargeback"].map(label => <th key={label} scope="col" className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wide text-muted-foreground">{label}</th>)}</tr></thead>
+            <thead className="bg-muted/40"><tr>{["Policy / product", "Carrier", "Status / payment", "Annual premium", "Effective date", "Recorded chargeback"].map(label => <th key={label} scope="col" className="px-4 py-3 text-left text-sm font-bold uppercase tracking-wide text-muted-foreground">{label}</th>)}</tr></thead>
             <tbody>{filtered.slice(0, visibleCount).map(policy => <tr key={policy.key} className="border-t border-border align-top">
               <td className="max-w-64 px-4 py-4"><p className="break-words text-base font-bold">{policy.product ?? "Product not reported"}</p><p className="mt-1 break-words font-semibold">{policy.policyNumber ?? "Policy number not reported"}</p><p className="mt-1 break-words text-muted-foreground">{policy.client ?? "Client not reported"}</p></td>
               <td className="px-4 py-4"><p className="font-semibold">{policy.carrier}</p>{policy.underwriter && <p className="mt-1 text-muted-foreground">{policy.underwriter}</p>}</td>
-              <td className="max-w-64 px-4 py-4"><p className="font-semibold">{policy.rawStatus ?? "Carrier status not reported"}</p><Badge variant="outline" className="mt-2 text-sm">{POLICY_COVERAGE_LABELS[policy.coverage]}</Badge>{policy.closeReason && <p className="mt-2 text-muted-foreground">{policy.closeReason}</p>}{policy.changedOn && <p className="mt-2 text-muted-foreground">Changed {policy.changedOn}</p>}</td>
+              <td className="max-w-64 px-4 py-4"><p className={`font-semibold ${policy.statusConflict ? "text-amber-700 dark:text-amber-300" : ""}`}>{policy.statusLabel}</p><Badge variant="outline" className="mt-2 text-sm">{POLICY_COVERAGE_LABELS[policy.coverage]}</Badge><p className="mt-2 text-sm text-muted-foreground">{policy.paymentLabel}</p><p className="mt-2 text-xs text-muted-foreground">Carrier: <span>{policy.rawStatus ?? policy.preStatus ?? "Not reported"}</span></p>{policy.closeReason && <p className="mt-2 text-muted-foreground">{policy.closeReason}</p>}{policy.changedOn && <p className="mt-2 text-muted-foreground">Changed {policy.changedOn}</p>}</td>
               <td className="px-4 py-4"><p className="font-bold tabular-nums">{currency(policy.annualPremium)}</p><p className="mt-2 text-muted-foreground">Face amount: {currency(policy.faceAmount)}</p></td>
               <td className="px-4 py-4"><p className="font-semibold tabular-nums">{policy.effectiveOn ?? "Not reported"}</p>{policy.soldOn && <p className="mt-2 text-muted-foreground">Sold {policy.soldOn}</p>}</td>
               <td className="px-4 py-4 font-semibold tabular-nums">{policy.chargeback === null ? "Not recorded" : currency(policy.chargeback)}</td>
             </tr>)}</tbody>
           </table>
         </div>
-        {filtered.length === 0 && <p className="p-6 text-base text-muted-foreground">No policies match these filters.</p>}
+        {filtered.length === 0 && <div className="space-y-3 p-6 text-base text-muted-foreground"><p>No policies match these filters.</p>{filteredActive && <Button type="button" variant="outline" onClick={clearFilters}>Show all policies</Button>}</div>}
         {filtered.length > visibleCount && <div className="border-t border-border p-4"><Button variant="outline" type="button" onClick={() => setVisibleCount(value => value + 100)}>Show 100 more policies</Button></div>}
       </section>
-      <details className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground"><summary className="cursor-pointer text-base font-bold text-foreground">How to read this book</summary><p className="mt-3">Carrier book: Ethos and Combined. A lapse is a coverage status; only a separately recorded amount appears as a chargeback. Effective date is not an issue date or payment date. Commission payment status and payment dates are in Issue &amp; pay; an issued or in-force policy does not confirm a commission payment.</p></details>
+      <details className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground"><summary className="cursor-pointer text-base font-bold text-foreground">Source coverage and definitions</summary><p className="mt-3">Carriers returned for your linked agent record: {carriers.length ? carriers.join(", ") : "none"}. Missing carriers have no records in this response. A lapse is a coverage status; only a separately recorded amount appears as a chargeback. Effective date is not an issue date or payment date. The source has no commission-payment receipts or issue dates. An issued or in-force policy does not confirm commission payment.</p></details>
     </div>
   );
 }
 
 export function PersonalPolicyBook({ onViewPayments }: { onViewPayments?: () => void } = {}) {
   const { user, isLoading: authLoading } = useAuth();
+  const today = useBusinessToday();
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
+  const cohortStart = selectedMonth ? `${selectedMonth}-01` : monthStartKey(today);
+  const cohortEnd = [shiftMonthKey(cohortStart, 1), shiftDateKey(today, 1)].sort()[0];
   const me = useAgentIdentity();
   const belongsToViewer = Boolean(user && me.userId === user.id);
   const agentId = belongsToViewer && !authLoading && me.identity?.status === "resolved" ? me.agentId : null;
@@ -158,10 +190,12 @@ export function PersonalPolicyBook({ onViewPayments }: { onViewPayments?: () => 
   return (
     <section className="space-y-4" aria-label="Your policy book">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div><h2 className="text-2xl font-black italic uppercase">Your policy book</h2>{query.data?.asOf && <p className="mt-1 text-sm text-muted-foreground">Carrier sync: {new Date(query.data.asOf).toLocaleString()}</p>}</div>
+        <div><h2 className="text-2xl font-bold">Your policy book</h2><p className="mt-1 text-sm text-muted-foreground">Current status, premium and carrier financial records.</p></div>
         <Button type="button" variant="outline" disabled={query.isFetching} onClick={() => void query.refetch()}><RefreshCw className="h-4 w-4" aria-hidden /> Refresh policies</Button>
       </div>
-      <QueryState {...describeQuery({ ...query, isEmpty: query.data?.policies.length === 0 && !query.data?.ethosPortal })} label="your policy book" onRetry={() => void query.refetch()} asOf={query.dataUpdatedAt} title="No carrier policies on file" body="No Ethos or Combined policy records were returned for your linked agent record.">
+      <div className="flex flex-wrap items-center gap-3"><label htmlFor="finance-cohort-month" className="text-sm font-semibold">Application month</label><Input id="finance-cohort-month" type="month" className="h-10 w-auto" value={selectedMonth ?? today.slice(0, 7)} max={today.slice(0, 7)} onChange={event => { if (/^\d{4}-(0[1-9]|1[0-2])$/.test(event.target.value) && event.target.value <= today.slice(0, 7)) setSelectedMonth(event.target.value); }} /></div>
+      <CarrierPolicyCohortCard key={`${user!.id}:${agentId}`} agentId={agentId} start={cohortStart} endExclusive={cohortEnd} />
+      <QueryState {...describeQuery({ ...query, isEmpty: query.data?.policies.length === 0 && !query.data?.ethosPortal && !query.data?.chargebacks?.count && !query.data?.chargebacks?.outstandingDebt })} label="your policy book" onRetry={() => void query.refetch()} asOf={query.dataUpdatedAt} title="No carrier policies on file" body="No carrier policy records were returned for your linked agent record.">
         {query.data && <PolicyBookView key={`${user!.id}:${agentId}`} book={query.data} onViewPayments={onViewPayments} />}
       </QueryState>
     </section>

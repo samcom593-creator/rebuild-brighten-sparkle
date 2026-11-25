@@ -12,7 +12,7 @@ vi.mock("@/hooks/useProductionRealtime", () => ({ useProductionRealtime: () => u
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "sam" }, isManager: false }) }));
 vi.mock("@/hooks/useBusinessToday", () => ({ useBusinessToday: () => "2026-10-27" }));
 
-const key = ["scoped-production-scoreboard", "2026-10-01", "2026-10-28"];
+const key = ["scoped-production-scoreboard", "2026-10-01", "2026-10-28", "sam"];
 const board = {
   has_producer_profile: true, scope_label: "My hierarchy", by_agent: [],
   personal: { ap: 12345, policies: 3 },
@@ -28,9 +28,9 @@ beforeEach(() => {
   vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mockImplementation((() => Promise.resolve({ data: null, error: null })) as never);
 });
 
-function mount(cached?: ScoreboardData) {
+function mount(cached?: ScoreboardData, cachedKey = key) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
-  if (cached) client.setQueryData(key, cached);
+  if (cached) client.setQueryData(cachedKey, cached);
   render(<QueryClientProvider client={client}><MemoryRouter><ScopedProductionScoreboard /></MemoryRouter></QueryClientProvider>);
   return client;
 }
@@ -60,6 +60,14 @@ it("shows loading without zero totals or a missing-profile claim", () => {
   expect(screen.getByText("Loading production totals")).toBeInTheDocument();
   expect(screen.queryByText("$0")).not.toBeInTheDocument();
   expect(screen.queryByText(/login is not linked/)).not.toBeInTheDocument();
+  client.clear();
+});
+
+it("does not display a different account's cached production while the current account loads", () => {
+  vi.mocked(supabase.rpc as unknown as SbRpcFnForMock).mockImplementation((() => new Promise(() => {})) as never);
+  const client = mount(board, [...key.slice(0, -1), "different-account"]);
+  expect(screen.getByText("Loading production totals")).toBeInTheDocument();
+  expect(screen.queryByText("$12,345")).not.toBeInTheDocument();
   client.clear();
 });
 

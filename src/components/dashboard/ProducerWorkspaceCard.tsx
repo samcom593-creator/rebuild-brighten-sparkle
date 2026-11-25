@@ -61,7 +61,6 @@ export function ProducerWorkspaceCard({ agentId }: { agentId?: string | null }) 
   const d = q.data;
   const pace = producerPace(d);
   const currentSchedule = d.days.find((day) => day.day === d.today)?.scheduled === true;
-  const activityRemaining = pace.callsPerSellingDay === null ? null : Math.max(0, pace.callsPerSellingDay - d.activity.completed_today);
   return (
     <section className="space-y-4 rounded-xl border border-primary/25 bg-card p-4 sm:p-5" aria-label="Personal production plan">
       <header className="flex flex-wrap items-start justify-between gap-3">
@@ -93,12 +92,11 @@ export function ProducerWorkspaceCard({ agentId }: { agentId?: string | null }) 
         <p className="mt-2 text-sm">{pace.remaining === 0 ? "Your monthly production goal is complete. Keep existing clients moving and protect the book." : pace.dealsRemaining === null ? "A policy estimate needs at least three recorded policies in your sample." : `${pace.dealsRemaining} more policies at your ${dollars(pace.averagePolicy)} average to reach the goal.`}</p>
         {pace.remaining === 0 ? null : d.selling_days_remaining === 0 ? (
           <p className="mt-2 text-sm text-muted-foreground">There are no scheduled selling days left this month. Your remaining goal is {dollars(pace.remaining)}.</p>
-        ) : pace.callsPerSellingDay === null ? (
-          <p className="mt-2 text-sm text-muted-foreground">Your calling estimate needs 30 completed provider calls and 3 sale outcomes, plus 3 posted policies. Work your due clients while the sample builds.</p>
         ) : (
-          <p className="mt-2 text-sm"><strong>{pace.callsPerSellingDay} completed calls per selling day</strong> at your recent conversion rate.{currentSchedule ? ` ${d.activity.completed_today} recorded today; ${activityRemaining} left in today’s estimate.` : ""}</p>
+          <p className="mt-2 text-sm text-muted-foreground">Required calls are unavailable because provider sale dispositions are not linked to posted policies. {d.activity.completed_today} completed provider calls are recorded today.</p>
         )}
-        <p className="mt-2 text-xs text-muted-foreground">Last {d.activity.sample_days} completed days: {d.activity.sample_calls} ReadyMode calls, {d.activity.sample_sold_calls} sale outcomes, {d.activity.sample_policies} posted policies. This is a planning estimate. Dial taps, manual notes and sale dispositions do not add production.</p>
+        <p className="mt-2 text-xs text-muted-foreground">Last {d.activity.sample_days} completed days: {d.activity.sample_calls} ReadyMode calls, {d.activity.sample_sold_calls} sale dispositions. Recorded sale-disposition rate: {pace.saleDispositionRate === null ? "unavailable" : `${pace.saleDispositionRate}%`}. This measures recorded call outcomes, not policy conversion or placement.</p>
+        <p className="mt-1 text-xs text-muted-foreground">The policy-size estimate uses {d.activity.sample_policies} posted policies from that period. Dial taps, manual notes and sale dispositions do not add production.</p>
         <Button asChild className="mt-3"><Link to="/dashboard/agent-pipeline">Work my clients</Link></Button>
       </div>
       <StreakFlameCard agentId={agentId} workspace={d} />

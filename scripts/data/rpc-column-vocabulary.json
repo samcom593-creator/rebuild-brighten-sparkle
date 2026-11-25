@@ -804,6 +804,7 @@
   "producer_set_work_schedule": "jsonb",
   "producer_tag_client_call": "void",
   "production_can_read_agent": "boolean",
+  "production_policy_cohort": "jsonb",
   "production_reconciliation_receipt": "jsonb",
   "promote_aged_lead_to_application": "uuid",
   "promote_applicant_to_agent": "uuid",
@@ -22091,6 +22092,14 @@
    "consumer_lead_import": "jsonb",
    "consumer_import_history": "jsonb",
    "consumer_import_review": "jsonb"
+  }
+ },
+ "_declared_migration_contracts": {
+  "production_policy_cohort": {
+   "migration": "20261125100000_producer_status_and_run_rate.sql",
+   "return_type": "jsonb",
+   "named_output_columns": false,
+   "source": "Exact authored migration signature; validate against deployed pg_proc after application."
   }
  }
 }

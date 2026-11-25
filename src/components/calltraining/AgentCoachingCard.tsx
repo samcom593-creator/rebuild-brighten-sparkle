@@ -9,14 +9,16 @@ import { Sparkles, X } from "lucide-react";
 import { looseSupabase } from "@/lib/looseSupabase";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
+import { normalizeCoachingPoints } from "@/lib/coachingText";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Coaching {
   agent_name: string;
   summary: string | null;
-  habits: string[] | null;
-  watch_outs: string[] | null;
-  coaching_tips: string[] | null;
-  strengths: string[] | null;
+  habits: unknown;
+  watch_outs: unknown;
+  coaching_tips: unknown;
+  strengths: unknown;
   next_call_focus: string | null;
   source_count: number | null;
   generated_at: string | null;
@@ -32,18 +34,23 @@ async function fetchCoaching(agentName: string): Promise<Coaching | null> {
   return data?.[0] ?? null;
 }
 
-function Points({ title, items, tone }: { title: string; items: string[] | null; tone?: string }) {
-  if (!items || items.length === 0) return null;
+function Points({ title, items, tone }: { title: string; items: unknown; tone?: string }) {
+  const points = normalizeCoachingPoints(items);
+  if (points.items.length === 0 && !points.incomplete) return null;
   return (
     <div>
       <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
-      <ul className={`list-disc space-y-0.5 pl-5 text-sm ${tone ?? ""}`}>{items.map((s) => <li key={s}>{s}</li>)}</ul>
+      {points.items.length > 0 && <ul className={`list-disc space-y-0.5 pl-5 text-sm ${tone ?? ""}`}>{points.items.map((s) => <li key={s} className="whitespace-pre-line">{s}</li>)}</ul>}
+      {points.incomplete && <p role="status" className="text-sm text-muted-foreground">This coaching section is incomplete. It needs to be refreshed from the graded calls.</p>}
     </div>
   );
 }
 
 export function AgentCoachingCard({ agentName, onClear, title }: { agentName: string; onClear?: () => void; title?: string }) {
-  const q = useQuery({ queryKey: ["agent-coaching", agentName], queryFn: () => fetchCoaching(agentName), staleTime: 5 * 60_000 });
+  const { user, isLoading } = useAuth();
+  const q = useQuery({ queryKey: ["agent-coaching", user?.id, agentName], queryFn: () => fetchCoaching(agentName), enabled: !!user && !isLoading && !!agentName, staleTime: 5 * 60_000, gcTime: 0 });
+  if (isLoading) return <p role="status" className="text-sm text-muted-foreground">Checking coaching access…</p>;
+  if (!user) return <p className="text-sm text-muted-foreground">Sign in to view coaching.</p>;
   const c = q.data;
   return (
     <GlassCard className="space-y-3 border-primary/30 p-4">

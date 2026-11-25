@@ -8,6 +8,7 @@ import { parseFinancePolicyBook } from "@/lib/financePolicyBook";
 const state = vi.hoisted(() => ({ auth: { user: { id: "user-own" }, isLoading: false }, identity: null as unknown }));
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => state.auth }));
 vi.mock("@/hooks/useAgentIdentity", () => ({ useAgentIdentity: () => state.identity }));
+vi.mock("@/components/dashboard/CarrierPolicyCohortCard", () => ({ CarrierPolicyCohortCard: ({ agentId }: { agentId: string }) => <div>Application cohort for {agentId}</div> }));
 import { PersonalPolicyBook, PolicyBookView, PolicyFinancialEvidence } from "@/components/finances/PersonalPolicyBook";
 
 const policy = (overrides: Record<string, unknown> = {}) => ({
@@ -35,6 +36,25 @@ beforeEach(() => {
 });
 
 describe("personal financial policy book", () => {
+  it("displays carrier compensation chargebacks even when the commission ledger has no corresponding entries", () => {
+    const book = parseFinancePolicyBook({ ...payload(), summary: { chargebacks: 2, chargeback_amount: 450.5, debt_outstanding: 120 } }, "agent-own");
+    render(<PolicyFinancialEvidence book={book} />);
+    expect(screen.getByText("Carrier-recorded chargebacks").parentElement).toHaveTextContent("$450.50");
+    expect(screen.getByText("Outstanding carrier debt").parentElement).toHaveTextContent("$120.00");
+  });
+
+  it("filters all returned carriers and restores the complete book after no matches", () => {
+    const book = parseFinancePolicyBook(payload("agent-own", [policy(), policy({ key: "Ethos:other", carrier: "Ethos", policy_number: "ETHOS-2", status_raw: "DECLINED", bucket: "pending" })]), "agent-own");
+    render(<PolicyBookView book={book} />);
+    fireEvent.change(screen.getByRole("combobox", { name: "Policy carrier" }), { target: { value: "Ethos" } });
+    expect(screen.getByText("ETHOS-2")).toBeInTheDocument();
+    expect(screen.queryByText("SYNTHETIC-1")).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Search your policies"), { target: { value: "missing-policy" } });
+    expect(screen.getByText("No policies match these filters.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Show all policies" }));
+    expect(screen.getByText("2 of 2 policies")).toBeInTheDocument();
+    expect(screen.getByText("SYNTHETIC-1")).toBeInTheDocument();
+  });
   it("shows reported issue and premium-paying facts without inventing issued-paid totals or placement", () => {
     const book = parseFinancePolicyBook({
       ...payload("agent-own", [
@@ -44,14 +64,14 @@ describe("personal financial policy book", () => {
       ethos_portal: { issued_ap: 90000, inforce_ap: 70000 },
     }, "agent-own");
     render(<PolicyFinancialEvidence book={book} />);
-    expect(screen.getByText("Premium-paying AP · carrier status").parentElement).toHaveTextContent("$1,200.00");
+    expect(screen.getByText("Paid / premium-paying AP · carrier status").parentElement).toHaveTextContent("$1,200.00");
     expect(screen.getByText("Ethos issued AP · portal").parentElement).toHaveTextContent("$90,000.00");
     expect(screen.getByText("Ethos in-force AP · portal").parentElement).toHaveTextContent("$70,000.00");
-    expect(screen.getByText(/1 policy reports an explicit Ethos/)).toBeInTheDocument();
-    expect(screen.getByText(/1 other carrier record is excluded/)).toBeInTheDocument();
+    expect(screen.getByText("1 policy · Ethos.")).toBeInTheDocument();
+    expect(screen.getByText(/1 other policy has no confirmed paid status/)).toBeInTheDocument();
     expect(screen.getByText(/Portal totals belong to the matched carrier NPN/)).toBeInTheDocument();
-    expect(screen.getByText("Issued & paid AP")).toHaveTextContent("Unavailable");
-    expect(screen.getByText("Placement rate")).toHaveTextContent("Unavailable");
+    expect(screen.queryByText("Issued & paid AP")).not.toBeInTheDocument();
+    expect(screen.queryByText("Placement rate")).not.toBeInTheDocument();
     expect(screen.queryByText(/\d+%/)).not.toBeInTheDocument();
   });
 
@@ -60,7 +80,7 @@ describe("personal financial policy book", () => {
       policy({ carrier: "Ethos", bucket: "active", status_raw: "PREMIUM_PAYING", annual_premium: null }),
     ]), "agent-own");
     render(<PolicyFinancialEvidence book={book} />);
-    expect(screen.getByText("Premium-paying AP · carrier status").parentElement).toHaveTextContent("Incomplete");
+    expect(screen.getByText("Paid / premium-paying AP · carrier status").parentElement).toHaveTextContent("Incomplete");
     expect(screen.getByText(/1 missing premium/)).toBeInTheDocument();
     expect(screen.queryByText("Ethos issued AP · portal")).not.toBeInTheDocument();
   });
@@ -69,7 +89,7 @@ describe("personal financial policy book", () => {
     const book = parseFinancePolicyBook(payload("agent-own", [
       policy({ key: "pending-1", annual_premium: 100 }),
       policy({ key: "pending-2", annual_premium: null }),
-      policy({ key: "active-1", policy_number: "ACTIVE-1", bucket: "active", annual_premium: 50000 }),
+      policy({ key: "active-1", policy_number: "ACTIVE-1", bucket: "active", status_raw: "In force", annual_premium: 50000 }),
     ]), "agent-own");
     render(<PolicyBookView book={book} />);
     expect(screen.getByRole("img", { name: "Pending: 2, In force: 1. Annual premium: Pending: $100.00 partial, In force: $50,000.00." })).toBeInTheDocument();
@@ -107,6 +127,7 @@ describe("personal financial policy book", () => {
       policy(), policy({ key: "Ethos:active", policy_number: "ACTIVE-1", status_raw: "In force", bucket: "active" }),
     ]), "agent-own");
     render(<PolicyBookView book={book} onViewPayments={onViewPayments} />);
+    fireEvent.click(screen.getByText("More filters"));
     fireEvent.change(screen.getByRole("combobox", { name: "Carrier issue status" }), { target: { value: "issued" } });
     expect(screen.getByText("SYNTHETIC-1")).toBeInTheDocument();
     expect(screen.queryByText("ACTIVE-1")).not.toBeInTheDocument();
@@ -114,9 +135,22 @@ describe("personal financial policy book", () => {
     expect(within(row).getByText("issued")).toBeInTheDocument();
     expect(within(row).getByText("Pending")).toBeInTheDocument();
     expect(within(row).queryByText(/paid/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/This source has no commission-payment receipts or issue dates/)).toBeInTheDocument();
+    expect(screen.getByText(/The source has no commission-payment receipts or issue dates/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "View commission payments" }));
     expect(onViewPayments).toHaveBeenCalledTimes(1);
+  });
+
+  it("filters a pre-issue status when the carrier has no later raw status", () => {
+    const book = parseFinancePolicyBook(payload("agent-own", [
+      policy(), policy({ key: "Ethos:review", policy_number: "REVIEW-1", carrier: "Ethos", status_raw: null, status_pre: "IN_REVIEW", bucket: "pending" }),
+    ]), "agent-own");
+    render(<PolicyBookView book={book} />);
+    fireEvent.click(screen.getByText("More filters"));
+    expect(screen.getByRole("option", { name: "IN_REVIEW" })).toBeInTheDocument();
+    fireEvent.change(screen.getByRole("combobox", { name: "Carrier issue status" }), { target: { value: "IN_REVIEW" } });
+    expect(screen.getByText("REVIEW-1")).toBeInTheDocument();
+    expect(screen.queryByText("SYNTHETIC-1")).not.toBeInTheDocument();
+    expect(screen.getByText("1 of 2 policies")).toBeInTheDocument();
   });
 
   it("requests only the linked identity and isolates the query cache by login", async () => {

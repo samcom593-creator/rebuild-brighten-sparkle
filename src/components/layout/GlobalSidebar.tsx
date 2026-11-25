@@ -100,7 +100,7 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
   // One rule for the sidebar and the palette (agentCloudNavigation.ts): the inline copy that lived here drifted the
   // moment a flag (hideWhenSeesAll) was added to the shared one, so the owner's rail kept the VA fallbacks.
   const navGrants = useNavGrants();
-  const filterEntries = (entries: AgentCloudNavEntry[]) => filterAgentCloudNav(entries, { seesAll, viewMode, grants: navGrants, isSam: isSamEmail(user?.email) });
+  const filterEntries = (entries: AgentCloudNavEntry[]) => filterAgentCloudNav(entries, { seesAll, viewMode, grants: navGrants, isSam: isSamEmail(user?.email), isManager: isPreviewing ? viewMode === "manager" : isManager });
 
   // An applicant is a role-agent login with no agents row (applying mints the
   // login). They get four real next steps, not the producer's Sell/Grow/Book

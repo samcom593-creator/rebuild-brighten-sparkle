@@ -49,9 +49,9 @@ async function fetchRecordings(): Promise<Recording[]> {
   return result.data as Recording[];
 }
 
-async function resolveTrainingAudio(recordingId: string) {
+async function resolveTrainingAudio(recordingId: string, signal: AbortSignal) {
   // The endpoint rechecks this caller's published/redacted catalog before signing its exact path.
-  const { data, error } = await supabase.functions.invoke("training-recording-url", { body: { recordingId } });
+  const { data, error } = await supabase.functions.invoke("training-recording-url", { body: { recordingId }, signal });
   if (error || !data || typeof data.signedUrl !== "string" || typeof data.expiresInSeconds !== "number") throw new Error("Recording access could not be verified.");
   return { signedUrl: data.signedUrl, expiresInSeconds: data.expiresInSeconds, variant: "client_data_removed" };
 }
@@ -140,7 +140,7 @@ function RecordingPlayer({ rec }: { rec: Recording }) {
           {rec.description ? ` — ${rec.description}` : ""}
         </DialogDescription>
       </DialogHeader>
-      <PrivateAudioPlayer ref={ref} sourceKey={`training:${rec.id}:${rec.audio_path}`} resolveSource={() => resolveTrainingAudio(rec.id)} playOnLoad onTimeUpdate={setNow} />
+      <PrivateAudioPlayer ref={ref} sourceKey={`training:${rec.id}:${rec.audio_path}`} resolveSource={signal => resolveTrainingAudio(rec.id, signal)} playOnLoad onTimeUpdate={setNow} />
       {turns.length > 0 && (
         <CardContent className="max-h-72 overflow-y-auto rounded-md border border-border p-2">
           {turns.map((u, i) => (

@@ -20,11 +20,11 @@ export interface ConversionRange {
  * over at Phoenix midnight like every other Home number.
  */
 export function useHomeConversions(range?: ConversionRange | null) {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const todayKey = useBusinessToday();
   return useQuery({
-    queryKey: range ? ["home-conversions", "range", range.start, range.end, todayKey] : ["home-conversions", todayKey],
-    enabled: Boolean(isAdmin),
+    queryKey: range ? ["home-conversions", "range", range.start, range.end, todayKey, user?.id] : ["home-conversions", todayKey, user?.id],
+    enabled: Boolean(isAdmin && user?.id),
     staleTime: 60_000,
     retry: 1,
     retryDelay: 4_000,
@@ -36,6 +36,10 @@ export function useHomeConversions(range?: ConversionRange | null) {
       const parsed = parseConversionPayload(data);
       // A reply that is not the expected shape is a failure, never an empty strip of zeros.
       if (!parsed) throw new Error("The conversion numbers came back in a shape this page cannot read.");
+      if (parsed.viewer_user_id && parsed.viewer_user_id !== user?.id) throw new Error("The recruiting activity did not match this account.");
+      if (parsed.cohort && (parsed.cohort.viewer_user_id !== user?.id || parsed.cohort.start !== range?.start || parsed.cohort.end !== range?.end)) {
+        throw new Error("The recruiting cohort did not match this account and date window.");
+      }
       return parsed;
     },
   });

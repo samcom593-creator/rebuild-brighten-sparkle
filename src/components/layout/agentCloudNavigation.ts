@@ -230,7 +230,7 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       // dialer, the re-write pile and lapsed win-back. Filter, type a live agent, drop the pack into their
       // portal; resale ledger stops a lead going out twice. Supersedes the old dialer-only Lead Bundles page,
       // whose /dashboard/lead-bundles URL now redirects here.
-      { label: "Leads", href: "/dashboard/lead-manager", icon: Layers, grant: "sold_calls" },
+      { label: "Lead Manager", href: "/dashboard/lead-manager", icon: Layers, grant: "sold_calls" },
       // The leads given to you to work (MP-310 wave 3). Every producer.
       { label: "My Leads", href: "/dashboard/my-leads", icon: Inbox },
       { label: "Finances", href: "/dashboard/finances", icon: WalletCards },
@@ -560,6 +560,8 @@ export function navSectionToneForLocation(location: AgentCloudLocation, entries:
 
 export interface AgentCloudNavViewer {
   isSam?: boolean;
+  /** Actual manager role (or the manager role being previewed); account mode alone does not grant route access. */
+  isManager?: boolean;
   /** Admin outside role preview: sees every entry. */
   seesAll: boolean;
   /** Account mode the entries are filtered for (the previewed mode while previewing). */
@@ -578,7 +580,10 @@ export function filterAgentCloudNav(entries: AgentCloudNavEntry[], viewer: Agent
   // A role fallback (the VA's Calendar, the VA's Contracting review) duplicates an entry the all-seeing viewer already
   // has elsewhere; it is for the roles that lack the original, not a second copy for the owner.
   const notDuplicateForOwner = (item: { hideWhenSeesAll?: boolean }) => !(viewer.seesAll && item.hideWhenSeesAll);
-  const grantAllows = (item: { grant?: AgentCloudNavGrant }) => !item.grant || viewer.seesAll || Boolean(viewer.grants?.has(item.grant));
+  // Every sold_calls destination currently has requireAdmin + allowManagers in App.tsx.
+  // A data grant alone cannot admit a plain producer through that route gate.
+  const grantAllows = (item: { grant?: AgentCloudNavGrant }) => !item.grant || viewer.seesAll
+    || (viewer.isManager === true && Boolean(viewer.grants?.has(item.grant)));
   return entries
     .filter((entry) => !(!isAgentCloudGroup(entry) && entry.adminOnly && !viewer.seesAll))
     .filter((entry) => isAgentCloudGroup(entry) || (!entry.samOnly || viewer.isSam))

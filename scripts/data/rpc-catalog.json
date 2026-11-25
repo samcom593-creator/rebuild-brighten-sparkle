@@ -10723,6 +10723,21 @@
         "raw": ""
       }
     ],
+    "production_policy_cohort": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_end",
+          "p_start"
+        ],
+        "required": [
+          "p_end",
+          "p_start"
+        ],
+        "unnamed": false,
+        "raw": "p_start date, p_end date, p_agent_id uuid DEFAULT NULL::uuid"
+      }
+    ],
     "production_reconciliation_receipt": [
       {
         "all": [
@@ -13621,5 +13636,8 @@
       "consumer_import_history": "20261124140000_consumer_source_import.sql",
       "consumer_import_review": "20261124140000_consumer_source_import.sql"
     }
+  },
+  "_declared_migration_contracts": {
+    "production_policy_cohort": "20261125100000_producer_status_and_run_rate.sql; validate against deployed pg_proc after migration"
   }
 }

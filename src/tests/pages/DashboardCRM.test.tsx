@@ -26,6 +26,7 @@ vi.mock("@/hooks/useBusinessToday", () => ({ useBusinessToday: () => "2026-10-31
 // The work-days editor refuses a start date before today; pin its today the way the old Overview test did.
 vi.mock("@/lib/teamStage", async (orig) => { const real = await orig<typeof import("@/lib/teamStage")>(); return { ...real, phoenixToday: () => "2026-10-09" }; });
 vi.mock("@/shared/realtime/useRealtimeTable", () => ({ useRealtimeTable: vi.fn() }));
+vi.mock("@/hooks/useProductionRealtime", () => ({ useProductionRealtime: vi.fn() }));
 vi.mock("@/hooks/usePortalLoginSender", () => ({ usePortalLoginSender: () => ({ sending: false, send: vi.fn() }) }));
 const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn(), message: vi.fn() }));
 vi.mock("sonner", () => ({ toast }));

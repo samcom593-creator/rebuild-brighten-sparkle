@@ -20,6 +20,7 @@ import { GradeBreakdown } from "@/components/calltraining/GradeBreakdown";
 import { momentsFrom } from "@/lib/callAudio";
 import { dispositionLabel } from "@/lib/readymodeDispositions";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
 interface LibraryRow {
   call_id: string;
@@ -54,18 +55,21 @@ function turns(v: unknown): Turn[] {
 
 async function fetchLibrary(): Promise<LibraryRow[]> {
   const { data, error } = await supabase.rpc("call_training_library" as never);
-  if (error) throw new Error((error as { message?: string }).message ?? "The training library did not load.");
-  return (Array.isArray(data) ? data : []) as LibraryRow[];
+  const rows: unknown = data;
+  if (error || !Array.isArray(rows) || rows.some(row => !row || typeof row !== "object" || typeof row.call_id !== "string" || !row.call_id)) throw new Error("The training library did not load. Retry to check published calls.");
+  return rows as LibraryRow[];
 }
 
 export function TrainingLibrary({ top }: { top?: ReactNode } = {}) {
-  const q = useQuery({ queryKey: ["call-training-library"], queryFn: fetchLibrary, staleTime: 5 * 60_000 });
+  const { user, isLoading } = useAuth();
+  const q = useQuery({ queryKey: ["call-training-library", user?.id], queryFn: fetchLibrary, enabled: !!user && !isLoading, staleTime: 5 * 60_000, gcTime: 0, meta: { silent: true } });
   const [view, setView] = useState<ViewKey>("great");
   const [openId, setOpenId] = useState<string | null>(null);
   const rows = useMemo(
     () => (q.data ?? []).filter((r) => (view === "all" ? true : view === "great" ? !!r.great_call : turns(r.objection_moments).some((m) => m.worked))),
     [q.data, view],
   );
+  if (!isLoading && !user) return <p className="text-sm text-muted-foreground">Sign in to view training calls.</p>;
   return (
     <div className="space-y-6">
       <PageHeader title="Call Training" subtitle="Hear the calls worth learning from. Tap a moment to play that part of the call." />
@@ -75,12 +79,12 @@ export function TrainingLibrary({ top }: { top?: ReactNode } = {}) {
           <Button key={v.key} size="sm" variant={view === v.key ? "default" : "outline"} aria-pressed={view === v.key} onClick={() => setView(v.key)}>{v.label}</Button>
         ))}
       </div>
-      {q.isLoading ? (
+      {isLoading || q.isPending ? (
         <div className="space-y-2">{Array.from({ length: 4 }, (_, n) => <Skeleton key={`lib-sk-${n}`} className="h-20 w-full" />)}</div>
       ) : q.isError ? (
-        <EmptyState icon={<GraduationCap className="h-6 w-6" />} title="The training library did not load" description={(q.error as Error).message} />
+        <div className="space-y-2"><EmptyState icon={<GraduationCap className="h-6 w-6" />} title="The training library did not load" description={(q.error as Error).message} /><Button type="button" variant="outline" disabled={q.isFetching} onClick={() => void q.refetch()}>Retry training calls</Button></div>
       ) : rows.length === 0 ? (
-        <EmptyState icon={<GraduationCap className="h-6 w-6" />} title="No calls here yet" description="Training calls appear as the dialer bot grades them." />
+        <EmptyState icon={<GraduationCap className="h-6 w-6" />} title="No calls here yet" description="Calls appear after grading and publication of a training copy with client details removed." />
       ) : (
         <div className="space-y-2">
           {rows.map((r) => {

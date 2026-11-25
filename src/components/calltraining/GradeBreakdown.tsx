@@ -8,6 +8,7 @@ import { Check, Minus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { seekCall } from "@/lib/callAudio";
 import { GradeReview } from "@/components/calltraining/GradeReview";
+import { useCallAudioAvailability } from "@/hooks/useCallAudioAvailability";
 
 interface Reason { reason?: string; t?: string; quote?: string }
 interface Step { step?: string; status?: string; t?: string; note?: string }
@@ -41,6 +42,8 @@ export function GradeBreakdown({ callId, scores, reasons, scriptScore, scriptFol
   /** Sam, Aisha and the agent's upline can mark the grade right, too high or too low. */
   canReview?: boolean;
 }) {
+  const audio = useCallAudioAvailability(callId);
+  const playableCallId = audio.data === true ? callId : undefined;
   const rs = reasons ?? {};
   const list = steps ?? [];
   const review = canReview && callId ? <GradeReview callId={callId} /> : null;
@@ -62,7 +65,7 @@ export function GradeBreakdown({ callId, scores, reasons, scriptScore, scriptFol
                   <td className={cn("px-2 text-right font-semibold tabular-nums", tone(s))}>{s ?? ""}/10</td>
                   <td className="px-2">
                     {r.reason ?? ""}
-                    {r.quote ? <span className="block text-xs text-muted-foreground"><Stamp callId={callId} t={r.t} />“{r.quote}”</span> : null}
+                    {r.quote ? <span className="block text-xs text-muted-foreground"><Stamp callId={playableCallId} t={r.t} />“{r.quote}”</span> : null}
                   </td>
                 </tr>
               );
@@ -90,7 +93,7 @@ export function GradeBreakdown({ callId, scores, reasons, scriptScore, scriptFol
                 )}
                 <span>
                   <span className="font-medium">{st.step}</span>
-                  {st.t ? <span className="ml-1"><Stamp callId={callId} t={st.t} /></span> : null}
+                  {st.t ? <span className="ml-1"><Stamp callId={playableCallId} t={st.t} /></span> : null}
                   {st.note ? <span className="block text-xs text-muted-foreground">{st.note}</span> : null}
                 </span>
               </li>

@@ -4,7 +4,7 @@
  * Measured the day this shipped: 656 leads were in agents' hands and 420 had never been touched. The list drew every
  * lead with all eight result buttons open, so a phone showed two leads per screen. Now each lead is one line, one
  * lead at a time shows its result buttons, a recorded result opens the next lead, call backs come first, and a pack
- * larger than eight leads can be searched.
+ * can always be searched, filtered and paged without changing calling restrictions.
  */
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -117,10 +117,53 @@ describe("My Leads work list", () => {
     expect(rowNames()).toEqual(["Lead1", "Lead2", "Lead3"]);
   });
 
-  it("shows no search box on a pack of eight leads or fewer", async () => {
+  it("keeps search available even for a small pack and can clear it in one tap", async () => {
     renderPage();
     await screen.findAllByTestId("lead-row");
-    expect(screen.queryByTestId("lead-search")).toBeNull();
+    fireEvent.change(screen.getByLabelText("Find a lead"), { target: { value: "Lead2" } });
+    expect(rowNames()).toEqual(["Lead2"]);
+    fireEvent.click(screen.getByRole("button", { name: "Clear find a lead" }));
+    expect(rowNames()).toEqual(["Lead1", "Lead2", "Lead3"]);
+  });
+
+  it("makes every assigned row reachable and resets paging when filters change", async () => {
+    db.leads = Array.from({ length: 55 }, (_, i) => lead(i + 1));
+    renderPage();
+    await screen.findAllByTestId("lead-row");
+    expect(screen.getAllByTestId("lead-row")).toHaveLength(25);
+    expect(rowNames()[0]).toBe("Lead1");
+    fireEvent.click(screen.getByRole("button", { name: "Next assigned leads page" }));
+    expect(rowNames()[0]).toBe("Lead26");
+    fireEvent.click(screen.getByRole("button", { name: "Next assigned leads page" }));
+    expect(rowNames()).toEqual(["Lead51", "Lead52", "Lead53", "Lead54", "Lead55"]);
+    fireEvent.change(screen.getByLabelText("Find a lead"), { target: { value: "+1 (602) 555-0155" } });
+    expect(rowNames()).toEqual(["Lead55"]);
+    fireEvent.click(screen.getByRole("button", { name: "Reset filters" }));
+    await waitFor(() => expect(rowNames()[0]).toBe("Lead1"));
+  });
+
+  it("opens the next lead across a page boundary after logging a result", async () => {
+    db.leads = Array.from({ length: 30 }, (_, i) => lead(i + 1));
+    renderPage();
+    await screen.findAllByTestId("lead-row");
+    fireEvent.click(screen.getByRole("button", { name: "Open Lead25 Test" }));
+    fireEvent.click(screen.getByRole("button", { name: "Callback" }));
+    await waitFor(() => expect(db.logged).toEqual([{ item: "item-25", status: "callback" }]));
+    await waitFor(() => expect(openRows()[0]?.textContent).toContain("Lead26"));
+    expect(screen.getByRole("button", { name: "Previous assigned leads page" })).not.toBeDisabled();
+  });
+
+  it("combines state and pack filters and starts work only on the matching leads", async () => {
+    db.leads = [lead(1), lead(2, { state: "TX" }), lead(3, { state: "TX", bundle_id: "b-2", bundle_name: "Second pack" })];
+    renderPage();
+    await screen.findAllByTestId("lead-row");
+    fireEvent.change(screen.getByLabelText("Lead state"), { target: { value: "TX" } });
+    fireEvent.change(screen.getByLabelText("Lead pack"), { target: { value: "b-1" } });
+    expect(rowNames()).toEqual(["Lead2"]);
+    expect(screen.getByRole("button", { name: "To call (1)" })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(screen.getByRole("button", { name: "Work leads (1)" }));
+    expect(screen.getByRole("heading", { name: /Lead2 Test/ })).toBeTruthy();
+    expect(screen.getByText("0 of 1 worked")).toBeTruthy();
   });
 
   it("search narrows the list by name, by phone digits and by state", async () => {

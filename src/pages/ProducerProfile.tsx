@@ -37,6 +37,9 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { contactLinkProps, phoneHref } from "@/lib/phone";
+import { AgentCarrierBookPanel } from "@/components/team/AgentCarrierBookPanel";
+import { carrierPolicyStatus } from "@/lib/carrierPolicyStatus";
+import { useBusinessToday } from "@/hooks/useBusinessToday";
 
 interface ProfileForm {
   full_name: string;
@@ -108,6 +111,8 @@ function fmtUsd(n: number | null): string {
 ──────────────────────────────────────────────────────────────────────────── */
 
 interface ProducerDetail {
+  requested_agent_id?: string;
+  viewer_user_id?: string;
   agent: {
     agent_id: string; full_name: string | null; email: string | null; phone: string | null;
     avatar_url: string | null; agent_code: string | null; status: string | null;
@@ -127,13 +132,15 @@ interface ProducerDetail {
   downline: Array<{ agent_id: string; name: string | null; status: string | null; mtd_alp?: number | null; lifetime_alp?: number | null }>;
   contracts: Array<{ carrier?: string | null; status?: string | null; [k: string]: unknown }>;
   training: { modules_total: number | null; modules_passed: number | null; last_activity: string | null } | null;
-  recent_deals: Array<{ posted_date: string | null; carrier: string | null; product: string | null; annual_premium?: number | null; status: string | null }>;
+  recent_deals: Array<{ row_key?: string; client_name?: string | null; policy_number?: string | null; posted_date: string | null; carrier: string | null; product: string | null; annual_premium?: number | null; status: string | null; carrier_status?: string | null; carrier_bucket?: string | null; status_source?: string | null }>;
+  production_summary?: { lifetime_estimated_commission: number | null };
 }
 
 /** Compact USD that returns null instead of a fake "$0" when nothing is on file. */
 function usdOrNull(v: number | string | null | undefined): string | null {
-  const n = Number(v ?? 0) || 0;
-  if (n <= 0) return null;
+  if (v === null || v === undefined || v === "") return null;
+  const n = Number(v);
+  if (!Number.isFinite(n)) return null;
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
   if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}K`;
   return `$${Math.round(n).toLocaleString()}`;
@@ -177,13 +184,20 @@ function StatCard({ label, value, note, tone }: { label: string; value: string |
 }
 
 function AgentProducerView({ agentId }: { agentId: string }) {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
+  const today = useBusinessToday();
+  const qc = useQueryClient();
   const detail = useQuery({
-    queryKey: ["producer-profile-detail", agentId],
+    queryKey: ["producer-profile-detail", agentId, user?.id, today],
+    enabled: Boolean(user?.id),
     queryFn: async (): Promise<ProducerDetail | null> => {
       const { data, error } = await supabase.rpc("producer_profile_detail" as never, { p_agent_id: agentId } as never);
       if (error) throw error;
-      return (data as ProducerDetail) ?? null;
+      const detail = data as unknown as ProducerDetail | null;
+      if (detail && (detail.viewer_user_id !== user!.id || detail.requested_agent_id !== agentId)) {
+        throw new Error("Producer profile did not match this account and selected producer.");
+      }
+      return detail;
     },
   });
 
@@ -252,7 +266,7 @@ function AgentProducerView({ agentId }: { agentId: string }) {
             <Button asChild variant="outline" size="sm">
               <Link to="/dashboard/team"><ArrowLeft className="mr-1.5 h-3.5 w-3.5" /> Back to Team</Link>
             </Button>
-            <Button variant="outline" size="sm" onClick={() => detail.refetch()}>
+            <Button variant="outline" size="sm" onClick={() => { void detail.refetch(); void qc.invalidateQueries({ queryKey: ["agent-carrier-book", agentId] }); }}>
               <RefreshCw className={cn("mr-1.5 h-3.5 w-3.5", detail.isFetching && "animate-spin")} /> Refresh
             </Button>
           </>
@@ -300,17 +314,17 @@ function AgentProducerView({ agentId }: { agentId: string }) {
       {isAdmin && <AgentLicensingEditor agentId={agentId} />}
 
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <StatCard label="Month to date" value={usdOrNull(a.mtd_alp)} note={`${a.mtd_deals ?? 0} deals posted`} tone="text-success" />
+        <StatCard label="Personal posted ALP · MTD" value={usdOrNull(a.mtd_alp)} note={`${a.mtd_deals ?? 0} deals posted`} tone="text-success" />
         <StatCard label="Last 30 days" value={usdOrNull(a.l30_alp)} note={`${a.l30_deals ?? 0} deals posted`} />
-        <StatCard label="Lifetime ALP" value={usdOrNull(a.lifetime_alp)} note={`${a.lifetime_deals ?? 0} deals · ${a.first_posted_date ? `since ${a.first_posted_date}` : "never sold"}`} />
+        <StatCard label="Personal posted ALP · lifetime" value={usdOrNull(a.lifetime_alp)} note={`${a.lifetime_deals ?? 0} deals · ${a.first_posted_date ? `since ${a.first_posted_date}` : "never sold"}`} />
         <StatCard
           label="Downline"
-          value={(a.downline_count ?? 0) > 0 ? String(a.downline_count) : null}
+          value={a.downline_count === null ? null : String(a.downline_count)}
           note={`${a.contracts_active ?? 0} of ${a.contracts_total ?? 0} carrier contracts active`}
         />
       </div>
 
-      <ContractingReadinessCard />
+      <AgentCarrierBookPanel key={agentId} agentId={agentId} />
       <ContractingStanding agentId={agentId} />
 
       <div className="grid gap-6 xl:grid-cols-3">
@@ -340,8 +354,8 @@ function AgentProducerView({ agentId }: { agentId: string }) {
 
           <Card>
             <CardContent className="p-5">
-              <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold"><FileText className="h-4 w-4 text-muted-foreground" /> Recent deals</h3>
-              <p className="mb-3 text-xs text-muted-foreground">Newest posted business first.</p>
+              <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold"><FileText className="h-4 w-4 text-muted-foreground" /> Recent posted production</h3>
+              <p className="mb-3 text-xs text-muted-foreground">Personal ledger, newest Phoenix posted date first. Carrier decisions, including declined policies excluded from production, are listed in the policy book above.</p>
               {deals.length === 0 ? (
                 <p className="text-xs italic text-muted-foreground">This producer has no posted deals on file.</p>
               ) : (
@@ -351,18 +365,18 @@ function AgentProducerView({ agentId }: { agentId: string }) {
                       <TableRow className="border-b border-border hover:bg-transparent [&_th]:h-9 [&_th]:text-[11px] [&_th]:font-bold [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted-foreground">
                         <TableHead className="px-2">Posted</TableHead>
                         <TableHead className="px-2">Carrier</TableHead>
-                        <TableHead className="px-2">Product</TableHead>
-                        <TableHead className="px-2">Status</TableHead>
+                        <TableHead className="px-2">Client / policy</TableHead>
+                        <TableHead className="px-2">Carrier status</TableHead>
                         <TableHead className="px-2 text-right">Premium</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {deals.slice(0, 25).map((dl, i) => (
-                        <TableRow key={`${dl.posted_date ?? "nodate"}-${dl.carrier ?? "nocarrier"}-${dl.product ?? "noproduct"}-${i}`} className="border-b border-border/60">
+                        <TableRow key={dl.row_key ?? `${dl.posted_date ?? "nodate"}-${dl.carrier ?? "nocarrier"}-${dl.product ?? "noproduct"}-${i}`} className="border-b border-border/60">
                           <TableCell className="px-2 py-2 text-xs tabular-nums">{dl.posted_date ?? "—"}</TableCell>
                           <TableCell className="px-2 py-2 text-xs">{dl.carrier ?? "—"}</TableCell>
-                          <TableCell className="max-w-[220px] truncate px-2 py-2 text-xs">{dl.product ?? "—"}</TableCell>
-                          <TableCell className="px-2 py-2"><Badge variant="outline" className="text-[11px] uppercase tracking-wide">{dl.status ?? "unknown"}</Badge></TableCell>
+                          <TableCell className="max-w-[220px] px-2 py-2 text-xs"><p className="truncate">{dl.client_name || dl.product || "—"}</p><p className="text-muted-foreground">{dl.policy_number || "Policy number unavailable"}</p></TableCell>
+                          <TableCell className="px-2 py-2"><Badge variant="outline" className="text-[11px] uppercase tracking-wide">{dl.status_source === "carrier" ? carrierPolicyStatus({ carrier: dl.carrier, bucket: dl.carrier_bucket, rawStatus: dl.carrier_status }).statusLabel : "Carrier status unverified"}</Badge></TableCell>
                           <TableCell className="px-2 py-2 text-right text-xs font-semibold tabular-nums">{usdOrNull(dl.annual_premium) ?? "—"}</TableCell>
                         </TableRow>
                       ))}
@@ -522,15 +536,15 @@ export default function ProducerProfile() {
   // Dead cached totals are intentionally ignored. This is the same unified,
   // deduped production + resolved-comp truth used by Finances and Leaderboard.
   const bookRollup = useQuery({
-    queryKey: ["producer-book-rollup", agentId],
-    enabled: !!agentId,
+    queryKey: ["producer-book-rollup", agentId, userId],
+    enabled: Boolean(agentId && userId),
     queryFn: async () => {
-      const { data } = await supabase.from("v_production_comp_truth" as any)
-        .select("annual_premium, direct_estimate").eq("agent_id", agentId);
-      const rows = (data ?? []) as unknown as Array<{ annual_premium: number | string | null; direct_estimate: number | string | null }>;
-      const premium = rows.reduce((s, r) => s + Number(r.annual_premium ?? 0), 0);
-      const estEarnings = rows.reduce((sum, row) => sum + Number(row.direct_estimate ?? 0), 0);
-      return { premium, policies: rows.length, estEarnings: Math.round(estEarnings) };
+      const { data, error } = await supabase.rpc("producer_profile_detail" as never, { p_agent_id: agentId } as never);
+      if (error) throw error;
+      const detail = data as unknown as ProducerDetail;
+      if (!detail?.agent || detail.viewer_user_id !== userId || detail.requested_agent_id !== agentId) throw new Error("Personal production is unavailable for this account.");
+      return { premium: detail.agent.lifetime_alp, policies: detail.agent.lifetime_deals,
+        estEarnings: detail.production_summary?.lifetime_estimated_commission ?? null };
     },
   });
 
@@ -678,11 +692,12 @@ export default function ProducerProfile() {
         <Button asChild variant="ghost" className="rounded-none border-b-2 border-transparent text-muted-foreground"><Link to="/dashboard/profile#contracting-documents">Documents</Link></Button>
       </nav>
 
+      {agentId && <AgentCarrierBookPanel key={agentId} agentId={agentId} />}
       <ContractingReadinessCard />
       <ContractingStanding agentId={ag?.id ?? null} />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        {[{ label: "License", value: ag?.license_status ?? "—", note: ag?.agent_code ?? "No agent code" }, { label: "States", value: ag?.license_states?.length ?? "—", note: ag?.license_states?.length ? "licensed" : "not on file" }, { label: "Premium", value: fmtUsd(bookRollup.data?.premium ?? 0), note: `${bookRollup.data?.policies ?? 0} policies written` }, { label: "Est. earnings", value: fmtUsd(bookRollup.data?.estEarnings ?? 0), note: "contract estimate" }].map((metric) => <Card key={metric.label}><CardContent className="p-4"><p className="text-xs text-muted-foreground">{metric.label}</p><p className="mt-1 truncate text-xl font-semibold tabular-nums capitalize">{metric.value}</p><p className="text-xs text-muted-foreground">{metric.note}</p></CardContent></Card>)}
+        {[{ label: "License", value: ag?.license_status ?? "—", note: ag?.agent_code ?? "No agent code" }, { label: "States", value: ag?.license_states?.length ?? "—", note: ag?.license_states?.length ? "licensed" : "not on file" }, { label: "Premium", value: usdOrNull(bookRollup.data?.premium) ?? "—", note: `${bookRollup.data?.policies ?? "—"} policies written` }, { label: "Est. earnings", value: usdOrNull(bookRollup.data?.estEarnings) ?? "—", note: "contract estimate" }].map((metric) => <Card key={metric.label}><CardContent className="p-4"><p className="text-xs text-muted-foreground">{metric.label}</p><p className="mt-1 truncate text-xl font-semibold tabular-nums capitalize">{metric.value}</p><p className="text-xs text-muted-foreground">{metric.note}</p></CardContent></Card>)}
       </div>
 
       {/* COURSE ACCESS / TRAINING · audit: every applicant with licensed_at IS NOT NULL gets course access */}
@@ -911,15 +926,15 @@ export default function ProducerProfile() {
                   <div className="border-t border-border/40 pt-2 mt-2 space-y-2">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Policies</span>
-                      <span className="tabular-nums font-bold">{bookRollup.data?.policies ?? 0}</span>
+                      <span className="tabular-nums font-bold">{bookRollup.data?.policies ?? "—"}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Total Premium</span>
-                      <span className="tabular-nums font-bold text-emerald-600 dark:text-emerald-400">{fmtUsd(bookRollup.data?.premium ?? 0)}</span>
+                      <span className="tabular-nums font-bold text-emerald-600 dark:text-emerald-400">{usdOrNull(bookRollup.data?.premium) ?? "—"}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Total Earnings</span>
-                      <span className="tabular-nums font-bold text-emerald-600 dark:text-emerald-400">{fmtUsd(bookRollup.data?.estEarnings ?? 0)}</span>
+                      <span className="tabular-nums font-bold text-emerald-600 dark:text-emerald-400">{usdOrNull(bookRollup.data?.estEarnings) ?? "—"}</span>
                     </div>
                   </div>
                   {ag.performance_tier && (

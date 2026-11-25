@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { financePolicySummary, financePolicyCoverage, financePremiumPaying, parseFinancePolicyBook, POLICY_COVERAGE_LABELS } from "@/lib/financePolicyBook";
+import { financePolicySummary, financePolicyCoverage, financePremiumPaying, financePaidStatus, parseFinancePolicyBook, POLICY_COVERAGE_LABELS } from "@/lib/financePolicyBook";
 
 const policy = (overrides: Record<string, unknown> = {}) => ({
   key: "Combined:synthetic-1", carrier: "Combined", underwriter: null, policy_number: "SYNTHETIC-1",
@@ -10,6 +10,38 @@ const policy = (overrides: Record<string, unknown> = {}) => ({
 const payload = (policies: unknown[] = [policy()]) => ({ agent_id: "agent-own", as_of: "2026-11-25T00:00:00Z", policies });
 
 describe("financial carrier policy facts", () => {
+  it("accepts a server-authorized canonical alias only when the requested identity is echoed", () => {
+    const canonical = { ...payload(), agent_id: "canonical-agent", requested_agent_id: "agent-own" };
+    expect(parseFinancePolicyBook(canonical, "agent-own").agentId).toBe("agent-own");
+    expect(() => parseFinancePolicyBook({ ...canonical, requested_agent_id: "another-agent" }, "agent-own")).toThrow();
+    expect(() => parseFinancePolicyBook({ ...payload(), requested_agent_id: "another-agent" }, "agent-own")).toThrow();
+  });
+
+  it("keeps carrier-recorded chargebacks separate from coverage and outstanding debt", () => {
+    const book = parseFinancePolicyBook({ ...payload(), summary: { chargebacks: 2, chargeback_amount: "321.50", debt_outstanding: 123 } }, "agent-own");
+    expect(book.chargebacks).toEqual({ count: 2, amount: 321.5, outstandingDebt: 123 });
+    expect(parseFinancePolicyBook(payload(), "agent-own").chargebacks).toBeNull();
+    expect(() => parseFinancePolicyBook({ ...payload(), summary: { chargebacks: 1.5, chargeback_amount: 100 } }, "agent-own")).toThrow();
+  });
+
+  it("resolves a generic pending bucket to the observed declined or paying status without promoting contradictory records", () => {
+    const book = parseFinancePolicyBook(payload([
+      policy({ key: "declined", bucket: "pending", status_raw: "DECLINED", annual_premium: 100 }),
+      policy({ key: "paying", carrier: "Ethos", bucket: "pending", status_raw: "PREMIUM_PAYING", annual_premium: 1200 }),
+      policy({ key: "paid", carrier: "Combined", bucket: "active", status_raw: "Issued and paid", annual_premium: 500 }),
+      policy({ key: "conflict", carrier: "Ethos", bucket: "lapsed", status_raw: "PREMIUM_PAYING", annual_premium: 9000 }),
+    ]), "agent-own");
+    expect(book.policies.map(row => row.coverage)).toEqual(["declined", "active", "active", "unknown"]);
+    expect(book.policies[3].statusConflict).toBe(true);
+    expect(financePaidStatus(book.policies)).toEqual({ policies: 2, annualPremium: 1700, knownAnnualPremium: 1700, missingPremium: 0, carriers: ["Combined", "Ethos"], otherPolicies: 2 });
+  });
+
+  it("preserves carrier-specific refresh dates and pre-issue status", () => {
+    const book = parseFinancePolicyBook({ ...payload([policy({ status_raw: null, status_pre: "IN_REVIEW", last_seen_on: "2026-11-20" })]),
+      carrier_sources: [{ carrier: "Combined", policy_count: 1, last_seen_on: "2026-11-20" }] }, "agent-own");
+    expect(book.carrierSources).toEqual([{ carrier: "Combined", policyCount: 1, lastSeenOn: "2026-11-20" }]);
+    expect(book.policies[0]).toMatchObject({ preStatus: "IN_REVIEW", statusLabel: "In review", lastSeenOn: "2026-11-20" });
+  });
   it("preserves raw issued status, coverage, effective date and missing chargeback independently", () => {
     const book = parseFinancePolicyBook(payload(), "agent-own");
     expect(book.policies[0]).toMatchObject({
@@ -23,9 +55,9 @@ describe("financial carrier policy facts", () => {
 
   it("counts real rows and known premiums without treating missing amounts as zero or lapse as chargeback", () => {
     const book = parseFinancePolicyBook(payload([
-      policy({ bucket: "active" }),
-      policy({ key: "Ethos:synthetic-2", bucket: "lapsed", annual_premium: null }),
-      policy({ key: "Ethos:synthetic-3", bucket: "at_risk", annual_premium: 600, chargeback: -90 }),
+      policy({ bucket: "active", status_raw: "In force" }),
+      policy({ key: "Ethos:synthetic-2", bucket: "lapsed", status_raw: "lapsed", annual_premium: null }),
+      policy({ key: "Ethos:synthetic-3", bucket: "at_risk", status_raw: "Lapse Pending", annual_premium: 600, chargeback: -90 }),
     ]), "agent-own");
     expect(financePolicySummary(book.policies)).toEqual({ policies: 3, inForce: 1, atRisk: 1, annualPremium: 1800.5, missingPremium: 1 });
     expect(book.policies[1].chargeback).toBeNull();
@@ -72,7 +104,7 @@ describe("financial carrier policy facts", () => {
     const book = parseFinancePolicyBook(payload([
       policy({ annual_premium: 100 }), policy({ key: "pending-2", annual_premium: null }),
       policy({ key: "active-1", bucket: "active", status_raw: "In force", annual_premium: 9000 }),
-      policy({ key: "lapsed-1", bucket: "lapsed", annual_premium: null }),
+      policy({ key: "lapsed-1", bucket: "lapsed", status_raw: "lapsed", annual_premium: null }),
     ]), "agent-own");
     expect(financePolicyCoverage(book.policies)).toEqual([
       { key: "pending", label: "Pending", count: 2, annualPremium: 100, missingPremium: 1 },

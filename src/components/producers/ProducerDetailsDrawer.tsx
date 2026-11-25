@@ -22,6 +22,8 @@
  */
 
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { AgentCarrierBookPanel } from "@/components/team/AgentCarrierBookPanel";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Sheet,
@@ -304,6 +306,8 @@ export default function ProducerDetailsDrawer({
           </SheetDescription>
         </SheetHeader>
 
+        <div className="mt-5 space-y-3"><Button asChild variant="outline" className="w-full"><Link to={`/dashboard/profile?agentId=${producer.producer_id}`}>Open complete producer profile</Link></Button><AgentCarrierBookPanel key={producer.producer_id} agentId={producer.producer_id} compact /></div>
+
         {/* 1 · Profile · 2 · Manager · 3 · Stage · 4 · AgentLink · 6 · Policies */}
         <section className="mt-5 rounded-lg border border-white/[0.08] bg-muted/30 p-4 space-y-2 text-sm">
           <Row label="Agent code" value={agent?.agent_code ?? "—"} />
@@ -337,7 +341,7 @@ export default function ProducerDetailsDrawer({
               </span>
             }
           />
-          <Row label="Policies" value={agent?.total_policies ?? "—"} />
+
           <Row label="First deal" value={fmtDate(agent?.first_deal_at)} />
           <Row label="Last contact" value={fmtDate(lastContact)} />
         </section>

@@ -233,7 +233,7 @@ function InlineReadNotice({ label, read, onRetry }: { label: string; read: ReadL
   return <QueryState status="ready" compact stale label={label} error={read.error} asOf={read.dataUpdatedAt} onRetry={onRetry} />;
 }
 
-export default function MyCommissions({ embedded = false }: { embedded?: boolean }) {
+export default function MyCommissions({ embedded = false, onViewPolicies }: { embedded?: boolean; onViewPolicies?: () => void }) {
   const me = useAgentIdentity();
   const { user, isAdmin, isLoading: authLoading } = useAuth();
   const todayKey = useBusinessToday();
@@ -358,16 +358,19 @@ export default function MyCommissions({ embedded = false }: { embedded?: boolean
   }
 
   const notShownText = rateVerdict === "not_on_file" ? "Not shown" : "Unavailable";
+  const unkeyedEstimateCount = estimateRead?.withoutKeyCount ?? 0;
+  const pricedEstimateCount = production ? production.rowCount - production.excludedCount : 0;
+  const estimateIncomplete = Boolean(production && (production.excludedCount > 0 || unkeyedEstimateCount > 0));
   const estimateTotalText =
-    production === null ? "Unavailable" : production.estimateTotal !== null ? money(production.estimateTotal) : notShownText;
+    production === null ? "Unavailable" : production.estimateTotal === null ? notShownText : estimateIncomplete ? pricedEstimateCount > 0 ? "Incomplete" : "Unavailable" : money(production.estimateTotal);
   return (
     <div className={embedded ? "space-y-5" : "p-4 md:p-6 space-y-6 max-w-7xl mx-auto page-enter"}>
       {!embedded && <PageHeader eyebrow="Your business" eyebrowIcon={<Wallet className="h-3 w-3" />} title="Finances" subtitle="Policies, commissions and recorded payments." />}
       {gate ?? (
         <section className="space-y-5" aria-label="Your issue and payment workspace">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div><h2 className="galaxy-heading text-2xl font-black italic uppercase">Issue &amp; pay</h2><p className="mt-1 text-base text-muted-foreground">Your policy commissions. Every rate, status and payment in view.</p></div>
-            <Button type="button" variant="outline" disabled={ledger.isFetching || estimates.isFetching || contract.isFetching || commissionTypes.isFetching} onClick={retryAll}><RefreshCw aria-hidden className="h-4 w-4" /> Refresh finances</Button>
+            <div><h2 className="galaxy-heading text-2xl font-bold">Commissions</h2><p className="mt-1 text-base text-muted-foreground">Recorded payments, open ledger amounts and contract estimates.</p></div>
+            <div className="flex flex-wrap gap-2">{onViewPolicies && <Button type="button" variant="outline" onClick={onViewPolicies}>View policy status</Button>}<Button type="button" variant="outline" disabled={ledger.isFetching || estimates.isFetching || contract.isFetching || commissionTypes.isFetching} onClick={retryAll}><RefreshCw aria-hidden className="h-4 w-4" /> Refresh finances</Button></div>
           </div>
           {identity?.status === "resolved" && identity.note && <p className="text-sm text-muted-foreground">{identity.note}</p>}
           <QueryState {...describeQuery({ ...ledger, isEmpty: false })} label="the commission ledger" onRetry={retryAll} asOf={ledger.dataUpdatedAt}>
@@ -382,6 +385,15 @@ export default function MyCommissions({ embedded = false }: { embedded?: boolean
                 <div className="space-y-5">
                   <InlineReadNotice label="production estimates" read={estimates} onRetry={() => void estimates.refetch()} />
                   <InlineReadNotice label="your contract rate" read={contract} onRetry={() => void contract.refetch()} />
+                  <section className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card p-5" aria-label="Posted production commission estimate">
+                    <div><h3 className="font-bold">Contract estimate on posted production</h3><p className="mt-1 text-sm text-muted-foreground">{production ? `${(production.rowCount + unkeyedEstimateCount).toLocaleString()} production records · all available history` : "Production source unavailable"}</p><p className="mt-1 text-sm text-muted-foreground">Estimated gross commission before carrier payment, adjustments or chargebacks.</p>
+                      {production && production.excludedCount > 0 && <p className="mt-2 text-sm text-muted-foreground">{plural(production.excludedCount, "estimate")} {excludedPhrase}; excluded from the subtotal.</p>}
+                      {unkeyedEstimateCount > 0 && <p className="mt-2 text-sm text-muted-foreground">{plural(unkeyedEstimateCount, "production row")} without a record key; excluded from the subtotal and list.</p>}
+                    </div>
+                    <div className="text-right"><p className="galaxy-stat text-3xl font-black tabular-nums">{estimateTotalText}</p>
+                      {estimateIncomplete && production?.estimateTotal !== null && production && pricedEstimateCount > 0 && <p className="mt-1 text-sm text-muted-foreground">Known subtotal {money(production.estimateTotal)} · {plural(pricedEstimateCount, "priced record")}</p>}
+                    </div>
+                  </section>
                   {visibility === "complete" && <CommissionCharts ledgerRows={ledgerRows ?? []} rows={reconciled.rows} todayKey={todayKey} />}
                   <CommissionPolicyLedger key={`${user?.id}:${agentId}`} rows={reconciled.rows} todayKey={todayKey} ledgerHiddenText={ledgerHiddenText} hasProduction={production !== null} />
                   <details className="rounded-xl border border-border bg-card p-4 sm:p-5">

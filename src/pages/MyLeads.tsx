@@ -3,9 +3,9 @@
 // my_lead_bundles() returns only the caller's live leads in bundles they hold, with the dialer's do-not-call numbers
 // already removed. One tap records what happened (lead_bundle_item_set). Do not call takes the Call link away for
 // good, and the number never goes into another bundle.
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, Inbox, Info, Phone, PhoneCall, Mic, Check, Search, Trophy, UserPlus, X } from "lucide-react";
+import { ChevronDown, Inbox, Info, Phone, PhoneCall, Mic, Check, Trophy, UserPlus, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +27,10 @@ import { holdLabels } from "@/lib/leadManagerFilters";
 import { MY_LEADS_QUERY_KEY, fetchMyLeads } from "@/lib/myLeads";
 import { cn } from "@/lib/utils";
 import { CallCenterVoiceRecorder } from "@/components/callcenter/CallCenterVoiceRecorder";
+import { QueryState } from "@/components/ui/query-state";
+import { LeadFilterSelect, LeadPagination, LeadSearchField } from "@/components/leads/LeadWorklistControls";
+import { useLeadPagination } from "@/hooks/useLeadPagination";
+import { matchesLeadQuery } from "@/lib/leadWorklist";
 
 interface MyLead {
   item_id: string;
@@ -92,16 +96,6 @@ const SHOW: ReadonlyArray<{ key: Show; label: string }> = [
 // nobody has called, then the no-answers to retry. The sort is stable, so the server's order holds inside each step.
 const CALL_ORDER: Record<string, number> = { callback: 0, appointment: 0, new: 1, no_answer: 2 };
 const callRank = (status: string) => CALL_ORDER[status] ?? 3;
-const digits = (v: string) => v.replace(/\D/g, "");
-function matchesSearch(l: Pick<MyLead, "first_name" | "last_name" | "phone10" | "state">, needle: string): boolean {
-  const q = needle.trim().toLowerCase();
-  if (!q) return true;
-  const name = [l.first_name, l.last_name].filter(Boolean).join(" ").toLowerCase();
-  const qDigits = digits(q);
-  return name.includes(q) || (l.state ?? "").toLowerCase() === q || (qDigits.length >= 3 && l.phone10.includes(qDigits));
-}
-/** Above this many leads the list gets a search box. */
-const SEARCH_FROM = 8;
 const shortDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "");
 
 // ---- Full client file (Sam, 2026-11-09: "they need to be able to see all
@@ -215,12 +209,15 @@ export default function MyLeads() {
   // Work mode (Sam, 2026-11-09): one lead at a time, full client file, and the
   // ONLY way to the next lead is marking what happened — there is no skip.
   const [workBundle, setWorkBundle] = useState<string | null>(null);
+  const [workLeadIds, setWorkLeadIds] = useState<Set<string>>(new Set());
   // list rows whose full client file is expanded
   const [detailOpen, setDetailOpen] = useState<Set<string>>(new Set());
   // The one lead whose result buttons are showing. null = the first lead in view (so the page opens ready to
   // work), "" = the agent closed it. Every other lead is a single line until it is opened or its number is tapped.
   const [activeId, setActiveId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [stateFilter, setStateFilter] = useState("");
+  const [bundleFilter, setBundleFilter] = useState("");
   const orderRef = useRef<string[]>([]);
   const openRef = useRef<string | null>(null);
   // MP-LEAD-MANAGER-RM (2026-11-24): a recording is saved against its lead the moment the upload
@@ -299,18 +296,31 @@ export default function MyLeads() {
   // Sam (2026-11-10): after 7 PM leads can't be worked, so they leave "To call". Closed
   // leads stay under "All" so a call made at 6:58 can still be logged.
   const inView = (r: MyLead, s: Show) => s === "all" || (s === "held" ? !!heldReason(r) : s === "open" ? isOpenLead(r.status) && callableNow(r) : !isOpenLead(r.status));
-  const count = (s: Show) => rows.filter((r) => inView(r, s)).length;
-  const inShow = rows.filter((r) => inView(r, show));
-  const matched = inShow.filter((r) => matchesSearch(r, search));
+  const matchingRows = rows.filter((r) => (!stateFilter || r.state === stateFilter) && (!bundleFilter || r.bundle_id === bundleFilter)
+    && matchesLeadQuery(search, [r.first_name, r.last_name, r.email, r.state, r.bundle_name], [r.phone10]));
+  const count = (s: Show) => matchingRows.filter((r) => inView(r, s)).length;
+  const matched = matchingRows.filter((r) => inView(r, show));
   const visible = show === "open" ? [...matched].sort((a, b) => callRank(a.status) - callRank(b.status)) : matched;
-  const openId = activeId === "" ? null : visible.some((r) => r.item_id === activeId) ? activeId : visible[0]?.item_id ?? null;
+  const pagination = useLeadPagination(visible, JSON.stringify([show, search, stateFilter, bundleFilter]));
+  const { pageSize, setPage } = pagination;
+  const openId = activeId === "" ? null : pagination.items.some((r) => r.item_id === activeId) ? activeId : pagination.items[0]?.item_id ?? null;
+  // Result taps can advance across a page boundary. Search/filter/page changes explicitly reset the active row.
+  useEffect(() => {
+    if (!activeId) return;
+    const index = visible.findIndex((r) => r.item_id === activeId);
+    if (index >= 0) setPage(Math.floor(index / pageSize));
+  }, [activeId, visible, pageSize, setPage]);
+  const states = [...new Set(rows.map((r) => r.state).filter((state): state is string => !!state))].sort();
+  const bundles = [...new Map(rows.map((r) => [r.bundle_id, r.bundle_name])).entries()];
+  const filtersActive = !!(search.trim() || stateFilter || bundleFilter || show !== "open");
+  const resetFilters = () => { setSearch(""); setStateFilter(""); setBundleFilter(""); setShow("open"); setActiveId(null); };
   orderRef.current = visible.map((r) => r.item_id);
   openRef.current = openId;
   const callbacksDue = rows.filter((r) => (r.status === "callback" || r.status === "appointment") && callableNow(r)).length;
   const closedOpen = rows.filter((r) => isOpenLead(r.status) && !heldReason(r) && !callableNow(r));
   const heldCount = rows.filter((r) => !!heldReason(r)).length;
   const groups: Array<{ id: string; name: string; note: string | null; format: string; leads: MyLead[] }> = [];
-  for (const r of visible) {
+  for (const r of pagination.items) {
     const g = groups.find((x) => x.id === r.bundle_id);
     if (g) g.leads.push(r);
     else groups.push({ id: r.bundle_id, name: r.bundle_name, note: r.bundle_note, format: r.format, leads: [r] });
@@ -339,8 +349,8 @@ export default function MyLeads() {
       </div>}
       {closedOpen.length > 0 && (
         <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm" data-testid="calling-hours-closed">
-          <p className="font-semibold text-amber-200">
-            {closedOpen.length} lead{closedOpen.length === 1 ? " is" : "s are"} hidden: it's past calling hours where {closedOpen.length === 1 ? "that client lives" : "those clients live"}.
+          <p className="font-semibold text-foreground">
+            {closedOpen.length} lead{closedOpen.length === 1 ? " is" : "s are"} hidden: calling hours are closed where {closedOpen.length === 1 ? "that client lives" : "those clients live"}.
           </p>
           <p className="mt-1 text-muted-foreground">
             Leads can be called 8 AM to 7 PM in the client's own time zone. The next ones open {opensLabel(earliestOpening(closedOpen))} (your time).
@@ -350,24 +360,36 @@ export default function MyLeads() {
       {q.isLoading ? (
         <div className="space-y-2">{[1, 2, 3, 4].map((n) => <Skeleton key={`lead-sk-${n}`} className="h-20 w-full" />)}</div>
       ) : q.isError ? (
-        <EmptyState icon={<Inbox className="h-6 w-6" />} title="Your leads did not load" description={(q.error as Error).message} />
+        <QueryState status="error" label="your leads" error={q.error} onRetry={() => void q.refetch()} />
       ) : rows.length === 0 ? (
         <EmptyState icon={<Inbox className="h-6 w-6" />} title="No leads assigned to you yet." description="When Sam or Aisha gives you a bundle, it shows here." />
       ) : (
         <>
-          <div className="flex flex-wrap gap-2">
-            {SHOW.map((s) => (
-              <Button key={s.key} type="button" size="sm" variant={show === s.key ? "default" : "outline"} onClick={() => setShow(s.key)}>{s.label} ({count(s.key)})</Button>
-            ))}
-          </div>
-          {rows.length > SEARCH_FROM && (
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Find a lead by name, phone or state" className="h-10 pl-9" aria-label="Find a lead" data-testid="lead-search" />
+          <section aria-label="Filter your leads" className="space-y-4 rounded-2xl border border-border bg-card p-4">
+            <LeadSearchField value={search} onChange={(value) => { setSearch(value); setActiveId(null); }} label="Find a lead" placeholder="Search name, phone, email, state or pack…" testId="lead-search" />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <LeadFilterSelect label="Lead state" value={stateFilter} onChange={(value) => { setStateFilter(value); setActiveId(null); }}>
+                <option value="">All states</option>{states.map((state) => <option key={state} value={state}>{state}</option>)}
+              </LeadFilterSelect>
+              <LeadFilterSelect label="Lead pack" value={bundleFilter} onChange={(value) => { setBundleFilter(value); setActiveId(null); }}>
+                <option value="">All packs</option>{bundles.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+              </LeadFilterSelect>
             </div>
-          )}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Lead work status">
+                {SHOW.map((s) => <Button key={s.key} type="button" className="h-11 rounded-full" variant={show === s.key ? "default" : "outline"}
+                  aria-pressed={show === s.key} onClick={() => { setShow(s.key); setActiveId(null); }}>{s.label} ({count(s.key)})</Button>)}
+              </div>
+              {filtersActive && <Button type="button" variant="ghost" className="h-11" onClick={resetFilters}>Reset filters</Button>}
+            </div>
+            <p className="text-sm text-muted-foreground" role="status">{visible.length.toLocaleString()} matching lead{visible.length === 1 ? "" : "s"} · {rows.length.toLocaleString()} assigned</p>
+          </section>
           {groups.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{search.trim() ? `No lead in this view matches “${search.trim()}”.` : "Nothing in this view."}</p>
+            <div className="rounded-xl border border-dashed border-border p-6 text-center">
+              <p className="font-medium">{search.trim() ? `No lead in this view matches “${search.trim()}”.` : "No leads match this view."}</p>
+              <p className="mt-1 text-sm text-muted-foreground">Try another search or filter. All includes completed, held and after-hours leads.</p>
+              <Button type="button" variant="outline" className="mt-3 h-11" onClick={() => { resetFilters(); setShow("all"); }}>Show all assigned leads</Button>
+            </div>
           ) : (
             groups.map((g) => (
               <GlassCard key={g.id} className="p-0">
@@ -380,9 +402,10 @@ export default function MyLeads() {
                     {g.note && <p className="mt-1 text-xs italic text-amber-300/90">“{g.note}”</p>}
                   </div>
                   {(() => {
-                    const fresh = rows.filter((r) => r.bundle_id === g.id && r.status === "new" && callableNow(r)).length;
+                    const selected = visible.filter((r) => r.bundle_id === g.id);
+                    const fresh = selected.filter((r) => r.status === "new" && callableNow(r)).length;
                     return fresh > 0 ? (
-                      <Button type="button" size="sm" onClick={() => setWorkBundle(g.id)}>
+                      <Button type="button" size="sm" onClick={() => { setWorkLeadIds(new Set(selected.map((r) => r.item_id))); setWorkBundle(g.id); }}>
                         <PhoneCall className="mr-1.5 h-3.5 w-3.5" /> Work leads ({fresh})
                       </Button>
                     ) : null;
@@ -495,10 +518,11 @@ export default function MyLeads() {
               </GlassCard>
             ))
           )}
+          <LeadPagination {...pagination} onPageChange={(page) => { setActiveId(null); pagination.setPage(page); }} label="Assigned leads" />
         </>
       )}
       {workBundle && (() => {
-        const pack = rows.filter((r) => r.bundle_id === workBundle);
+        const pack = rows.filter((r) => r.bundle_id === workBundle && workLeadIds.has(r.item_id));
         if (pack.length === 0) { return null; }
         const queue = pack.filter((r) => r.status === "new" && callableNow(r));
         const waiting = pack.filter((r) => r.status === "new" && !heldReason(r) && !callableNow(r));

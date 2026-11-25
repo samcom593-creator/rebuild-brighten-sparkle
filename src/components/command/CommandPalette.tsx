@@ -101,8 +101,9 @@ export function CommandPalette() {
     const seesAll = isAdmin && !isPreviewing;
     // One applicant rule for palette, sidebar and phone nav (F26).
     const isApplicant = isApplicantViewer({ authLoading, isAdmin, isManager, isAgent, hasAgentRecord, isPreviewing });
-    const primary = isApplicant ? APPLICANT_NAV : filterAgentCloudNav(AGENT_CLOUD_PRIMARY_NAV, { seesAll, viewMode, grants: navGrants, isSam: isSamEmail(user?.email) });
-    const account = filterAgentCloudNav(AGENT_CLOUD_ACCOUNT_NAV, { seesAll, viewMode, grants: navGrants, isSam: isSamEmail(user?.email) });
+    const viewer = { seesAll, viewMode, grants: navGrants, isSam: isSamEmail(user?.email), isManager: isPreviewing ? viewMode === "manager" : isManager };
+    const primary = isApplicant ? APPLICANT_NAV : filterAgentCloudNav(AGENT_CLOUD_PRIMARY_NAV, viewer);
+    const account = filterAgentCloudNav(AGENT_CLOUD_ACCOUNT_NAV, viewer);
     return flattenAgentCloudNav([...primary, ...account]).map((link) => ({
       label: link.label,
       path: link.href,

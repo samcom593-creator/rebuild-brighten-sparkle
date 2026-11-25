@@ -78,7 +78,7 @@
 .recruiting-proof { width: min(100%, 48rem); margin-top: 2rem; }
 .recruiting-proof-strip {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin: 0;
   padding: 1.5rem 0;
   border-block: 1px solid var(--funnel-line);
@@ -154,6 +154,7 @@
   .recruiting-wordmark-crown { width: 1.75rem; height: 1.75rem; }
   .recruiting-proof { margin-top: 1.5rem; }
   .recruiting-proof-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem 0.5rem; padding-block: 1.5rem; }
+  .recruiting-proof-strip li:last-child { grid-column: 1 / -1; }
   .recruiting-proof-strip strong { font-size: clamp(1.65rem, 6.8vw, 2.1rem); }
   .recruiting-proof-strip span { font-size: 0.875rem; letter-spacing: 0.04em; }
   .recruiting-license-choice { margin-top: 1.5rem; }

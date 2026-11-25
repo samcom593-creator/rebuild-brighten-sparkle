@@ -55,12 +55,11 @@ const stats = [
 ];
 
 // Owner-requested reference copy for an unpublished design review.
-// These three claims have no supporting receipt yet and must not ship as facts.
+// The compensation and contracting claims still need supporting receipts.
 const draftMetrics = [
   { label: "Carrier partners", value: "22", accent: false },
-  { label: "Written premium", value: "$100M/MO", accent: false },
-  { label: "Avg contracting", value: "Instant", accent: false },
-  { label: "Comp in the market", value: "#1", accent: true },
+  { label: "Contracting", value: "Instant", accent: false },
+  { label: "Compensation", value: "#1", accent: true },
 ];
 
 const partnerPaths = [
@@ -91,7 +90,7 @@ export function HeroSection() {
   return (
     <section className="dark recruiting-funnel recruiting-hero" aria-labelledby="recruiting-headline">
       <aside className="recruiting-draft-notice" role="note">
-        Unpublished design draft · Premium, contracting, and market-ranking claims are unverified.
+        Unpublished design draft · Contracting and compensation claims are unverified.
       </aside>
       <div className="recruiting-hero-intro">
         <div className="recruiting-wordmark" aria-label={brand.legalName}>

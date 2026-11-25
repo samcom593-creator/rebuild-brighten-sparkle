@@ -1,7 +1,7 @@
 import type { ScoreboardData } from "@/components/dashboard/ScopedProductionScoreboard";
 import type { DemoNumberField } from "@/hooks/useDemoNumberFields";
 
-type Values = Record<string, number>;
+type Values = Record<string, number | null>;
 type Totals = { ap: number; policies: number };
 type Primary = "imo" | "personal";
 const MAX_MONEY = 1_000_000_000_000;
@@ -38,10 +38,41 @@ export function scoreboardDemoFields(data: ScoreboardData | undefined): DemoNumb
   return [
     ...field("production.ap", `${label} production · ALP`, totals.ap),
     ...field("production.policies", `${label} policies`, totals.policies, "count"),
+    ...(valid(totals.ap) ? [{ key: "issuedPaid.ap", label: `${label} issued & paid AP · demo`, value: null, kind: "money" as const, min: 0, max: MAX_MONEY, allowUnknown: true, maxFieldKey: "production.ap" }] : []),
+    ...(valid(totals.policies, true) ? [{ key: "issuedPaid.policies", label: `${label} issued & paid policies · demo`, value: null, kind: "count" as const, min: 0, max: MAX_COUNT, allowUnknown: true, maxFieldKey: "production.policies" }] : []),
     ...field("earnings.direct", "Direct commission · estimate", data.earnings.direct),
     ...field("earnings.override", "Override commission · estimate", data.earnings.override),
     ...field("earnings.team", "Team commission · estimate", data.earnings.team_estimated),
   ];
+}
+
+export interface ScoreboardPlacementDemo {
+  scope: "Agency" | "Personal";
+  isDemo: boolean;
+  issuedPaidAP: number | null;
+  issuedPaidPolicies: number | null;
+  submittedPolicies: number | null;
+  placementPct: number | null;
+}
+
+/** No live paid or placement facts exist in ScoreboardData. Only explicitly
+ * entered demo fields can fill these values; the displayed policy count is
+ * their clearly labeled demonstration submission cohort. */
+export function scoreboardPlacementDemo(data: ScoreboardData | undefined, values: Values, enabled: boolean): ScoreboardPlacementDemo {
+  const scope = data?.imo ? "Agency" : "Personal";
+  const empty: ScoreboardPlacementDemo = { scope, isDemo: false, issuedPaidAP: null, issuedPaidPolicies: null, submittedPolicies: null, placementPct: null };
+  if (!enabled || !data?.has_producer_profile) return empty;
+  const total = data[scoreboardDemoPrimary(data)]!;
+  const ap = values["issuedPaid.ap"];
+  const count = values["issuedPaid.policies"];
+  const issuedPaidAP = valid(ap) && valid(total.ap) && ap <= total.ap ? ap : null;
+  const issuedPaidPolicies = valid(count, true) && valid(total.policies, true) && count <= total.policies ? count : null;
+  const isDemo = issuedPaidAP !== null || issuedPaidPolicies !== null;
+  return {
+    scope, isDemo, issuedPaidAP, issuedPaidPolicies,
+    submittedPolicies: isDemo && valid(total.policies, true) ? total.policies : null,
+    placementPct: issuedPaidPolicies !== null && total.policies > 0 ? Math.round(issuedPaidPolicies / total.policies * 1000) / 10 : null,
+  };
 }
 
 /** Integer allocation keeps a scaled chart's cents/counts equal to its displayed total. */

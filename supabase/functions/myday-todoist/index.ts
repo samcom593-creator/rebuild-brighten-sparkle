@@ -1,4 +1,4 @@
-// My Day <-> Todoist, for the admin only.
+// My Day <-> Todoist, for Sam's live admin session only.
 //   push     recurring My Day blocks -> Todoist tasks (labelled "myday") -> Google Calendar through Todoist's own sync
 //   today    what is due today or overdue in Todoist, excluding the synced My Day blocks
 //   complete close one Todoist task
@@ -30,9 +30,15 @@ Deno.serve(async (req) => {
   const { data: u, error: uErr } = await userClient.auth.getUser();
   if (uErr || !u?.user) return json({ ok: false, error: "sign in required" }, 401);
 
+  // This is Sam's shared Todoist credential, not an account-level integration.
+  // The caller's JWT must pass the canonical UID + live-session database gate
+  // before a service-role client or any private setting is used.
+  const { data: isSam, error: samError } = await userClient.rpc("is_sam");
+  if (samError || isSam !== true) return json({ ok: false, error: "Sam only" }, 403);
+
   const sb = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
-  const { data: role } = await sb.from("user_roles").select("role").eq("user_id", u.user.id).eq("role", "admin").limit(1);
-  if (!role || role.length === 0) return json({ ok: false, error: "admin only" }, 403);
+  const { data: role, error: roleError } = await sb.from("user_roles").select("role").eq("user_id", u.user.id).eq("role", "admin").limit(1);
+  if (roleError || !role || role.length === 0) return json({ ok: false, error: "admin only" }, 403);
 
   let body: { action?: string; task_id?: string } = {};
   try { body = await req.json(); } catch { return json({ ok: false, error: "invalid json" }, 400); }

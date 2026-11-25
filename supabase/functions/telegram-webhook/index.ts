@@ -63,7 +63,7 @@ const RESOURCE_TEXT =
 const CONTRACTING_TEXT =
   `Contracting:\n\n` +
   `Once you are hired and licensed, complete your contracting profile with your NPN number, first name, last name, email address, and resident state:\n${PROFILE_URL}\n\n` +
-  `Our team uses it to coordinate the carrier portal steps and track Combine, AFLAC, GTO, and Ethos on your profile. ${NOT_CONTRACTED_YET}\n\n` +
+  `Our team uses it to coordinate your contracting through the MGN Agent Hub and record verified contract receipts on your profile. ${NOT_CONTRACTED_YET}\n\n` +
   `Stuck? Use /manager.`;
 
 const FAQ_TEXT =

@@ -83,6 +83,7 @@ function renderPage(path = "/dashboard/agent-pipeline") {
         <Routes>
           <Route path="/dashboard/agent-pipeline" element={<ClientPipeline />} />
           <Route path="/dashboard/clients/:id" element={<CallSheetProbe />} />
+          <Route path="/dashboard/consumer-import" element={<p>Consumer CSV import</p>} />
         </Routes>
         <LocationProbe />
       </MemoryRouter>
@@ -141,6 +142,20 @@ afterEach(() => {
 });
 
 describe("My Pipeline", () => {
+  it("sends the existing admin import action to consumer CSV import", async () => {
+    auth.current = { ...auth.current, isAdmin: true, effectiveMode: "admin" };
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "Import consumers" }));
+    expect(await screen.findByText("Consumer CSV import")).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent("/dashboard/consumer-import");
+  });
+
+  it("does not add an import action for regular agents", async () => {
+    renderPage();
+    await screen.findByRole("heading", { name: /^Up next: / });
+    expect(screen.queryByRole("button", { name: /Import/ })).not.toBeInTheDocument();
+  });
+
   it("leads with the person to call, what to do and why, and the page's one gold button", async () => {
     renderPage();
     const heading = await screen.findByRole("heading", { name: "Up next: Lena Late" });

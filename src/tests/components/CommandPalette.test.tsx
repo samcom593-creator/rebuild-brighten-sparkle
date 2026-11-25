@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { create } from "zustand";
 
-const mocks = vi.hoisted(() => ({ rpc: vi.fn(), openAgent: vi.fn(), admin: true }));
+const mocks = vi.hoisted(() => ({ rpc: vi.fn(), openAgent: vi.fn(), admin: true, email: "admin@example.test", preview: null as string | null, hasAgentRecord: true, loading: false }));
 const useStore = create<{ commandPaletteOpen: boolean; setCommandPaletteOpen: (open: boolean) => void }>((set) => ({
   commandPaletteOpen: true, setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
 }));
@@ -12,17 +12,18 @@ vi.mock("@/shared/store/uiStore", () => ({ useUIStore: (selector: Parameters<typ
 // QueryClientProvider; keyed to mocks.admin so grant-driven entries match the old behaviour.
 vi.mock("@/hooks/useSoldCallKeys", () => ({ useCanViewSoldCalls: () => ({ canView: !!mocks.admin, ready: true }) }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc: mocks.rpc } }));
-vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "viewer" }, isAdmin: mocks.admin, isLoading: false, effectiveMode: "admin" }) }));
-vi.mock("@/hooks/useRolePreview", () => ({ useRolePreview: () => ({ isPreviewing: false }) }));
+vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "viewer", email: mocks.email }, isAdmin: mocks.admin, isAgent: !mocks.admin, isManager: false, hasAgentRecord: mocks.hasAgentRecord, isLoading: mocks.loading, effectiveMode: mocks.admin ? "admin" : "agent" }) }));
+vi.mock("@/hooks/useRolePreview", () => ({ useRolePreview: () => ({ isPreviewing: mocks.preview !== null, effectiveRole: mocks.preview ?? (mocks.admin ? "admin" : "agent") }) }));
 vi.mock("@/stores/agentProfileDrawer", () => ({ useAgentProfileDrawer: (selector: (s: { openAgent: typeof mocks.openAgent }) => unknown) => selector({ openAgent: mocks.openAgent }) }));
 import { CommandPalette } from "@/components/command/CommandPalette";
 const agent = { id: "agent-42", name: "Alex Rivera", email: "alex@example.test", stage: "training" };
 const result = { data: { ok: true, agents: [agent], applicants: [{ id: "app-17", name: "Jordan Rivera", email: "jordan@example.test", status: "rejected" }] }, error: null };
-function Location() { return <output data-testid="location">{useLocation().search}</output>; }
+function Location() { const at = useLocation(); return <output data-testid="location">{at.pathname}{at.search}</output>; }
 function mount() { render(<MemoryRouter><CommandPalette /><Location /></MemoryRouter>); }
 function input(value: string) { fireEvent.change(screen.getByRole("combobox"), { target: { value } }); }
 beforeEach(() => {
   mocks.rpc.mockReset().mockResolvedValue(result); mocks.openAgent.mockClear(); mocks.admin = true;
+  mocks.email = "admin@example.test"; mocks.preview = null; mocks.hasAgentRecord = true; mocks.loading = false;
   useStore.setState({ commandPaletteOpen: true });
   Element.prototype.scrollIntoView = vi.fn();
   vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
@@ -73,5 +74,48 @@ describe("Shared people search", () => {
     expect(useStore.getState().commandPaletteOpen).toBe(false);
     fireEvent.keyDown(document, { key: "k", metaKey: true });
     expect(screen.getByRole("combobox")).toHaveValue("");
+  });
+
+  it("does not reintroduce Sam-only System through an extra route for another admin", () => {
+    mount(); input("system");
+    expect(screen.queryByRole("option", { name: /System/ })).not.toBeInTheDocument();
+  });
+
+  it("retains the owner's System entry once through the shared navigation manifest", () => {
+    mocks.email = "sam.com593@gmail.com";
+    mount(); input("system");
+    expect(screen.getAllByRole("option", { name: "System" })).toHaveLength(1);
+  });
+
+  it("honors agent preview for extra admin routes and personal search", async () => {
+    mocks.preview = "agent";
+    mount(); input("unclaimed");
+    expect(screen.queryByRole("option", { name: "Unclaimed Leads" })).not.toBeInTheDocument();
+    input("finances");
+    expect(screen.getAllByRole("option", { name: "Finances" })).toHaveLength(1);
+    await act(async () => {});
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it("keeps unlinked applicants on their actual onboarding destinations", () => {
+    mocks.admin = false; mocks.hasAgentRecord = false;
+    mount(); input("purchase");
+    expect(screen.queryByRole("option", { name: "Purchase Leads" })).not.toBeInTheDocument();
+    input("licensed");
+    expect(screen.getByRole("option", { name: "Get licensed" })).toBeInTheDocument();
+  });
+
+  it("links Seminar directly to its canonical workspace", () => {
+    mount(); input("seminar");
+    fireEvent.click(screen.getByRole("option", { name: "Seminar Control" }));
+    expect(screen.getByTestId("location")).toHaveTextContent("/dashboard/seminar");
+  });
+
+  it("offers no cached admin destinations while account access is resolving", async () => {
+    mocks.loading = true;
+    mount(); input("unclaimed");
+    expect(screen.queryByRole("option")).not.toBeInTheDocument();
+    await act(async () => {});
+    expect(mocks.rpc).not.toHaveBeenCalled();
   });
 });

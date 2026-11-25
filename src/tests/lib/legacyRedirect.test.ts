@@ -46,4 +46,14 @@ describe("legacyRedirectTarget (one-hop aliases keep what the visitor brought)",
     expect(legacyRedirectTarget("/dashboard/team", { search: "q=a", hash: null })).toBe("/dashboard/team?q=a");
     expect(legacyRedirectTarget("/dashboard/team", { search: null, hash: null })).toBe("/dashboard/team");
   });
+
+  it("preserves a course identifier, filters, and section when an old course URL moves", () => {
+    expect(legacyRedirectTarget("/dashboard/training/library/course/:courseId", { search: "?lesson=2&ref=team", hash: "#progress" }, { courseId: "life course/2" })).toBe(
+      "/dashboard/training/library/course/life%20course%2F2?lesson=2&ref=team#progress",
+    );
+  });
+
+  it("does not turn a missing record identifier into a different destination", () => {
+    expect(() => legacyRedirectTarget("/dashboard/training/library/course/:courseId", {})).toThrow("Missing route parameter");
+  });
 });

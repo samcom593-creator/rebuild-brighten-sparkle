@@ -5,7 +5,7 @@ import { businessDateKey } from "@/lib/businessClock";
 const PAGE_SIZE = 500;
 export type ManagerProductionRow = Pick<Tables<"v_production_canonical">,
   "row_key" | "agent_id" | "agent_name" | "annual_premium" | "carrier" | "status" | "posted_date">;
-export type PlaqueFact = Pick<Tables<"plaque_awards">, "id" | "agent_id" | "amount" | "awarded_at">;
+export type PlaqueFact = Pick<Tables<"plaque_awards">, "id" | "agent_id" | "milestone_type" | "amount" | "awarded_at">;
 
 /** Fully read each bounded page; an error never becomes a partial headline total. */
 async function completeRows<T>(load: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>, key: (row: T) => string | null): Promise<T[]> {
@@ -39,7 +39,7 @@ export async function loadManagerProduction(today: string, signal?: AbortSignal)
 
 export async function loadPlaqueFacts(signal?: AbortSignal): Promise<PlaqueFact[]> {
   return completeRows((from, to) => {
-    const query = supabase.from("plaque_awards").select("id,agent_id,amount,awarded_at")
+    const query = supabase.from("plaque_awards").select("id,agent_id,milestone_type,amount,awarded_at")
       .order("id", { ascending: true }).range(from, to);
     return signal ? query.abortSignal(signal) : query;
   }, row => row.id);
@@ -49,8 +49,22 @@ export function summarizePlaques(rows: readonly PlaqueFact[], today: string) {
   const month = today.slice(0, 7);
   return {
     total: rows.length,
-    totalAwarded: rows.reduce((sum, row) => sum + Number(row.amount ?? 0), 0),
+    milestoneTypes: new Set(rows.map(row => row.milestone_type).filter(Boolean)).size,
     honorees: new Set(rows.map(row => row.agent_id)).size,
     thisMonth: rows.filter(row => row.awarded_at && businessDateKey(new Date(row.awarded_at).getTime(), "America/Phoenix").slice(0, 7) === month).length,
   };
+}
+
+/** Recognition counts are comparable; mixed premium, hire and day amounts are not. */
+export function rankPlaqueHonorees(rows: readonly PlaqueFact[]) {
+  const byAgent = new Map<string, { agent_id: string; plaque_count: number; milestones: Set<string> }>();
+  for (const row of rows) {
+    const standing = byAgent.get(row.agent_id) ?? { agent_id: row.agent_id, plaque_count: 0, milestones: new Set<string>() };
+    standing.plaque_count += 1;
+    if (row.milestone_type) standing.milestones.add(row.milestone_type);
+    byAgent.set(row.agent_id, standing);
+  }
+  return Array.from(byAgent.values(), ({ agent_id, plaque_count, milestones }) => ({
+    agent_id, plaque_count, milestone_types: milestones.size,
+  })).sort((a, b) => b.plaque_count - a.plaque_count || a.agent_id.localeCompare(b.agent_id));
 }

@@ -91,12 +91,53 @@ describe("App.tsx routing contract", () => {
 
   it("LegacyWorkspaceRedirect builds its target through legacyRedirectTarget", () => {
     expect(app).toContain('import { legacyRedirectTarget } from "@/lib/legacyRedirect";');
-    expect(app).toContain("<Navigate to={legacyRedirectTarget(to, location)} replace");
+    expect(app).toContain("<Navigate to={legacyRedirectTarget(to, location, params)} replace");
   });
 
   it("/today aliases the Today page, not the old command center", () => {
     expect(table.redirects.get("/today")?.to).toBe("/dashboard/today");
     expect(table.pages.has("/dashboard/today")).toBe(true);
+  });
+
+  it("keeps legal aliases public and all duplicate workspace URLs canonical", () => {
+    const shell = lines.findIndex((line) => line.includes("<Route element={<AuthenticatedShell />}>"));
+    for (const path of ["/privacy-policy", "/terms-of-service"]) {
+      const index = lines.findIndex((line) => line.includes(`path="${path}"`));
+      expect(index).toBeGreaterThan(-1);
+      expect(index).toBeLessThan(shell);
+    }
+    expect(table.redirects.get("/dashboard/my-commissions")?.to).toBe("/dashboard/finances");
+    expect(table.redirects.get("/dashboard/my-deals")?.to).toBe("/dashboard/production");
+    expect(table.redirects.get("/dashboard/clients")?.to).toBe("/dashboard/agent-pipeline");
+    expect(table.redirects.get("/dashboard/recruiting/training/library/course/:courseId")?.to).toBe("/dashboard/training/library/course/:courseId");
+  });
+
+  it("consolidates duplicate workspaces without redirect chains or lost award views", () => {
+    const expected = {
+      "/dashboard/annuity-training": "/dashboard/training/annuities",
+      "/hall-of-fame": "/dashboard/hall-of-fame",
+      "/team-chat": "/dashboard/team-chat",
+      "/leaderboard": "/dashboard/leaderboard",
+      "/dashboard/rewards": "/dashboard/my-plaques?source=reward",
+      "/rewards": "/dashboard/my-plaques?source=reward",
+      "/bulk-deals": "/dashboard/bulk-deals",
+      "/agentlink-sync": "/dashboard/agentlink-sync",
+      "/dashboard/lead-bundles": "/dashboard/lead-manager",
+      "/admin/producer-trends": "/dashboard/producer-trends",
+      "/dashboard/seminar-control": "/dashboard/seminar",
+      "/dashboard/contracting/downlines": "/dashboard/grow",
+      "/dashboard/contracting/requests": "/dashboard/contracting",
+      "/recruit-pipeline": "/dashboard/recruit-pipeline",
+      "/dashboard/agents/:id": "/dashboard/agent/:id",
+    };
+    for (const [from, to] of Object.entries(expected)) {
+      expect(table.redirects.get(from)?.to, from).toBe(to);
+      expect(table.pages.has(pathOnly(to)), from).toBe(true);
+    }
+    expect(lines.find(line => line.includes('path="/bulk-deals"'))).toContain("<ProtectedRoute requireAdmin allowManagers>");
+    expect(lines.find(line => line.includes('path="/admin/producer-trends"'))).toContain("<ProtectedRoute requireAdmin>");
+    expect(lines.find(line => line.includes('path="/dashboard/contracting/requests"'))).toContain("<ProtectedRoute requireAdmin>");
+    expect(lines.find(line => line.includes('path="/dashboard/seminar-control"'))).toContain("<ProtectedRoute requireAdmin allowManagers allowPresenters>");
   });
 });
 

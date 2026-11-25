@@ -511,6 +511,7 @@ export default function AwardsGallery() {
 
       <nav aria-label="Recognition" className="flex flex-wrap gap-2">
         <Button asChild variant="outline"><Link to="/dashboard/leaderboard">Leaderboard</Link></Button>
+        <Button asChild variant="outline"><Link to="/dashboard/my-plaques">Award history</Link></Button>
         <Button asChild variant="outline"><Link to="/dashboard/hall-of-fame">Hall of Fame</Link></Button>
         {isAdmin && <Button asChild variant="outline"><Link to="/awards">Win Post Studio</Link></Button>}
       </nav>

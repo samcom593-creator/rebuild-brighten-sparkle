@@ -1,11 +1,10 @@
 // HallOfFame v4 — cinematic trophy wall for Apex production milestones.
 //
-// Data: plaque_awards (416 rows, 21 milestone types, $7M+ total).
-// Top earners pulled directly so the podium is real, not derived from
-// the 120-row grid window.
+// Data: plaque_awards. Standings use the complete verified history,
+// independently of the 240-row wall window. Amount units vary by milestone.
 //
 // Layout:
-//   1. Stats strip — total plaques, total $ awarded, distinct agents
+//   1. Stats strip — total plaques, distinct milestones and honorees
 //   2. Podium — top 3 by plaque count (1st elevated, gold halo)
 //   3. Honorable mentions — ranks 4-10
 //   4. Filter strip — category + period + agent search
@@ -17,13 +16,14 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   Crown, Trophy, Users, Target, Sparkles, Search, Share2, Calendar,
-  DollarSign, Award, X, Copy, Medal, AlertTriangle,
+  Award, X, Copy, Medal, AlertTriangle,
 } from "lucide-react";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useBusinessToday } from "@/hooks/useBusinessToday";
-import { loadPlaqueFacts, summarizePlaques } from "@/lib/dashboardRecords";
+import { loadPlaqueFacts, rankPlaqueHonorees, summarizePlaques } from "@/lib/dashboardRecords";
+import { presentPlaqueDate, presentPlaqueMetric } from "@/components/awards/plaqueAwardPresentation";
 import {
   resolveAgentNames,
   AGENT_NAME_FALLBACK,
@@ -61,14 +61,6 @@ interface Plaque {
   share_slug: string | null;
   agent_name: string;
   agent_photo: string | null;
-}
-
-interface TopEarner {
-  agent_id: string;
-  agent_name: string;
-  avatar_url: string | null;
-  plaque_count: number;
-  total_amount: number;
 }
 
 type Category = "all" | "personal" | "business" | "referral";
@@ -114,13 +106,6 @@ const CATEGORY_META: Record<Exclude<Category, "all">, { label: string; icon: typ
   business: { label: "Business",  icon: Users,  chipClass: "bg-info/15 text-info dark:text-info border-info/30" },
   referral: { label: "Referral",  icon: Target, chipClass: "bg-violet-500/15 text-violet-600 dark:text-violet-400 border-violet-500/40" },
 };
-
-function fmtUsd(n: number): string {
-  if (!Number.isFinite(n) || n === 0) return "—";
-  if (Math.abs(n) >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
-  if (Math.abs(n) >= 10_000) return `$${(n / 1_000).toFixed(1)}k`;
-  return `$${Math.round(n).toLocaleString()}`;
-}
 
 function prettyMilestone(s: string): string {
   // Already pretty (uppercase + spaces)?
@@ -179,27 +164,8 @@ export default function HallOfFame() {
     queryKey: ["hof-top-earners", user?.id, awardFacts.dataUpdatedAt],
     enabled: Boolean(user?.id && awardFacts.data) && !awardFacts.isError,
     queryFn: async () => {
-      const byAgent = new Map<string, TopEarner>();
-      for (const row of awardFacts.data ?? []) {
-        const id = row.agent_id;
-        const existing = byAgent.get(id);
-        const amount = Number(row.amount ?? 0);
-        if (existing) {
-          existing.plaque_count += 1;
-          existing.total_amount += amount;
-        } else {
-          byAgent.set(id, {
-            agent_id: id,
-            agent_name: AGENT_NAME_FALLBACK,
-            avatar_url: null,
-            plaque_count: 1,
-            total_amount: amount,
-          });
-        }
-      }
-      const leaders = Array.from(byAgent.values())
-        .sort((a, b) => b.plaque_count - a.plaque_count || a.agent_id.localeCompare(b.agent_id))
-        .slice(0, 10);
+      const leaders = rankPlaqueHonorees(awardFacts.data ?? []).slice(0, 10)
+        .map(row => ({ ...row, agent_name: AGENT_NAME_FALLBACK, avatar_url: null as string | null }));
       if (!leaders.length) return leaders;
       const { data: identities, error } = await supabase.from("agents").select("id,user_id,display_name").in("id", leaders.map(row => row.agent_id));
       if (error) throw error;
@@ -250,11 +216,11 @@ export default function HallOfFame() {
       {/* ── Stats strip ───────────────────────────────────────────── */}
       {awardFacts.isError ? <div role="alert" className="rounded-md border border-border p-4"><p>Award totals could not be verified.</p><Button variant="outline" className="mt-2" onClick={()=>void awardFacts.refetch()}>Retry award totals</Button></div> : <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile icon={Trophy} label="Total plaques" value={stats?.total ?? 0} loading={!stats} color="text-amber-500 dark:text-amber-400" />
-        <StatTile icon={DollarSign} label="Recorded award amounts" value={stats?.totalAwarded ?? 0} loading={!stats} color="text-emerald-500 dark:text-emerald-400" formatter={fmtUsd} />
+        <StatTile icon={Award} label="Milestone types" value={stats?.milestoneTypes ?? 0} loading={!stats} color="text-emerald-500 dark:text-emerald-400" />
         <StatTile icon={Users} label="Honorees" value={stats?.honorees ?? 0} loading={!stats} color="text-violet-500 dark:text-violet-400" />
         <StatTile icon={Calendar} label="This month" value={stats?.thisMonth ?? 0} loading={!stats} color="text-primary" />
       </div>}
-      <p className="text-sm text-muted-foreground">Award amounts can recognize overlapping milestones; they are not additional production or commission. The wall shows the latest 240 plaques; totals and standings use the full history.</p>
+      <p className="text-sm text-muted-foreground">Each award shows its recorded unit. Recognition can overlap; amounts are not added into production or commission. The wall shows the latest 240 plaques; counts and standings use the full history.</p>
 
       {/* ── Podium ────────────────────────────────────────────────── */}
       <GlassCard className="p-5 sm:p-6">
@@ -340,9 +306,9 @@ export default function HallOfFame() {
                       <span className="h-8 w-px bg-border" />
                       <div>
                         <p className="text-2xl font-bold tabular-nums text-emerald-500 dark:text-emerald-400">
-                          {fmtUsd(e.total_amount)}
+                          {e.milestone_types}
                         </p>
-                        <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Total $</p>
+                        <p className="text-xs uppercase tracking-wider text-muted-foreground">Milestone types</p>
                       </div>
                     </div>
                   </div>
@@ -489,6 +455,8 @@ function StatTile({ icon: Icon, label, value, loading, color, formatter }: StatT
 interface PlaqueCardProps { plaque: Plaque; onClick: () => void; delay: number; }
 function PlaqueCard({ plaque, onClick, delay }: PlaqueCardProps) {
   const img = plaque.image_png_url || plaque.image_svg_url || plaque.custom_photo_url;
+  const metric = presentPlaqueMetric(plaque);
+  const milestoneDate = presentPlaqueDate({ ...plaque, milestone_date: plaque.milestone_date ?? "" });
   const cat = CATEGORY_MAP[plaque.milestone_type];
   const catMeta = cat ? CATEGORY_META[cat] : null;
   return (
@@ -511,11 +479,6 @@ function PlaqueCard({ plaque, onClick, delay }: PlaqueCardProps) {
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-muted-foreground/30">
             <Trophy className="h-16 w-16" />
-          </div>
-        )}
-        {plaque.amount && plaque.amount > 0 && (
-          <div className="absolute top-2 right-2 bg-emerald-500/90 text-white text-xs font-bold px-2 py-1 rounded-md shadow-md tabular-nums">
-            {fmtUsd(plaque.amount)}
           </div>
         )}
         {catMeta && (
@@ -541,9 +504,12 @@ function PlaqueCard({ plaque, onClick, delay }: PlaqueCardProps) {
         <p className="text-[12px] text-muted-foreground truncate">
           {plaque.badge_label || prettyMilestone(plaque.milestone_type)}
         </p>
-        <p className="text-[11px] text-muted-foreground">
-          {plaque.milestone_date ? format(new Date(plaque.milestone_date), "MMM d, yyyy") : ""}
+        <p className="text-sm font-semibold tabular-nums">{metric.value ?? metric.missingText}</p>
+        <p className="text-xs text-muted-foreground">{metric.label}</p>
+        <p className="text-xs text-muted-foreground">
+          {milestoneDate.label}: {milestoneDate.value}
         </p>
+        {img && <p className="text-xs text-muted-foreground">Original artwork</p>}
       </div>
     </motion.button>
   );
@@ -569,6 +535,8 @@ export function buildPlaqueShareUrl(
 
 function PlaqueDetail({ plaque, onClose }: PlaqueDetailProps) {
   const img = plaque.image_png_url || plaque.image_svg_url || plaque.custom_photo_url;
+  const metric = presentPlaqueMetric(plaque);
+  const milestoneDate = presentPlaqueDate({ ...plaque, milestone_date: plaque.milestone_date ?? "" });
   const cat = CATEGORY_MAP[plaque.milestone_type];
   const catMeta = cat ? CATEGORY_META[cat] : null;
   // Truthful fallback when clipboard is unavailable: reveal the URL in a
@@ -665,14 +633,14 @@ function PlaqueDetail({ plaque, onClose }: PlaqueDetailProps) {
         </div>
         <div>
           <p className="font-semibold text-xl">{plaque.badge_label || prettyMilestone(plaque.milestone_type)}</p>
-          {plaque.amount && plaque.amount > 0 && (
-            <p className="text-2xl font-bold text-emerald-500 dark:text-emerald-400 tabular-nums mt-0.5">
-              {fmtUsd(plaque.amount)}
-            </p>
-          )}
-          <p className="text-xs text-muted-foreground mt-1">
-            Milestone date: {plaque.milestone_date ? format(new Date(plaque.milestone_date), "PPP") : "—"}
+          <p className="text-sm text-muted-foreground mt-1">{metric.label}</p>
+          <p className="text-2xl font-bold text-emerald-500 dark:text-emerald-400 tabular-nums mt-0.5">
+            {metric.value ?? metric.missingText}
           </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {milestoneDate.label}: {milestoneDate.value}
+          </p>
+          {img && <p className="text-xs text-muted-foreground mt-1">Original artwork</p>}
         </div>
         <div className="flex items-center gap-2 pt-2 border-t border-border/40">
           <Button variant="outline" size="sm" onClick={share} className="flex-1">

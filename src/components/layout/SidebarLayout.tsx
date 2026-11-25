@@ -17,6 +17,7 @@ import { useUIStore } from "@/shared/store/uiStore";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { SoundToggle } from "@/components/ui/delight/SoundToggle";
 import { DemoNumberEditorButton } from "@/components/demo/ProductionDemoProvider";
+import "@/styles/galaxy-workspace.css";
 
 interface SidebarLayoutProps {
   children: ReactNode;
@@ -56,7 +57,7 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
   const marginLeft = isDesktop ? (isFullscreen ? 0 : sidebarWidth) : 0;
 
   return (
-    <div className="apex-app-shell agentcloud-parity min-h-dvh relative bg-background">
+    <div className="apex-app-shell agentcloud-parity galaxy-workspace min-h-dvh relative bg-background">
       {/* Mobile Header - only visible on small screens */}
       <header className="galaxy-topbar fixed left-0 right-0 top-0 z-50 border-b border-border bg-background lg:hidden">
         <div className="flex h-[calc(60px+env(safe-area-inset-top,0px))] items-center justify-between px-3 pt-[env(safe-area-inset-top)]">

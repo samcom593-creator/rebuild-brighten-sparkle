@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { looseSupabase } from "@/lib/looseSupabase";
-import { externalHref } from "@/lib/externalHref";
+import { CallAudioPlayer } from "@/components/calls/CallAudioPlayer";
 import { CALL_CATEGORIES, clientCallsSchema, type ClientCall, type ClientCallCategory } from "@/lib/producerWorkspace";
 
 const selectClass = "min-h-11 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -25,10 +25,9 @@ function CallRecord({ call, rawAccess, onCategory, pending }: {
   const [category, setCategory] = useState(call.category);
   const categoryId = useId();
   useEffect(() => setCategory(call.category), [call.category]);
-  // Check both response-level and row-level permissions before rendering text or URLs.
+  // Check both response-level and row-level permissions before rendering raw provider text.
   const restricted = call.transcript_access === "restricted" || (call.source === "readymode" && !rawAccess);
   const transcript = !restricted && call.transcript_access === "available" ? call.transcript : null;
-  const recording = !restricted && rawAccess && call.source === "readymode" ? externalHref(call.audio_url) : null;
   return (
     <li className="space-y-3 rounded-lg border border-border p-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -49,7 +48,8 @@ function CallRecord({ call, rawAccess, onCategory, pending }: {
       ) : transcript ? (
         <details><summary className="min-h-11 cursor-pointer py-2 text-sm font-medium">Read transcript</summary><p className="max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted/40 p-3 text-sm">{transcript}</p></details>
       ) : <p className="text-sm text-muted-foreground">A transcript has not been recorded for this call.</p>}
-      {recording && <a className="inline-flex min-h-11 items-center text-sm font-medium text-primary underline underline-offset-4" href={recording} target="_blank" rel="noopener noreferrer">Open recording</a>}
+      {/* The server chooses an authorized private copy independently of raw-provider text access. */}
+      {call.source === "readymode" && <CallAudioPlayer callId={call.source_id} compact />}
     </li>
   );
 }

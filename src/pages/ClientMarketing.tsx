@@ -2,18 +2,21 @@
 // Pre-built marketing templates agents send to clients (DMs, post-sale follow-up,
 // referral asks, holiday touches). Click-to-copy.
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
   Copy, Check, Search, Heart, Filter, Users, ArrowRight,
 } from "lucide-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { useAuth } from "@/hooks/useAuth";
+import { useRolePreview } from "@/hooks/useRolePreview";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { QueryState, describeQuery } from "@/components/ui/query-state";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -112,23 +115,68 @@ const CHANNEL_COLOR: Record<string, string> = {
 
 const CATEGORIES = Array.from(new Set(TEMPLATES.map((t) => t.category)));
 
-function MarketingTabs({ view, onChange }: { view: "clients" | "funnels"; onChange: (view: "clients" | "funnels") => void }) {
-  return <div className="flex gap-1 border-b border-border"><Button variant="ghost" className={cn("rounded-none border-b-2", view === "clients" ? "border-primary text-foreground" : "border-transparent text-muted-foreground")} onClick={() => onChange("clients")}>Client Marketing</Button><Button variant="ghost" className={cn("rounded-none border-b-2", view === "funnels" ? "border-primary text-foreground" : "border-transparent text-muted-foreground")} onClick={() => onChange("funnels")}>Recruiting Funnels</Button></div>;
+function MarketingTabs({ view, onChange, canUseFunnels }: { view: "clients" | "funnels"; onChange: (view: "clients" | "funnels") => void; canUseFunnels: boolean }) {
+  return <div className="flex gap-1 border-b border-border"><Button type="button" variant="ghost" aria-pressed={view === "clients"} className={cn("rounded-none border-b-2", view === "clients" ? "border-primary text-foreground" : "border-transparent text-muted-foreground")} onClick={() => onChange("clients")}>Client Marketing</Button>{canUseFunnels && <Button type="button" variant="ghost" aria-pressed={view === "funnels"} className={cn("rounded-none border-b-2", view === "funnels" ? "border-primary text-foreground" : "border-transparent text-muted-foreground")} onClick={() => onChange("funnels")}>Recruiting Funnels</Button>}</div>;
 }
 
-export default function ClientMarketing() {
-  usePageTitle("Client Marketing · Galaxy");
+const FUNNEL_MILESTONES = [null, "contacted_at", "licensed_at", "first_deal_at"] as const;
+
+async function fetchFunnelCounts(signal: AbortSignal) {
+  // Exact HEAD counts stay within the caller's application RLS and cannot be
+  // truncated by PostgREST's row cap. No applicant records reach this page.
+  const counts = await Promise.all(FUNNEL_MILESTONES.map(async milestone => {
+    let query = supabase.from("applications").select("id", { count: "exact", head: true })
+      .or("is_duplicate.eq.false,is_duplicate.is.null");
+    if (milestone) query = query.not(milestone, "is", null);
+    const { count, error } = await query.abortSignal(signal);
+    if (error) throw error;
+    if (!Number.isSafeInteger(count) || count === null || count < 0) throw new Error("Funnel counts are unavailable: the source returned no valid exact count.");
+    return count;
+  }));
+  if (counts.slice(1).some(count => count > counts[0])) throw new Error("Funnel counts changed while loading. Refresh to load a consistent result.");
+  return { applications: counts[0], contacted: counts[1], licensed: counts[2], firstSale: counts[3] };
+}
+
+function RecruitingFunnelPanel({ viewerId, accessKey, onClients }: { viewerId: string; accessKey: string; onClients: () => void }) {
+  const funnelQ = useQuery({
+    queryKey: ["recruiting-funnel-overview", viewerId, accessKey],
+    staleTime: 60_000,
+    queryFn: ({ signal }) => fetchFunnelCounts(signal),
+  });
+  const records = funnelQ.data;
+  const stages = records ? [
+    { label: "Applications", value: records.applications, description: "All applications visible to you" },
+    { label: "Contacted", value: records.contacted, description: "Contact milestone recorded" },
+    { label: "Licensed", value: records.licensed, description: "License milestone recorded" },
+    { label: "First Sale", value: records.firstSale, description: "First-sale milestone recorded" },
+  ] : [];
+  return <div className="page-enter space-y-5 px-4 pb-24 sm:px-6">
+    <PageHeader eyebrow="Recruiting" eyebrowIcon={<Users className="h-4 w-4" />} title="Recruiting Funnels" subtitle="Recorded milestones across the applications you can access." actions={<Button asChild size="sm"><Link to="/dashboard/recruiting">Open pipeline <ArrowRight className="ml-1 h-4 w-4" /></Link></Button>} />
+    <MarketingTabs view="funnels" canUseFunnels onChange={value => { if (value === "clients") onClients(); }} />
+    <QueryState {...describeQuery({ ...funnelQ, isEmpty: records?.applications === 0 })} label="recruiting funnel counts" onRetry={() => void funnelQ.refetch()} asOf={funnelQ.dataUpdatedAt} title="No applications in your scope" body="The exact count returned no nonduplicate applications visible to this login.">
+      <div className="grid gap-3 md:grid-cols-4">{stages.map((stage, index) => {
+        const conversion = records && records.applications > 0 ? Math.round(stage.value / records.applications * 100) : null;
+        return <Card key={stage.label}><CardContent className="p-5"><p className="text-xs font-medium text-muted-foreground">{stage.label}</p><p className="mt-2 text-3xl font-semibold tabular-nums">{stage.value.toLocaleString()}</p><p className="mt-1 text-xs text-muted-foreground">{stage.description}</p>{index > 0 && <p className="mt-4 border-t border-border pt-3 text-xs"><span className="font-semibold">{conversion === null ? "Unavailable" : `${conversion}%`}</span> of scoped applications</p>}</CardContent></Card>;
+      })}</div>
+      <p className="mt-3 text-xs text-muted-foreground">All-time counts exclude marked duplicates. Each percentage uses the same application total; milestones can be recorded independently.</p>
+    </QueryState>
+    <Card><CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-semibold">Move the bottleneck</p><p className="mt-1 text-xs text-muted-foreground">Open the recruiting pipeline to contact, license, and activate the people represented here.</p></div><Button asChild variant="outline"><Link to="/dashboard/recruiting">Manage applicants</Link></Button></CardContent></Card>
+  </div>;
+}
+
+function ClientMarketingWorkspace({ viewerId, canUseFunnels, accessKey }: { viewerId: string | null; canUseFunnels: boolean; accessKey: string }) {
   const [view, setView] = useState<"clients" | "funnels">("clients");
   const [search, setSearch] = useState("");
   const [activeCat, setActiveCat] = useState("All");
   const [copied, setCopied] = useState<string | null>(null);
-
   const [copyCounts, setCopyCounts] = useState<Record<string, number>>({});
-  const funnelQ = useQuery({
-    queryKey: ["recruiting-funnel-overview"],
-    staleTime: 60_000,
-    queryFn: async () => { const { data, error } = await supabase.from("applications").select("contacted_at,licensed_at,first_deal_at").or("is_duplicate.eq.false,is_duplicate.is.null"); if (error) throw error; return data; },
-  });
+  const mounted = useRef(true);
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; if (copyTimer.current !== null) clearTimeout(copyTimer.current); };
+  }, []);
+  useEffect(() => { if (!canUseFunnels) setView("clients"); }, [canUseFunnels]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -154,28 +202,21 @@ export default function ClientMarketing() {
   }, [copyCounts]);
 
   const copy = async (t: Template) => {
-    await navigator.clipboard.writeText(t.body);
-    setCopied(t.title);
-    setCopyCounts((prev) => ({ ...prev, [t.title]: (prev[t.title] ?? 0) + 1 }));
-    toast.success(`Copied: ${t.title}`);
-    setTimeout(() => setCopied(null), 2000);
+    setCopied(null);
+    try {
+      await navigator.clipboard.writeText(t.body);
+      if (!mounted.current) return;
+      setCopied(t.title);
+      setCopyCounts((prev) => ({ ...prev, [t.title]: (prev[t.title] ?? 0) + 1 }));
+      toast.success(`Copied: ${t.title}`);
+      if (copyTimer.current !== null) clearTimeout(copyTimer.current);
+      copyTimer.current = setTimeout(() => setCopied(null), 2000);
+    } catch {
+      if (mounted.current) toast.error("Could not copy. Select the template text and copy it manually.");
+    }
   };
 
-  if (view === "funnels") {
-    const records = funnelQ.data ?? [];
-    const stages = [
-      { label: "New", value: records.length, description: "Applications in scope" },
-      { label: "Contacted", value: records.filter((row) => row.contacted_at).length, description: "First contact completed" },
-      { label: "Licensed", value: records.filter((row) => row.licensed_at).length, description: "License approved" },
-      { label: "First Sale", value: records.filter((row) => row.first_deal_at).length, description: "Activated producer" },
-    ];
-    return <div className="page-enter space-y-5 px-4 pb-24 sm:px-6">
-      <PageHeader eyebrow="Recruiting" eyebrowIcon={<Users className="h-4 w-4" />} title="Recruiting Funnels" subtitle="See where applicants convert—and where follow-up is leaking." actions={<Button asChild size="sm"><Link to="/dashboard/recruiting">Open pipeline <ArrowRight className="ml-1 h-4 w-4" /></Link></Button>} />
-      <MarketingTabs view={view} onChange={setView} />
-      {funnelQ.error ? <Card><CardContent className="p-5 text-sm text-rose-600">Could not load funnel data: {(funnelQ.error as Error).message}</CardContent></Card> : <div className="grid gap-3 md:grid-cols-4">{stages.map((stage, index) => { const prior = index === 0 ? stage.value : stages[index - 1].value; const conversion = prior > 0 ? Math.round(stage.value / prior * 100) : 0; return <Card key={stage.label}><CardContent className="p-5"><p className="text-xs font-medium text-muted-foreground">{stage.label}</p><p className="mt-2 text-3xl font-semibold tabular-nums">{funnelQ.isLoading ? "—" : stage.value}</p><p className="mt-1 text-xs text-muted-foreground">{stage.description}</p>{index > 0 && <p className="mt-4 border-t border-border pt-3 text-xs"><span className="font-semibold">{conversion}%</span> from prior stage</p>}</CardContent></Card>; })}</div>}
-      <Card><CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-semibold">Move the bottleneck</p><p className="mt-1 text-xs text-muted-foreground">Open the recruiting pipeline to contact, license, and activate the people represented here.</p></div><Button asChild variant="outline"><Link to="/dashboard/recruiting">Manage applicants</Link></Button></CardContent></Card>
-    </div>;
-  }
+  if (view === "funnels" && canUseFunnels && viewerId) return <RecruitingFunnelPanel key={`${viewerId}:${accessKey}`} viewerId={viewerId} accessKey={accessKey} onClients={() => setView("clients")} />;
 
   return (
     <div className="page-enter px-4 sm:px-6 pb-24 space-y-5">
@@ -186,7 +227,7 @@ export default function ClientMarketing() {
         subtitle="Pre-written DM/SMS/email templates to send your clients post-sale. Pre-appointment confirms, onboarding, referrals, holidays. Click to copy."
         actions={<Badge variant="outline" className="text-11">{TEMPLATES.length} templates</Badge>}
       />
-      <MarketingTabs view={view} onChange={setView} />
+      <MarketingTabs view="clients" canUseFunnels={canUseFunnels} onChange={value => { if (value === "clients" || canUseFunnels) setView(value); }} />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {[{ label: "Templates", value: TEMPLATES.length, note: "ready to send" }, { label: "Channels", value: `${channelCounts.sms}/${channelCounts.email}/${channelCounts.dm}`, note: "SMS · Email · DM" }, { label: "Categories", value: CATEGORIES.length, note: "touchpoint types" }, { label: "Most copied", value: mostCopied.title, note: mostCopied.count > 0 ? `${mostCopied.count}× this session` : "copy one to track" }].map((metric) => <Card key={metric.label}><CardContent className="p-4"><p className="text-xs text-muted-foreground">{metric.label}</p><p className="mt-1 truncate text-xl font-semibold tabular-nums" title={String(metric.value)}>{metric.value}</p><p className="text-xs text-muted-foreground">{metric.note}</p></CardContent></Card>)}
@@ -247,10 +288,12 @@ export default function ClientMarketing() {
                       </div>
                     </div>
                     <Button
+                      type="button"
+                      aria-label={`${isCopied ? "Copied" : "Copy"} ${t.title}`}
                       variant={isCopied ? "default" : "outline"}
                       size="sm"
                       className={isCopied ? "bg-emerald-600 hover:bg-emerald-700" : ""}
-                      onClick={() => copy(t)}
+                      onClick={() => void copy(t)}
                     >
                       {isCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                     </Button>
@@ -266,4 +309,15 @@ export default function ClientMarketing() {
       )}
     </div>
   );
+}
+
+export default function ClientMarketing() {
+  usePageTitle("Client Marketing · Galaxy");
+  const { user, isLoading, isAdmin, isManager, isRecruiter, isVa, isVaManager } = useAuth();
+  const { isPreviewing } = useRolePreview();
+  // Match /dashboard/recruiting's real route roles, never the preview role or
+  // account_mode. Identity and role signature also isolate cached counts.
+  const accessKey = [isAdmin && "admin", isManager && "manager", isRecruiter && "recruiter", isVa && "va", isVaManager && "va_manager"].filter(Boolean).join(",");
+  const canUseFunnels = Boolean(user && !isLoading && !isPreviewing && accessKey);
+  return <ClientMarketingWorkspace key={user?.id ?? "signed-out"} viewerId={user?.id ?? null} canUseFunnels={canUseFunnels} accessKey={accessKey} />;
 }

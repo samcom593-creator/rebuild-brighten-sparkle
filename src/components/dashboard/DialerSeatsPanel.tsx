@@ -69,9 +69,9 @@ async function fetchSeats(): Promise<DialerSeats> {
   return data as unknown as DialerSeats;
 }
 
-export function DialerSeatsPanel() {
+export function DialerSeatsPanel({ viewerId }: { viewerId: string }) {
   const { isAdmin } = useAuth();
-  const q = useQuery({ queryKey: ["admin-dialer-seats"], queryFn: fetchSeats, enabled: isAdmin, staleTime: 60_000 });
+  const q = useQuery({ queryKey: ["admin-dialer-seats", viewerId], queryFn: fetchSeats, enabled: isAdmin && Boolean(viewerId), staleTime: 60_000 });
   if (!isAdmin) return null;
   const d = q.data;
   const stale = !!d?.snapshot_at && Date.now() - new Date(d.snapshot_at).getTime() > SEAT_SNAPSHOT_STALE_MS;

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { PageSkeleton } from "@/components/ui/page-skeleton";
@@ -40,8 +40,15 @@ export function ProtectedRoute({
   const [isPresenter, setIsPresenter] = useState(false);
   const [presenterLoading, setPresenterLoading] = useState(false);
   const [presenterCheckedUserId, setPresenterCheckedUserId] = useState<string | null>(null);
-  // Once we've confirmed auth at least once, never show the skeleton again
-  const hasResolved = useRef(false);
+  // A same-account refresh keeps the current page mounted. A different account
+  // must resolve its own roles before any private child can mount.
+  const authResolution = useRef<{ userId: string | null; resolved: boolean }>({ userId: null, resolved: false });
+  const userId = user?.id ?? null;
+  if (authResolution.current.userId !== userId) {
+    authResolution.current = { userId, resolved: false };
+  }
+  if (!isLoading) authResolution.current.resolved = true;
+  const authCheckPending = isLoading && (!user || !authResolution.current.resolved);
 
   const roleAllowed = (allowRoles ?? []).some((r) =>
     hasRole(r as "admin" | "manager" | "agent" | "va_manager" | "va" | "recruiter"),
@@ -50,7 +57,7 @@ export function ProtectedRoute({
   useEffect(() => {
     let cancelled = false;
 
-    if (!requireAdmin || !allowPresenters || !user || isAdmin || (allowManagers && isManager) || roleAllowed) {
+    if (authCheckPending || !requireAdmin || !allowPresenters || !user || isAdmin || (allowManagers && isManager) || roleAllowed) {
       setIsPresenter(false);
       setPresenterLoading(false);
       setPresenterCheckedUserId(null);
@@ -87,18 +94,13 @@ export function ProtectedRoute({
     return () => {
       cancelled = true;
     };
-  }, [allowManagers, allowPresenters, isAdmin, isManager, requireAdmin, roleAllowed, user?.id]);
+  }, [allowManagers, allowPresenters, authCheckPending, isAdmin, isManager, requireAdmin, roleAllowed, user?.id]);
 
-  if (!isLoading) {
-    hasResolved.current = true;
-  }
-
-  // Show skeleton only on the very first auth check
   const needsPresenterCheck =
     requireAdmin && allowPresenters && !!user && !isAdmin && !(allowManagers && isManager) && !roleAllowed;
   const presenterCheckPending = needsPresenterCheck && (presenterLoading || presenterCheckedUserId !== user.id);
 
-  if ((isLoading && !hasResolved.current) || presenterCheckPending) {
+  if (authCheckPending || presenterCheckPending) {
     return <PageSkeleton fullScreen />;
   }
 
@@ -127,5 +129,5 @@ export function ProtectedRoute({
   }
 
   // Allow all authenticated users
-  return <>{children}</>;
+  return <Fragment key={user.id}>{children}</Fragment>;
 }

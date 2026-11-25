@@ -81,6 +81,7 @@ export function ProductionDemoEditor({ scopes, overrides, onSave, onReset, onClo
           <DialogDescription className="text-base">
             Change the figures shown for this account in this browser tab. Production totals scale their existing breakdown. These edits do not change production records.
           </DialogDescription>
+          {scopes.some(scope => scope.fields.some(field => field.allowUnknown)) && <p className="text-sm text-muted-foreground">Optional issued-and-paid fields start blank. Placement uses the displayed cohort policy count as its demonstration submission denominator. Clear an optional field to leave it unknown.</p>}
         </DialogHeader>
         <form noValidate className="space-y-5" onSubmit={(event) => { event.preventDefault(); submit(); }}>
           {fieldCount > 8 && (
@@ -112,12 +113,13 @@ export function ProductionDemoEditor({ scopes, overrides, onSave, onReset, onClo
                             min={Math.max(0, field.min ?? 0)}
                             max={field.max ?? (field.kind === "percent" ? 100 : undefined)}
                             step={field.kind === "count" ? 1 : field.kind === "money" ? "0.01" : "any"}
-                            value={draft[id] ?? String(rendered[field.key])}
+                            value={draft[id] ?? (rendered[field.key] === undefined ? "" : String(rendered[field.key]))}
+                            placeholder={field.allowUnknown ? "Unknown" : undefined}
                             onChange={(event) => {
                               const value = event.target.value;
                               setDraft((previous) => {
                                 const next = { ...previous };
-                                if (value === String(rendered[field.key])) delete next[id];
+                                if (value === (rendered[field.key] === undefined ? "" : String(rendered[field.key]))) delete next[id];
                                 else next[id] = value;
                                 return next;
                               });

@@ -105,8 +105,8 @@ export function ContractingCallList() {
     <section className="space-y-4" aria-label="Contracting calls">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-base font-semibold text-foreground">Licensed agents who never finished contracting</h2>
-          <p className="text-sm text-muted-foreground">Tap Call, then tap how it went. Anyone touched this week moves below the list; people already selling or finished drop off it.</p>
+          <h2 className="text-base font-semibold text-foreground">Contracting follow-up list</h2>
+          <p className="text-sm text-muted-foreground">Call to confirm the agent&apos;s current status, then log the outcome. This queue uses the previous profile and checklist rules; verify current carrier status in MGN.</p>
         </div>
         <Button type="button" variant="outline" size="sm" className="h-10 gap-1.5" onClick={() => void copyLink()}><Copy className="h-4 w-4" aria-hidden /> Copy link</Button>
       </div>
@@ -114,7 +114,7 @@ export function ContractingCallList() {
       <div className="grid grid-cols-3 gap-2 text-center">
         <div className="rounded-xl border border-primary/50 bg-primary/5 px-2 py-3"><p className="text-2xl font-bold tabular-nums text-foreground">{c.to_call}</p><p className="text-xs text-muted-foreground">to call</p></div>
         <div className="rounded-xl border border-border bg-card px-2 py-3"><p className="text-2xl font-bold tabular-nums text-foreground">{c.called_recently}</p><p className="text-xs text-muted-foreground">called this week</p></div>
-        <div className="rounded-xl border border-border bg-card px-2 py-3"><p className="text-2xl font-bold tabular-nums text-foreground">{c.finished}</p><p className="text-xs text-muted-foreground">finished</p></div>
+        <div className="rounded-xl border border-border bg-card px-2 py-3"><p className="text-2xl font-bold tabular-nums text-foreground">{c.finished}</p><p className="text-xs text-muted-foreground">previous queue complete</p></div>
       </div>
       <p className="text-xs text-muted-foreground">
         {c.selling > 0 ? `${c.selling} ${c.selling === 1 ? "person is" : "people are"} already selling, so they are listed below the call list, not in it. ` : ""}{c.unlicensed} unlicensed {c.unlicensed === 1 ? "person is" : "people are"} not shown; they cannot contract until licensed.
@@ -140,7 +140,7 @@ export function ContractingCallList() {
 
       <div>
         <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-foreground">To call · {toCall.length}</h3>
-        <List items={toCall} empty={search ? "No one on the list matches that." : "Everyone licensed has finished or been reached this week."} />
+        <List items={toCall} empty={search ? "No one on the list matches that." : "No agents are in this follow-up bucket. Current carrier approval is checked separately."} />
       </div>
 
       {called.length > 0 ? (
@@ -170,7 +170,7 @@ export function ContractingCallList() {
 
       <div>
         <button type="button" className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground" aria-expanded={showFinished} onClick={() => setShowFinished((v) => !v)}>
-          Finished · {finished.length} <ChevronDown className={cn("h-4 w-4 transition-transform", showFinished && "rotate-180")} aria-hidden />
+          Previous queue complete · {finished.length} <ChevronDown className={cn("h-4 w-4 transition-transform", showFinished && "rotate-180")} aria-hidden />
         </button>
         {showFinished ? <div className="mt-2"><List items={finished} muted empty="Nobody yet." /></div> : null}
       </div>

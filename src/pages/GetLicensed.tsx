@@ -28,6 +28,8 @@ import { LICENSING_VIDEO } from "@/lib/licensingMedia";
 import { ONBOARDING_VIDEO } from "@/lib/onboardingMedia";
 import { supabase } from "@/integrations/supabase/client";
 import { StateLicensingCosts } from "@/components/landing/StateLicensingCosts";
+import { VideoPlaybackError } from "@/components/media/VideoPlaybackError";
+import { useNativeVideoRecovery } from "@/hooks/useNativeVideoRecovery";
 
 // Existing partner/course/document URLs (previously hard-coded in this page).
 // Kept identical so no live behavior regresses for applicants clicking through.
@@ -52,21 +54,29 @@ interface ApplicantProgress {
 }
 
 function LicensingVideoPlayer({ onEnded }: { onEnded: () => void }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const playback = useNativeVideoRecovery(LICENSING_VIDEO.src, videoRef);
   return (
-    <div className="relative aspect-video overflow-hidden rounded-xl border border-primary/25 bg-black shadow-[0_18px_60px_hsl(var(--primary)/0.12)]">
-      <video
-        controls
-        playsInline
-        preload="metadata"
-        poster={LICENSING_VIDEO.poster}
-        aria-label={LICENSING_VIDEO.title}
-        onEnded={onEnded}
-        className="absolute inset-0 h-full w-full bg-black object-contain"
-      >
-        <source src={LICENSING_VIDEO.src} type="video/mp4" />
-        Your browser cannot play this video. Open the licensing roadmap in a
-        current browser to continue.
-      </video>
+    <div className="space-y-3">
+      <div className="relative aspect-video overflow-hidden rounded-xl border border-primary/25 bg-black shadow-[0_18px_60px_hsl(var(--primary)/0.12)]">
+        <video
+          ref={videoRef}
+          controls
+          playsInline
+          preload="metadata"
+          poster={LICENSING_VIDEO.poster}
+          aria-label={LICENSING_VIDEO.title}
+          onEnded={onEnded}
+          onError={playback.onError}
+          onCanPlay={playback.onCanPlay}
+          className="absolute inset-0 h-full w-full bg-black object-contain"
+        >
+          <source src={LICENSING_VIDEO.src} type="video/mp4" onError={playback.onError} />
+          Your browser cannot play this video. Open the licensing roadmap in a
+          current browser to continue.
+        </video>
+      </div>
+      {playback.failed && <VideoPlaybackError source={LICENSING_VIDEO.src} onRetry={playback.retry} />}
     </div>
   );
 }
@@ -186,6 +196,7 @@ export default function GetLicensed() {
   const [progress, setProgress] = useState<ApplicantProgress | null>(null);
   const [loading, setLoading] = useState<boolean>(!!(applicationId || email));
   const onboardingVideoRef = useRef<HTMLVideoElement>(null);
+  const onboardingPlayback = useNativeVideoRecovery(ONBOARDING_VIDEO.src, onboardingVideoRef);
 
   useEffect(() => {
     const targetId = decodeURIComponent(window.location.hash.replace(/^#/, ""));
@@ -357,19 +368,24 @@ export default function GetLicensed() {
                 </p>
               </div>
             </div>
-            <div className="relative aspect-video overflow-hidden rounded-xl border border-primary/25 bg-black shadow-[0_18px_60px_hsl(var(--primary)/0.12)]">
-              <video
-                ref={onboardingVideoRef}
-                controls
-                playsInline
-                preload="metadata"
-                poster={ONBOARDING_VIDEO.poster}
-                aria-label={ONBOARDING_VIDEO.title}
-                className="absolute inset-0 h-full w-full bg-black object-contain"
-              >
-                <source src={ONBOARDING_VIDEO.src} type="video/mp4" />
-                Your browser cannot play this video. Use a current browser to continue.
-              </video>
+            <div className="space-y-3">
+              <div className="relative aspect-video overflow-hidden rounded-xl border border-primary/25 bg-black shadow-[0_18px_60px_hsl(var(--primary)/0.12)]">
+                <video
+                  ref={onboardingVideoRef}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  poster={ONBOARDING_VIDEO.poster}
+                  aria-label={ONBOARDING_VIDEO.title}
+                  onError={onboardingPlayback.onError}
+                  onCanPlay={onboardingPlayback.onCanPlay}
+                  className="absolute inset-0 h-full w-full bg-black object-contain"
+                >
+                  <source src={ONBOARDING_VIDEO.src} type="video/mp4" onError={onboardingPlayback.onError} />
+                  Your browser cannot play this video. Use a current browser to continue.
+                </video>
+              </div>
+              {onboardingPlayback.failed && <VideoPlaybackError source={ONBOARDING_VIDEO.src} onRetry={onboardingPlayback.retry} />}
             </div>
           </div>
         </GlassCard>

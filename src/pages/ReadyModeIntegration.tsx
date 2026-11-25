@@ -7,14 +7,14 @@
 //   - Last sync timestamp + recent errors (readymode_sync_log)
 //   - Manual "Sync now" button
 //
-// Recording playback uses native HTML5 <audio> once recording_url comes back.
+// Recording playback uses the authorized private copy selected by the internal call ID.
 
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   Phone, RefreshCw, Settings, PlayCircle, CheckCircle2, XCircle,
-  AlertCircle, Activity, Clock, Headphones, Loader2,
+  AlertCircle, Activity, Clock, Loader2,
   ShieldAlert, Copy, Users, Webhook,
 } from "lucide-react";
 import { format, formatDistanceToNow, parseISO } from "date-fns";
@@ -30,6 +30,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CallAudioPlayer } from "@/components/calls/CallAudioPlayer";
 import { toast } from "sonner";
 
 interface Setting { key: string; value: string; updated_at: string; }
@@ -622,7 +623,7 @@ export default function ReadyModeIntegration() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: Math.min(i * 0.01, 0.2) }}
             >
-              <GlassCard className="p-3 flex items-center gap-3">
+              <GlassCard className="p-3 flex flex-col gap-3 sm:flex-row sm:items-center">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-semibold truncate">
@@ -639,13 +640,9 @@ export default function ReadyModeIntegration() {
                     {c.duration_seconds != null && <> · {Math.floor(c.duration_seconds / 60)}m {c.duration_seconds % 60}s</>}
                   </p>
                 </div>
-                {c.recording_url && (
-                  <Button asChild size="sm" variant="outline">
-                    <a href={c.recording_url} target="_blank" rel="noopener noreferrer">
-                      <Headphones className="h-3.5 w-3.5 mr-1" /> Listen
-                    </a>
-                  </Button>
-                )}
+                <div className="w-full sm:w-72 sm:shrink-0">
+                  <CallAudioPlayer callId={c.id} compact />
+                </div>
               </GlassCard>
             </motion.div>
           ))}

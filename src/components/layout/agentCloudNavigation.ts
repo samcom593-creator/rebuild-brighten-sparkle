@@ -22,7 +22,6 @@ import {
   ListChecks,
   Megaphone,
   Crown,
-  Gauge,
   createLucideIcon,
   ScrollText,
   Settings,
@@ -33,7 +32,6 @@ import {
   UserPlus,
   Users,
   WalletCards,
-  Mic,
   Milestone,
   Send,
   PhoneCall,
@@ -157,7 +155,8 @@ const trainingLabel = `${BRAND.platformName} Training`;
  */
 export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
   { label: "Home", href: "/dashboard", icon: LayoutGrid },
-  { label: "My Day", href: "/dashboard/my-day", icon: ListChecks, adminOnly: true }, // Sam's own schedule; agents must not get his routine
+  { label: "My Tasks", href: "/dashboard/my-tasks", icon: ListChecks },
+  { label: "My Day", href: "/dashboard/my-day", icon: ListChecks, adminOnly: true, samOnly: true }, // Sam’s own routine
 
   {
     label: "Sell",
@@ -168,9 +167,8 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
     items: [
       { label: "My Pipeline", href: "/dashboard/agent-pipeline", icon: FolderKanban, modes: PRODUCERS },
       { label: "Call Center", href: "/dashboard/call-center", icon: ContactRound },
-      // MP-302: for the owner Calendar is secondary (it sits at the foot of the Owner group);
-      // producers keep it here, where they book from.
-      { label: "Calendar", href: "/dashboard/calendar", icon: CalendarDays, modes: PRODUCERS, hideWhenSeesAll: true },
+      // One Calendar entry for producers and the owner; recruiting staff have their role-specific entry below.
+      { label: "Calendar", href: "/dashboard/calendar", icon: CalendarDays, modes: PRODUCERS },
     ],
   },
 
@@ -235,7 +233,7 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       { label: "Leads", href: "/dashboard/lead-manager", icon: Layers, grant: "sold_calls" },
       // The leads given to you to work (MP-310 wave 3). Every producer.
       { label: "My Leads", href: "/dashboard/my-leads", icon: Inbox },
-      { label: "My Commissions", href: "/dashboard/my-commissions", icon: WalletCards },
+      { label: "Finances", href: "/dashboard/finances", icon: WalletCards },
       { label: "Retention", href: "/dashboard/retention", icon: Shield, grant: "sold_calls" },
     ],
   },
@@ -245,9 +243,7 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
     icon: GraduationCap,
     modes: PRODUCERS,
     items: [
-      { label: "Field Course", href: "/dashboard/training/sales-course", icon: GraduationCap },
-      { label: "Training Home", href: "/dashboard/training/library", icon: BookOpenCheck },
-      { label: "Call Lab", href: "/dashboard/call-lab", icon: Mic },
+      { label: "Training", href: "/dashboard/training/library", icon: BookOpenCheck },
     ],
   },
 
@@ -278,11 +274,8 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       // Two-carrier daily pull (MP-CARRIER-DAILY): Ethos + Chubb book, chargebacks, and the
       // policies in a carrier portal the site has not recorded. Owner-only (carrier_command() is is_owner()).
       { label: "Carrier Command", href: "/dashboard/carrier-command", icon: ShieldCheck, adminOnly: true, samOnly: true },
-      // Owner only (MP-302): the route, this entry and the four tables behind the page answer to Sam alone.
-      { label: "Social Media Center", href: "/dashboard/admin/social-media-bot", icon: Megaphone, adminOnly: true, samOnly: true },
-      { label: "Performance Bot", href: "/dashboard/admin/performance-bot", icon: Gauge, adminOnly: true },
+      // Agency-wide financial analytics remain admin-only; personal finances live under My Business.
       { label: "Reports", href: "/dashboard/analytics", icon: BarChart3, adminOnly: true },
-      { label: "Finances", href: "/dashboard/finances", icon: WalletCards, adminOnly: true },
       // One front door. The review is the working view; the older pages (requests, operations, Ethos, Aflac sends,
       // documents, audit) are reachable from its "Earlier records" row, as history and reference.
       { label: "Contracting", href: "/dashboard/contracting", icon: FileSearch, adminOnly: true },
@@ -296,7 +289,6 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       { label: "Strikes", href: "/dashboard/strikes", icon: Shield, adminOnly: true },
       // MP-302: subscriptions, integrations and what is owed, in one place.
       { label: "System", href: "/dashboard/system-health", icon: Activity, adminOnly: true, samOnly: true },
-      { label: "Calendar", href: "/dashboard/calendar", icon: CalendarDays, adminOnly: true },
     ],
   },
 ];
@@ -320,11 +312,7 @@ export const AGENT_CLOUD_ACCOUNT_NAV: AgentCloudNavEntry[] = [
     label: "Settings",
     icon: Settings,
     items: [
-      { label: "Agency settings", href: "/dashboard/settings/agency", icon: Building2, adminOnly: true },
-      { label: "Notifications", href: "/dashboard/settings/notifications", icon: Megaphone },
-      { label: "Security", href: "/dashboard/settings/security", icon: Shield },
-      { label: "Billing", href: "/dashboard/settings/billing", icon: WalletCards, adminOnly: true },
-      { label: "Nova Pro", href: "/dashboard/settings/nova-pro", icon: Sparkles },
+      { label: "Account settings", href: "/dashboard/settings", icon: Settings },
       { label: "Support desk", href: "/dashboard/help?tab=desk", icon: HelpCircle },
       { label: `Install ${BRAND.shortName} app`, href: "/install", icon: Download },
     ],
@@ -351,6 +339,7 @@ export const AGENT_CLOUD_ACCOUNT_NAV: AgentCloudNavEntry[] = [
 export const NAV_SECTION_TONE: Readonly<Record<string, Tone>> = {
   Home: "gold",
   "My Day": "gold",
+  "My Tasks": "gold",
   Sell: "good",
   "My Business": "good",
   Grow: "royal",
@@ -377,8 +366,8 @@ export function agentCloudPathIsActive(pathname: string, href: string): boolean 
   const target = href.split("?")[0];
   if (target === "/dashboard") return pathname === target;
   if (target === "/dashboard/recruiting") return pathname === target;
-  if (target === "/dashboard/contracting") return pathname === target;
-  if (target === "/dashboard/settings") return pathname === target;
+  if (target === "/dashboard/contracting") return pathname === target
+    || ["requests", "carriers", "documents", "history"].some(section => pathname === `${target}/${section}`);
   return pathname === target || pathname.startsWith(`${target}/`);
 }
 
@@ -455,7 +444,7 @@ export function isApplicantViewer(signals: ApplicantSignals): boolean {
 export interface NavGroupExpansion {
   /** Labels of the groups the route sat in when last reconciled. */
   activeGroups: readonly string[];
-  /** Explicit choices: true open, false closed. A label with no entry is open. */
+  /** Explicit choices: true open, false closed. Unchosen groups open only on their current route. */
   choices: Readonly<Record<string, boolean>>;
 }
 
@@ -470,13 +459,13 @@ export function reconcileGroupExpansion(state: NavGroupExpansion, activeGroups: 
   if (unchanged) return state;
   const choices: Record<string, boolean> = { ...state.choices };
   for (const label of activeGroups) {
-    if (!state.activeGroups.includes(label)) choices[label] = true;
+    if (!state.activeGroups.includes(label)) delete choices[label];
   }
   return { activeGroups, choices };
 }
 
 export function isNavGroupOpen(state: NavGroupExpansion, label: string): boolean {
-  return state.choices[label] ?? true;
+  return state.choices[label] ?? state.activeGroups.includes(label);
 }
 
 export function toggleNavGroup(state: NavGroupExpansion, label: string): NavGroupExpansion {
@@ -490,6 +479,16 @@ export function toggleNavGroup(state: NavGroupExpansion, label: string): NavGrou
  */
 const ROUTE_CRUMBS: Record<string, string[]> = {
   "/dashboard/inbox/instagram": ["Grow", "Instagram"],
+  "/dashboard/settings": ["Settings", "Account"],
+  "/dashboard/settings/agency": ["Settings", "Agency"],
+  "/dashboard/settings/notifications": ["Settings", "Notifications"],
+  "/dashboard/settings/security": ["Settings", "Security"],
+  "/dashboard/settings/billing": ["Settings", "Billing"],
+  "/dashboard/settings/nova-pro": ["Settings", "Assistant"],
+  "/dashboard/training/sales-course": ["Learn", "Field Course"],
+  "/dashboard/call-lab": ["Learn", "Call Lab"],
+  "/dashboard/my-commissions": ["My Business", "Finances"],
+  "/dashboard/my-plaques": ["Team", "Wins & Awards", "History"],
   // Grow's "Contracting review" (a support-team link to ?view=contracting) shares this path and is listed first, so the
   // path-only walk named My Team "Grow / Contracting review" for everyone (OVERHAUL-myteam, 2026-10-31).
   "/dashboard/team": ["Team", "My Team"],

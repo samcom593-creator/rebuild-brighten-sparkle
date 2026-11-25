@@ -1,18 +1,45 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { createElement } from "react";
+import { render, screen, within } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router-dom";
 import { readFileSync } from "node:fs";
 import { AGENT_CLOUD_PRIMARY_NAV } from "@/components/layout/agentCloudNavigation";
+import { TrainingJourney } from "@/components/training/TrainingJourney";
+
+vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: "wiring-agent" } }) }));
+vi.mock("@/components/training/TrainingPathPanel", () => ({ TrainingPathPanel: () => null }));
 
 const read = (p: string) => readFileSync(p, "utf8");
 
 /**
- * Call Lab wiring contract: the nav item, the three routes, the three edge
+ * Call Lab wiring contract: the Training entry, practice link, three routes, and three edge
  * functions the client calls, and the RLS the migration promises must all
  * agree. A drift in any one of them is a page that renders and does nothing.
  */
 describe("Call Lab wiring", () => {
-  it("is in the side navigation under Training", () => {
+  it("is reachable from the Training navigation entry through Start here and Practice a call", () => {
     const items = AGENT_CLOUD_PRIMARY_NAV.flatMap((g) => ("items" in g ? g.items : [g]));
-    expect(items.find((i) => i.href === "/dashboard/call-lab")?.label).toBe("Call Lab");
+    expect(items.filter(item => item.href === "/dashboard/training/library").map(item => item.label)).toEqual(["Training"]);
+    const app = read("src/App.tsx");
+    expect(app).toContain('<Route path="/dashboard/training/library" element={<ProtectedRoute><TrainingHub /></ProtectedRoute>} />');
+    const hub = read("src/pages/TrainingHub.tsx");
+    expect(hub).toContain('const tab = (legalTabs.includes(requestedTab) ? requestedTab : "path")');
+    expect(hub).toMatch(/<TabsTrigger value="path"[\s\S]*?Start here\s*<\/TabsTrigger>/);
+    expect(hub).toMatch(/<TabsContent value="path">\s*<TrainingJourney\b/);
+
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(["training-path-agent", "wiring-agent"], { id: "wiring-profile", display_name: "Test agent" });
+    client.setQueryData(["training-path-modules"], []);
+    client.setQueryData(["training-path-progress", "wiring-profile"], []);
+    client.setQueryData(["training-center-practice", "wiring-agent"], 0);
+    client.setQueryData(["training-center-progress", "wiring-agent"], []);
+    render(createElement(QueryClientProvider, { client },
+      createElement(MemoryRouter, null,
+        createElement(TrainingJourney, { onOpenTab: vi.fn(), callsAvailable: 0 }))));
+    const practice = screen.getByText("Practice a call").closest("li");
+    expect(practice).not.toBeNull();
+    expect(within(practice!).getByRole("link", { name: "Practice" })).toHaveAttribute("href", "/dashboard/call-lab");
   });
   it("routes the home, live, and report pages", () => {
     const app = read("src/App.tsx");

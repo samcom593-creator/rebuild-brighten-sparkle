@@ -377,7 +377,7 @@ describe("My Team: the person card manages the training stage and work days", ()
     fireEvent.click(card().getByRole("checkbox", { name: "Monday for Ann Lee" }));
     fb.state.failNext = { name: "set_work_commitment" };
     fireEvent.click(card().getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(card().getByRole("alert")).toHaveTextContent("Schedule did not save"));
+    await waitFor(() => expect(card().getByText("Schedule did not save. Your selected days are still here; try again.")).toHaveAttribute("role", "alert"));
     expect(card().getByRole("checkbox", { name: "Monday for Ann Lee" })).toBeChecked();
     fireEvent.click(card().getByRole("button", { name: "Discard edit" }));
     expect(card().getByRole("checkbox", { name: "Monday for Ann Lee" })).not.toBeChecked();

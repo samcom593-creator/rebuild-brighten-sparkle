@@ -200,25 +200,10 @@ export default defineConfig(({ mode }) => ({
         clientsClaim: true,
         cleanupOutdatedCaches: true,
         runtimeCaching: [
-          // Supabase REST: never cache mutations; cache SELECTs for 30s only.
-          // 1-hour cache was showing stale numbers at startup.
-          {
-            urlPattern: ({ request, url }) => {
-              if (!url.href.includes("supabase.co")) return false;
-              return request.method === "GET";
-            },
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "supabase-rest",
-              networkTimeoutSeconds: 3,
-              expiration: { maxEntries: 80, maxAgeSeconds: 30 },
-            },
-          },
-          {
-            urlPattern: ({ request, url }) =>
-              url.href.includes("supabase.co") && request.method !== "GET",
-            handler: "NetworkOnly",
-          },
+          // Supabase requests deliberately fall through to the browser network.
+          // URL-keyed API caches can return a previous account's private data;
+          // native video range requests must retain their normal HTTP semantics.
+          // sw-push.js removes the retired supabase-rest cache on activation.
           // Vite assets are content-hashed. A cached URL is therefore the
           // exact current file, never an older build with the same name.
           // NetworkFirst made every route chunk wait on the network and could

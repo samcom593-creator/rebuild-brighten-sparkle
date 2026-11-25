@@ -25,7 +25,9 @@ describe("Launch Board consolidation", () => {
     // Aliases use LegacyWorkspaceRedirect since the 2026-10-15 routing wave: a
     // <Navigate replace> that keeps the visitor's ?query/#hash (src/lib/legacyRedirect.ts).
     expect(routes[0]).toContain('<LegacyWorkspaceRedirect to="/dashboard/launch-board?tab=queue" />');
-    expect(app).toMatch(/<Route path="\/dashboard\/launch-board" element=\{<ProtectedRoute><ContentAccessGate><LaunchBoard \/>/);
+    const boardRoutes = app.match(/<Route path="\/dashboard\/launch-board"[^\n]*/g) ?? [];
+    expect(boardRoutes).toHaveLength(1);
+    expect(boardRoutes[0]).toContain('element={<ProtectedRoute requireAdmin><SamOnlyRoute><ContentAccessGate><LaunchBoard /></ContentAccessGate></SamOnlyRoute></ProtectedRoute>}');
   });
   it("drops the separate Content nav entry and keeps Launch Board", () => {
     expect(nav).not.toContain('href: "/dashboard/content"');

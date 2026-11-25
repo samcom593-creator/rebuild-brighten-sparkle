@@ -17,34 +17,30 @@ import { toast } from "sonner";
 import { CONTRACTING_LINK_URL, CONTRACTING_PROFILE_URL } from "@/lib/contractingLinks";
 import { ContractingIntakeAdmin } from "@/components/contracting/ContractingIntakeAdmin";
 import { ContractingRequestsBoard } from "@/components/contracting/ContractingRequestsBoard";
-import { ContractingReviewWorkspace } from "@/components/contracting-review/ContractingReviewWorkspace";
-import { useContractReview } from "@/hooks/useContractReview";
+import { ContractingReviewWorkspace, HistoricalContractingReviewWorkspace } from "@/components/contracting-review/ContractingReviewWorkspace";
 import { CONTRACT_RECORD_PAGE_SIZE, useContractRows, useContractSummary } from "@/hooks/useContractRecords";
 import { externalHref } from "@/lib/externalHref";
 
 /**
- * Contracting. Four working pages, one process:
- *   Review          the manual portal tracker (the SAME component My Team shows, over the same records)
- *   Carriers        the four tracked carriers and their portal links, plus the full carrier directory
- *   Writing numbers writing and contract numbers carriers have issued (still real records)
- *   Requests        current carrier-request snapshots and their sheet delivery receipts
- *   Intake history  earlier intake records; no dispatch action on that historical page
- * Every other page of the old process (operations, cases, Aflac sends, Ethos sheet, audit, contracts board) redirects
- * to the review or to My Team's Contracting view (src/App.tsx). Carrier contracting itself happens in each carrier's
- * own portal; nothing here submits to a carrier.
+ * One current contracting workspace. MGN is the portal; request delivery, manual contract receipts and issued
+ * writing numbers remain separate evidence. The old portal-circle review is explicitly historical, with its
+ * original records and write semantics preserved. The carrier directory is live configuration, not an offer list.
  */
 
 type Carrier = { id: string; name: string | null; website: string | null };
 
 export default function CarrierContracts() {
-  const pathname = useLocation().pathname;
-  const mode = pathname.endsWith("/requests") ? "requests"
-    : pathname.endsWith("/history") ? "history"
+  const location = useLocation();
+  const pathname = location.pathname;
+  const params = new URLSearchParams(location.search);
+  const mode = pathname.endsWith("/history") ? "history"
     : pathname.endsWith("/carriers") ? "carriers"
     : pathname.endsWith("/documents") ? "documents"
-    : "review";
-  usePageTitle(`${mode === "review" ? "Contracting" : mode === "documents" ? "Writing numbers" : mode === "history" ? "Intake history" : mode.charAt(0).toUpperCase() + mode.slice(1)} · Galaxy`);
-  const { isAdmin, isManager } = useAuth();
+    : params.get("view") === "legacy" ? "legacy"
+    : params.get("view") === "receipts" || params.has("review") ? "receipts"
+    : "requests";
+  usePageTitle(`${mode === "requests" ? "Contracting" : mode === "documents" ? "Writing numbers" : mode === "history" ? "Intake history" : mode === "legacy" ? "Historical review" : mode === "receipts" ? "Agent contract receipts" : "Carrier directory"} · Galaxy`);
+  const { user, isAdmin, isManager } = useAuth();
   const canInvite = !!(isAdmin || isManager);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -60,7 +56,8 @@ export default function CarrierContracts() {
   };
 
   const carriersQ = useQuery({
-    queryKey: ["link-hub-carriers"],
+    queryKey: ["link-hub-carriers", user?.id],
+    enabled: mode === "carriers",
     staleTime: 5 * 60_000,
     queryFn: async (): Promise<Carrier[]> => {
       const { data, error } = await supabase
@@ -69,15 +66,14 @@ export default function CarrierContracts() {
         .eq("is_active", true)
         .order("name", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as unknown as Carrier[];
+      if (!Array.isArray(data)) throw new Error("The carrier directory response was unavailable.");
+      return data as unknown as Carrier[];
     },
   });
 
   // These management routes are admin-only. Managers use the scoped Grow and Team review routes.
-  const reviewItem = [["review", "/dashboard/contracting", "Review"]] as Array<[string, string, string]>;
-  const liveItems = [["requests", "/dashboard/contracting/requests", "Requests"], ["carriers", "/dashboard/contracting/carriers", "Carriers"], ["documents", "/dashboard/contracting/documents", "Writing numbers"]] as Array<[string, string, string]>;
-  const earlierItems = [["history", "/dashboard/contracting/history", "Intake history"]] as Array<[string, string, string]>;
-  const isHistory = earlierItems.some(([k]) => k === mode);
+  const liveItems: Array<[string, string, string]> = [["requests", "/dashboard/contracting", "Submissions"], ["receipts", "/dashboard/contracting?view=receipts", "Agent receipts"], ["documents", "/dashboard/contracting/documents", "Writing numbers"]];
+  const referenceItems: Array<[string, string, string]> = [["carriers", "/dashboard/contracting/carriers", "Carrier directory"], ["history", "/dashboard/contracting/history", "Intake history"], ["legacy", "/dashboard/contracting?view=legacy", "Historical review"]];
 
   const navButton = ([key, to, label]: [string, string, string]) => (
     <Button
@@ -90,43 +86,31 @@ export default function CarrierContracts() {
     </Button>
   );
   const workspaceNav = (
-    <nav className="flex items-center gap-1 overflow-x-auto border-b border-border" aria-label="Contracting sections">
-      {reviewItem.map(navButton)}
-      {liveItems.map(navButton)}
-      <Button asChild variant="ghost" className="shrink-0 rounded-none border-b-2 border-transparent px-3 text-muted-foreground"><Link to="/dashboard/grow">Ethos submissions</Link></Button>
-      {earlierItems.length > 0 ? <span className="ml-3 shrink-0 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">History</span> : null}
-      {earlierItems.map(navButton)}
-    </nav>
+    <div className="space-y-2">
+      <nav className="flex flex-wrap items-center gap-1 border-b border-border" aria-label="Contracting sections">{liveItems.map(navButton)}</nav>
+      <details open={referenceItems.some(([key]) => key === mode) || undefined} className="text-sm text-muted-foreground">
+        <summary className="w-fit cursor-pointer py-2 font-medium text-foreground">Directory and history</summary>
+        <nav className="flex flex-wrap gap-1" aria-label="Contracting reference">{referenceItems.map(navButton)}</nav>
+      </details>
+    </div>
   );
-  const retiredBanner = isHistory ? (
+  const retiredBanner = mode === "history" || mode === "legacy" ? (
     <div role="note" className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-foreground">
-      <span className="flex-1">These are earlier intake records. Use <Link to="/dashboard/contracting/requests" className="font-semibold underline">Requests</Link> for current carrier-request receipts, <Link to="/dashboard/grow" className="font-semibold underline">Grow my team</Link> for the Ethos submission lane, and <Link to="/dashboard/contracting" className="font-semibold underline">Review</Link> to record carrier confirmation.</span>
+      <span className="flex-1">{mode === "legacy" ? "This is the previous carrier review. Its saved confirmations remain available; its carrier list and completion counts are historical." : "These are earlier intake records retained for reference."} Use the <Link to="/dashboard/contracting" className="font-semibold underline">current contracting workspace</Link> for submissions and <Link to="/dashboard/contracting?view=receipts" className="font-semibold underline">agent receipts</Link> for the current tracker.</span>
     </div>
   ) : null;
 
-  if (mode === "review") {
-    return (
-      <div className="page-enter mx-auto w-full max-w-6xl space-y-5 px-4 pb-24 sm:px-6">
-        <PageHeader
-          eyebrow="Contracting"
-          eyebrowIcon={<ClipboardList className="h-4 w-4" />}
-          title="Contracting review"
-          subtitle="Check the agent's profile and carrier portal, then record each carrier's confirmation. Submission receipts and writing numbers have their own tabs."
-        />
-        {workspaceNav}
-        {canInvite ? <ContractingLinkCard copyLink={copyLink} copiedId={copiedId} /> : null}
-        <GlassCard className="p-3 sm:p-4"><ContractingReviewWorkspace /></GlassCard>
-      </div>
-    );
-  }
-
-  const title = mode === "carriers" ? "Carriers" : mode === "requests" ? "Contracting requests" : mode === "history" ? "Intake history" : "Writing numbers";
+  const title = mode === "carriers" ? "Carrier directory" : mode === "requests" ? "Contracting" : mode === "history" ? "Intake history" : mode === "legacy" ? "Historical review" : mode === "receipts" ? "Agent contract receipts" : "Writing numbers";
   const subtitle = mode === "carriers"
-    ? "The four carriers tracked on every agent's profile, their portal links, and the full carrier directory."
+    ? "Carrier entries currently marked active in the saved directory. Confirm available contracting options in MGN."
     : mode === "requests"
-    ? "Review missing information, save a request and follow its sheet receipt. A submitted request does not establish carrier approval."
+    ? "Open MGN, prepare the request and follow its receipt. Carrier approval is confirmed separately."
     : mode === "history"
     ? "Earlier intake records retained for reference. Current submissions and carrier confirmations are tracked separately."
+    : mode === "legacy"
+    ? "Previous portal checks and placement-level history. This list does not define the current carrier lineup."
+    : mode === "receipts"
+    ? "Check the agent's profile and record a received contract after verifying it in the carrier portal."
     : "Writing and contract numbers that carriers have issued, kept on record. E&O certificates live on each agent's profile documents.";
 
   return (
@@ -140,41 +124,14 @@ export default function CarrierContracts() {
       {workspaceNav}
       {retiredBanner}
 
-      {mode === "carriers" && <TrackedCarriersCard />}
+      {mode === "requests" && canInvite ? <ContractingLinkCard copyLink={copyLink} copiedId={copiedId} /> : null}
       {mode === "carriers" && <CarrierDirectory carriersQ={carriersQ} />}
       {mode === "requests" && <ContractingRequestsBoard />}
+      {mode === "receipts" && <GlassCard className="p-3 sm:p-4"><ContractingReviewWorkspace /></GlassCard>}
+      {mode === "legacy" && <GlassCard className="p-3 sm:p-4"><HistoricalContractingReviewWorkspace /></GlassCard>}
       {mode === "history" && <ContractingIntakeAdmin showEmptyState />}
       {mode === "documents" && <ContractDocuments />}
     </div>
-  );
-}
-
-/** The four carriers every agent is reviewed against, straight from the review's own carrier list. */
-function TrackedCarriersCard() {
-  const review = useContractReview(true);
-  const carriers = review.roster?.carriers ?? [];
-  return (
-    <GlassCard className="p-4">
-      <h2 className="text-sm font-semibold text-foreground">Tracked on every agent</h2>
-      <p className="mt-0.5 text-xs text-muted-foreground">Combine, AFLAC, GTO and Ethos are confirmed by hand on the review after you check each carrier's portal.</p>
-      {review.query.isLoading ? <p className="mt-3 text-sm text-muted-foreground">Loading…</p> : null}
-      {review.query.isError ? <p role="alert" className="mt-3 text-sm text-destructive">The carrier list did not load.</p> : null}
-      {carriers.length > 0 ? (
-        <ul className="mt-3 grid gap-2 sm:grid-cols-2">
-          {carriers.map((c) => (
-            <li key={c.key} className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2">
-              <div>
-                <p className="text-sm font-medium text-foreground">{c.label}</p>
-                <p className="text-xs text-muted-foreground">{c.mapped ? "Matched to the carrier directory" : "Not yet matched to a directory entry"}</p>
-              </div>
-              {externalHref(c.portal_url) ? (
-                <a href={externalHref(c.portal_url) ?? undefined} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-primary hover:underline">Open portal</a>
-              ) : <span className="text-xs text-muted-foreground">No portal link on file</span>}
-            </li>
-          ))}
-        </ul>
-      ) : null}
-    </GlassCard>
   );
 }
 
@@ -314,9 +271,10 @@ function ContractingLinkCard({ copyLink, copiedId }: { copyLink: (id: string, ur
     <GlassCard className="p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0 sm:flex-1">
-          <h2 className="text-sm font-semibold text-foreground">Agent contracting links</h2>
+          <h2 className="text-base font-semibold text-foreground">Start in MGN</h2>
           <p className="mt-0.5 text-xs text-muted-foreground">MGN opens the carrier portal. The Galaxy profile link collects the signed-in agent&apos;s details for review. Recruiting and new account setup start in Grow my team.</p>
         </div>
+        <Button asChild className="h-10"><a href={url} target="_blank" rel="noopener noreferrer">Open MGN portal</a></Button>
         <Button size="sm" variant="outline" className="h-10" onClick={() => copyLink("contracting-profile-link", url)}>
           {copiedId === "contracting-profile-link"
             ? <><Check className="mr-1.5 h-3.5 w-3.5" aria-hidden /> Copied</>

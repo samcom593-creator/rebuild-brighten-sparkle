@@ -17,7 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { looseSupabase } from "@/lib/looseSupabase";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { externalHref } from "@/lib/externalHref";
+import { seekCall } from "@/lib/callAudio";
 import { useCanViewSoldCalls } from "@/hooks/useSoldCallKeys";
 import { CallAudioPlayer } from "@/components/calls/CallAudioPlayer";
 import { contactLinkProps, formatPhoneDisplay, isDialablePhone, nationalDigits, phoneHref, smsHref } from "@/lib/phone";
@@ -105,9 +105,6 @@ export function SoldCallPanel({ phone, firstName, lastName, doNotCall = false, s
   // A failed read says so; "no packet" is only claimed after a read that answered.
   if (q.isError) return <p className="text-xs text-destructive">Sold-call packet did not load: {(q.error as Error).message}</p>;
   if (!p) return null; // no match → render nothing (no clutter)
-  // ReadyMode recording URL from the DB: laundered so a scheme-less value can never
-  // resolve relative to the current page (MP-497). Every live row is https today.
-  const recordingHref = externalHref(p.recording_url);
   // The record's number first: the packet's client_phone is transcribed from the call and is
   // sometimes a fragment (4 of 22 cannot be dialed) or a different number. A transcribed number
   // that differs from the one dialed is shown on its own line, never silently swapped in.
@@ -126,9 +123,9 @@ export function SoldCallPanel({ phone, firstName, lastName, doNotCall = false, s
   const gaps = bookingGaps(p.missing_fields);
   const pointers = p.sensitive_pointers ?? {};
   const heardAt = (s: number | undefined) =>
-    s == null ? null : recordingHref ? (
-      <a href={`${recordingHref}#t=${Math.max(0, Math.floor(s) - 3)}`} target="_blank" rel="noopener noreferrer" className="ml-1 text-[11px] font-normal text-muted-foreground underline-offset-2 hover:underline">heard at {mmss(s)}</a>
-    ) : <span className="ml-1 text-[11px] font-normal text-muted-foreground">heard at {mmss(s)}</span>;
+    s == null || !Number.isFinite(s) || s < 0 ? null : p.call_id ? (
+      <button type="button" onClick={() => seekCall(p.call_id!, mmss(s))} aria-label={`Play recording from ${mmss(s)}`} className="ml-1 min-h-11 text-xs font-normal text-muted-foreground underline-offset-2 hover:underline">heard at {mmss(s)}</button>
+    ) : <span className="ml-1 text-xs font-normal text-muted-foreground">heard at {mmss(s)}</span>;
   const ssnShown = formatSsn(s?.ssn) ?? (p.ssn_last4 ? `•••-••-${p.ssn_last4}` : null);
 
   return (
@@ -158,11 +155,7 @@ export function SoldCallPanel({ phone, firstName, lastName, doNotCall = false, s
                 <a href={textHref} {...contactLinkProps(textHref)}><MessageSquare className="mr-1.5 h-3.5 w-3.5" />Text</a>
               </Button>
             )}
-            {recordingHref && (
-              <Button asChild variant="outline" size="sm">
-                <CallAudioPlayer callId={p.call_id ?? ""} compact />
-              </Button>
-            )}
+            {p.call_id && <CallAudioPlayer callId={p.call_id} compact />}
             {p.status === "booked" ? (
               <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400"><CheckCircle2 className="h-3.5 w-3.5" />Resold {dateStr(p.booked_at)}</span>
             ) : null}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { RefreshCw, Search, SkipForward } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import {
 import { ReviewHeader, ReviewRow } from "@/components/contracting-review/ReviewRows";
 import { ReviewFocusPanel } from "./ReviewFocusPanel";
 import { ReviewDetailsDrawer } from "@/components/contracting-review/ReviewDetailsDrawer";
+import { CurrentContractingReview } from "./CurrentContractingReview";
 
 const PAGE = 50;
 
@@ -28,7 +29,19 @@ const PAGE = 50;
  *  - A failed or short read shows an error. It is never drawn as an empty list or as "everyone is unmarked".
  *  - There is no "mark everyone complete".
  */
-export function ContractingReviewWorkspace({ className, initialView = "focused" }: { className?: string; initialView?: "focused" | "compact" }) {
+export function ContractingReviewWorkspace({ className }: { className?: string; initialView?: "focused" | "compact" }) {
+  const [params] = useSearchParams();
+  if (params.get("reviewMode") === "legacy") return (
+    <div className={cn("space-y-4", className)}>
+      <p role="note" className="rounded-lg border border-border bg-muted/30 p-4 text-sm">Historical carrier review. These saved confirmations and completion counts belong to the previous checklist. <Link className="font-medium underline" to="/dashboard/team?view=contracting">Return to current agent receipts</Link>.</p>
+      <HistoricalContractingReviewWorkspace />
+    </div>
+  );
+  return <CurrentContractingReview className={className} />;
+}
+
+/** Retained only for explicit historical review; its circles do not define current contracting requirements. */
+export function HistoricalContractingReviewWorkspace({ className, initialView = "focused" }: { className?: string; initialView?: "focused" | "compact" }) {
   const review = useContractReview(true);
   const { roster, query, canRead, canEdit } = review;
   const facts = useTeamFacts(true);

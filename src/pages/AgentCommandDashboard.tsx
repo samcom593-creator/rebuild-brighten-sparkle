@@ -691,7 +691,7 @@ export default function AgentCommandDashboard() {
         <QuickAction icon={Briefcase} to="/dashboard/agent-pipeline" label="Client pipeline" desc="Active book of business" />
         <QuickAction icon={Users}     to="/dashboard/recruit-pipeline" label="Recruit pipeline" desc="Applicants in progress" />
         <QuickAction icon={Calendar}  to="/dashboard/calendar"      label="Calendar" desc="Today + upcoming" />
-        <QuickAction icon={Wallet}    to="/dashboard/my-commissions" label="Commissions" desc="Earnings + projections" />
+        <QuickAction icon={Wallet}    to="/dashboard/finances"       label="Finances" desc="Policies, commissions, payments" />
       </div>
     </div>
   );

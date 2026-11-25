@@ -106,14 +106,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const lastFetchedUserId = useRef<string | null>(null);
   // Ref to track current user ID — prevents creating new user object references on token refresh
   const currentUserIdRef = useRef<string | null>(null);
+  // Identity alone is insufficient after A → B → A. Only the current request
+  // generation may publish profile, roles, mode, or completion state.
+  const requestGenerationRef = useRef(0);
+  const identityCacheResetRef = useRef<{ generation: number; promise: Promise<void> } | null>(null);
+  const isCurrentUserRequest = useCallback((userId: string | null, generation: number) =>
+    currentUserIdRef.current === userId && requestGenerationRef.current === generation, []);
 
-  const fetchProfile = useCallback(async (userId: string, authEmail?: string) => {
+  const fetchProfile = useCallback(async (userId: string, authEmail?: string, generation = requestGenerationRef.current) => {
     const supabase = await getSupabase();
+    if (!isCurrentUserRequest(userId, generation)) return;
     const { data } = await supabase
       .from("profiles")
       .select("*")
       .eq("user_id", userId)
       .maybeSingle();
+    if (!isCurrentUserRequest(userId, generation)) return;
 
     if (data && authEmail && data.email !== authEmail) {
       if (import.meta.env.DEV) console.log("Syncing profile email with auth email:", authEmail);
@@ -121,6 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .from("profiles")
         .update({ email: authEmail })
         .eq("user_id", userId);
+      if (!isCurrentUserRequest(userId, generation)) return;
 
       const { data: updatedData } = await supabase
         .from("profiles")
@@ -128,30 +137,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq("user_id", userId)
         .maybeSingle();
 
-      setProfile(updatedData);
+      if (isCurrentUserRequest(userId, generation)) setProfile(updatedData);
     } else {
       setProfile(data);
     }
-  }, []);
+  }, [isCurrentUserRequest]);
 
-  const fetchRoles = useCallback(async (userId: string) => {
+  const fetchRoles = useCallback(async (userId: string, generation = requestGenerationRef.current) => {
+    if (!isCurrentUserRequest(userId, generation)) return;
     setRolesLoading(true);
     const supabase = await getSupabase();
+    if (!isCurrentUserRequest(userId, generation)) return;
     const { data } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", userId);
 
+    if (!isCurrentUserRequest(userId, generation)) return;
     setRoles(data || []);
     setRolesLoading(false);
-  }, []);
+  }, [isCurrentUserRequest]);
 
   // MP-332: the person's switchable mode. agents.account_mode is granted to
   // authenticated; a login with no agents row (VA staff) reads null and falls
   // back to roles in effectiveMode below. Never throws — a failed read is
   // "unknown", which resolves to the role-derived mode, never to admin.
-  const fetchAccountMode = useCallback(async (userId: string) => {
+  const fetchAccountMode = useCallback(async (userId: string, generation = requestGenerationRef.current) => {
     const supabase = await getSupabase();
+    if (!isCurrentUserRequest(userId, generation)) return;
     const { data } = await supabase
       .from("agents")
       .select("account_mode")
@@ -159,9 +172,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
+    if (!isCurrentUserRequest(userId, generation)) return;
     setAccountMode((data as { account_mode?: string } | null)?.account_mode ?? null);
     setHasAgentRecord(data !== null && data !== undefined);
-  }, []);
+  }, [isCurrentUserRequest]);
 
   // Consolidated handler: fetches profile+roles only if userId changed
   const handleSession = useCallback(async (
@@ -177,25 +191,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Only update user state if the identity actually changed —
     // prevents cascading re-renders across 20+ components on token refresh / tab switch
-    if (newUserId !== currentUserIdRef.current) {
+    if (newUserId !== currentUserIdRef.current || source === "SIGNED_OUT" || source === "TOKEN_REFRESH_FAILED") {
+      requestGenerationRef.current += 1;
       currentUserIdRef.current = newUserId;
+      lastFetchedUserId.current = null;
       setUser(newSession?.user ?? null);
+      setProfile(null);
+      setRoles([]);
+      setAccountMode(null);
+      setHasAgentRecord(false);
+      setRolesLoading(Boolean(newUserId));
+      setIsLoading(true);
+      const generation = requestGenerationRef.current;
+      identityCacheResetRef.current = {
+        generation,
+        promise: (async () => {
+          // QueryShell uses this singleton. Legacy private pages still have
+          // global keys, so remounting their children is not sufficient.
+          // Keep React Query off the anonymous landing's eager import graph.
+          const { queryClient } = await import("@/shared/api/queryClient");
+          if (isMounted() && isCurrentUserRequest(newUserId, generation)) queryClient.clear();
+        })(),
+      };
     }
+
+    const generation = requestGenerationRef.current;
+    const cacheReset = identityCacheResetRef.current;
+    if (cacheReset?.generation === generation) await cacheReset.promise;
+    if (!isMounted() || !isCurrentUserRequest(newUserId, generation)) return;
 
     if (newUserId) {
       // Skip if we already fetched for this user (dedup between getSession + onAuthStateChange)
       if (lastFetchedUserId.current === newUserId) {
-        if (isMounted()) setIsLoading(false);
+        // An in-flight first load still owns the loading state. Same-user
+        // refreshes keep the already resolved page and do not restart reads.
         return;
       }
       lastFetchedUserId.current = newUserId;
 
       await Promise.all([
-        fetchProfile(newUserId, newSession!.user.email),
-        fetchRoles(newUserId),
-        fetchAccountMode(newUserId),
+        fetchProfile(newUserId, newSession!.user.email, generation),
+        fetchRoles(newUserId, generation),
+        fetchAccountMode(newUserId, generation),
       ]);
-      if (isMounted()) setIsLoading(false);
+      if (isMounted() && isCurrentUserRequest(newUserId, generation)) setIsLoading(false);
     } else {
       lastFetchedUserId.current = null;
       setProfile(null);
@@ -205,12 +244,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRolesLoading(false);
       setIsLoading(false);
     }
-  }, [fetchProfile, fetchRoles, fetchAccountMode]);
+  }, [fetchProfile, fetchRoles, fetchAccountMode, isCurrentUserRequest]);
 
   useEffect(() => {
     let isMounted = true;
     const mounted = () => isMounted;
     let unsubscribe: (() => void) | undefined;
+    let authStateVersion = 0;
 
     const init = async () => {
       const supabase = await getSupabase();
@@ -219,6 +259,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
         async (event, session) => {
           if (!isMounted) return;
+          const eventVersion = ++authStateVersion;
+          const applyCurrentSession = () => {
+            if (authStateVersion === eventVersion) void handleSession(session, mounted, event);
+          };
 
           // Telemetry: capture lifecycle events (excluding noisy refreshes)
           if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "PASSWORD_RECOVERY" || event === "USER_UPDATED") {
@@ -242,27 +286,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // was unreachable. Already-sent emails still point at the old URL;
           // this handler fires on that page too and forwards them here.
           if (event === "PASSWORD_RECOVERY") {
-            if (window.location.pathname === "/reset-password") return;
+            if (window.location.pathname === "/reset-password") {
+              // This event supersedes a pending startup snapshot. Resolve its
+              // session here without redirecting, unless a newer event wins.
+              setTimeout(applyCurrentSession, 0);
+              return;
+            }
             window.location.href = "/reset-password"; // internal-nav-href-allow: auth-state-change requires cache invalidation
             return;
           }
 
           // On token refresh, just update the session object — no refetches needed
           if (event === "TOKEN_REFRESHED") {
-            if (session) {
+            if (session && session.user.id === currentUserIdRef.current) {
               setSession(session);
+            } else if (session) {
+              setTimeout(applyCurrentSession, 0);
             } else {
               // Token refresh failed (e.g. refresh_token_not_found) — clear stale state
               console.warn("Token refresh failed, clearing session");
-              currentUserIdRef.current = null;
-              lastFetchedUserId.current = null;
-              setUser(null);
-              setSession(null);
-              setProfile(null);
-              setRoles([]);
-              setAccountMode(null);
-              setRolesLoading(false);
-              setIsLoading(false);
+              void handleSession(null, mounted, "TOKEN_REFRESH_FAILED");
               // empty-catch-allow:recovery-signout — best-effort cleanup after broken-session detection; user is already logged out client-side, network failure is acceptable.
               Promise.resolve(supabase.auth.signOut()).catch(() => {});
             }
@@ -270,14 +313,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
 
           // Use setTimeout(0) to avoid Supabase deadlock warning
-          setTimeout(() => handleSession(session, mounted, "onAuthStateChange"), 0);
+          setTimeout(applyCurrentSession, 0);
         }
       );
 
       unsubscribe = () => subscription.unsubscribe();
 
+      const initialSessionVersion = authStateVersion;
       supabase.auth.getSession().then(({ data: { session } }) => {
-        if (!isMounted) return;
+        // A later auth event supersedes a delayed startup session snapshot.
+        if (!isMounted || authStateVersion !== initialSessionVersion) return;
         handleSession(session, mounted, "getSession");
       });
     };
@@ -359,6 +404,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       isMounted = false;
+      requestGenerationRef.current += 1;
+      lastFetchedUserId.current = null;
       if (idleHandle !== null) w.cancelIdleCallback?.(idleHandle);
       if (timeoutHandle !== null) window.clearTimeout(timeoutHandle);
       detachInteraction();

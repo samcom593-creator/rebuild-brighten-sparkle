@@ -151,6 +151,8 @@ export interface EstimatePart {
   ratePct: number | null;
   rateLabel: string;
   postedDate: string | null;
+  /** The production source's recorded status; never payment or issue-date evidence. */
+  status?: string | null;
 }
 
 export type PairMethod = "deal_id" | "policy_and_client";
@@ -298,7 +300,9 @@ const CLOSED_DEAL_WORDS: Record<string, string> = {
 };
 
 export function isDateKey(value: unknown): value is string {
-  return typeof value === "string" && DATE_KEY_RX.test(value);
+  if (typeof value !== "string" || !DATE_KEY_RX.test(value)) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
 
 function normalizeStatus(value: string | null | undefined): string | null {
@@ -484,6 +488,7 @@ function toEstimatePart(row: ProductionEstimate, rate: RateVerdict): EstimatePar
     rowKey: row.row_key,
     annualPremium: asNumber(row.annual_premium),
     postedDate: isDateKey(row.posted_date) ? row.posted_date : null,
+    status: row.status,
   };
   if (rate !== "on_file") return { ...base, amount: null, ratePct: null, rateLabel: RATE_LABELS[rate] };
   const ratePct = asNumber(row.seller_comp_pct);
@@ -723,6 +728,45 @@ export function paidYearToDate(rows: LedgerRow[], todayKey: string): PaidYearToD
   return { total, count, yearStart, undatedPaidCount, futureDatedPaidCount };
 }
 
+export const COMMISSION_PAYMENT_LABELS = {
+  paid: "Paid · recorded",
+  pending: "Awaiting payment",
+  unverified: "Payment unverified",
+  closed: "Closed / voided",
+  clawed_back: "Clawed back",
+  estimate_only: "No payment record",
+} as const;
+export type CommissionPaymentState = keyof typeof COMMISSION_PAYMENT_LABELS;
+
+/** Classify the recorded commission, never the policy's coverage or premium payment. */
+export function commissionPaymentState(part: LedgerPart | null, todayKey: string): CommissionPaymentState {
+  if (!isDateKey(todayKey)) throw new RangeError(`invalid date key: ${todayKey}`);
+  if (!part) return "estimate_only";
+  if (part.status === "paid") return isDateKey(part.actualPaidDate) && part.actualPaidDate <= todayKey ? "paid" : "unverified";
+  if (part.status === "clawed_back") return "clawed_back";
+  if (part.status === "voided" || (part.status === "pending" && part.dealClosed)) return "closed";
+  if (part.status === "pending") return "pending";
+  return "unverified";
+}
+
+/** Same paid-date rule as Paid YTD; no booking dates, pending amounts, or premium. */
+export function paidCommissionTrend(rows: readonly LedgerRow[], todayKey: string) {
+  if (!isDateKey(todayKey)) throw new RangeError(`invalid date key: ${todayKey}`);
+  const year = todayKey.slice(0, 4);
+  const months = Array.from({ length: Number(todayKey.slice(5, 7)) }, (_, index) => ({
+    key: `${year}-${String(index + 1).padStart(2, "0")}`,
+    label: MONTH_NAMES[index], amount: 0, count: 0,
+  }));
+  for (const row of rows) {
+    const paidOn = row.actual_paid_date;
+    if (row.status !== "paid" || !isDateKey(paidOn) || paidOn > todayKey || paidOn.slice(0, 4) !== year) continue;
+    const month = months[Number(paidOn.slice(5, 7)) - 1];
+    month.amount += row.amount;
+    month.count += 1;
+  }
+  return months;
+}
+
 /** "2026-10" -> "Oct 2026". Pure string work, no Date. */
 export function monthLabel(monthKey: string): string {
   const m = /^(\d{4})-(\d{2})$/.exec(monthKey);
@@ -815,7 +859,7 @@ export function commissionTypeTiles(input: {
   rate: RateVerdict;
   /** The contract rate read is still running. */
   rateChecking: boolean;
-  /** True for admin logins, the only ones /dashboard/finances admits. */
+  /** True when the admin-only Management view is available inside Finances. */
   financesVisible: boolean;
 }): CommissionTypeTile[] {
   const direct = asNumber(input.types.direct_ytd);
@@ -848,7 +892,7 @@ export function commissionTypeTiles(input: {
       label: "Overrides",
       figure: { kind: "text", text: "Not in this view" },
       detail: input.financesVisible
-        ? "Your own-production read leaves out team overrides; see Finances for the team view."
+        ? "Your own-production read leaves out team overrides; open Management in Finances for the team view."
         : "Your own-production read leaves out team overrides.",
     },
     {

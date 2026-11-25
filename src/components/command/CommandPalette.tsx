@@ -61,15 +61,14 @@ const EXTRA_ROUTES: RouteEntry[] = [
   { label: "Unclaimed Leads", path: "/dashboard/admin/unclaimed", icon: TrendingUp, group: "Navigate", requires: "admin" },
   { label: "Hiring Pipeline", path: "/dashboard/hiring-pipeline", icon: UserPlus, group: "Navigate", requires: "manager" },
   { label: "Aged Leads", path: "/dashboard/aged-leads", icon: Users, group: "Navigate", requires: "manager" },
-  { label: "Inbox", path: "/dashboard/inbox", icon: Inbox, group: "Navigate", requires: "admin" },
+  { label: "Recruiting triage", path: "/dashboard/inbox", icon: Inbox, group: "Navigate", requires: "admin" },
   { label: "My Notifications", path: "/dashboard/notifications/mine", icon: Bell, group: "Navigate" },
   { label: "Notification Hub", path: "/dashboard/notifications", icon: Bell, group: "Navigate", requires: "admin" },
-  { label: "Award Graphics", path: "/dashboard/awards", icon: ImageIcon, group: "Navigate", requires: "admin" },
+  { label: "Award history", path: "/dashboard/my-plaques", icon: ImageIcon, group: "Navigate" },
   { label: "Purchase Leads", path: "/purchase-leads", icon: ShoppingCart, group: "Navigate" },
   { label: "Automation Hub", path: "/dashboard/automation", icon: Activity, group: "Navigate", requires: "admin" },
-  { label: "System Health", path: "/dashboard/system-health", icon: Activity, group: "Navigate", requires: "admin" },
   { label: "Deleted Leads Vault", path: "/dashboard/settings/deleted-leads", icon: Trash2, group: "Navigate", requires: "admin" },
-  { label: "Seminar Control", path: "/dashboard/seminar-control", icon: Calendar, group: "Navigate", requires: "manager" },
+  { label: "Seminar Control", path: "/dashboard/seminar", icon: Calendar, group: "Navigate", requires: "manager" },
   { label: "Referral Pipeline", path: "/dashboard/referrals", icon: UserPlus, group: "Navigate", requires: "manager" },
   { label: "Submit Referral", path: "/dashboard/referrals/new", icon: UserPlus, group: "Navigate" },
   { label: "My Referrals", path: "/dashboard/referrals/mine", icon: UserPlus, group: "Navigate" },
@@ -88,7 +87,7 @@ export function CommandPalette() {
   // Applications search opens the recruiting workspace, whose route guard
   // admits admins, managers, VAs, VA managers and recruiters. Nobody else is
   // offered applicant results they could not open.
-  const canOpenRecruiting = isAdmin || isManager || isVa || isVaManager || isRecruiter;
+  const canOpenRecruiting = !authLoading && !isPreviewing && (isAdmin || isManager || isVa || isVaManager || isRecruiter);
   const [query, setQuery] = useState("");
   const [selectedValue, setSelectedValue] = useState("");
   const [agents, setAgents] = useState<AgentResult[]>([]);
@@ -115,18 +114,20 @@ export function CommandPalette() {
   // Only show extra routes the current role can actually open. Previously this
   // exposed every admin route to every user, leading to access-denied bounces.
   const visibleRoutes = useMemo(() => {
+    if (authLoading) return [];
+    if (isApplicantViewer({ authLoading, isAdmin, isManager, isAgent, hasAgentRecord, isPreviewing })) return navRoutes;
     const navPaths = new Set(navRoutes.map((r) => r.path.split("?")[0]));
     const extras = EXTRA_ROUTES.filter((r) => {
       if (navPaths.has(r.path)) return false;
       const req = r.requires ?? "any";
       if (req === "any") return true;
       if (req === "agent") return true; // any authenticated user
-      if (req === "manager") return isAdmin || isManager;
-      if (req === "admin") return isAdmin;
+      if (req === "manager") return isPreviewing ? effectiveRole === "manager" : isAdmin || isManager;
+      if (req === "admin") return isAdmin && !isPreviewing;
       return true;
     });
     return [...navRoutes, ...extras];
-  }, [isAdmin, isManager, navRoutes]);
+  }, [authLoading, effectiveRole, hasAgentRecord, isAdmin, isAgent, isManager, isPreviewing, navRoutes]);
 
   // Cmd+K shortcut
   useEffect(() => {
@@ -186,10 +187,11 @@ export function CommandPalette() {
   useEffect(() => { if (!open) setQuery(""); }, [open]);
 
   const filteredRoutes = useMemo(() => {
+    if (authLoading) return [];
     if (!query.trim()) return navRoutes.slice(0, 5);
     const q = query.trim().toLowerCase();
     return visibleRoutes.filter((r) => r.label.toLowerCase().includes(q));
-  }, [query, visibleRoutes, navRoutes]);
+  }, [authLoading, query, visibleRoutes, navRoutes]);
 
   const go = (path: string) => {
     setOpen(false);
@@ -218,7 +220,7 @@ export function CommandPalette() {
         <CommandEmpty>{searchState === "loading" || searchState === "error" || query.trim().length === 1 ? null : "No matches. Try another part of the name, email or phone."}</CommandEmpty>
 
 
-        {agents.length > 0 && (
+        {canOpenRecruiting && agents.length > 0 && (
           <>
             <CommandGroup heading="People on the team">
               {agents.map((a) => (
@@ -243,7 +245,7 @@ export function CommandPalette() {
           </>
         )}
 
-        {applications.length > 0 && (
+        {canOpenRecruiting && applications.length > 0 && (
           <>
             <CommandGroup heading="Applicants">
               {applications.map((app) => (

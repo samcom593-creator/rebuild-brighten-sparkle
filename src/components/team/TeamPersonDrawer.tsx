@@ -5,7 +5,6 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { contactLinkProps, phoneHref } from "@/lib/phone";
 import { daysSince, plural, usdOrNull, type RosterRow } from "@/lib/teamRoster";
 import { useContractReview } from "@/hooks/useContractReview";
-import { levelText } from "@/lib/contractReview";
 import { accessSummary, type PersonFacts, type StageKey } from "@/lib/teamStage";
 import type { TeamStage } from "@/lib/teamList";
 import { OnboardingProgress } from "@/components/team/OnboardingProgress";
@@ -78,7 +77,6 @@ export function TeamPersonDrawer({ open, onOpenChange, row, onOpenContracting, m
   const agentId = row?.agent_id ?? "";
   const sinceSale = row ? daysSince(row.last_posted_date) : null;
   const inReview = review.roster?.agents.find((a) => a.agent_id === agentId);
-  const total = review.roster?.carriers.length ?? 4;
   const facts = manage?.facts ?? null;
   const access = facts ? accessSummary(facts.access) : null;
 
@@ -137,7 +135,7 @@ export function TeamPersonDrawer({ open, onOpenChange, row, onOpenContracting, m
               ) : inReview ? (
                 <div className="space-y-2">
                   <p className="text-sm text-foreground">
-                    {inReview.marked_count} of {total} carriers confirmed
+                    {inReview.profile.complete ? "Contracting profile details saved" : "Contracting profile details incomplete"}
                   </p>
                   <Button type="button" size="sm" variant="outline" className="h-10" onClick={() => onOpenContracting(inReview.agent_id)}>Open in contracting review</Button>
                 </div>

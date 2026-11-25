@@ -1,3 +1,6 @@
+import { useEffect, useRef } from "react";
+import { useSamPrivateAccess } from "@/hooks/useSamPrivateAccess";
+import { assertSamTaskSession, taskAuthorization, type TaskViewLease } from "@/lib/privateTasks";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
@@ -11,21 +14,31 @@ import { supabase } from "@/integrations/supabase/client";
 type TodoistTask = { id: string; content: string; priority: number | null; due: string | null; recurring: boolean };
 export type PushResult = { ok: boolean; created?: number; updated?: number; deleted?: number; unchanged?: number; errors?: string[]; error?: string };
 
-export async function pushMyDayToTodoist(): Promise<PushResult> {
-  const { data, error } = await supabase.functions.invoke("myday-todoist", { body: { action: "push" } });
+export async function pushMyDayToTodoist(userId: string, isCurrent?: TaskViewLease): Promise<PushResult> {
+  const authorization = await assertSamTaskSession(userId, isCurrent);
+  const { data, error } = await supabase.functions.invoke("myday-todoist", { body: { action: "push" }, headers: { Authorization: authorization } });
   if (error) return { ok: false, error: error.message };
   return data as PushResult;
 }
 
-const KEY = ["myday_todoist_today"] as const;
-
 export function MyDayTodoist() {
+  const { allowed, userId } = useSamPrivateAccess();
+  if (!allowed || !userId) return null;
+  return <MyDayTodoistContent key={userId} userId={userId} />;
+}
+
+function MyDayTodoistContent({ userId }: { userId: string }) {
   const qc = useQueryClient();
+  const KEY = ["myday_todoist_today", userId] as const;
+  const active = useRef(true);
+  useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
   const { data, isError, isLoading, refetch } = useQuery({
     queryKey: KEY,
     staleTime: 60_000,
+    gcTime: 0,
     queryFn: async (): Promise<TodoistTask[]> => {
-      const { data: res, error } = await supabase.functions.invoke("myday-todoist", { body: { action: "today" } });
+      const authorization = await taskAuthorization(userId, () => active.current);
+      const { data: res, error } = await supabase.functions.invoke("myday-todoist", { body: { action: "today" }, headers: { Authorization: authorization } });
       if (error || !(res as { ok?: boolean })?.ok) throw new Error(error?.message ?? "Todoist unavailable");
       return (res as { tasks: TodoistTask[] }).tasks;
     },
@@ -33,20 +46,26 @@ export function MyDayTodoist() {
 
   const complete = useMutation({
     mutationFn: async (id: string) => {
-      const { data: res, error } = await supabase.functions.invoke("myday-todoist", { body: { action: "complete", task_id: id } });
+      const authorization = await assertSamTaskSession(userId, () => active.current);
+      if (!active.current) throw new Error("This task list is no longer open.");
+      const { data: res, error } = await supabase.functions.invoke("myday-todoist", { body: { action: "complete", task_id: id }, headers: { Authorization: authorization } });
       if (error || !(res as { ok?: boolean })?.ok) throw new Error(error?.message ?? "Not completed");
     },
-    onSuccess: () => { void qc.invalidateQueries({ queryKey: KEY }); },
-    onError: (e: Error) => toast.error(`Could not complete: ${e.message}`),
+    onSuccess: () => { if (active.current) void qc.invalidateQueries({ queryKey: KEY }); },
+    onError: (e: Error) => { if (active.current) toast.error(`Could not complete: ${e.message}`); },
   });
 
   const sync = useMutation({
-    mutationFn: pushMyDayToTodoist,
+    mutationFn: async () => {
+      if (!active.current) throw new Error("This task list is no longer open.");
+      return pushMyDayToTodoist(userId, () => active.current);
+    },
     onSuccess: (r) => {
+      if (!active.current) return;
       if (r.ok) toast.success(`Synced to Todoist: ${r.created ?? 0} new, ${r.updated ?? 0} changed, ${r.deleted ?? 0} removed`);
       else toast.error(`Todoist sync problem: ${r.errors?.[0] ?? r.error ?? "unknown"}`);
     },
-    onError: (e: Error) => toast.error(`Todoist sync failed: ${e.message}`),
+    onError: (e: Error) => { if (active.current) toast.error(`Todoist sync failed: ${e.message}`); },
   });
 
   return (

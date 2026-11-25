@@ -9,6 +9,9 @@ const auth = vi.hoisted(() => ({ user: { id: "user-a" } as { id: string } | null
 const notice = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => auth }));
 vi.mock("sonner", () => ({ toast: notice }));
+vi.mock("@/components/calls/CallAudioPlayer", () => ({
+  CallAudioPlayer: ({ callId }: { callId: string }) => <button type="button" data-testid="private-call-player" data-call-id={callId}>Play call</button>,
+}));
 
 const rpc = vi.mocked(looseSupabase.rpc);
 const call = { key: "readymode:call-a", source_id: "call-a", source: "readymode", happened_at: "2026-11-24T16:00:00Z", category: "objection", outcome: "Bank Objection", duration_seconds: 120, transcript: null, audio_url: null, transcript_access: "restricted" };
@@ -20,13 +23,34 @@ function mount(client = new QueryClient({ defaultOptions: { queries: { retry: fa
 beforeEach(() => { rpc.mockReset(); vi.mocked(supabase.functions.invoke).mockClear(); notice.success.mockReset(); notice.error.mockReset(); auth.user = { id: "user-a" }; });
 
 describe("client call history", () => {
-  it("withholds provider text and audio when either permission layer is restricted", async () => {
+  it("offers server-authorized private playback while withholding restricted provider text and URLs", async () => {
     rpc.mockResolvedValue({ data: page({ calls: [{ ...call, transcript: "Must never render", audio_url: "https://recordings.example.test/private.wav", transcript_access: "available" }] }), error: null } as never);
     mount();
     expect(await screen.findByText(/Raw provider transcripts and audio require existing call-access permission/)).toBeInTheDocument();
     expect(screen.queryByText("Must never render")).toBeNull();
     expect(screen.queryByRole("link", { name: "Open recording" })).toBeNull();
+    expect(screen.getByTestId("private-call-player")).toHaveAttribute("data-call-id", call.source_id);
+    expect(document.querySelector('a[href="https://recordings.example.test/private.wav"]')).toBeNull();
     expect(screen.getByText("Bank Objection")).toBeInTheDocument();
+  });
+
+  it("offers the private player without a provider URL and preserves row-level transcript restrictions", async () => {
+    rpc.mockResolvedValue({ data: page({ raw_provider_access: true, calls: [{ ...call, transcript: "Still restricted" }] }), error: null } as never);
+    mount();
+    expect(await screen.findByTestId("private-call-player")).toHaveAttribute("data-call-id", call.source_id);
+    expect(screen.queryByText("Still restricted")).toBeNull();
+    expect(screen.queryByRole("link", { name: "Open recording" })).toBeNull();
+  });
+
+  it("removes a previous account's private player while the new account's history is unavailable", async () => {
+    rpc.mockResolvedValueOnce({ data: page({ calls: [call] }), error: null } as never);
+    const view = mount();
+    await screen.findByTestId("private-call-player");
+    auth.user = { id: "user-b" };
+    rpc.mockResolvedValue({ data: null, error: new Error("Client not found or access denied") } as never);
+    view.rerender(<QueryClientProvider client={view.client}><ClientCallHistory clientId="client-a" /></QueryClientProvider>);
+    expect(screen.queryByTestId("private-call-player")).toBeNull();
+    expect(await screen.findByRole("alert")).toHaveTextContent("does not have access");
   });
 
   it("uses stable page cursors and resets them when the category changes", async () => {

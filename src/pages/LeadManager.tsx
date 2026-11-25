@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/ui/page-header";
 import { QueryState } from "@/components/ui/query-state";
+import { PrivateAudioPlayer } from "@/components/calls/PrivateAudioPlayer";
+import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { TIER_STYLE, flagBadges, tierLegendFor } from "@/lib/leadBundles";
 import { EMPTY_WORK_FILTERS, LEAD_PACK_COLUMNS, OUTCOME_OPTIONS, holdLabels, workFilterParams, type LeadPackRow, type LeadWorkFilters } from "@/lib/leadManagerFilters";
@@ -1311,10 +1313,12 @@ function HolderBoard({ onChange }: { onChange: () => void }) {
 }
 
 // Every recording an agent makes from a lead card, newest first, for review and training. Playback
-// uses a one-hour signed link; the recordings bucket is readable by admins only.
+// uses a short-lived signed link after the server rechecks the caller's authorized recording receipt.
 function RecordingsCard() {
+  const { user } = useAuth();
   const q = useQuery<LeadRecording[]>({
-    queryKey: ["lead-recordings-recent"],
+    queryKey: ["lead-recordings-recent", user?.id],
+    enabled: Boolean(user),
     queryFn: async () => {
       const { data, error } = await rpc("lead_recordings_recent", { p_limit: 40 });
       if (error) throw error;
@@ -1322,12 +1326,7 @@ function RecordingsCard() {
     },
     staleTime: 60_000,
   });
-  const [playing, setPlaying] = useState<{ id: string; url: string } | null>(null);
-  async function play(r: LeadRecording) {
-    const { data, error } = await supabase.storage.from("call-recordings").createSignedUrl(r.path, 3600);
-    if (error || !data?.signedUrl) { toast.error("That recording could not be opened"); return; }
-    setPlaying({ id: r.id, url: data.signedUrl });
-  }
+  const [playing, setPlaying] = useState<string | null>(null);
   const rows = q.data ?? [];
   return (
     <Card data-testid="lead-recordings">
@@ -1335,7 +1334,7 @@ function RecordingsCard() {
         <CardTitle className="flex items-center gap-2 text-base"><Mic className="h-4 w-4 text-primary" /> Calls recorded from lead cards</CardTitle>
       </CardHeader>
       <CardContent className="space-y-1.5">
-        {q.isError ? (
+        {q.isPending ? <QueryState status="loading" label="lead call recordings" compact /> : q.isError ? (
           <QueryState status="error" label="lead call recordings" error={q.error} onRetry={() => void q.refetch()} compact />
         ) : rows.length === 0 ? (
           <p className="text-sm text-muted-foreground">
@@ -1345,9 +1344,9 @@ function RecordingsCard() {
           rows.map((r) => (
             <div key={r.id} className="rounded-lg border border-border/50 px-3 py-2">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-                <Button type="button" size="sm" variant="outline" className="h-8" onClick={() => void play(r)}>
+                {playing !== r.id && <Button type="button" size="sm" variant="outline" className="h-8" onClick={() => setPlaying(r.id)}>
                   <Play className="mr-1 h-3.5 w-3.5" /> Play
-                </Button>
+                </Button>}
                 <span className="font-medium">{r.agent ?? "Agent"}</span>
                 <span className="text-muted-foreground">with {r.lead_name ?? "a lead"}{r.state ? `, ${r.state}` : ""}</span>
                 {r.tier && <Badge variant="outline" className={cn("text-[10px]", TIER_STYLE[r.tier] ?? TIER_STYLE.C)}>{r.tier === "pos" ? "POS" : r.tier === "F" ? "Fresh" : r.tier}</Badge>}
@@ -1355,8 +1354,12 @@ function RecordingsCard() {
                 <span className="text-xs text-muted-foreground">{formatTimeAgo(r.created_at)}</span>
               </div>
               {r.summary && <p className="mt-1 text-xs text-muted-foreground">{r.summary}</p>}
-              {playing?.id === r.id && (
-                <audio controls autoPlay src={playing.url} className="mt-2 w-full" />
+              {playing === r.id && (
+                <PrivateAudioPlayer sourceKey={`lead:${r.id}`} resolveSource={async () => {
+                  const { data, error } = await supabase.functions.invoke("lead-recording-url", { body: { recordingId: r.id } });
+                  if (error || !data || typeof data.signedUrl !== "string" || typeof data.expiresInSeconds !== "number") throw new Error("Recording access could not be verified.");
+                  return { signedUrl: data.signedUrl, expiresInSeconds: data.expiresInSeconds };
+                }} playOnLoad />
               )}
             </div>
           ))

@@ -335,7 +335,7 @@ export default function AgencyOwnerHome() {
         {canOpenManagerPages ? (
           <>
             <Button asChild size="sm" variant="outline"><Link to="/admin/invite-links"><UserPlus className="mr-1.5 h-3.5 w-3.5" />Invite an agent</Link></Button>
-            <Button asChild size="sm" variant="outline"><Link to="/dashboard/analytics">Reports</Link></Button>
+            {isAdmin && <Button asChild size="sm" variant="outline"><Link to="/dashboard/analytics">Reports</Link></Button>}
           </>
         ) : (
           <Button asChild size="sm" variant="outline"><Link to="/dashboard/referrals/new"><UserPlus className="mr-1.5 h-3.5 w-3.5" />Refer a recruit</Link></Button>

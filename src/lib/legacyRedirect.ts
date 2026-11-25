@@ -18,12 +18,17 @@ export interface RedirectLocationLike {
   hash?: string | null;
 }
 
-export function legacyRedirectTarget(to: string, location: RedirectLocationLike): string {
+export function legacyRedirectTarget(to: string, location: RedirectLocationLike, routeParams: Readonly<Record<string, string | undefined>> = {}): string {
   const hashAt = to.indexOf("#");
   const targetHash = hashAt >= 0 ? to.slice(hashAt) : "";
   const targetNoHash = hashAt >= 0 ? to.slice(0, hashAt) : to;
   const queryAt = targetNoHash.indexOf("?");
-  const pathname = queryAt >= 0 ? targetNoHash.slice(0, queryAt) : targetNoHash;
+  const pathTemplate = queryAt >= 0 ? targetNoHash.slice(0, queryAt) : targetNoHash;
+  const pathname = pathTemplate.replace(/:([A-Za-z][A-Za-z0-9_]*)/g, (_, name: string) => {
+    const value = routeParams[name];
+    if (!value) throw new Error(`Missing route parameter: ${name}`);
+    return encodeURIComponent(value);
+  });
   const fixed = new URLSearchParams(queryAt >= 0 ? targetNoHash.slice(queryAt + 1) : "");
 
   const params = new URLSearchParams(location.search ?? "");

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,9 +19,12 @@ import { formatDistanceToNow } from "date-fns";
 import { useConfirm } from "@/hooks/useConfirm";
 import { APPLICATION_RECORD_TYPE } from "@/shared/api/applicationRecordType";
 import { TELEGRAM_GROUP_TYPES, isPlaceholderChatId } from "@/lib/telegramGroups";
+import { useSamPrivateAccess } from "@/hooks/useSamPrivateAccess";
+import { assertSamTaskSession, taskAuthorization, type TaskViewLease } from "@/lib/privateTasks";
 
 /* ---------------- types ---------------- */
 type Bucket = "MUST" | "SHOULD" | "COULD";
+type PrivateSectionProps = { userId: string; isCurrent: TaskViewLease };
 type TaskRow = {
   id: string;
   date: string;
@@ -62,7 +65,7 @@ function dowLabel(dateStr: string): string {
 /* ============================================================
    SECTION 1 — TODAY (editable MUST / SHOULD / COULD checklist)
    ============================================================ */
-function TodaySection({ today }: { today: string }) {
+function TodaySection({ today, userId, isCurrent }: { today: string } & PrivateSectionProps) {
   const qc = useQueryClient();
   const askConfirm = useConfirm();
   const [adding, setAdding] = useState<Bucket | null>(null);
@@ -70,68 +73,85 @@ function TodaySection({ today }: { today: string }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
 
-  const { data: tasks, isLoading } = useQuery({
-    queryKey: ["sam_today_tasks", today],
+  const queryKey = ["sam_today_tasks", userId, today] as const;
+  const { data: tasks, isLoading, error: readError } = useQuery({
+    queryKey,
+    gcTime: 0,
     queryFn: async () => {
+      const authorization = await taskAuthorization(userId, isCurrent);
       const { data, error } = await supabase
         .from("sam_daily_tasks").select("id,bucket,task_text,block_time,status,goal_tag,position")
         .eq("date", today)
-        .order("position", { ascending: true });
+        .order("position", { ascending: true }).setHeader("Authorization", authorization);
       if (error) throw error;
       return data as unknown as TaskRow[];
     },
-    refetchInterval: 300_000, // 60s poll for cross-device sync
+    refetchInterval: 300_000,
   });
 
   const toggle = useMutation({
     mutationFn: async (t: TaskRow) => {
+      const authorization = await assertSamTaskSession(userId, isCurrent);
       const next = t.status === "done" ? "pending" : "done";
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("sam_daily_tasks")
         .update({ status: next })
-        .eq("id", t.id);
+        .eq("date", today).eq("id", t.id).select("id").maybeSingle().setHeader("Authorization", authorization);
       if (error) throw error;
+      if (!data?.id) throw new Error("Task was not updated. Refresh the list.");
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["sam_today_tasks", today] }),
+    onSuccess: () => { if (isCurrent()) void qc.invalidateQueries({ queryKey }); },
+    onError: (error: Error) => { if (isCurrent()) toast.error(error.message); },
   });
 
   const addTask = useMutation({
     mutationFn: async ({ bucket, text }: { bucket: Bucket; text: string }) => {
+      const authorization = await assertSamTaskSession(userId, isCurrent);
       const sameBucket = (tasks ?? []).filter(t => t.bucket === bucket);
       const nextPos = sameBucket.length ? Math.max(...sameBucket.map(t => t.position)) + 1 : 1;
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("sam_daily_tasks")
-        .insert({ date: today, bucket, task_text: text, position: nextPos, status: "pending" });
+        .insert({ date: today, bucket, task_text: text, position: nextPos, status: "pending" }).select("id").single().setHeader("Authorization", authorization);
       if (error) throw error;
+      if (!data?.id) throw new Error("Task save could not be confirmed. Refresh before retrying.");
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["sam_today_tasks", today] });
+      if (!isCurrent()) return;
+      void qc.invalidateQueries({ queryKey });
       setDraft("");
       setAdding(null);
     },
+    onError: (error: Error) => { if (isCurrent()) toast.error(error.message); },
   });
 
   const editTask = useMutation({
     mutationFn: async ({ id, text }: { id: string; text: string }) => {
-      const { error } = await supabase
+      const authorization = await assertSamTaskSession(userId, isCurrent);
+      const { data, error } = await supabase
         .from("sam_daily_tasks")
         .update({ task_text: text })
-        .eq("id", id);
+        .eq("date", today).eq("id", id).select("id").maybeSingle().setHeader("Authorization", authorization);
       if (error) throw error;
+      if (!data?.id) throw new Error("Task was not updated. Refresh the list.");
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["sam_today_tasks", today] });
+      if (!isCurrent()) return;
+      void qc.invalidateQueries({ queryKey });
       setEditingId(null);
       setEditText("");
     },
+    onError: (error: Error) => { if (isCurrent()) toast.error(error.message); },
   });
 
   const removeTask = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("sam_daily_tasks").delete().eq("id", id);
+      const authorization = await assertSamTaskSession(userId, isCurrent);
+      const { data, error } = await supabase.from("sam_daily_tasks").delete().eq("date", today).eq("id", id).select("id").maybeSingle().setHeader("Authorization", authorization);
       if (error) throw error;
+      if (!data?.id) throw new Error("Task was not deleted. Refresh the list.");
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["sam_today_tasks", today] }),
+    onSuccess: () => { if (isCurrent()) void qc.invalidateQueries({ queryKey }); },
+    onError: (error: Error) => { if (isCurrent()) toast.error(error.message); },
   });
 
   const buckets = useMemo(() => {
@@ -143,6 +163,7 @@ function TodaySection({ today }: { today: string }) {
   if (isLoading) {
     return <Card><CardContent className="p-6"><Skeleton className="h-40 w-full" /></CardContent></Card>;
   }
+  if (readError) return <Card><CardContent role="alert" className="p-6 text-sm text-destructive">Your HQ tasks could not be loaded. Refresh to retry.</CardContent></Card>;
 
   const BUCKET_META: Record<Bucket, { color: string; label: string }> = {
     MUST: { color: "text-red-400 border-red-400/40 bg-red-500/5", label: "MUST" },
@@ -262,11 +283,13 @@ function TodaySection({ today }: { today: string }) {
 /* ============================================================
    SECTION 2 — THIS WEEK (7-day strip)
    ============================================================ */
-function ThisWeekSection({ today }: { today: string }) {
+function ThisWeekSection({ today, userId, isCurrent }: { today: string } & PrivateSectionProps) {
   const { data: week } = useQuery({
-    queryKey: ["sam_week_tasks"],
+    queryKey: ["sam_week_tasks", userId],
+    gcTime: 0,
     queryFn: async () => {
-      const { data, error } = await supabase.from("v_sam_week_tasks").select("date,done_count,total_count");
+      const authorization = await taskAuthorization(userId, isCurrent);
+      const { data, error } = await supabase.from("v_sam_week_tasks").select("date,done_count,total_count").setHeader("Authorization", authorization);
       if (error) throw error;
       return data as unknown as WeekDay[];
     },
@@ -321,23 +344,22 @@ function ThisWeekSection({ today }: { today: string }) {
 /* ============================================================
    SECTION 3 — WHAT SHIPPED (today's commits + bot ledger summary)
    ============================================================ */
-function ShippedSection() {
+function ShippedSection({ userId, isCurrent }: PrivateSectionProps) {
   // Pull from v_recent_hires AS PROXY for "what shipped to the agency today"
   // (people hired since yesterday) + last 5 commits via system_settings note.
   const { data: hires } = useQuery({
-    queryKey: ["sam_hq_recent_hires"],
+    queryKey: ["sam_hq_recent_hires", userId],
+    gcTime: 0,
     queryFn: async () => {
-      // Cast: v_recent_hires is a view and is not in the generated Supabase types, so the
-      // typed client rejects both the table name and the ordered select. Same pattern the
-      // rest of this file already uses for untyped views.
-      const { data, error } = await (supabase as any)
+      const authorization = await taskAuthorization(userId, isCurrent);
+      const { data, error } = await supabase
         // 2026-07-29: this selected full_name, hired_at and created_at — NONE of which
         // exist on v_recent_hires. PostgREST 400s on an unknown column, the error was
         // thrown, and the panel rendered "No hires loaded yet" forever while the view
         // held 25 real rows. Actual columns: display_name, first_name, hired_on.
         .from("v_recent_hires").select("id,display_name,first_name,hired_on,manager_name")
         .order("hired_on", { ascending: false, nullsFirst: false })
-        .limit(5);
+        .limit(5).setHeader("Authorization", authorization);
       if (error) throw error;
       return data as Array<{ id?: string; display_name?: string; first_name?: string; hired_on?: string; manager_name?: string }>;
     },
@@ -382,17 +404,19 @@ function ShippedSection() {
 /* ============================================================
    SECTION 4 — CONTENT COMMAND (draft queue + what to post next)
    ============================================================ */
-function ContentCommandSection() {
+function ContentCommandSection({ userId, isCurrent }: PrivateSectionProps) {
   const { data: drafts } = useQuery({
-    queryKey: ["sam_hq_content_drafts"],
+    queryKey: ["sam_hq_content_drafts", userId],
+    gcTime: 0,
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const authorization = await taskAuthorization(userId, isCurrent);
+      const { data, error } = await supabase
         .from("social_bot_drafts")
         .select("id, draft_date, platform, title, hook, status, file_path, created_at")
         .in("status", ["pending", "awaiting_approval", "approved"])
         .order("draft_date", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false })
-        .limit(5);
+        .limit(5).setHeader("Authorization", authorization);
       if (error) throw error;
       return (data ?? []) as Array<{
         id: number;
@@ -412,17 +436,19 @@ function ContentCommandSection() {
   // from it capped both numbers at 5 while the real awaiting queue sat at ~560. These
   // head:true counts fetch zero rows and return the true table totals.
   const { data: counts } = useQuery({
-    queryKey: ["sam_hq_content_draft_counts"],
+    queryKey: ["sam_hq_content_draft_counts", userId],
+    gcTime: 0,
     queryFn: async () => {
+      const authorization = await taskAuthorization(userId, isCurrent);
       const [awaitingRes, approvedRes] = await Promise.all([
-        (supabase as any)
+        supabase
           .from("social_bot_drafts")
           .select("id", { count: "exact", head: true })
-          .in("status", ["pending", "awaiting_approval"]),
-        (supabase as any)
+          .in("status", ["pending", "awaiting_approval"]).setHeader("Authorization", authorization),
+        supabase
           .from("social_bot_drafts")
           .select("id", { count: "exact", head: true })
-          .eq("status", "approved"),
+          .eq("status", "approved").setHeader("Authorization", authorization),
       ]);
       if (awaitingRes.error) throw awaitingRes.error;
       if (approvedRes.error) throw approvedRes.error;
@@ -482,14 +508,16 @@ function ContentCommandSection() {
 /* ============================================================
    SECTION 5 — NEXT ACTIONS (top 3)
    ============================================================ */
-function NextActionsSection() {
+function NextActionsSection({ userId, isCurrent }: PrivateSectionProps) {
   const { data } = useQuery({
-    queryKey: ["sam_hq_next_actions"],
+    queryKey: ["sam_hq_next_actions", userId],
+    gcTime: 0,
     queryFn: async () => {
+      const authorization = await taskAuthorization(userId, isCurrent);
       const [drafts, groups, unclaimed] = await Promise.all([
-        (supabase as any).from("social_bot_drafts").select("id", { count: "exact", head: true }).in("status", ["pending", "awaiting_approval"]),
-        supabase.from("telegram_groups").select("chat_id", { count: "exact" }).in("type", TELEGRAM_GROUP_TYPES as unknown as string[]),
-        supabase.from("applications").select("id", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE).eq("status", "new"),
+        supabase.from("social_bot_drafts").select("id", { count: "exact", head: true }).in("status", ["pending", "awaiting_approval"]).setHeader("Authorization", authorization),
+        supabase.from("telegram_groups").select("chat_id", { count: "exact" }).in("type", TELEGRAM_GROUP_TYPES as unknown as string[]).setHeader("Authorization", authorization),
+        supabase.from("applications").select("id", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE).eq("status", "new").setHeader("Authorization", authorization),
       ]);
       // "Pending" = the row exists but its chat_id is still a seeded placeholder.
       // This tested `> -1000 && < 0`, which excludes -1001 and -1006 — the only two
@@ -537,17 +565,19 @@ function NextActionsSection() {
 /* ============================================================
    SECTION 6 — LEAKS (live counts from existing views)
    ============================================================ */
-function LeaksSection() {
+function LeaksSection({ userId, isCurrent }: PrivateSectionProps) {
   const { data: leaks } = useQuery({
-    queryKey: ["sam_hq_leaks"],
+    queryKey: ["sam_hq_leaks", userId],
+    gcTime: 0,
     queryFn: async () => {
+      const authorization = await taskAuthorization(userId, isCurrent);
       const [unclaimed, premiumGap, ghostAP] = await Promise.all([
-        supabase.from("v_unclaimed_new_apps").select("*", { count: "exact", head: true }),
-        supabase.from("v_carrier_premium_data_gap").select("*", { count: "exact", head: true }),
+        supabase.from("v_unclaimed_new_apps").select("*", { count: "exact", head: true }).setHeader("Authorization", authorization),
+        supabase.from("v_carrier_premium_data_gap").select("*", { count: "exact", head: true }).setHeader("Authorization", authorization),
         // v_carrier_reconciliation status is emoji-prefixed ('🔴 BLIND' / '🟠 MOSTLY
         // BLIND' / '🟢 RECONCILED') — there is no literal 'unreconciled', so the old
         // filter always counted 0. Count everything that is not fully reconciled.
-        supabase.from("v_carrier_reconciliation").select("*", { count: "exact", head: true }).neq("status", "🟢 RECONCILED"),
+        supabase.from("v_carrier_reconciliation").select("*", { count: "exact", head: true }).neq("status", "🟢 RECONCILED").setHeader("Authorization", authorization),
       ]);
       return {
         unclaimed: unclaimed.count ?? null,
@@ -588,10 +618,12 @@ function LeaksSection() {
 /* ============================================================
    SECTION 7 — BOTS (one-line status per APEX launchd bot)
    ============================================================ */
-function BotsSection() {
+function BotsSection({ userId, isCurrent }: PrivateSectionProps) {
   const { data: settings } = useQuery({
-    queryKey: ["sam_hq_bot_settings"],
+    queryKey: ["sam_hq_bot_settings", userId],
+    gcTime: 0,
     queryFn: async () => {
+      const authorization = await taskAuthorization(userId, isCurrent);
       const { data, error } = await supabase
         .from("system_settings")
         .select("key, value, updated_at")
@@ -599,7 +631,7 @@ function BotsSection() {
           "telegram_bot_username", "telegram_bot_dm_url",
           "readymode_account_id", "readymode_sync_enabled",
           "mentorship_payment_links",
-        ]);
+        ]).setHeader("Authorization", authorization);
       if (error) throw error;
       return data;
     },
@@ -645,6 +677,15 @@ function BotsSection() {
    PAGE — Sam HQ
    ============================================================ */
 export default function SamHQ() {
+  const { allowed, isChecking, userId } = useSamPrivateAccess();
+  if (!allowed || !userId) return <p role="status" className="p-6 text-sm text-muted-foreground">{isChecking ? "Checking owner access…" : "Owner access required."}</p>;
+  return <SamHQContent key={userId} userId={userId} />;
+}
+
+function SamHQContent({ userId }: { userId: string }) {
+  const active = useRef(true);
+  useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
+  const isCurrent = () => active.current;
   const [today, setToday] = useState(todayCT());
 
   // Refresh "today" if it crosses midnight CT during a long session
@@ -663,27 +704,27 @@ export default function SamHQ() {
         eyebrow="Sam · HQ"
         eyebrowIcon={<Crown className="h-3 w-3" />}
         title="Sam HQ"
-        subtitle="One command surface. Today's must-do, this week, what shipped, what leaks. Edits sync across devices every 60s."
+        subtitle="One command surface. Today's must-do, this week, what shipped, what leaks. Edits sync across devices every five minutes."
       />
 
-      <TelegramStatusTile />
+      <TelegramStatusTile userId={userId} isCurrent={isCurrent} />
 
-      <TodaySection today={today} />
+      <TodaySection key={today} today={today} userId={userId} isCurrent={isCurrent} />
 
-      <NextActionsSection />
+      <NextActionsSection userId={userId} isCurrent={isCurrent} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ThisWeekSection today={today} />
-        <ContentCommandSection />
+        <ThisWeekSection key={today} today={today} userId={userId} isCurrent={isCurrent} />
+        <ContentCommandSection userId={userId} isCurrent={isCurrent} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ShippedSection />
-        <LeaksSection />
+        <ShippedSection userId={userId} isCurrent={isCurrent} />
+        <LeaksSection userId={userId} isCurrent={isCurrent} />
       </div>
 
       <div className="grid grid-cols-1 gap-4">
-        <BotsSection />
+        <BotsSection userId={userId} isCurrent={isCurrent} />
       </div>
 
       <div className="text-center text-xs text-muted-foreground pt-4 pb-8 italic">
@@ -696,15 +737,17 @@ export default function SamHQ() {
 /* ============================================================
    TELEGRAM STATUS TILE — loud amber when not proven, slim when green
    ============================================================ */
-function TelegramStatusTile() {
+function TelegramStatusTile({ userId, isCurrent }: PrivateSectionProps) {
   const { data } = useQuery({
-    queryKey: ["sam_hq_telegram_status"],
+    queryKey: ["sam_hq_telegram_status", userId],
+    gcTime: 0,
     queryFn: async () => {
+      const authorization = await taskAuthorization(userId, isCurrent);
       const [groupsResp, sentResp, settingsResp, usersResp] = await Promise.all([
-        supabase.from("telegram_groups").select("chat_id, is_active"),
-        supabase.from("telegram_scheduled_messages").select("sent_at").not("sent_at", "is", null).order("sent_at", { ascending: false }).limit(1),
-        supabase.from("system_settings").select("key, value").in("key", ["telegram_bot_username", "telegram_bot_dm_url"]),
-        supabase.from("telegram_users").select("chat_id", { count: "exact", head: true }),
+        supabase.from("telegram_groups").select("chat_id, is_active").setHeader("Authorization", authorization),
+        supabase.from("telegram_scheduled_messages").select("sent_at").not("sent_at", "is", null).order("sent_at", { ascending: false }).limit(1).setHeader("Authorization", authorization),
+        supabase.from("system_settings").select("key, value").in("key", ["telegram_bot_username", "telegram_bot_dm_url"]).setHeader("Authorization", authorization),
+        supabase.from("telegram_users").select("chat_id", { count: "exact", head: true }).setHeader("Authorization", authorization),
       ]);
       const groups = (groupsResp.data ?? []) as unknown as Array<{ chat_id: string | number; is_active: boolean }>;
       const bound = groups.filter((g) => !isPlaceholderChatId(g.chat_id)).length;

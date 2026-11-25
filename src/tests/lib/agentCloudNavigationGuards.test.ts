@@ -87,6 +87,22 @@ describe("sidebar items only reach routes their audience can open", () => {
     expect(hrefsFor("agent")).toContain("/dashboard/referrals/new");
   });
 
+  it.each(["agent", "manager", "agency_owner", "admin"] as AccountMode[])("gives %s one Finances entry and their own task destination", mode => {
+    const links = flattenAgentCloudNav(filterAgentCloudNav([...AGENT_CLOUD_PRIMARY_NAV, ...AGENT_CLOUD_ACCOUNT_NAV], { seesAll: mode === "admin", viewMode: mode, isSam: mode === "admin" }));
+    expect(links.filter(link => link.href === "/dashboard/finances").map(link => link.label)).toEqual(["Finances"]);
+    expect(links.some(link => link.href === "/dashboard/my-commissions")).toBe(false);
+    expect(links.some(link => link.href === "/dashboard/my-tasks")).toBe(true);
+    expect(links.filter(link => link.href.startsWith("/dashboard/settings")).map(link => link.href)).toEqual(["/dashboard/settings"]);
+    expect(links.some(link => link.href === "/dashboard/training/library")).toBe(true);
+    expect(links.some(link => link.href === "/dashboard/training/sales-course")).toBe(false);
+  });
+
+  it("does not advertise Sam's routine to another admin", () => {
+    const links = flattenAgentCloudNav(filterAgentCloudNav(AGENT_CLOUD_PRIMARY_NAV, { seesAll: true, viewMode: "admin", isSam: false }));
+    expect(links.some(link => link.href === "/dashboard/my-day")).toBe(false);
+    expect(links.some(link => link.href === "/dashboard/my-tasks")).toBe(true);
+  });
+
   it("names detail routes by section, not by record id", () => {
     expect(agentCloudBreadcrumb("/dashboard/agents/3f2a9c1e-1111-4222-8333-444455556666")).toEqual(["Agents"]);
     expect(agentCloudBreadcrumb("/dashboard/contracting/requests")).toEqual(["Contracting", "Requests"]);

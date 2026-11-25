@@ -2,12 +2,10 @@ import { Link } from "react-router-dom";
 import { ArrowRight, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useContractReview } from "@/hooks/useContractReview";
-import { reviewCounts } from "@/lib/contractReview";
 
 /**
- * One calm line on Home and My Day: how many agents still have a carrier circle to review, linking to My Team. It owns
- * no rule and no list, and it is not an alarm: Not yet reviewed is not late. It says so plainly when the read fails
- * rather than looking all clear, and shows nothing for accounts the server will not give the review to.
+ * One link to incomplete saved profiles. Historical carrier-circle counts do not describe current readiness.
+ * Failed reads stay visible; this does not infer carrier eligibility or approval.
  */
 export function ContractingReviewBanner({ className }: { className?: string }) {
   const review = useContractReview(true);
@@ -22,12 +20,12 @@ export function ContractingReviewBanner({ className }: { className?: string }) {
       </Link>
     );
   }
-  const n = reviewCounts(review.roster.agents, review.roster.carriers.length).needsReview;
+  const n = review.roster.agents.filter((agent) => !agent.profile.complete).length;
   if (n === 0) return null;
   return (
-    <Link to="/dashboard/team" className={cn(base, className)}>
+    <Link to="/dashboard/team?view=contracting" className={cn(base, className)}>
       <ClipboardList className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-      <span className="flex-1">{n} {n === 1 ? "agent still has" : "agents still have"} a carrier circle to review. Open My Team.</span>
+      <span className="flex-1">{n} {n === 1 ? "agent has" : "agents have"} incomplete contracting profile details. Open My Team.</span>
       <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
     </Link>
   );

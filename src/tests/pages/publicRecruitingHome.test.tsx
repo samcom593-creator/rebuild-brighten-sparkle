@@ -89,7 +89,7 @@ describe("two-choice public recruiting home", () => {
     meta.content = "Previous description";
     document.head.appendChild(meta);
     const view = renderHome();
-    expect(document.title).toBe("Galaxy Financial · Build Your Insurance Career");
+    expect(document.title).toBe("Galaxy Financial — Where Winning Agencies Are Built");
     expect(meta.content).toContain("licensed producers and future agents");
     view.unmount();
     expect(document.title).toBe("Previous page");

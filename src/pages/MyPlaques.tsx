@@ -28,6 +28,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { AwardCopyActions } from "@/components/awards/AwardCopyActions";
+import { publicShareUrl } from "@/lib/recruitLinks";
 
 type Card = {
   id: string;
@@ -199,7 +200,7 @@ export default function MyPlaques() {
   const cards = source === "all" ? allCards : allCards.filter(card => card.source === source);
 
   const copyShare = async (slug: string) => {
-    const url = `${window.location.origin}/plaque/${slug}`;
+    const url = publicShareUrl(`/plaque/${slug}`);
     try { await navigator.clipboard.writeText(url); toast.success("Link copied"); }
     catch { toast.error("Copy failed — select the URL manually"); }
   };

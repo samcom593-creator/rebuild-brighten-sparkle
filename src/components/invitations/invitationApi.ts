@@ -7,7 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { supabase } from "@/integrations/supabase/client";
 import type { InvitationStatus } from "@/lib/invitationState";
-import type { InviteLinkKind, ShareChannel } from "@/lib/recruitLinks";
+import { publicShareUrl, type InviteLinkKind, type ShareChannel } from "@/lib/recruitLinks";
 
 export interface InviteMintOptions {
   is_admin: boolean;
@@ -56,8 +56,7 @@ interface InvitationList {
   limit: number;
 }
 
-export const inviteUrlFromPath = (path: string) =>
-  `${typeof window !== "undefined" ? window.location.origin : ""}${path}`;
+export const inviteUrlFromPath = publicShareUrl;
 
 export function useInviteMintOptions(enabled = true) {
   return useQuery({

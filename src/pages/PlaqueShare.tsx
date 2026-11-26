@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, useLocation, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { presentPlaqueDate, presentPlaqueMetric } from "@/components/awards/plaqueAwardPresentation";
+import { publicShareUrl } from "@/lib/recruitLinks";
 
 interface PlaqueData {
   id: string;
@@ -47,6 +48,8 @@ export function buildPlaqueShareCaption(plaque: Pick<PlaqueData, "agent_name" | 
  */
 export default function PlaqueShare() {
   const { slug } = useParams<{ slug: string }>();
+  const location = useLocation();
+  const shareUrl = publicShareUrl(`${location.pathname}${location.search}${location.hash}`);
   const [plaque, setPlaque] = useState<PlaqueData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -95,7 +98,7 @@ export default function PlaqueShare() {
   }, [slug]);
 
   const copyLink = () => {
-    navigator.clipboard.writeText(window.location.href);
+    navigator.clipboard.writeText(shareUrl);
     toast.success("Link copied — paste anywhere to share");
   };
 
@@ -113,7 +116,7 @@ export default function PlaqueShare() {
       a.href = url;
       // data URIs preserve their mime; use the right extension so downloads open cleanly
       const ext = blob.type.includes("svg") ? "svg" : "png";
-      a.download = `apex-${plaque.milestone_type || "plaque"}-${plaque.agent_name?.toLowerCase().replace(/\s+/g, "-")}.${ext}`;
+      a.download = `galaxy-${plaque.milestone_type || "plaque"}-${plaque.agent_name?.toLowerCase().replace(/\s+/g, "-")}.${ext}`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success("Downloaded");
@@ -150,7 +153,7 @@ export default function PlaqueShare() {
     if (!plaque) return;
     const text = encodeURIComponent(buildPlaqueShareCaption(plaque));
     window.open(
-      `https://twitter.com/intent/tweet?text=${text}&url=${encodeURIComponent(window.location.href)}`,
+      `https://twitter.com/intent/tweet?text=${text}&url=${encodeURIComponent(shareUrl)}`,
       "_blank",
       "noopener,noreferrer",
     );
@@ -158,7 +161,7 @@ export default function PlaqueShare() {
 
   const shareFacebook = () => {
     window.open(
-      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`,
+      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
       "_blank",
       "noopener,noreferrer",
     );

@@ -175,7 +175,7 @@ export async function downloadAward(opts: GenerateAwardOptions, filename?: strin
   const png = await svgToPngDataUrl(svg, opts.size || 1080);
   const a = document.createElement("a");
   a.href = png;
-  a.download = filename || `apex-award-${opts.agentName.replace(/\s+/g, "-").toLowerCase()}.png`;
+  a.download = filename || `galaxy-award-${opts.agentName.replace(/\s+/g, "-").toLowerCase()}.png`;
   a.click();
 }
 
@@ -184,18 +184,18 @@ export function getAwardCaption(opts: GenerateAwardOptions): string {
   const { agentName, awardType, statValue } = opts;
   const firstName = agentName.split(" ")[0];
   const captions: Record<AwardType, string> = {
-    top_producer:      `🏆 ${agentName} is the TOP PRODUCER at Galaxy Financial with ${statValue}! This is what elite execution looks like. Ready to build like this? Apply → galaxyfinancial.org/apply #APEXFinancial #TopProducer #InsuranceSales`,
-    leaderboard:       `📊 ${agentName} is leading the leaderboard at Galaxy Financial — ${statValue}! The grind is real. #APEXFinancial #Leaderboard #Insurance`,
-    first_deal:        `🎯 ${firstName} just closed their FIRST deal at Galaxy Financial! Every expert started exactly here. The journey begins. #APEXFinancial #FirstDeal #InsuranceSales`,
-    top_producer_week: `🥇 ${agentName} is the WEEKLY CHAMPION at Galaxy Financial — ${statValue} this week! Consistency builds empires. #APEXFinancial #WeeklyChampion`,
-    most_hires_week:   `👥 ${agentName} is the HIRING CHAMPION this week at Galaxy Financial! Building a team = multiplying your income. #APEXFinancial #Recruiting`,
-    most_hires_month:  `🤝 ${agentName} is RECRUITER OF THE MONTH at Galaxy Financial! Leaders build leaders. #APEXFinancial #Leadership`,
-    hot_streak:        `🔥 ${firstName} is on a HOT STREAK — ${statValue} consecutive days closing at Galaxy Financial! Don't break the chain. #APEXFinancial #HotStreak`,
-    on_fire:           `🔥🔥 ${firstName} is literally ON FIRE — ${statValue} days straight closing deals at Galaxy Financial! This is what all-in looks like. #APEXFinancial #OnFire`,
-    unstoppable:       `⚡ ${firstName} is UNSTOPPABLE — ${statValue} consecutive closing days at Galaxy Financial! 20 days. No days off. #APEXFinancial #Unstoppable`,
-    diamond_week:      `💎 ${firstName} just had a DIAMOND WEEK at Galaxy Financial — ${statValue} ALP in 7 days! This is what $10K weeks look like. Apply → galaxyfinancial.org/apply #APEXFinancial #DiamondWeek`,
-    elite_producer:    `👑 ${agentName} is an ELITE PRODUCER at Galaxy Financial — ${statValue} this month! Ready to earn like this? galaxyfinancial.org/apply #APEXFinancial #EliteProducer`,
-    comeback:          `📈 ${firstName} just made a COMEBACK at Galaxy Financial — ${statValue}! Champions don't quit, they reload. #APEXFinancial #Comeback`,
+    top_producer:      `🏆 ${agentName} is the TOP PRODUCER at Galaxy Financial with ${statValue}! This is what elite execution looks like. Ready to build like this? Apply → galaxyfinancial.org/apply #GalaxyFinancial #TopProducer #InsuranceSales`,
+    leaderboard:       `📊 ${agentName} is leading the leaderboard at Galaxy Financial — ${statValue}! The grind is real. #GalaxyFinancial #Leaderboard #Insurance`,
+    first_deal:        `🎯 ${firstName} just closed their FIRST deal at Galaxy Financial! Every expert started exactly here. The journey begins. #GalaxyFinancial #FirstDeal #InsuranceSales`,
+    top_producer_week: `🥇 ${agentName} is the WEEKLY CHAMPION at Galaxy Financial — ${statValue} this week! Consistency builds empires. #GalaxyFinancial #WeeklyChampion`,
+    most_hires_week:   `👥 ${agentName} is the HIRING CHAMPION this week at Galaxy Financial! Building a team = multiplying your income. #GalaxyFinancial #Recruiting`,
+    most_hires_month:  `🤝 ${agentName} is RECRUITER OF THE MONTH at Galaxy Financial! Leaders build leaders. #GalaxyFinancial #Leadership`,
+    hot_streak:        `🔥 ${firstName} is on a HOT STREAK — ${statValue} consecutive days closing at Galaxy Financial! Don't break the chain. #GalaxyFinancial #HotStreak`,
+    on_fire:           `🔥🔥 ${firstName} is literally ON FIRE — ${statValue} days straight closing deals at Galaxy Financial! This is what all-in looks like. #GalaxyFinancial #OnFire`,
+    unstoppable:       `⚡ ${firstName} is UNSTOPPABLE — ${statValue} consecutive closing days at Galaxy Financial! 20 days. No days off. #GalaxyFinancial #Unstoppable`,
+    diamond_week:      `💎 ${firstName} just had a DIAMOND WEEK at Galaxy Financial — ${statValue} ALP in 7 days! This is what $10K weeks look like. Apply → galaxyfinancial.org/apply #GalaxyFinancial #DiamondWeek`,
+    elite_producer:    `👑 ${agentName} is an ELITE PRODUCER at Galaxy Financial — ${statValue} this month! Ready to earn like this? galaxyfinancial.org/apply #GalaxyFinancial #EliteProducer`,
+    comeback:          `📈 ${firstName} just made a COMEBACK at Galaxy Financial — ${statValue}! Champions don't quit, they reload. #GalaxyFinancial #Comeback`,
   };
-  return captions[awardType] || `🏆 ${agentName} just earned a major achievement at Galaxy Financial — ${statValue}! #APEXFinancial`;
+  return captions[awardType] || `🏆 ${agentName} just earned a major achievement at Galaxy Financial — ${statValue}! #GalaxyFinancial`;
 }

@@ -28,6 +28,7 @@ import { phoneHref, smsHref, contactLinkProps } from "@/lib/phone";
 import { instagramProfileLink } from "@/lib/instagram";
 import { promoteApplicationToAgent } from "@/lib/hireToOnboarding";
 import { resolveBrand } from "@/config/brand";
+import { publicShareUrl } from "@/lib/recruitLinks";
 import { HireLaunchBoard } from "@/components/hires/HireLaunchBoard";
 import {
   formatPhoenix, gapEmailState, inviteReceipt, onboardingBucketMeta,
@@ -241,7 +242,7 @@ export default function Interviews() {
     staleTime: 5 * 60_000,
   });
   const shareUrl = shareToken.data?.token
-    ? `${window.location.origin}/assistant/interviews?t=${shareToken.data.token}`
+    ? publicShareUrl(`/assistant/interviews?t=${shareToken.data.token}`)
     : null;
 
   // Onboarding calls: Calendly "APEX Onboarding Call" bookings + the invite

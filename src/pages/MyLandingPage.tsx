@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { publicShareUrl } from "@/lib/recruitLinks";
 
 export default function MyLandingPage() {
   usePageTitle("My Landing Page · Galaxy");
@@ -58,7 +59,7 @@ export default function MyLandingPage() {
     },
   });
 
-  const url = userId && typeof window !== "undefined" ? `${window.location.origin}/agent/${userId}` : "";
+  const url = userId ? publicShareUrl(`/agent/${userId}`) : "";
   const p = profile.data;
   const a = agentStatus.data;
   const isLicensedActive = a?.license_status === "licensed" && a?.status === "active";

@@ -235,7 +235,7 @@ describe("OVERHAUL-1: Quick link or With details, License either-or, Permanent o
     await pick("Licensed");
     fireEvent.click(make());
     const card = await screen.findByTestId("invitation-created");
-    const url = `${window.location.origin}/hire/test-token`;
+    const url = "https://galaxyfinancial.org/hire/test-token";
 
     fireEvent.click(within(card).getByRole("button", { name: "Share link" }));
     await waitFor(() => expect(share).toHaveBeenCalledWith({ title: "Join Galaxy Financial", text: "Hi Mary, here is your personal link to join Galaxy Financial:", url }));
@@ -346,7 +346,7 @@ describe("InviteAgentForm colour, motion and sound", () => {
     fireEvent.click(screen.getByRole("button", { name: "Copy link" }));
     await waitFor(() => expect(playSoundEffect).toHaveBeenCalledWith("pop"));
     expect(playSoundEffect).toHaveBeenCalledTimes(1);
-    expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/hire/test-token`);
+    expect(writeText).toHaveBeenCalledWith("https://galaxyfinancial.org/hire/test-token");
     expect(toastMock.success).toHaveBeenCalledWith("Link copied.");
     // Recorded as one share of this link, on the channel used.
     await waitFor(() => expect(shareCalls().map((c) => c.args?.p_channel)).toEqual(["copy"]));

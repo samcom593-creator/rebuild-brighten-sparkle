@@ -198,9 +198,9 @@ describe("getAwardCaption — output", () => {
     expect(caption).toContain("Jordan Smith");
   });
 
-  it("includes #APEXFinancial hashtag", () => {
+  it("includes #GalaxyFinancial hashtag", () => {
     for (const type of ALL_TYPES) {
-      expect(getAwardCaption({ awardType: type, ...BASE_OPTS })).toContain("#APEXFinancial");
+      expect(getAwardCaption({ awardType: type, ...BASE_OPTS })).toContain("#GalaxyFinancial");
     }
   });
 });

@@ -151,9 +151,24 @@ async function apiGet(path, tok, { text = false, attempts = 4 } = {}) {
   return { __error: lastErr };
 }
 
+// Only files that actually ship in the deployed bundle may decide freshness.
+// Deno bundles index.ts and whatever it imports; it never bundles test files or
+// docs. A commit touching ONLY those must not make a function a staleness
+// candidate. Measured 2026-11-26: ee804465 touched only
+// apex-outbox-dispatcher/hire-email-template.test.ts, which post-dated the v386
+// deploy, so the whole-dir `git log` marked the function a candidate; the /body
+// containment check then false-flagged it STALE (the deployed /body is a bundled
+// form where the TS entry's longest source lines do not survive verbatim) even
+// though the CLI reported "No change found" and the deployed source contained all
+// 25 signature lines. Excluding non-deployed files makes the prefilter sound.
+const NON_DEPLOYED_GLOBS = ["*.test.ts", "*.test.tsx", "*.md"];
 function newestCommitEpoch(dir) {
+  const excludes = NON_DEPLOYED_GLOBS.flatMap((g) => [
+    `:(exclude,glob)${dir}/${g}`,
+    `:(exclude,glob)${dir}/**/${g}`,
+  ]);
   try {
-    const out = execFileSync("git", ["log", "-1", "--format=%ct", "--", dir], { encoding: "utf8" }).trim();
+    const out = execFileSync("git", ["log", "-1", "--format=%ct", "--", dir, ...excludes], { encoding: "utf8" }).trim();
     return out ? Number(out) : null;
   } catch {
     return null;

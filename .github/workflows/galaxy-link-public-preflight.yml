@@ -1,0 +1,24 @@
+name: Public recruiting link preflight
+on:
+  push:
+    branches: [codex/galaxy-link-public-preflight-a3341118]
+    paths:
+      - .github/workflows/galaxy-link-public-preflight.yml
+permissions:
+  contents: read
+jobs:
+  public-links:
+    if: github.repository == 'samcom593-creator/rebuild-brighten-sparkle' && github.ref == 'refs/heads/codex/galaxy-link-public-preflight-a3341118'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify deterministic public probe checks
+        run: node scripts/check-recruiting-release-public.mjs --selftest
+      - name: Observe legacy root and application redirects
+        run: node scripts/check-recruiting-release-public.mjs --legacy-only

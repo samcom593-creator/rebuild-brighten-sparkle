@@ -82,7 +82,14 @@ Deno.test("classifyProviderError stops a person only for a refusal about that pe
     message: "You can only send testing emails to your own email address. To send to other recipients, verify a domain.",
   });
   assertEquals(unverified.scope, "account");
-  assertEquals(classifyProviderError({ name: "application_error", message: "Something went wrong" }).retryable, true);
+  // a 5xx or a timeout cannot prove the email was NOT accepted: hold, never resend blind
+  const app5xx = classifyProviderError({ name: "application_error", message: "Something went wrong" });
+  assertEquals([app5xx.scope, app5xx.retryable], ["unknown", false]);
+  assertEquals(classifyProviderError({ name: "internal_server_error", message: "Internal server error" }).scope, "unknown");
+  assertEquals(classifyProviderError({ name: "some_new_error", message: "upstream timed out" }).scope, "unknown");
+  // digits in an account error's text no longer make it look transient
+  const big = classifyProviderError({ name: "validation_error", message: "The `html` field must not exceed 512 KB" });
+  assertEquals([big.scope, big.retryable], ["account", false]);
   // nothing trustworthy came back: maybe sent, so hold, never resend blind
   assertEquals(classifyProviderError(null).scope, "unknown");
   assertEquals(classifyProviderError({}).scope, "unknown");
@@ -93,4 +100,12 @@ Deno.test("isRetryable separates throttling from permanent refusals", () => {
   assertEquals(isRetryable("upstream returned 503"), true);
   assertEquals(isRetryable("recipient is on Resend's suppression list (hard bounce)"), false);
   assertEquals(isRetryable("Invalid `to` field"), false);
+});
+
+Deno.test("renderTemplate reports malformed tokens instead of mailing them raw", () => {
+  const vars = { first_name: "Ana" };
+  assertEquals(renderTemplate("Hi {{First_Name}}", vars, "plain").missing, ["malformed:{{First_Name}}"]);
+  assertEquals(renderTemplate("Book {{booking-url}}", vars, "plain").missing, ["malformed:{{booking-url}}"]);
+  assertEquals(renderTemplate("Hi {{first_name}} }}", vars, "plain").missing, ["malformed:}}"]);
+  assertEquals(renderTemplate("Hi {{first_name}}", vars, "plain").missing, []);
 });

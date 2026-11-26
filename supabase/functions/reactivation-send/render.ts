@@ -82,6 +82,9 @@ export function renderTemplate(
     }
     return mode === "html" ? escapeHtml(vars[key]) : vars[key];
   });
+  // a mistyped token ({{First_Name}}, {{booking-url}}, a stray brace) would otherwise be mailed raw
+  const leftover = text.match(/\{\{[^}]*\}\}|\{\{|\}\}/g);
+  if (leftover) missing.push(...leftover.map((t) => `malformed:${t.slice(0, 40)}`));
   return { text: mode === "plain" ? oneLine(text) : text.trim(), missing };
 }
 
@@ -126,7 +129,13 @@ export function classifyProviderError(err: { name?: unknown; message?: unknown }
       !/domain|`from`|\bfrom field\b|api key|testing emails|verify/i.test(message)) {
     return { scope: "person", retryable: false, reason };
   }
-  const transient = name === "rate_limit_exceeded" || name === "application_error" || name === "internal_server_error" ||
-    isRetryable(message);
-  return { scope: "account", retryable: transient && !/quota/i.test(name + " " + message), reason };
+  // A 5xx or a timeout cannot prove the provider did NOT accept the email (resend@2.0.0 sends no idempotency key),
+  // so it is "unknown": hold the person, never resend blind. Only a 429 proves nothing was queued.
+  if (name === "application_error" || name === "internal_server_error" ||
+      // words, never digits: a 5xx reaches us as a NAMED error (resend@2.0.0 forwards the JSON body) or as a thrown
+      // fetch (already "unknown"), while digits appear in ordinary account errors ("must not exceed 512 KB")
+      /timeout|timed out|econnreset|network error|service unavailable|internal server/i.test(name + " " + message)) {
+    return { scope: "unknown", retryable: false, reason };
+  }
+  return { scope: "account", retryable: name === "rate_limit_exceeded" && !/quota/i.test(message), reason };
 }

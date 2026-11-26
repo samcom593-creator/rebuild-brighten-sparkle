@@ -175,18 +175,72 @@ export function isDeadEndLink(href: string): boolean {
   }
 }
 
+/**
+ * The agency rebranded Apex Financial → Galaxy Financial at the 2026-11-25 host
+ * cutover, but the Training Hub's content API (apex-resources, edited behind a
+ * content-team password nobody on the team now holds — Sam, 2026-11-23) still
+ * serves the retired company name and the retired apex-financial.org website
+ * link. Those render raw inside the authenticated Galaxy app, so an agent or
+ * mentee sees a dead brand on a live revenue surface. Normalize the stale
+ * *company* tokens at read time — and ONLY those: bare "APEX"/"Apex" is Sam's
+ * living doctrine ("The Apex Standard", "APEX Mindset", the Apex phone script)
+ * and must survive untouched. Guarded by hub-brand-drift.sh so a new variant
+ * the rules miss pages instead of silently shipping.
+ */
+export function renameRetiredBrand<T extends string | undefined>(text: T): T {
+  if (!text) return text;
+  return text
+    .replace(/\bApex Financial\b/gi, "Galaxy Financial")
+    .replace(/\bApex Website\b/gi, "Galaxy Website") as T;
+}
+
+export function rewriteRetiredHost<T extends string | undefined>(url: T): T {
+  if (!url) return url;
+  return url.replace(/apex-financial\.org/gi, "galaxyfinancial.org") as T;
+}
+
+function normalizeCourseBrand(course: HubCourseInfo): HubCourseInfo {
+  return {
+    ...course,
+    modules: course.modules.map((m) => ({
+      ...m,
+      title: renameRetiredBrand(m.title),
+      items: m.items.map((it) => ({
+        ...it,
+        title: renameRetiredBrand(it.title),
+        blurb: renameRetiredBrand(it.blurb),
+        link: rewriteRetiredHost(it.link),
+      })),
+    })),
+  };
+}
+
 async function fetchHubData(): Promise<HubData> {
   const res = await fetch(`${HUB_ORIGIN}/api/data`);
   if (!res.ok) throw new Error(`apex-resources API returned ${res.status}`);
   const raw = await res.json();
-  const recordings: HubRecording[] = Array.isArray(raw?.recordings) ? raw.recordings : [];
+  const recordings: HubRecording[] = (Array.isArray(raw?.recordings) ? raw.recordings : []).map(
+    (r: HubRecording) => ({ ...r, title: renameRetiredBrand(r.title), desc: renameRetiredBrand(r.desc) }),
+  );
   const presenters: HubPresenter[] = Array.isArray(raw?.presenters) ? raw.presenters : [];
   const resources: HubResource[] = (Array.isArray(raw?.resources) ? raw.resources : []).map(
-    (r: HubResource) => ({ ...r, url: absolutizeHubUrl(r.url) ?? undefined }),
+    (r: HubResource) => ({
+      ...r,
+      title: renameRetiredBrand(r.title),
+      desc: renameRetiredBrand(r.desc),
+      long: renameRetiredBrand(r.long),
+      url: absolutizeHubUrl(rewriteRetiredHost(r.url)) ?? undefined,
+      course: r.course ? normalizeCourseBrand(r.course) : r.course,
+    }),
   );
-  const quickLinks: HubQuickLink[] = (Array.isArray(raw?.quickLinks) ? raw.quickLinks : []).filter(
-    (l: HubQuickLink) => l?.href && l.href !== "#" && !isDeadEndLink(l.href),
-  );
+  const quickLinks: HubQuickLink[] = (Array.isArray(raw?.quickLinks) ? raw.quickLinks : [])
+    .map((l: HubQuickLink) => ({
+      ...l,
+      label: renameRetiredBrand(l.label),
+      sub: renameRetiredBrand(l.sub),
+      href: rewriteRetiredHost(l.href),
+    }))
+    .filter((l: HubQuickLink) => l?.href && l.href !== "#" && !isDeadEndLink(l.href));
   return { recordings, presenters, resources, quickLinks };
 }
 

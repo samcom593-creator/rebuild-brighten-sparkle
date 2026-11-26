@@ -12,6 +12,12 @@ export interface ShippedItem {
 
 export const SHIPPED: ShippedItem[] = [
   {
+    ts: "2026-11-25",
+    label: "Carrier policy changes and chargebacks now queue Slack alerts with the policy number, routed to the agent's verified Slack identity or manager operations.",
+    detail: "First-seen policies are excluded. Customer names never enter the payload. Pending to active is labeled active / issued, not commission paid. Fresh carrier transitions await the harvester permission fix.",
+    commit: "policy-status-slack",
+  },
+  {
     ts: "today",
     label:
       "Licensing steps can be saved again. The function behind every 'licensing step' control had been failing on every call, for you, managers and agents alike, which is why 117 of 125 unlicensed people show only 'unlicensed'. It is fixed. Unlicensed agents now see a one-tap check-in on their Home (Not started, In the course, Finished the course, Exam booked, Passed, Fingerprints, Waiting on the license) with their next step under it, and your Monday call list has a step picker on each unlicensed person so you can record it during the call.",

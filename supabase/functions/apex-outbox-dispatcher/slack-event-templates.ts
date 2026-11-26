@@ -21,6 +21,8 @@ export const SLACK_TEMPLATED_EVENT_TYPES = [
   "candidate.interview_noshow",
   "contracting.intake_submitted",
   "deal.posted",
+  "policy.status_changed",
+  "policy.chargeback",
   "free_leads.weekly_summary",
   "production.personal_record",
   "recruiting.bounty_qualified",
@@ -146,6 +148,24 @@ export function renderSlackEventText(
       : "";
     const url = safeSlackUrl(p.openUrl, SLACK_DEFAULT_URLS.contractingOps);
     return `Contracting intake received: *${agent}*${npnSuffix}\n<${url}|Open contracting operations>`;
+  }
+
+  if (eventType === "policy.status_changed" || eventType === "policy.chargeback") {
+    // Allowlist only: never render policyholder names, raw status or reasons.
+    const agent = text(p.agentName, "Unmapped agent");
+    const carrier = text(p.carrier, "Carrier", 80);
+    const policy = text(p.policyNumber, "unavailable", 100);
+    const url = safeSlackUrl(p.openUrl, "https://galaxyfinancial.org/dashboard/finances");
+    if (eventType === "policy.chargeback") {
+      return `:money_with_wings: CHARGEBACK — *${agent}* · ${carrier} · policy ${policy} · ${usd(p.amount)}\n<${url}|open your book>`;
+    }
+    const labels: Record<string, string> = {
+      lapsed: "LAPSED", at_risk: "AT RISK", not_taken: "NOT TAKEN",
+      declined: "DECLINED", claim: "CLAIM", active: "ACTIVE / ISSUED",
+    };
+    const label = labels[String(p.toBucket)] ?? "STATUS CHANGED";
+    const icon = p.toBucket === "active" ? ":white_check_mark:" : ":rotating_light:";
+    return `${icon} ${label} — *${agent}* · ${carrier} · policy ${policy} · ${usd(p.annualPremium)} AP\n<${url}|open your book>`;
   }
 
   if (eventType === "deal.posted") {

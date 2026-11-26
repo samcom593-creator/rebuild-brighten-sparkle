@@ -4176,6 +4176,20 @@
         "raw": "p_dry_run boolean DEFAULT true, p_ids uuid[] DEFAULT NULL::uuid[], p_max integer DEFAULT 25"
       }
     ],
+    "fn_cfo_native_age_days": [
+      {
+        "all": [
+          "p_created_at",
+          "p_posted_at"
+        ],
+        "required": [
+          "p_created_at",
+          "p_posted_at"
+        ],
+        "unnamed": false,
+        "raw": "p_posted_at timestamp with time zone, p_created_at timestamp with time zone"
+      }
+    ],
     "fn_client_pipeline_action": [
       {
         "all": [
@@ -6109,6 +6123,18 @@
         "raw": "p_user_id uuid"
       }
     ],
+    "fn_native_deal_reconcile_context": [
+      {
+        "all": [
+          "p_deal_id"
+        ],
+        "required": [
+          "p_deal_id"
+        ],
+        "unnamed": false,
+        "raw": "p_deal_id uuid"
+      }
+    ],
     "fn_new_hire_flow_claim": [
       {
         "all": [
@@ -6634,6 +6660,26 @@
         "raw": ""
       }
     ],
+    "fn_pace_projection": [
+      {
+        "all": [
+          "p_actual",
+          "p_completed_active_days",
+          "p_completed_actual",
+          "p_completed_days",
+          "p_total_days"
+        ],
+        "required": [
+          "p_actual",
+          "p_completed_active_days",
+          "p_completed_actual",
+          "p_completed_days",
+          "p_total_days"
+        ],
+        "unnamed": false,
+        "raw": "p_actual numeric, p_completed_actual numeric, p_completed_days integer, p_completed_active_days integer, p_total_days integer"
+      }
+    ],
     "fn_perf_bot_run": [
       {
         "all": [],
@@ -6721,6 +6767,20 @@
         ],
         "unnamed": false,
         "raw": "p text"
+      }
+    ],
+    "fn_policy_slack_agent": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_name"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_name"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_name text"
       }
     ],
     "fn_post_deal_celebration": [
@@ -6890,6 +6950,22 @@
       }
     ],
     "fn_queue_onboarding_call_invites": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_queue_policy_chargeback_slack": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_queue_policy_status_slack": [
       {
         "all": [],
         "required": [],

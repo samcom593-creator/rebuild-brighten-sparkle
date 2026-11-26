@@ -7,6 +7,7 @@ import { useAgentIdentity } from "@/hooks/useAgentIdentity";
 import { useFullBookReader } from "@/hooks/useFullBookReader";
 import { useResolvedDownline } from "@/hooks/useResolvedDownline";
 import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
+import { NativePaymentReconcile } from "@/components/deals/NativePaymentReconcile";
 import { SoldCallPanel } from "@/components/clients/SoldCallPanel";
 import { ClientContactLine } from "@/components/clients/ClientContactLine";
 import { BookRowWork } from "@/components/books/BookRowWork";
@@ -294,6 +295,14 @@ function DealRowItem({
               <p className="font-semibold line-clamp-2 [overflow-wrap:anywhere]">{d.row_key}</p>
             </div>
           </div>
+          {/* MP-PROJ-INP-TRUTH: a native deal still in a pending/issued state has no payment
+              outcome on file. Admins and managers record it here (reconcile_native_deal_payment,
+              which writes only the policy status + history, never Discord/InsuraCloud/ledger). */}
+          {canWork && d.origin === "apex_native" && d.standing === "pending" && (
+            <div className="px-4 pb-4">
+              <NativePaymentReconcile dealId={d.row_key} clientName={d.client_name} />
+            </div>
+          )}
           {calls && calls.calls_total > 0 && (
             <div className="px-4 pb-4"><BookRowCallsPanel flipKey={calls.flip_key} /></div>
           )}

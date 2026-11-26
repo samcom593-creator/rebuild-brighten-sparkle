@@ -28,7 +28,7 @@ export type Target20kDemoRow = {
   ap_at_risk_mtd: number | null;
   ap_to_20k: number | null;
   projected_eom_ap: number | null;
-  pace_verdict: "hit_20k" | "on_pace_20k" | "below_pace" | "new_hire_grace" | "zero_mtd";
+  pace_verdict: "hit_20k" | "on_pace_20k" | "below_pace" | "pace_unavailable" | "new_hire_grace" | "zero_mtd";
 };
 
 const MAX_MONEY = 1_000_000_000_000;
@@ -199,8 +199,10 @@ function targetRow<T extends Target20kDemoRow>(row: T, values: Values): T {
     }
     if (known(next.ap_at_risk_mtd)) next.ap_at_risk_mtd = Math.min(next.ap_mtd, next.ap_at_risk_mtd);
     if (changed.has("ap_mtd") || changed.has("projected_eom_ap")) {
+      // No projection (fewer than three completed sale days) is "pace unavailable",
+      // never "below pace": the board must not grade a producer on a sample it refused.
       next.pace_verdict = next.ap_mtd >= TARGET_20K ? "hit_20k"
-        : next.ap_mtd > 0 ? known(next.projected_eom_ap) && next.projected_eom_ap >= TARGET_20K ? "on_pace_20k" : "below_pace"
+        : next.ap_mtd > 0 ? (known(next.projected_eom_ap) ? (next.projected_eom_ap >= TARGET_20K ? "on_pace_20k" : "below_pace") : "pace_unavailable")
           : row.pace_verdict === "new_hire_grace" ? "new_hire_grace" : "zero_mtd";
     }
   }

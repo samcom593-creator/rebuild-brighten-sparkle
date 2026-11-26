@@ -460,6 +460,97 @@ function migrationsHardScan() {
 }
 migrationsHardScan();
 
+// MP-PROJ-INP-TRUTH 2026-11-25 — class-of-fix ratchet for UTC day boundaries in SQL.
+// Every posted_date in this database is a Phoenix calendar date, and three live
+// surfaces still built "this month", "day of month" or "age" from now() in UTC:
+// v_agent_20k_target_leaderboard (date_trunc('month', now()) + extract(day from
+// now()): the month rolled over at 17:00 Phoenix and every evening divided by one
+// extra day), v_cfo_native_payment_reconciliation (now()::date minus a Phoenix
+// date: every issued-not-paid age one day too old from 17:00 Phoenix) and seven
+// CFO scripts carrying a byte-copy of that expression. Scans ONLY migrations at or
+// after the one that shipped this guard, so it can never go red on history
+// (supabase/migrations is append-only and old definitions are superseded live).
+// Comment lines are skipped so a migration may DESCRIBE the pattern it removes.
+// Opt-out per line, with a reason: `-- utc-day-allow:<reason>`.
+const UTC_DAY_GUARD_FROM = "20261125130000";
+const utcDayPatterns = [
+  {
+    regex: /date_trunc\(\s*'(?:month|week|day)'(?:::text)?\s*,\s*now\(\)\s*\)/i,
+    message: "date_trunc(..., now()) is a UTC boundary — truncate (now() at time zone 'America/Phoenix')::date",
+  },
+  {
+    regex: /extract\(\s*day\s+from\s+now\(\)\s*\)/i,
+    message: "extract(day from now()) is the UTC day of month — use the Phoenix date",
+  },
+  {
+    regex: /now\(\)::date\s*-/,
+    message: "now()::date minus a date is a UTC age — use fn_cfo_native_age_days or (now() at time zone 'America/Phoenix')::date",
+  },
+  {
+    regex: /\bcurrent_date\s*-/i,
+    message: "current_date is the UTC date on this server — use (now() at time zone 'America/Phoenix')::date",
+  },
+];
+
+function scanUtcDayBoundaries(source, label, out) {
+  const lines = source.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    const code = line.replace(/--.*$/, "");
+    if (!code.trim()) continue;
+    if (/utc-day-allow:\S/.test(line)) continue;
+    for (const { regex, message } of utcDayPatterns) {
+      if (regex.test(code)) out.push(`${label}:${i + 1}: ${message}`);
+    }
+  }
+}
+
+function newMigrationsUsePhoenixDayBoundaries() {
+  const dir = path.join(repoRoot, "supabase/migrations");
+  if (!fs.existsSync(dir)) return;
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (entry.isDirectory() || !entry.name.endsWith(".sql")) continue;
+    const stamp = entry.name.slice(0, 14);
+    if (!/^\d{14}$/.test(stamp) || stamp < UTC_DAY_GUARD_FROM) continue;
+    const abs = path.join(dir, entry.name);
+    scanUtcDayBoundaries(fs.readFileSync(abs, "utf8"), path.relative(repoRoot, abs), violations);
+  }
+}
+
+if (process.argv.includes("--selftest")) {
+  // Prove the scanner can go red before trusting its green (the guard is not
+  // exempt from the no-fake-success rule). A fixture that fails to trip it is a
+  // failure of this script, not a pass.
+  const red = [
+    "create view v_x as select count(*) from deals where posted_at >= date_trunc('month', now());",
+    "select round(ap / extract(day from now()) * 30) as proj;",
+    "select now()::date - (posted_at at time zone 'America/Phoenix')::date as age;",
+    "select current_date - posted_date as age;",
+  ];
+  const green = [
+    "-- the old view used date_trunc('month', now()) and extract(day from now()); gone now",
+    "select date_trunc('month', (now() at time zone 'America/Phoenix')::date)::date as month_start;",
+    "select public.fn_cfo_native_age_days(d.posted_at, d.created_at) as age_days from deals d;",
+    "select date_trunc('day', now()) as marker; -- utc-day-allow:UTC marker for a sync log, not a business date",
+  ];
+  const redHits = [];
+  scanUtcDayBoundaries(red.join("\n"), "fixture-red", redHits);
+  const greenHits = [];
+  scanUtcDayBoundaries(green.join("\n"), "fixture-green", greenHits);
+  if (redHits.length !== red.length) {
+    console.error(`[check:metric-truth --selftest] FAIL — expected ${red.length} UTC-boundary hits on the red fixture, got ${redHits.length}:\n${redHits.join("\n")}`);
+    process.exit(1);
+  }
+  if (greenHits.length !== 0) {
+    console.error(`[check:metric-truth --selftest] FAIL — green fixture tripped the scanner:\n${greenHits.join("\n")}`);
+    process.exit(1);
+  }
+  console.log(`[check:metric-truth --selftest] OK — UTC-day-boundary scanner proven both directions (${red.length} red, 0 green).`);
+  process.exit(0);
+}
+
+newMigrationsUsePhoenixDayBoundaries();
+
 if (violations.length > 0) {
   console.error("Metric truth guardrail failed:");
   for (const violation of violations) {

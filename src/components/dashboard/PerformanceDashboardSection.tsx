@@ -3,7 +3,6 @@ import {
   TrendingUp, 
   Target, 
   BarChart3, 
-  Award,
   Zap,
   ChevronRight
 } from "lucide-react";
@@ -131,14 +130,6 @@ export function PerformanceDashboardSection({
               color="emerald"
               onClick={() => scrollToElement('production-history')}
               delay={0.2}
-            />
-            <FeatureCard
-              icon={Award}
-              title="Team Goals"
-              description="See how the team is crushing it"
-              color="violet"
-              onClick={() => scrollToElement('team-goals')}
-              delay={0.25}
             />
           </div>
 

@@ -27,7 +27,6 @@ import { LeaderboardTabs } from "@/components/dashboard/LeaderboardTabs";
 import { PersonalStatsCard } from "@/components/dashboard/PersonalStatsCard";
 import { ProductionHistoryChart } from "@/components/dashboard/ProductionHistoryChart";
 import { ReferralLeaderboard } from "@/components/dashboard/ReferralLeaderboard";
-import { TeamGoalsTracker } from "@/components/dashboard/TeamGoalsTracker";
 import { IncomeGoalTracker } from "@/components/dashboard/IncomeGoalTracker";
 import { PerformanceDashboardSection } from "@/components/dashboard/PerformanceDashboardSection";
 import { WeeklyBadgesCard } from "@/components/dashboard/WeeklyBadges";
@@ -53,7 +52,6 @@ const HIDEABLE_CARDS: Record<string, string> = {
   "agent.year-performance": "Year Performance",
   "agent.production-history": "Production History Chart",
   "agent.income-goals": "Income Goal Tracker",
-  "agent.team-goals": "Team Goals",
   "agent.extra-leaderboards": "Closing & Referral Leaderboards",
   "agent.referral-section": "Referral & Sharing",
   "agent.my-tasks": "My Tasks",
@@ -717,13 +715,6 @@ export default function AgentPortal() {
             </section>
           </HideableCard>
         )}
-
-        {/* Team Goals */}
-        <HideableCard cardKey="agent.team-goals" label={HIDEABLE_CARDS["agent.team-goals"]} className="hidden sm:block">
-          <section id="team-goals">
-            <TeamGoalsTracker key={`goals-${refreshKey}`} />
-          </section>
-        </HideableCard>
 
         {/* Additional Leaderboards */}
         <HideableCard cardKey="agent.extra-leaderboards" label={HIDEABLE_CARDS["agent.extra-leaderboards"]} className="hidden sm:block">

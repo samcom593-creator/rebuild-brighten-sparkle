@@ -1,6 +1,6 @@
 {
  "_generated_by": "scripts/refresh-rpc-column-vocabulary.sh (bot_sql -> pg_proc + pg_rewrite)",
- "_generated_at": "2026-11-24T01:02:23Z",
+ "_generated_at": "2026-11-26T02:05:03Z",
  "_project_ref": "xrzweoneiieddzxogewk",
  "_why": "check-enum-filter-literals.mjs grades literals inside supabase.from().eq() chains. This is the other half of the same class: a status word that arrives from an RPC and is compared in JavaScript, where the return type is text and every wrong word type-checks. Per (function, returned column) this records the relation columns of that name reachable from the function body and the literals the function synthesises itself. It deliberately records CANDIDATES rather than one resolved source: provenance from a body regex is a guess, so check-rpc-status-literals.mjs refuses a literal only when NO candidate vocabulary and no body literal accepts it.",
  "_vocabulary_source": "scripts/data/enum-catalog.json (check_vocab + column_enum + enums). Not copied here on purpose, so the two guards read one snapshot and cannot drift.",
@@ -167,8 +167,10 @@
   "client_birthday_wisher": "jsonb",
   "commission_ledger_reconcile": "jsonb",
   "consumer_import_history": "jsonb",
+  "consumer_import_resolve_review": "void",
   "consumer_import_review": "jsonb",
   "consumer_lead_import": "jsonb",
+  "consumer_phone10": "text",
   "content_can_access": "boolean",
   "content_cards_brand_gate": "trigger",
   "content_cards_set_planned_week": "trigger",
@@ -247,6 +249,7 @@
   "ethos_callsheet_resolve_core": "void",
   "ethos_callsheet_sync_roster": "jsonb",
   "ethos_callsheet_sync_roster_core": "jsonb",
+  "ethos_consumer_phone10": "text",
   "ethos_paste_rows_approved": "SETOF v_ethos_paste_rows",
   "execute_sql": "jsonb",
   "finances_overview": "jsonb",
@@ -326,6 +329,7 @@
   "fn_carrier_visible_agent_ids": "uuid[]",
   "fn_catchup_course_finishers": "jsonb",
   "fn_catchup_hired_unlicensed": "jsonb",
+  "fn_cfo_native_age_days": "integer",
   "fn_client_pipeline_action": "void",
   "fn_client_pipeline_create": "uuid",
   "fn_client_pipeline_update": "jsonb",
@@ -438,6 +442,9 @@
   "fn_is_first_slack_deal_today": "boolean",
   "fn_lane_ladder_cutoff": "timestamp with time zone",
   "fn_lead_age": "integer",
+  "fn_lead_assignment_hold": "trigger",
+  "fn_lead_capture_book_dnc": "trigger",
+  "fn_lead_capture_dnc": "trigger",
   "fn_lead_pool_stats_refresh": "void",
   "fn_lead_type_of": "text",
   "fn_license_milestone_emit": "trigger",
@@ -468,6 +475,7 @@
   "fn_morning_leads_cron": "jsonb",
   "fn_morning_leads_grant_one": "jsonb",
   "fn_my_leads_state_gate": "uuid",
+  "fn_native_deal_reconcile_context": "jsonb",
   "fn_new_hire_flow_claim": "jsonb",
   "fn_new_hire_flow_finish": "jsonb",
   "fn_new_hire_flow_retry_sweep": "jsonb",
@@ -510,6 +518,7 @@
   "fn_owner_goal_board": "jsonb",
   "fn_owner_goal_board_uncached": "jsonb",
   "fn_owner_lists_cache_clear": "trigger",
+  "fn_pace_projection": "numeric",
   "fn_perf_bot_run": "jsonb",
   "fn_perf_return_deals_to_leads": "jsonb",
   "fn_phoenix_today": "date",
@@ -518,6 +527,7 @@
   "fn_pkg2_html_escape": "text",
   "fn_policy_number_grade": "text",
   "fn_policy_number_report_placeholder": "boolean",
+  "fn_policy_slack_agent": "jsonb",
   "fn_post_deal_celebration": "bigint",
   "fn_post_new_applicant_to_onboarding_chat": "trigger",
   "fn_post_unlicensed_digest": "void",
@@ -536,7 +546,12 @@
   "fn_queue_interview_noshow_slack": "trigger",
   "fn_queue_licensing_milestone_slack": "trigger",
   "fn_queue_onboarding_call_invites": "trigger",
+  "fn_queue_policy_chargeback_slack": "trigger",
+  "fn_queue_policy_status_slack": "trigger",
+  "fn_reactivation_ack": "timestamp with time zone",
   "fn_reactivation_canary_guard": "text",
+  "fn_reactivation_cap": "integer",
+  "fn_reactivation_claim_check": "text",
   "fn_reactivation_dispatch": "text",
   "fn_reactivation_dispatch_inner": "text",
   "fn_reactivation_gate": "text",
@@ -546,6 +561,7 @@
   "fn_reactivation_phone10": "text",
   "fn_reactivation_ramp_evaluate": "text",
   "fn_reactivation_reconcile": "text",
+  "fn_reactivation_replies_default_key": "trigger",
   "fn_reactivation_reply_last_ok": "timestamp with time zone",
   "fn_reactivation_reply_reader_beat": "void",
   "fn_reactivation_stop": "integer",
@@ -553,6 +569,7 @@
   "fn_reactivation_track_of": "text",
   "fn_reactivation_track_warmth": "integer",
   "fn_reactivation_trip": "void",
+  "fn_reactivation_unverified_24h": "integer",
   "fn_reactivation_variant": "text",
   "fn_readymode_ingest": "jsonb",
   "fn_reconcile_licensing_vocabularies": "trigger",
@@ -674,6 +691,7 @@
   "hh_rate_limit": "boolean",
   "hh_touch_applicant": "trigger",
   "hh_touch_user": "trigger",
+  "home_application_cohort": "jsonb",
   "home_conversion_people": "jsonb",
   "home_conversion_people_range": "jsonb",
   "home_conversion_people_range_uncached": "jsonb",
@@ -712,6 +730,7 @@
   "lead_bundle_assign": "jsonb",
   "lead_bundle_build": "jsonb",
   "lead_bundle_create": "jsonb",
+  "lead_bundle_export_detail": "jsonb",
   "lead_bundle_followup_set": "jsonb",
   "lead_bundle_grant": "jsonb",
   "lead_bundle_handoff": "jsonb",
@@ -723,14 +742,18 @@
   "lead_bundle_remove_item": "jsonb",
   "lead_bundle_revoke": "jsonb",
   "lead_closers_leaderboard": "jsonb",
+  "lead_context_time": "timestamp with time zone",
   "lead_hold_set": "jsonb",
   "lead_holder_board": "jsonb",
   "lead_item_add_recording": "jsonb",
   "lead_item_recordings_list": "jsonb",
   "lead_move_unworked": "jsonb",
+  "lead_outcome_key": "text",
   "lead_pool_assign": "jsonb",
   "lead_pool_counts": "jsonb",
   "lead_pool_facets": "jsonb",
+  "lead_pool_filter_matches": "boolean",
+  "lead_pool_static_filter_matches": "boolean",
   "lead_pool_tiles": "jsonb",
   "lead_pull_back": "jsonb",
   "lead_recordings_recent": "jsonb",
@@ -796,6 +819,10 @@
   "post_hiring_bottleneck_alert": "jsonb",
   "prelicensing_check_list": "jsonb",
   "prelicensing_set": "jsonb",
+  "preview_ethos_consumer_campaign": "jsonb",
+  "producer_call_matches_client": "boolean",
+  "producer_can_access_agent": "boolean",
+  "producer_can_access_client": "boolean",
   "producer_client_calls": "jsonb",
   "producer_deep_dive": "jsonb",
   "producer_month_workspace": "jsonb",
@@ -803,12 +830,14 @@
   "producer_save_client_transcript": "uuid",
   "producer_set_work_schedule": "jsonb",
   "producer_tag_client_call": "void",
+  "producer_transcript_allowed": "boolean",
   "production_can_read_agent": "boolean",
   "production_policy_cohort": "jsonb",
   "production_reconciliation_receipt": "jsonb",
   "promote_aged_lead_to_application": "uuid",
   "promote_applicant_to_agent": "uuid",
   "queue_apex_contact_action": "jsonb",
+  "queue_ethos_consumer_deliveries": "jsonb",
   "queue_sms": "uuid",
   "reactivate_nopickup_day3": "jsonb",
   "reactivate_nopickup_day7": "jsonb",
@@ -862,6 +891,7 @@
   "scoped_production_projection": "jsonb",
   "scoped_production_projection_uncached": "jsonb",
   "scoped_production_scoreboard": "jsonb",
+  "scoped_production_scoreboard_before_outcomes": "jsonb",
   "scoped_production_scoreboard_uncached": "jsonb",
   "search_people": "jsonb",
   "send_completion_contracting_handoff": "jsonb",
@@ -886,6 +916,8 @@
   "set_contracting_followup": "jsonb",
   "set_contracting_followup_config": "jsonb",
   "set_contracting_request_status": "jsonb",
+  "set_ethos_consumer_campaign_enabled": "jsonb",
+  "set_ethos_consumer_scope": "jsonb",
   "set_expected_start": "jsonb",
   "set_hire_license_status": "jsonb",
   "set_limit": "real",
@@ -903,6 +935,7 @@
   "set_work_commitment": "jsonb",
   "set_workday_attendance": "jsonb",
   "set_workday_attendance_bulk": "jsonb",
+  "settle_ethos_consumer_delivery": "void",
   "should_post_to_discord": "boolean",
   "show_limit": "real",
   "show_trgm": "text[]",
@@ -4348,6 +4381,82 @@
     "technique",
     "true",
     "worked"
+   ]
+  },
+  "claim_ethos_consumer_deliveries.claim_id": {
+   "candidates": [
+    "ethos_consumer_deliveries.claim_id"
+   ],
+   "body_literals": [
+    "attempting",
+    "blocked",
+    "eligible",
+    "exact reviewed delivery ids required",
+    "public",
+    "queued",
+    "recipient_changed",
+    "service role required",
+    "service_role"
+   ]
+  },
+  "claim_ethos_consumer_deliveries.delivery_id": {
+   "candidates": [],
+   "body_literals": [
+    "attempting",
+    "blocked",
+    "eligible",
+    "exact reviewed delivery ids required",
+    "public",
+    "queued",
+    "recipient_changed",
+    "service role required",
+    "service_role"
+   ]
+  },
+  "claim_ethos_consumer_deliveries.email": {
+   "candidates": [
+    "ethos_consumer_deliveries.email"
+   ],
+   "body_literals": [
+    "attempting",
+    "blocked",
+    "eligible",
+    "exact reviewed delivery ids required",
+    "public",
+    "queued",
+    "recipient_changed",
+    "service role required",
+    "service_role"
+   ]
+  },
+  "claim_ethos_consumer_deliveries.first_name": {
+   "candidates": [],
+   "body_literals": [
+    "attempting",
+    "blocked",
+    "eligible",
+    "exact reviewed delivery ids required",
+    "public",
+    "queued",
+    "recipient_changed",
+    "service role required",
+    "service_role"
+   ]
+  },
+  "claim_ethos_consumer_deliveries.state": {
+   "candidates": [
+    "ethos_consumer_deliveries.state"
+   ],
+   "body_literals": [
+    "attempting",
+    "blocked",
+    "eligible",
+    "exact reviewed delivery ids required",
+    "public",
+    "queued",
+    "recipient_changed",
+    "service role required",
+    "service_role"
    ]
   },
   "closer_candidates.agent_name": {
@@ -8318,6 +8427,535 @@
     "active",
     "admin",
     "public"
+   ]
+  },
+  "ethos_consumer_batch_members.lead_id": {
+   "candidates": [
+    "consumer_import_rows.lead_id"
+   ],
+   "body_literals": [
+    "imported",
+    "matched",
+    "public",
+    "source_batch_id",
+    "source_type"
+   ]
+  },
+  "ethos_consumer_batch_members.source_type": {
+   "candidates": [],
+   "body_literals": [
+    "imported",
+    "matched",
+    "public",
+    "source_batch_id",
+    "source_type"
+   ]
+  },
+  "ethos_consumer_candidates.audience_token": {
+   "candidates": [],
+   "body_literals": [
+    "AK",
+    "AL",
+    "AR",
+    "AZ",
+    "CA",
+    "CO",
+    "CT",
+    "DC",
+    "DE",
+    "FL",
+    "GA",
+    "HI",
+    "IA",
+    "ID",
+    "IL",
+    "IN",
+    "KS",
+    "KY",
+    "LA",
+    "MA",
+    "MD",
+    "ME",
+    "MI",
+    "MN",
+    "MO",
+    "MS",
+    "MT",
+    "NC",
+    "ND",
+    "NE",
+    "NH",
+    "NJ",
+    "NM",
+    "NV",
+    "NY",
+    "OH",
+    "OK",
+    "OR",
+    "PA",
+    "RI",
+    "SC",
+    "SD",
+    "TN",
+    "TX",
+    "UT",
+    "UTF8",
+    "VA",
+    "VT",
+    "WA",
+    "WI",
+    "WV",
+    "WY",
+    "active",
+    "campaign_not_configured",
+    "consumer_source_unverified",
+    "do not call",
+    "do_not_call",
+    "do_not_contact",
+    "duplicate_email",
+    "eligible",
+    "email_consent",
+    "email_identity_conflict",
+    "email_missing_or_invalid",
+    "email_opt_out",
+    "email_suppressed",
+    "ethos_state_eligibility_not_verified",
+    "false",
+    "hex",
+    "lead_suppressed",
+    "licensed_state_not_verified",
+    "mortgage",
+    "pos",
+    "public",
+    "state_missing_or_invalid",
+    "unsubscribed"
+   ]
+  },
+  "ethos_consumer_candidates.email": {
+   "candidates": [
+    "agentlink_clients.email",
+    "applications.email",
+    "client_leads.email",
+    "email_suppressions.email",
+    "email_unsubscribes.email",
+    "profiles.email",
+    "v_leads_do_not_dial.email"
+   ],
+   "body_literals": [
+    "AK",
+    "AL",
+    "AR",
+    "AZ",
+    "CA",
+    "CO",
+    "CT",
+    "DC",
+    "DE",
+    "FL",
+    "GA",
+    "HI",
+    "IA",
+    "ID",
+    "IL",
+    "IN",
+    "KS",
+    "KY",
+    "LA",
+    "MA",
+    "MD",
+    "ME",
+    "MI",
+    "MN",
+    "MO",
+    "MS",
+    "MT",
+    "NC",
+    "ND",
+    "NE",
+    "NH",
+    "NJ",
+    "NM",
+    "NV",
+    "NY",
+    "OH",
+    "OK",
+    "OR",
+    "PA",
+    "RI",
+    "SC",
+    "SD",
+    "TN",
+    "TX",
+    "UT",
+    "UTF8",
+    "VA",
+    "VT",
+    "WA",
+    "WI",
+    "WV",
+    "WY",
+    "active",
+    "campaign_not_configured",
+    "consumer_source_unverified",
+    "do not call",
+    "do_not_call",
+    "do_not_contact",
+    "duplicate_email",
+    "eligible",
+    "email_consent",
+    "email_identity_conflict",
+    "email_missing_or_invalid",
+    "email_opt_out",
+    "email_suppressed",
+    "ethos_state_eligibility_not_verified",
+    "false",
+    "hex",
+    "lead_suppressed",
+    "licensed_state_not_verified",
+    "mortgage",
+    "pos",
+    "public",
+    "state_missing_or_invalid",
+    "unsubscribed"
+   ]
+  },
+  "ethos_consumer_candidates.first_name": {
+   "candidates": [
+    "agentlink_clients.first_name",
+    "applications.first_name",
+    "client_leads.first_name",
+    "v_leads_do_not_dial.first_name",
+    "v_leads_sold_already.first_name"
+   ],
+   "body_literals": [
+    "AK",
+    "AL",
+    "AR",
+    "AZ",
+    "CA",
+    "CO",
+    "CT",
+    "DC",
+    "DE",
+    "FL",
+    "GA",
+    "HI",
+    "IA",
+    "ID",
+    "IL",
+    "IN",
+    "KS",
+    "KY",
+    "LA",
+    "MA",
+    "MD",
+    "ME",
+    "MI",
+    "MN",
+    "MO",
+    "MS",
+    "MT",
+    "NC",
+    "ND",
+    "NE",
+    "NH",
+    "NJ",
+    "NM",
+    "NV",
+    "NY",
+    "OH",
+    "OK",
+    "OR",
+    "PA",
+    "RI",
+    "SC",
+    "SD",
+    "TN",
+    "TX",
+    "UT",
+    "UTF8",
+    "VA",
+    "VT",
+    "WA",
+    "WI",
+    "WV",
+    "WY",
+    "active",
+    "campaign_not_configured",
+    "consumer_source_unverified",
+    "do not call",
+    "do_not_call",
+    "do_not_contact",
+    "duplicate_email",
+    "eligible",
+    "email_consent",
+    "email_identity_conflict",
+    "email_missing_or_invalid",
+    "email_opt_out",
+    "email_suppressed",
+    "ethos_state_eligibility_not_verified",
+    "false",
+    "hex",
+    "lead_suppressed",
+    "licensed_state_not_verified",
+    "mortgage",
+    "pos",
+    "public",
+    "state_missing_or_invalid",
+    "unsubscribed"
+   ]
+  },
+  "ethos_consumer_candidates.lead_id": {
+   "candidates": [
+    "v_leads_do_not_dial.lead_id",
+    "v_leads_sold_already.lead_id",
+    "v_leads_suppression_all.lead_id"
+   ],
+   "body_literals": [
+    "AK",
+    "AL",
+    "AR",
+    "AZ",
+    "CA",
+    "CO",
+    "CT",
+    "DC",
+    "DE",
+    "FL",
+    "GA",
+    "HI",
+    "IA",
+    "ID",
+    "IL",
+    "IN",
+    "KS",
+    "KY",
+    "LA",
+    "MA",
+    "MD",
+    "ME",
+    "MI",
+    "MN",
+    "MO",
+    "MS",
+    "MT",
+    "NC",
+    "ND",
+    "NE",
+    "NH",
+    "NJ",
+    "NM",
+    "NV",
+    "NY",
+    "OH",
+    "OK",
+    "OR",
+    "PA",
+    "RI",
+    "SC",
+    "SD",
+    "TN",
+    "TX",
+    "UT",
+    "UTF8",
+    "VA",
+    "VT",
+    "WA",
+    "WI",
+    "WV",
+    "WY",
+    "active",
+    "campaign_not_configured",
+    "consumer_source_unverified",
+    "do not call",
+    "do_not_call",
+    "do_not_contact",
+    "duplicate_email",
+    "eligible",
+    "email_consent",
+    "email_identity_conflict",
+    "email_missing_or_invalid",
+    "email_opt_out",
+    "email_suppressed",
+    "ethos_state_eligibility_not_verified",
+    "false",
+    "hex",
+    "lead_suppressed",
+    "licensed_state_not_verified",
+    "mortgage",
+    "pos",
+    "public",
+    "state_missing_or_invalid",
+    "unsubscribed"
+   ]
+  },
+  "ethos_consumer_candidates.reason": {
+   "candidates": [
+    "email_unsubscribes.reason"
+   ],
+   "body_literals": [
+    "AK",
+    "AL",
+    "AR",
+    "AZ",
+    "CA",
+    "CO",
+    "CT",
+    "DC",
+    "DE",
+    "FL",
+    "GA",
+    "HI",
+    "IA",
+    "ID",
+    "IL",
+    "IN",
+    "KS",
+    "KY",
+    "LA",
+    "MA",
+    "MD",
+    "ME",
+    "MI",
+    "MN",
+    "MO",
+    "MS",
+    "MT",
+    "NC",
+    "ND",
+    "NE",
+    "NH",
+    "NJ",
+    "NM",
+    "NV",
+    "NY",
+    "OH",
+    "OK",
+    "OR",
+    "PA",
+    "RI",
+    "SC",
+    "SD",
+    "TN",
+    "TX",
+    "UT",
+    "UTF8",
+    "VA",
+    "VT",
+    "WA",
+    "WI",
+    "WV",
+    "WY",
+    "active",
+    "campaign_not_configured",
+    "consumer_source_unverified",
+    "do not call",
+    "do_not_call",
+    "do_not_contact",
+    "duplicate_email",
+    "eligible",
+    "email_consent",
+    "email_identity_conflict",
+    "email_missing_or_invalid",
+    "email_opt_out",
+    "email_suppressed",
+    "ethos_state_eligibility_not_verified",
+    "false",
+    "hex",
+    "lead_suppressed",
+    "licensed_state_not_verified",
+    "mortgage",
+    "pos",
+    "public",
+    "state_missing_or_invalid",
+    "unsubscribed"
+   ]
+  },
+  "ethos_consumer_candidates.state": {
+   "candidates": [
+    "agentlink_clients.state",
+    "applications.state",
+    "client_leads.state",
+    "ethos_consumer_license_scope.state",
+    "profiles.state",
+    "v_leads_do_not_dial.state"
+   ],
+   "body_literals": [
+    "AK",
+    "AL",
+    "AR",
+    "AZ",
+    "CA",
+    "CO",
+    "CT",
+    "DC",
+    "DE",
+    "FL",
+    "GA",
+    "HI",
+    "IA",
+    "ID",
+    "IL",
+    "IN",
+    "KS",
+    "KY",
+    "LA",
+    "MA",
+    "MD",
+    "ME",
+    "MI",
+    "MN",
+    "MO",
+    "MS",
+    "MT",
+    "NC",
+    "ND",
+    "NE",
+    "NH",
+    "NJ",
+    "NM",
+    "NV",
+    "NY",
+    "OH",
+    "OK",
+    "OR",
+    "PA",
+    "RI",
+    "SC",
+    "SD",
+    "TN",
+    "TX",
+    "UT",
+    "UTF8",
+    "VA",
+    "VT",
+    "WA",
+    "WI",
+    "WV",
+    "WY",
+    "active",
+    "campaign_not_configured",
+    "consumer_source_unverified",
+    "do not call",
+    "do_not_call",
+    "do_not_contact",
+    "duplicate_email",
+    "eligible",
+    "email_consent",
+    "email_identity_conflict",
+    "email_missing_or_invalid",
+    "email_opt_out",
+    "email_suppressed",
+    "ethos_state_eligibility_not_verified",
+    "false",
+    "hex",
+    "lead_suppressed",
+    "licensed_state_not_verified",
+    "mortgage",
+    "pos",
+    "public",
+    "state_missing_or_invalid",
+    "unsubscribed"
    ]
   },
   "finance_snapshot.label": {
@@ -12695,15 +13333,14 @@
     "nothing_due",
     "paused_bounce_8pct",
     "paused_cap_0",
+    "paused_cap_unreadable",
     "paused_complaint",
     "paused_events_blind",
     "paused_failures",
     "paused_reply_reader_stale",
     "paused_stop_rate",
     "public",
-    "reactivation_daily_cap",
     "retryable",
-    "spam complaint on a reactivation email",
     "stop",
     "stopped"
    ]
@@ -12730,15 +13367,14 @@
     "nothing_due",
     "paused_bounce_8pct",
     "paused_cap_0",
+    "paused_cap_unreadable",
     "paused_complaint",
     "paused_events_blind",
     "paused_failures",
     "paused_reply_reader_stale",
     "paused_stop_rate",
     "public",
-    "reactivation_daily_cap",
     "retryable",
-    "spam complaint on a reactivation email",
     "stop",
     "stopped"
    ]
@@ -12762,15 +13398,14 @@
     "nothing_due",
     "paused_bounce_8pct",
     "paused_cap_0",
+    "paused_cap_unreadable",
     "paused_complaint",
     "paused_events_blind",
     "paused_failures",
     "paused_reply_reader_stale",
     "paused_stop_rate",
     "public",
-    "reactivation_daily_cap",
     "retryable",
-    "spam complaint on a reactivation email",
     "stop",
     "stopped"
    ]
@@ -12794,15 +13429,14 @@
     "nothing_due",
     "paused_bounce_8pct",
     "paused_cap_0",
+    "paused_cap_unreadable",
     "paused_complaint",
     "paused_events_blind",
     "paused_failures",
     "paused_reply_reader_stale",
     "paused_stop_rate",
     "public",
-    "reactivation_daily_cap",
     "retryable",
-    "spam complaint on a reactivation email",
     "stop",
     "stopped"
    ]
@@ -12825,15 +13459,14 @@
     "nothing_due",
     "paused_bounce_8pct",
     "paused_cap_0",
+    "paused_cap_unreadable",
     "paused_complaint",
     "paused_events_blind",
     "paused_failures",
     "paused_reply_reader_stale",
     "paused_stop_rate",
     "public",
-    "reactivation_daily_cap",
     "retryable",
-    "spam complaint on a reactivation email",
     "stop",
     "stopped"
    ]
@@ -12853,15 +13486,14 @@
     "nothing_due",
     "paused_bounce_8pct",
     "paused_cap_0",
+    "paused_cap_unreadable",
     "paused_complaint",
     "paused_events_blind",
     "paused_failures",
     "paused_reply_reader_stale",
     "paused_stop_rate",
     "public",
-    "reactivation_daily_cap",
     "retryable",
-    "spam complaint on a reactivation email",
     "stop",
     "stopped"
    ]
@@ -12884,15 +13516,14 @@
     "nothing_due",
     "paused_bounce_8pct",
     "paused_cap_0",
+    "paused_cap_unreadable",
     "paused_complaint",
     "paused_events_blind",
     "paused_failures",
     "paused_reply_reader_stale",
     "paused_stop_rate",
     "public",
-    "reactivation_daily_cap",
     "retryable",
-    "spam complaint on a reactivation email",
     "stop",
     "stopped"
    ]
@@ -12914,15 +13545,14 @@
     "nothing_due",
     "paused_bounce_8pct",
     "paused_cap_0",
+    "paused_cap_unreadable",
     "paused_complaint",
     "paused_events_blind",
     "paused_failures",
     "paused_reply_reader_stale",
     "paused_stop_rate",
     "public",
-    "reactivation_daily_cap",
     "retryable",
-    "spam complaint on a reactivation email",
     "stop",
     "stopped"
    ]
@@ -12930,41 +13560,73 @@
   "fn_reactivation_incidents.bounced": {
    "candidates": [],
    "body_literals": [
-    "approved",
-    "bounced",
-    "complained",
-    "public",
-    "reactivation_incident_ack"
+    "infinity",
+    "public"
    ]
   },
   "fn_reactivation_incidents.complained": {
    "candidates": [],
    "body_literals": [
-    "approved",
-    "bounced",
-    "complained",
-    "public",
-    "reactivation_incident_ack"
+    "infinity",
+    "public"
    ]
   },
   "fn_reactivation_incidents.gate_misses": {
    "candidates": [],
    "body_literals": [
-    "approved",
-    "bounced",
-    "complained",
-    "public",
-    "reactivation_incident_ack"
+    "infinity",
+    "public"
    ]
   },
   "fn_reactivation_incidents.since": {
    "candidates": [],
    "body_literals": [
-    "approved",
+    "infinity",
+    "public"
+   ]
+  },
+  "fn_reactivation_incidents_between.bounced": {
+   "candidates": [],
+   "body_literals": [
     "bounced",
     "complained",
-    "public",
-    "reactivation_incident_ack"
+    "public"
+   ]
+  },
+  "fn_reactivation_incidents_between.complained": {
+   "candidates": [],
+   "body_literals": [
+    "bounced",
+    "complained",
+    "public"
+   ]
+  },
+  "fn_reactivation_incidents_between.gate_misses": {
+   "candidates": [],
+   "body_literals": [
+    "bounced",
+    "complained",
+    "public"
+   ]
+  },
+  "fn_reactivation_incidents_between.sends": {
+   "candidates": [],
+   "body_literals": [
+    "bounced",
+    "complained",
+    "public"
+   ]
+  },
+  "fn_reactivation_person_siblings.application_id": {
+   "candidates": [],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "fn_reactivation_person_siblings.email_lower": {
+   "candidates": [],
+   "body_literals": [
+    "public"
    ]
   },
   "fn_readymode_accounts_to_lock.agent_id": {
@@ -13708,6 +14370,7 @@
   "fn_starter_pack_inventory.phone10": {
    "candidates": [
     "lead_bundle_items.phone10",
+    "lead_contact_dnc.phone10",
     "lead_resale_ledger.phone10",
     "mat_lead_pool.phone10",
     "readymode_leads.phone10",
@@ -15043,6 +15706,538 @@
     "public",
     "state",
     "unknown"
+   ]
+  },
+  "lead_pool_candidates.age": {
+   "candidates": [],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "lead_pool_candidates.already_sold": {
+   "candidates": [],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "lead_pool_candidates.email": {
+   "candidates": [],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "lead_pool_candidates.first_name": {
+   "candidates": [],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "lead_pool_candidates.flags": {
+   "candidates": [],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "lead_pool_candidates.in_bundle": {
+   "candidates": [],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "lead_pool_candidates.last_name": {
+   "candidates": [],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "lead_pool_candidates.lead_age_days": {
+   "candidates": [],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "lead_pool_candidates.lead_id": {
+   "candidates": [],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "lead_pool_candidates.phone10": {
+   "candidates": [],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "lead_pool_candidates.state": {
+   "candidates": [],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "lead_pool_candidates.tags": {
+   "candidates": [],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "lead_pool_candidates.tier": {
+   "candidates": [],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "lead_pool_candidates.under_9mo": {
+   "candidates": [],
+   "body_literals": [
+    "public"
+   ]
+  },
+  "lead_pool_candidates_for_phones.age": {
+   "candidates": [
+    "lead_bundle_items.age",
+    "mat_lead_pool.age",
+    "v_lead_pool_candidate_base.age",
+    "v_pool_dialer.age",
+    "v_pool_marketing.age",
+    "v_pool_rewrite.age",
+    "v_pool_winback.age"
+   ],
+   "body_literals": [
+    "already_sold",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dial_tap",
+    "dnc",
+    "import_review_required",
+    "in_bundle",
+    "last_caller",
+    "last_outcome",
+    "last_touched_at",
+    "never_called",
+    "next_action",
+    "policy_standing",
+    "public",
+    "source_attempts",
+    "times_called",
+    "true_dnc",
+    "unknown",
+    "unverified"
+   ]
+  },
+  "lead_pool_candidates_for_phones.already_sold": {
+   "candidates": [
+    "v_lead_pool_candidate_base.already_sold"
+   ],
+   "body_literals": [
+    "already_sold",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dial_tap",
+    "dnc",
+    "import_review_required",
+    "in_bundle",
+    "last_caller",
+    "last_outcome",
+    "last_touched_at",
+    "never_called",
+    "next_action",
+    "policy_standing",
+    "public",
+    "source_attempts",
+    "times_called",
+    "true_dnc",
+    "unknown",
+    "unverified"
+   ]
+  },
+  "lead_pool_candidates_for_phones.email": {
+   "candidates": [
+    "lead_bundle_items.email",
+    "mat_lead_pool.email",
+    "v_lead_pool_candidate_base.email",
+    "v_pool_dialer.email",
+    "v_pool_marketing.email",
+    "v_pool_rewrite.email",
+    "v_pool_winback.email"
+   ],
+   "body_literals": [
+    "already_sold",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dial_tap",
+    "dnc",
+    "import_review_required",
+    "in_bundle",
+    "last_caller",
+    "last_outcome",
+    "last_touched_at",
+    "never_called",
+    "next_action",
+    "policy_standing",
+    "public",
+    "source_attempts",
+    "times_called",
+    "true_dnc",
+    "unknown",
+    "unverified"
+   ]
+  },
+  "lead_pool_candidates_for_phones.first_name": {
+   "candidates": [
+    "lead_bundle_items.first_name",
+    "mat_lead_pool.first_name",
+    "v_lead_pool_candidate_base.first_name",
+    "v_pool_dialer.first_name",
+    "v_pool_marketing.first_name",
+    "v_pool_rewrite.first_name",
+    "v_pool_winback.first_name"
+   ],
+   "body_literals": [
+    "already_sold",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dial_tap",
+    "dnc",
+    "import_review_required",
+    "in_bundle",
+    "last_caller",
+    "last_outcome",
+    "last_touched_at",
+    "never_called",
+    "next_action",
+    "policy_standing",
+    "public",
+    "source_attempts",
+    "times_called",
+    "true_dnc",
+    "unknown",
+    "unverified"
+   ]
+  },
+  "lead_pool_candidates_for_phones.flags": {
+   "candidates": [
+    "mat_lead_pool.flags",
+    "v_lead_pool_candidate_base.flags",
+    "v_pool_dialer.flags",
+    "v_pool_marketing.flags",
+    "v_pool_rewrite.flags",
+    "v_pool_winback.flags"
+   ],
+   "body_literals": [
+    "already_sold",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dial_tap",
+    "dnc",
+    "import_review_required",
+    "in_bundle",
+    "last_caller",
+    "last_outcome",
+    "last_touched_at",
+    "never_called",
+    "next_action",
+    "policy_standing",
+    "public",
+    "source_attempts",
+    "times_called",
+    "true_dnc",
+    "unknown",
+    "unverified"
+   ]
+  },
+  "lead_pool_candidates_for_phones.in_bundle": {
+   "candidates": [
+    "v_lead_pool_candidate_base.in_bundle"
+   ],
+   "body_literals": [
+    "already_sold",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dial_tap",
+    "dnc",
+    "import_review_required",
+    "in_bundle",
+    "last_caller",
+    "last_outcome",
+    "last_touched_at",
+    "never_called",
+    "next_action",
+    "policy_standing",
+    "public",
+    "source_attempts",
+    "times_called",
+    "true_dnc",
+    "unknown",
+    "unverified"
+   ]
+  },
+  "lead_pool_candidates_for_phones.last_name": {
+   "candidates": [
+    "lead_bundle_items.last_name",
+    "mat_lead_pool.last_name",
+    "v_lead_pool_candidate_base.last_name",
+    "v_pool_dialer.last_name",
+    "v_pool_marketing.last_name",
+    "v_pool_rewrite.last_name",
+    "v_pool_winback.last_name"
+   ],
+   "body_literals": [
+    "already_sold",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dial_tap",
+    "dnc",
+    "import_review_required",
+    "in_bundle",
+    "last_caller",
+    "last_outcome",
+    "last_touched_at",
+    "never_called",
+    "next_action",
+    "policy_standing",
+    "public",
+    "source_attempts",
+    "times_called",
+    "true_dnc",
+    "unknown",
+    "unverified"
+   ]
+  },
+  "lead_pool_candidates_for_phones.lead_age_days": {
+   "candidates": [
+    "mat_lead_pool.lead_age_days",
+    "v_lead_pool_candidate_base.lead_age_days",
+    "v_pool_dialer.lead_age_days",
+    "v_pool_marketing.lead_age_days",
+    "v_pool_rewrite.lead_age_days",
+    "v_pool_winback.lead_age_days"
+   ],
+   "body_literals": [
+    "already_sold",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dial_tap",
+    "dnc",
+    "import_review_required",
+    "in_bundle",
+    "last_caller",
+    "last_outcome",
+    "last_touched_at",
+    "never_called",
+    "next_action",
+    "policy_standing",
+    "public",
+    "source_attempts",
+    "times_called",
+    "true_dnc",
+    "unknown",
+    "unverified"
+   ]
+  },
+  "lead_pool_candidates_for_phones.lead_id": {
+   "candidates": [
+    "lead_bundle_items.lead_id",
+    "lead_resale_ledger.lead_id",
+    "mat_lead_pool.lead_id",
+    "v_lead_pool_candidate_base.lead_id",
+    "v_pool_dialer.lead_id",
+    "v_pool_marketing.lead_id",
+    "v_pool_rewrite.lead_id",
+    "v_pool_winback.lead_id"
+   ],
+   "body_literals": [
+    "already_sold",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dial_tap",
+    "dnc",
+    "import_review_required",
+    "in_bundle",
+    "last_caller",
+    "last_outcome",
+    "last_touched_at",
+    "never_called",
+    "next_action",
+    "policy_standing",
+    "public",
+    "source_attempts",
+    "times_called",
+    "true_dnc",
+    "unknown",
+    "unverified"
+   ]
+  },
+  "lead_pool_candidates_for_phones.phone10": {
+   "candidates": [
+    "lead_bundle_items.phone10",
+    "lead_contact_dnc.phone10",
+    "lead_resale_ledger.phone10",
+    "mat_lead_pool.phone10",
+    "v_lead_pool_candidate_base.phone10",
+    "v_pool_dialer.phone10",
+    "v_pool_marketing.phone10",
+    "v_pool_rewrite.phone10",
+    "v_pool_winback.phone10"
+   ],
+   "body_literals": [
+    "already_sold",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dial_tap",
+    "dnc",
+    "import_review_required",
+    "in_bundle",
+    "last_caller",
+    "last_outcome",
+    "last_touched_at",
+    "never_called",
+    "next_action",
+    "policy_standing",
+    "public",
+    "source_attempts",
+    "times_called",
+    "true_dnc",
+    "unknown",
+    "unverified"
+   ]
+  },
+  "lead_pool_candidates_for_phones.state": {
+   "candidates": [
+    "lead_bundle_items.state",
+    "mat_lead_pool.state",
+    "v_lead_pool_candidate_base.state",
+    "v_pool_dialer.state",
+    "v_pool_marketing.state",
+    "v_pool_rewrite.state",
+    "v_pool_winback.state"
+   ],
+   "body_literals": [
+    "already_sold",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dial_tap",
+    "dnc",
+    "import_review_required",
+    "in_bundle",
+    "last_caller",
+    "last_outcome",
+    "last_touched_at",
+    "never_called",
+    "next_action",
+    "policy_standing",
+    "public",
+    "source_attempts",
+    "times_called",
+    "true_dnc",
+    "unknown",
+    "unverified"
+   ]
+  },
+  "lead_pool_candidates_for_phones.tags": {
+   "candidates": [
+    "mat_lead_pool.tags",
+    "v_lead_pool_candidate_base.tags",
+    "v_pool_dialer.tags",
+    "v_pool_marketing.tags",
+    "v_pool_rewrite.tags",
+    "v_pool_winback.tags"
+   ],
+   "body_literals": [
+    "already_sold",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dial_tap",
+    "dnc",
+    "import_review_required",
+    "in_bundle",
+    "last_caller",
+    "last_outcome",
+    "last_touched_at",
+    "never_called",
+    "next_action",
+    "policy_standing",
+    "public",
+    "source_attempts",
+    "times_called",
+    "true_dnc",
+    "unknown",
+    "unverified"
+   ]
+  },
+  "lead_pool_candidates_for_phones.tier": {
+   "candidates": [
+    "mat_lead_pool.tier",
+    "v_lead_pool_candidate_base.tier",
+    "v_pool_dialer.tier",
+    "v_pool_marketing.tier",
+    "v_pool_rewrite.tier",
+    "v_pool_winback.tier"
+   ],
+   "body_literals": [
+    "already_sold",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dial_tap",
+    "dnc",
+    "import_review_required",
+    "in_bundle",
+    "last_caller",
+    "last_outcome",
+    "last_touched_at",
+    "never_called",
+    "next_action",
+    "policy_standing",
+    "public",
+    "source_attempts",
+    "times_called",
+    "true_dnc",
+    "unknown",
+    "unverified"
+   ]
+  },
+  "lead_pool_candidates_for_phones.under_9mo": {
+   "candidates": [
+    "mat_lead_pool.under_9mo",
+    "v_lead_pool_candidate_base.under_9mo",
+    "v_pool_dialer.under_9mo",
+    "v_pool_marketing.under_9mo",
+    "v_pool_rewrite.under_9mo",
+    "v_pool_winback.under_9mo"
+   ],
+   "body_literals": [
+    "already_sold",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dial_tap",
+    "dnc",
+    "import_review_required",
+    "in_bundle",
+    "last_caller",
+    "last_outcome",
+    "last_touched_at",
+    "never_called",
+    "next_action",
+    "policy_standing",
+    "public",
+    "source_attempts",
+    "times_called",
+    "true_dnc",
+    "unknown",
+    "unverified"
    ]
   },
   "lead_state_yield.area_checked": {
@@ -17081,44 +18276,81 @@
   },
   "my_lead_bundles.age": {
    "candidates": [
-    "lead_bundle_items.age"
+    "client_leads.age",
+    "lead_bundle_items.age",
+    "mat_lead_pool.age",
+    "readymode_leads.age",
+    "v_pool_dialer.age",
+    "v_pool_marketing.age",
+    "v_pool_rewrite.age",
+    "v_pool_winback.age",
+    "v_sellable_client_leads.age"
    ],
    "body_literals": [
     "A",
     "B",
     "C",
     "D",
-    "Do Not Call",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dnc",
+    "do_not_call",
+    "import_review_required",
+    "last_caller",
+    "next_action",
     "pos",
-    "public"
+    "public",
+    "replaced_phone10",
+    "true_dnc"
    ]
   },
   "my_lead_bundles.attempts": {
    "candidates": [
-    "lead_bundle_items.attempts"
+    "lead_bundle_items.attempts",
+    "v_readymode_lead_quality.attempts"
    ],
    "body_literals": [
     "A",
     "B",
     "C",
     "D",
-    "Do Not Call",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dnc",
+    "do_not_call",
+    "import_review_required",
+    "last_caller",
+    "next_action",
     "pos",
-    "public"
+    "public",
+    "replaced_phone10",
+    "true_dnc"
    ]
   },
   "my_lead_bundles.attrs": {
    "candidates": [
-    "lead_bundle_items.attrs"
+    "lead_bundle_items.attrs",
+    "readymode_leads.attrs"
    ],
    "body_literals": [
     "A",
     "B",
     "C",
     "D",
-    "Do Not Call",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dnc",
+    "do_not_call",
+    "import_review_required",
+    "last_caller",
+    "next_action",
     "pos",
-    "public"
+    "public",
+    "replaced_phone10",
+    "true_dnc"
    ]
   },
   "my_lead_bundles.bundle_id": {
@@ -17131,9 +18363,18 @@
     "B",
     "C",
     "D",
-    "Do Not Call",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dnc",
+    "do_not_call",
+    "import_review_required",
+    "last_caller",
+    "next_action",
     "pos",
-    "public"
+    "public",
+    "replaced_phone10",
+    "true_dnc"
    ]
   },
   "my_lead_bundles.bundle_name": {
@@ -17143,9 +18384,18 @@
     "B",
     "C",
     "D",
-    "Do Not Call",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dnc",
+    "do_not_call",
+    "import_review_required",
+    "last_caller",
+    "next_action",
     "pos",
-    "public"
+    "public",
+    "replaced_phone10",
+    "true_dnc"
    ]
   },
   "my_lead_bundles.bundle_note": {
@@ -17155,9 +18405,18 @@
     "B",
     "C",
     "D",
-    "Do Not Call",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dnc",
+    "do_not_call",
+    "import_review_required",
+    "last_caller",
+    "next_action",
     "pos",
-    "public"
+    "public",
+    "replaced_phone10",
+    "true_dnc"
    ]
   },
   "my_lead_bundles.callable_at": {
@@ -17167,9 +18426,18 @@
     "B",
     "C",
     "D",
-    "Do Not Call",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dnc",
+    "do_not_call",
+    "import_review_required",
+    "last_caller",
+    "next_action",
     "pos",
-    "public"
+    "public",
+    "replaced_phone10",
+    "true_dnc"
    ]
   },
   "my_lead_bundles.callable_now": {
@@ -17179,37 +18447,82 @@
     "B",
     "C",
     "D",
-    "Do Not Call",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dnc",
+    "do_not_call",
+    "import_review_required",
+    "last_caller",
+    "next_action",
     "pos",
-    "public"
+    "public",
+    "replaced_phone10",
+    "true_dnc"
    ]
   },
   "my_lead_bundles.email": {
    "candidates": [
-    "lead_bundle_items.email"
+    "client_leads.email",
+    "lead_bundle_items.email",
+    "mat_lead_pool.email",
+    "readymode_leads.email",
+    "v_pool_dialer.email",
+    "v_pool_marketing.email",
+    "v_pool_rewrite.email",
+    "v_pool_winback.email",
+    "v_readymode_lead_quality.email",
+    "v_sellable_client_leads.email"
    ],
    "body_literals": [
     "A",
     "B",
     "C",
     "D",
-    "Do Not Call",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dnc",
+    "do_not_call",
+    "import_review_required",
+    "last_caller",
+    "next_action",
     "pos",
-    "public"
+    "public",
+    "replaced_phone10",
+    "true_dnc"
    ]
   },
   "my_lead_bundles.first_name": {
    "candidates": [
-    "lead_bundle_items.first_name"
+    "client_leads.first_name",
+    "lead_bundle_items.first_name",
+    "mat_lead_pool.first_name",
+    "readymode_leads.first_name",
+    "v_pool_dialer.first_name",
+    "v_pool_marketing.first_name",
+    "v_pool_rewrite.first_name",
+    "v_pool_winback.first_name",
+    "v_readymode_lead_quality.first_name",
+    "v_sellable_client_leads.first_name"
    ],
    "body_literals": [
     "A",
     "B",
     "C",
     "D",
-    "Do Not Call",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dnc",
+    "do_not_call",
+    "import_review_required",
+    "last_caller",
+    "next_action",
     "pos",
-    "public"
+    "public",
+    "replaced_phone10",
+    "true_dnc"
    ]
   },
   "my_lead_bundles.format": {
@@ -17221,9 +18534,18 @@
     "B",
     "C",
     "D",
-    "Do Not Call",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dnc",
+    "do_not_call",
+    "import_review_required",
+    "last_caller",
+    "next_action",
     "pos",
-    "public"
+    "public",
+    "replaced_phone10",
+    "true_dnc"
    ]
   },
   "my_lead_bundles.granted_at": {
@@ -17235,9 +18557,18 @@
     "B",
     "C",
     "D",
-    "Do Not Call",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dnc",
+    "do_not_call",
+    "import_review_required",
+    "last_caller",
+    "next_action",
     "pos",
-    "public"
+    "public",
+    "replaced_phone10",
+    "true_dnc"
    ]
   },
   "my_lead_bundles.item_id": {
@@ -17247,121 +18578,241 @@
     "B",
     "C",
     "D",
-    "Do Not Call",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dnc",
+    "do_not_call",
+    "import_review_required",
+    "last_caller",
+    "next_action",
     "pos",
-    "public"
+    "public",
+    "replaced_phone10",
+    "true_dnc"
    ]
   },
   "my_lead_bundles.last_dialed_at": {
    "candidates": [
-    "lead_bundle_items.last_dialed_at"
+    "client_leads.last_dialed_at",
+    "lead_bundle_items.last_dialed_at",
+    "v_readymode_lead_quality.last_dialed_at",
+    "v_sellable_client_leads.last_dialed_at"
    ],
    "body_literals": [
     "A",
     "B",
     "C",
     "D",
-    "Do Not Call",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dnc",
+    "do_not_call",
+    "import_review_required",
+    "last_caller",
+    "next_action",
     "pos",
-    "public"
+    "public",
+    "replaced_phone10",
+    "true_dnc"
    ]
   },
   "my_lead_bundles.last_disposition": {
    "candidates": [
-    "lead_bundle_items.last_disposition"
+    "client_leads.last_disposition",
+    "lead_bundle_items.last_disposition",
+    "v_readymode_lead_quality.last_disposition",
+    "v_sellable_client_leads.last_disposition"
    ],
    "body_literals": [
     "A",
     "B",
     "C",
     "D",
-    "Do Not Call",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dnc",
+    "do_not_call",
+    "import_review_required",
+    "last_caller",
+    "next_action",
     "pos",
-    "public"
+    "public",
+    "replaced_phone10",
+    "true_dnc"
    ]
   },
   "my_lead_bundles.last_name": {
    "candidates": [
-    "lead_bundle_items.last_name"
+    "client_leads.last_name",
+    "lead_bundle_items.last_name",
+    "mat_lead_pool.last_name",
+    "readymode_leads.last_name",
+    "v_pool_dialer.last_name",
+    "v_pool_marketing.last_name",
+    "v_pool_rewrite.last_name",
+    "v_pool_winback.last_name",
+    "v_readymode_lead_quality.last_name",
+    "v_sellable_client_leads.last_name"
    ],
    "body_literals": [
     "A",
     "B",
     "C",
     "D",
-    "Do Not Call",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dnc",
+    "do_not_call",
+    "import_review_required",
+    "last_caller",
+    "next_action",
     "pos",
-    "public"
+    "public",
+    "replaced_phone10",
+    "true_dnc"
    ]
   },
   "my_lead_bundles.phone10": {
    "candidates": [
-    "lead_bundle_items.phone10"
+    "lead_bundle_items.phone10",
+    "lead_contact_dnc.phone10",
+    "mat_lead_pool.phone10",
+    "readymode_leads.phone10",
+    "v_dialer_client_suppression.phone10",
+    "v_pool_dialer.phone10",
+    "v_pool_marketing.phone10",
+    "v_pool_rewrite.phone10",
+    "v_pool_winback.phone10",
+    "v_readymode_lead_quality.phone10",
+    "v_sellable_client_leads.phone10"
    ],
    "body_literals": [
     "A",
     "B",
     "C",
     "D",
-    "Do Not Call",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dnc",
+    "do_not_call",
+    "import_review_required",
+    "last_caller",
+    "next_action",
     "pos",
-    "public"
+    "public",
+    "replaced_phone10",
+    "true_dnc"
    ]
   },
   "my_lead_bundles.quality_reason": {
    "candidates": [
-    "lead_bundle_items.quality_reason"
+    "lead_bundle_items.quality_reason",
+    "v_readymode_lead_quality.quality_reason"
    ],
    "body_literals": [
     "A",
     "B",
     "C",
     "D",
-    "Do Not Call",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dnc",
+    "do_not_call",
+    "import_review_required",
+    "last_caller",
+    "next_action",
     "pos",
-    "public"
+    "public",
+    "replaced_phone10",
+    "true_dnc"
    ]
   },
   "my_lead_bundles.quality_tier": {
    "candidates": [
-    "lead_bundle_items.quality_tier"
+    "lead_bundle_items.quality_tier",
+    "v_readymode_lead_quality.quality_tier"
    ],
    "body_literals": [
     "A",
     "B",
     "C",
     "D",
-    "Do Not Call",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dnc",
+    "do_not_call",
+    "import_review_required",
+    "last_caller",
+    "next_action",
     "pos",
-    "public"
+    "public",
+    "replaced_phone10",
+    "true_dnc"
    ]
   },
   "my_lead_bundles.state": {
    "candidates": [
-    "lead_bundle_items.state"
+    "client_leads.state",
+    "lead_bundle_items.state",
+    "mat_lead_pool.state",
+    "readymode_leads.state",
+    "us_area_codes.state",
+    "v_pool_dialer.state",
+    "v_pool_marketing.state",
+    "v_pool_rewrite.state",
+    "v_pool_winback.state",
+    "v_sellable_client_leads.state"
    ],
    "body_literals": [
     "A",
     "B",
     "C",
     "D",
-    "Do Not Call",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dnc",
+    "do_not_call",
+    "import_review_required",
+    "last_caller",
+    "next_action",
     "pos",
-    "public"
+    "public",
+    "replaced_phone10",
+    "true_dnc"
    ]
   },
   "my_lead_bundles.status": {
    "candidates": [
-    "lead_bundle_items.status"
+    "client_leads.status",
+    "deals.status",
+    "lead_bundle_items.status",
+    "readymode_booking_packets.status"
    ],
    "body_literals": [
     "A",
     "B",
     "C",
     "D",
-    "Do Not Call",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dnc",
+    "do_not_call",
+    "import_review_required",
+    "last_caller",
+    "next_action",
     "pos",
-    "public"
+    "public",
+    "replaced_phone10",
+    "true_dnc"
    ]
   },
   "my_lead_bundles.status_at": {
@@ -17373,9 +18824,18 @@
     "B",
     "C",
     "D",
-    "Do Not Call",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dnc",
+    "do_not_call",
+    "import_review_required",
+    "last_caller",
+    "next_action",
     "pos",
-    "public"
+    "public",
+    "replaced_phone10",
+    "true_dnc"
    ]
   },
   "my_lead_bundles.status_note": {
@@ -17387,9 +18847,18 @@
     "B",
     "C",
     "D",
-    "Do Not Call",
+    "blocked",
+    "callback_at",
+    "current_client",
+    "dnc",
+    "do_not_call",
+    "import_review_required",
+    "last_caller",
+    "next_action",
     "pos",
-    "public"
+    "public",
+    "replaced_phone10",
+    "true_dnc"
    ]
   },
   "my_onboarding_integrity.added_on": {
@@ -21223,389 +22692,101 @@
    ]
   },
   "sellable_pool.age": {
-   "candidates": [
-    "client_leads.age",
-    "lead_bundle_items.age",
-    "mat_lead_pool.age",
-    "readymode_leads.age",
-    "v_pool_dialer.age",
-    "v_pool_marketing.age",
-    "v_pool_rewrite.age",
-    "v_pool_winback.age",
-    "v_sellable_client_leads.age"
-   ],
+   "candidates": [],
    "body_literals": [
-    "array",
-    "campaigns",
-    "dialer",
-    "marketing",
-    "max_age",
-    "max_lead_age_days",
-    "min_age",
-    "public",
-    "require_flags",
-    "rewrite",
-    "states",
-    "tiers",
-    "vantage",
-    "vantage_only",
-    "winback"
+    "blocked",
+    "public"
    ]
   },
   "sellable_pool.already_sold": {
    "candidates": [],
    "body_literals": [
-    "array",
-    "campaigns",
-    "dialer",
-    "marketing",
-    "max_age",
-    "max_lead_age_days",
-    "min_age",
-    "public",
-    "require_flags",
-    "rewrite",
-    "states",
-    "tiers",
-    "vantage",
-    "vantage_only",
-    "winback"
+    "blocked",
+    "public"
    ]
   },
   "sellable_pool.email": {
-   "candidates": [
-    "client_leads.email",
-    "lead_bundle_items.email",
-    "mat_lead_pool.email",
-    "readymode_leads.email",
-    "v_pool_dialer.email",
-    "v_pool_marketing.email",
-    "v_pool_rewrite.email",
-    "v_pool_winback.email",
-    "v_readymode_lead_quality.email",
-    "v_sellable_client_leads.email"
-   ],
+   "candidates": [],
    "body_literals": [
-    "array",
-    "campaigns",
-    "dialer",
-    "marketing",
-    "max_age",
-    "max_lead_age_days",
-    "min_age",
-    "public",
-    "require_flags",
-    "rewrite",
-    "states",
-    "tiers",
-    "vantage",
-    "vantage_only",
-    "winback"
+    "blocked",
+    "public"
    ]
   },
   "sellable_pool.first_name": {
-   "candidates": [
-    "client_leads.first_name",
-    "lead_bundle_items.first_name",
-    "mat_lead_pool.first_name",
-    "readymode_leads.first_name",
-    "v_pool_dialer.first_name",
-    "v_pool_marketing.first_name",
-    "v_pool_rewrite.first_name",
-    "v_pool_winback.first_name",
-    "v_readymode_lead_quality.first_name",
-    "v_sellable_client_leads.first_name"
-   ],
+   "candidates": [],
    "body_literals": [
-    "array",
-    "campaigns",
-    "dialer",
-    "marketing",
-    "max_age",
-    "max_lead_age_days",
-    "min_age",
-    "public",
-    "require_flags",
-    "rewrite",
-    "states",
-    "tiers",
-    "vantage",
-    "vantage_only",
-    "winback"
+    "blocked",
+    "public"
    ]
   },
   "sellable_pool.flags": {
-   "candidates": [
-    "mat_lead_pool.flags",
-    "v_pool_dialer.flags",
-    "v_pool_marketing.flags",
-    "v_pool_rewrite.flags",
-    "v_pool_winback.flags"
-   ],
+   "candidates": [],
    "body_literals": [
-    "array",
-    "campaigns",
-    "dialer",
-    "marketing",
-    "max_age",
-    "max_lead_age_days",
-    "min_age",
-    "public",
-    "require_flags",
-    "rewrite",
-    "states",
-    "tiers",
-    "vantage",
-    "vantage_only",
-    "winback"
+    "blocked",
+    "public"
    ]
   },
   "sellable_pool.in_bundle": {
    "candidates": [],
    "body_literals": [
-    "array",
-    "campaigns",
-    "dialer",
-    "marketing",
-    "max_age",
-    "max_lead_age_days",
-    "min_age",
-    "public",
-    "require_flags",
-    "rewrite",
-    "states",
-    "tiers",
-    "vantage",
-    "vantage_only",
-    "winback"
+    "blocked",
+    "public"
    ]
   },
   "sellable_pool.last_name": {
-   "candidates": [
-    "client_leads.last_name",
-    "lead_bundle_items.last_name",
-    "mat_lead_pool.last_name",
-    "readymode_leads.last_name",
-    "v_pool_dialer.last_name",
-    "v_pool_marketing.last_name",
-    "v_pool_rewrite.last_name",
-    "v_pool_winback.last_name",
-    "v_readymode_lead_quality.last_name",
-    "v_sellable_client_leads.last_name"
-   ],
+   "candidates": [],
    "body_literals": [
-    "array",
-    "campaigns",
-    "dialer",
-    "marketing",
-    "max_age",
-    "max_lead_age_days",
-    "min_age",
-    "public",
-    "require_flags",
-    "rewrite",
-    "states",
-    "tiers",
-    "vantage",
-    "vantage_only",
-    "winback"
+    "blocked",
+    "public"
    ]
   },
   "sellable_pool.lead_age_days": {
-   "candidates": [
-    "mat_lead_pool.lead_age_days",
-    "v_pool_dialer.lead_age_days",
-    "v_pool_marketing.lead_age_days",
-    "v_pool_rewrite.lead_age_days",
-    "v_pool_winback.lead_age_days",
-    "v_sellable_client_leads.lead_age_days"
-   ],
+   "candidates": [],
    "body_literals": [
-    "array",
-    "campaigns",
-    "dialer",
-    "marketing",
-    "max_age",
-    "max_lead_age_days",
-    "min_age",
-    "public",
-    "require_flags",
-    "rewrite",
-    "states",
-    "tiers",
-    "vantage",
-    "vantage_only",
-    "winback"
+    "blocked",
+    "public"
    ]
   },
   "sellable_pool.lead_id": {
-   "candidates": [
-    "lead_bundle_items.lead_id",
-    "lead_resale_ledger.lead_id",
-    "mat_lead_pool.lead_id",
-    "v_pool_dialer.lead_id",
-    "v_pool_marketing.lead_id",
-    "v_pool_rewrite.lead_id",
-    "v_pool_winback.lead_id",
-    "v_sellable_client_leads.lead_id"
-   ],
+   "candidates": [],
    "body_literals": [
-    "array",
-    "campaigns",
-    "dialer",
-    "marketing",
-    "max_age",
-    "max_lead_age_days",
-    "min_age",
-    "public",
-    "require_flags",
-    "rewrite",
-    "states",
-    "tiers",
-    "vantage",
-    "vantage_only",
-    "winback"
+    "blocked",
+    "public"
    ]
   },
   "sellable_pool.phone10": {
-   "candidates": [
-    "lead_bundle_items.phone10",
-    "lead_resale_ledger.phone10",
-    "mat_lead_pool.phone10",
-    "readymode_leads.phone10",
-    "v_dialer_client_suppression.phone10",
-    "v_pool_dialer.phone10",
-    "v_pool_marketing.phone10",
-    "v_pool_rewrite.phone10",
-    "v_pool_winback.phone10",
-    "v_readymode_lead_quality.phone10",
-    "v_sellable_client_leads.phone10"
-   ],
+   "candidates": [],
    "body_literals": [
-    "array",
-    "campaigns",
-    "dialer",
-    "marketing",
-    "max_age",
-    "max_lead_age_days",
-    "min_age",
-    "public",
-    "require_flags",
-    "rewrite",
-    "states",
-    "tiers",
-    "vantage",
-    "vantage_only",
-    "winback"
+    "blocked",
+    "public"
    ]
   },
   "sellable_pool.state": {
-   "candidates": [
-    "client_leads.state",
-    "lead_bundle_items.state",
-    "mat_lead_pool.state",
-    "readymode_leads.state",
-    "us_area_codes.state",
-    "v_pool_dialer.state",
-    "v_pool_marketing.state",
-    "v_pool_rewrite.state",
-    "v_pool_winback.state",
-    "v_sellable_client_leads.state"
-   ],
+   "candidates": [],
    "body_literals": [
-    "array",
-    "campaigns",
-    "dialer",
-    "marketing",
-    "max_age",
-    "max_lead_age_days",
-    "min_age",
-    "public",
-    "require_flags",
-    "rewrite",
-    "states",
-    "tiers",
-    "vantage",
-    "vantage_only",
-    "winback"
+    "blocked",
+    "public"
    ]
   },
   "sellable_pool.tags": {
-   "candidates": [
-    "mat_lead_pool.tags",
-    "v_pool_dialer.tags",
-    "v_pool_marketing.tags",
-    "v_pool_rewrite.tags",
-    "v_pool_winback.tags"
-   ],
+   "candidates": [],
    "body_literals": [
-    "array",
-    "campaigns",
-    "dialer",
-    "marketing",
-    "max_age",
-    "max_lead_age_days",
-    "min_age",
-    "public",
-    "require_flags",
-    "rewrite",
-    "states",
-    "tiers",
-    "vantage",
-    "vantage_only",
-    "winback"
+    "blocked",
+    "public"
    ]
   },
   "sellable_pool.tier": {
-   "candidates": [
-    "mat_lead_pool.tier",
-    "v_pool_dialer.tier",
-    "v_pool_marketing.tier",
-    "v_pool_rewrite.tier",
-    "v_pool_winback.tier"
-   ],
+   "candidates": [],
    "body_literals": [
-    "array",
-    "campaigns",
-    "dialer",
-    "marketing",
-    "max_age",
-    "max_lead_age_days",
-    "min_age",
-    "public",
-    "require_flags",
-    "rewrite",
-    "states",
-    "tiers",
-    "vantage",
-    "vantage_only",
-    "winback"
+    "blocked",
+    "public"
    ]
   },
   "sellable_pool.under_9mo": {
-   "candidates": [
-    "mat_lead_pool.under_9mo",
-    "v_pool_dialer.under_9mo",
-    "v_pool_marketing.under_9mo",
-    "v_pool_rewrite.under_9mo",
-    "v_pool_winback.under_9mo"
-   ],
+   "candidates": [],
    "body_literals": [
-    "array",
-    "campaigns",
-    "dialer",
-    "marketing",
-    "max_age",
-    "max_lead_age_days",
-    "min_age",
-    "public",
-    "require_flags",
-    "rewrite",
-    "states",
-    "tiers",
-    "vantage",
-    "vantage_only",
-    "winback"
+    "blocked",
+    "public"
    ]
   },
   "slack_outbox_emitters.event_type": {
@@ -22068,38 +23249,6 @@
   "zz_probe.n": {
    "candidates": [],
    "body_literals": []
-  }
- },
- "_migration_contract_additions": {
-  "migrations": [
-   "20261124110000",
-   "20261124120000",
-   "20261124121000",
-   "20261124131000",
-   "20261124140000"
-  ],
-  "verification": "Return types from authored migrations executed in isolated PostgreSQL fixtures; live catalog timestamp above remains unchanged.",
-  "functions": {
-   "cc_record_interview_disposition": "jsonb",
-   "cc_undo_interview_disposition": "jsonb",
-   "lead_bundle_followup_set": "jsonb",
-   "my_lead_source_history": "jsonb",
-   "producer_client_calls": "jsonb",
-   "producer_month_workspace": "jsonb",
-   "producer_save_client_transcript": "uuid",
-   "producer_set_work_schedule": "jsonb",
-   "producer_tag_client_call": "void",
-   "consumer_lead_import": "jsonb",
-   "consumer_import_history": "jsonb",
-   "consumer_import_review": "jsonb"
-  }
- },
- "_declared_migration_contracts": {
-  "production_policy_cohort": {
-   "migration": "20261125100000_producer_status_and_run_rate.sql",
-   "return_type": "jsonb",
-   "named_output_columns": false,
-   "source": "Exact authored migration signature; validate against deployed pg_proc after application."
   }
  }
 }

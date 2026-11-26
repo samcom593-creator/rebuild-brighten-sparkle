@@ -5,15 +5,17 @@
 // current agent's licensed footprint. Highlights the current agent's row so
 // they know where they stand in their actual market, not just agency-wide.
 //
-// UpcomingChargebackCard — pulls v_agent_charge_rollup for the current
-// agent. Zero charges + zero flagged = green "clean ledger" callout. Anything
-// > 0 surfaces the count, dollars, and last_charged_at + a link to the
-// charges-audit page (admin-only). Aimed at giving the agent a heads-up
-// before a chargeback hits commissions instead of finding out on a payout
-// statement.
+// UpcomingChargebackCard — the agent's CARRIER chargebacks from
+// carrier_book_chargebacks (imported carrier statements; RLS lets an agent read
+// their own rows and their downline's). MP-PROJ-INP-TRUTH (2026-11-25) moved it
+// here from v_agent_charge_rollup, which (a) was Stripe lead/card CHARGES billed
+// to the agent, not chargebacks, and (b) is gated WHERE is_owner(), so for every
+// non-owner it returned zero rows and the card printed "Clean — no flags" while
+// 10 agents carried 57 chargebacks / $15,699 in the carrier table, five of them
+// at Foresters' FINAL collection stage. A card that could only ever be green was
+// the 465-row fake-success disease on a money surface.
 
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -161,46 +163,54 @@ export function RegionPeerCard({ agentId }: { agentId: string | null }) {
   );
 }
 
-interface ChargeRollupRow {
-  agent_id: string;
-  total_charges: number;
-  flagged_charges: number;
-  duplicate_charges: number;
-  total_billed_usd: number | string;
-  duplicate_amount_usd: number | string;
-  last_charged_at: string | null;
+interface CarrierChargebackRow {
+  carrier: string | null;
+  policy_number: string | null;
+  amount: number | string | null;
+  chargeback_on: string | null;
+  status: string | null;
+  reason: string | null;
 }
 
+const fmtDate = (iso: string | null | undefined) =>
+  iso ? new Date(`${iso.slice(0, 10)}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—";
+
+/** "paid_to:Samuel James" is how the import records a chargeback applied to a statement. */
+const chargebackStatusLabel = (status: string | null) => {
+  if (!status) return "status not on file";
+  if (status.startsWith("paid_to:")) return `applied to ${status.slice("paid_to:".length).trim() || "a statement"}`;
+  return status;
+};
+
 export function UpcomingChargebackCard({ agentId }: { agentId: string | null }) {
-  const { data, isLoading, isError, refetch } = useQuery<ChargeRollupRow | null>({
-    queryKey: ["agent-charge-rollup", agentId],
+  const { data, isLoading, isError, refetch } = useQuery<CarrierChargebackRow[]>({
+    queryKey: ["agent-carrier-chargebacks", agentId],
     enabled: !!agentId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_agent_charge_rollup" as any)
-        .select("agent_id, total_charges, flagged_charges, duplicate_charges, total_billed_usd, duplicate_amount_usd, last_charged_at")
+        .from("carrier_book_chargebacks" as any)
+        .select("carrier, policy_number, amount, chargeback_on, status, reason")
         .eq("agent_id", agentId!)
-        .maybeSingle();
+        .order("chargeback_on", { ascending: false })
+        .limit(200);
       if (error) throw error;
-      return data as unknown as ChargeRollupRow | null;
+      return (data ?? []) as unknown as CarrierChargebackRow[];
     },
     staleTime: 5 * 60_000,
   });
 
-  // A dead v_agent_charge_rollup read makes `data` undefined, which `isClean`
-  // below reads as "no charges on file" → a confident green "Clean — no flags".
-  // That is a money lie: an agent's chargebacks hit their commissions, and a
-  // dead feed is NOT a clean ledger. Gate the whole card on isError FIRST so a
-  // feed error never renders as a clean record.
+  // A dead read makes `data` undefined, which an "empty means clean" branch would
+  // render as a confident green card. That is a money lie: carrier chargebacks hit
+  // commissions, and a dead feed is NOT a clean record. Gate on isError FIRST.
   if (isError) {
     return (
       <GlassCard className="p-4 border-l-2 border-rose-500/60">
         <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold flex items-center gap-1.5">
-          <ShieldAlert className="h-3 w-3 text-rose-400" /> Chargeback ledger
+          <ShieldAlert className="h-3 w-3 text-rose-400" /> Carrier chargebacks
         </p>
-        <h3 className="text-lg font-bold mt-1">Ledger didn't load</h3>
+        <h3 className="text-lg font-bold mt-1">Chargebacks didn't load</h3>
         <p className="text-sm text-muted-foreground mt-2">
-          Your chargeback ledger couldn't be read right now. This is a feed error — not a clean record. Don't read it as "no chargebacks."
+          Your carrier chargebacks couldn't be read right now. This is a feed error — not a clean record. Don't read it as "no chargebacks."
           <button type="button" onClick={() => refetch()} className="underline underline-offset-2 ml-1 hover:text-foreground">
             Retry
           </button>
@@ -209,70 +219,61 @@ export function UpcomingChargebackCard({ agentId }: { agentId: string | null }) 
     );
   }
 
-  const billed = Number(data?.total_billed_usd ?? 0);
-  const flagged = Number(data?.flagged_charges ?? 0);
-  const dupes = Number(data?.duplicate_charges ?? 0);
-  const isClean = !data || data.total_charges === 0;
-  const isWarn = flagged > 0 || dupes > 0;
+  const rows = data ?? [];
+  const total = rows.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+  const outstanding = rows.filter((r) => (r.status ?? "").toLowerCase() === "outstanding");
+  const carriers = Array.from(new Set(rows.map((r) => r.carrier).filter((c): c is string => Boolean(c))));
+  const hasRows = rows.length > 0;
 
   return (
     <GlassCard className={cn(
       "p-4 border-l-2",
-      isClean ? "border-emerald-500/60" : isWarn ? "border-rose-500/60" : "border-amber-500/60",
+      isLoading ? "border-border" : !hasRows ? "border-emerald-500/60" : outstanding.length > 0 ? "border-rose-500/60" : "border-amber-500/60",
     )}>
       <div className="flex items-start justify-between mb-3">
         <div>
           <p className="text-[12px] uppercase tracking-widest text-muted-foreground font-semibold flex items-center gap-1.5">
-            {isClean ? <ShieldCheck className="h-3 w-3 text-emerald-400" /> : <ShieldAlert className="h-3 w-3 text-rose-400" />}
-            Chargeback ledger
+            {!isLoading && !hasRows ? <ShieldCheck className="h-3 w-3 text-emerald-400" /> : <ShieldAlert className="h-3 w-3 text-rose-400" />}
+            Carrier chargebacks
           </p>
           <h3 className="text-lg font-bold">
-            {isClean ? "Clean — no flags" : isWarn ? `${flagged + dupes} at-risk charge${flagged + dupes === 1 ? "" : "s"}` : `${data?.total_charges ?? 0} charge${data?.total_charges === 1 ? "" : "s"} on file`}
+            {isLoading ? "Reading carrier statements…" : !hasRows ? "None on file" : `${rows.length} chargeback${rows.length === 1 ? "" : "s"} · ${fmtUsdCompact(total)}`}
           </h3>
         </div>
       </div>
 
       {isLoading ? (
         <div className="space-y-2"><Skeleton className="h-4 w-3/4" /><Skeleton className="h-4 w-1/2" /></div>
-      ) : isClean ? (
+      ) : !hasRows ? (
         <p className="text-sm text-muted-foreground">
-          No chargebacks or duplicate-charge flags against you. Keep producing clean policies — Galaxy's chargeback rate is your protection.
+          No carrier chargebacks are recorded against your agent record in the carrier statements on file. This reads the imported statements, not a live carrier feed; a chargeback a carrier has not yet reported, or one filed under a different agent record, will not show here.
         </p>
       ) : (
         <dl className="grid grid-cols-2 gap-2 text-sm">
           <div>
-            <dt className="text-[11px] uppercase text-muted-foreground">Total charges</dt>
-            <dd className="font-semibold tabular-nums">{data?.total_charges ?? 0}</dd>
+            <dt className="text-[11px] uppercase text-muted-foreground">Charged back</dt>
+            <dd className="font-semibold tabular-nums">{fmtUsdCompact(total)}</dd>
           </div>
           <div>
-            <dt className="text-[11px] uppercase text-muted-foreground">Billed total</dt>
-            <dd className="font-semibold tabular-nums">{fmtUsdCompact(billed)}</dd>
+            <dt className="text-[11px] uppercase text-muted-foreground">Carriers</dt>
+            <dd className="font-semibold">{carriers.length ? carriers.join(", ") : "not on file"}</dd>
           </div>
-          {flagged > 0 && (
+          {outstanding.length > 0 && (
             <div className="col-span-2 rounded border border-rose-500/30 bg-rose-500/5 p-2">
-              <dt className="text-[11px] uppercase text-rose-400">Flagged at risk</dt>
-              <dd className="font-semibold tabular-nums text-rose-300">{flagged} · review with your manager</dd>
-            </div>
-          )}
-          {dupes > 0 && (
-            <div className="col-span-2 rounded border border-amber-500/30 bg-amber-500/5 p-2">
-              <dt className="text-[11px] uppercase text-amber-400">Duplicate charges</dt>
-              <dd className="font-semibold tabular-nums text-amber-200">{dupes} · {fmtUsdCompact(Number(data?.duplicate_amount_usd ?? 0))}</dd>
-            </div>
-          )}
-          {data?.last_charged_at && (
-            <div className="col-span-2">
-              <dt className="text-[11px] uppercase text-muted-foreground">Last charge</dt>
-              <dd className="text-sm text-muted-foreground tabular-nums">
-                {new Date(data.last_charged_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+              <dt className="text-[11px] uppercase text-rose-400">Outstanding</dt>
+              <dd className="font-semibold tabular-nums text-rose-300">
+                {outstanding.length} · {fmtUsdCompact(outstanding.reduce((s, r) => s + (Number(r.amount) || 0), 0))} · settle with the carrier or your manager
               </dd>
             </div>
           )}
+          <div className="col-span-2">
+            <dt className="text-[11px] uppercase text-muted-foreground">Most recent</dt>
+            <dd className="text-sm text-muted-foreground tabular-nums">
+              {fmtDate(rows[0]?.chargeback_on)}{rows[0]?.carrier ? ` · ${rows[0].carrier}` : ""}{rows[0]?.policy_number ? ` · #${rows[0].policy_number}` : ""} · {chargebackStatusLabel(rows[0]?.status ?? null)}
+            </dd>
+          </div>
         </dl>
       )}
-
-      {/* v24 Phase 13: /dashboard/charges-audit page deleted (orphaned).
-          Once a replacement ledger exists this CTA can be re-pointed. */}
     </GlassCard>
   );
 }

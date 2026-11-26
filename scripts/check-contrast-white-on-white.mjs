@@ -240,7 +240,7 @@ const count = allViolations.reduce((n, f) => n + f.v.length, 0);
 // RecruiterDashboard, AwardGraphics, TeamChat, Plaque,
 // PerformanceDashboardSection, MyRankingChart, ContentLibrary) — real but
 // lower-$ dark-default surfaces, paid down in later passes.
-const BASELINE = 14;
+const BASELINE = 13;
 
 if (count <= BASELINE) {
   const delta = BASELINE - count;

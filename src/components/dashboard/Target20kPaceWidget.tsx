@@ -29,16 +29,23 @@ type Row = {
     | "hit_20k"
     | "on_pace_20k"
     | "below_pace"
+    | "pace_unavailable"
     | "new_hire_grace"
     | "zero_mtd";
 };
 
+// MP-PROJ-INP-TRUTH (2026-11-25): the view now projects with fn_pace_projection,
+// the same completed-Phoenix-day run rate the production scoreboard uses, and
+// returns NULL (pace_unavailable) until three completed days carry production.
+// Before this it divided MTD by the partial UTC day with no guard, so on the 1st
+// of a month one $1,500 deal read as a $46,500 month.
 const VERDICT_STYLE: Record<Row["pace_verdict"], { label: string; cls: string }> = {
-  hit_20k:        { label: "Hit $20K",     cls: "bg-tone-good/10 text-tone-good border-tone-good/35" },
-  on_pace_20k:    { label: "On pace",      cls: "bg-tone-cool/10 text-tone-cool border-tone-cool/35" },
-  below_pace:     { label: "Below pace",   cls: "bg-tone-warm/10 text-tone-warm border-tone-warm/35" },
-  new_hire_grace: { label: "New · 30 days", cls: "bg-muted text-muted-foreground border-border" },
-  zero_mtd:       { label: "No ALP yet",  cls: "bg-muted text-muted-foreground border-border" },
+  hit_20k:          { label: "Hit $20K",     cls: "bg-tone-good/10 text-tone-good border-tone-good/35" },
+  on_pace_20k:      { label: "On pace",      cls: "bg-tone-cool/10 text-tone-cool border-tone-cool/35" },
+  below_pace:       { label: "Below pace",   cls: "bg-tone-warm/10 text-tone-warm border-tone-warm/35" },
+  pace_unavailable: { label: "Pace after 3 sale days", cls: "bg-muted text-muted-foreground border-border" },
+  new_hire_grace:   { label: "New · 30 days", cls: "bg-muted text-muted-foreground border-border" },
+  zero_mtd:         { label: "No ALP yet",  cls: "bg-muted text-muted-foreground border-border" },
 };
 
 const fmtMoney = (n: number | null | undefined) => n != null && Number.isFinite(n)
@@ -167,7 +174,7 @@ export function Target20kBoardView({ rows, isDemo = false }: { rows: readonly Ro
                       <div><dt>ALP missing policy numbers</dt><dd>{fmtMoney(r.ap_at_risk_mtd)}</dd></div>
                       <div><dt>Deals missing policy numbers</dt><dd>{fmtCount(r.deals_no_policy_mtd)}</dd></div>
                     </dl>
-                    <p className="money-board__note">Projection is an estimate at the current pace. Missing policy numbers do not establish a loss.</p>
+                    <p className="money-board__note">Projection = posted ALP through yesterday ÷ completed Phoenix days × days in the month, at least current MTD; it needs three completed days with production and matches the production scoreboard. Missing policy numbers do not establish a loss.</p>
                   </details>
                 </li>
               );
@@ -175,7 +182,7 @@ export function Target20kBoardView({ rows, isDemo = false }: { rows: readonly Ro
           </ol>
           {rows.length === 0 && <p className="money-board__empty">No production data yet for this month.</p>}
         </div>
-        <p className="money-board__footnote">Current-month posted ALP · up to 100 agents shown · annualized premium, not income.</p>
+        <p className="money-board__footnote">Current Phoenix month · posted ALP from the same production truth as the scoreboard · up to 100 agents shown · annualized premium, not income.</p>
       </CardContent>
     </Card>
   );

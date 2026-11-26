@@ -2,10 +2,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { handlePersonalTaskCreate } from "./handler.ts";
 
 Deno.serve((req) => {
-  let userClient: ReturnType<typeof createClient> | null = null;
-  const caller = () => userClient ??= createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+  const createCaller = () => createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
     global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } }, auth: { persistSession: false },
   });
+  let userClient: ReturnType<typeof createCaller> | null = null;
+  const caller = () => userClient ??= createCaller();
   return handlePersonalTaskCreate(req, {
     getUser: async () => {
       const { data, error } = await caller().auth.getUser();

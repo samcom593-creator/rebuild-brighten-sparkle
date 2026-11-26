@@ -1,0 +1,30 @@
+name: Read recruiting link schema fingerprints
+on:
+  push:
+    branches: [codex/galaxy-link-schema-readback-20261126]
+    paths:
+      - .github/workflows/recruiting-link-schema-readback.yml
+      - scripts/read-recruiting-link-metadata.mjs
+permissions:
+  contents: read
+jobs:
+  link-schema:
+    if: github.repository == 'samcom593-creator/rebuild-brighten-sparkle' && github.ref == 'refs/heads/codex/galaxy-link-schema-readback-20261126'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Record the exact release parent
+        run: echo "RELEASE_SHA=$(git rev-parse HEAD^)" >> "$GITHUB_ENV"
+      - name: Verify fixed query and metadata validation
+        run: node scripts/read-recruiting-link-metadata.mjs --selftest
+      - name: Read only the two link contracts and migration receipt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: node scripts/read-recruiting-link-metadata.mjs

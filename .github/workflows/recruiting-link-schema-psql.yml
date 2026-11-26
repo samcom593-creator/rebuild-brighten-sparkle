@@ -1,0 +1,36 @@
+name: Read recruiting link schema through deployment pooler
+on:
+  push:
+    branches: [codex/galaxy-link-schema-psql-20261126]
+    paths:
+      - .github/workflows/recruiting-link-schema-psql.yml
+      - scripts/read-recruiting-link-metadata-psql.mjs
+permissions:
+  contents: read
+jobs:
+  link-schema:
+    if: github.repository == 'samcom593-creator/rebuild-brighten-sparkle' && github.ref == 'refs/heads/codex/galaxy-link-schema-psql-20261126'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - name: Require the preinstalled read client
+        run: |
+          if ! command -v psql >/dev/null 2>&1; then
+            echo "RECRUITING_LINK_SCHEMA_UNAVAILABLE: psql is unavailable"
+            exit 3
+          fi
+      - name: Record the exact release parent
+        run: |
+          readback_release_sha="$(git rev-parse HEAD^)"
+          test "$readback_release_sha" = "cee9cbacf93440dc96df9a04137fee32694fb95f"
+          echo "RELEASE_SHA=$readback_release_sha" >> "$GITHUB_ENV"
+      - name: Verify fixed query, session bounds, and metadata validation
+        run: node scripts/read-recruiting-link-metadata-psql.mjs --selftest
+      - name: Read only the two link contracts and migration receipt
+        env:
+          PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: node scripts/read-recruiting-link-metadata-psql.mjs

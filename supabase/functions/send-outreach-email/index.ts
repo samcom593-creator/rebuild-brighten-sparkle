@@ -4,6 +4,7 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
 import { DEPARTED_AGENT_COLUMNS, isBannedUser, isDepartedAgent } from "../_shared/departed.ts";
 import { APP_ORIGIN, SCHEDULING_LINKS, buildBookingUrl, statusPageUrl } from "../_shared/scheduling-links.ts";
+import { humanize } from "../_shared/humanize.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -843,8 +844,12 @@ const handler = async (req: Request): Promise<Response> => {
       from: "Galaxy Financial <notifications@galaxyfinancial.org>",
       to: [recipientEmail],
       cc: ccList.length > 0 ? ccList : undefined,
-      subject,
-      html,
+      // De-AI-ify right before send (same net the morning/weekly/evening reports use):
+      // this prospect-facing function rendered raw em-dashes straight into cold-outreach
+      // subjects + bodies and never stripped them. humanize() is idempotent + also cleans
+      // admin-typed customSubject/customBody. WIB MP-WIB-EDGE-EMAIL-AITELL 2026-11-26.
+      subject: humanize(subject),
+      html: humanize(html),
     });
 
     if (emailError) {

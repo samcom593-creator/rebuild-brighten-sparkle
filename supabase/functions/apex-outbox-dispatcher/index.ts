@@ -16,7 +16,11 @@ import {
 import { emailPattern } from "../_shared/like-escape.ts";
 import { resolveOne } from "../_shared/resolve-one.ts";
 import { renderSlackEventText } from "./slack-event-templates.ts";
+import { renderHireEmail } from "./hire-email-template.ts";
 import { nanpRefusalReason, nanpTenDigits } from "../_shared/nanp-phone.ts";
+import { DEPARTED_AGENT_COLUMNS, isDepartedAgent } from "../_shared/departed.ts";
+import { dropOwnerMuted, loadOwnerMute } from "../_shared/owner-mute.ts";
+import { RECRUIT_REPLY_TO } from "../_shared/reply-to.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -996,6 +1000,111 @@ async function deliverContractingIntake(sb: any, event: any): Promise<DispatchRe
   };
 }
 
+// ── Hire alert email ─────────────────────────────────────────────────────────
+//
+// MP-HIRE-CELEBRATION (2026-11-26): the third leg of agent.hired beside Slack
+// (live) and Discord (retired behind discord_notifications_paused since WP7).
+// fn_notify_agent_hired enqueues one row per hire with destination 'email'.
+// Recipients are resolved HERE, at send time, never written into the payload:
+// the outbox is the redacted record, and a manager who departed between the
+// hire and the send must be skipped on the day of the send (departed.ts).
+//
+// Recipients: the owner inbox (system_settings hire_alert_email_to, else
+// owner_overview_to, else the one inbox that exists) + the recruiting manager
+// (invited_by first, then manager_id — the same precedence the Slack line
+// uses). email_unsubscribes and the owner mute policy are honoured; a hire that
+// is no longer active by the time the row is claimed is NOT mailed.
+const HIRE_ALERT_OWNER_SETTING_KEYS = ["hire_alert_email_to", "owner_overview_to"] as const;
+// The only live inbox (reply-to.ts); the same owner address 10 other senders use.
+const HIRE_ALERT_OWNER_FALLBACK = RECRUIT_REPLY_TO;
+
+async function isEmailOptedOut(sb: any, email: string): Promise<boolean> {
+  // Escaped pattern match, like deliverContact: an address containing "_" must
+  // not match a different person's opt-out, and "%" must not match every row.
+  const optOut = await resolveOne<{ id: string }>(
+    sb.from("email_unsubscribes").select("id").ilike("email", emailPattern(email)),
+    { label: `email_unsubscribes.email=${email}` },
+  );
+  return Boolean(optOut.row);
+}
+
+async function deliverHireEmail(sb: any, event: any): Promise<DispatchResult> {
+  const { data: hired, error } = await sb
+    .from("agents")
+    .select("id, display_name, agent_code, license_status, onboarding_stage, manager_id, invited_by_manager_id, status, is_deactivated, is_inactive")
+    .eq("id", event.aggregate_id)
+    .maybeSingle();
+  if (error) throw error;
+  if (!hired) {
+    return { state: "manual_action_required", manualReason: "Hired agent row no longer exists; hire email not sent" };
+  }
+  if (hired.status !== "active" || hired.is_deactivated === true || hired.is_inactive === true) {
+    return {
+      state: "manual_action_required",
+      manualReason: `Agent is no longer an active hire (status ${String(hired.status)}); hire email not sent`,
+    };
+  }
+
+  let managerEmail: string | null = null;
+  for (const managerId of [hired.invited_by_manager_id, hired.manager_id]) {
+    if (!managerId) continue;
+    const { data: manager, error: managerError } = await sb
+      .from("agents").select(DEPARTED_AGENT_COLUMNS).eq("id", managerId).maybeSingle();
+    if (managerError) throw managerError;
+    if (isDepartedAgent(manager) || !manager?.user_id) continue;
+    // profiles.user_id carries no unique index (MP-275): resolve, never maybeSingle.
+    const profile = await resolveOne<{ email: string | null }>(
+      sb.from("profiles").select("email").eq("user_id", manager.user_id),
+      { label: `profiles.user_id=${manager.user_id}` },
+    );
+    const email = String(profile.row?.email ?? "").trim().toLowerCase();
+    if (email.includes("@")) managerEmail = email;
+    break;
+  }
+
+  let ownerEmail: string | null = null;
+  for (const key of HIRE_ALERT_OWNER_SETTING_KEYS) {
+    const value = String((await readSetting(sb, key)) ?? "").trim().toLowerCase();
+    if (value.includes("@")) { ownerEmail = value; break; }
+  }
+  ownerEmail ??= HIRE_ALERT_OWNER_FALLBACK;
+
+  const payload = (event.payload ?? {}) as Record<string, unknown>;
+  // The live row wins for the hire's own facts; the payload supplies the
+  // recruiter's name and the links fn_notify_agent_hired built.
+  const rendered = renderHireEmail({
+    ...payload,
+    agentName: hired.display_name ?? payload.agentName,
+    agentCode: hired.agent_code ?? payload.agentCode,
+    licenseStatus: hired.license_status ?? payload.licenseStatus,
+    onboardingStage: hired.onboarding_stage ?? payload.onboardingStage,
+  });
+
+  const wanted = [...new Set([ownerEmail, managerEmail].filter((value): value is string => Boolean(value)))];
+  const unmuted = dropOwnerMuted(await loadOwnerMute(), wanted, rendered.subject);
+  const recipients: string[] = [];
+  for (const recipient of unmuted) {
+    if (!(await isEmailOptedOut(sb, recipient))) recipients.push(recipient);
+  }
+  if (recipients.length === 0) {
+    return {
+      state: "manual_action_required",
+      manualReason: "No deliverable recipient for the hire email (owner muted this notice, or every address opted out)",
+    };
+  }
+
+  const providerMessageId = await resendEmail({
+    from: CONTACT_FROM,
+    to: recipients,
+    reply_to: RECRUIT_REPLY_TO,
+    subject: rendered.subject,
+    html: rendered.html,
+    text: rendered.text,
+    tags: [{ name: "source", value: "hire-celebration" }],
+  }, `apex-hire-${event.id}`);
+  return { state: "delivered", providerMessageId, deliveryConfirmed: true };
+}
+
 async function dispatch(sb: any, event: any): Promise<DispatchResult> {
   // MP-335: a Slack row is a Slack row regardless of aggregate. Before this,
   // contracting_intake rows were routed to the contracting handler FIRST — which
@@ -1017,6 +1126,12 @@ async function dispatch(sb: any, event: any): Promise<DispatchResult> {
   if (event.destination === "discord" || event.destination === "discord_subagency") {
     const providerMessageId = await deliverDiscord(sb, event);
     return { state: "delivered", providerMessageId, deliveryConfirmed: true };
+  }
+  // MP-HIRE-CELEBRATION: the hire email leg. Only agent.hired has an email
+  // template; any other event_type on 'email' falls through to Unsupported
+  // rather than being guessed at.
+  if (event.destination === "email" && event.event_type === "agent.hired") {
+    return await deliverHireEmail(sb, event);
   }
   if (event.destination === "application_slack_invite") {
     return await deliverApplicationSlackInvite(sb, event);

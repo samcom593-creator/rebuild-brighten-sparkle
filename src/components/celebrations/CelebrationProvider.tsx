@@ -13,10 +13,15 @@ import {
   type DealCelebrationBatch, type LocalDealReceiptDetail, type PostedDeal,
 } from "@/lib/dealCelebrations";
 import { DealCelebration } from "./DealCelebration";
+import { HireCelebrationProvider } from "./HireCelebrationProvider";
 
 type ActiveBatch = DealCelebrationBatch & { userId: string };
 
-/** One authorized native-deal stream for the authenticated shell, independent of the current route. */
+/**
+ * One authorized native-deal stream for the authenticated shell, independent of the current route.
+ * MP-HIRE-CELEBRATION: also mounts the hire stream (HireCelebrationProvider), which reuses this
+ * file's ledger, gates and suppression lease rather than forking them.
+ */
 export function CelebrationProvider() {
   const { user, isLoading } = useAuth();
   const { isPreviewing } = useRolePreview();
@@ -137,6 +142,13 @@ export function CelebrationProvider() {
     };
   }, [userId, isLoading, isPreviewing, demoMode]);
 
-  if (!active || active.userId !== userId || isPreviewing || isLoading || demoMode || suppressed) return null;
-  return <DealCelebration key={active.key} batch={active} onDismiss={() => setActive(null)} />;
+  const deal = !active || active.userId !== userId || isPreviewing || isLoading || demoMode || suppressed
+    ? null
+    : <DealCelebration key={active.key} batch={active} onDismiss={() => setActive(null)} />;
+  return (
+    <>
+      {deal}
+      <HireCelebrationProvider />
+    </>
+  );
 }

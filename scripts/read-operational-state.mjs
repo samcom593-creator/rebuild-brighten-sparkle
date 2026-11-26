@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { randomBytes, createCipheriv, publicEncrypt, constants } from 'node:crypto';
 
 const PROJECT = 'xrzweoneiieddzxogewk';
-const QUERY_FILES = { audio: 'audio.sql', finances: 'finances.sql', carrier_status: 'carrier-status.sql', production: 'production.sql', definitions: 'definitions.sql', release: 'release.sql', lead_performance: 'lead-performance.sql', task_identity: 'task-identity.sql' };
+const QUERY_FILES = { audio: 'audio.sql', finances: 'finances.sql', carrier_status: 'carrier-status.sql', production: 'production.sql', definitions: 'definitions.sql', release: 'release.sql', lead_performance: 'lead-performance.sql', task_identity: 'task-identity.sql', recruiting_links: 'recruiting-links.sql' };
 const SIGNERS = ['readymode-recording-url', 'training-recording-url', 'lead-recording-url', 'personal-task-create'];
 const AUDIO_COUNTS = [
   'dialer_calls','calls_with_provider_recording_reference','calls_linked_to_agent','calls_linked_to_application','calls_linked_to_lead',
@@ -58,6 +58,41 @@ const array = value => { if (!Array.isArray(value) || value.length > 100) throw 
 const date = value => { if (value !== null && (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value))) throw new Error('invalid aggregate date'); return value; };
 
 function sanitize(name, value) {
+  if (name === 'recruiting_links') {
+    const row = object(value);
+    for (const key of ['application_functions_executed','identity_rows_read','application_rows_read','auth_claims_changed']) {
+      if (row[key] !== false) throw new Error('invalid recruiting link metadata boundary');
+    }
+    const contracts = {
+      my_recruiting_link: 'public.my_recruiting_link()',
+      my_referral_status: 'public.my_referral_status()',
+    };
+    const source = object(row.functions);
+    if (Object.keys(source).length !== 2 || Object.keys(source).some(key => !Object.hasOwn(contracts,key))) throw new Error('unexpected recruiting link function set');
+    const functions = Object.fromEntries(Object.entries(contracts).map(([key,signature]) => {
+      const f = object(source[key]);
+      if (f.signature !== signature) throw new Error('unexpected recruiting link function signature');
+      const present = boolean(f.present);
+      const flags = Object.fromEntries(['security_definer','authenticated_execute','anon_execute','public_execute'].map(key => [key,boolean(f[key])]));
+      if (present) {
+        if (typeof f.definition !== 'string' || f.definition.length > 100000 || f.definition.includes('\u0000')
+          || !f.definition.startsWith(`CREATE OR REPLACE FUNCTION public.${key}(`)) throw new Error('invalid recruiting link function definition');
+        if (typeof f.return_type !== 'string' || f.return_type.length > 2000 || !f.return_type || f.return_type.includes('\u0000')) throw new Error('invalid recruiting link return type');
+      } else if (f.definition !== null || f.return_type !== null || f.proconfig !== null || f.volatility !== null || Object.values(flags).some(Boolean)) {
+        throw new Error('missing recruiting link function has metadata');
+      }
+      const proconfig = f.proconfig === null ? null : array(f.proconfig).map(value => {
+        if (typeof value !== 'string' || value.length > 500 || !/^(search_path|statement_timeout|lock_timeout|work_mem|jit|row_security|plan_cache_mode)=[A-Za-z0-9_ ,.$"-]+$/.test(value)) throw new Error('invalid recruiting link configuration');
+        return value;
+      });
+      return [key,{signature,present,definition:f.definition,return_type:f.return_type,proconfig,
+        ...flags,volatility:present ? enumeration(f.volatility,['i','s','v']) : null}];
+    }));
+    const migration = object(row.migration);
+    if (migration.version !== '20261125140000') throw new Error('unexpected recruiting link migration');
+    return { application_functions_executed:false,identity_rows_read:false,application_rows_read:false,auth_claims_changed:false,
+      functions,migration:{version:migration.version,recorded:boolean(migration.recorded)} };
+  }
   if (name === 'task_identity') {
     const row = object(value);
     for (const key of ['application_functions_executed','identity_rows_read','task_rows_read','auth_claims_changed']) {

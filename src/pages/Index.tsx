@@ -16,7 +16,7 @@ const Index = () => {
 
   useEffect(() => {
     const previousTitle = document.title;
-    document.title = "Galaxy Financial · Build Your Insurance Career";
+    document.title = "Galaxy Financial — Where Winning Agencies Are Built";
     const description = "Choose your path with Galaxy Financial. Explore carrier access, training, and support for licensed producers and future agents.";
     const meta = document.querySelector<HTMLMetaElement>('meta[name="description"]');
     const previousDescription = meta?.content;

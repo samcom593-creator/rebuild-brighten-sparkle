@@ -17,6 +17,7 @@ const calls = vi.hoisted(() => [] as Array<{ fn: string; args?: Record<string, u
 const db = vi.hoisted(() => ({
   rows: [] as unknown[],
   counts: { total: 0, pending: 0, accepted: 0, expired: 0, revoked: 0, superseded: 0 },
+  linkPath: "/hire/tok-1",
 }));
 
 vi.mock("@/integrations/supabase/client", () => ({
@@ -24,7 +25,7 @@ vi.mock("@/integrations/supabase/client", () => ({
     rpc: (fn: string, args?: Record<string, unknown>) => {
       calls.push({ fn, args });
       if (fn === "list_invitations") return Promise.resolve({ data: { counts: db.counts, rows: db.rows, limit: 500 }, error: null });
-      if (fn === "invitation_link") return Promise.resolve({ data: { ok: true, path: "/hire/tok-1" }, error: null });
+      if (fn === "invitation_link") return Promise.resolve({ data: { ok: true, path: db.linkPath }, error: null });
       if (fn === "record_invitation_share") return Promise.resolve({ data: { ok: true, status: "pending" }, error: null });
       if (fn === "revoke_invitation") return Promise.resolve({ data: { ok: true }, error: null });
       if (fn === "regenerate_invitation") return Promise.resolve({ data: { id: "inv-5", path: "/hire/tok-5" }, error: null });
@@ -87,6 +88,7 @@ beforeEach(() => {
   vi.mocked(celebrate).mockClear();
   vi.mocked(playSoundEffect).mockClear();
   db.rows = [pending, accepted, replaced, revoked];
+  db.linkPath = "/hire/tok-1";
   db.counts = { total: 4, pending: 1, accepted: 1, expired: 0, revoked: 1, superseded: 1 };
   // Radix positions menus with ResizeObserver, which jsdom does not ship.
   vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
@@ -183,12 +185,23 @@ describe("InvitationsTable", () => {
     fireEvent.click(await screen.findByRole("menuitem", { name: "Copy link" }));
     await waitFor(() => expect(calls.some((c) => c.fn === "record_invitation_share")).toBe(true));
     expect(calls.find((c) => c.fn === "invitation_link")?.args).toEqual({ p_id: "inv-1" });
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(`${window.location.origin}/hire/tok-1`);
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith("https://galaxyfinancial.org/hire/tok-1");
     expect(calls.find((c) => c.fn === "record_invitation_share")?.args).toEqual({ p_id: "inv-1", p_channel: "copy" });
     expect(calls.map((c) => c.fn)).not.toContain("send_invitation");
     // The clipboard has it: one pop.
     await waitFor(() => expect(playSoundEffect).toHaveBeenCalledWith("pop"));
     expect(playSoundEffect).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["hire", "join"] as const)("copies the exact %s token, query and anchor through the real invitation URL adapter", async kind => {
+    db.rows = [{ ...pending, kind }];
+    db.linkPath = `/${kind}/tok%2F1?ref=sam%2Bjames&tag=one&tag=two#details`;
+    renderTable();
+    await screen.findByTestId("invite-card-inv-1");
+    openMenu(card("inv-1").getByRole("button", { name: "More actions for Mary Ann Smith" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Copy link" }));
+    await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith(`https://galaxyfinancial.org${db.linkPath}`));
+    expect(calls.find(c => c.fn === "invitation_link")?.args).toEqual({ p_id: "inv-1" });
   });
 
   it("Replace link chimes from the menu item pressed once the new link exists, and not when the confirm is cancelled", async () => {
@@ -214,7 +227,7 @@ describe("InvitationsTable", () => {
     expect(kind).toBe("booked");
     // The item has no size in jsdom, so the origin is the item itself; in a browser it is the point under the finger.
     expect(origin).toBe(item);
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(`${window.location.origin}/hire/tok-5`);
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith("https://galaxyfinancial.org/hire/tok-5");
   });
 
   it("the status pill speaks the shared tones through one map: pending warm, accepted good, a closed link quiet", async () => {

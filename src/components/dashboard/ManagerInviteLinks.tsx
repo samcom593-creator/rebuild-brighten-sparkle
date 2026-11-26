@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PUBLIC_SITE } from "@/lib/recruitLinks";
 
 interface InviteLink {
   id: string;
@@ -50,7 +51,7 @@ export function ManagerInviteLinks() {
   const [selectedAgent, setSelectedAgent] = useState<string>("");
   const [isCreating, setIsCreating] = useState(false);
 
-  const baseUrl = window.location.origin;
+  const baseUrl = PUBLIC_SITE;
 
   useEffect(() => {
     fetchInviteLinks();
@@ -254,7 +255,7 @@ export function ManagerInviteLinks() {
                 <Label htmlFor="code">Invite Code</Label>
                 <Input
                   id="code"
-                  placeholder="e.g., sam-apex"
+                  placeholder="e.g., sam-galaxy"
                   value={newCode}
                   onChange={(e) => setNewCode(e.target.value)}
                   className="bg-input"

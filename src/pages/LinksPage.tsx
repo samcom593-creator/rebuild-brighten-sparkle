@@ -117,7 +117,7 @@ export default function LinksPage() {
             <Crown className="h-12 w-12 text-primary-foreground" />
           </div>
           <h1 className="text-2xl font-bold gradient-text">Galaxy Financial</h1>
-          <p className="text-sm text-muted-foreground mt-1">Build your empire. Live on your terms.</p>
+          <p className="text-sm text-muted-foreground mt-1">Where winning agencies are built.</p>
         </motion.div>
 
         {/* Social Links */}

@@ -2,7 +2,7 @@
  * OVERHAUL-1 (2026-10-29): the pure rules behind "Your link" and "Make a link" on Invite an agent
  * and Refer a recruit. What a link carries, how long it works, and the words people read.
  */
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   DEFAULT_TEMPORARY_HOURS,
@@ -20,12 +20,32 @@ import {
   linkText,
   ownLinkPath,
   ownLinkUrl,
+  publicShareUrl,
   shareLink,
   textHref,
 } from "@/lib/recruitLinks";
 import { licensePathTone, linkLifetimeTone } from "@/lib/tones";
 
 const PHX = { timeZone: "America/Phoenix", locale: "en-US" };
+
+afterEach(() => vi.unstubAllGlobals());
+
+describe("canonical public shares", () => {
+  it.each(["https://apex-financial.org", "https://preview-test.vercel.app", "http://localhost:5173"])("keeps share links on Galaxy while opened at %s", origin => {
+    vi.stubGlobal("window", { location: { origin } });
+    for (const path of [
+      "/hire/invite-token?license=licensed&ref=sam%2Bjames#details",
+      "/join/join-token?email=a%2Bb%40example.com&tag=first&tag=second",
+      "/apply?ref=sam-galaxy",
+      "/agent/00000000-0000-4000-8000-000000000001",
+      "/plaque/first-award?via=share%20sheet#award",
+      "/assistant/interviews?t=AbC%2F123%2B456%3D",
+    ]) {
+      expect(publicShareUrl(path)).toBe(`https://galaxyfinancial.org${path}`);
+    }
+    expect(ownLinkUrl("sam%name")).toBe("https://galaxyfinancial.org/r/sam%25name");
+  });
+});
 
 describe("your own link", () => {
   it("is /r/<slug> on the public site, from the slug alone", () => {

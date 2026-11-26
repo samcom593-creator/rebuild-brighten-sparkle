@@ -144,6 +144,14 @@ describe("legacy award unit presentation", () => {
     expect(screen.getAllByText("Original artwork")).toHaveLength(7);
   });
 
+  it("copies a historical plaque link on Galaxy using its existing slug", async () => {
+    db.rows = [award("Daily production", "single_day", 5000, { share_slug: "public-token_AbC-123" })];
+    mount(<MyPlaques />);
+    await screen.findByText("Recorded premium: $5,000");
+    fireEvent.click(screen.getByRole("button", { name: "Share" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("https://galaxyfinancial.org/plaque/public-token_AbC-123"));
+  });
+
   it("keeps zero hires as a count in the generated fallback rather than dollars or missing data", async () => {
     db.rows = [award("Daily recruiting", "day_on_the_board", 0, { image_png_url: null })];
     mount(<MyPlaques />);
@@ -155,7 +163,8 @@ describe("legacy award unit presentation", () => {
     const open = vi.spyOn(window, "open").mockReturnValue(null);
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     clients.push(client);
-    render(<QueryClientProvider client={client}><MemoryRouter initialEntries={["/plaque/public-Monthly%20builder"]}><Routes><Route path="/plaque/:slug" element={<PlaqueShare />} /></Routes></MemoryRouter></QueryClientProvider>);
+    const sharePath = "/plaque/public-Monthly%20builder?via=share%20sheet&token=Ab%2F123#award";
+    render(<QueryClientProvider client={client}><MemoryRouter initialEntries={[sharePath]}><Routes><Route path="/plaque/:slug" element={<PlaqueShare />} /></Routes></MemoryRouter></QueryClientProvider>);
     await screen.findByText("Monthly hires");
     expect(screen.getByText("5")).toBeInTheDocument();
     expect(screen.getByText("Milestone month: November 2026")).toBeInTheDocument();
@@ -165,6 +174,11 @@ describe("legacy award unit presentation", () => {
     expect(caption).toContain("Monthly hires: 5");
     expect(caption).toContain("Milestone month: November 2026");
     expect(caption).not.toContain("$");
+    expect(new URL(String(open.mock.calls[0][0])).searchParams.get("url")).toBe(`https://galaxyfinancial.org${sharePath}`);
+    fireEvent.click(screen.getByRole("button", { name: "Facebook" }));
+    expect(new URL(String(open.mock.calls[1][0])).searchParams.get("u")).toBe(`https://galaxyfinancial.org${sharePath}`);
+    fireEvent.click(screen.getByRole("button", { name: "Copy Link" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(`https://galaxyfinancial.org${sharePath}`));
     expect(db.requests.some(r => r.table === "plaque_awards" && r.filters.some(([key, value]) => key === "share_slug" && value === "public-Monthly builder"))).toBe(true);
   });
 

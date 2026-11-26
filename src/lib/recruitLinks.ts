@@ -28,6 +28,11 @@ export type InviteLinkKind = "hire" | "join";
 /** The public site every shared link points at, so a link copied on a preview build still works. */
 export const PUBLIC_SITE = "https://galaxyfinancial.org";
 
+/** Public sharing keeps the route, encoded token, query and fragment exactly as supplied. */
+export function publicShareUrl(path: string): string {
+  return `${PUBLIC_SITE}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
 /** How long a temporary link can work. fn_invite_insert clamps to 1..720 hours. */
 export const TEMPORARY_SPANS: ReadonlyArray<{ hours: number; label: string }> = [
   { hours: 24, label: "1 day" },
@@ -63,7 +68,7 @@ export const LINK_LIFETIME_LABEL: Record<LinkLifetime, string> = {
 export function ownLinkUrl(refSlug: string | null | undefined): string | null {
   const slug = (refSlug ?? "").trim();
   if (!slug) return null;
-  return `${PUBLIC_SITE}/r/${encodeURIComponent(slug)}`;
+  return publicShareUrl(`/r/${encodeURIComponent(slug)}`);
 }
 
 /** The path an /r/ link carries, for the attribution round trip (/r/<slug> -> /apply?ref=<slug>). */

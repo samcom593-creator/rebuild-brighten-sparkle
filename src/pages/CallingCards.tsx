@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { publicShareUrl } from "@/lib/recruitLinks";
 
 const TEMPLATES = [
   { key: "classic",  label: "Classic Black",  bg: "bg-card",                 accent: "text-amber-400" },
@@ -45,8 +46,8 @@ export default function CallingCards() {
   });
 
   const shareUrl = useMemo(() => {
-    if (typeof window === "undefined" || !userId) return "";
-    return `${window.location.origin}/agent/${userId}`;
+    if (!userId) return "";
+    return publicShareUrl(`/agent/${userId}`);
   }, [userId]);
 
   const t = TEMPLATES.find((x) => x.key === template)!;

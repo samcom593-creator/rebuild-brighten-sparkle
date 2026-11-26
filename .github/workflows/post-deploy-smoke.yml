@@ -62,6 +62,13 @@ jobs:
         env:
           BASE: https://galaxyfinancial.org
 
+
+      - name: Verify recruiting metadata, images, and legacy links
+        if: steps.promote.outputs.matched == 'true'
+        run: |
+          node scripts/check-recruiting-release-public.mjs --selftest
+          node scripts/check-recruiting-release-public.mjs
+
       - name: Post failure summary
         if: failure()
         run: |

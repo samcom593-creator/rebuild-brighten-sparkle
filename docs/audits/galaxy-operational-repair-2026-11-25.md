@@ -71,3 +71,31 @@ The PostgreSQL fixture compares 30 complete old/new responses, including duplica
 The profile follow-up reuses Finance's validated policy parser and summary logic, retains known partial premium with the missing count, labels absent chargebacks as Not recorded, and derives carrier counts from the displayed policy list. Contract estimates are explicitly labeled in both profile summaries, and the profile Refresh action refreshes production and carrier evidence. The navigation audit now assigns a source-based operational relevance level to every menu and route entry; those ratings do not assert measured usage.
 
 The follow-up release still requires the normal CI gate, recorded migration application, catalog/ACL readback and an authenticated large-pool preview with representative filters. Public smoke results alone cannot close the observed private timeout.
+
+## Verified follow-up and remaining acceptance boundaries
+
+PR #78 merged as `796d1e9aef11e9de320df00f4940ce640dab2a03`. Its required checks passed, the actual migration step applied `20261125110000_lead_pool_preview_cost.sql`, and the route probe ran against the matching served revision. Authenticated review confirmed the default Marketing pool preview, a narrowed state/age cohort, invalid-range protection, policy-book carrier/status search, profile refresh, and the preserved commission bookmark. No lead assignment, call, payment, or production record was created for testing.
+
+The same browser pass opened all 35 menu destinations visible to the authorized account. Thirty-four loaded; My Tasks exposed a canonical-identity failure. The producer profile was inspected separately. This does not turn the source inventory of 304 routes into a claim of 304 live browser tests. Hidden role-specific destinations remain source-reviewed, and the populated My Leads workflow remains covered by fixtures because the account had no assigned leads.
+
+The advanced whole-pool caller filter still timed out after the static preview repair. The later repair therefore keeps current eligibility, holds, role checks, ordering, masking, assignment event behavior, and transactional rollback while narrowing rows before expensive historical context. The source fixture compares complete preview responses and actual synthetic allocation outcomes. Concurrent snapshot-refresh, source/phone indexing, scheduling and function-local memory changes on main are retained. Relative timings from the earlier fixture are not represented as measurements of that newer deployed baseline.
+
+The personal-task repair resolves the authenticated login to one eligible canonical root and its bounded historical family. It reads family tasks, creates only under the resolved root, preserves historical task attribution when changing completion, and verifies the same identity around asynchronous client operations. The endpoint uses the caller's authenticated RPC rather than a service-role task writer. A focused prerequisite guard protects login/canonical/eligibility fields without replacing global agent identity helpers or task row policies; the legacy manager activation path receives matching authorization checks. SQL and client fixtures must validate this reconstructed release head before publication.
+
+The stored producer tier is labeled **Recorded profile tier** with **Period not recorded**. An undated stored label does not establish current-month production. No financial amount or stored policy status is changed by this presentation correction.
+
+## Galaxy link correction
+
+PR #79 corrects the shared public origin, static title and social copy, and rendered recruiting card. The expected title is **Galaxy Financial — Where Winning Agencies Are Built**. Public sharing uses `https://galaxyfinancial.org` while preserving the route, encoded token, query string and fragment. The dated image is `/galaxy-recruiting-20261126.jpg`; the older image alias carries the same rendered bytes.
+
+The two referral functions are changed through exact URL-literal replacement in a transaction. Unexpected definitions abort the migration; ownership, grants, caller eligibility, referral attribution and response payloads outside the URL remain unchanged. The required verify job executes the actual SQL fixture against synthetic PostgreSQL data.
+
+A successful source build is not the public-link acceptance result. Release evidence must show the served commit, static title/OG/Twitter/canonical values, JPEG bytes and dimensions, legacy-host redirect behavior, and the actual migration application. A branch's live-image probe can fail before its new image has been deployed; it must be rerun against the published release.
+
+## Source limitations that remain separate from application repairs
+
+The last authenticated carrier review showed that refresh freshness still depended on the authorized upstream carrier session. A subsequent frontend or SQL deployment cannot invent a newer carrier observation or independently identify the owner's reported paid policy. Dated commission receipts, recorded premium-payment status, open ledger rows and contract estimates remain separate evidence types. Unsupported placement remains unavailable until its cohort and outcomes support the calculation.
+
+The historical coaching writer discarded text while iterating a scalar as a list. Playback was observed advancing and seeking on all three inspected training surfaces, but missing coaching prose still requires an intact upstream source and regeneration. A public smoke result does not establish that upstream recovery.
+
+After the authorized browser session expired, private workflows could not be re-exercised from this release environment. Required CI, recorded migration application, source/catalog comparisons and public deployment probes remain independently checkable. Final release notes must distinguish those checks from an authenticated acceptance test rather than claiming every private workflow was rerun.

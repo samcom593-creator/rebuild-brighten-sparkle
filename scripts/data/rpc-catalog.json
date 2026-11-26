@@ -13734,6 +13734,88 @@
         "unnamed": false,
         "raw": "p_view text"
       }
+    ],
+    "personal_task_create": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_title",
+          "p_description",
+          "p_due_date",
+          "p_priority"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_title",
+          "p_description",
+          "p_due_date",
+          "p_priority"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_title text, p_description text, p_due_date date, p_priority text"
+      }
+    ],
+    "personal_task_identity": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "personal_task_list": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
+    "personal_task_set_completed": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_task_id",
+          "p_completed"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_task_id",
+          "p_completed"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_task_id uuid, p_completed boolean"
+      }
     ]
+  },
+  "_declared_migration_contracts": {
+    "personal_task_create": {
+      "migration": "20261125120000_personal_task_canonical_self.sql",
+      "return_type": "jsonb",
+      "named_output_columns": false,
+      "source": "Exact authored migration signature, executed in isolated PostgreSQL fixtures; validate against deployed pg_proc after application."
+    },
+    "personal_task_identity": {
+      "migration": "20261125120000_personal_task_canonical_self.sql",
+      "return_type": "jsonb",
+      "named_output_columns": false,
+      "source": "Exact authored migration signature, executed in isolated PostgreSQL fixtures; validate against deployed pg_proc after application."
+    },
+    "personal_task_list": {
+      "migration": "20261125120000_personal_task_canonical_self.sql",
+      "return_type": "jsonb",
+      "named_output_columns": false,
+      "source": "Exact authored migration signature, executed in isolated PostgreSQL fixtures; validate against deployed pg_proc after application."
+    },
+    "personal_task_set_completed": {
+      "migration": "20261125120000_personal_task_canonical_self.sql",
+      "return_type": "jsonb",
+      "named_output_columns": false,
+      "source": "Exact authored migration signature, executed in isolated PostgreSQL fixtures; validate against deployed pg_proc after application."
+    }
   }
 }

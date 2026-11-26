@@ -82,14 +82,16 @@ jobs:
       - name: Install deps
         run: npm ci --no-audit --no-fund
 
-      # The referral-origin fixture executes the actual SQL in isolated PostgreSQL.
+      # The operational fixtures execute the actual SQL in isolated PostgreSQL.
       # Keep its pinned optional runtime outside the application dependency graph.
-      - name: Verify referral link SQL behavior
+      - name: Verify referral, task, and lead SQL behavior
         shell: bash
         run: |
           referral_sql_runtime="$(mktemp -d "$RUNNER_TEMP/referral-sql.XXXXXX")"
           npm install --prefix "$referral_sql_runtime" --no-save --package-lock=false --ignore-scripts --no-audit --no-fund @electric-sql/pglite@0.3.14
           PGLITE_MODULE="$referral_sql_runtime/node_modules/@electric-sql/pglite/dist/index.js" node scripts/test-galaxy-referral-link-origin.mjs
+          PGLITE_MODULE="$referral_sql_runtime/node_modules/@electric-sql/pglite/dist/index.js" node scripts/test-personal-task-canonical.mjs
+          PGLITE_MODULE="$referral_sql_runtime/node_modules/@electric-sql/pglite/dist/index.js" node scripts/test-lead-pool-context.mjs
 
       # MP-437: the 999-test vitest suite ran in NO workflow until 2026-09-05.
       # `npm test` existed and nothing invoked it — not this file, not the

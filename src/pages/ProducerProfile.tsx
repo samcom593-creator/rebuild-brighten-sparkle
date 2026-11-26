@@ -945,9 +945,12 @@ export default function ProducerProfile() {
                     </div>
                   </div>
                   {ag.performance_tier && (
-                    <div className="flex justify-between pt-1">
-                      <span className="text-muted-foreground flex items-center gap-1"><TrendingUp className="h-3 w-3" /> Tier</span>
-                      <Badge variant="outline" className="text-11 bg-primary/10 border-primary/30 text-primary">
+                    <div className="flex justify-between gap-3 pt-1">
+                      <div>
+                        <span className="text-muted-foreground flex items-center gap-1"><TrendingUp className="h-3 w-3" /> Recorded profile tier</span>
+                        <p className="text-11 text-muted-foreground">Period not recorded</p>
+                      </div>
+                      <Badge variant="outline" className="text-11 bg-primary/10 border-primary/30 text-primary self-start">
                         {performanceTierLabel(ag.performance_tier)}
                       </Badge>
                     </div>

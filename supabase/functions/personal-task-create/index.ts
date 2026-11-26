@@ -1,24 +1,22 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
-import { PERSONAL_TASK_COLUMNS, TASK_AGENT_COLUMNS } from "../_shared/personal-task-contract.ts";
-import { handlePersonalTaskCreate } from "../_shared/personal-task-handler.ts";
+import { handlePersonalTaskCreate } from "./handler.ts";
 
 Deno.serve((req) => {
-  let userClient: ReturnType<typeof createClient> | null = null;
-  const caller = () => userClient ??= createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+  const createCaller = () => createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
     global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } }, auth: { persistSession: false },
   });
+  let userClient: ReturnType<typeof createCaller> | null = null;
+  const caller = () => userClient ??= createCaller();
   return handlePersonalTaskCreate(req, {
     getUser: async () => {
       const { data, error } = await caller().auth.getUser();
       return { userId: data.user?.id ?? null, error };
     },
     // Must use the caller's client. A service-role RPC has no caller identity.
-    currentAgentId: () => caller().rpc("current_agent_id"),
-    agentById: (id) => caller().from("agents").select(TASK_AGENT_COLUMNS).eq("id", id).maybeSingle(),
-    insertTask: (input) => {
-      // Reached only after authenticated ownership + active identity validation.
-      const service = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
-      return service.from("agent_tasks").insert(input).select(PERSONAL_TASK_COLUMNS).single();
-    },
+    taskIdentity: () => caller().rpc("personal_task_identity"),
+    createTask: (input) => caller().rpc("personal_task_create", {
+      p_agent_id: input.agent_id, p_title: input.title, p_description: input.description,
+      p_due_date: input.due_date, p_priority: input.priority,
+    }),
   });
 });

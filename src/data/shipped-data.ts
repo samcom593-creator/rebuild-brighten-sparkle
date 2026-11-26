@@ -12,6 +12,12 @@ export interface ShippedItem {
 
 export const SHIPPED: ShippedItem[] = [
   {
+    ts: "2026-11-25",
+    label: "Carrier policy changes and chargebacks now queue Slack alerts with the policy number, routed to the agent's verified Slack identity or manager operations.",
+    detail: "First-seen policies are excluded. Customer names never enter the payload. Pending to active is labeled active / issued, not commission paid. Fresh carrier transitions await the harvester permission fix.",
+    commit: "policy-status-slack",
+  },
+  {
     ts: "today",
     label:
       "Every new hire now gets the same treatment as a posted deal: a celebration screen inside the dashboard (name, licensed or pre-license, agent code, who recruited them, confetti and the fanfare if your sound is on) for you, your managers and the recruiting manager; a Slack post in the sales-wins room on top of the recruiting-staff and unlicensed rooms it already hit; and a hire email to your inbox and the recruiting manager, which did not exist before. Discord stays off on purpose: you retired it behind one switch on 2026-11-10, and this leaves that switch alone, but the hire post is wired so flipping it brings Discord back with no code change. Also fixed while in there: both links in the Slack hire post had been quietly pointing at the wrong pages since the domain moved to galaxyfinancial.org.",

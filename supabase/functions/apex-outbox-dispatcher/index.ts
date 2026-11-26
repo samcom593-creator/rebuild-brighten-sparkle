@@ -17,6 +17,7 @@ import { emailPattern } from "../_shared/like-escape.ts";
 import { resolveOne } from "../_shared/resolve-one.ts";
 import { renderSlackEventText } from "./slack-event-templates.ts";
 import { renderHireEmail } from "./hire-email-template.ts";
+import { policySlackTarget } from "./slack-policy-routing.ts";
 import { nanpRefusalReason, nanpTenDigits } from "../_shared/nanp-phone.ts";
 import { DEPARTED_AGENT_COLUMNS, isDepartedAgent } from "../_shared/departed.ts";
 import { dropOwnerMuted, loadOwnerMute } from "../_shared/owner-mute.ts";
@@ -741,6 +742,11 @@ async function deliverSlack(sb: any, event: any): Promise<DispatchResult> {
       || "";
     if (!token) continue;
 
+    const targetChannelId = await policySlackTarget(
+      sb, event.event_type, event.payload ?? {}, workspace.id, channel.purpose, channel.channel_id,
+    );
+    if (!targetChannelId) continue;
+
     // Lease BEFORE the post. The RPC inserts-or-locks the (event, destination)
     // receipt atomically: no row means another worker holds a fresh lease;
     // status 'delivered' means the message already landed and must not be
@@ -776,7 +782,7 @@ async function deliverSlack(sb: any, event: any): Promise<DispatchResult> {
           "content-type": "application/json; charset=utf-8",
         },
         body: JSON.stringify({
-          channel: channel.channel_id,
+          channel: targetChannelId,
           text,
           unfurl_links: false,
           unfurl_media: false,
@@ -813,7 +819,7 @@ async function deliverSlack(sb: any, event: any): Promise<DispatchResult> {
     const deliveredAt = new Date().toISOString();
     const deliveredPatch = {
       status: "delivered",
-      channel_id: typeof body.channel === "string" && body.channel ? body.channel : channel.channel_id,
+      channel_id: typeof body.channel === "string" && body.channel ? body.channel : targetChannelId,
       message_ts: body.ts,
       provider_response_hash: await sha256Hex(rawBody),
       last_error_redacted: null,

@@ -12,6 +12,10 @@ const db = new PGlite();
 const migration = await readFile(new URL('../supabase/migrations/20261124110000_lead_context_and_filters.sql', import.meta.url), 'utf8');
 const pipelineMigration = await readFile(new URL('../supabase/migrations/20261124111000_lead_pipeline_identity_guard.sql', import.meta.url), 'utf8');
 const previewCostMigration = await readFile(new URL('../supabase/migrations/20261125110000_lead_pool_preview_cost.sql', import.meta.url), 'utf8');
+const advancedCostMigration = await readFile(new URL('../supabase/migrations/20261126040000_lead_pool_context_preview.sql', import.meta.url), 'utf8');
+const snapshotReviveMigration = await readFile(new URL('../supabase/migrations/20261126033000_lead_pool_snapshot_revive.sql', import.meta.url), 'utf8');
+const sourcePhoneIndexSql = 'create index if not exists mat_lead_pool_source_phone10 on public.mat_lead_pool using btree (source, phone10);';
+assert.equal(snapshotReviveMigration.split(sourcePhoneIndexSql).length - 1, 1, 'Expected the current production source/phone index definition');
 const previous = await readFile(new URL('../supabase/migrations/20261124020000_lead_manager_readymode_all.sql', import.meta.url), 'utf8');
 const admin = '00000000-0000-0000-0000-000000000001';
 const agent = '00000000-0000-0000-0000-000000000002';
@@ -85,7 +89,16 @@ try {
   // trigger declarations, privileges and indexes, against isolated typed fixtures.
   await db.exec(migration);
   await db.exec(pipelineMigration);
+  // Preserve the current production index without executing snapshot cron setup.
+  await db.exec(sourcePhoneIndexSql);
   await db.exec(previewCostMigration);
+  const originalAllocator = await scalar("select pg_get_functiondef('public.lead_pool_assign(text,jsonb,integer,uuid,text,text)'::regprocedure) as n");
+  await db.exec(advancedCostMigration);
+  const compactAllocator = await scalar("select pg_get_functiondef('public.lead_pool_assign(text,jsonb,integer,uuid,text,text)'::regprocedure) as n");
+  const newSelection = advancedCostMigration.match(/new_selection text := \$new\$([\s\S]*?)\$new\$/)[1];
+  assert.equal(compactAllocator.replace(newSelection,'select * from public.sellable_pool(p_source, p_filters) m'),originalAllocator,'Only the allocator candidate-selection fragment changed');
+  await db.exec(advancedCostMigration);
+  assert.equal(await scalar("select pg_get_functiondef('public.lead_pool_assign(text,jsonb,integer,uuid,text,text)'::regprocedure) as n"),compactAllocator,'Reapplying the migration is safe');
   await db.query('insert into public.agents(user_id,display_name) values($1,$2),($3,$4)', [agent, 'Caller One', other, 'Caller Two']);
   await user(admin);
   const phones = Array.from({ length: 8 }, (_, i) => `20255511${String(i + 1).padStart(2, '0')}`);
@@ -230,9 +243,101 @@ try {
   assert.equal(contextSample.flags.last_caller,'Caller Two'); assert.equal(contextSample.flags.times_called,3);
   assert.equal(contextSample.flags.last_outcome,'callback'); assert.equal(contextSample.flags.next_action,'Synthetic next action');
 
+  await db.exec(advancedCostMigration);
+  for (let index=0;index<parityFilters.length;index++) {
+    assert.deepEqual(await invoke('lead_pool_counts',['rewrite',parityFilters[index]]),originalResponses[index],
+      `Compact preview parity for ${JSON.stringify(parityFilters[index])}`);
+  }
+
+  // Context precedence and every advanced predicate are checked against the
+  // released full-context evaluator, including its null and Phoenix boundaries.
+  await db.exec(`
+    insert into mat_lead_pool(rid,source,phone10,first_name,state,age,tier,flags,lead_age_days,under_9mo,dnc) values
+      ('advanced-source','dialer','2025551301','Source fields','AZ',55,'A','{"last_caller":"Source caller","last_outcome":"Bank Objection","last_touched_at":"2024-01-02T06:59:59Z","callback_at":"2024-01-03T06:59:59Z","times_called":2,"source_file":"Synthetic Batch %","source_type":"pos","campaigns":["Veterans","AZ"],"vantage":true,"mortgage":true}',10,false,false),
+      ('advanced-work','dialer','2025551302','Newer work','AZ',56,'B','{"last_caller":"Source caller","last_outcome":"never_called","last_touched_at":"2020-01-01T00:00:00Z","callback_at":"2020-01-03T00:00:00Z","times_called":1,"campaign":"Veterans","policy_standing":"supplier_reported"}',20,true,false),
+      ('advanced-tap','dialer','2025551303','Newer tap','TX',57,'S','{"last_caller":"Source caller","last_outcome":"never_called","last_touched_at":"2020-01-01T00:00:00Z","times_called":0}',30,false,false),
+      ('advanced-equal','dialer','2025551304','Equal touch','TX',58,'pos','{"last_caller":"Equal source","last_outcome":"Social Objection","last_touched_at":"2023-01-01T07:00:00Z","times_called":3,"callback_at":"2023-01-02T07:00:00Z"}',40,false,false),
+      ('advanced-invalid','dialer','2025551305','Invalid dates','FL',59,'F','{"last_caller":"Unchanged source","last_outcome":"new","last_touched_at":"invalid","callback_at":"not-a-date","times_called":4}',50,false,false),
+      ('advanced-null-tap','dialer','2025551306','No tap actor','FL',60,'C','{"last_caller":"Must be cleared","last_outcome":"no answer","last_touched_at":"2020-01-01","times_called":0}',60,false,false),
+      ('advanced-null-work','dialer','2025551307','No work caller','CA',61,'D','{"last_caller":"Must be cleared","last_outcome":"never_called","last_touched_at":"2020-01-01","callback_at":"2020-01-03","times_called":0}',70,false,false),
+      ('advanced-legacy-flag','dialer','2025551308','Generic work flags','CA',62,'A','{"last_caller":"true","last_outcome":"true","last_touched_at":"true","callback_at":"true","next_action":"true","times_called":0,"custom_flag":true,"policy_standing":"true"}',80,false,false),
+      ('advanced-empty','dialer','2025551309','Missing context',null,null,'Z','{}',90,false,false);
+  `);
+  for (const [phone,status,at,by,callback,lastAgent] of [
+    ['2025551302','callback','2023-01-01T07:00:00Z',agent,'2023-01-03T06:59:59Z','Fallback work'],
+    ['2025551303','new','2022-01-01T07:00:00Z',agent,null,null],
+    ['2025551304','bad_number','2023-01-01T07:00:00Z',agent,null,null],
+    ['2025551307','no_answer','2023-01-01T07:00:00Z',null,null,null],
+  ]) {
+    await db.query('insert into lead_bundle_items(bundle_id,phone10,status,status_at,status_by,callback_at,last_agent,removed_at) values($1,$2,$3,$4,$5,$6,$7,now())',
+      [parityBundle,phone,status,at,by,callback,lastAgent]);
+  }
+  for (const [phone,at,actor] of [
+    ['2025551302','2022-01-01T07:00:00Z',other],
+    ['2025551303','2023-01-01T07:00:00Z',other],
+    ['2025551304','2023-01-01T07:00:00Z',other],
+    ['2025551306','2024-01-01T07:00:00Z',null],
+  ]) {
+    let historyItem=await scalar('select (select id from lead_bundle_items where phone10=$1 limit 1) as n',[phone]);
+    if(!historyItem) historyItem=await scalar('insert into lead_bundle_items(bundle_id,phone10,removed_at) values($1,$2,now()) returning id as n',[parityBundle,phone]);
+    await db.query("insert into lead_bundle_events(bundle_id,item_id,actor,action,at) values($1,$2,$3,'dial_tap',$4)",[parityBundle,historyItem,actor,at]);
+  }
+  const advancedFilters=[
+    {caller:'Source'}, {caller:'Caller One'}, {caller:'Caller Two'}, {caller:'Equal source'}, {caller:'Must be cleared'},
+    {caller:'Unchanged'}, {caller:'%'}, {caller:'true'}, {caller:''},
+    {outcomes:['bank_objection']}, {outcomes:['callback']}, {outcomes:['unknown']}, {outcomes:['never_called']}, {outcomes:[]},
+    {min_attempts:0,max_attempts:0}, {min_attempts:1,max_attempts:2}, {min_attempts:4},
+    {touched_after:'2024-01-01',touched_before:'2024-01-01'}, {touched_after:'2024-01-02'}, {touched_before:'2023-01-01'},
+    {callback_before:'2023-01-02'}, {callback_before:'2023-01-01'}, {callback_before:'2024-01-02'},
+    {campaigns:['Veterans']}, {campaigns:[]}, {campaigns:['Missing']}, {vantage_only:true},
+    {source_file:'Batch %'}, {source_type:'pos'}, {policy_standing:'supplier_reported'},
+    {require_flags:['mortgage']}, {require_flags:['custom_flag']}, {require_flags:['policy_standing']},
+    ...['true_dnc','dnc','current_client','import_review_required','already_sold','in_bundle','blocked'].map(key=>({require_flags:[key]})),
+    ...['last_caller','last_outcome','last_touched_at','callback_at','next_action','times_called','source_attempts'].map(key=>({require_flags:[key]})),
+    {hold:'invalid'}, {caller:'Caller One',outcomes:['callback'],min_attempts:2,max_attempts:2,callback_before:'2023-01-02',states:['AZ']},
+  ];
+  await db.exec(previewCostMigration);
+  const advancedResponses=[];
+  for (const filters of advancedFilters) advancedResponses.push(await invoke('lead_pool_counts',['dialer',filters]));
+  await db.exec(advancedCostMigration);
+  for (let index=0;index<advancedFilters.length;index++) {
+    assert.deepEqual(await invoke('lead_pool_counts',['dialer',advancedFilters[index]]),advancedResponses[index],
+      `Exact advanced preview parity for ${JSON.stringify(advancedFilters[index])}`);
+  }
+  assert.equal(advancedResponses[4].total,0,'Newer context with no caller clears the older caller');
+  assert.equal(advancedResponses[3].total,1,'Equal work/tap timestamps retain the source caller');
+  assert.equal(advancedResponses[12].sample.find(row=>row.first_name==='Missing context').flags.last_outcome,'never_called');
+
+  const allocationReceipt=async(definitionText,filters)=>{
+    await db.exec('begin');
+    try {
+      await db.exec(definitionText);
+      const result=await invoke('lead_pool_assign',['rewrite',filters,2,agent,'Synthetic parity allocation','Synthetic note']);
+      const bundle=(await db.query("select to_jsonb(b)-'id'-'created_at' as r from lead_bundles b where id=$1",[result.bundle_id])).rows[0].r;
+      const items=(await db.query("select to_jsonb(i)-'id'-'bundle_id'-'added_at' as r from lead_bundle_items i where bundle_id=$1 order by phone10",[result.bundle_id])).rows.map(row=>row.r);
+      const grants=(await db.query("select to_jsonb(g)-'id'-'bundle_id'-'granted_at' as r from lead_bundle_grants g where bundle_id=$1",[result.bundle_id])).rows.map(row=>row.r);
+      const events=(await db.query("select to_jsonb(e)-'id'-'bundle_id'-'at' as r from lead_bundle_events e where bundle_id=$1",[result.bundle_id])).rows.map(row=>row.r);
+      return {itemsCount:result.items,agent:result.agent,bundle,items,grants,events};
+    } finally { await db.exec('rollback'); }
+  };
+  let allocationCases=0;
+  for (const sort of ['tier','oldest','chargeback']) for (const filter of [{},{caller:'Caller Two'},{outcomes:['callback']}]) {
+    const filters={...filter,sort};
+    assert.deepEqual(await allocationReceipt(compactAllocator,filters),await allocationReceipt(originalAllocator,filters),
+      `Actual allocation, grant, and event parity for ${JSON.stringify(filters)}`);
+    allocationCases++;
+  }
+  // Refuse to patch a changed allocator body rather than silently changing an
+  // unrelated version. Roll back the intentionally altered isolated function.
+  await db.exec('begin');
+  await db.exec(originalAllocator.replace('select * from public.sellable_pool(p_source, p_filters) m','select *  from public.sellable_pool(p_source, p_filters) m'));
+  await assert.rejects(db.exec(advancedCostMigration),/Unexpected lead_pool_assign definition/);
+  await db.exec('rollback');
+  assert.equal(await scalar("select pg_get_functiondef('public.lead_pool_assign(text,jsonb,integer,uuid,text,text)'::regprocedure) as n"),compactAllocator);
+
   for (const role of ['anon','authenticated']) {
     assert.equal(await scalar("select has_table_privilege($1,'public.v_lead_pool_candidate_base','SELECT')::int as n",[role]),0);
-    for (const signature of ['public.lead_pool_candidates_for_phones(text,jsonb,text[])','public.lead_pool_static_filter_matches(text,integer,text,integer,jsonb)']) {
+    for (const signature of ['public.lead_pool_candidates_for_phones(text,jsonb,text[])','public.lead_pool_static_filter_matches(text,integer,text,integer,jsonb)','public.lead_pool_preview_candidates(text,jsonb)']) {
       assert.equal(await scalar("select has_function_privilege($1,$2,'EXECUTE')::int as n",[role,signature]),0);
     }
   }
@@ -241,10 +346,11 @@ try {
   await assert.rejects(invoke('lead_pool_candidates_for_phones', ['marketing', {}, ['2025551201']]), /permission denied/);
   await assert.rejects(db.query('select * from public.v_lead_pool_candidate_base limit 1'), /permission denied/);
   await assert.rejects(invoke('sellable_pool', ['marketing', {}]), /permission denied/);
+  await assert.rejects(invoke('lead_pool_preview_candidates', ['marketing', {}]), /permission denied/);
   await db.exec('reset role');
   await user(agent);
   await assert.rejects(invoke('lead_pool_counts', ['marketing', {}]), /Only lead administrators/);
-  console.log(`PASS: complete migrations; ${parityFilters.length} exact old/new preview responses; independent/overlapping holds; immutable DNC; guarded assignment/transfer; callback history; export/pipeline safety; private helper ACLs; scope; snapshot statistics.`);
+  console.log(`PASS: complete migrations; ${parityFilters.length+advancedFilters.length} exact old/new preview responses; ${allocationCases} actual allocation/receipt comparisons; independent/overlapping holds; immutable DNC; guarded assignment/transfer; callback history; export/pipeline safety; private helper ACLs; scope; snapshot statistics.`);
 
   // Optional measured scale check; synthetic-only and excluded from normal CI.
   // Timings are comparative local PostgreSQL/WASM evidence, not live latency.
@@ -260,21 +366,41 @@ try {
         g,g%4=0,false from generate_series(1,$1::integer) g`,[rows]);
     await db.exec('create index if not exists mat_bench_source_tier on mat_lead_pool(source,tier); create index if not exists mat_bench_source_state on mat_lead_pool(source,state); create index if not exists bench_resale_phone on lead_resale_ledger(phone10); analyze');
     const defaults={exclude_dnc:true,exclude_resold:true,sort:'tier'};
-    for (const name of ['lead_pool_filter_matches','lead_pool_candidates','lead_pool_counts']) await db.exec(definition(migration,name));
+    await db.exec(previewCostMigration);
     let started=performance.now();
     const original=await invoke('lead_pool_counts',['winback',defaults]);
-    console.log(JSON.stringify({benchmark:'original-default',synthetic_rows:rows,ms:Math.round(performance.now()-started)}));
-    await db.exec(previewCostMigration);
+    console.log(JSON.stringify({benchmark:'released-default',synthetic_rows:rows,ms:Math.round(performance.now()-started)}));
+    started=performance.now();
+    const originalCaller=await invoke('lead_pool_counts',['winback',{...defaults,caller:'Synthetic caller'}]);
+    console.log(JSON.stringify({benchmark:'released-broad-caller',synthetic_rows:rows,ms:Math.round(performance.now()-started)}));
+    const timedAllocation=async(label,definitionText)=>{
+      await db.exec('begin');
+      const allocationStarted=performance.now();
+      try {
+        await db.exec(definitionText);
+        const result=await invoke('lead_pool_assign',['winback',{...defaults,caller:'Synthetic caller'},100,agent,'Synthetic scale allocation',null]);
+        assert.equal(result.items,100);
+        console.log(JSON.stringify({benchmark:label,synthetic_rows:rows,assigned:result.items,ms:Math.round(performance.now()-allocationStarted)}));
+      } catch(error) {
+        if(label!=='released-allocation'||error.code!=='57014') throw error;
+        console.log(JSON.stringify({benchmark:label,synthetic_rows:rows,statement_timeout:true,ms:Math.round(performance.now()-allocationStarted)}));
+      } finally { await db.exec('rollback'); }
+    };
+    await timedAllocation('released-allocation',originalAllocator);
+    await db.exec(advancedCostMigration);
     const benchmarks=[
       ['optimized-default',defaults],
       ['optimized-common',{...defaults,states:['TX'],tiers:['A','B'],min_age:40,max_age:60}],
       ['optimized-no-match',{...defaults,states:['ZZ']}],
       ['optimized-advanced-narrowed',{...defaults,states:['TX'],caller:'Synthetic caller'}],
+      ['optimized-broad-caller',{...defaults,caller:'Synthetic caller'}],
+      ['optimized-broad-no-match',{...defaults,caller:'No such caller'}],
     ];
     for (const [label,filters] of benchmarks) {
       started=performance.now(); const result=await invoke('lead_pool_counts',['winback',filters]);
       if(label==='optimized-default') assert.deepEqual(result,original);
-      if(label==='optimized-no-match') { assert.equal(result.total,0); assert.deepEqual(result.sample,[]); }
+      if(label==='optimized-broad-caller') assert.deepEqual(result,originalCaller);
+      if(label==='optimized-no-match'||label==='optimized-broad-no-match') { assert.equal(result.total,0); assert.deepEqual(result.sample,[]); }
       if(label==='optimized-advanced-narrowed') assert.equal(result.total,Math.floor(rows/10));
       if(label==='optimized-common') {
         let expected=0;
@@ -283,6 +409,7 @@ try {
       }
       console.log(JSON.stringify({benchmark:label,synthetic_rows:rows,matching_rows:result.total,ms:Math.round(performance.now()-started)}));
     }
+    await timedAllocation('optimized-allocation',compactAllocator);
     // Nontrivial live history must not turn 25 sample enrichments back into a
     // full-history aggregation. Removed items still contribute work/tap context.
     const historicalPhones=Math.min(20000,rows);
@@ -299,5 +426,17 @@ try {
     assert.equal(historyResult.total,rows);
     assert(historyResult.sample.every(row=>row.flags.last_caller==='Caller Two'&&row.flags.times_called===3&&row.flags.next_action==='Synthetic scaled follow-up'));
     console.log(JSON.stringify({benchmark:'optimized-default-with-history',synthetic_rows:rows,historical_phones:historicalPhones,dial_tap_events:historicalPhones*3,ms:Math.round(performance.now()-started)}));
+    for(const [label,filters,expected] of [
+      ['optimized-caller-with-history',{caller:'Caller Two'},historicalPhones],
+      ['optimized-outcome-with-history',{outcomes:['callback']},historicalPhones],
+      ['optimized-attempts-with-history',{min_attempts:3,max_attempts:3},historicalPhones],
+      ['optimized-touched-with-history',{touched_after:'2023-01-01'},historicalPhones],
+      ['optimized-callback-with-history',{callback_before:'2024-01-03'},historicalPhones],
+    ]) {
+      started=performance.now(); const result=await invoke('lead_pool_counts',['winback',{...defaults,...filters}]);
+      assert.equal(result.total,expected);
+      console.log(JSON.stringify({benchmark:label,synthetic_rows:rows,historical_phones:historicalPhones,dial_tap_events:historicalPhones*3,matching_rows:result.total,ms:Math.round(performance.now()-started)}));
+    }
+
   }
 } finally { await db.close(); }

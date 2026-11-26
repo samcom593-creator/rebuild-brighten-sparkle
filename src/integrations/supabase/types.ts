@@ -205038,6 +205038,16 @@ export type Database = {
         Returns: Json
       }
       perf_bot_summary: { Args: never; Returns: Json }
+      personal_task_create: {
+        Args: { p_agent_id: string; p_title: string; p_description: string | null; p_due_date: string | null; p_priority: string }
+        Returns: Json
+      }
+      personal_task_identity: { Args: never; Returns: Json }
+      personal_task_list: { Args: { p_agent_id: string }; Returns: Json }
+      personal_task_set_completed: {
+        Args: { p_agent_id: string; p_task_id: string; p_completed: boolean }
+        Returns: Json
+      }
       phc_admin_lead_stats: {
         Args: never
         Returns: {

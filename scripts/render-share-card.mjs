@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// render-share-card.mjs: public/galaxy-recruit-og.svg -> public/galaxy-recruit-og.jpg
+// render-share-card.mjs: public/galaxy-recruit-og.svg -> public/galaxy-recruiting-20261126.jpg
 //
 // The image is what iMessage, Instagram DMs, Discord, Facebook and X show when a recruiting
 // link is shared. It is a raster, so the 2026-10-08 Galaxy rename (996492ce), which swept
@@ -16,14 +16,14 @@
 //
 // Writes scripts/data/share-card.json with the SVG's sha256 so check:share-card can tell
 // when the SVG was edited without re-rendering.
-import { readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, readFileSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import { chromium } from "playwright";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const SVG = "public/galaxy-recruit-og.svg";
-const OUT = "public/galaxy-recruit-og.jpg";
+const OUT = "public/galaxy-recruiting-20261126.jpg";
 const MANIFEST = "scripts/data/share-card.json";
 
 const svg = readFileSync(resolve(ROOT, SVG), "utf8");
@@ -75,6 +75,8 @@ try {
   // JPEG, not PNG: the gradient made a 454 KB PNG, over the ~300 KB some chat apps
   // (WhatsApp) accept for a preview image. Quality 90 keeps the text edges clean.
   await page.locator("svg").screenshot({ path: resolve(ROOT, OUT), type: "jpeg", quality: 90 });
+  // Keep existing links to the previous Galaxy image on the current design.
+  copyFileSync(resolve(ROOT, OUT), resolve(ROOT, "public/galaxy-recruit-og.jpg"));
   const sha = createHash("sha256").update(svg).digest("hex");
   writeFileSync(resolve(ROOT, MANIFEST), JSON.stringify({ svg: SVG, image: OUT, svg_sha256: sha }, null, 2) + "\n");
   for (const t of report.texts) console.log(`  ${t.x0.toFixed(0).padStart(4)}..${t.x1.toFixed(0).padEnd(4)} ${t.text}`);

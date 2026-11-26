@@ -1,0 +1,67 @@
+name: Render public Galaxy recruiting share card
+on:
+  push:
+    branches: [codex/galaxy-share-card-render-20261125]
+    paths:
+      - .github/workflows/render-public-share-card.yml
+      - public/galaxy-recruit-og.svg
+      - scripts/render-share-card.mjs
+permissions:
+  contents: read
+jobs:
+  render:
+    if: github.repository == 'samcom593-creator/rebuild-brighten-sparkle' && github.ref == 'refs/heads/codex/galaxy-share-card-render-20261125'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Verify exact public source inputs
+        run: |
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          import {createHash} from 'node:crypto';
+          const expected={"public/galaxy-recruit-og.svg":"37653e278245768c2c3fccfcbb7dbdf2c00d387608008f40ee2d021a7f5517d9","scripts/render-share-card.mjs":"343bb8b0e3911d4e4025a7d2b371a6c7cd77f62197976039ed971e44e42f3013","public/fonts/syne.woff2":"cfff412005eed2f0152d1c110c78ac564642b943e64322fbd687083177d6fa70","public/fonts/hanken-grotesk.woff2":"1f21c6eaa0000f3329cfcfac966b43d5bebf5aa610303e33294ac31bc6f4bb59","package-lock.json":"4e333edcb5f60fde5cddeace98c3d2c7c226ec9dc6cf53918cecb5e386834d61"};
+          for (const [path,sha256] of Object.entries(expected)) {
+            const data=readFileSync(path);
+            if (createHash('sha256').update(data).digest('hex')!==sha256) throw new Error('Input changed: '+path);
+            console.log('SHARE_CARD_INPUT='+JSON.stringify({path,sha256,bytes:data.length}));
+          }
+          NODE
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Render and verify fonts and text fit
+        run: node scripts/render-share-card.mjs
+      - name: Export generated public files
+        run: |
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          import {createHash} from 'node:crypto';
+          const paths=['public/galaxy-recruiting-20261126.jpg','public/galaxy-recruit-og.jpg','scripts/data/share-card.json'];
+          const primary=readFileSync(paths[0]);
+          if (!primary.equals(readFileSync(paths[1]))) throw new Error('Legacy image alias differs');
+          for (const path of paths) {
+            const data=readFileSync(path);
+            if (data.length>300000) throw new Error('Share artifact exceeds bounded output: '+path);
+            console.log('SHARE_CARD_OUTPUT='+JSON.stringify({path,sha256:createHash('sha256').update(data).digest('hex'),bytes:data.length}));
+            if (path===paths[1]) continue;
+            const encoded=data.toString('base64');
+            for(let i=0;i<encoded.length;i+=12000) console.log('SHARE_CARD_CHUNK='+JSON.stringify({path,index:i/12000,data:encoded.slice(i,i+12000)}));
+          }
+          NODE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: galaxy-public-share-card
+          retention-days: 3
+          if-no-files-found: error
+          path: |
+            public/galaxy-recruiting-20261126.jpg
+            public/galaxy-recruit-og.jpg
+            scripts/data/share-card.json

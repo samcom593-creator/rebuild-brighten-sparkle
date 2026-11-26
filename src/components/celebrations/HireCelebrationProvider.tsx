@@ -65,15 +65,19 @@ export function HireCelebrationProvider() {
       for (const row of data) if (typeof row.display_name === "string" && row.display_name.trim()) names[row.id] = row.display_name.trim();
       return names;
     };
+    // Read through a call on purpose: the tab can go hidden DURING the awaited
+    // name read below, and a bare property read would be narrowed to "visible"
+    // by the first guard (TS2367 on the second check).
+    const tabHidden = () => document.visibilityState === "hidden";
     const flush = async () => {
       flushTimer = undefined;
-      if (!live || isDemoMode() || areDealCelebrationsSuppressed() || document.visibilityState === "hidden" || !batch) { clearPending(); return; }
+      if (!live || isDemoMode() || areDealCelebrationsSuppressed() || tabHidden() || !batch) { clearPending(); return; }
       const shown = batch;
       const maySound = batchMaySound;
       batch = null;
       batchMaySound = false;
       const managerNames = await managerNamesFor(shown.hires);
-      if (!live || isDemoMode() || areDealCelebrationsSuppressed() || document.visibilityState === "hidden") return;
+      if (!live || isDemoMode() || areDealCelebrationsSuppressed() || tabHidden()) return;
       setActive({ ...shown, userId, managerNames });
       lastShownAt = Date.now();
       // A pre-gesture or muted event stays silent even if audio is enabled during

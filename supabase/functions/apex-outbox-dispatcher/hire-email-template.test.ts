@@ -58,8 +58,10 @@ Deno.test("links off galaxyfinancial.org fall back to the dashboard defaults", (
   assertStringIncludes(mail.html, HIRE_EMAIL_DEFAULT_CONTRACTING_URL);
   assert(!mail.html.includes("apex-financial.org"));
   assert(!mail.html.includes("javascript:"));
-  assertEquals(safeHireUrl("https://galaxyfinancial.org/x", "f"), "https://galaxyfinancial.org/x");
-  assertEquals(safeHireUrl("https://galaxyfinancial.org.evil.com/x", "f"), "f");
+  // A declared route on purpose: check:dead-internal-links scans every
+  // galaxyfinancial.org literal in the repo against src/App.tsx.
+  assertEquals(safeHireUrl("https://galaxyfinancial.org/dashboard/recruiting", "f"), "https://galaxyfinancial.org/dashboard/recruiting");
+  assertEquals(safeHireUrl("https://galaxyfinancial.org.evil.com/dashboard", "f"), "f");
 });
 
 Deno.test("a payload that smuggles contact details cannot reach the inbox", () => {

@@ -1,0 +1,24 @@
+name: Prepare task contract source objects
+on:
+  push:
+    branches: [codex/prepare-task-contracts-20261126]
+    paths:
+      - ".github/workflows/prepare-task-contracts.yml"
+      - "scripts/prepare-task-contract-blobs.mjs"
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Create exact task contract blobs without changing refs
+        run: node scripts/prepare-task-contract-blobs.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}

@@ -13,6 +13,11 @@ import { ComponentErrorBoundary } from "@/components/ComponentErrorBoundary";
 import { PageSkeleton } from "@/components/ui/page-skeleton";
 import { CommandPalette } from "@/components/command/CommandPalette";
 import { CelebrationProvider } from "@/components/celebrations/CelebrationProvider";
+// MP-HIRE-CELEBRATION: the hire stream is a SIBLING of the deal stream, not a
+// child of CelebrationProvider. The deal suite pins that provider's exact
+// channel/read/removeChannel counts; mounting the hire stream inside it changed
+// them (and its agents reads) and turned Verify core red on a2327d37.
+import { HireCelebrationProvider } from "@/components/celebrations/HireCelebrationProvider";
 import { ProductionDemoProvider } from "@/components/demo/ProductionDemoProvider";
 import { RequireProfilePicture } from "@/components/profile/RequireProfilePicture";
 import { AgentCloudSetupChecklist } from "@/components/layout/AgentCloudSetupChecklist";
@@ -192,6 +197,7 @@ export function AuthenticatedShell() {
             <SessionClockBanner />
             <OfflineSyncStatus />
             <CelebrationProvider />
+            <HireCelebrationProvider />
             <CommandPalette />
             <WelcomeToast />
             <PushNotificationPrompt />

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { randomBytes, createCipheriv, publicEncrypt, constants } from 'node:crypto';
 
 const PROJECT = 'xrzweoneiieddzxogewk';
-const QUERY_FILES = { release: 'release.sql', release_contracts: 'release-contracts.sql' };
+const QUERY_FILES = { release: 'release.sql', release_contracts: 'release-contracts.sql', coverage_fingerprint: 'coverage-fingerprint.sql' };
 const SIGNERS = ['readymode-recording-url', 'training-recording-url', 'lead-recording-url', 'personal-task-create'];
 const AUDIO_COUNTS = [
   'dialer_calls','calls_with_provider_recording_reference','calls_linked_to_agent','calls_linked_to_application','calls_linked_to_lead',
@@ -47,6 +47,17 @@ const RELEASE_FUNCTIONS = {
   'public.submit_apex_deal_before_coverage_review(uuid,jsonb,uuid)': 'private',
   'public.submit_apex_deal_ledger_impl(uuid,jsonb,uuid)': 'private',
 };
+const COVERAGE_OBJECTS = {
+  ...Object.fromEntries(Object.keys(RELEASE_FUNCTIONS).filter(signature => signature.includes('deal_coverage') || signature.includes('submit_apex_deal')).map(signature => [signature,'function'])),
+  'public.deal_coverage_reviews':'table',
+  'public.deal_coverage_post_permits':'table',
+  'public.deal_coverage_reviews_pkey':'index',
+  'public.deal_coverage_reviews_owner_user_id_idempotency_key_key':'index',
+  'public.deal_coverage_reviews_work_idx':'index',
+  'public.deal_coverage_post_permits_pkey':'index',
+  'public.deals_coverage_identity_idx':'index',
+  'public.deals.zz_deal_coverage_review_guard':'trigger',
+};
 const COHORT_CONTRACT_FLAGS = ['present','jsonb_return','argument_names_exact','one_default_argument','security_definer','stable',
   'public_search_path','authenticated_execute','anon_execute','public_execute','auth_guard','blocked_user_guard',
   'suspended_user_guard','canonical_self_guard','exact_site_link','no_policy_number_inference','future_timestamp_guard','response_identity'];
@@ -81,6 +92,36 @@ const array = value => { if (!Array.isArray(value) || value.length > 100) throw 
 const date = value => { if (value !== null && (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value))) throw new Error('invalid aggregate date'); return value; };
 
 function sanitize(name, value) {
+  if (name === 'coverage_fingerprint') {
+    const exact = (value,keys) => {
+      const row=object(value);
+      if (Object.keys(row).length!==keys.length || Object.keys(row).some(key=>!keys.includes(key))) throw new Error('unexpected fingerprint field');
+      return row;
+    };
+    const row=exact(value,['application_functions_executed','customer_rows_read','mutations_executed','migration_version','objects']);
+    for (const key of ['application_functions_executed','customer_rows_read','mutations_executed']) {
+      if (row[key]!==false) throw new Error('invalid fingerprint boundary');
+    }
+    if (row.migration_version!=='20261127050000') throw new Error('unexpected fingerprint migration');
+    const rows=array(row.objects);
+    if (rows.length!==Object.keys(COVERAGE_OBJECTS).length || new Set(rows.map(r=>object(r).name)).size!==rows.length) throw new Error('incomplete fingerprint set');
+    const hash=value=>{
+      if (typeof value!=='string' || !/^[a-f0-9]{64}$/.test(value)) throw new Error('invalid schema fingerprint');
+      return value;
+    };
+    const objects=rows.map(value=>{
+      const r=exact(value,['kind','name','present','source_sha256','shape_sha256']);
+      const name=enumeration(r.name,Object.keys(COVERAGE_OBJECTS));
+      if (r.kind!==COVERAGE_OBJECTS[name]) throw new Error('unexpected fingerprint kind');
+      const present=boolean(r.present);
+      const source_sha256=present && r.kind==='function' ? hash(r.source_sha256) : null;
+      const shape_sha256=present ? hash(r.shape_sha256) : null;
+      if (source_sha256!==r.source_sha256 || shape_sha256!==r.shape_sha256) throw new Error('missing schema object has fingerprint');
+      return { kind:r.kind,name,present,source_sha256,shape_sha256 };
+    });
+    return { application_functions_executed:false,customer_rows_read:false,mutations_executed:false,
+      migration_version:row.migration_version,objects };
+  }
   if (name === 'release_contracts') {
     const exact = (value, keys) => {
       const row = object(value);

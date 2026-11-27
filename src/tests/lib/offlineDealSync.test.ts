@@ -65,7 +65,9 @@ describe("offline deal outbox", () => {
     rpc.mockResolvedValueOnce({ data: { ...hold("review_required"), reviewId: "invalid" }, error: null });
     expect(await flushQueue(sendQueuedEntry, "user-a")).toMatchObject({ sent: 0, failed: 1, remaining: 1 });
     rpc.mockResolvedValueOnce({ data: null, error: { message: "Network unavailable" } });
-    expect(await flushQueue(sendQueuedEntry, "user-a")).toMatchObject({ sent: 0, failed: 1, remaining: 1 });
+    // 2026-11-27: a failed attempt now waits out a backoff before the outbox tries again,
+    // so this second pass runs with the clock moved past that pause.
+    expect(await flushQueue(sendQueuedEntry, "user-a", { now: () => Date.now() + 60_000 })).toMatchObject({ sent: 0, failed: 1, remaining: 1 });
     expect(readQueueForUser("user-a")[0].attempts).toBe(2);
     expect(announcePostedDealReceipt).not.toHaveBeenCalled();
   });

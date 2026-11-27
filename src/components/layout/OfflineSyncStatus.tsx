@@ -12,6 +12,7 @@ import { invalidateOperationalTruth } from "@/lib/invalidateOperationalTruth";
 import { announcePostedDealReceipt } from "@/lib/dealCelebrations";
 import { readCoverageHold } from "@/lib/dealCoverageReview";
 import {
+  IN_PROGRESS_RETRY_MS,
   flushQueue,
   isParked,
   readQueueForUser,
@@ -21,7 +22,7 @@ import {
   type SendResult,
 } from "@/lib/offlineQueue";
 
-type DealSubmitResponse = { dealId?: string; status?: string; replayed?: boolean; ok?: boolean; reviewId?: string; reviewVersion?: number; matchCount?: number } | null;
+type DealSubmitResponse = { dealId?: string; status?: string; replayed?: boolean; ok?: boolean; reviewId?: string; reviewVersion?: number; matchCount?: number; idempotencyKey?: string } | null;
 
 export async function sendQueuedEntry(entry: QueuedEntry): Promise<SendResult> {
   if (entry.kind !== "submit_apex_deal") {
@@ -30,15 +31,27 @@ export async function sendQueuedEntry(entry: QueuedEntry): Promise<SendResult> {
   const { data, error } = await (supabase.rpc as unknown as (
     fn: string,
     args: Record<string, unknown>,
-  ) => Promise<{ data: DealSubmitResponse; error: { message?: string } | null }>)(
+  ) => Promise<{ data: DealSubmitResponse; error: { message?: string; code?: string } | null }>)(
     "submit_apex_deal",
     entry.args,
   );
+  // 55P03: the server's lock_timeout fired because another attempt for this key
+  // holds its lock. Same meaning as in_progress: wait, keep the attempt.
+  if (error?.code === "55P03") {
+    return { ok: false, error: "An earlier attempt for this deal is still running on the server.", retryAfterMs: IN_PROGRESS_RETRY_MS };
+  }
   if (error) return { ok: false, error: error.message || "Server rejected the queued deal." };
   const held = readCoverageHold(data);
   if (held) return { ok: false, permanent: true, error: held.status === "review_rejected"
     ? "Coverage review rejected this draft. Open Book of Business to review the decision; no deal was posted."
     : "Coverage review is required. Open Book of Business; no deal was posted." };
+  // 2026-11-27: the server now refuses to run two attempts for one key at once
+  // and answers {ok:false, status:'in_progress'} instead of queueing the second
+  // behind the first until the statement timeout. That is "still saving", not a
+  // failure: ask again after a short pause and burn no attempt.
+  if (data && data.ok === false && data.status === "in_progress") {
+    return { ok: false, error: "An earlier attempt for this deal is still running on the server.", retryAfterMs: IN_PROGRESS_RETRY_MS };
+  }
   if (data?.dealId || data?.status === "already_recorded") {
     announcePostedDealReceipt(entry.ownerUserId, data);
     return { ok: true };
@@ -65,12 +78,15 @@ export function OfflineSyncStatus() {
     setEntries(user?.id ? readQueueForUser(user.id) : []);
   }, [user?.id]);
 
-  const flushNow = useCallback(async () => {
+  // Timer and reconnect flushes respect each entry's backoff; a person pressing
+  // "Sync now" does not have to wait it out (a key already in flight is still
+  // never sent twice).
+  const flushNow = useCallback(async (options?: { manual?: boolean }) => {
     if (!user?.id || flushingRef.current || (typeof navigator !== "undefined" && navigator.onLine === false)) return;
     flushingRef.current = true;
     setSyncing(true);
     try {
-      const outcome = await flushQueue(sendQueuedEntry, user.id);
+      const outcome = await flushQueue(sendQueuedEntry, user.id, { ignoreBackoff: Boolean(options?.manual) });
       refreshEntries();
       if (outcome.sent > 0) {
         invalidateOperationalTruth(queryClient);
@@ -133,7 +149,7 @@ export function OfflineSyncStatus() {
           </p>
           <p className="text-xs text-muted-foreground">
             {parked > 0 ? "Saved deals need review or correction. They have not been posted by this device. Open coverage reviews, then retry only after the issue is resolved." : online
-              ? `${brand.shortName} is reconnecting to the canonical deal ledger. Nothing is counted twice.`
+              ? `The server was busy or the connection dropped. ${brand.shortName} retries saved deals on its own, with a growing pause between tries. Nothing is counted twice.`
               : "Previously opened pages remain available. New deals are stored on this device and sent when internet returns."}
           </p>
         </div>
@@ -142,11 +158,11 @@ export function OfflineSyncStatus() {
         <Button asChild type="button" size="sm" variant="outline"><Link to="/dashboard/production">Review saved deals</Link></Button>
         {online && <Button type="button" size="sm" variant="outline" disabled={syncing} onClick={() => {
           if (user?.id) retryParkedDeals(user.id);
-          void flushNow();
+          void flushNow({ manual: true });
         }}>{syncing ? "Checking…" : "Retry saved deals"}</Button>}
       </div>}
       {online && entries.length > 0 && parked < entries.length ? (
-        <Button type="button" size="sm" variant="outline" className="h-10 shrink-0 gap-2" onClick={() => void flushNow()} disabled={syncing}>
+        <Button type="button" size="sm" variant="outline" className="h-10 shrink-0 gap-2" onClick={() => void flushNow({ manual: true })} disabled={syncing}>
           {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CloudUpload className="h-4 w-4" />}
           {syncing ? "Syncing…" : "Sync now"}
         </Button>

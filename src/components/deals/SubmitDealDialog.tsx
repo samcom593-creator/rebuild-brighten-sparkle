@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Clock3, FilePlus2, FileCheck2, Loader2, Plus, Search, ShieldCheck, Trash2, UserCheck, WifiOff } from "lucide-react";
+import { CheckCircle2, ChevronDown, Clock3, FilePlus2, FileCheck2, Loader2, Plus, Search, Trash2, UserCheck, WifiOff } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -20,7 +20,7 @@ import { WinActionButton } from "@/components/celebrations/WinActionButton";
 import { normalizePolicyNumber, sanitizePolicyInput, isWithinPolicyNumberGrace, policyNumberGrade } from "@/lib/policyNumber";
 import { parseFinancePolicyBook, policyNameKey } from "@/lib/financePolicyBook";
 import { LEAD_TYPES } from "@/lib/leadTypes";
-import { enqueue, isOffline, isTransportError } from "@/lib/offlineQueue";
+import { FIRST_RETRY_DELAY_MS, IN_PROGRESS_RETRY_MS, enqueue, isInFlight, isOffline, isTransportError, markInFlight } from "@/lib/offlineQueue";
 import { TeamLookupError } from "@/components/shared/TeamLookupError";
 import { COVERAGE_REVIEW_QUERY_KEY, readCoverageHold, type CoverageHold } from "@/lib/dealCoverageReview";
 
@@ -93,10 +93,48 @@ interface Receipt {
   correlationId: string;
 }
 
+/** Why this deal is on the device instead of confirmed by the server. The copy
+ *  must say which, because "waiting for internet" on a connected laptop reads as
+ *  a lie and sends the agent to re-post. */
+type OfflineReason = "offline" | "server_busy" | "still_saving";
+
 interface OfflineReceipt {
   localId: string;
   label: string;
+  reason: OfflineReason;
 }
+
+const OFFLINE_REASON_COPY: Record<OfflineReason, { dialogTitle: string; description: string; title: string; body: string; syncStatus: string; toast: string }> = {
+  offline: {
+    dialogTitle: "Deal waiting to sync",
+    description: "This deal is stored on this device and has not been recorded by the server yet.",
+    title: "Saved on this device",
+    body: "Keep this device signed in. It will submit automatically when internet returns, using the same duplicate-safe key.",
+    syncStatus: "Waiting for internet",
+    toast: "Saved on this device. The deal will post automatically when internet returns.",
+  },
+  server_busy: {
+    dialogTitle: "Deal saved on this device",
+    description: "This deal is stored on this device and has not been recorded by the server yet.",
+    title: "Saved, retrying in the background",
+    body: "The server was busy or the connection dropped before it answered. This device retries on its own with a growing pause, using the same duplicate-safe key, so nothing is counted twice.",
+    syncStatus: "Retrying with a growing pause",
+    toast: "The server is busy. Your deal is saved on this device and will retry on its own. Nothing is counted twice.",
+  },
+  still_saving: {
+    dialogTitle: "Deal still saving",
+    description: "This device has not yet confirmed that the server recorded this deal.",
+    title: "The server is still saving this deal",
+    body: "An earlier attempt is still running on the server. This device checks back for its receipt with the same duplicate-safe key; it will not send the deal twice.",
+    syncStatus: "Confirming the server's copy",
+    toast: "The server is still saving this deal. This device will confirm it; nothing is counted twice.",
+  },
+};
+
+// After the server reports an attempt for this key is still running, read the
+// ledger for its receipt at this pace, then hand the key to the outbox.
+const RECEIPT_POLL_ATTEMPTS = 6;
+const RECEIPT_POLL_INTERVAL_MS = 5_000;
 
 type RpcError = { message?: string; code?: string; status?: number };
 
@@ -147,6 +185,23 @@ function newIdempotencyKey() {
   return crypto.randomUUID();
 }
 
+type PolicyCheck = { state: "idle" | "checking" | "unused" | "duplicate" | "error"; message?: string };
+
+// A recovered draft that already used the optional fields opens them, so nothing
+// a person typed is hidden behind the fold.
+function usesOptionalDetails(payload: Partial<DealForm> | null | undefined): boolean {
+  if (!payload || typeof payload !== "object") return false;
+  return Boolean(
+    payload.effectiveDate ||
+    payload.paymentMethod ||
+    payload.draftDay ||
+    payload.notes ||
+    (payload.beneficiaries && payload.beneficiaries.length > 0) ||
+    (payload.policyStatus && payload.policyStatus !== EMPTY_FORM.policyStatus) ||
+    (payload.applicationDate && payload.applicationDate !== TODAY),
+  );
+}
+
 function safeNumber(value: string): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -165,8 +220,11 @@ function likeLiteral(term: string): string {
   return term.replace(/[\\%_*]/g, (character) => `\\${character}`);
 }
 
-function rpc<T>(name: string, args: Record<string, unknown>): Promise<{ data: T | null; error: RpcError | null }> {
-  return (supabase.rpc as unknown as (fn: string, values: Record<string, unknown>) => Promise<{ data: T | null; error: RpcError | null }>)(name, args);
+// `status` is the HTTP status of the response. PostgREST turns a Postgres
+// statement timeout into a 504 with an empty message, and that status is the
+// only honest way to tell "the server never answered" from "the server said no".
+function rpc<T>(name: string, args: Record<string, unknown>): Promise<{ data: T | null; error: RpcError | null; status?: number }> {
+  return (supabase.rpc as unknown as (fn: string, values: Record<string, unknown>) => Promise<{ data: T | null; error: RpcError | null; status?: number }>)(name, args);
 }
 
 interface InitialDealClient {
@@ -219,7 +277,8 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
   const [clientSearch, setClientSearch] = useState("");
   const [clientQuery, setClientQuery] = useState("");
   const [linkedClient, setLinkedClient] = useState<ClientHit | null>(null);
-  const [checking, setChecking] = useState(false);
+  const [policyCheck, setPolicyCheck] = useState<PolicyCheck>({ state: "idle" });
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [recovering, setRecovering] = useState(false);
@@ -429,6 +488,7 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
       if (draft) {
         setDraftId(draft.id);
         setForm((current) => ({ ...current, ...draft.payload }));
+        if (usesOptionalDetails(draft.payload)) setDetailsOpen(true);
         const recoveredStep = Math.max(0, SECTIONS.findIndex((section) => section.key === draft.current_section));
         setStep(recoveredStep);
         setRecovered(true);
@@ -438,6 +498,7 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
           .eq("draft_id", draft.id)
           .order("created_at");
         if (active) setEvidence((rows ?? []) as unknown as EvidenceRow[]);
+        if (active && (rows ?? []).length > 0) setDetailsOpen(true);
       }
       setRecovering(false);
     };
@@ -524,37 +585,41 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
     return { draftId: savedDraftId ?? null, error: null };
   };
 
-  // Pre-flight. Runs the same gates the submit runs, then asks the database the
-  // one question the browser cannot answer on its own: is this application or
-  // policy number already on a deal? submit_apex_deal rejects a duplicate with
-  // 23505, so catching it here turns a failed post into a corrected one before
-  // anything is written.
-  const runCheck = async () => {
-    for (let index = 0; index < 3; index += 1) {
-      const validation = validateStep(index);
-      if (validation) { toast.error(validation); return; }
-    }
-    setChecking(true);
-    // Ask about the normalized string, because that is what submit_apex_deal
-    // stores: a pasted tab used to make these two disagree.
+  // The duplicate check runs the moment the agent leaves the policy-number field,
+  // so a number already on a deal is called out under the field instead of
+  // surfacing as a 23505 after Post. It asks about the normalized string, because
+  // that is what submit_apex_deal stores, and the server still refuses the
+  // duplicate on its own.
+  const checkPolicyNumber = async () => {
     const policyNumber = normalizePolicyNumber(form.policyNumber);
-    if (!policyNumber) {
-      setChecking(false);
-      toast.success(`Ready to post — ${formatMoney(calculatedAnnualPaid)} annual. Add the policy number within 30 days of the sale date.`);
-      return;
-    }
+    if (!policyNumber) { setPolicyCheck({ state: "idle" }); return; }
+    setPolicyCheck({ state: "checking" });
     const { count, error } = await supabase
       .from("deals")
       .select("id", { count: "exact", head: true })
       .ilike("policy_number", likeLiteral(policyNumber));
-    setChecking(false);
-    if (error) { toast.error(`The duplicate check could not run: ${error.message}`); return; }
-    if ((count ?? 0) > 0) {
-      toast.error(`Policy number ${policyNumber} is already on a deal. Change it before posting.`);
-      return;
-    }
-    toast.success(`Ready to post — ${formatMoney(calculatedAnnualPaid)} annual, policy number is unused.`);
+    if (error) { setPolicyCheck({ state: "error", message: `The duplicate check could not run: ${error.message}` }); return; }
+    setPolicyCheck((count ?? 0) > 0
+      ? { state: "duplicate", message: `${policyNumber} is already on a deal. Change it before posting.` }
+      : { state: "unused", message: "Not on any deal yet." });
   };
+
+  // What still blocks Post, in the order the form asks for it. Shown live in the
+  // footer so the agent never has to hunt for the field a toast named.
+  const missing = useMemo(() => {
+    const out: string[] = [];
+    if (!form.clientFirstName.trim()) out.push("first name");
+    if (!form.clientLastName.trim()) out.push("last name");
+    if (form.clientPhone.replace(/\D/g, "").length < 10) out.push("phone");
+    if (!form.clientDob) out.push("date of birth");
+    if (!form.carrierId) out.push("carrier");
+    if (!form.product.trim()) out.push("product");
+    if (safeNumber(form.modalPremium) <= 0) out.push("premium");
+    if (factor === null && safeNumber(form.annualizedPaidPremium) <= 0) out.push("annual paid premium");
+    if (safeNumber(form.faceAmount) <= 0) out.push("face amount");
+    if (!form.leadSource.trim()) out.push("lead type");
+    return out;
+  }, [factor, form]);
 
   const uploadEvidence = async (file: File | undefined) => {
     if (!file || !user?.id) return;
@@ -602,93 +667,10 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
     setUploading(false);
   };
 
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-    // 2026-08-19 (Sam, exact Agent Cloud Post-a-Deal): single page, and evidence
-    // is OPTIONAL there — validate only client / policy / premium (0,1,2), never
-    // the evidence step. submit_apex_deal already accepts a deal with no files.
-    for (let index = 0; index < 3; index += 1) {
-      const validation = validateStep(index);
-      if (validation) { toast.error(validation); return; }
-    }
-    setSaving(true);
-    const queuedArgs = {
-      p_idempotency_key: idempotencyKey,
-      p_payload: payload,
-      p_agent_id: selectedAgentId || null,
-    };
-    const queueCurrentDeal = (): boolean => {
-      if (!user?.id) return false;
-      const clientName = `${form.clientFirstName} ${form.clientLastName}`.trim();
-      const policyNumber = normalizePolicyNumber(form.policyNumber);
-      const label = `${clientName} · ${policyNumber || "Policy number pending"}`;
-      const queued = enqueue({
-        ownerUserId: user.id,
-        kind: "submit_apex_deal",
-        idempotencyKey,
-        args: queuedArgs,
-        label,
-      });
-      if (queued.ok === false) {
-        const message = queued.reason === "queue-full"
-          ? "This device already has 50 deals waiting to sync. Reconnect before posting another."
-          : "This deal could not be stored safely on this device. Keep the form open and reconnect.";
-        toast.error(message);
-        return false;
-      }
-      setOfflineReceipt({ localId: queued.entry.id, label });
-      if (storageKey) localStorage.removeItem(storageKey);
-      toast.info("Saved on this device. The deal will post automatically when internet returns.");
-      return true;
-    };
-
-    if (isOffline()) {
-      queueCurrentDeal();
-      setSaving(false);
-      return;
-    }
-
-    const saved = await saveSection("review");
-    if (!saved.draftId) {
-      if (saved.error && isTransportError(saved.error)) queueCurrentDeal();
-      else toast.error(saved.error?.message || "The draft could not be saved.");
-      setSaving(false);
-      return;
-    }
-    const { data, error } = await rpc<{
-      dealId?: string;
-      status?: string;
-      dealStatus?: string;
-      downstreamState?: string;
-      correlationId?: string;
-      replayed?: boolean;
-      ok?: boolean;
-      reviewId?: string;
-      reviewVersion?: number;
-      matchCount?: number;
-    }>("submit_apex_deal", queuedArgs);
-    if (!error) {
-      try {
-        const held = readCoverageHold(data);
-        if (held) {
-          setCoverageHold(held);
-          void queryClient.invalidateQueries({ queryKey: [COVERAGE_REVIEW_QUERY_KEY, user?.id] });
-          toast.info(held.status === "review_rejected" ? "This draft needs changes after coverage review. No deal was posted." : "Draft saved for coverage review. No deal was posted.");
-          setSaving(false);
-          return;
-        }
-      } catch {
-        toast.error("The review response could not be verified. Keep this draft and retry.");
-        setSaving(false);
-        return;
-      }
-    }
-    if (error || !data?.dealId) {
-      if (error && isTransportError(error)) queueCurrentDeal();
-      else toast.error(error?.message || "The deal could not be submitted. Your draft remains saved.");
-      setSaving(false);
-      return;
-    }
+  // One receipt, one place. The live RPC answer and a receipt recovered from the
+  // ledger both end here, so the celebration, the caller's callback and the cache
+  // refresh cannot drift apart.
+  const finishWithReceipt = (data: { dealId: string; status?: string; downstreamState?: string; correlationId?: string }) => {
     const nextReceipt = {
       dealId: data.dealId,
       status: data.status || "submitted",
@@ -713,7 +695,147 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
     } else {
       toast.success("Deal saved. Delivery is queued independently.");
     }
-    setSaving(false);
+  };
+
+  // The server answered that ANOTHER attempt for this same key is still running
+  // (2026-11-27: concurrent retries of one submission convoyed on its idempotency
+  // lock and each died at the 8s statement timeout). Never re-call the RPC here;
+  // read the ledger for the receipt that attempt will leave.
+  const awaitReceiptByKey = async (): Promise<{ dealId: string; status: string } | null> => {
+    if (!user?.id) return null;
+    for (let attempt = 0; attempt < RECEIPT_POLL_ATTEMPTS; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, RECEIPT_POLL_INTERVAL_MS));
+      const { data: rows, error } = await supabase
+        .from("deals")
+        .select("id, status")
+        .eq("idempotency_key", idempotencyKey)
+        .eq("submitted_by_user_id", user.id)
+        .limit(1);
+      if (error) continue;
+      const row = (rows ?? [])[0];
+      if (row?.id) return { dealId: row.id, status: row.status ?? "submitted" };
+    }
+    return null;
+  };
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    // 2026-08-19 (Sam, exact Agent Cloud Post-a-Deal): single page, and evidence
+    // is OPTIONAL there — validate only client / policy / premium (0,1,2), never
+    // the evidence step. submit_apex_deal already accepts a deal with no files.
+    for (let index = 0; index < 3; index += 1) {
+      const validation = validateStep(index);
+      if (validation) { toast.error(validation); return; }
+    }
+    // A second Post for the same key while the first is still out (double tap,
+    // or the outbox flushing it) is the convoy in miniature. One at a time.
+    if (user?.id && isInFlight(user.id, idempotencyKey)) {
+      toast.info("This deal is already being saved. Give it a moment.");
+      return;
+    }
+    const release = user?.id ? markInFlight(user.id, idempotencyKey) : () => {};
+    setSaving(true);
+    try {
+      const queuedArgs = {
+        p_idempotency_key: idempotencyKey,
+        p_payload: payload,
+        p_agent_id: selectedAgentId || null,
+      };
+      const queueCurrentDeal = (reason: OfflineReason): boolean => {
+        if (!user?.id) return false;
+        const clientName = `${form.clientFirstName} ${form.clientLastName}`.trim();
+        const policyNumber = normalizePolicyNumber(form.policyNumber);
+        const label = `${clientName} · ${policyNumber || "Policy number pending"}`;
+        // Offline: send the moment the connection returns. Otherwise the server
+        // may still be chewing on the attempt that just failed, so the outbox
+        // waits before it asks again instead of joining the queue behind it.
+        const firstAttemptAt = reason === "offline"
+          ? null
+          : Date.now() + (reason === "still_saving" ? IN_PROGRESS_RETRY_MS : FIRST_RETRY_DELAY_MS);
+        const queued = enqueue({
+          ownerUserId: user.id,
+          kind: "submit_apex_deal",
+          idempotencyKey,
+          args: queuedArgs,
+          label,
+          firstAttemptAt,
+        });
+        if (queued.ok === false) {
+          const message = queued.reason === "queue-full"
+            ? "This device already has 50 deals waiting to sync. Reconnect before posting another."
+            : "This deal could not be stored safely on this device. Keep the form open and reconnect.";
+          toast.error(message);
+          return false;
+        }
+        setOfflineReceipt({ localId: queued.entry.id, label, reason });
+        if (storageKey) localStorage.removeItem(storageKey);
+        toast.info(OFFLINE_REASON_COPY[reason].toast);
+        return true;
+      };
+      // "Waiting for internet" on a connected laptop is a lie that sends people
+      // back to re-post. Name the real reason.
+      const transportReason = (): OfflineReason => (isOffline() ? "offline" : "server_busy");
+
+      if (isOffline()) {
+        queueCurrentDeal("offline");
+        return;
+      }
+
+      const saved = await saveSection("review");
+      if (!saved.draftId) {
+        if (saved.error && isTransportError(saved.error)) queueCurrentDeal(transportReason());
+        else toast.error(saved.error?.message || "The draft could not be saved.");
+        return;
+      }
+      const response = await rpc<{
+        dealId?: string;
+        status?: string;
+        dealStatus?: string;
+        downstreamState?: string;
+        correlationId?: string;
+        replayed?: boolean;
+        ok?: boolean;
+        reviewId?: string;
+        reviewVersion?: number;
+        matchCount?: number;
+        idempotencyKey?: string;
+      }>("submit_apex_deal", queuedArgs);
+      const data = response.data;
+      const error: RpcError | null = response.error ? { ...response.error, status: response.error.status ?? response.status } : null;
+      if (!error) {
+        try {
+          const held = readCoverageHold(data);
+          if (held) {
+            setCoverageHold(held);
+            void queryClient.invalidateQueries({ queryKey: [COVERAGE_REVIEW_QUERY_KEY, user?.id] });
+            toast.info(held.status === "review_rejected" ? "This draft needs changes after coverage review. No deal was posted." : "Draft saved for coverage review. No deal was posted.");
+            return;
+          }
+        } catch {
+          toast.error("The review response could not be verified. Keep this draft and retry.");
+          return;
+        }
+        if (data && data.ok === false && data.status === "in_progress") {
+          toast.info("The server is still saving this deal from an earlier attempt. Checking for its receipt…");
+          const recovered = await awaitReceiptByKey();
+          if (recovered) {
+            finishWithReceipt({ ...recovered, downstreamState: "queued", correlationId: "recovered" });
+            return;
+          }
+          queueCurrentDeal("still_saving");
+          return;
+        }
+      }
+      if (error || !data?.dealId) {
+        if (error && isTransportError(error)) queueCurrentDeal(transportReason());
+        else toast.error(error?.message || "The deal could not be submitted. Your draft remains saved.");
+        return;
+      }
+      finishWithReceipt({ dealId: data.dealId, status: data.status, downstreamState: data.downstreamState, correlationId: data.correlationId });
+    } finally {
+      release();
+      setSaving(false);
+    }
   };
 
   const resetAfterClose = () => {
@@ -726,6 +848,8 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
     setOfflineReceipt(null);
     setCoverageHold(null);
     setRecovered(false);
+    setPolicyCheck({ state: "idle" });
+    setDetailsOpen(false);
     setLinkedClient(null);
     setClientMode("new");
     setClientSearch("");
@@ -766,6 +890,7 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
         faceAmount: current.faceAmount || money(initialDeal?.faceAmount),
         effectiveDate: current.effectiveDate || initialDeal?.effectiveDate || "",
       }));
+      if (initialDeal?.effectiveDate) setDetailsOpen(true);
     }
     setOpen(next);
     if (!next) resetAfterClose();
@@ -780,13 +905,13 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
       </DialogTrigger>
       <DialogContent className="flex max-h-[96dvh] w-[calc(100vw-1rem)] max-w-3xl flex-col overflow-hidden p-0 sm:w-full">
         <DialogHeader className="border-b border-border px-5 py-4 pr-12">
-          <DialogTitle>{receipt ? "Deal saved" : offlineReceipt ? "Deal waiting to sync" : title ?? "Post a Deal"}</DialogTitle>
+          <DialogTitle>{receipt ? "Deal saved" : offlineReceipt ? OFFLINE_REASON_COPY[offlineReceipt.reason].dialogTitle : title ?? "Post a Deal"}</DialogTitle>
           <DialogDescription>
             {receipt
               ? "The deal is durable. Integration delivery continues independently."
               : offlineReceipt
-                ? "This deal is stored on this device and has not been recorded by the server yet."
-              : description ?? "Record a new policy for yourself or a downline agent."}
+                ? OFFLINE_REASON_COPY[offlineReceipt.reason].description
+              : description ?? "Who you sold to, what you sold, and what it costs. Everything else is optional."}
           </DialogDescription>
           {secondaryAction && !receipt && !offlineReceipt && (
             <button
@@ -811,24 +936,31 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
                 <ReviewItem label="Delivery" value={receipt.downstreamState} />
                 <ReviewItem label="Correlation" value={receipt.correlationId} />
               </dl>
-              <Button asChild className="mt-5 h-11 w-full sm:h-10">
-                <Link to={`/dashboard/production?deal=${encodeURIComponent(receipt.dealId)}`} onClick={() => setOpen(false)}>
-                  View deal
-                </Link>
-              </Button>
+              <div className="mt-5 grid gap-2 sm:grid-cols-2">
+                <Button asChild className="h-11 sm:h-10">
+                  <Link to={`/dashboard/production?deal=${encodeURIComponent(receipt.dealId)}`} onClick={() => setOpen(false)}>
+                    View deal
+                  </Link>
+                </Button>
+                <Button type="button" variant="outline" className="h-11 sm:h-10" onClick={resetAfterClose}>
+                  Post another deal
+                </Button>
+              </div>
             </div>
           </div>
         ) : offlineReceipt ? (
           <div className="overflow-y-auto px-5 py-8">
             <div className="mx-auto max-w-lg rounded-lg border border-amber-500/30 bg-amber-500/5 p-5">
-              <WifiOff className="mb-3 h-8 w-8 text-amber-500" />
-              <h3 className="text-lg font-semibold">Saved on this device</h3>
+              {offlineReceipt.reason === "offline"
+                ? <WifiOff className="mb-3 h-8 w-8 text-amber-500" />
+                : <Clock3 className="mb-3 h-8 w-8 text-amber-500" />}
+              <h3 className="text-lg font-semibold">{OFFLINE_REASON_COPY[offlineReceipt.reason].title}</h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                Keep this device signed in. It will submit automatically when internet returns, using the same duplicate-safe key.
+                {OFFLINE_REASON_COPY[offlineReceipt.reason].body}
               </p>
               <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
                 <ReviewItem label="Pending deal" value={offlineReceipt.label} />
-                <ReviewItem label="Sync status" value="Waiting for internet" />
+                <ReviewItem label="Sync status" value={OFFLINE_REASON_COPY[offlineReceipt.reason].syncStatus} />
                 <ReviewItem label="Protection" value="Duplicate-safe retry" />
                 <ReviewItem label="Local receipt" value={offlineReceipt.localId} />
               </dl>
@@ -853,41 +985,16 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
               </div>
               <p className="mt-2 text-xs text-muted-foreground">Approval applies only to the exact reviewed draft. Changes are checked again before posting.</p>
             </aside>}
-            <div className="border-b border-border px-5 py-3">
-              <RadioGroup
-                value={clientMode}
-                onValueChange={(value) => {
-                  const mode = value as ClientMode;
-                  setClientMode(mode);
-                  if (mode === "new") {
-                    setLinkedClient(null);
-                    setClientSearch("");
-                    setClientQuery("");
-                  }
-                }}
-                className="flex flex-wrap gap-6"
-              >
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem value="new" id="deal-client-new" />
-                  <Label htmlFor="deal-client-new" className="cursor-pointer font-normal">New Client</Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem value="existing" id="deal-client-existing" />
-                  <Label htmlFor="deal-client-existing" className="cursor-pointer font-normal">Existing Client</Label>
-                </div>
-              </RadioGroup>
-            </div>
-
             <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
-              {recovering && <p className="mb-4 text-sm text-muted-foreground">Recovering saved draft…</p>}
+              {recovering && <p className="text-sm text-muted-foreground">Recovering saved draft…</p>}
               {recovered && !recovering && (
-                <div className="mb-4 rounded-md border border-info/30 bg-info/5 px-3 py-2 text-sm text-info dark:text-info">
-                  Your last server-saved draft was recovered.
+                <div className="rounded-md border border-info/30 bg-info/5 px-3 py-2 text-sm text-info dark:text-info">
+                  Your last saved draft was recovered.
                 </div>
               )}
 
-              <div className="mb-5 grid gap-3 rounded-lg border border-border bg-muted/20 p-3 sm:grid-cols-2">
-                {(isAdmin || isManager) && availableAgents.length > 1 ? (
+              {(isAdmin || isManager) && availableAgents.length > 1 ? (
+                <div className="grid gap-3 rounded-lg border border-border bg-muted/20 p-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label htmlFor="deal-writing-agent">Writing agent</Label>
                     <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
@@ -895,12 +1002,38 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
                       <SelectContent>{availableAgents.map((agent) => <SelectItem key={agent.id} value={agent.id}>{agent.displayName}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                ) : <ReviewItem label="Writing agent" value={writingAgent?.displayName || "Linking account…"} />}
-                <ReviewItem label="Manager / upline" value={writingAgent?.managerId ? manager.data || "Loading assigned manager…" : "No manager assigned"} />
-              </div>
+                  <ReviewItem label="Manager / upline" value={writingAgent?.managerId ? manager.data || "Loading assigned manager…" : "No manager assigned"} />
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Posting as <span className="font-medium text-foreground">{writingAgent?.displayName || "Linking account…"}</span>
+                  {writingAgent?.managerId ? <> · manager: {manager.data || "Loading assigned manager…"}</> : null}
+                </p>
+              )}
 
-              {(
-                <Section title="Client Information" description="Client identity is restricted operational data and is never copied into community posts.">
+              <Section
+                title="Who you sold to"
+                description="Kept private. Client details never appear in community posts."
+                action={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-9"
+                    onClick={() => {
+                      const mode: ClientMode = clientMode === "new" ? "existing" : "new";
+                      setClientMode(mode);
+                      if (mode === "new") {
+                        setLinkedClient(null);
+                        setClientSearch("");
+                        setClientQuery("");
+                      }
+                    }}
+                  >
+                    {clientMode === "new" ? "Find an existing client" : "Enter a new client"}
+                  </Button>
+                }
+              >
                   {clientMode === "existing" && (
                     <div className="mb-4 space-y-2">
                       <Label htmlFor="deal-client-search">Find the client</Label>
@@ -952,10 +1085,9 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
                     <Field label="Date of birth" id="deal-dob" value={form.clientDob} onChange={(value) => update("clientDob", value)} type="date" />
                   </div>
                 </Section>
-              )}
 
-              {(
-                <Section title="Policy Details" description="Carrier and application details are checked again by the server before create.">
+              <Section title="What you sold" description="Carrier, product and price. The server checks these again before the deal is created.">
+                <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label htmlFor="deal-carrier">Carrier</Label>
                     <Select value={form.carrierId} onValueChange={(value) => update("carrierId", value)}>
@@ -963,81 +1095,111 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
                       <SelectContent>{(carriers.data ?? []).map((carrier) => <SelectItem key={carrier.id} value={carrier.id}>{carrier.name}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  {carrierBook.isError && <p role="status">Carrier history could not refresh. Verify existing coverage in the carrier portal before writing.</p>}
-                  {previousPolicies.length > 0 && <aside role="status" className="mt-3 rounded-lg border border-border p-3 text-sm">
-                    <strong>Review existing coverage before writing</strong>
-                    <p>This writing agent has carrier records under the same client name. Confirm the insured’s identity, existing coverage and reason for additional coverage with your manager. A different payment card does not distinguish policies.</p>
-                    <ul>{previousPolicies.map(policy => <li key={policy.key}>{policy.policyNumber || "Number unavailable"} · {policy.statusLabel} · {policy.soldOn || "Sale date unavailable"}{policy.chargeback ? " · Recorded chargeback" : ""}</li>)}</ul>
-                  </aside>}
-                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <Field label="Product sold" id="deal-product" value={form.product} onChange={(value) => update("product", value)} placeholder="Select product…" list="deal-product-options" />
-                      <datalist id="deal-product-options">
-                        {(carrierProducts.data ?? []).map((row) => <option key={row.product} value={row.product} />)}
-                      </datalist>
-                    </div>
-                    <Field label="Policy number" id="deal-policy" value={form.policyNumber} onChange={(value) => update("policyNumber", sanitizePolicyInput(value))} placeholder="e.g., POL-123456" autoComplete="off" />
-                    <p className="text-xs text-muted-foreground">Leave it blank if the carrier has not given it yet. If it is still missing after 14 days, the deal goes back to your leads so you can chase it. A made-up number is refused.</p>
-                    <Field label="Effective date" id="deal-effective-date" value={form.effectiveDate} onChange={(value) => update("effectiveDate", value)} type="date" />
-                    <div className="space-y-1.5">
-                      <Field label="Sale date" id="deal-application-date" value={form.applicationDate} onChange={(value) => update("applicationDate", value)} type="date" max={TODAY} />
-                      <p className="text-xs text-muted-foreground">Counts toward this month. Change it to log an older sale.</p>
-                    </div>
-                    <Field label="Face amount" id="deal-face" value={form.faceAmount} onChange={(value) => update("faceAmount", value)} type="number" min="1" step="1" inputMode="decimal" placeholder="e.g., 50000" />
-                    <Field label={form.premiumMode === "monthly" ? "Monthly premium" : "Premium (per payment)"} id="deal-modal-premium" value={form.modalPremium} onChange={(value) => update("modalPremium", value)} type="number" min="0.01" step="0.01" inputMode="decimal" placeholder="e.g., 99.99" />
-                    <div className="space-y-1.5">
-                      <Label htmlFor="deal-payment-method">Payment method</Label>
-                      <Select value={form.paymentMethod || "not_recorded"} onValueChange={(value) => update("paymentMethod", value === "not_recorded" ? "" : value as PaymentMethod)}>
-                        <SelectTrigger id="deal-payment-method" className="h-11 sm:h-10"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="not_recorded">Not set yet</SelectItem>
-                          <SelectItem value="bank_draft">Bank draft</SelectItem>
-                          <SelectItem value="credit_card">Credit card</SelectItem>
-                          <SelectItem value="debit_card">Debit card</SelectItem>
-                          <SelectItem value="direct_express">Direct Express</SelectItem>
-                          <SelectItem value="check">Check</SelectItem>
-                          <SelectItem value="social_security">Social Security</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <Field label="Draft day" id="deal-draft-day" value={form.draftDay} onChange={(value) => update("draftDay", value)} type="number" min="1" max="28" step="1" inputMode="numeric" placeholder="Not set yet — 1 to 28" />
-                    <div className="space-y-1.5">
-                      <Label htmlFor="deal-premium-mode">Payment frequency</Label>
-                      <Select value={form.premiumMode} onValueChange={(value) => update("premiumMode", value as PremiumMode)}>
-                        <SelectTrigger id="deal-premium-mode" className="h-11 sm:h-10"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="monthly">Monthly</SelectItem><SelectItem value="quarterly">Quarterly</SelectItem>
-                          <SelectItem value="semiannual">Semiannual</SelectItem><SelectItem value="annual">Annual</SelectItem>
-                          <SelectItem value="single_pay">Single Pay</SelectItem><SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1.5" role="group" aria-labelledby="deal-lead-type-label">
-                      <Label id="deal-lead-type-label">What kind of lead was this?</Label>
-                      <div className="flex flex-wrap gap-2">
-                        {LEAD_TYPES.map((type) => (
-                          <button
-                            key={type.key}
-                            type="button"
-                            aria-pressed={form.leadSource === type.label}
-                            title={type.hint}
-                            onClick={() => update("leadSource", type.label)}
-                            className={cn(
-                              "min-h-11 rounded-full border px-4 text-sm font-semibold transition-colors",
-                              form.leadSource === type.label ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-foreground hover:bg-muted",
-                            )}
-                          >
-                            {type.label}
-                          </button>
-                        ))}
-                      </div>
-                      <p className="text-xs text-muted-foreground">One tap. It tells us which leads actually close, so the next ones are better.</p>
-                    </div>
-                    {factor === null && (
-                      <Field label="Annual paid premium" id="deal-paid-premium" value={form.annualizedPaidPremium} onChange={(value) => update("annualizedPaidPremium", value)} type="number" min="0.01" step="0.01" inputMode="decimal" placeholder="Enter for this frequency" />
-                    )}
+                  <div>
+                    <Field label="Product sold" id="deal-product" value={form.product} onChange={(value) => update("product", value)} placeholder="Select product…" list="deal-product-options" />
+                    <datalist id="deal-product-options">
+                      {(carrierProducts.data ?? []).map((row) => <option key={row.product} value={row.product} />)}
+                    </datalist>
                   </div>
-                  <div className="mt-4 space-y-1.5">
+                  <Field label={form.premiumMode === "monthly" ? "Monthly premium" : "Premium (per payment)"} id="deal-modal-premium" value={form.modalPremium} onChange={(value) => update("modalPremium", value)} type="number" min="0.01" step="0.01" inputMode="decimal" placeholder="e.g., 99.99" />
+                  <div className="space-y-1.5">
+                    <Label htmlFor="deal-premium-mode">Payment frequency</Label>
+                    <Select value={form.premiumMode} onValueChange={(value) => update("premiumMode", value as PremiumMode)}>
+                      <SelectTrigger id="deal-premium-mode" className="h-11 sm:h-10"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="monthly">Monthly</SelectItem><SelectItem value="quarterly">Quarterly</SelectItem>
+                        <SelectItem value="semiannual">Semiannual</SelectItem><SelectItem value="annual">Annual</SelectItem>
+                        <SelectItem value="single_pay">Single Pay</SelectItem><SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {factor === null && (
+                    <Field label="Annual paid premium" id="deal-paid-premium" value={form.annualizedPaidPremium} onChange={(value) => update("annualizedPaidPremium", value)} type="number" min="0.01" step="0.01" inputMode="decimal" placeholder="Enter for this frequency" />
+                  )}
+                  <Field label="Face amount" id="deal-face" value={form.faceAmount} onChange={(value) => update("faceAmount", value)} type="number" min="1" step="1" inputMode="decimal" placeholder="e.g., 50000" />
+                  <div className="sm:col-span-2">
+                    <Field
+                      label="Policy number"
+                      id="deal-policy"
+                      value={form.policyNumber}
+                      onChange={(value) => { update("policyNumber", sanitizePolicyInput(value)); setPolicyCheck({ state: "idle" }); }}
+                      onBlur={() => { void checkPolicyNumber(); }}
+                      placeholder="Leave blank until the carrier issues it"
+                      autoComplete="off"
+                    />
+                    <p
+                      className={cn("mt-1 text-xs", policyCheck.state === "duplicate" || policyCheck.state === "error" ? "text-destructive" : policyCheck.state === "unused" ? "text-success" : "text-muted-foreground")}
+                      role={policyCheck.state === "duplicate" ? "alert" : undefined}
+                    >
+                      {policyCheck.state === "checking"
+                        ? "Checking for a duplicate…"
+                        : policyCheck.message ?? "Optional for 30 days. If it is still missing after 14 days the deal goes back to your leads. A made-up number is refused."}
+                    </p>
+                  </div>
+                </div>
+                {carrierBook.isError && <p role="status" className="mt-3 text-sm">Carrier history could not refresh. Verify existing coverage in the carrier portal before writing.</p>}
+                {previousPolicies.length > 0 && <aside role="status" className="mt-3 rounded-lg border border-border p-3 text-sm">
+                  <strong>Review existing coverage before writing</strong>
+                  <p>This writing agent has carrier records under the same client name. Confirm the insured’s identity, existing coverage and reason for additional coverage with your manager. A different payment card does not distinguish policies.</p>
+                  <ul>{previousPolicies.map(policy => <li key={policy.key}>{policy.policyNumber || "Number unavailable"} · {policy.statusLabel} · {policy.soldOn || "Sale date unavailable"}{policy.chargeback ? " · Recorded chargeback" : ""}</li>)}</ul>
+                </aside>}
+                <div className="mt-4 space-y-1.5" role="group" aria-labelledby="deal-lead-type-label">
+                  <Label id="deal-lead-type-label">What kind of lead was this?</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {LEAD_TYPES.map((type) => (
+                      <button
+                        key={type.key}
+                        type="button"
+                        aria-pressed={form.leadSource === type.label}
+                        title={type.hint}
+                        onClick={() => update("leadSource", type.label)}
+                        className={cn(
+                          "min-h-11 rounded-full border px-4 text-sm font-semibold transition-colors",
+                          form.leadSource === type.label ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-foreground hover:bg-muted",
+                        )}
+                      >
+                        {type.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <p className="mt-4 text-sm text-muted-foreground">
+                  Annual premium <strong className="text-base text-success">{formatMoney(calculatedAnnualPaid)}</strong> / year
+                </p>
+              </Section>
+
+              <Collapsible open={detailsOpen} onOpenChange={setDetailsOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button type="button" variant="outline" className="h-11 w-full justify-between sm:h-10">
+                    <span>{detailsOpen ? "Hide the optional details" : "More details (optional)"}</span>
+                    <ChevronDown className={cn("h-4 w-4 transition-transform", detailsOpen && "rotate-180")} aria-hidden="true" />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-5 pt-5">
+              <Section title="Dates and payment" description="Only if you have them now. The sale date already counts for today.">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Field label="Sale date" id="deal-application-date" value={form.applicationDate} onChange={(value) => update("applicationDate", value)} type="date" max={TODAY} />
+                    <p className="text-xs text-muted-foreground">Change it to log an older sale.</p>
+                  </div>
+                  <Field label="Effective date" id="deal-effective-date" value={form.effectiveDate} onChange={(value) => update("effectiveDate", value)} type="date" />
+                  <div className="space-y-1.5">
+                    <Label htmlFor="deal-payment-method">Payment method</Label>
+                    <Select value={form.paymentMethod || "not_recorded"} onValueChange={(value) => update("paymentMethod", value === "not_recorded" ? "" : value as PaymentMethod)}>
+                      <SelectTrigger id="deal-payment-method" className="h-11 sm:h-10"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="not_recorded">Not set yet</SelectItem>
+                        <SelectItem value="bank_draft">Bank draft</SelectItem>
+                        <SelectItem value="credit_card">Credit card</SelectItem>
+                        <SelectItem value="debit_card">Debit card</SelectItem>
+                        <SelectItem value="direct_express">Direct Express</SelectItem>
+                        <SelectItem value="check">Check</SelectItem>
+                        <SelectItem value="social_security">Social Security</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Field label="Draft day" id="deal-draft-day" value={form.draftDay} onChange={(value) => update("draftDay", value)} type="number" min="1" max="28" step="1" inputMode="numeric" placeholder="1 to 28" />
+                  <div className="space-y-1.5">
                     <Label htmlFor="deal-policy-status">Policy status</Label>
                     <Select value={form.policyStatus} onValueChange={(value) => update("policyStatus", value as PolicyStatus)}>
                       <SelectTrigger id="deal-policy-status" className="h-11 sm:h-10"><SelectValue /></SelectTrigger>
@@ -1046,14 +1208,8 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="mt-4 space-y-1">
-                    <Label>Annual Premium</Label>
-                    <div className="rounded-md border border-border bg-muted/20 px-3 py-2.5">
-                      <p className="text-xl font-bold text-success">{formatMoney(calculatedAnnualPaid)} <span className="text-sm font-normal text-muted-foreground">/ year</span></p>
-                    </div>
-                  </div>
-                </Section>
-              )}
+                </div>
+              </Section>
 
               <Section
                 title="Beneficiaries (Optional)"
@@ -1113,22 +1269,17 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
                 </Section>
               )}
 
-              <div className="rounded-md border border-info/30 bg-info/5 p-3 text-sm">
-                <div className="flex items-start gap-2"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-info" /><p><strong>The deal saves first.</strong> Discord, scanning and analytics delivery are queued separately and can never erase or duplicate this record. Client identity is never copied into community posts.</p></div>
-              </div>
+                </CollapsibleContent>
+              </Collapsible>
             </div>
 
-            <DialogFooter className="flex-row items-center justify-between gap-2 border-t border-border px-5 py-4 sm:justify-between">
-              {/* Agent Cloud's pre-submit review slot. runCheck() existed in this
-                  file but nothing ever called it — the gates it runs and the
-                  duplicate-policy-number question it asks the database were
-                  dead code, so a duplicate only surfaced as a 23505 AFTER the
-                  agent hit Post. Wired to a real control now. */}
-              <Button type="button" variant="outline" className="h-11 gap-2 sm:h-10" onClick={runCheck} disabled={checking || saving || recovering}>
-                {checking ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-                Review before submit
-              </Button>
-              <Button type="submit" className="h-11 gap-2 sm:h-10" disabled={saving || recovering}>
+            <DialogFooter className="flex-row items-center justify-between gap-3 border-t border-border px-5 py-4 sm:justify-between">
+              <p className="min-w-0 text-xs text-muted-foreground" aria-live="polite">
+                {missing.length > 0
+                  ? <>Still needed: {missing.join(", ")}.</>
+                  : "Everything required is filled in. The deal saves first; Discord and analytics follow on their own."}
+              </p>
+              <Button type="submit" className="h-11 shrink-0 gap-2 sm:h-10" disabled={saving || recovering}>
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <FilePlus2 className="h-4 w-4" />} Post Deal
               </Button>
             </DialogFooter>

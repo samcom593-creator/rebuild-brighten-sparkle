@@ -2,8 +2,10 @@
 -- Exact policy/retry identity retains the existing submit implementation. Names
 -- alone never hold a deal. No card information, new customer identifiers or sends.
 begin;
+set local lock_timeout = '5s';
+set local search_path = pg_catalog, public;
 
-create table public.deal_coverage_reviews (
+create table if not exists public.deal_coverage_reviews (
   id uuid primary key default gen_random_uuid(),
   draft_id uuid not null references public.deal_drafts(id) on delete restrict,
   owner_user_id uuid not null references auth.users(id) on delete restrict,
@@ -26,8 +28,8 @@ create table public.deal_coverage_reviews (
   check ((status in ('approved','rejected','submitted')) = (reviewed_by is not null and reviewed_at is not null and decision_reason is not null)),
   check ((status = 'submitted') = (deal_id is not null))
 );
-create index deal_coverage_reviews_work_idx on public.deal_coverage_reviews(status, created_at);
-create index deals_coverage_identity_idx on public.deals(carrier_id, client_dob)
+create index if not exists deal_coverage_reviews_work_idx on public.deal_coverage_reviews(status, created_at);
+create index if not exists deals_coverage_identity_idx on public.deals(carrier_id, client_dob)
   where duplicate_of_deal_id is null and status <> 'draft';
 alter table public.deal_coverage_reviews enable row level security;
 revoke all on public.deal_coverage_reviews from public, anon, authenticated, service_role;
@@ -35,7 +37,7 @@ revoke all on public.deal_coverage_reviews from public, anon, authenticated, ser
 -- A transaction-local permit closes direct table INSERT and draft-promotion
 -- bypasses. Only the authenticated submit wrapper can create it; it is removed
 -- before that function returns. No payload or customer data is stored here.
-create table public.deal_coverage_post_permits (
+create table if not exists public.deal_coverage_post_permits (
   transaction_id bigint not null,
   owner_user_id uuid not null,
   idempotency_key uuid not null,
@@ -45,20 +47,117 @@ create table public.deal_coverage_post_permits (
 alter table public.deal_coverage_post_permits enable row level security;
 revoke all on public.deal_coverage_post_permits from public, anon, authenticated, service_role;
 
-create function public.deal_coverage_name(p_first text, p_last text)
+-- Re-entry is allowed only for the declared schema. These fingerprints cover
+-- columns/defaults/nullability, check/FK/unique constraints, private table and
+-- column ACLs, RLS, absence of policies/triggers/rules/inheritance, and exact
+-- index keys/operator classes/predicates. They were calculated from the original
+-- CREATE definitions above in an isolated PostgreSQL catalog. PostgreSQL's
+-- separate NOT NULL constraints are ignored because attnotnull is checked;
+-- connoinherit is meaningful here only for CHECK constraints.
+do $shape$
+declare v_object record; v_expected text;
+begin
+  for v_object in
+with wanted_tables(name) as (values ('deal_coverage_reviews'),('deal_coverage_post_permits')),
+table_shapes as (
+  select 'table'::text as kind,'public.'||w.name as name,c.oid is not null as present,null::text as source_sha256,
+    case when c.oid is not null then jsonb_build_object(
+      'kind',c.relkind,'persistence',c.relpersistence,'owner',pg_get_userbyid(c.relowner),
+      'rls_enabled',c.relrowsecurity,'rls_forced',c.relforcerowsecurity,
+      'nonowner_grants',(select coalesce(jsonb_agg(jsonb_build_object(
+        'grantee',case when x.grantee=0 then 'PUBLIC' else pg_get_userbyid(x.grantee) end,
+        'privilege',x.privilege_type,'grantable',x.is_grantable)
+        order by case when x.grantee=0 then 'PUBLIC' else pg_get_userbyid(x.grantee) end,x.privilege_type),'[]'::jsonb)
+        from aclexplode(coalesce(c.relacl,acldefault('r',c.relowner))) x where x.grantee<>c.relowner),
+      'columns',(select coalesce(jsonb_agg(jsonb_build_object(
+        'name',a.attname,'type',format_type(a.atttypid,a.atttypmod),'not_null',a.attnotnull,
+        'default',pg_get_expr(d.adbin,d.adrelid),'identity',a.attidentity,'generated',a.attgenerated,
+        'collation',co.collname,
+        'nonowner_grants',(select coalesce(jsonb_agg(jsonb_build_object(
+          'grantee',case when x.grantee=0 then 'PUBLIC' else pg_get_userbyid(x.grantee) end,
+          'privilege',x.privilege_type,'grantable',x.is_grantable)
+          order by case when x.grantee=0 then 'PUBLIC' else pg_get_userbyid(x.grantee) end,x.privilege_type),'[]'::jsonb)
+          from aclexplode(a.attacl) x where x.grantee<>c.relowner)) order by a.attnum),'[]'::jsonb)
+        from pg_attribute a left join pg_attrdef d on d.adrelid=a.attrelid and d.adnum=a.attnum
+        left join pg_collation co on co.oid=a.attcollation
+        where a.attrelid=c.oid and a.attnum>0 and not a.attisdropped),
+      'constraints',(select coalesce(jsonb_agg(jsonb_build_object(
+        'name',k.conname,'type',k.contype,'validated',k.convalidated,
+        'deferrable',k.condeferrable,'initially_deferred',k.condeferred,'no_inherit',case when k.contype='c' then k.connoinherit end,
+        'columns',(select coalesce(jsonb_agg(a.attname order by v.position),'[]'::jsonb)
+          from unnest(k.conkey) with ordinality v(num,position)
+          join pg_attribute a on a.attrelid=k.conrelid and a.attnum=v.num),
+        'referenced_relation',case when k.confrelid<>0 then (select n.nspname||'.'||r.relname
+          from pg_class r join pg_namespace n on n.oid=r.relnamespace where r.oid=k.confrelid) end,
+        'referenced_columns',(select coalesce(jsonb_agg(a.attname order by v.position),'[]'::jsonb)
+          from unnest(k.confkey) with ordinality v(num,position)
+          join pg_attribute a on a.attrelid=k.confrelid and a.attnum=v.num),
+        'foreign_match',k.confmatchtype,'foreign_delete',k.confdeltype,'foreign_update',k.confupdtype,
+        'check_expression',pg_get_expr(k.conbin,k.conrelid)) order by k.conname),'[]'::jsonb)
+        from pg_constraint k where k.conrelid=c.oid and k.contype<>'n'),
+      'policy_count',(select count(*) from pg_policy p where p.polrelid=c.oid),
+      'user_trigger_count',(select count(*) from pg_trigger t where t.tgrelid=c.oid and not t.tgisinternal),
+      'rule_count',(select count(*) from pg_rewrite r where r.ev_class=c.oid),
+      'index_count',(select count(*) from pg_index i where i.indrelid=c.oid),
+      'inheritance_count',(select count(*) from pg_inherits h where h.inhrelid=c.oid or h.inhparent=c.oid)) end as shape
+  from wanted_tables w left join pg_class c on c.oid=to_regclass('public.'||w.name)
+), wanted_indexes(name) as (values
+  ('deal_coverage_reviews_pkey'),('deal_coverage_reviews_owner_user_id_idempotency_key_key'),
+  ('deal_coverage_reviews_work_idx'),('deal_coverage_post_permits_pkey'),('deals_coverage_identity_idx')
+), index_shapes as (
+  select 'index'::text as kind,'public.'||w.name as name,i.indexrelid is not null as present,null::text as source_sha256,
+    case when i.indexrelid is not null then jsonb_build_object(
+      'relation',tn.nspname||'.'||t.relname,'method',am.amname,'unique',i.indisunique,'primary',i.indisprimary,
+      'valid',i.indisvalid,'ready',i.indisready,'live',i.indislive,'immediate',i.indimmediate,
+      'key_count',i.indnkeyatts,'attribute_count',i.indnatts,'nulls_not_distinct',i.indnullsnotdistinct,
+      'keys',(select coalesce(jsonb_agg(a.attname order by v.position),'[]'::jsonb)
+        from unnest(i.indkey::smallint[]) with ordinality v(num,position)
+        left join pg_attribute a on a.attrelid=i.indrelid and a.attnum=v.num),
+      'options',to_jsonb(i.indoption::smallint[]),
+      'collations',(select coalesce(jsonb_agg(case when co.oid is not null then n.nspname||'.'||co.collname end order by v.position),'[]'::jsonb)
+        from unnest(i.indcollation::oid[]) with ordinality v(num,position)
+        left join pg_collation co on co.oid=v.num left join pg_namespace n on n.oid=co.collnamespace),
+      'operator_classes',(select coalesce(jsonb_agg(n.nspname||'.'||o.opcname order by v.position),'[]'::jsonb)
+        from unnest(i.indclass::oid[]) with ordinality v(num,position)
+        join pg_opclass o on o.oid=v.num join pg_namespace n on n.oid=o.opcnamespace),
+      'expressions',pg_get_expr(i.indexprs,i.indrelid),'predicate',pg_get_expr(i.indpred,i.indrelid)) end as shape
+  from wanted_indexes w left join pg_index i on i.indexrelid=to_regclass('public.'||w.name)
+  left join pg_class c on c.oid=i.indexrelid left join pg_am am on am.oid=c.relam
+  left join pg_class t on t.oid=i.indrelid left join pg_namespace tn on tn.oid=t.relnamespace
+)
+select kind,name,present,shape from table_shapes union all select kind,name,present,shape from index_shapes
+  loop
+    select expected.hash into v_expected from (values
+    ('public.deal_coverage_post_permits_pkey','08b2d4782ac0b2ecbbe24b03bea4ef442237a7149256470cacf5e10498f8a163'),
+    ('public.deal_coverage_reviews_owner_user_id_idempotency_key_key','dd777beb371dbc37afa5e2446a8a6f1f4ad1271afe69a1834ca0ef0c8534bc67'),
+    ('public.deal_coverage_reviews_pkey','d1d113fca34f62faed833242b2acdf342940072f3e5f58e9fa19be9ca0a5949f'),
+    ('public.deal_coverage_reviews_work_idx','390974891c5e682e91a825fe9654ecefee55b615757e02931c7fc4f3819e11ae'),
+    ('public.deals_coverage_identity_idx','70132543fb8b790ee650c0ae8af7d041f76c9e32de8bb0ef708de125ce8bcf09'),
+    ('public.deal_coverage_post_permits','4187f0da843457ab02b3f961236d1831cb2686158218e80f4fa3f948240eaf60'),
+    ('public.deal_coverage_reviews','faf8aa700b6fed9df95478338af855c4c75173ea8c177d0f366c51aa0578e7a9')
+    ) expected(name,hash) where expected.name=v_object.name;
+    if not v_object.present or v_expected is null
+      or encode(sha256(convert_to(v_object.shape::text,'UTF8')),'hex') is distinct from v_expected then
+      raise exception 'Coverage schema contract differs for %; reconcile before retrying', v_object.name using errcode='23514';
+    end if;
+  end loop;
+end;
+$shape$;
+
+create or replace function public.deal_coverage_name(p_first text, p_last text)
 returns text language sql immutable set search_path = public as $$
   select lower(regexp_replace(btrim(coalesce(p_first,'') || ' ' || coalesce(p_last,'')), '[[:space:]]+', ' ', 'g'));
 $$;
-create function public.deal_coverage_phone(p_phone text)
+create or replace function public.deal_coverage_phone(p_phone text)
 returns text language sql immutable set search_path = public as $$
   select case when length(d)=11 and left(d,1)='1' then substr(d,2) else d end
   from (select regexp_replace(coalesce(p_phone,''),'[^0-9]','','g') d) normalized;
 $$;
-create function public.deal_coverage_payload_hash(p_payload jsonb, p_agent_id uuid)
+create or replace function public.deal_coverage_payload_hash(p_payload jsonb, p_agent_id uuid)
 returns text language sql immutable set search_path = public as $$
   select encode(sha256(convert_to(jsonb_build_object('agent_id',p_agent_id,'payload',p_payload)::text,'UTF8')),'hex');
 $$;
-create function public.deal_coverage_candidates(p_carrier_id uuid, p_dob date, p_name text, p_phone text, p_exclude uuid default null)
+create or replace function public.deal_coverage_candidates(p_carrier_id uuid, p_dob date, p_name text, p_phone text, p_exclude uuid default null)
 returns jsonb language sql stable security definer set search_path = public as $$
   with matched as (
     select d.id, d.agent_id, d.carrier_id, d.client_dob,
@@ -85,7 +184,7 @@ returns jsonb language sql stable security definer set search_path = public as $
   from matched;
 $$;
 
-create function public.deal_coverage_manager_access(p_agent_id uuid, p_manager_id uuid)
+create or replace function public.deal_coverage_manager_access(p_agent_id uuid, p_manager_id uuid)
 returns boolean language sql stable security definer set search_path = public as $$
   select auth.uid() is not null and not public.fn_user_login_blocked(auth.uid()) and not public.fn_user_is_suspended(auth.uid()) and (public.apex_is_admin() or (
     public.apex_has_any_role(array['manager']) and public.apex_can_read_agent(p_agent_id)
@@ -93,14 +192,14 @@ returns boolean language sql stable security definer set search_path = public as
       where own.user_id=auth.uid() and own.status::text='active' and not coalesce(own.is_inactive,false) and not coalesce(own.is_deactivated,false)
         and coalesce(own.canonical_agent_id,own.id)=coalesce(assigned.canonical_agent_id,assigned.id))));
 $$;
-create function public.deal_coverage_can_decide(p_agent_id uuid, p_manager_id uuid, p_matches uuid[])
+create or replace function public.deal_coverage_can_decide(p_agent_id uuid, p_manager_id uuid, p_matches uuid[])
 returns boolean language sql stable security definer set search_path = public as $$
   -- Book visibility was explicitly restricted to own records and the owner's
   -- full-reader list. Hierarchy membership must not reopen client-book access.
   select public.deal_coverage_manager_access(p_agent_id,p_manager_id) and public.api_is_full_reader();
 $$;
 
-create function public.deal_coverage_requires_admin(p_manager_id uuid,p_matches uuid[])
+create or replace function public.deal_coverage_requires_admin(p_manager_id uuid,p_matches uuid[])
 returns boolean language sql stable security definer set search_path = public as $$
   with manager_users as (
     select distinct a.user_id from public.agents a join public.agents m on m.id=p_manager_id
@@ -113,7 +212,7 @@ returns boolean language sql stable security definer set search_path = public as
     or exists(select 1 from public.book_readers b where b.user_id=m.user_id));
 $$;
 
-create function public.enforce_deal_coverage_review()
+create or replace function public.enforce_deal_coverage_review()
 returns trigger language plpgsql security definer set search_path = public as $$
 declare v_matches jsonb;
 begin
@@ -145,30 +244,55 @@ begin
   return new;
 end;
 $$;
+drop trigger if exists zz_deal_coverage_review_guard on public.deals;
 create trigger zz_deal_coverage_review_guard
   before insert or update of agent_id, carrier_id, client_dob, client_first_name, client_last_name, client_phone, status, source
   on public.deals for each row execute function public.enforce_deal_coverage_review();
 
 -- Preserve the exact deployed ledger/retry implementation; deny its renamed
 -- entry point to API callers so the review gate cannot be bypassed by RPC.
-do $$
-declare v_source text;
+do $baseline$
+declare
+  v_saved regprocedure := to_regprocedure('public.submit_apex_deal_before_coverage_review(uuid,jsonb,uuid)');
+  v_baseline regprocedure;
+  v_contract record;
 begin
-  if to_regprocedure('public.submit_apex_deal_before_coverage_review(uuid,jsonb,uuid)') is not null then
-    raise exception 'Coverage baseline already exists; reconcile migration history instead of replacing it';
+  v_baseline := coalesce(v_saved, to_regprocedure('public.submit_apex_deal(uuid,jsonb,uuid)'));
+  -- Exact bodies and contracts from the established 20260825232500 retry
+  -- wrapper and 20261012160000 ledger implementation. A table's existence or
+  -- a few matching source fragments is not evidence that the baseline is safe.
+  for v_contract in select * from (values
+    (v_baseline, 'e87aeae91a146f0d96491a8ebb721b4da544386042eb67d2013e19c90d50b22e'),
+    (to_regprocedure('public.submit_apex_deal_ledger_impl(uuid,jsonb,uuid)'), 'fbff715086cfbe040a7947e3a21119cb44d8fc11b5160f0395a20242ecad09e0')
+  ) expected(function_id, body_sha256)
+  loop
+    if not exists (
+      select 1 from pg_proc p join pg_language l on l.oid=p.prolang
+      where p.oid=v_contract.function_id and p.prokind='f' and l.lanname='plpgsql'
+        and p.prorettype='jsonb'::regtype and not p.proretset and p.provariadic=0
+        and p.prosecdef and p.provolatile='v' and p.proparallel='u'
+        and not p.proleakproof and not p.proisstrict
+        and p.proowner=current_user::regrole
+        and p.proargnames=array['p_idempotency_key','p_payload','p_agent_id']::text[]
+        and p.proallargtypes is null and p.proargmodes is null
+        and p.pronargdefaults=1 and pg_get_expr(p.proargdefaults,0)='NULL::uuid'
+        and p.proconfig=array['search_path=public, extensions']::text[]
+        and encode(sha256(convert_to(p.prosrc,'UTF8')),'hex')=v_contract.body_sha256
+    ) then
+      raise exception 'Coverage posting baseline differs from its verified contract; reconcile before retrying' using errcode='23514';
+    end if;
+  end loop;
+  if v_saved is null then
+    alter function public.submit_apex_deal(uuid,jsonb,uuid) rename to submit_apex_deal_before_coverage_review;
   end if;
-  select pg_get_functiondef('public.submit_apex_deal(uuid,jsonb,uuid)'::regprocedure) into v_source;
-  if position('submit_apex_deal_ledger_impl' in v_source)=0 or position('already_recorded' in v_source)=0
-    or position('pg_advisory_xact_lock' in v_source)=0 then
-    raise exception 'Unexpected submit contract; refusing to replace it';
-  end if;
-  alter function public.submit_apex_deal(uuid,jsonb,uuid) rename to submit_apex_deal_before_coverage_review;
+  -- On re-entry the saved baseline stays untouched. CREATE OR REPLACE below
+  -- restores only the review wrapper, never renames it over the old posting code.
 end;
-$$;
+$baseline$;
 revoke all on function public.submit_apex_deal_before_coverage_review(uuid,jsonb,uuid) from public,anon,authenticated,service_role;
 revoke all on function public.submit_apex_deal_ledger_impl(uuid,jsonb,uuid) from public,anon,authenticated,service_role;
 
-create function public.submit_apex_deal(p_idempotency_key uuid, p_payload jsonb, p_agent_id uuid default null)
+create or replace function public.submit_apex_deal(p_idempotency_key uuid, p_payload jsonb, p_agent_id uuid default null)
 returns jsonb language plpgsql security definer set search_path = public,extensions as $$
 declare
   v_user uuid:=auth.uid(); v_own uuid; v_agent uuid; v_manager uuid; v_carrier uuid; v_dob date;
@@ -266,7 +390,7 @@ begin
 end;
 $$;
 
-create function public.decide_deal_coverage_review(p_review_id uuid, p_decision text, p_reason text, p_expected_version integer)
+create or replace function public.decide_deal_coverage_review(p_review_id uuid, p_decision text, p_reason text, p_expected_version integer)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare v_review public.deal_coverage_reviews; v_draft public.deal_drafts; v_evidence jsonb;
 begin
@@ -294,7 +418,7 @@ begin
 end;
 $$;
 
-create function public.resume_deal_coverage_review(p_review_id uuid,p_expected_version integer)
+create or replace function public.resume_deal_coverage_review(p_review_id uuid,p_expected_version integer)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare v_review public.deal_coverage_reviews; v_draft public.deal_drafts;
 begin
@@ -312,7 +436,7 @@ begin
 end;
 $$;
 
-create function public.deal_coverage_review_queue()
+create or replace function public.deal_coverage_review_queue()
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare v_result jsonb;
 begin
@@ -362,5 +486,41 @@ revoke all on function public.submit_apex_deal(uuid,jsonb,uuid), public.decide_d
   public.resume_deal_coverage_review(uuid,integer), public.deal_coverage_review_queue() from public,anon;
 grant execute on function public.submit_apex_deal(uuid,jsonb,uuid), public.decide_deal_coverage_review(uuid,text,text,integer),
   public.resume_deal_coverage_review(uuid,integer), public.deal_coverage_review_queue() to authenticated;
+-- CREATE OR REPLACE preserves ACLs and ownership. Known API grants were
+-- revoked above; an unexpected custom grant or owner fails the transaction.
+do $private_access$
+begin
+  if exists (
+    select 1 from pg_proc p where p.oid=any(array[
+      'public.submit_apex_deal(uuid,jsonb,uuid)'::regprocedure,
+      'public.decide_deal_coverage_review(uuid,text,text,integer)'::regprocedure,
+      'public.resume_deal_coverage_review(uuid,integer)'::regprocedure,
+      'public.deal_coverage_review_queue()'::regprocedure
+    ]::oid[]) and p.proowner<>current_user::regrole
+  ) then
+    raise exception 'Unexpected coverage entry-point ownership; reconcile before retrying' using errcode='23514';
+  end if;
+  if exists (
+    select 1 from pg_proc p
+    where p.oid=any(array[
+      'public.deal_coverage_name(text,text)'::regprocedure,
+      'public.deal_coverage_phone(text)'::regprocedure,
+      'public.deal_coverage_payload_hash(jsonb,uuid)'::regprocedure,
+      'public.deal_coverage_candidates(uuid,date,text,text,uuid)'::regprocedure,
+      'public.deal_coverage_manager_access(uuid,uuid)'::regprocedure,
+      'public.deal_coverage_can_decide(uuid,uuid,uuid[])'::regprocedure,
+      'public.deal_coverage_requires_admin(uuid,uuid[])'::regprocedure,
+      'public.enforce_deal_coverage_review()'::regprocedure,
+      'public.submit_apex_deal_before_coverage_review(uuid,jsonb,uuid)'::regprocedure,
+      'public.submit_apex_deal_ledger_impl(uuid,jsonb,uuid)'::regprocedure
+    ]::oid[])
+    and (p.proowner<>current_user::regrole or exists (
+      select 1 from aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) a where a.grantee<>p.proowner
+    ))
+  ) then
+    raise exception 'Unexpected private coverage function ownership or grant; reconcile before retrying' using errcode='23514';
+  end if;
+end;
+$private_access$;
 comment on table public.deal_coverage_reviews is 'Possible repeated insured coverage held before a deal exists. Manager/admin decisions bind the exact draft, writer and existing-policy evidence. No card data or automatic carrier decisions.';
 commit;

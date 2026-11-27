@@ -61,7 +61,8 @@ conversion results, or live customer records were invented for this release.
 The read-only production schema preflight at `2026-11-27T04:36:41.898Z` confirmed
 all 1,224 migrations from the stated main revision are recorded. It executed no
 application function and changed no production row. The four new migrations
-were not applied at preflight time.
+were not recorded at preflight time. This ledger check did not establish
+that the corresponding schema objects were absent.
 
 Executable PostgreSQL fixtures cover versioned social review, canonical
 training access, repeated recovery history, and the actual prior deal-posting
@@ -79,3 +80,27 @@ Release gates remain the full frontend suite, TypeScript authority check,
 production build, required core/Deno checks, SQL fixtures, synthetic browser
 checks, and deployment verification on the published revision. CI results are
 the authority for the completed release, not this pre-publication record.
+
+## Production reconciliation
+
+The approved release merged as `9f8ce4091f2f52667a07a793f3dd4827eecab0b8`.
+Its source tree exactly matched the validated release. All 171 core checks,
+4,875 frontend tests, SQL fixtures, and 24 synthetic visual scenarios passed
+before merge. Public route, mobile overflow, Lighthouse, and SEO checks then
+passed on the served production revision.
+
+The database deployment recorded the first three new migrations and stopped
+when `20261127050000` found an existing `deal_coverage_reviews` table. A fixed,
+read-only catalog check at `2026-11-27T05:18:04.055Z` confirmed the coverage
+functions, private table access, RLS, and enabled guards were present, while
+that migration version remained unrecorded. This is not evidence of who
+created those objects or when. A second schema-only check at `2026-11-27T05:22:28.570Z` matched all 22
+approved coverage objects: exact function-source and contract hashes, table
+columns/constraints/private grants, indexes, and the guard trigger. The
+comparison used immutable approved source `c0360ddf`; no customer rows were
+read. The remaining repair must safely rerun the existing migration and record
+its version while preserving customer rows and the saved posting implementation.
+
+The failed database step also prevented deployment of the four changed edge
+functions. A green source-audit job allowed those pending changes during its
+deployment window; that result alone does not prove they were deployed.

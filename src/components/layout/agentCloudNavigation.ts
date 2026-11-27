@@ -255,9 +255,9 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       { label: "Leaderboard", href: "/dashboard/leaderboard", icon: Trophy, modes: PRODUCERS },
       { label: "Wins & Awards", href: "/dashboard/awards", icon: Crown },
       { label: "My Team", href: "/dashboard/team", icon: Users },
-      { label: "Team recovery", href: "/dashboard/inactive-agents", icon: Activity, modes: LEADERS },
-      // Leaders call the people under them who hold the Ethos contract; the database scopes the rows (MP-ETHOS-CALLSHEET).
-      { label: "Call sheet", href: "/dashboard/ethos-call-sheet", icon: PhoneCall, modes: LEADERS },
+      // MP-TEAM-RECOVERY (2026-11-27): the call sheet and the recovery queue are one page with a shared
+      // state filter. Leaders call the people under them; the database scopes the rows (MP-ETHOS-CALLSHEET).
+      { label: "Team recovery", href: "/dashboard/team-recovery", icon: PhoneCall, modes: LEADERS },
       // MP-304: a leader's whole process on one page — recruit link, Join link (hire + contract in one), the board.
       { label: "Grow my team", href: "/dashboard/grow", icon: UserPlus, modes: LEADERS },
     ],

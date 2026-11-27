@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -61,6 +61,15 @@ import {
   type EthosCallSheetPayload,
   type EthosCallSheetRow,
 } from "@/lib/ethosCallSheet";
+import {
+  EMPTY_STATE_FILTER,
+  countStates,
+  matchesStateFilter,
+  normalizeStates,
+  type RecoveryPerson,
+  type StateCountSummary,
+  type StateFilter,
+} from "@/lib/teamRecovery";
 
 /**
  * /dashboard/ethos-call-sheet (MP-ETHOS-CALLSHEET, 2026-11-19)
@@ -92,8 +101,25 @@ interface SpokeForm {
   note: string;
 }
 
-export default function EthosCallSheet() {
-  usePageTitle("Call sheet");
+/**
+ * MP-TEAM-RECOVERY: the sheet also lives inside /dashboard/team-recovery. `embedded` drops the page
+ * header (the parent has one), `stateFilter` narrows the rows, and the two callbacks hand the parent
+ * the state counts and the people so one filter bar and one By-state view can cover both lists.
+ */
+export interface EthosCallSheetProps {
+  embedded?: boolean;
+  stateFilter?: StateFilter;
+  onStateCounts?: (counts: StateCountSummary) => void;
+  onPeople?: (people: RecoveryPerson[]) => void;
+}
+
+export default function EthosCallSheet({
+  embedded = false,
+  stateFilter = EMPTY_STATE_FILTER,
+  onStateCounts,
+  onPeople,
+}: EthosCallSheetProps = {}) {
+  usePageTitle(embedded ? "Team recovery" : "Call sheet");
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [lane, setLane] = useState<CallLaneFilter>("call_now");
@@ -133,9 +159,25 @@ export default function EthosCallSheet() {
   }, [rows]);
 
   const scoped = useMemo(() => {
-    if (!seesAll || leader === "all") return rows;
-    return rows.filter((r) => (r.manager_name?.trim() || NO_LEADER) === leader);
-  }, [rows, leader, seesAll]);
+    const byLeader = !seesAll || leader === "all" ? rows : rows.filter((r) => (r.manager_name?.trim() || NO_LEADER) === leader);
+    return byLeader.filter((r) => matchesStateFilter(r.states, stateFilter));
+  }, [rows, leader, seesAll, stateFilter]);
+
+  // MP-TEAM-RECOVERY: the parent's state bar counts every row (before any filter) and its By-state
+  // view lists every person; both are handed up whenever the sheet changes.
+  useEffect(() => {
+    onStateCounts?.(countStates(rows.map((r) => r.states)));
+  }, [rows, onStateCounts]);
+  useEffect(() => {
+    onPeople?.(rows.map((r) => ({
+      key: `cs:${r.id}`,
+      name: r.full_name,
+      phone: r.phone,
+      states: normalizeStates(r.states),
+      source: "call_sheet" as const,
+      detail: callAngle(r).text,
+    })));
+  }, [rows, onPeople]);
 
   const laneCounts = useMemo(() => {
     const out: Record<CallLaneFilter, number> = {
@@ -271,33 +313,36 @@ export default function EthosCallSheet() {
     if (ok) setSpoke(null);
   }
 
+  const importButton = seesAll ? (
+    <Button
+      type="button"
+      variant="outline"
+      className="h-10 gap-2 sm:h-9"
+      disabled={importing}
+      onClick={() => fileRef.current?.click()}
+    >
+      {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+      Load new Ethos export
+    </Button>
+  ) : null;
+
   return (
-    <div className="page-enter mx-auto w-full max-w-6xl space-y-5 px-4 pb-24 sm:px-6">
-      <PageHeader
-        eyebrowIcon={<PhoneCall className="h-4 w-4" />}
-        eyebrow="Ethos first, then contracted, then licensed"
-        title="Call sheet"
-        subtitle={
-          seesAll
-            ? "Licensed agents and people finishing their license. Call, find out why they stopped, and log what happened."
-            : "Licensed agents under you and people finishing their license. Call, find out why they stopped, and log what happened."
-        }
-        accent="emerald"
-        actions={
-          seesAll ? (
-            <Button
-              type="button"
-              variant="outline"
-              className="h-10 gap-2 sm:h-9"
-              disabled={importing}
-              onClick={() => fileRef.current?.click()}
-            >
-              {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-              Load new Ethos export
-            </Button>
-          ) : undefined
-        }
-      />
+    <div className={embedded ? "space-y-5" : "page-enter mx-auto w-full max-w-6xl space-y-5 px-4 pb-24 sm:px-6"}>
+      {!embedded && (
+        <PageHeader
+          eyebrowIcon={<PhoneCall className="h-4 w-4" />}
+          eyebrow="Ethos first, then contracted, then licensed"
+          title="Call sheet"
+          subtitle={
+            seesAll
+              ? "Licensed agents and people finishing their license. Call, find out why they stopped, and log what happened."
+              : "Licensed agents under you and people finishing their license. Call, find out why they stopped, and log what happened."
+          }
+          accent="emerald"
+          actions={importButton ?? undefined}
+        />
+      )}
+      {embedded && importButton && <div className="flex justify-end">{importButton}</div>}
       {/* Kept outside the header: the header counts every child of `actions` as a control. */}
       {seesAll && (
         <input

@@ -113,6 +113,11 @@ export interface EthosCallSheetRow {
   last_called_at: string | null;
   last_called_by: string | null;
   calls: number;
+  /**
+   * The states this person can be given leads in (MP-TEAM-RECOVERY): fn_agent_lead_states on the agent
+   * record, strongest source first. Null or empty when nothing is on file. Older payloads omit it.
+   */
+  states?: string[] | null;
 }
 
 export interface EthosCallSheetPayload {

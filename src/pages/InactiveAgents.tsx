@@ -25,6 +25,15 @@ import { formatDistanceToNow, format } from "date-fns";
 import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
 import { QueryState } from "@/components/ui/query-state";
 import { contactLinkProps, phoneHref, smsHref } from "@/lib/phone";
+import {
+  EMPTY_STATE_FILTER,
+  countStates,
+  matchesStateFilter,
+  normalizeStates,
+  type RecoveryPerson,
+  type StateCountSummary,
+  type StateFilter,
+} from "@/lib/teamRecovery";
 
 interface InactiveEntry {
   id: string;
@@ -75,7 +84,35 @@ const REASON_LABEL: Record<string, string> = {
 
 type ProducerSegment = "all" | "recorded" | "none_recorded" | "unknown";
 
-export default function InactiveAgents() {
+// Stable empties: a fresh [] on every render would re-fire the parent callbacks below forever.
+const NO_ENTRIES: InactiveEntry[] = [];
+const NO_AGENTS: AgentInfo[] = [];
+const NO_STATES = new Map<string, string[]>();
+
+/**
+ * MP-TEAM-RECOVERY: the queue also lives inside /dashboard/team-recovery. `embedded` drops the page
+ * header (the parent has one) and moves the scan button into the toolbar, `stateFilter` narrows the
+ * cases, and the two callbacks hand the parent the state counts and the people so one filter bar and
+ * one By-state view can cover both lists. States come from fn_agent_states_bulk (leaders only).
+ */
+export interface InactiveAgentsProps {
+  embedded?: boolean;
+  stateFilter?: StateFilter;
+  onStateCounts?: (counts: StateCountSummary) => void;
+  onPeople?: (people: RecoveryPerson[]) => void;
+}
+
+type StatesRpc = (fn: string, args: Record<string, unknown>) => Promise<{
+  data: Array<{ agent_id: string; states: string[] | null }> | null;
+  error: { message: string } | null;
+}>;
+
+export default function InactiveAgents({
+  embedded = false,
+  stateFilter = EMPTY_STATE_FILTER,
+  onStateCounts,
+  onPeople,
+}: InactiveAgentsProps = {}) {
   const { user, isAdmin, isManager } = useAuth();
   const askConfirm = useConfirm();
   const queryClient = useQueryClient();
@@ -112,7 +149,7 @@ export default function InactiveAgents() {
     },
     enabled: canAccess,
   });
-  const entries = entriesQuery.data ?? [];
+  const entries = entriesQuery.data ?? NO_ENTRIES;
   const isLoading = entriesQuery.isLoading;
   const entriesErrored = entriesQuery.isError && entriesQuery.data === undefined;
 
@@ -146,9 +183,24 @@ export default function InactiveAgents() {
     },
     enabled: canAccess && entries.length > 0,
   });
-  const agentInfo = agentInfoQuery.data ?? [];
+  const agentInfo = agentInfoQuery.data ?? NO_AGENTS;
 
   const agentMap = useMemo(() => new Map(agentInfo.map((a) => [a.id, a])), [agentInfo]);
+
+  // MP-TEAM-RECOVERY: which states each agent can be given leads in, for the shared state filter.
+  // A failed read is shown, and everyone is then treated as "no state on file" rather than hidden.
+  const statesQuery = useQuery({
+    queryKey: ["inactive-agent-states", user?.id, sortedAgentIds],
+    queryFn: async (): Promise<Map<string, string[]>> => {
+      if (sortedAgentIds.length === 0) return new Map();
+      const { data, error } = await (supabase.rpc as unknown as StatesRpc)("fn_agent_states_bulk", { p_agent_ids: sortedAgentIds });
+      if (error) throw new Error(error.message);
+      return new Map((data ?? []).map((r) => [r.agent_id, normalizeStates(r.states)]));
+    },
+    enabled: canAccess && sortedAgentIds.length > 0,
+    staleTime: 5 * 60_000,
+  });
+  const statesMap = statesQuery.data ?? NO_STATES;
 
   const canonicalIds = useMemo(() => [...new Set(agentInfo.map(agent => agent.canonicalId))].sort(), [agentInfo]);
   const evidenceQuery = useQuery({
@@ -193,6 +245,9 @@ export default function InactiveAgents() {
       // PL-063: segment filter first.
       if (segment !== "all" && productionState.get(e.agent_id) !== segment) return false;
 
+      // MP-TEAM-RECOVERY: the shared state filter.
+      if (!matchesStateFilter(statesMap.get(e.agent_id) ?? null, stateFilter)) return false;
+
       if (!search) return true;
       const a = agentMap.get(e.agent_id);
       if (!a) return false;
@@ -202,7 +257,30 @@ export default function InactiveAgents() {
         a.phone?.includes(q)
       );
     });
-  }, [entries, search, agentMap, segment, productionState, severityFilter]);
+  }, [entries, search, agentMap, segment, productionState, severityFilter, statesMap, stateFilter]);
+
+  // MP-TEAM-RECOVERY: hand the parent every case (before any filter) for the shared state bar and the
+  // By-state view. Inputs are memoized above so these fire only when the data actually changes.
+  useEffect(() => {
+    onStateCounts?.(countStates(entries.map((e) => statesMap.get(e.agent_id) ?? null)));
+  }, [entries, statesMap, onStateCounts]);
+  useEffect(() => {
+    // A case whose agent details did not load stays on this list as "details unavailable"; it is
+    // never handed up under a made-up name.
+    onPeople?.(entries.flatMap((e) => {
+      const a = agentMap.get(e.agent_id);
+      if (!a) return [];
+      return [{
+        key: `rq:${e.id}`,
+        name: a.display_name,
+        phone: a.phone ?? null,
+        states: statesMap.get(e.agent_id) ?? [],
+        source: "recovery" as const,
+        detail: e.reason === "activity_resumed" ? "Recent activity recorded" : `${e.days_inactive} days since recorded activity`,
+        href: `/dashboard/agent/${a.canonicalId}`,
+      }];
+    }));
+  }, [entries, agentMap, statesMap, onPeople]);
 
   const stats = useMemo(() => {
     const result = { warning: 0, critical: 0, abandoned: 0, total: entries.length };
@@ -334,27 +412,31 @@ export default function InactiveAgents() {
     return <PageLoadingSkeleton variant="list" />;
   }
 
-  const recoveryHeader = (
+  const scanButton = (
+    <Button onClick={runScan} disabled={scanning}>
+      <RefreshCw className={scanning ? "h-4 w-4 mr-1.5 animate-spin" : "h-4 w-4 mr-1.5"} />
+      {scanning ? "Scanning..." : "Run Inactivity Scan"}
+    </Button>
+  );
+
+  const recoveryHeader = embedded ? null : (
     <PageHeader
       accent="rose"
       eyebrow="Admin · Recovery"
       eyebrowIcon={<UserX className="h-3 w-3" />}
       title="Inactive Agent Recovery"
       subtitle="Review recorded activity, contact agents, and record recovery outcomes. Use the agent profile for manager or account changes."
-      actions={
-        <Button onClick={runScan} disabled={scanning}>
-          <RefreshCw className={scanning ? "h-4 w-4 mr-1.5 animate-spin" : "h-4 w-4 mr-1.5"} />
-          {scanning ? "Scanning..." : "Run Inactivity Scan"}
-        </Button>
-      }
+      actions={scanButton}
     />
   );
+
+  const shellClass = embedded ? "space-y-6" : "space-y-6 p-4 md:p-6 page-enter";
 
   // A failed read is never "everyone's active". Replace the whole body (tiles,
   // segments, list) with the error so no 0 on the page reads as a clean queue.
   if (entriesErrored) {
     return (
-      <div className="space-y-6 p-4 md:p-6 page-enter">
+      <div className={shellClass}>
         {recoveryHeader}
         <QueryState status="error" label="the recovery queue" error={entriesQuery.error} onRetry={() => void entriesQuery.refetch()} />
       </div>
@@ -362,11 +444,17 @@ export default function InactiveAgents() {
   }
 
   return (
-    <div className="space-y-6 p-4 md:p-6 page-enter">
+    <div className={shellClass}>
       {recoveryHeader}
+      {embedded && <div className="flex justify-end">{scanButton}</div>}
 
       {agentInfoQuery.isError && <QueryState status="error" label="agent details" error={agentInfoQuery.error} onRetry={() => void agentInfoQuery.refetch()} />}
       {evidenceQuery.isError && <QueryState status="error" label="production evidence" error={evidenceQuery.error} onRetry={() => void evidenceQuery.refetch()} />}
+      {statesQuery.isError && (
+        <p className="text-xs text-amber-600 dark:text-amber-400">
+          States could not load for these agents; the state filter treats everyone here as having no state on file.
+        </p>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <button

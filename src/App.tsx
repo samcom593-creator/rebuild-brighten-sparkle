@@ -158,7 +158,9 @@ const DashboardToday = lazy(() => import("./pages/DashboardToday"));
 const OnboardingLadder = lazy(() => import("./pages/OnboardingLadder"));
 const AdminProducerTrends = lazy(() => import("./pages/AdminProducerTrends"));
 const LicensedInbox = lazy(() => import("./pages/LicensedInbox"));
-const EthosCallSheet = lazy(() => import("./pages/EthosCallSheet"));
+// MP-TEAM-RECOVERY: the Ethos call sheet and the inactive-agent recovery queue now render inside one
+// page with a shared state filter; the two old routes redirect there with ?tab=.
+const TeamRecovery = lazy(() => import("./pages/TeamRecovery"));
 const CarrierCommand = lazy(() => import("./pages/CarrierCommand"));
 const ApexTrainingEntry = lazy(() => import("./pages/ApexTrainingEntry"));
 const ClientDetail = lazy(() => import("./pages/ClientDetail"));
@@ -275,7 +277,6 @@ const PrelicensingManager = lazy(() => import("./pages/PrelicensingManager"));
 const MyTasks = lazy(() => import("./pages/MyTasks"));
 const HiringManagerAssignments = lazy(() => import("./pages/HiringManagerAssignments"));
 const GettingStarted = lazy(() => import("./pages/GettingStarted"));
-const InactiveAgents = lazy(() => import("./pages/InactiveAgents"));
 const PlaqueShare = lazy(() => import("./pages/PlaqueShare"));
 const MyPlaques = lazy(() => import("./pages/MyPlaques"));
 const EmailDeliveryLog = lazy(() => import("./pages/EmailDeliveryLog"));
@@ -604,7 +605,8 @@ const App = () => (
                         agency-wide operating view. */}
                     <Route path="/dashboard/team" element={<ProtectedRoute><DashboardCRM /></ProtectedRoute>} />
                     {/* MP-ETHOS-CALLSHEET: any signed-in agent may open it; ethos_call_sheet() decides whose rows they get (owner: all, leader: own hierarchy, anyone else: none). */}
-                    <Route path="/dashboard/ethos-call-sheet" element={<ProtectedRoute><EthosCallSheet /></ProtectedRoute>} />
+                    <Route path="/dashboard/team-recovery" element={<ProtectedRoute><TeamRecovery /></ProtectedRoute>} />
+                    <Route path="/dashboard/ethos-call-sheet" element={<LegacyWorkspaceRedirect to="/dashboard/team-recovery?tab=call-sheet" />} />
                     <Route path="/dashboard/carrier-command" element={<ProtectedRoute requireAdmin><SamOnlyRoute><CarrierCommand /></SamOnlyRoute></ProtectedRoute>} />
                   <Route path="/dashboard/recruiting-links" element={<ProtectedRoute requireAdmin><RecruitingLinks /></ProtectedRoute>} />
                   {/* §11: the Content page (approval queue + invite list) is the Launch Board's Queue tab now. Single hop. */}
@@ -869,7 +871,7 @@ const App = () => (
                            <Route path="/dashboard/my-tasks" element={<ProtectedRoute><MyTasks /></ProtectedRoute>} />
                            <Route path="/dashboard/hiring-routing" element={<ProtectedRoute requireAdmin><HiringManagerAssignments /></ProtectedRoute>} />
                            <Route path="/dashboard/getting-started" element={<ProtectedRoute><GettingStarted /></ProtectedRoute>} />
-                           <Route path="/dashboard/inactive-agents" element={<ProtectedRoute><InactiveAgents /></ProtectedRoute>} />
+                           <Route path="/dashboard/inactive-agents" element={<LegacyWorkspaceRedirect to="/dashboard/team-recovery?tab=recovery" />} />
                            <Route path="/dashboard/my-plaques" element={<ProtectedRoute><MyPlaques /></ProtectedRoute>} />
                            <Route path="/dashboard/email-log" element={<ProtectedRoute requireAdmin><EmailDeliveryLog /></ProtectedRoute>} />
                            <Route path="/dashboard/comp-tiers" element={<ProtectedRoute requireAdmin><CompTiersSettings /></ProtectedRoute>} />

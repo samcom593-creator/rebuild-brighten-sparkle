@@ -45,7 +45,7 @@ function errorText(error: unknown): string {
   return "Unknown error";
 }
 
-export function BringBackList({ onRestored }: { onRestored?: () => void }) {
+export function BringBackList({ onRestored, rosterCount }: { onRestored?: () => void; /** How many rows My Team lists, for the reconciliation line. */ rosterCount?: number }) {
   const { isAdmin, isManager } = useAuth();
   const canManage = isAdmin || isManager;
   const qc = useQueryClient();
@@ -102,11 +102,16 @@ export function BringBackList({ onRestored }: { onRestored?: () => void }) {
   return (
     <section className="space-y-4" aria-label="Bring back">
       <div className="space-y-1">
-        <h2 className="text-base font-semibold text-foreground">People off the roster who are worth a call</h2>
+        <h2 className="text-base font-semibold text-foreground">Everyone off the roster</h2>
         <p className="text-sm text-muted-foreground">
-          Everyone My Team does not list who still holds a contract, wrote business, is licensed, or holds your Ethos contract with no account here.
-          {letGo > 0 ? ` ${letGo} ${letGo === 1 ? "person you let go still holds" : "people you let go still hold"} a contract or wrote business; they stay off until you ask for them.` : ""}
+          Every agent record My Team does not list, plus the people who hold your Ethos contract or signed up for it and have no account here. Nobody is dropped.
+          {letGo > 0 ? ` ${letGo} ${letGo === 1 ? "person you let go stays" : "people you let go stay"} off until you ask for them.` : ""}
         </p>
+        {query.data && rosterCount !== undefined ? (
+          <p className="text-[13px] text-muted-foreground" data-testid="bring-back-reconciliation">
+            {`My Team lists ${rosterCount} ${rosterCount === 1 ? "row" : "rows"} (merged duplicates folded, placeholder seats under More lists); ${people.length - letGo} more here and ${letGo} let go.`}
+          </p>
+        ) : null}
       </div>
 
       {query.isLoading ? (
@@ -158,8 +163,8 @@ export function BringBackList({ onRestored }: { onRestored?: () => void }) {
           {shownTotal === 0 ? (
             <EmptyState
               icon={<Users />}
-              title={hasFilters ? "Nobody matches these filters" : "Nobody to bring back"}
-              description={hasFilters ? "Clear the filters to see everyone off the roster who is worth a call." : "Everyone with a contract, sales or a license is already on the roster."}
+              title={hasFilters ? "Nobody matches these filters" : "Nobody is off the roster"}
+              description={hasFilters ? "Clear the filters to see everyone off the roster." : "Every agent record is on My Team, and nobody holds or requested your Ethos contract without an account."}
               actions={hasFilters ? <Button type="button" variant="outline" className="h-11" onClick={clearFilters}>Clear filters</Button> : undefined}
             />
           ) : groups.map((group) => {
@@ -207,7 +212,7 @@ function PersonRow({ p, todayKey, canManage, restoring, onRestore, links, linksF
     p.email,
     phone,
   ].filter((x): x is string => Boolean(x));
-  const standingTone = p.standing === "let_go" ? "text-muted-foreground" : p.standing === "no_account" ? TONE_CLASS.cool.text : TONE_CLASS.warm.text;
+  const standingTone = p.standing === "let_go" ? "text-muted-foreground" : p.standing === "no_account" || p.standing === "sheet_only" ? TONE_CLASS.cool.text : TONE_CLASS.warm.text;
   return (
     <li className="rounded-xl border border-border bg-card px-3 py-3 sm:px-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -247,7 +252,7 @@ function PersonRow({ p, todayKey, canManage, restoring, onRestore, links, linksF
               <Undo2 className="h-4 w-4" aria-hidden /> {restoring ? "Saving" : "Back on the roster"}
             </Button>
           ) : null}
-          {canManage && p.standing === "no_account" ? (
+          {canManage && (p.standing === "no_account" || p.standing === "sheet_only") ? (
             <Button asChild variant="ghost" className="h-11 px-3">
               <Link to="/admin/invite-links" aria-label={`Invite ${p.full_name}`} title="Make them an invite link so they get an account here"><UserPlus className="h-4 w-4" aria-hidden /> Invite</Link>
             </Button>

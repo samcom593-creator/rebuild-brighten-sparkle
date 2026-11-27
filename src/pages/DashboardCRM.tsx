@@ -452,7 +452,7 @@ export default function DashboardCRM() {
             onRetryProfiles={() => { void profiles.refetch(); }}
           />
         ) : mode === "bring_back" ? (
-          <BringBackList onRestored={refreshAll} />
+          <BringBackList onRestored={refreshAll} rosterCount={rows.length} />
         ) : mode === "attendance" ? (
           <TeamAttendance />
         ) : mode === "work" ? (

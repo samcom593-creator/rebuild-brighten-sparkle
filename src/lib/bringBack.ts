@@ -13,12 +13,12 @@
 import { parseStateCode, stateName, type TeamProfileCarrier } from "@/lib/teamProfile";
 import { usdOrNull } from "@/lib/teamRoster";
 
-export type BringBackStanding = "no_account" | "hidden" | "inactive" | "excluded" | "let_go";
+export type BringBackStanding = "no_account" | "sheet_only" | "hidden" | "inactive" | "excluded" | "let_go";
 
 export interface BringBackPerson {
-  /** The agent id, or the Ethos person id when they have no agent record. */
+  /** The agent id, the Ethos person id, or "sheet:<snapshot>:<row>" for an MGN contracting-sheet signup with no record here. */
   person_key: string;
-  source: "agent" | "ethos_person";
+  source: "agent" | "ethos_person" | "mgn_sheet";
   agent_id: string | null;
   full_name: string;
   phone: string | null;
@@ -50,7 +50,7 @@ export interface BringBackPerson {
   comp_level: string | null;
 }
 
-const STANDINGS: ReadonlySet<string> = new Set(["no_account", "hidden", "inactive", "excluded", "let_go"]);
+const STANDINGS: ReadonlySet<string> = new Set(["no_account", "sheet_only", "hidden", "inactive", "excluded", "let_go"]);
 const str = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v : null);
 const numOf = (v: unknown): number => { const n = Number(v ?? 0); return Number.isFinite(n) ? n : 0; };
 
@@ -65,7 +65,7 @@ export function parseBringBack(data: unknown): BringBackPerson[] {
     if (!key || !standing || !STANDINGS.has(standing)) throw new Error("A bring-back row had no id or an unknown standing.");
     return {
       person_key: key,
-      source: r.source === "ethos_person" ? "ethos_person" : "agent",
+      source: r.source === "ethos_person" ? "ethos_person" : r.source === "mgn_sheet" ? "mgn_sheet" : "agent",
       agent_id: str(r.agent_id),
       full_name: str(r.full_name) ?? "Name not on file",
       phone: str(r.phone),
@@ -114,6 +114,7 @@ export interface BringBackGroup {
 /** The groups in the order to work them: contract holders with no account first, then the people hidden here. */
 export const BRING_BACK_GROUPS: readonly BringBackGroup[] = [
   { key: "no_account", label: "Hold your Ethos contract, no account here", means: "On the latest Ethos hierarchy export under you, with no agent record in this app. They can write Ethos business today." },
+  { key: "sheet_only", label: "Signed up for Ethos contracting, no account here", means: "On the MGN contracting sheet (its last mirror) with no agent record here and not yet on the Ethos hierarchy export. Licensed per the sheet." },
   { key: "hidden", label: "Hidden from the roster", means: "Marked hidden with Hide from roster. Back on the roster puts them straight back on My Team." },
   { key: "inactive", label: "Marked inactive", means: "Their record says inactive. Back on the roster lists them under Not active, where their card can set them active again." },
   { key: "excluded", label: "Kept off the roster", means: "On the roster exclusion list, usually a duplicate or a seat that is not a person. Shown so nothing is hidden." },
@@ -193,7 +194,7 @@ export function bringBackRows(people: readonly BringBackPerson[], group: BringBa
 
 /** Every group's count under the filters, so a heading always equals the list under it. */
 export function bringBackCounts(people: readonly BringBackPerson[], f: BringBackFilters): Record<BringBackStanding, number> {
-  const out = { no_account: 0, hidden: 0, inactive: 0, excluded: 0, let_go: 0 } as Record<BringBackStanding, number>;
+  const out = { no_account: 0, sheet_only: 0, hidden: 0, inactive: 0, excluded: 0, let_go: 0 } as Record<BringBackStanding, number>;
   for (const p of people) if (matchesBringBack(p, f)) out[p.standing] += 1;
   return out;
 }
@@ -216,7 +217,7 @@ export function carriersLine(p: BringBackPerson): string | null {
   return `Contracts: ${names.length > 4 ? `${names.slice(0, 4).join(", ")} +${names.length - 4}` : names.join(", ")}`;
 }
 
-/** "Sold $22.7K here, last Jun 20" / "Never sold here" (agents only; Ethos-only people have no record here). */
+/** "Sold $22.7K here, last Jun 20" / "Never sold here" (agents only; people with no record here have nothing to count). */
 export function soldLine(p: BringBackPerson, todayKey: string): string | null {
   if (p.source !== "agent") return null;
   if (p.deals === 0) return "Never sold here";
@@ -225,8 +226,9 @@ export function soldLine(p: BringBackPerson, todayKey: string): string | null {
   return `Sold ${usdOrNull(p.lifetime_ap) ?? "$0"} here${days === null ? "" : `, last deal ${days === 0 ? "today" : `${days} days ago`}`}`;
 }
 
-/** "Quiet 160 days" from the last deal, sign-in or logged call; "No activity on file" when nothing is. */
+/** "Quiet 160 days" from the last deal, sign-in or logged call; "No activity on file" when nothing is; sheet signups say so. */
 export function quietLine(p: BringBackPerson, todayKey: string): string {
+  if (p.source === "mgn_sheet") return "Contracting requested on the MGN sheet, nothing else on file";
   const days = daysSinceKey(p.last_active_on, todayKey);
   if (days === null) return "No activity on file";
   if (days === 0) return "Active today";
@@ -235,6 +237,7 @@ export function quietLine(p: BringBackPerson, todayKey: string): string {
 
 export const STANDING_WORDS: Record<BringBackStanding, string> = {
   no_account: "No account here",
+  sheet_only: "Signed up, no account here",
   hidden: "Hidden from roster",
   inactive: "Marked inactive",
   excluded: "Kept off roster",

@@ -23,7 +23,8 @@ const ethosNoAccount = person({ person_key: "e1", source: "ethos_person", agent_
 const hiddenSeller = person({ person_key: "h1", agent_id: "h1", full_name: "Hal Hidden", standing: "hidden", deals: 11, lifetime_ap: 22000, last_deal: "2026-06-20", last_active_on: "2026-06-20", carriers: [{ carrier: "Aflac", status: "active", source: "agentlink", as_of: null, active: true }, { carrier: "Prudential", status: "submitted", source: "agentlink", as_of: null, active: false }], carriers_active: 1 });
 const inactiveLicensed = person({ person_key: "i1", agent_id: "i1", full_name: "Ina Inactive", standing: "inactive", home_state: "TX", last_active_on: "2026-01-13", deals: 2, lifetime_ap: 3000, last_deal: "2026-01-13" });
 const letGo = person({ person_key: "l1", agent_id: "l1", full_name: "Lou Letgo", standing: "let_go", fired: true, can_restore: false, let_go_reason: "no_show", ethos_back: true, ethos_source: "review_mark", carriers_active: 1 });
-const all = [ethosNoAccount, hiddenSeller, inactiveLicensed, letGo];
+const sheetOnly = person({ person_key: "sheet:snap:7", source: "mgn_sheet", agent_id: null, full_name: "Sue Sheet", standing: "sheet_only", can_restore: false, home_state: null, comp_level: "L2", manager_name: null });
+const all = [ethosNoAccount, hiddenSeller, inactiveLicensed, letGo, sheetOnly];
 
 describe("parseBringBack", () => {
   it("throws on anything but a list of rows with an id and a known standing", () => {
@@ -42,7 +43,8 @@ describe("parseBringBack", () => {
 
 describe("filters, groups and order", () => {
   it("people Sam let go stay off until asked for; the toggle brings only them in", () => {
-    expect(bringBackCounts(all, noFilters)).toEqual({ no_account: 1, hidden: 1, inactive: 1, excluded: 0, let_go: 0 });
+    expect(bringBackCounts(all, noFilters)).toEqual({ no_account: 1, sheet_only: 1, hidden: 1, inactive: 1, excluded: 0, let_go: 0 });
+    expect(bringBackRows(all, "sheet_only", noFilters, TODAY).map((p) => p.person_key)).toEqual(["sheet:snap:7"]);
     expect(bringBackCounts(all, { ...noFilters, includeLetGo: true }).let_go).toBe(1);
     expect(bringBackRows(all, "let_go", noFilters, TODAY)).toEqual([]);
     expect(bringBackRows(all, "let_go", { ...noFilters, includeLetGo: true }, TODAY).map((p) => p.person_key)).toEqual(["l1"]);
@@ -63,10 +65,11 @@ describe("filters, groups and order", () => {
 
   it("state options count the people shown, most first, with 'No state on file' last", () => {
     // Equal counts fall back to the state's name, so Texas sits before Wisconsin.
+    // "No state on file" is always offered last, whatever its count, so the real states keep their place.
     expect(bringBackStateOptions(all, false)).toEqual([
       { code: "TX", name: "Texas", count: 1 },
       { code: "WI", name: "Wisconsin", count: 1 },
-      { code: "", name: "No state on file", count: 1 },
+      { code: "", name: "No state on file", count: 2 },
     ]);
     expect(bringBackStateOptions(all, true).find((s) => s.code === "WI")?.count).toBe(2);
   });
@@ -81,7 +84,7 @@ describe("filters, groups and order", () => {
   });
 
   it("every group is declared once and the let-go group is last", () => {
-    expect(BRING_BACK_GROUPS.map((g) => g.key)).toEqual(["no_account", "hidden", "inactive", "excluded", "let_go"]);
+    expect(BRING_BACK_GROUPS.map((g) => g.key)).toEqual(["no_account", "sheet_only", "hidden", "inactive", "excluded", "let_go"]);
   });
 });
 
@@ -99,6 +102,8 @@ describe("words", () => {
     expect(quietLine(hiddenSeller, TODAY)).toBe("Quiet 160 days");
     expect(quietLine(person({ last_active_on: TODAY }), TODAY)).toBe("Active today");
     expect(quietLine(person(), TODAY)).toBe("No activity on file");
+    expect(quietLine(sheetOnly, TODAY)).toBe("Contracting requested on the MGN sheet, nothing else on file");
+    expect(soldLine(sheetOnly, TODAY)).toBeNull();
     expect(lastCallLine(person({ last_call_outcome: "not_interested", last_call_at: "2026-11-03T18:00:00Z" }))).toMatch(/^Last call: Not interested \(Nov 3\)$/);
     expect(lastCallLine(person())).toBeNull();
     expect(daysSinceKey("2026-11-20", TODAY)).toBe(7);

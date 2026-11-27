@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 const state = vi.hoisted(() => ({ auth: { user: { id: "agent-user" }, isAdmin: false, isLoading: false }, preview: false }));
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => state.auth }));
 vi.mock("@/hooks/useRolePreview", () => ({ useRolePreview: () => ({ isPreviewing: state.preview }) }));
-vi.mock("@/pages/MyCommissions", () => ({ default: ({ embedded }: { embedded?: boolean }) => <div>Personal ledger {embedded ? "embedded" : "standalone"}</div> }));
+vi.mock("@/components/finances/CommissionsDashboard", () => ({ CommissionsDashboard: ({ embedded }: { embedded?: boolean }) => <div>Personal ledger {embedded ? "embedded" : "standalone"}</div> }));
 vi.mock("@/components/finances/PersonalPolicyBook", () => ({ PersonalPolicyBook: () => <div>Personal carrier policy book</div> }));
 vi.mock("@/components/dashboard/ImoByAgency", () => ({ ImoByAgency: () => <div>Admin agency breakdown</div> }));
 vi.mock("@/components/deals/SubmitDealDialog", () => ({ SubmitDealDialog: () => <button>Post a Deal</button> }));

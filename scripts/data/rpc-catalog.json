@@ -3259,6 +3259,14 @@
         "raw": ""
       }
     ],
+    "ethos_call_sheet_base": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "ethos_call_sheet_import": [
       {
         "all": [
@@ -3617,6 +3625,18 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "fn_agent_states_bulk": [
+      {
+        "all": [
+          "p_agent_ids"
+        ],
+        "required": [
+          "p_agent_ids"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_ids uuid[]"
       }
     ],
     "fn_agent_strikes_updated_at": [

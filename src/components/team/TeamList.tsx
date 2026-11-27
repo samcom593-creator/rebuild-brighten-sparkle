@@ -533,7 +533,7 @@ export function SendLinksMenu({ row, name, links, linksFailed, onEmailFirstSteps
   /** Icon-only below 640px, for a row that already holds Call, Text and Talked. */
   compact?: boolean;
   /** Their profile facts, for the Instagram item; absent or null while they load. */
-  profile?: TeamProfile | null;
+  profile?: Pick<TeamProfile, "instagram"> | null;
   className?: string;
 }) {
   const body = links ? buildFirstStepsText(firstNameOf(row.full_name), links) : null;

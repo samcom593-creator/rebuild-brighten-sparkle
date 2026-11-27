@@ -2141,6 +2141,16 @@
         "raw": ""
       }
     ],
+    "commissions_dashboard": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_agent_id uuid DEFAULT NULL::uuid"
+      }
+    ],
     "consumer_import_history": [
       {
         "all": [
@@ -2694,6 +2704,14 @@
       }
     ],
     "crm_agents_export": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "crm_bring_back_candidates": [
       {
         "all": [],
         "required": [],

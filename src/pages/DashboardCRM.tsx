@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, ClipboardCheck, Clock, Download, KeyRound, Link2, Mail, MoreHorizontal, Phone, RefreshCw, Send, ShieldCheck, UserPlus, Users } from "lucide-react";
+import { ChevronDown, ClipboardCheck, Clock, Download, KeyRound, Link2, Mail, MoreHorizontal, Phone, RefreshCw, Send, ShieldCheck, Undo2, UserPlus, Users } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -28,6 +28,7 @@ import { AgentQuickEditDialog } from "@/components/dashboard/AgentQuickEditDialo
 import { TeamEngagementPanel } from "@/components/dashboard/TeamEngagementPanel";
 import { ContractingReviewWorkspace } from "@/components/contracting-review/ContractingReviewWorkspace";
 import { TeamAttendance } from "@/components/team/TeamAttendance";
+import { BringBackList } from "@/components/team/BringBackList";
 import { ContractingCallList } from "@/components/team/ContractingCallList";
 import { LicensedHireClockTab } from "@/components/team/LicensedHireClockTab";
 import { TeamList } from "@/components/team/TeamList";
@@ -55,9 +56,12 @@ interface RosterContact {
   phone: string | null;
 }
 
-type Mode = "team" | "attendance" | "work" | "link" | "clock" | "logins";
+type Mode = "team" | "bring_back" | "attendance" | "work" | "link" | "clock" | "logins";
 const VIEWS: Array<{ key: Mode; label: string; param: string; icon: typeof Users; adminOnly?: boolean; adminOrManager?: boolean }> = [
   { key: "team", label: "Team", param: "team", icon: Users },
+  // MP-TEAM-BRING-BACK (2026-11-27). Sam: "the ones that I can bring back with contracts and all." Everyone off the roster
+  // who holds a contract, wrote business or holds Sam's Ethos contract with no account here (src/components/team/BringBackList.tsx).
+  { key: "bring_back", label: "Bring back", param: "bring-back", icon: Undo2 },
   { key: "attendance", label: "Attendance", param: "attendance", icon: ClipboardCheck },
   { key: "work", label: "Contracting", param: "contracting", icon: ShieldCheck },
   { key: "link", label: "Contracting calls", param: "link", icon: Phone },
@@ -447,6 +451,8 @@ export default function DashboardCRM() {
             profileState={profileState}
             onRetryProfiles={() => { void profiles.refetch(); }}
           />
+        ) : mode === "bring_back" ? (
+          <BringBackList onRestored={refreshAll} />
         ) : mode === "attendance" ? (
           <TeamAttendance />
         ) : mode === "work" ? (

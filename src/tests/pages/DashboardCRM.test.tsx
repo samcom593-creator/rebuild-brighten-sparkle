@@ -34,6 +34,7 @@ const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn(), message: vi.
 vi.mock("sonner", () => ({ toast }));
 // The other views and dialogs have their own tests; here they only need to show which one is open.
 vi.mock("@/components/team/TeamAttendance", () => ({ TeamAttendance: () => <p>Attendance view</p> }));
+vi.mock("@/components/team/BringBackList", () => ({ BringBackList: () => <p>Bring back view</p> }));
 vi.mock("@/components/team/ContractingCallList", () => ({ ContractingCallList: () => <p>Contracting calls view</p> }));
 vi.mock("@/components/contracting-review/ContractingReviewWorkspace", () => ({ ContractingReviewWorkspace: () => <p>Contracting review view</p> }));
 vi.mock("@/components/dashboard/TeamEngagementPanel", () => ({ TeamEngagementPanel: () => <p>Logins view</p> }));

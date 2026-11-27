@@ -1,7 +1,4 @@
--- Fixed release prerequisite/readback query. No application function is executed.
--- Postdeployment readback for merged main 0f8caac3dc1f5715b6fba721ebc6eb30c45a7c42.
--- Expected versions are exactly tracked origin/main d0302b334f7264ed214f8aaca5d174ef3fc3fc63.
--- The two release versions are intentionally separate from the earlier main baseline.
+-- Fixed schema-only release preflight; no application function or customer row is read.
 with expected_base(version) as (values
     ('20260110020505'),
     ('20260110020518'),
@@ -1139,6 +1136,7 @@ with expected_base(version) as (values
     ('20261112131529'),
     ('20261112133107'),
     ('20261112140517'),
+    ('20261112152741'),
     ('20261112160000'),
     ('20261112170000'),
     ('20261112180000'),
@@ -1149,6 +1147,7 @@ with expected_base(version) as (values
     ('20261113000000'),
     ('20261113010000'),
     ('20261113020000'),
+    ('20261113031500'),
     ('20261117175436'),
     ('20261117175817'),
     ('20261117201000'),
@@ -1200,8 +1199,32 @@ with expected_base(version) as (values
     ('20261124121000'),
     ('20261124130000'),
     ('20261124131000'),
-    ('20261124140000')
-), release_versions(version) as (values ('20261125100000'),('20261125101000')),
+    ('20261124140000'),
+    ('20261125100000'),
+    ('20261125101000'),
+    ('20261125110000'),
+    ('20261125120000'),
+    ('20261125130000'),
+    ('20261125140000'),
+    ('20261126014627'),
+    ('20261126030000'),
+    ('20261126030548'),
+    ('20261126030616'),
+    ('20261126033000'),
+    ('20261126034500'),
+    ('20261126040000'),
+    ('20261126172941'),
+    ('20261126173149'),
+    ('20261126173341'),
+    ('20261126174805'),
+    ('20261127014238'),
+    ('20261127014457'),
+    ('20261127014537'),
+    ('20261127022845'),
+    ('20261127024223'),
+    ('20261127035006'),
+    ('20261127035243')
+), release_versions(version) as (values ('20261127043000'),('20261127044000'),('20261127045000'),('20261127050000')),
 recorded as materialized (select version::text as version from supabase_migrations.schema_migrations),
 cohort_function as (
   select p.oid,p.prosecdef,p.provolatile,p.proconfig,p.proargnames,p.pronargdefaults,p.prorettype,
@@ -1210,7 +1233,8 @@ cohort_function as (
   left join pg_proc p on p.oid=t.oid
 )
 select jsonb_build_object(
-  'base_sha','d0302b334f7264ed214f8aaca5d174ef3fc3fc63',
+  'base_sha','cb210345e7afa347008f3417ffa78e916a1f3f45',
+  'recorded_versions',(select coalesce(jsonb_agg(version order by version),'[]'::jsonb) from recorded),
   'expected_base_count',(select count(*) from expected_base),
   'recorded_base_count',(select count(*) from expected_base e where exists(select 1 from recorded r where r.version=e.version)),
   'missing_base_versions',(select coalesce(jsonb_agg(e.version order by e.version),'[]'::jsonb) from expected_base e where not exists(select 1 from recorded r where r.version=e.version)),

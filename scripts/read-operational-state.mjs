@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { randomBytes, createCipheriv, publicEncrypt, constants } from 'node:crypto';
 
 const PROJECT = 'xrzweoneiieddzxogewk';
-const QUERY_FILES = { audio: 'audio.sql', finances: 'finances.sql', carrier_status: 'carrier-status.sql', production: 'production.sql', definitions: 'definitions.sql', release: 'release.sql', lead_performance: 'lead-performance.sql', task_identity: 'task-identity.sql', recruiting_links: 'recruiting-links.sql' };
+const QUERY_FILES = { release: 'release.sql' };
 const SIGNERS = ['readymode-recording-url', 'training-recording-url', 'lead-recording-url', 'personal-task-create'];
 const AUDIO_COUNTS = [
   'dialer_calls','calls_with_provider_recording_reference','calls_linked_to_agent','calls_linked_to_application','calls_linked_to_lead',
@@ -22,8 +22,8 @@ const LEDGER_STATUSES = ['pending','paid','clawed_back','voided','other'];
 const RATE_SOURCES = ['override','contract','carrier_default','schedule','carrier_schedule','other'];
 const CARRIERS = ['Ethos','Chubb','Combined','other'];
 const CHARGEBACK_SOURCES = ['comp_ledger','debt_outstanding','other'];
-const RELEASE_BASE_SHA = 'd0302b334f7264ed214f8aaca5d174ef3fc3fc63';
-const RELEASE_VERSIONS = ['20261125100000','20261125101000'];
+const RELEASE_BASE_SHA = 'cb210345e7afa347008f3417ffa78e916a1f3f45';
+const RELEASE_VERSIONS = ["20261127043000", "20261127044000", "20261127045000", "20261127050000"];
 const COHORT_CONTRACT_FLAGS = ['present','jsonb_return','argument_names_exact','one_default_argument','security_definer','stable',
   'public_search_path','authenticated_execute','anon_execute','public_execute','auth_guard','blocked_user_guard',
   'suspended_user_guard','canonical_self_guard','exact_site_link','no_policy_number_inference','future_timestamp_guard','response_identity'];
@@ -303,6 +303,7 @@ function sanitize(name, value) {
   }
   if (name === 'release') {
     const row = object(value);
+    if (!Array.isArray(row.recorded_versions) || row.recorded_versions.length > 3000 || row.recorded_versions.some(v => typeof v !== 'string' || !/^\d{14}$/.test(v))) throw new Error('invalid recorded version ledger');
     if (row.base_sha !== RELEASE_BASE_SHA || row.application_functions_executed !== false) throw new Error('invalid release readback boundary');
     if (!Array.isArray(row.missing_base_versions) || row.missing_base_versions.length > 2000
       || row.missing_base_versions.some(v => typeof v !== 'string' || !/^\d{14}$/.test(v))
@@ -317,7 +318,7 @@ function sanitize(name, value) {
     const f = object(row.policy_cohort);
     if (f.arguments !== null && (typeof f.arguments !== 'string' || f.arguments.length > 500 || !/^[A-Za-z0-9_ :,().\[\]]*$/.test(f.arguments))) throw new Error('invalid cohort argument metadata');
     if (f.definition_md5 !== null && (typeof f.definition_md5 !== 'string' || !/^[a-f0-9]{32}$/.test(f.definition_md5))) throw new Error('invalid definition hash');
-    return { base_sha: row.base_sha, expected_base_count: expected, recorded_base_count: recorded,
+    return { base_sha: row.base_sha, recorded_versions: row.recorded_versions, expected_base_count: expected, recorded_base_count: recorded,
       missing_base_versions: row.missing_base_versions, new_migrations: migrations, application_functions_executed: false,
       policy_cohort: { ...Object.fromEntries(COHORT_CONTRACT_FLAGS.map(key => [key,boolean(f[key])])), arguments: f.arguments, definition_md5: f.definition_md5 } };
   }
@@ -383,7 +384,7 @@ async function main() {
     const { rows, provider } = await queryRows(query);
     if (!Array.isArray(rows) || rows.length !== 1) throw new Error('invalid aggregate response');
     return { provider, data: sanitize(name,object(rows[0])[name]) };
-  }]), ['signer_configuration', signerConfiguration]];
+  }])];
   const results = await Promise.allSettled(tasks.map(async ([name,run]) => ({ name, value: await run() })));
   const output = { checked_at: new Date().toISOString(), sections: {} };
   results.forEach((result,index) => {

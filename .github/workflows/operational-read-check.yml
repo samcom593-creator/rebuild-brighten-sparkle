@@ -1,8 +1,8 @@
-name: Read operational publication and finance state
+name: Read Galaxy release schema preflight
 
 on:
   push:
-    branches: [codex/operational-read-check-20261125]
+    branches: [codex/gap-release-preflight-20261126]
     paths:
       - .github/workflows/operational-read-check.yml
       - .github/prod-write-census.json
@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   aggregates:
-    if: github.repository == 'samcom593-creator/rebuild-brighten-sparkle' && github.ref == 'refs/heads/codex/operational-read-check-20261125'
+    if: github.repository == 'samcom593-creator/rebuild-brighten-sparkle' && github.ref == 'refs/heads/codex/gap-release-preflight-20261126'
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:

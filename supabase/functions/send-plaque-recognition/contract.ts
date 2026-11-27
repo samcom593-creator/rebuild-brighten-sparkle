@@ -68,6 +68,14 @@ export function validRecognitionAmount(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value >= 0;
 }
 
+/** Canonical corrections may be negative; missing values cannot be treated as zero. */
+export function readCanonicalPremium(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new Error("Posted production includes an unavailable amount.");
+  }
+  return value;
+}
+
 export function recognitionMetric(milestone: string, amount: number): string {
   if (!validRecognitionAmount(amount)) throw new Error("The recognition amount is unavailable.");
   if (["recruiter_rising", "hiring_champion", "team_builder"].includes(milestone)

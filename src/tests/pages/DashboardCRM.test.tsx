@@ -14,7 +14,9 @@ import { MemoryRouter, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { RosterRow } from "@/lib/teamRoster";
 import type { PersonFacts } from "@/lib/teamStage";
+import type { TeamProfile } from "@/lib/teamProfile";
 import { rosterRow } from "../helpers/teamRosterFixtures";
+import { teamProfile } from "../helpers/teamProfileFixtures";
 import { fakeTeamBackend, personFacts } from "../helpers/teamStageFixtures";
 
 type Auth = { user: { id: string } | null; isAdmin: boolean; isManager: boolean; isVa: boolean; isVaManager: boolean; isLoading: boolean };
@@ -41,6 +43,8 @@ vi.mock("@/components/dashboard/AgentQuickEditDialog", () => ({ AgentQuickEditDi
 
 const db = vi.hoisted(() => ({
   roster: [] as Array<Record<string, unknown>>,
+  profiles: [] as Array<Record<string, unknown>>,
+  profilesError: null as string | null,
   canonical: [] as Array<{ agent_id: string; canonical_agent_id: string }>,
   agents: [] as Array<Record<string, unknown>>,
   updates: [] as Array<{ table: string; values: Record<string, unknown>; id: unknown }>,
@@ -80,6 +84,8 @@ vi.mock("@/integrations/supabase/client", () => {
         return { data: roster.map((r) => ({ agent_id: r.agent_id, full_name: r.full_name, email: r.email, phone: r.phone })), error: null };
       case "crm_agent_free_leads_status":
         return { data: roster.map((r) => ({ agent_id: r.agent_id, qualifies: r.free_leads_qualified ?? false, reason: "", needed_for_qual: r.free_leads_needed_for_qual ?? null })), error: null };
+      case "crm_agent_profile_facts":
+        return db.profilesError ? { data: null, error: { message: db.profilesError } } : { data: db.profiles, error: null };
       default:
         return db.team!.rpc(name, args);
     }
@@ -114,6 +120,18 @@ const FACTS: PersonFacts[] = [
   personFacts({ id: "l1", stage: "online_training", access: { has_login: true, invitation: "accepted" } }),
   personFacts({ id: "s1", stage: "released_in_field", access: { has_login: true, invitation: "none" } }),
   personFacts({ id: "canon", stage: "online_training", access: { has_login: true, invitation: "accepted" } }),
+];
+// MP-TEAM-PROFILE-FACTS (2026-11-27): state, Instagram, Ethos, carriers and sign-in per person. Synthetic.
+const ethos = (source: TeamProfile["ethos_source"], since = "2026-10-19") => ({ ethos_back: true, ethos_source: source, ethos_since: since });
+const PROFILES: TeamProfile[] = [
+  teamProfile({ agent_id: "me", home_state: "AZ", ...ethos("ethos_hierarchy"), carriers: [{ carrier: "Ethos", status: "active", source: "ethos_hierarchy", as_of: "2026-10-19", active: true }], carriers_active: 1, sold_carriers: [{ carrier: "Foresters", deals: 40, alp: 90000, last_posted: "2026-10-16" }] }),
+  teamProfile({ agent_id: "ann", home_state: "WI", home_state_source: "application", last_sign_in_at: null }),
+  teamProfile({ agent_id: "bo", home_state: "TX", home_state_source: "profile", instagram: "bo.sells", ...ethos("ethos_hierarchy"), last_sign_in_at: "2026-10-30T15:00:00Z",
+    carriers: [{ carrier: "Ethos", status: "active", source: "ethos_hierarchy", as_of: "2026-10-19", active: true }, { carrier: "Aflac", status: "confirmed", source: "review", as_of: "2026-10-09", active: true }], carriers_active: 2 }),
+  teamProfile({ agent_id: "q1", home_state: "WI", sold_carriers: [{ carrier: "Ethos", deals: 4, alp: 6000, last_posted: "2026-09-16" }] }),
+  teamProfile({ agent_id: "l1", home_state: "WI", last_sign_in_at: null }),
+  teamProfile({ agent_id: "s1", home_state: "AZ", ...ethos("review_mark", "2026-10-01"), carriers: [{ carrier: "Ethos", status: "confirmed", source: "review", as_of: "2026-10-01", active: true }], carriers_active: 1, sold_carriers: [{ carrier: "Ethos", deals: 9, alp: 30000, last_posted: "2026-10-31" }] }),
+  teamProfile({ agent_id: "canon", home_state: "FL", carriers: [{ carrier: "Aflac", status: "submitted", source: "agentlink", as_of: "2026-05-16", active: false }], carriers_active: 0 }),
 ];
 
 function LocationProbe() {
@@ -158,6 +176,8 @@ beforeEach(() => {
   db.roster = ROWS.map((r) => ({ ...r }));
   db.canonical = ROWS.map((r) => ({ agent_id: r.agent_id, canonical_agent_id: r.agent_id === "twin" ? "canon" : r.agent_id }));
   db.agents = [{ id: "ann", source_application_id: "app-ann" }];
+  db.profiles = PROFILES.map((p) => ({ ...p }));
+  db.profilesError = null;
   db.updates = [];
   db.rosterError = null;
   db.rosterGate = null;
@@ -270,7 +290,8 @@ describe("My Team: four numbers, one list", () => {
     const menu = await screen.findByRole("menu");
     const items = within(menu).getAllByRole("menuitem").map((m) => m.textContent);
     expect(items).toEqual([
-      "Getting licensed1", "Joined in the last 30 days2", "Free leads now0", "Close to free leads0", "No login yet1", "Training stage not set2",
+      "Getting licensed1", "Ethos back3", "Licensed, no Ethos on file3", "Licensed, no carrier contracts3", "Never signed in2",
+      "Joined in the last 30 days2", "Free leads now0", "Close to free leads0", "No login yet1", "Training stage not set2",
       "No work days set5", "Not active1", "Placeholder seats1",
     ]);
     fireEvent.click(within(menu).getByRole("menuitem", { name: /Placeholder seats/ }));
@@ -280,6 +301,76 @@ describe("My Team: four numbers, one list", () => {
     expect(rowOf("GHOST seat").getByText("Placeholder seat")).toBeInTheDocument();
     expect(rowOf("GHOST seat").getByText(/Not a person/)).toBeInTheDocument();
     expect(rowOf("GHOST seat").queryByRole("link", { name: /^Call/ })).toBeNull();
+  });
+
+  // MP-TEAM-PROFILE-FACTS (2026-11-27). Sam: "see what contracts they have back ... if they have Ethos back already ...
+  // if there's an Instagram account ... their last sign in ... a filter to see which one of those guys I can filter by state."
+  it("every row carries the Ethos contract, carrier contracts, what they sold, state, Instagram and last sign-in", async () => {
+    renderPage();
+    await screen.findByText("Ann Lee");
+    const bo = rowOf("Bo Chen");
+    expect(bo.getByText("Ethos back")).toBeInTheDocument();
+    expect(bo.getByText("Contracts: Ethos, Aflac")).toBeInTheDocument();
+    expect(bo.getByText("TX")).toBeInTheDocument();
+    expect(bo.getByText("@bo.sells")).toBeInTheDocument();
+    expect(bo.getByText(/^Signed in /)).toBeInTheDocument();
+    const ann = rowOf("Ann Lee");
+    expect(ann.getByText("No Ethos on file")).toBeInTheDocument();
+    expect(ann.getByText("No carrier contracts on file")).toBeInTheDocument();
+    expect(ann.getByText("WI")).toBeInTheDocument();
+    expect(ann.getByText("Never signed in")).toBeInTheDocument();
+    // Still getting licensed: no Ethos line, because they cannot have it yet.
+    expect(rowOf("Lee Learner").queryByText(/Ethos/)).toBeNull();
+    expect(rowOf("Quinn Quiet").getByText("Sold $6.0K lifetime with Ethos")).toBeInTheDocument();
+  });
+
+  it("?state=WI narrows the people and the numbers to Wisconsin; Clear filters brings everyone back", async () => {
+    renderPage("/dashboard/team?state=WI");
+    await screen.findByText("Ann Lee");
+    expect(shownNames()).toEqual(["Ann Lee", "Lee Learner", "Quinn Quiet"]);
+    expect(tileValue("No sale yet")).toBe("1");
+    expect(tileValue("Gone quiet")).toBe("1");
+    expect(screen.getByText(/3 people/)).toBeInTheDocument();
+    expect(screen.getByText("in Wisconsin")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Filter by state" })).toHaveTextContent("Wisconsin (3)");
+    fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+    expect(screen.getByTestId("location").textContent).not.toContain("state=");
+    expect(shownNames()).toHaveLength(7);
+  });
+
+  it("the Ethos chips narrow to who has it back and who has nothing on file, and live in the URL", async () => {
+    renderPage();
+    await screen.findByText("Ann Lee");
+    fireEvent.click(screen.getByRole("button", { name: "No Ethos on file" }));
+    expect(screen.getByTestId("location").textContent).toContain("ethos=none");
+    // Licensed only, highest drop-off risk first: Cara is selling (her merged duplicate holds the sales), so she is last.
+    expect(shownNames()).toEqual(["Ann Lee", "Quinn Quiet", "Cara Canon"]);
+    fireEvent.click(screen.getByRole("button", { name: "Ethos back" }));
+    expect(screen.getByTestId("location").textContent).toContain("ethos=back");
+    expect(shownNames()).toEqual(["Bo Chen", "Sal Seller", "Sam Owner (you)"]);
+    expect(screen.getByText("with Ethos back")).toBeInTheDocument();
+  });
+
+  it("when the profile facts fail, everyone is still listed, the filters wait, and the lists built on them read —", async () => {
+    db.profilesError = "timeout";
+    renderPage();
+    await screen.findByText("Ann Lee");
+    expect(await screen.findByText(/State, Instagram, contracts and sign-in did not load/)).toBeInTheDocument();
+    expect(shownNames()).toHaveLength(7);
+    expect(screen.getByRole("button", { name: "Ethos back" })).toBeDisabled();
+    fireEvent.keyDown(screen.getByRole("button", { name: "More lists" }), { key: "Enter" });
+    const menu = await screen.findByRole("menu");
+    expect(within(menu).getByRole("menuitem", { name: /^Ethos back/ }).textContent).toBe("Ethos back—");
+  });
+
+  it("the person card shows the contracts and details, with where each fact came from", async () => {
+    renderPage("/dashboard/team?person=bo");
+    const c = await openCard();
+    expect(c.getByRole("heading", { name: "Contracts and details" })).toBeInTheDocument();
+    expect(c.getByText(/Back, on the Ethos hierarchy export/)).toBeInTheDocument();
+    expect(c.getByText("Aflac")).toBeInTheDocument();
+    expect(c.getByRole("link", { name: "@bo.sells" })).toHaveAttribute("href", "https://www.instagram.com/bo.sells/");
+    expect(c.getByText(/from their profile/)).toBeInTheDocument();
   });
 
   it("search narrows the list and the numbers alike", async () => {

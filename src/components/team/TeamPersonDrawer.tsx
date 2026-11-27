@@ -1,13 +1,15 @@
 import { Link } from "react-router-dom";
-import { ArrowUpRight, Mail, Phone, PhoneOff } from "lucide-react";
+import { ArrowUpRight, Instagram, Mail, Phone, PhoneOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { contactLinkProps, phoneHref } from "@/lib/phone";
+import { contactLinkProps, formatPhoneDisplay, phoneHref } from "@/lib/phone";
 import { daysSince, isSyncOnly, plural, usdOrNull, type RosterRow } from "@/lib/teamRoster";
 import { useContractReview } from "@/hooks/useContractReview";
 import { useFirstStepLinks } from "@/hooks/useFirstStepLinks";
 import { accessSummary, type PersonFacts, type StageKey } from "@/lib/teamStage";
 import type { TeamStage } from "@/lib/teamList";
+import { ETHOS_SOURCE_WORDS, instagramUrl, shortDay, signInWords, stateWords, type TeamProfile } from "@/lib/teamProfile";
+import { cn } from "@/lib/utils";
 import { OnboardingProgress } from "@/components/team/OnboardingProgress";
 import { StageSelect } from "@/components/team/StageBadge";
 import { WorkdaysEditor } from "@/components/team/WorkdaysEditor";
@@ -59,12 +61,94 @@ export interface TeamPersonManage {
 }
 
 /**
+ * The contracts and details Sam asked to see on every person (2026-11-27): the Ethos contract with its source and
+ * date, every carrier contract on file, what they sold by carrier, their state and licensed states, Instagram, last
+ * sign-in, Discord and Slack, and NPN. Facts only; each says where it came from. "Nothing on file" is the honest
+ * wording for a missing fact, because none of these lives in one table.
+ */
+function ProfileDetails({ profile, row }: { profile: TeamProfile; row: RosterRow }) {
+  const licensed = row.license_status === "licensed";
+  const since = shortDay(profile.ethos_since);
+  const ethosLine = profile.ethos_back
+    ? `Back${profile.ethos_source ? `, ${ETHOS_SOURCE_WORDS[profile.ethos_source]}` : ""}${since ? ` (${since})` : ""}`
+    : licensed ? "Nothing on file says it is back" : "Not licensed yet";
+  const ethosMoney = profile.ethos_back && (profile.ethos_issued > 0 || profile.ethos_inforce > 0)
+    ? `Issued ${usdOrNull(profile.ethos_issued) ?? "$0"}, in force ${usdOrNull(profile.ethos_inforce) ?? "$0"}${profile.ethos_chargeback > 0 ? `, chargebacks ${usdOrNull(profile.ethos_chargeback)}` : ""}`
+    : null;
+  const carriers = [...profile.carriers].sort((a, b) => Number(b.active) - Number(a.active) || a.carrier.localeCompare(b.carrier));
+  const signIn = signInWords(profile);
+  const signInDay = profile.last_sign_in_at ? new Date(profile.last_sign_in_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : null;
+  const instagram = instagramUrl(profile.instagram);
+  const phone = formatPhoneDisplay(row.phone);
+  const pill = "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[12px] font-medium";
+  return (
+    <dl className="grid grid-cols-1 gap-x-4 gap-y-3 text-[13px] sm:grid-cols-2">
+      <div className="sm:col-span-2">
+        <dt className="text-muted-foreground">Ethos contract</dt>
+        <dd className={cn("text-[15px] font-semibold", profile.ethos_back ? "text-tone-good" : licensed ? "text-tone-warm" : "text-foreground")}>{ethosLine}</dd>
+        {ethosMoney ? <dd className="text-[13px] text-muted-foreground">{ethosMoney}</dd> : null}
+      </div>
+      <div className="sm:col-span-2">
+        <dt className="text-muted-foreground">Carrier contracts on file</dt>
+        <dd>
+          {carriers.length === 0 ? (
+            <span className="text-foreground">{licensed ? "None on file" : "None yet (not licensed)"}</span>
+          ) : (
+            <span className="flex flex-wrap gap-1.5 pt-1">
+              {carriers.map((c) => (
+                <span key={`${c.carrier}-${c.source}`} title={`${c.source}${c.as_of ? `, ${c.as_of}` : ""}`} className={cn(pill, c.active ? "border-tone-good/35 bg-tone-good/8 text-tone-good" : "border-border bg-muted/40 text-muted-foreground")}>
+                  {c.carrier}<span className="font-normal opacity-80">{c.active ? "" : ` · ${c.status.replace(/_/g, " ")}`}</span>
+                </span>
+              ))}
+            </span>
+          )}
+        </dd>
+      </div>
+      <div className="sm:col-span-2">
+        <dt className="text-muted-foreground">Sold, by carrier</dt>
+        <dd className="text-foreground">
+          {profile.sold_carriers.length === 0 ? "Nothing sold yet" : profile.sold_carriers.map((c) => `${c.carrier} ${usdOrNull(c.alp) ?? "$0"} (${plural(c.deals, "deal")})`).join(" · ")}
+        </dd>
+      </div>
+      <div>
+        <dt className="text-muted-foreground">State</dt>
+        <dd className="text-foreground">{stateWords(profile) ?? "Not on file"}{profile.home_state && profile.home_state_source ? <span className="text-muted-foreground">{` · from their ${profile.home_state_source}`}</span> : null}</dd>
+      </div>
+      <div>
+        <dt className="text-muted-foreground">Instagram</dt>
+        <dd>
+          {instagram ? (
+            <a href={instagram} target="_blank" rel="noopener noreferrer" className="font-medium text-foreground underline underline-offset-2">@{profile.instagram}</a>
+          ) : <span className="text-foreground">Not on file</span>}
+        </dd>
+      </div>
+      <div>
+        <dt className="text-muted-foreground">Last sign-in</dt>
+        <dd className="text-foreground">{signIn?.text ?? "Unknown"}{signInDay ? <span className="text-muted-foreground">{` · ${signInDay}`}</span> : null}</dd>
+      </div>
+      <div>
+        <dt className="text-muted-foreground">Phone</dt>
+        <dd className="tabular-nums text-foreground">{phone || "Not on file"}</dd>
+      </div>
+      <div>
+        <dt className="text-muted-foreground">Discord and Slack</dt>
+        <dd className="text-foreground">{profile.discord_joined ? "In Discord" : "Not in Discord yet"} · {profile.slack_joined ? "in Slack" : "not in Slack yet"}</dd>
+      </div>
+      <div>
+        <dt className="text-muted-foreground">NPN</dt>
+        <dd className="tabular-nums text-foreground">{profile.npn ?? "Not on file"}</dd>
+      </div>
+    </dl>
+  );
+}
+
+/**
  * The single home for everything about one person on the production roster: how to reach them, where they are in
  * onboarding, their stage and work days, their production, and the account actions. Contracting is not edited here. It
  * lives in the contracting review, so there is one place to confirm a carrier; this drawer only says where that stands
  * and links to it.
  */
-export function TeamPersonDrawer({ open, onOpenChange, row, onOpenContracting, manage, stage }: {
+export function TeamPersonDrawer({ open, onOpenChange, row, onOpenContracting, manage, stage, profile, profileState }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   row: RosterRow | undefined;
@@ -73,6 +157,9 @@ export function TeamPersonDrawer({ open, onOpenChange, row, onOpenContracting, m
   manage?: TeamPersonManage;
   /** Where they are on My Team (src/lib/teamList.ts), shown under their name exactly as their row shows it. */
   stage?: TeamStage;
+  /** Their profile facts (src/hooks/useTeamProfiles.ts); null while loading or when the read failed. */
+  profile?: TeamProfile | null;
+  profileState?: "loading" | "error" | "ready";
 }) {
   const review = useContractReview(open);
   // The same read every row's Send links menu makes, so the card and the row send the same links.
@@ -85,6 +172,7 @@ export function TeamPersonDrawer({ open, onOpenChange, row, onOpenContracting, m
   const inReview = review.roster?.agents.find((a) => a.agent_id === agentId);
   const facts = manage?.facts ?? null;
   const access = facts ? accessSummary(facts.access) : null;
+  const instagram = instagramUrl(profile?.instagram);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -108,6 +196,7 @@ export function TeamPersonDrawer({ open, onOpenChange, row, onOpenContracting, m
               <span className="inline-flex items-center gap-1 text-sm text-muted-foreground"><PhoneOff className="h-4 w-4" aria-hidden />No phone on file</span>
             )}
             {email ? <Button asChild size="sm" variant="outline" className="h-10 gap-1.5"><a href={`mailto:${email}`}><Mail className="h-4 w-4" aria-hidden />Email</a></Button> : null}
+            {instagram ? <Button asChild size="sm" variant="outline" className="h-10 gap-1.5"><a href={instagram} target="_blank" rel="noopener noreferrer"><Instagram className="h-4 w-4" aria-hidden />Instagram</a></Button> : null}
             {agentId ? <Button asChild size="sm" variant="outline" className="h-10 gap-1.5"><Link to={`/dashboard/profile?agentId=${agentId}`}><ArrowUpRight className="h-4 w-4" aria-hidden />Profile</Link></Button> : null}
             {row && !isSyncOnly(row) ? (
               <SendLinksMenu
@@ -117,10 +206,23 @@ export function TeamPersonDrawer({ open, onOpenChange, row, onOpenContracting, m
                 linksFailed={firstStepLinks.isError}
                 onEmailFirstSteps={manage?.onEmailFirstSteps ? () => manage.onEmailFirstSteps?.() : undefined}
                 emailing={manage?.emailingFirstSteps ?? false}
+                profile={profile}
                 className="text-sm"
               />
             ) : null}
           </div>
+
+          {row && !isSyncOnly(row) && profileState ? (
+            <Section title="Contracts and details">
+              {profile ? (
+                <ProfileDetails profile={profile} row={row} />
+              ) : profileState === "error" ? (
+                <p role="alert" className="text-sm text-amber-700 dark:text-amber-400">State, Instagram, contracts and sign-in did not load.</p>
+              ) : (
+                <p className="text-sm text-muted-foreground">Loading…</p>
+              )}
+            </Section>
+          ) : null}
 
           {manage ? (
             <Section title="Training stage and work days">

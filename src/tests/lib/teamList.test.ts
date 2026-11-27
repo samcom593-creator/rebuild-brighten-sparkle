@@ -9,13 +9,15 @@
 import { describe, expect, it } from "vitest";
 import {
   TEAM_LISTS, TEAM_MORE_LISTS, TEAM_STEPS, TEAM_TILE_LISTS, compareTeamMembers, daysAgoWords, daysBetween, dropOffRisk,
-  dropOffTone, foldMergedTwins, lastTalkedWords, licenseProgressRank, licenseProgressWords, listAlp30, matchesTeamSearch,
-  onTeam, parseTeamList, teamListCounts, teamListDef, teamListRows, teamNextStep, teamStage, teamStep, tenureWords,
-  trainingStageWords, type TeamMember,
+  dropOffTone, foldMergedTwins, hasTeamFilters, lastTalkedWords, licenseProgressRank, licenseProgressWords, listAlp30, matchesTeamFilters,
+  matchesTeamSearch, onTeam, parseTeamFilters, parseTeamList, teamFilterWords, teamListCounts, teamListDef, teamListRows, teamNextStep,
+  teamStage, teamStateOptions, teamStep, tenureWords, trainingStageWords, type TeamFilters, type TeamMember,
 } from "@/lib/teamList";
+import type { TeamProfile } from "@/lib/teamProfile";
 import { teamStepTone } from "@/lib/tones";
 import { FIELD_COURSE_URL, buildFirstStepsText, firstNameOf, firstStepLinksFromSettings, firstStepsLinkLines } from "@/lib/firstStepsLinks";
 import { rosterRow } from "../helpers/teamRosterFixtures";
+import { teamProfile } from "../helpers/teamProfileFixtures";
 import { personFacts } from "../helpers/teamStageFixtures";
 
 const TODAY = "2026-10-31";
@@ -206,7 +208,7 @@ describe("lists: a number always equals the list it opens", () => {
       member({ agent_id: "f2", free_leads_qualified: false, free_leads_needed_for_qual: 2500 }),
       member({ agent_id: "f3", free_leads_qualified: false, free_leads_needed_for_qual: 9000 }),
     ];
-    const counts = teamListCounts(withFacts, { factsReady: true, todayKey: TODAY });
+    const counts = teamListCounts(withFacts, { factsReady: true, profileReady: true, todayKey: TODAY });
     for (const def of TEAM_LISTS) expect(counts[def.key]).toBe(teamListRows(withFacts, def.key, TODAY).length);
     expect(counts.no_login).toBe(1); // Nia; Quinn has no facts, so he is not counted as having no login
     expect(counts.free_leads).toBe(1);
@@ -416,5 +418,74 @@ describe("foldMergedTwins: one person, one row", () => {
   it("leaves a roster with no duplicates exactly as it was", () => {
     const rows = [canonical, other];
     expect(foldMergedTwins(rows, new Map())).toEqual(rows);
+  });
+});
+
+// MP-TEAM-PROFILE-FACTS (2026-11-27). Sam: "see what contracts they have back ... if they have Ethos back already ...
+// a filter to see which one of those guys I can filter by state, see who's in Wisconsin."
+describe("profile facts: the Ethos, carrier and sign-in lists, and the state and Ethos filters", () => {
+  const withProfile = (m: TeamMember, p: Partial<TeamProfile>): TeamMember => ({ ...m, profile: teamProfile({ agent_id: m.row.agent_id, ...p }) });
+  const ethosSeller = withProfile(seller, { ethos_back: true, ethos_source: "ethos_hierarchy", home_state: "AZ", carriers_active: 2 });
+  const wiNoSale = withProfile(noSale, { home_state: "WI", carriers_active: 0, last_sign_in_at: null });
+  const txQuiet = withProfile(quiet, { home_state: "TX", license_states: ["TX", "WI"], carriers_active: 1 });
+  const learner = withProfile(licensing, { home_state: "WI", has_login: false, last_sign_in_at: null });
+  const roster: TeamMember[] = [ethosSeller, wiNoSale, txQuiet, learner, inactive, ghost];
+
+  it("the lists built on the facts read — until they load, then count exactly the people the facts describe", () => {
+    const waiting = teamListCounts(roster, { factsReady: true, profileReady: false, todayKey: TODAY });
+    expect([waiting.ethos, waiting.no_ethos, waiting.no_carriers, waiting.never_signed_in]).toEqual([null, null, null, null]);
+    expect(waiting.everyone).toBe(4);
+    const counts = teamListCounts(roster, { factsReady: true, profileReady: true, todayKey: TODAY });
+    expect(counts).toMatchObject({ ethos: 1, no_ethos: 2, no_carriers: 1, never_signed_in: 2 });
+    expect(teamListRows(roster, "ethos", TODAY).map((m) => m.row.agent_id)).toEqual(["s1"]);
+    expect(teamListRows(roster, "no_ethos", TODAY).map((m) => m.row.agent_id).sort()).toEqual(["n1", "q1"]);
+    expect(teamListRows(roster, "no_carriers", TODAY).map((m) => m.row.agent_id)).toEqual(["n1"]);
+    expect(teamListRows(roster, "never_signed_in", TODAY).map((m) => m.row.agent_id).sort()).toEqual(["l1", "n1"]);
+    // A person whose facts have not loaded is in none of them: unknown is never "has nothing".
+    expect(teamListRows([noSale], "no_ethos", TODAY)).toEqual([]);
+    expect(teamListRows([noSale], "no_carriers", TODAY)).toEqual([]);
+    expect(teamListRows([noSale], "never_signed_in", TODAY)).toEqual([]);
+  });
+
+  it("the state filter matches a home state or a licensed state; the Ethos chips match back or nothing on file; unloaded facts match nothing", () => {
+    const ids = (f: TeamFilters) => roster.filter((m) => onTeam(m.row) && matchesTeamFilters(m, f)).map((m) => m.row.agent_id).sort();
+    expect(ids({ state: "WI", ethos: null })).toEqual(["l1", "n1", "q1"]);
+    expect(ids({ state: "AZ", ethos: null })).toEqual(["s1"]);
+    expect(ids({ state: null, ethos: "back" })).toEqual(["s1"]);
+    // "None on file" is the people to call about Ethos: licensed only. Lee is still getting licensed, so he is not in it.
+    expect(ids({ state: null, ethos: "none" })).toEqual(["n1", "q1"]);
+    expect(ids({ state: "WI", ethos: "none" })).toEqual(["n1", "q1"]);
+    expect(ids({ state: "WI", ethos: "back" })).toEqual([]);
+    expect(matchesTeamFilters(noSale, { state: "WI", ethos: null })).toBe(false);
+    expect(matchesTeamFilters(noSale, { state: null, ethos: "none" })).toBe(false);
+    expect(matchesTeamFilters(noSale, { state: null, ethos: null })).toBe(true);
+  });
+
+  it("the state options count each person once per state, most people first, and only from people on the team", () => {
+    expect(teamStateOptions(roster)).toEqual([
+      { code: "WI", name: "Wisconsin", count: 3 },
+      { code: "AZ", name: "Arizona", count: 1 },
+      { code: "TX", name: "Texas", count: 1 },
+    ]);
+    expect(teamStateOptions([withProfile(inactive, { home_state: "WI" }), withProfile(ghost, { home_state: "WI" })])).toEqual([]);
+  });
+
+  it("filters are read from the URL in any case and written back in words", () => {
+    const get = (o: Record<string, string>) => (k: string) => o[k] ?? null;
+    expect(parseTeamFilters(get({ state: "wi", ethos: "back" }))).toEqual({ state: "WI", ethos: "back" });
+    expect(parseTeamFilters(get({ state: "Wisconsin", ethos: "maybe" }))).toEqual({ state: null, ethos: null });
+    expect(hasTeamFilters({ state: null, ethos: null })).toBe(false);
+    expect(hasTeamFilters({ state: "WI", ethos: null })).toBe(true);
+    expect(teamFilterWords({ state: "WI", ethos: "none" })).toBe("in Wisconsin with no Ethos on file");
+    expect(teamFilterWords({ state: null, ethos: "back" })).toBe("with Ethos back");
+    expect(teamFilterWords({ state: null, ethos: null })).toBeNull();
+  });
+
+  it("the four lists live under More lists, need the profile facts, and admit no placeholder seat", () => {
+    for (const key of ["ethos", "no_ethos", "no_carriers", "never_signed_in"] as const) {
+      expect(TEAM_MORE_LISTS).toContain(key);
+      expect(teamListDef(key)).toMatchObject({ needsProfile: true, admitsSyncOnly: false });
+      expect(teamListDef(key).match(withProfile(ghost, { ethos_back: true, last_sign_in_at: null, carriers_active: 0 }), TODAY)).toBe(false);
+    }
   });
 });

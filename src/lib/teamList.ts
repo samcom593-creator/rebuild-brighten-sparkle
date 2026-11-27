@@ -30,6 +30,7 @@
  * agents row's own license_status; license_progress is the furthest step on their application.
  */
 import { isDialablePhone } from "@/lib/phone";
+import { parseStateCode, stateName, type TeamProfile } from "@/lib/teamProfile";
 import { isSyncOnly, num, usdOrNull, type RosterRow } from "@/lib/teamRoster";
 import { stageLabel as trainingStageLabel, type PersonFacts } from "@/lib/teamStage";
 import { teamStepTone, type Tone } from "@/lib/tones";
@@ -42,6 +43,12 @@ export interface TeamMember {
    * (agents and agency owners), while they load, or when the person is not on the tracker.
    */
   facts: PersonFacts | null;
+  /**
+   * State, Instagram, login and sign-in, Ethos and carrier contracts, production by carrier
+   * (crm_agent_profile_facts, MP-TEAM-PROFILE-FACTS 2026-11-27). Absent or null while the read is in flight or
+   * failed; a list or filter built on it then counts nobody rather than guessing.
+   */
+  profile?: TeamProfile | null;
 }
 
 // ── Where a person is ─────────────────────────────────────────────────────
@@ -293,6 +300,7 @@ export function teamNextStep(member: TeamMember, opts: { isMe?: boolean } = {}):
 export type TeamListKey =
   | "everyone" | "drop_off"
   | "no_sale" | "quiet" | "licensing" | "selling"
+  | "ethos" | "no_ethos" | "no_carriers" | "never_signed_in"
   | "new_hires" | "free_leads" | "free_leads_close"
   | "no_login" | "stage_unset" | "no_schedule"
   | "not_active" | "sync_only";
@@ -312,6 +320,8 @@ export interface TeamListDef {
   admitsSyncOnly: boolean;
   /** Needs the team facts (training stage, work days, login), which only admins, managers and the support team read. */
   needsFacts?: boolean;
+  /** Needs the profile facts (state, Ethos, carriers, sign-in); its count is unknown ("—") until they load. */
+  needsProfile?: boolean;
   /** `todayKey` is the America/Phoenix business day; only the lists that count days read it. */
   /** `myAgentId` is the viewer's own agent id, so a risk list never counts the viewer's own row. */
   match: (m: TeamMember, todayKey: string, myAgentId?: string | null) => boolean;
@@ -334,6 +344,16 @@ export const TEAM_LISTS: readonly TeamListDef[] = [
     match: stepIs("licensing") },
   { key: "selling", label: "Selling", rule: "Made a sale in the last 30 days.", order: "most ALP in the last 30 days first", admitsSyncOnly: false,
     match: stepIs("selling") },
+  // MP-TEAM-PROFILE-FACTS (2026-11-27). Sam: "see what contracts they have back ... if they have Ethos back already."
+  // Each needs the profile facts; a person whose facts have not loaded is in none of them, never counted as lacking.
+  { key: "ethos", label: "Ethos back", rule: "On the team and the Ethos contract is back: on the Ethos hierarchy export, the Ethos portal, or marked received in the contracting review.", order: "highest drop-off risk first", admitsSyncOnly: false, needsProfile: true,
+    match: (m) => onTeam(m.row) && m.profile?.ethos_back === true },
+  { key: "no_ethos", label: "Licensed, no Ethos on file", rule: "Licensed and on the team, and nothing on file says their Ethos contract is back.", order: "highest drop-off risk first", admitsSyncOnly: false, needsProfile: true,
+    match: (m) => onTeam(m.row) && m.row.license_status === "licensed" && m.profile != null && !m.profile.ethos_back },
+  { key: "no_carriers", label: "Licensed, no carrier contracts", rule: "Licensed and on the team, with no active carrier contract on file, Ethos included.", order: "highest drop-off risk first", admitsSyncOnly: false, needsProfile: true,
+    match: (m) => onTeam(m.row) && m.row.license_status === "licensed" && m.profile != null && m.profile.carriers_active === 0 },
+  { key: "never_signed_in", label: "Never signed in", rule: "On the team and has never signed in to the app, or has no login at all.", order: "highest drop-off risk first", admitsSyncOnly: false, needsProfile: true,
+    match: (m) => onTeam(m.row) && m.profile != null && !m.profile.last_sign_in_at },
   { key: "new_hires", label: "Joined in the last 30 days", rule: "On the team 30 days or less.", order: "newest first", admitsSyncOnly: false,
     match: (m) => onTeam(m.row) && m.row.tenure_days !== null && m.row.tenure_days !== undefined && m.row.tenure_days <= 30 },
   { key: "free_leads", label: "Free leads now", rule: "Qualify for free leads right now. Route leads to them first.", order: "most ALP in the last 30 days first", admitsSyncOnly: false,
@@ -362,7 +382,8 @@ export const TEAM_TILE_LISTS: readonly TeamListKey[] = ["drop_off", "no_sale", "
 
 /** The lists in the More lists menu. */
 export const TEAM_MORE_LISTS: readonly TeamListKey[] = [
-  "licensing", "new_hires", "free_leads", "free_leads_close", "no_login", "stage_unset", "no_schedule", "not_active", "sync_only",
+  "licensing", "ethos", "no_ethos", "no_carriers", "never_signed_in",
+  "new_hires", "free_leads", "free_leads_close", "no_login", "stage_unset", "no_schedule", "not_active", "sync_only",
 ];
 
 export function teamListDef(key: TeamListKey): TeamListDef {
@@ -440,15 +461,81 @@ export function teamListRows(members: readonly TeamMember[], key: TeamListKey, t
 }
 
 /**
- * Every list's count, from the same predicate that draws it. A list that needs the team facts is null (shown
- * as "—") until the facts have loaded, because a list nobody could check is unknown, never zero.
+ * Every list's count, from the same predicate that draws it. A list that needs the team facts (or the profile
+ * facts) is null (shown as "—") until they have loaded, because a list nobody could check is unknown, never zero.
  */
-export function teamListCounts(members: readonly TeamMember[], opts: { factsReady: boolean; todayKey: string; myAgentId?: string | null }): Record<TeamListKey, number | null> {
+export function teamListCounts(members: readonly TeamMember[], opts: { factsReady: boolean; profileReady?: boolean; todayKey: string; myAgentId?: string | null }): Record<TeamListKey, number | null> {
   const out = {} as Record<TeamListKey, number | null>;
   for (const def of TEAM_LISTS) {
-    out[def.key] = def.needsFacts && !opts.factsReady ? null : members.filter((m) => def.match(m, opts.todayKey, opts.myAgentId ?? null)).length;
+    const unknown = (def.needsFacts && !opts.factsReady) || (def.needsProfile && !opts.profileReady);
+    out[def.key] = unknown ? null : members.filter((m) => def.match(m, opts.todayKey, opts.myAgentId ?? null)).length;
   }
   return out;
+}
+
+// ── Filters (MP-TEAM-PROFILE-FACTS, 2026-11-27) ───────────────────────────
+// Sam: "a filter to see which one of those guys I can filter by state, see who's in Wisconsin." A filter narrows
+// the people BEFORE the numbers and lists are drawn, so every tile and list answers for the filtered people.
+
+export interface TeamFilters {
+  /** A two-letter state: their home state, or a state they are licensed in. */
+  state: string | null;
+  /**
+   * Ethos contract back, or (licensed people only) nothing on file saying so. Someone still getting licensed cannot
+   * hold the contract yet, so "none" never lists them: the chip is the people to call about Ethos.
+   */
+  ethos: "back" | "none" | null;
+}
+
+export const NO_TEAM_FILTERS: TeamFilters = { state: null, ethos: null };
+
+/** The filters as the URL carries them (?state=WI&ethos=back); anything unreadable is no filter. */
+export function parseTeamFilters(get: (key: string) => string | null): TeamFilters {
+  const ethos = get("ethos");
+  return { state: parseStateCode(get("state")), ethos: ethos === "back" || ethos === "none" ? ethos : null };
+}
+
+export function hasTeamFilters(f: TeamFilters): boolean {
+  return f.state !== null || f.ethos !== null;
+}
+
+/**
+ * Does this person pass the filters? With a filter on, a person whose profile facts have not loaded does not: the
+ * list waits for the facts rather than showing everyone as if they matched.
+ */
+export function matchesTeamFilters(member: TeamMember, f: TeamFilters): boolean {
+  if (!hasTeamFilters(f)) return true;
+  const p = member.profile;
+  if (!p) return false;
+  if (f.state && p.home_state !== f.state && !p.license_states.includes(f.state)) return false;
+  if (f.ethos === "back" && !p.ethos_back) return false;
+  if (f.ethos === "none" && (p.ethos_back || member.row.license_status !== "licensed")) return false;
+  return true;
+}
+
+/** "in Wisconsin", "with Ethos back", "in Wisconsin with no Ethos on file"; null with no filter on. */
+export function teamFilterWords(f: TeamFilters): string | null {
+  const parts: string[] = [];
+  if (f.state) parts.push(`in ${stateName(f.state)}`);
+  if (f.ethos === "back") parts.push("with Ethos back");
+  if (f.ethos === "none") parts.push("with no Ethos on file");
+  return parts.length ? parts.join(" ") : null;
+}
+
+/**
+ * The states to offer, with how many people on the team are in each (home state or licensed there; one person
+ * counts once per state), most people first. Built from the loaded facts, so a state nobody is in is not offered.
+ */
+export function teamStateOptions(members: readonly TeamMember[]): Array<{ code: string; name: string; count: number }> {
+  const counts = new Map<string, number>();
+  for (const m of members) {
+    if (!onTeam(m.row) || !m.profile) continue;
+    const states = new Set([m.profile.home_state, ...m.profile.license_states].filter((s): s is string => Boolean(s)));
+    for (const s of states) counts.set(s, (counts.get(s) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([code, count]) => ({ code, name: stateName(code), count }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
 
 /** The ALP the people in a list sold in the last 30 days. */

@@ -10,6 +10,7 @@ import { useBusinessToday } from "@/hooks/useBusinessToday";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useTeamWorkspace } from "@/hooks/useTeamWorkspace";
 import { useTeamFacts } from "@/hooks/useTeamFacts";
+import { useTeamProfiles } from "@/hooks/useTeamProfiles";
 import { usePortalLoginSender } from "@/hooks/usePortalLoginSender";
 import { useRealtimeTable } from "@/shared/realtime/useRealtimeTable";
 import { type RosterRow } from "@/lib/teamRoster";
@@ -136,7 +137,10 @@ export default function DashboardCRM() {
 
   // MP-361: every handler below invalidates and ignores the payload, so a burst of row events needs ONE refetch.
   const CRM_COALESCE_MS = 750;
-  const refreshRoster = useCallback(() => { void queryClient.invalidateQueries({ queryKey: ["crm-agent-roster"] }); }, [queryClient]);
+  const refreshRoster = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ["crm-agent-roster"] });
+    void queryClient.invalidateQueries({ queryKey: ["crm-agent-profile-facts"] });
+  }, [queryClient]);
   useRealtimeTable({ table: "agents", channelSuffix: "crm", coalesceMs: CRM_COALESCE_MS }, refreshRoster);
   useRealtimeTable({ table: "deals", channelSuffix: "crm-production", coalesceMs: CRM_COALESCE_MS }, refreshRoster);
   useRealtimeTable({ table: "agentlink_book", channelSuffix: "crm-production", coalesceMs: CRM_COALESCE_MS }, refreshRoster);
@@ -147,8 +151,15 @@ export default function DashboardCRM() {
   const team = useTeamWorkspace(rows, !rosterQuery.isLoading);
   const facts = useTeamFacts(team.contractingEnabled);
   const factsById = useMemo(() => new Map((facts.facts?.people ?? []).map((p) => [p.agent_id, p] as const)), [facts.facts]);
-  const members = useMemo<TeamMember[]>(() => rows.map((row) => ({ row, facts: factsById.get(row.agent_id) ?? null })), [rows, factsById]);
+  // MP-TEAM-PROFILE-FACTS (2026-11-27): state, Instagram, Ethos and carrier contracts, sign-in, production by carrier.
+  // Authorised like the roster, so everyone who reads the list reads these; read apart so a failure here cannot hide the list.
+  const profiles = useTeamProfiles(!authLoading && !!user);
+  const members = useMemo<TeamMember[]>(
+    () => rows.map((row) => ({ row, facts: factsById.get(row.agent_id) ?? null, profile: profiles.data ? profiles.data[row.agent_id] ?? null : null })),
+    [rows, factsById, profiles.data],
+  );
   const factsState = !facts.canRead ? "none" : facts.facts ? "ready" : facts.query.isError ? "error" : "loading";
+  const profileState = profiles.data ? "ready" : profiles.isError ? "error" : "loading";
 
   // Which agents have an application to stamp. The Talked button on a row is off, and says why, for the ones
   // who do not; while this read is still in flight the button stays on and the write itself re-checks.
@@ -175,6 +186,7 @@ export default function DashboardCRM() {
   const refreshAll = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ["crm-agent-roster"] });
     void queryClient.invalidateQueries({ queryKey: ["team-facts"] });
+    void queryClient.invalidateQueries({ queryKey: ["crm-agent-profile-facts"] });
   }, [queryClient]);
 
   // Roles with no contracting access only ever see the list; the owner alone sees Logins.
@@ -432,6 +444,8 @@ export default function DashboardCRM() {
             markingTalkedId={markingTalkedId}
             onEmailFirstSteps={canManage ? (id) => { void emailFirstSteps(id); } : undefined}
             emailingFirstStepsId={emailingFirstStepsId}
+            profileState={profileState}
+            onRetryProfiles={() => { void profiles.refetch(); }}
           />
         ) : mode === "attendance" ? (
           <TeamAttendance />
@@ -451,6 +465,8 @@ export default function DashboardCRM() {
         onOpenChange={(o) => { if (!o) team.closePerson(); }}
         row={team.row}
         stage={team.row ? teamStage({ row: team.row, facts: personFacts }, todayKey) : undefined}
+        profile={team.selectedId && profiles.data ? profiles.data[team.selectedId] ?? null : null}
+        profileState={profileState}
         manage={manage}
         onOpenContracting={(id) => {
           // Drive the URL: ?view=contracting is what this page reads, ?review= is what the review follows (and what a

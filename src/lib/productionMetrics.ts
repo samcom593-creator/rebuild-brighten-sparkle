@@ -34,6 +34,9 @@ export const ROSTER_PARTS = {
   contacts: "crm_agent_contacts",
   freeLeads: "crm_agent_free_leads_status",
   canonical: "v_agent_canonical_map",
+  // MP-TEAM-PROFILE-FACTS (2026-11-27): read on its own (src/hooks/useTeamProfiles.ts), so a failure here leaves
+  // the roster standing and says only that these facts did not load.
+  profile: "crm_agent_profile_facts",
 } as const;
 
 /** Plain-English names for every read the strip can report on. Copy prints these, with the RPC name in parentheses. */
@@ -45,6 +48,7 @@ const SOURCE_LABELS: Readonly<Record<string, string>> = {
   [ROSTER_PARTS.contacts]: "agent contact details",
   [ROSTER_PARTS.freeLeads]: "free-lead status",
   [ROSTER_PARTS.canonical]: "merged duplicate records",
+  [ROSTER_PARTS.profile]: "state, Instagram, contracts and sign-in facts",
 };
 
 /** The plain-English name of a read; an unknown read keeps its RPC name. */

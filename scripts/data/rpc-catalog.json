@@ -777,6 +777,14 @@
         "raw": ""
       }
     ],
+    "apex_owner_goal_board_prewarm": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "apex_provision_licensed_applicant": [
       {
         "all": [
@@ -2353,6 +2361,22 @@
         "raw": ""
       }
     ],
+    "content_queue_review_set_status": [
+      {
+        "all": [
+          "p_content_id",
+          "p_seen_updated_at",
+          "p_status"
+        ],
+        "required": [
+          "p_content_id",
+          "p_seen_updated_at",
+          "p_status"
+        ],
+        "unnamed": false,
+        "raw": "p_content_id text, p_seen_updated_at timestamp with time zone, p_status text"
+      }
+    ],
     "contract_review_history": [
       {
         "all": [
@@ -2633,6 +2657,14 @@
         "raw": ""
       }
     ],
+    "crm_agent_profile_facts": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "crm_agent_roster": [
       {
         "all": [],
@@ -2883,6 +2915,117 @@
         "raw": ""
       }
     ],
+    "deal_coverage_can_decide": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_manager_id",
+          "p_matches"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_manager_id",
+          "p_matches"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_manager_id uuid, p_matches uuid[]"
+      }
+    ],
+    "deal_coverage_candidates": [
+      {
+        "all": [
+          "p_carrier_id",
+          "p_dob",
+          "p_exclude",
+          "p_name",
+          "p_phone"
+        ],
+        "required": [
+          "p_carrier_id",
+          "p_dob",
+          "p_name",
+          "p_phone"
+        ],
+        "unnamed": false,
+        "raw": "p_carrier_id uuid, p_dob date, p_name text, p_phone text, p_exclude uuid DEFAULT NULL::uuid"
+      }
+    ],
+    "deal_coverage_manager_access": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_manager_id"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_manager_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_manager_id uuid"
+      }
+    ],
+    "deal_coverage_name": [
+      {
+        "all": [
+          "p_first",
+          "p_last"
+        ],
+        "required": [
+          "p_first",
+          "p_last"
+        ],
+        "unnamed": false,
+        "raw": "p_first text, p_last text"
+      }
+    ],
+    "deal_coverage_payload_hash": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_payload"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_payload"
+        ],
+        "unnamed": false,
+        "raw": "p_payload jsonb, p_agent_id uuid"
+      }
+    ],
+    "deal_coverage_phone": [
+      {
+        "all": [
+          "p_phone"
+        ],
+        "required": [
+          "p_phone"
+        ],
+        "unnamed": false,
+        "raw": "p_phone text"
+      }
+    ],
+    "deal_coverage_requires_admin": [
+      {
+        "all": [
+          "p_manager_id",
+          "p_matches"
+        ],
+        "required": [
+          "p_manager_id",
+          "p_matches"
+        ],
+        "unnamed": false,
+        "raw": "p_manager_id uuid, p_matches uuid[]"
+      }
+    ],
+    "deal_coverage_review_queue": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "deal_sync_queue_promote_dead": [
       {
         "all": [],
@@ -2921,6 +3064,24 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "decide_deal_coverage_review": [
+      {
+        "all": [
+          "p_decision",
+          "p_expected_version",
+          "p_reason",
+          "p_review_id"
+        ],
+        "required": [
+          "p_decision",
+          "p_expected_version",
+          "p_reason",
+          "p_review_id"
+        ],
+        "unnamed": false,
+        "raw": "p_review_id uuid, p_decision text, p_reason text, p_expected_version integer"
       }
     ],
     "dedupe_applications_by_email": [
@@ -3059,6 +3220,14 @@
       }
     ],
     "enforce_builder_track_admin_only": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "enforce_deal_coverage_review": [
       {
         "all": [],
         "required": [],
@@ -4435,6 +4604,16 @@
         "raw": ""
       }
     ],
+    "fn_contracting_ethos_autosubmit": [
+      {
+        "all": [
+          "p_dry_run"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_dry_run boolean DEFAULT true"
+      }
+    ],
     "fn_contracting_intake_core": [
       {
         "all": [
@@ -5293,6 +5472,14 @@
         "raw": "p_dry_run boolean DEFAULT true, p_limit integer DEFAULT 10"
       }
     ],
+    "fn_guard_agent_task_identity_inputs": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
     "fn_guard_daily_production_date": [
       {
         "all": [],
@@ -5536,6 +5723,18 @@
         "raw": "p_asof date DEFAULT NULL::date"
       }
     ],
+    "fn_instagram_handle": [
+      {
+        "all": [
+          "p"
+        ],
+        "required": [
+          "p"
+        ],
+        "unnamed": false,
+        "raw": "p text"
+      }
+    ],
     "fn_instagram_token_replay": [
       {
         "all": [],
@@ -5720,6 +5919,28 @@
       }
     ],
     "fn_lead_assignment_hold": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "fn_lead_blend_inventory": [
+      {
+        "all": [
+          "p_limit",
+          "p_recipe",
+          "p_states"
+        ],
+        "required": [
+          "p_states"
+        ],
+        "unnamed": false,
+        "raw": "p_states text[], p_limit integer DEFAULT 25, p_recipe jsonb DEFAULT NULL::jsonb"
+      }
+    ],
+    "fn_lead_blend_recipe": [
       {
         "all": [],
         "required": [],
@@ -6109,6 +6330,17 @@
         ],
         "unnamed": false,
         "raw": "p_agent_id uuid"
+      }
+    ],
+    "fn_morning_leads_recycle": [
+      {
+        "all": [
+          "p_days",
+          "p_dry_run"
+        ],
+        "required": [],
+        "unnamed": false,
+        "raw": "p_dry_run boolean DEFAULT true, p_days integer DEFAULT NULL::integer"
       }
     ],
     "fn_my_leads_state_gate": [
@@ -7989,6 +8221,18 @@
         "raw": ""
       }
     ],
+    "fn_us_state_code": [
+      {
+        "all": [
+          "p"
+        ],
+        "required": [
+          "p"
+        ],
+        "unnamed": false,
+        "raw": "p text"
+      }
+    ],
     "fn_us_state_send_zones": [
       {
         "all": [
@@ -9704,6 +9948,20 @@
         "raw": "p_state text, p_age integer, p_tier text, p_lead_age integer, p_flags jsonb, p_filters jsonb"
       }
     ],
+    "lead_pool_preview_candidates": [
+      {
+        "all": [
+          "p_filters",
+          "p_source"
+        ],
+        "required": [
+          "p_filters",
+          "p_source"
+        ],
+        "unnamed": false,
+        "raw": "p_source text, p_filters jsonb"
+      }
+    ],
     "lead_pool_static_filter_matches": [
       {
         "all": [
@@ -10571,6 +10829,62 @@
         "required": [],
         "unnamed": false,
         "raw": ""
+      }
+    ],
+    "personal_task_create": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_description",
+          "p_due_date",
+          "p_priority",
+          "p_title"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_description",
+          "p_due_date",
+          "p_priority",
+          "p_title"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_title text, p_description text, p_due_date date, p_priority text"
+      }
+    ],
+    "personal_task_identity": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "personal_task_list": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
+    "personal_task_set_completed": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_completed",
+          "p_task_id"
+        ],
+        "required": [
+          "p_agent_id",
+          "p_completed",
+          "p_task_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid, p_task_id uuid, p_completed boolean"
       }
     ],
     "phc_admin_lead_stats": [
@@ -11508,6 +11822,20 @@
         ],
         "unnamed": false,
         "raw": "p_strike_id uuid, p_resolution_note text"
+      }
+    ],
+    "resume_deal_coverage_review": [
+      {
+        "all": [
+          "p_expected_version",
+          "p_review_id"
+        ],
+        "required": [
+          "p_expected_version",
+          "p_review_id"
+        ],
+        "unnamed": false,
+        "raw": "p_review_id uuid, p_expected_version integer"
       }
     ],
     "revive_dead_leads": [
@@ -12598,6 +12926,34 @@
         "raw": ""
       }
     ],
+    "social_draft_review": [
+      {
+        "all": [
+          "p_id"
+        ],
+        "required": [
+          "p_id"
+        ],
+        "unnamed": false,
+        "raw": "p_id bigint"
+      }
+    ],
+    "social_draft_review_set_status": [
+      {
+        "all": [
+          "p_id",
+          "p_seen_hash",
+          "p_status"
+        ],
+        "required": [
+          "p_id",
+          "p_seen_hash",
+          "p_status"
+        ],
+        "unnamed": false,
+        "raw": "p_id bigint, p_seen_hash text, p_status text"
+      }
+    ],
     "social_draft_set_status": [
       {
         "all": [
@@ -12724,6 +13080,21 @@
       }
     ],
     "submit_apex_deal": [
+      {
+        "all": [
+          "p_agent_id",
+          "p_idempotency_key",
+          "p_payload"
+        ],
+        "required": [
+          "p_idempotency_key",
+          "p_payload"
+        ],
+        "unnamed": false,
+        "raw": "p_idempotency_key uuid, p_payload jsonb, p_agent_id uuid DEFAULT NULL::uuid"
+      }
+    ],
+    "submit_apex_deal_before_coverage_review": [
       {
         "all": [
           "p_agent_id",
@@ -13090,6 +13461,22 @@
       }
     ],
     "track_license_milestones": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "training_canonical_self_id": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "training_progress_access": [
       {
         "all": [],
         "required": [],
@@ -13734,236 +14121,6 @@
         "unnamed": false,
         "raw": "p_view text"
       }
-    ],
-    "personal_task_create": [
-      {
-        "all": [
-          "p_agent_id",
-          "p_title",
-          "p_description",
-          "p_due_date",
-          "p_priority"
-        ],
-        "required": [
-          "p_agent_id",
-          "p_title",
-          "p_description",
-          "p_due_date",
-          "p_priority"
-        ],
-        "unnamed": false,
-        "raw": "p_agent_id uuid, p_title text, p_description text, p_due_date date, p_priority text"
-      }
-    ],
-    "personal_task_identity": [
-      {
-        "all": [],
-        "required": [],
-        "unnamed": false,
-        "raw": ""
-      }
-    ],
-    "personal_task_list": [
-      {
-        "all": [
-          "p_agent_id"
-        ],
-        "required": [
-          "p_agent_id"
-        ],
-        "unnamed": false,
-        "raw": "p_agent_id uuid"
-      }
-    ],
-    "personal_task_set_completed": [
-      {
-        "all": [
-          "p_agent_id",
-          "p_task_id",
-          "p_completed"
-        ],
-        "required": [
-          "p_agent_id",
-          "p_task_id",
-          "p_completed"
-        ],
-        "unnamed": false,
-        "raw": "p_agent_id uuid, p_task_id uuid, p_completed boolean"
-      }
-    ],
-    "social_draft_review": [
-      {
-        "all": [
-          "p_id"
-        ],
-        "required": [
-          "p_id"
-        ],
-        "unnamed": false,
-        "raw": "p_id bigint"
-      }
-    ],
-    "social_draft_review_set_status": [
-      {
-        "all": [
-          "p_id",
-          "p_seen_hash",
-          "p_status"
-        ],
-        "required": [
-          "p_id",
-          "p_seen_hash",
-          "p_status"
-        ],
-        "unnamed": false,
-        "raw": "p_id bigint, p_seen_hash text, p_status text"
-      }
-    ],
-    "content_queue_review_set_status": [
-      {
-        "all": [
-          "p_content_id",
-          "p_seen_updated_at",
-          "p_status"
-        ],
-        "required": [
-          "p_content_id",
-          "p_seen_updated_at",
-          "p_status"
-        ],
-        "unnamed": false,
-        "raw": "p_content_id text, p_seen_updated_at timestamp with time zone, p_status text"
-      }
-    ],
-    "training_canonical_self_id": [
-      {
-        "all": [],
-        "required": [],
-        "unnamed": false,
-        "raw": ""
-      }
-    ],
-    "training_progress_access": [
-      {
-        "all": [],
-        "required": [],
-        "unnamed": false,
-        "raw": ""
-      }
-    ],
-    "deal_coverage_review_queue": [
-      {
-        "all": [],
-        "required": [],
-        "unnamed": false,
-        "raw": ""
-      }
-    ],
-    "decide_deal_coverage_review": [
-      {
-        "all": [
-          "p_review_id",
-          "p_decision",
-          "p_reason",
-          "p_expected_version"
-        ],
-        "required": [
-          "p_review_id",
-          "p_decision",
-          "p_reason",
-          "p_expected_version"
-        ],
-        "unnamed": false,
-        "raw": "p_review_id uuid, p_decision text, p_reason text, p_expected_version integer"
-      }
-    ],
-    "resume_deal_coverage_review": [
-      {
-        "all": [
-          "p_review_id",
-          "p_expected_version"
-        ],
-        "required": [
-          "p_review_id",
-          "p_expected_version"
-        ],
-        "unnamed": false,
-        "raw": "p_review_id uuid, p_expected_version integer"
-      }
     ]
-  },
-  "_declared_migration_contracts": {
-    "personal_task_create": {
-      "migration": "20261125120000_personal_task_canonical_self.sql",
-      "return_type": "jsonb",
-      "named_output_columns": false,
-      "source": "Exact authored migration signature, executed in isolated PostgreSQL fixtures; validate against deployed pg_proc after application."
-    },
-    "personal_task_identity": {
-      "migration": "20261125120000_personal_task_canonical_self.sql",
-      "return_type": "jsonb",
-      "named_output_columns": false,
-      "source": "Exact authored migration signature, executed in isolated PostgreSQL fixtures; validate against deployed pg_proc after application."
-    },
-    "personal_task_list": {
-      "migration": "20261125120000_personal_task_canonical_self.sql",
-      "return_type": "jsonb",
-      "named_output_columns": false,
-      "source": "Exact authored migration signature, executed in isolated PostgreSQL fixtures; validate against deployed pg_proc after application."
-    },
-    "personal_task_set_completed": {
-      "migration": "20261125120000_personal_task_canonical_self.sql",
-      "return_type": "jsonb",
-      "named_output_columns": false,
-      "source": "Exact authored migration signature, executed in isolated PostgreSQL fixtures; validate against deployed pg_proc after application."
-    },
-    "social_draft_review": {
-      "migration": "20261127043000_versioned_social_review.sql",
-      "return_type": "jsonb",
-      "named_output_columns": false,
-      "source": "Exact authored migration signature, validated with isolated PostgreSQL fixtures; validate deployed pg_proc and ACLs after application."
-    },
-    "social_draft_review_set_status": {
-      "migration": "20261127043000_versioned_social_review.sql",
-      "return_type": "text",
-      "named_output_columns": false,
-      "source": "Exact authored migration signature, validated with isolated PostgreSQL fixtures; validate deployed pg_proc and ACLs after application."
-    },
-    "content_queue_review_set_status": {
-      "migration": "20261127043000_versioned_social_review.sql",
-      "return_type": "text",
-      "named_output_columns": false,
-      "source": "Exact authored migration signature, validated with isolated PostgreSQL fixtures; validate deployed pg_proc and ACLs after application."
-    },
-    "training_canonical_self_id": {
-      "migration": "20261127044000_training_canonical_access.sql",
-      "return_type": "uuid",
-      "named_output_columns": false,
-      "source": "Exact authored migration signature, executed in isolated PostgreSQL fixtures; validate against deployed pg_proc after application."
-    },
-    "training_progress_access": {
-      "migration": "20261127044000_training_canonical_access.sql",
-      "return_type": "jsonb",
-      "named_output_columns": false,
-      "source": "Exact authored migration signature, executed in isolated PostgreSQL fixtures; validate against deployed pg_proc after application."
-    },
-    "deal_coverage_review_queue": {
-      "migration": "20261127050000_deal_coverage_review.sql",
-      "return_type": "jsonb",
-      "named_output_columns": false,
-      "source": "Exact authored migration signature; isolated PostgreSQL fixtures verify the contract before deployment. Verify deployed pg_proc and ACLs after application."
-    },
-    "decide_deal_coverage_review": {
-      "migration": "20261127050000_deal_coverage_review.sql",
-      "return_type": "jsonb",
-      "named_output_columns": false,
-      "source": "Exact authored migration signature; isolated PostgreSQL fixtures verify the contract before deployment. Verify deployed pg_proc and ACLs after application."
-    },
-    "resume_deal_coverage_review": {
-      "migration": "20261127050000_deal_coverage_review.sql",
-      "return_type": "jsonb",
-      "named_output_columns": false,
-      "source": "Exact authored migration signature; isolated PostgreSQL fixtures verify the contract before deployment. Verify deployed pg_proc and ACLs after application."
-    }
   }
 }

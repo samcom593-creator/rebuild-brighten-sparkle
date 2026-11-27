@@ -116,8 +116,15 @@ const baseRow = {
   free_leads_needed_for_qual: null, is_sync_only: false, manager_id: null, manager_name: null,
 };
 const baseFacts = { agent_id: "fixture", stage: "training", stage_label: "Training", stage_source: "staff", schedule_set: true, weekdays: [1, 2, 3], next_schedule: null, access: { has_login: true, invitation: "accepted" } };
+// MP-TEAM-PROFILE-FACTS (2026-11-27): the profile facts (crm_agent_profile_facts) a list may read.
+const baseProfile = {
+  agent_id: "fixture", home_state: "AZ", home_state_source: "profile", license_states: [], instagram: null, instagram_source: null,
+  has_login: true, last_sign_in_at: "2026-11-20T00:00:00Z", discord_joined: false, slack_joined: false, npn: null,
+  ethos_back: false, ethos_source: null, ethos_since: null, ethos_issued: 0, ethos_inforce: 0, ethos_chargeback: 0,
+  carriers: [], carriers_active: 0, sold_carriers: [],
+};
 
-// Per-list override that makes the NON-placeholder member match: { row, facts }.
+// Per-list override that makes the NON-placeholder member match: { row, facts, profile }.
 const MATCHING = {
   everyone:         { row: {} },
   // MP-TEAM-DROP-OFF (2026-11-26): a licensed hire with no sale and nobody has talked to them yet.
@@ -126,6 +133,11 @@ const MATCHING = {
   quiet:            { row: { lifetime_deals: 4, l30_deals: 0, last_posted_date: long_ago } },
   licensing:        { row: { lifetime_deals: 0, l30_deals: 0, license_status: "unlicensed" } },
   selling:          { row: { l30_deals: 2 } },
+  // MP-TEAM-PROFILE-FACTS (2026-11-27): lists built on the profile facts (Ethos, carriers, sign-in).
+  ethos:            { row: {}, profile: { ethos_back: true, ethos_source: "ethos_hierarchy", carriers_active: 1 } },
+  no_ethos:         { row: { license_status: "licensed" }, profile: { ethos_back: false } },
+  no_carriers:      { row: { license_status: "licensed" }, profile: { carriers_active: 0 } },
+  never_signed_in:  { row: {}, profile: { last_sign_in_at: null } },
   new_hires:        { row: { tenure_days: 9 } },
   free_leads:       { row: { free_leads_qualified: true } },
   free_leads_close: { row: { free_leads_qualified: false, free_leads_needed_for_qual: 2500 } },
@@ -139,6 +151,7 @@ const MATCHING = {
 const member = (override, ghost) => ({
   row: { ...baseRow, ...override.row, is_sync_only: ghost },
   facts: { ...baseFacts, ...(override.facts ?? {}) },
+  profile: { ...baseProfile, ...(override.profile ?? {}) },
 });
 
 let pass = 0;

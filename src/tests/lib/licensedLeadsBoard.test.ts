@@ -3,6 +3,8 @@ import {
   isCovered,
   isWaiting,
   leadsReplyLine,
+  refillSentence,
+  sliceLabel,
   summarizeBoard,
   waitingLabel,
   waitingRows,
@@ -24,6 +26,41 @@ function row(over: Partial<LicensedLeadsRow> = {}): LicensedLeadsRow {
     ...over,
   };
 }
+
+describe("licensedLeadsBoard: the refill sentence states the live mix (MP-LEAD-BLEND)", () => {
+  const blend = [
+    { source: "marketing", tiers: ["A", "B"], share: 0.4 },
+    { source: "dialer", tiers: ["F"], share: 0.4 },
+    { source: "dialer", tiers: ["C"], share: 0.2 },
+  ];
+
+  it("names every slice with its share and the recycle window", () => {
+    const s = refillSentence({ blend, recycle_days: 5 });
+    expect(s).toContain("40% Marketing A/B");
+    expect(s).toContain("40% Dialer fresh (never called)");
+    expect(s).toContain("20% Dialer lightly dialed");
+    expect(s).toContain("untouched for 5 days go back to the pool");
+  });
+
+  it("falls back to the plain sentence when the payload carries no mix", () => {
+    const s = refillSentence({ blend: null, recycle_days: null });
+    expect(s).toBe("Everyone eligible is kept at 25 unworked leads matched to their state, refilled hourly through the day.");
+    expect(refillSentence(undefined)).toBe(s);
+  });
+
+  it("drops zero-share slices and omits the recycle clause when recycling is off", () => {
+    const s = refillSentence({ blend: [...blend, { source: "marketing", tiers: ["C"], share: 0 }], recycle_days: 0 });
+    expect(s).not.toContain("Marketing C");
+    expect(s).not.toContain("go back to the pool");
+  });
+
+  it("labels an unknown slice from its source and tiers, and prefers an explicit label", () => {
+    expect(sliceLabel({ source: "winback", tiers: ["A", "B"], share: 0.5 })).toBe("winback A/B");
+    expect(sliceLabel({ source: "dialer", tiers: ["F"], share: 0.5, label: "Never-called dialer" })).toBe("Never-called dialer");
+    // tier order in the payload must not change the label
+    expect(sliceLabel({ source: "marketing", tiers: ["B", "A"], share: 0.5 })).toBe("Marketing A/B");
+  });
+});
 
 describe("licensedLeadsBoard: who is covered and who is waiting", () => {
   it("covered means unworked leads in hand, or eligible at the next run", () => {

@@ -31,9 +31,56 @@ export interface LicensedLeadsRow {
   reason: LeadsReason | string;
 }
 
+/** One slice of the hourly refill (MP-LEAD-BLEND): where it draws from and its share of a pack. */
+export interface RefillSlice {
+  source: string;
+  tiers: string[];
+  share: number;
+  label?: string;
+}
+
 export interface LicensedLeadsPayload {
   enabled: boolean;
   rows: LicensedLeadsRow[];
+  /** The mix every refill draws from, strongest pool first. Older payloads omit it. */
+  blend?: RefillSlice[] | null;
+  /** Automatic batches untouched this many days go back to the pool. */
+  recycle_days?: number | null;
+  /** Leads recycled back to the pool in the last 7 days. */
+  recycled_7d?: number | null;
+}
+
+const SLICE_LABEL: Record<string, string> = {
+  "marketing:A,B": "Marketing A/B",
+  "marketing:A": "Marketing A",
+  "marketing:B": "Marketing B",
+  "marketing:C": "Marketing C",
+  "dialer:F": "Dialer fresh (never called)",
+  "dialer:C": "Dialer lightly dialed",
+  "dialer:C,D": "Dialer already dialed",
+};
+
+export function sliceLabel(slice: RefillSlice): string {
+  if (slice.label) return slice.label;
+  const key = `${slice.source}:${[...slice.tiers].sort().join(",")}`;
+  return SLICE_LABEL[key] ?? `${slice.source} ${slice.tiers.join("/")}`;
+}
+
+/**
+ * The one sentence under the card title. Sam (2026-11-27): every hourly assignment must draw from
+ * more than one lead pool so the brand-new leads are not ripped out and exhausted; leads that sit
+ * untouched go back. The sentence states the mix the database actually uses, never a hardcoded copy
+ * of it, so a change to the setting shows up here without a deploy.
+ */
+export function refillSentence(payload: Pick<LicensedLeadsPayload, "blend" | "recycle_days"> | null | undefined): string {
+  const slices = (payload?.blend ?? []).filter((s) => s && s.share > 0);
+  const head = "Everyone eligible is kept at 25 unworked leads matched to their state, refilled hourly through the day.";
+  if (slices.length === 0) return head;
+  const mix = slices.map((s) => `${Math.round(s.share * 100)}% ${sliceLabel(s)}`).join(", ");
+  const recycle = payload?.recycle_days && payload.recycle_days > 0
+    ? ` Leads untouched for ${payload.recycle_days} day${payload.recycle_days === 1 ? "" : "s"} go back to the pool.`
+    : "";
+  return `${head} Each refill mixes the pools: ${mix}.${recycle}`;
 }
 
 /** What a save on the owner's list reports back about that person's leads. */

@@ -25,6 +25,7 @@ import { StateEntry } from "@/components/dashboard/MondayRollCall";
 import {
   LICENSED_LEADS_QUERY_KEY,
   leadsReplyLine,
+  refillSentence,
   summarizeBoard,
   waitingLabel,
   waitingRows,
@@ -128,7 +129,7 @@ export function LicensedLeadsBoard() {
             {query.isLoading ? "Checking who holds leads" : `${summary.covered} of ${summary.total - summary.accessOff} hold leads`}
           </h2>
           <p className="text-[13px] leading-5 text-muted-foreground">
-            Everyone eligible is kept at 25 unworked leads matched to their state, refilled hourly through the day.
+            {refillSentence(query.data)}
             {query.data && !query.data.enabled ? " The automatic refill is switched off." : ""}
           </p>
         </div>

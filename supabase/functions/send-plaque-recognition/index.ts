@@ -5,7 +5,7 @@ import { gateResend } from "../_shared/resend-gate.ts";
 import { Resvg, initWasm } from "https://esm.sh/@resvg/resvg-wasm@2.6.2";
 import { requireSendAuth } from "../_shared/require-send-auth.ts";
 import { DEPARTED_AGENT_COLUMNS, isDepartedAgent } from "../_shared/departed.ts";
-import { deliverWithReceipt, PRODUCTION_THRESHOLDS, recognitionMetric, recognitionPeriod, validPlaqueDate, validRecognitionAmount } from "./contract.ts";
+import { deliverWithReceipt, PRODUCTION_THRESHOLDS, readCanonicalPremium, recognitionMetric, recognitionPeriod, validPlaqueDate, validRecognitionAmount } from "./contract.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -314,9 +314,7 @@ serve(async (req: Request) => {
           .order("posted_date").order("agent_id").order("row_key").range(offset, offset + 999);
         if (error || !data) throw new Error("Posted production could not be verified.");
         for (const row of data) {
-          const ap = Number(row.annual_premium);
-          if (!Number.isFinite(ap)) throw new Error("Posted production includes an unavailable amount.");
-          amount += ap;
+          amount += readCanonicalPremium(row.annual_premium);
         }
         if (data.length < 1000) break;
       }
@@ -423,6 +421,8 @@ serve(async (req: Request) => {
           if (error || !data) throw new Error("Delivery receipt could not be saved.");
         },
       );
+      // Keep unknown agent acceptance intact even if the follow-up log write fails.
+      if (!manager && result.status === "unknown") uncertain = true;
       if (result.status !== "sent") {
         const { error } = await supabase.from("email_delivery_log").update({ status: result.status, error: result.error }).eq("id", log.id);
         if (error) throw new Error("The unconfirmed delivery needs a receipt review.");

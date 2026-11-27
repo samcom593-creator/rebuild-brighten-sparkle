@@ -1,4 +1,4 @@
-import { deliverWithReceipt, recognitionMetric, recognitionPeriod, validPlaqueDate, validRecognitionAmount } from "./contract.ts";
+import { deliverWithReceipt, readCanonicalPremium, recognitionMetric, recognitionPeriod, validPlaqueDate, validRecognitionAmount } from "./contract.ts";
 
 function equal(actual: unknown, expected: unknown) {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error(`Expected ${JSON.stringify(expected)}, received ${JSON.stringify(actual)}`);
@@ -67,4 +67,18 @@ Deno.test("recognition windows normalize Mondays and month-end callers without i
   let refused = false;
   try { recognitionPeriod("single_day", "2026-11-27", "2026-11-26"); } catch { refused = true; }
   equal(refused, true);
+});
+
+Deno.test("canonical production preserves signed finite premium and recorded zero", () => {
+  const premiums = [3000, -500, 0, 250.75].map(readCanonicalPremium);
+  equal(premiums, [3000, -500, 0, 250.75]);
+  equal(premiums.reduce((total, premium) => total + premium, 0), 2750.75);
+});
+
+Deno.test("canonical production rejects missing or coerced amounts before totaling", () => {
+  for (const premium of [null, undefined, "", "0", "3000", false, true, NaN, Infinity, -Infinity]) {
+    let message = "";
+    try { readCanonicalPremium(premium); } catch (error) { message = (error as Error).message; }
+    equal(message, "Posted production includes an unavailable amount.");
+  }
 });

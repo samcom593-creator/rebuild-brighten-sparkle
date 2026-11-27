@@ -24,6 +24,9 @@ describe("licensed and unlicensed onboarding email policy", () => {
       expect(licensing).toContain(expected);
     }
     // Owner directive 2026-10-05: Discord is out of the agent journey; Slack is the one team workspace.
+    // Owner directive 2026-11-26 (MP-FIRST-STEPS): the Discord invite is BACK in the hired first-steps email
+    // and on Getting Started, read from system_settings.discord_invite_url. Slack stays the primary hub.
+    // The licensing and welcome emails below still carry no Discord; only the first-steps email does.
     expect(licensing).not.toMatch(/discord/i);
     expect(licensing).not.toMatch(/whatsapp/i);
     // Contracting is the five-field profile on a signed-in page, not a spreadsheet or a private desk.
@@ -49,7 +52,10 @@ describe("licensed and unlicensed onboarding email policy", () => {
   });
 
   it("uses the Galaxy licensed curriculum instead of sending licensed agents to prelicensing", () => {
-    expect(queueWorker).toContain("Your Galaxy online training is ready");
+    // MP-FIRST-STEPS (2026-11-26): the course email is the first-steps email, every link in one place.
+    expect(queueWorker).toContain("Your first steps at Galaxy: training videos, Slack, Discord, your call");
+    expect(queueWorker).toContain("Step 1 — Watch the training videos");
+    expect(queueWorker).toContain("Step 4 — Book your onboarding call with Sam");
     // WP6: the 6 required modules live on the sales course, so the course email points there.
     expect(queueWorker).toContain("const trainingUrl = FIELD_COURSE_URL");
     expect(read("supabase/functions/send-agent-onboarding-email/reminders.ts")).toContain('FIELD_COURSE_URL = "https://galaxyfinancial.org/dashboard/training/sales-course"');
@@ -57,7 +63,11 @@ describe("licensed and unlicensed onboarding email policy", () => {
     expect(course).toContain("Your next-step roadmap");
     expect(course).toContain("Join the Galaxy Slack");
     expect(queueWorker).toContain("Join the Galaxy Slack");
-    expect(queueWorker).not.toMatch(/discord\.gg|Join the Galaxy Discord|Join Discord/);
+    // The Discord step reads its link from settings (the same key Getting Started shows); the URL is never
+    // hardcoded, and a missing link is said out loud instead of pointing a button at nothing.
+    expect(queueWorker).toContain("Join the Discord");
+    expect(queueWorker).toContain("settings.discord_invite_url");
+    expect(queueWorker).not.toMatch(/discord\.gg/);
     expect(course).not.toMatch(/whatsapp/i);
     expect(queueWorker.match(/Slack is your <strong>primary team hub<\/strong>/g)).toHaveLength(1);
   });

@@ -759,7 +759,10 @@ async function drainQueue(sb: any, settings: Settings, dryRun: boolean): Promise
       built.subject,
       built.html,
       built.text,
-      `agent-onboarding-queue:${row.id}`,
+      // One key per queue row keeps an hourly retry from double-sending. An admin re-send (sent_at reset) must
+      // carry meta.resend_nonce, or Resend refuses the changed body under the 24h-old key (seen 2026-11-27).
+      `agent-onboarding-queue:${row.id}` +
+        (typeof row.meta?.resend_nonce === "string" && row.meta.resend_nonce ? `:${row.meta.resend_nonce}` : ""),
     );
 
     if (sendResult.ok) {

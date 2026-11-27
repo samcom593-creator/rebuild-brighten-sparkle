@@ -61,7 +61,7 @@ table_shapes as (
         where a.attrelid=c.oid and a.attnum>0 and not a.attisdropped),
       'constraints',(select coalesce(jsonb_agg(jsonb_build_object(
         'name',k.conname,'type',k.contype,'validated',k.convalidated,
-        'deferrable',k.condeferrable,'initially_deferred',k.condeferred,'no_inherit',k.connoinherit,
+        'deferrable',k.condeferrable,'initially_deferred',k.condeferred,'no_inherit',case when k.contype='c' then k.connoinherit end,
         'columns',(select coalesce(jsonb_agg(a.attname order by v.position),'[]'::jsonb)
           from unnest(k.conkey) with ordinality v(num,position)
           join pg_attribute a on a.attrelid=k.conrelid and a.attnum=v.num),
@@ -75,7 +75,9 @@ table_shapes as (
         from pg_constraint k where k.conrelid=c.oid and k.contype<>'n'),
       'policy_count',(select count(*) from pg_policy p where p.polrelid=c.oid),
       'user_trigger_count',(select count(*) from pg_trigger t where t.tgrelid=c.oid and not t.tgisinternal),
-      'rule_count',(select count(*) from pg_rewrite r where r.ev_class=c.oid)) end as shape
+      'rule_count',(select count(*) from pg_rewrite r where r.ev_class=c.oid),
+      'index_count',(select count(*) from pg_index i where i.indrelid=c.oid),
+      'inheritance_count',(select count(*) from pg_inherits h where h.inhrelid=c.oid or h.inhparent=c.oid)) end as shape
   from wanted_tables w left join pg_class c on c.oid=to_regclass('public.'||w.name)
 ), wanted_indexes(name) as (values
   ('deal_coverage_reviews_pkey'),('deal_coverage_reviews_owner_user_id_idempotency_key_key'),
@@ -90,6 +92,9 @@ table_shapes as (
         from unnest(i.indkey::smallint[]) with ordinality v(num,position)
         left join pg_attribute a on a.attrelid=i.indrelid and a.attnum=v.num),
       'options',to_jsonb(i.indoption::smallint[]),
+      'collations',(select coalesce(jsonb_agg(case when co.oid is not null then n.nspname||'.'||co.collname end order by v.position),'[]'::jsonb)
+        from unnest(i.indcollation::oid[]) with ordinality v(num,position)
+        left join pg_collation co on co.oid=v.num left join pg_namespace n on n.oid=co.collnamespace),
       'operator_classes',(select coalesce(jsonb_agg(n.nspname||'.'||o.opcname order by v.position),'[]'::jsonb)
         from unnest(i.indclass::oid[]) with ordinality v(num,position)
         join pg_opclass o on o.oid=v.num join pg_namespace n on n.oid=o.opcnamespace),

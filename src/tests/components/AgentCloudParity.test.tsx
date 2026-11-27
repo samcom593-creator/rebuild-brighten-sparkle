@@ -136,8 +136,11 @@ describe("AgentCloud parity surfaces", () => {
     const app = source("App.tsx");
     const migration = source("../supabase/migrations/20260825223500_team_hierarchy_contacts_training.sql");
     expect(crm).toContain('supabase.rpc("crm_agent_contacts"');
-    expect(list).toContain("phoneHref(member.row.phone)");
-    expect(list).toContain("contactLinkProps(tel)");
+    // MP-TEAM-DROP-OFF (2026-11-26): the row's Call, Text and Links derive from the same `row` and still dial
+    // through phoneHref / smsHref, never a bare tel: or sms: string.
+    expect(list).toContain("phoneHref(row.phone)");
+    expect(list).toContain("smsHref(row.phone");
+    expect(list).toMatch(/contactLinkProps\((tel|call)\)/);
     expect(card).toContain("mailto:${email}");
     expect(card).toContain("phoneHref(phone)");
     expect(app).toContain('<Route path="/dashboard/team" element={<ProtectedRoute><DashboardCRM /></ProtectedRoute>} />');

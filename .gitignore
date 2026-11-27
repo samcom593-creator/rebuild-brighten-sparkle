@@ -46,3 +46,6 @@ public/landing.css
 
 # TypeScript incremental build artifacts
 *.tsbuildinfo
+
+# Synthetic browser screenshots are uploaded as CI artifacts.
+/artifacts/visual-qa/

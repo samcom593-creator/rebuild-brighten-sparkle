@@ -75,6 +75,7 @@ const db = {
   payload: payload as CommandCenterPayload,
   readError: null as null | { message: string },
   writeError: null as null | { message: string },
+  approvalResult: "approved" as unknown,
   pending: false,
   calls: [] as Array<{ fn: string; args: unknown }>,
 };
@@ -83,6 +84,7 @@ beforeEach(() => {
   db.payload = payload;
   db.readError = null;
   db.writeError = null;
+  db.approvalResult = "approved";
   db.pending = false;
   db.calls = [];
   vi.mocked(celebrate).mockClear();
@@ -96,7 +98,14 @@ beforeEach(() => {
       if (db.pending) return new Promise(() => {});
       return Promise.resolve(db.readError ? { data: null, error: db.readError } : { data: db.payload, error: null });
     }
-    if (fn === "social_draft_set_status") return Promise.resolve({ data: true, error: db.writeError });
+    const arg = args as { p_id?: number; p_status?: string } | undefined;
+    if (fn === "social_draft_set_status") return Promise.resolve({ data: { id: arg?.p_id, status: arg?.p_status }, error: db.writeError });
+    if (fn === "social_draft_review") return Promise.resolve({ data: {
+      id: arg?.p_id, title: db.payload?.drafts.find(d => d.id === arg?.p_id)?.title ?? "Draft", hook: "Full hook",
+      body: "Full script that was not shown in the queue card.", caption: "Full caption", cta: "Apply here", hashtags: "#team", platform: "tiktok", account: "reviewed-account",
+      file_path: "https://example.com/source.mp4", status: "awaiting_approval", content_hash: "a".repeat(32), approved_content_hash: null, shipped_at: null, shipped_url: null,
+    }, error: null });
+    if (fn === "social_draft_review_set_status") return Promise.resolve({ data: db.approvalResult, error: db.writeError });
     return Promise.resolve({ data: null, error: null });
   }) as never);
 });
@@ -253,28 +262,74 @@ describe("Social Command Center", () => {
     for (const bubble of conversions.querySelectorAll("span[aria-hidden='true'].rounded-full")) expect(bubble.textContent === "" || bubble.textContent?.length === 1).toBe(true);
   });
 
-  it("Approve writes social_draft_set_status with the draft's id and celebrates once, after the save succeeded", async () => {
+  it("reviews full content and submits that exact version before celebrating", async () => {
     renderPage();
-    const approve = await screen.findByRole("button", { name: "Approve What the exam asks" });
-    expect(approve.className).toMatch(/\bh-11\b/);
+    fireEvent.click(await screen.findByRole("button", { name: "Review What the exam asks" }));
+    await screen.findByText("Full script that was not shown in the queue card.");
+    expect(screen.getByText(/reviewed-account/)).toBeInTheDocument();
+    const approve = screen.getByRole("button", { name: "Approve reviewed version" });
+    expect(approve).toBeDisabled();
+    expect(db.calls.some(c => c.fn === "social_draft_review_set_status")).toBe(false);
+    fireEvent.click(screen.getByRole("checkbox", { name: /I reviewed this copy/ }));
     fireEvent.click(approve);
-    await waitFor(() => expect(writes()).toEqual([{ p_id: 901, p_status: "approved" }]));
     await waitFor(() => expect(celebrate).toHaveBeenCalledTimes(1));
+    expect(db.calls.filter(c => c.fn === "social_draft_review_set_status").map(c => c.args)).toEqual([{ p_id: 901, p_seen_hash: "a".repeat(32), p_status: "approved" }]);
     expect(celebrate).toHaveBeenCalledWith("save", approve);
     expect(toast.success).toHaveBeenCalledWith("What the exam asks: approved");
-    expect(toast.error).not.toHaveBeenCalled();
-    expect(playSoundEffect).not.toHaveBeenCalled();
+    expect(writes()).toEqual([]);
   });
 
-  it("does not celebrate when the save fails: only the error toast", async () => {
+  it.each(["changed", null, false, "already_handled"])("does not claim approval or celebrate an unconfirmed response: %s", async result => {
+    db.approvalResult = result;
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Review What the exam asks" }));
+    await screen.findByText("Full script that was not shown in the queue card.");
+    fireEvent.click(screen.getByRole("checkbox", { name: /I reviewed this copy/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Approve reviewed version" }));
+    await waitFor(() => expect(toast.error).toHaveBeenCalled());
+    expect(celebrate).not.toHaveBeenCalled();
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Approve reviewed version" })).toBeDisabled();
+  });
+
+  it("keeps the full review open on a denied write", async () => {
     db.writeError = { message: "not allowed" };
     renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: "Approve What the exam asks" }));
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Could not update draft: not allowed"));
-    expect(writes()).toEqual([{ p_id: 901, p_status: "approved" }]);
+    fireEvent.click(await screen.findByRole("button", { name: "Review What the exam asks" }));
+    await screen.findByText("Full script that was not shown in the queue card.");
+    fireEvent.click(screen.getByRole("checkbox", { name: /I reviewed this copy/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Approve reviewed version" }));
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("not allowed"));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(celebrate).not.toHaveBeenCalled();
-    expect(playSoundEffect).not.toHaveBeenCalled();
     expect(toast.success).not.toHaveBeenCalled();
+  });
+
+  it("makes the thirteenth draft reachable without claiming the server window is the whole backlog", async () => {
+    db.payload = { ...payload, drafts: Array.from({ length: 13 }, (_, i) => draft({ id: 1000 + i, title: `Reviewable draft ${i + 1}` })) };
+    renderPage();
+    await screen.findByText("Reviewable draft 1");
+    expect(screen.queryByText("Reviewable draft 13")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Review all 13 TikTok drafts" }));
+    expect(screen.getByRole("button", { name: "Review Reviewable draft 13" })).toBeInTheDocument();
+  });
+
+  it("shows unknown health for an empty lane inventory", async () => {
+    db.payload = { ...payload, lanes: [] };
+    renderPage();
+    await screen.findByText("Marcus Powell");
+    const region = screen.getByRole("region", { name: "Lane health" });
+    expect(within(region).getByText("Connection health unavailable.")).toBeInTheDocument();
+    expect(within(region).queryByText("Every lane is alive.")).toBeNull();
+    expect(region.querySelector(".apex-breathe")).toBeNull();
+  });
+
+  it("treats a null successful payload as unavailable data", async () => {
+    db.payload = null as unknown as CommandCenterPayload;
+    renderPage();
+    await screen.findByText(/command center did not load/);
+    expect(tile("Hot")).toHaveTextContent("—");
+    expect(screen.queryByText("Every lane is alive.")).toBeNull();
   });
 
   it("Archive plays a whoosh and Reject a tick, each after its own save", async () => {

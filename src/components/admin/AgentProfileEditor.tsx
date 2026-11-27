@@ -405,7 +405,7 @@ export function AgentProfileEditor({ agent, open, onClose, onUpdate }: AgentProf
             <div className="space-y-1">
               <Label className="text-xs">Status</Label>
               <Select value={status} onValueChange={(v) => setStatus(v as typeof status)}>
-                <SelectTrigger className="h-8 text-xs">
+                <SelectTrigger aria-label="Agent status" className="h-8 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -434,7 +434,7 @@ export function AgentProfileEditor({ agent, open, onClose, onUpdate }: AgentProf
             <div className="space-y-1">
               <Label className="text-xs">Onboarding Stage</Label>
               <Select value={onboardingStage} onValueChange={setOnboardingStage}>
-                <SelectTrigger className="h-8 text-xs">
+                <SelectTrigger aria-label="Onboarding stage" className="h-8 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -453,7 +453,7 @@ export function AgentProfileEditor({ agent, open, onClose, onUpdate }: AgentProf
                 Reports To
               </Label>
               <Select value={managerId || "none"} onValueChange={(v) => setManagerId(v === "none" ? null : v)}>
-                <SelectTrigger className="h-8 text-xs">
+                <SelectTrigger aria-label="Reports to manager" className="h-8 text-xs">
                   <SelectValue placeholder="Select manager" />
                 </SelectTrigger>
                 <SelectContent>

@@ -92,6 +92,10 @@ jobs:
           PGLITE_MODULE="$referral_sql_runtime/node_modules/@electric-sql/pglite/dist/index.js" node scripts/test-galaxy-referral-link-origin.mjs
           PGLITE_MODULE="$referral_sql_runtime/node_modules/@electric-sql/pglite/dist/index.js" node scripts/test-personal-task-canonical.mjs
           PGLITE_MODULE="$referral_sql_runtime/node_modules/@electric-sql/pglite/dist/index.js" node scripts/test-lead-pool-context.mjs
+          PGLITE_MODULE="$referral_sql_runtime/node_modules/@electric-sql/pglite/dist/index.js" node scripts/test-versioned-social-review.mjs
+          PGLITE_MODULE="$referral_sql_runtime/node_modules/@electric-sql/pglite/dist/index.js" node scripts/test-training-canonical-access.mjs
+          PGLITE_MODULE="$referral_sql_runtime/node_modules/@electric-sql/pglite/dist/index.js" node scripts/test-inactive-recovery-history.mjs
+          PGLITE_MODULE="$referral_sql_runtime/node_modules/@electric-sql/pglite/dist/index.js" node scripts/test-deal-coverage-review.mjs
 
       # MP-437: the 999-test vitest suite ran in NO workflow until 2026-09-05.
       # `npm test` existed and nothing invoked it — not this file, not the
@@ -114,6 +118,21 @@ jobs:
         # named in an annotation by the failure step (2026-10-28).
         shell: bash
         run: npm test 2>&1 | tee vitest.log
+
+      - name: Install Chromium for synthetic visual checks
+        run: npx playwright install --with-deps chromium
+
+      - name: Verify shared layouts and celebrations
+        run: node scripts/visual-qa/run.mjs
+
+      - name: Upload synthetic visual checks
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: galaxy-visual-qa
+          path: artifacts/visual-qa/
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Run verify:core (full roster, every failure reported)
         # Mirrors the local pre-commit hook chain so a --no-verify or

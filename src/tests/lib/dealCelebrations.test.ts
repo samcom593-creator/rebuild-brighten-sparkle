@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { addDealToBatch, announcePostedDealReceipt, areDealCelebrationsSuppressed, DealCelebrationLedger, POSTED_DEAL_RECEIPT_EVENT, readPostedDeal, readRealtimePostedDeal, subscribeDealCelebrationSuppression, suppressDealCelebrations } from "@/lib/dealCelebrations";
+import { addDealToBatch, announcePostedDealReceipt, areDealCelebrationsSuppressed, DealCelebrationLedger, dealHeadline, POSTED_DEAL_RECEIPT_EVENT, readCelebrationAgentNames, readPostedDeal, readRealtimePostedDeal, subscribeDealCelebrationSuppression, suppressDealCelebrations } from "@/lib/dealCelebrations";
 
 const now = Date.parse("2026-11-25T16:00:00Z");
 const id = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -10,6 +10,30 @@ afterEach(() => vi.restoreAllMocks());
 describe("confirmed deal events", () => {
   it("extracts only a stable ID, actual post time and stored annual premium", () => {
     expect(readPostedDeal(native, now - 100, now)).toEqual({ id, postedAt: now, annualPremium: 1200 });
+  });
+
+  it("accepts only a stable agent identity and separately authorized names", () => {
+    const agentId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    expect(readPostedDeal({ ...native, agent_id: agentId, agent_name: "Unverified Person" }, now, now)?.agentId).toBe(agentId);
+    expect(readPostedDeal({ ...native, agent_id: "Avery Lane" }, now, now)?.agentId).toBeUndefined();
+    expect(readCelebrationAgentNames([
+      { id: agentId, display_name: "  Avery   Lane  " },
+      { id, display_name: "Unauthorized Row" },
+    ], [agentId])).toEqual({ [agentId]: "Avery Lane" });
+    for (const name of [null, "", "Agent", "Unknown", "—"]) {
+      expect(readCelebrationAgentNames([{ id: agentId, display_name: name }], [agentId])).toEqual({});
+    }
+  });
+
+  it("uses the verified name for a single contributor without assigning unresolved deals to them", () => {
+    const agentId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    const one = addDealToBatch(null, { id, postedAt: now, annualPremium: 1200, agentId });
+    expect(dealHeadline(one, { [agentId]: "Avery Lane" })).toBe("Avery Lane closed a deal");
+    const two = addDealToBatch(one, { id: "second", postedAt: now, annualPremium: 1200, agentId });
+    expect(dealHeadline(two, { [agentId]: "Avery Lane" })).toBe("Avery Lane closed 2 deals");
+    expect(dealHeadline(two, {})).toBe("2 deals posted");
+    const unresolved = addDealToBatch(two, { id: "third", postedAt: now, annualPremium: 1200 });
+    expect(dealHeadline(unresolved, { [agentId]: "Avery Lane" })).toBe("3 deals posted");
   });
 
   it.each([

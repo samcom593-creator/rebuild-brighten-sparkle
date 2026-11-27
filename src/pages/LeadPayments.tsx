@@ -355,7 +355,7 @@ export default function LeadPayments() {
           </CardHeader>
           <CardContent className="space-y-3">
             <Select value={form.agentId} onValueChange={(value) => setForm((prev) => ({ ...prev, agentId: value }))}>
-              <SelectTrigger>
+              <SelectTrigger aria-label="Payer or agent">
                 <SelectValue placeholder={agentsQ.isLoading ? "Loading agents..." : "Payer / agent"} />
               </SelectTrigger>
               <SelectContent>
@@ -369,13 +369,13 @@ export default function LeadPayments() {
 
             <div className="grid grid-cols-2 gap-2">
               <Select value={form.leadType} onValueChange={(value) => setForm((prev) => ({ ...prev, leadType: value as LeadType, amount: value === "Free" ? "" : prev.amount }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Lead type"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {LEAD_TYPES.map((type) => <SelectItem key={type} value={type}>Lead type {type}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Select value={form.status} onValueChange={(value) => setForm((prev) => ({ ...prev, status: value as PaymentStatus }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Payment status"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {STATUSES.map((status) => <SelectItem key={status} value={status}>{status}</SelectItem>)}
                 </SelectContent>
@@ -437,14 +437,14 @@ export default function LeadPayments() {
                   />
                 </div>
                 <Select value={leadTypeFilter} onValueChange={(value) => setLeadTypeFilter(value as "all" | LeadType)}>
-                  <SelectTrigger className="h-9 sm:w-36"><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-label="Filter payments by lead type" className="h-9 sm:w-36"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All types</SelectItem>
                     {LEAD_TYPES.map((type) => <SelectItem key={type} value={type}>Type {type}</SelectItem>)}
                   </SelectContent>
                 </Select>
                 <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | PaymentStatus)}>
-                  <SelectTrigger className="h-9 sm:w-36"><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-label="Filter payments by status" className="h-9 sm:w-36"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All status</SelectItem>
                     {STATUSES.map((status) => <SelectItem key={status} value={status}>{status}</SelectItem>)}
@@ -523,7 +523,7 @@ export default function LeadPayments() {
                             onValueChange={(value) => updateStatus.mutate({ row, status: value as PaymentStatus })}
                             disabled={updateStatus.isPending}
                           >
-                            <SelectTrigger className="ml-auto h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectTrigger aria-label={`Payment status for ${row.payer_name || agent?.name || "this payment"}`} className="ml-auto h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
                             <SelectContent>
                               {STATUSES.map((next) => <SelectItem key={next} value={next}>{next}</SelectItem>)}
                             </SelectContent>

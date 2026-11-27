@@ -244,7 +244,7 @@ export default function HiringManagerAssignments() {
               <div>
                 <Label>Manager</Label>
                 <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-                  <SelectTrigger>
+                  <SelectTrigger aria-label="Hiring manager">
                     <SelectValue placeholder="Select a manager..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -259,7 +259,7 @@ export default function HiringManagerAssignments() {
               <div>
                 <Label>Scope</Label>
                 <Select value={selectedScope} onValueChange={(v) => setSelectedScope(v as Scope)}>
-                  <SelectTrigger>
+                  <SelectTrigger aria-label="Hiring assignment scope">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -360,7 +360,7 @@ export default function HiringManagerAssignments() {
                       <p className="text-sm font-medium truncate">{a.manager_display_name}</p>
                       {a.notes && <p className="text-[11px] text-muted-foreground truncate">{a.notes}</p>}
                     </div>
-                    <Switch checked={a.is_active} onCheckedChange={(v) => handleToggle(a.id, v)} />
+                    <Switch aria-label={`Active ${meta.label} assignment for ${a.manager_display_name}`} checked={a.is_active} onCheckedChange={(v) => handleToggle(a.id, v)} />
                     <Button size="sm" variant="ghost" onClick={() => handleRemove(a.id, a.manager_display_name)}>
                       <Trash2 className="h-3.5 w-3.5 text-destructive" />
                     </Button>
@@ -374,7 +374,7 @@ export default function HiringManagerAssignments() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm truncate">{a.manager_display_name}</p>
                     </div>
-                    <Switch checked={a.is_active} onCheckedChange={(v) => handleToggle(a.id, v)} />
+                    <Switch aria-label={`Active ${meta.label} assignment for ${a.manager_display_name}`} checked={a.is_active} onCheckedChange={(v) => handleToggle(a.id, v)} />
                     <Button size="sm" variant="ghost" onClick={() => handleRemove(a.id, a.manager_display_name)}>
                       <Trash2 className="h-3.5 w-3.5 text-destructive" />
                     </Button>

@@ -15,7 +15,7 @@ const state = vi.hoisted(() => ({
   readiness: "ready",
   callback: null as ((payload: Change) => void) | null,
   channel: { on: vi.fn(), subscribe: vi.fn() },
-  from: vi.fn(), select: vi.fn(), eq: vi.fn(), maybeSingle: vi.fn(),
+  from: vi.fn(), select: vi.fn(), eq: vi.fn(), maybeSingle: vi.fn(), inFilter: vi.fn(),
   removeChannel: vi.fn(), channelFactory: vi.fn(), play: vi.fn(), stop: vi.fn(),
 }));
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: state.user, isLoading: state.isLoading }) }));
@@ -46,13 +46,69 @@ beforeEach(() => {
   state.channel.on.mockImplementation((_event, _filter, callback) => { state.callback = callback; return state.channel; });
   state.channel.subscribe.mockReturnValue(state.channel);
   state.from.mockReturnValue({ select: state.select });
-  state.select.mockReturnValue({ eq: state.eq });
+  state.select.mockReturnValue({ eq: state.eq, in: state.inFilter });
   state.eq.mockReturnValue({ maybeSingle: state.maybeSingle });
   state.maybeSingle.mockResolvedValue({ data: row(), error: null });
+  state.inFilter.mockResolvedValue({ data: [], error: null });
 });
 afterEach(() => { cleanup(); suppressionCleanups.splice(0).forEach((release) => release()); setDemoMode(false); vi.useRealTimers(); Reflect.deleteProperty(document, "visibilityState"); });
 
 describe("authorized production celebrations", () => {
+  it("celebrates the saved deal's resolved agent, never an agent name supplied in the receipt payload", async () => {
+    const agentId = id(501);
+    state.inFilter.mockResolvedValue({ data: [{ id: agentId, display_name: "Avery Lane" }], error: null });
+    render(<CelebrationProvider />);
+    act(() => send(1, { agent_id: agentId, agent_name: "Unverified Person" }));
+    await flush();
+    expect(state.from).toHaveBeenCalledWith("agents");
+    expect(state.select).toHaveBeenCalledWith("id, display_name");
+    expect(state.inFilter).toHaveBeenCalledWith("id", [agentId]);
+    expect(screen.getByRole("status")).toHaveTextContent("Avery Lane closed a deal");
+    expect(screen.getByRole("status")).toHaveTextContent("Carrier status is tracked separately.");
+    expect(document.body).not.toHaveTextContent("Unverified Person");
+    expect(state.play).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps agents distinct within a burst and does not attribute an unresolved deal to the known person", async () => {
+    state.inFilter.mockResolvedValue({ data: [{ id: id(501), display_name: "Avery Lane" }, { id: id(502), display_name: "Blake Stone" }], error: null });
+    render(<CelebrationProvider />);
+    act(() => { send(1, { agent_id: id(501) }); send(2, { agent_id: id(501) }); send(3, { agent_id: id(502) }); send(4); });
+    await flush();
+    expect(screen.getByRole("status")).toHaveTextContent("4 deals posted");
+    expect(screen.getByRole("status")).toHaveTextContent("Avery Lane closed 2 deals");
+    expect(screen.getByRole("status")).toHaveTextContent("Blake Stone closed a deal");
+    expect(state.play).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["denied", "transport"])("shows a nameless saved-deal receipt when optional identity lookup is %s", async (failure) => {
+    if (failure === "transport") state.inFilter.mockRejectedValue(new Error("offline"));
+    else state.inFilter.mockResolvedValue({ data: null, error: { message: "denied" } });
+    render(<CelebrationProvider />);
+    act(() => send(1, { agent_id: id(501), agent_name: "Unverified Person" }));
+    await flush();
+    expect(screen.getByRole("status")).toHaveTextContent("Deal posted");
+    expect(document.body).not.toHaveTextContent("Unverified Person");
+    expect(state.play).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not resurrect a cleared celebration when an identity read resolves after hiding and returning", async () => {
+    let finish: ((value: unknown) => void) | undefined;
+    state.inFilter.mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+    render(<CelebrationProvider />);
+    act(() => send(1, { agent_id: id(501) }));
+    await flush();
+    expect(screen.getByRole("status")).toHaveTextContent("Deal posted");
+    act(() => {
+      Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
+      document.dispatchEvent(new Event("visibilitychange"));
+      Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    await act(async () => finish?.({ data: [{ id: id(501), display_name: "Avery Lane" }], error: null }));
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(state.play).toHaveBeenCalledTimes(1);
+  });
+
   it("subscribes only to native deal changes and sanitizes all customer/alert text", async () => {
     render(<CelebrationProvider />);
     expect(state.channel.on).toHaveBeenCalledWith("postgres_changes", { event: "*", schema: "public", table: "deals", filter: "source=eq.apex_native" }, expect.any(Function));
@@ -74,7 +130,7 @@ describe("authorized production celebrations", () => {
     await flush();
     expect(screen.getByRole("status")).toHaveTextContent("Deal posted");
     expect(state.play).toHaveBeenCalledTimes(1);
-    expect(state.select).toHaveBeenCalledWith("id, source, status, posted_at, created_at, annual_premium");
+    expect(state.select).toHaveBeenCalledWith("id, source, status, posted_at, created_at, annual_premium, agent_id");
     expect(state.eq).toHaveBeenCalledWith("id", id(1));
     expect(state.from).toHaveBeenCalledTimes(1);
   });
@@ -85,7 +141,7 @@ describe("authorized production celebrations", () => {
     await act(async () => announcePostedDealReceipt("user-a", { dealId: id(1), status: "submitted" }));
     await flush();
     expect(screen.getByRole("status")).toHaveTextContent("Deal posted");
-    expect(screen.getByRole("status")).toHaveTextContent("Saved to your deal records.");
+    expect(screen.getByRole("status")).toHaveTextContent("Saved to deal records.");
     expect(state.play).toHaveBeenCalledTimes(1);
   });
 

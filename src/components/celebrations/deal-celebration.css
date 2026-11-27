@@ -8,19 +8,25 @@
 }
 .deal-celebration-card {
   position: relative;
-  overflow: hidden;
-  border: 1px solid hsl(0 76% 57% / 0.75);
-  border-left: 5px solid hsl(0 84% 60%);
-  border-radius: 8px;
+  max-height: calc(100vh - 6rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  max-height: calc(100dvh - 6rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  pointer-events: auto;
+  border: 1px solid hsl(45 92% 56% / 0.55);
+  border-left: 5px solid hsl(45 92% 56%);
+  border-radius: 12px;
   padding: 1.2rem 3.5rem 1.2rem 1.25rem;
   background: hsl(225 12% 8%);
   color: hsl(0 0% 98%);
   box-shadow: 0 12px 32px hsl(0 0% 0% / 0.28);
-  animation: deal-receipt-enter 160ms ease-out both;
+  animation: deal-receipt-enter 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .deal-celebration-eyebrow {
   margin: 0 0 0.45rem;
-  color: hsl(0 90% 77%);
+  color: hsl(45 92% 65%);
   font-size: 0.875rem;
   font-weight: 700;
   letter-spacing: 0.1em;
@@ -29,21 +35,21 @@
 .deal-celebration-title {
   margin: 0;
   font-family: var(--font-display, inherit);
-  font-size: clamp(1.6rem, 6vw, 2.35rem);
-  font-style: italic;
-  font-weight: 900;
-  line-height: 1;
-  letter-spacing: -0.045em;
-  text-transform: uppercase;
+  font-size: clamp(1.4rem, 5vw, 1.85rem);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  overflow-wrap: anywhere;
 }
+.deal-celebration-agents { display: grid; gap: 0.35rem; margin: 0.75rem 0 0; padding: 0; list-style: none; color: hsl(220 12% 90%); font-size: 0.95rem; overflow-wrap: anywhere; }
 .deal-celebration-amount { margin: 0.8rem 0 0; color: hsl(147 68% 66%); font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; }
 .deal-celebration-amount span { display: block; margin-top: 0.1rem; color: hsl(147 42% 79%); font-size: 0.875rem; font-weight: 500; }
 .deal-celebration-note { margin: 0.75rem 0 0; color: hsl(220 12% 78%); font-size: 0.875rem; }
 .deal-celebration-dismiss { position: absolute; top: 0.45rem; right: 0.45rem; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 6px; color: hsl(0 0% 91%); pointer-events: auto; }
 .deal-celebration-dismiss:hover { background: hsl(0 0% 100% / 0.1); }
-.deal-celebration-dismiss:focus-visible { outline: 2px solid hsl(0 90% 77%); outline-offset: -3px; }
+.deal-celebration-dismiss:focus-visible { outline: 2px solid hsl(45 92% 65%); outline-offset: -3px; }
 .deal-celebration-balloons { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
-.deal-celebration-balloons span { position: absolute; bottom: 0; left: 9%; width: 24px; height: 29px; border-radius: 50% 50% 46% 46%; background: hsl(0 84% 60%); animation: deal-balloon-rise 1.7s ease-out both; }
+.deal-celebration-balloons span { position: absolute; bottom: 0; left: 9%; width: 24px; height: 29px; border-radius: 50% 50% 46% 46%; background: hsl(45 92% 56%); animation: deal-balloon-rise 1.7s ease-out both; }
 .deal-celebration-balloons span::after { content: ""; position: absolute; left: 11px; top: 29px; width: 1px; height: 19px; background: hsl(0 0% 75% / 0.7); }
 .deal-celebration-balloons span:nth-child(2) { left: 25%; background: hsl(147 68% 66%); animation-delay: 60ms; }
 .deal-celebration-balloons span:nth-child(3) { left: 43%; animation-delay: 120ms; }

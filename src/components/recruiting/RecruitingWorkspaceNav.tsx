@@ -5,6 +5,7 @@ import { resolveBrand } from "@/config/brand";
 import { useOptionalAuth } from "@/hooks/useAuth";
 import { TONE_CLASS } from "@/lib/tones";
 import { cn } from "@/lib/utils";
+import { TRAINING_ROUTES, toCanonicalTrainingHref } from "@/lib/trainingRoutes";
 
 const trainingLabel = `${resolveBrand().platformName} Training`;
 
@@ -20,7 +21,7 @@ const WORKSPACE_VIEWS = [
   { label: "Pipeline", detail: "Everyone, one view", href: "/dashboard/recruiting/pipeline", icon: LayoutList, tone: "cool" },
   { label: "New hires", detail: "Hire to first deal", href: "/dashboard/recruits", icon: UserCheck, tone: "good", hireTracking: true },
   { label: "Calendar", detail: "Interviews and calls", href: "/dashboard/calendar", icon: CalendarClock, tone: "warm" },
-  { label: trainingLabel, detail: "Ramp to field", href: "/dashboard/recruiting/training", icon: BookOpenCheck, tone: "royal" },
+  { label: trainingLabel, detail: "Ramp to field", href: TRAINING_ROUTES.root, icon: BookOpenCheck, tone: "royal" },
 ] as const;
 
 /**
@@ -33,6 +34,7 @@ const WORKSPACE_VIEWS = [
  */
 export function RecruitingWorkspaceNav() {
   const { pathname } = useLocation();
+  const currentPath = toCanonicalTrainingHref(pathname);
   const auth = useOptionalAuth();
   const isStaff = !!auth && (auth.isAdmin || auth.isVaManager || auth.isVa);
   // Recruiters can work applications, but /dashboard/recruits is restricted to
@@ -48,9 +50,11 @@ export function RecruitingWorkspaceNav() {
         {views.map((view) => {
           // Interviews and follow-ups are no longer separate destinations: interviews are booked
           // from Calendar and the worklist, follow-ups are the worklist's due and overdue queues.
-          const active = "exact" in view && view.exact
-            ? pathname === view.href
-            : pathname.startsWith(view.href);
+          const active = ("exact" in view && view.exact
+            ? currentPath === view.href
+            : currentPath === view.href || currentPath.startsWith(`${view.href}/`))
+            || (view.href === "/dashboard/recruiting" && ["/dashboard/recruiting/follow-ups", "/dashboard/recruiting/hires"].includes(currentPath))
+            || (view.href === "/dashboard/calendar" && currentPath === "/dashboard/recruiting/interviews");
           const Icon = view.icon;
           return (
             <Link

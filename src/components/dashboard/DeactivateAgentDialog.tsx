@@ -149,7 +149,7 @@ export function DeactivateAgentDialog({
 
         if (error) throw error;
         playSound("success");
-        toast.success(`${agentName} added to inactive agents`);
+        toast.success(`${agentName} marked inactive on the roster`);
       } else if (action === "remove_from_system") {
         // Preserve production, notes, training, and audit history. "Remove"
         // means remove from the active roster; it never hard-deletes the agent.
@@ -307,7 +307,7 @@ export function DeactivateAgentDialog({
                   disabled={loading}
                 >
                   <UserMinus className="h-4 w-4" />
-                  Add to Inactive Agents
+                  Mark inactive on roster
                   <span className="ml-auto text-xs text-muted-foreground">Admin only view</span>
                 </Button>
 

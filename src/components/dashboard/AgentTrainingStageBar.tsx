@@ -144,7 +144,7 @@ export function AgentTrainingStageBar({ agentId, compact = false }: Props) {
             onValueChange={(v) => setOverride.mutate(v as Stage | "auto")}
             disabled={setOverride.isPending}
           >
-            <SelectTrigger className="h-7 w-[140px] text-xs">
+            <SelectTrigger aria-label="Training stage override" className="h-7 w-[140px] text-xs">
               <SelectValue placeholder="Set stage" />
             </SelectTrigger>
             <SelectContent>

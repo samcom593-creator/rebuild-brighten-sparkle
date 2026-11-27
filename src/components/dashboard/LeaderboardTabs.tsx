@@ -476,7 +476,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
             <div className="flex flex-col xs:flex-row gap-2 w-full">
               {leaderboardMode === "production" && (
                 <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortCategory)}>
-                  <SelectTrigger className="w-full xs:w-auto xs:min-w-[90px] h-8 text-xs bg-background">
+                  <SelectTrigger aria-label="Sort production leaderboard" className="w-full xs:w-auto xs:min-w-[90px] h-8 text-xs bg-background">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-popover">

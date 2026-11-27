@@ -1,3 +1,5 @@
+@import "./galaxy-shell.css";
+
 /* Shared operating-page typography. Imported by the lazy workspace layout so
    public recruiting pages keep their existing payload and presentation. */
 .galaxy-workspace {
@@ -5,25 +7,26 @@
 }
 
 .galaxy-workspace :is(h1, h2, h3),
-.galaxy-heading {
+.galaxy-workspace .galaxy-heading {
   font-family: var(--galaxy-display-font, "Hanken Grotesk", system-ui, sans-serif);
-  font-weight: 800;
-  font-style: italic;
+  font-weight: 650;
+  font-style: normal;
   letter-spacing: -0.025em;
-  text-transform: uppercase;
+  text-transform: none;
   text-wrap: balance;
 }
+.galaxy-workspace h1 { font-weight: 800; }
 
 /* Numbers stay readable and copyable. No skew transform, clipping, synthetic
    graph or animated background competes with policy/payment details. */
-.galaxy-stat,
+.galaxy-workspace .galaxy-stat,
 .galaxy-workspace :is(.text-2xl, .text-3xl, .text-4xl, .text-5xl, .text-6xl).tabular-nums {
   font-family: var(--galaxy-display-font, "Hanken Grotesk", system-ui, sans-serif);
-  font-weight: 800;
-  font-style: italic;
+  font-weight: 750;
+  font-style: normal;
   font-variant-numeric: lining-nums tabular-nums;
   letter-spacing: -0.045em;
-  line-height: 1.05;
+  line-height: 1.15;
 }
 
 .galaxy-workspace .galaxy-card {
@@ -33,20 +36,23 @@
 }
 
 .galaxy-workspace .galaxy-card::before {
-  width: 3.5rem;
-  height: 3px;
+  content: none;
 }
 
 .galaxy-workspace .galaxy-tabs {
   gap: 0.25rem;
   padding-block: 0.25rem;
+  max-width: 100%;
+  overflow-x: auto;
   scroll-snap-type: x proximity;
   scrollbar-gutter: auto;
 }
 
 .galaxy-workspace .galaxy-tab {
   min-height: 2.75rem;
-  font-weight: 800;
+  flex-shrink: 0;
+  font-weight: 600;
+  line-height: 1.25;
   scroll-snap-align: start;
 }
 
@@ -55,7 +61,7 @@
 }
 
 .galaxy-workspace .galaxy-button.bg-primary {
-  font-weight: 800;
+  font-weight: 650;
 }
 
 .galaxy-workspace .galaxy-table thead {
@@ -63,9 +69,9 @@
 }
 
 .galaxy-workspace .galaxy-table th {
-  font-weight: 800;
-  letter-spacing: 0.035em;
-  text-transform: uppercase;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  text-transform: none;
 }
 
 .galaxy-workspace .galaxy-table :is(th, td) {
@@ -87,7 +93,7 @@
 }
 
 .galaxy-page > * + * {
-  margin-top: 1.25rem;
+  margin-top: var(--galaxy-section-gap);
 }
 
 @media (prefers-reduced-motion: reduce) {

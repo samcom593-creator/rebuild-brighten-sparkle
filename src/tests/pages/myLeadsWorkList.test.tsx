@@ -9,7 +9,7 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const db = vi.hoisted(() => ({
   leads: [] as Array<Record<string, unknown>>,
@@ -59,9 +59,11 @@ const openRows = () => screen.getAllByTestId("lead-row").filter((r) => r.getAttr
 
 describe("My Leads work list", () => {
   beforeEach(() => {
+    vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-11-27T18:00:00Z"));
     db.logged.length = 0;
     db.leads = [lead(1), lead(2), lead(3)];
   });
+  afterEach(() => vi.restoreAllMocks());
 
   it("opens only the first lead; every other lead is one line with no result buttons", async () => {
     renderPage();
@@ -106,7 +108,8 @@ describe("My Leads work list", () => {
     renderPage();
     await screen.findAllByTestId("lead-row");
     expect(rowNames()).toEqual(["Lead3", "Lead4", "Lead2", "Lead1"]);
-    expect(screen.getByTestId("callbacks-due").textContent).toContain("2 waiting on your call back");
+    expect(screen.queryByTestId("callbacks-due")).toBeNull();
+    expect(screen.getByTestId("followups-unplanned").textContent).toContain("2 follow-ups need an agreed time");
   });
 
   it("keeps the server's order outside the To call view", async () => {
@@ -115,6 +118,58 @@ describe("My Leads work list", () => {
     await screen.findAllByTestId("lead-row");
     fireEvent.click(screen.getByRole("button", { name: /^All/ }));
     expect(rowNames()).toEqual(["Lead1", "Lead2", "Lead3"]);
+  });
+
+  it("separates future callbacks and orders due work across packs before the oldest untouched lead", async () => {
+    db.leads = [lead(1, { granted_at: "2026-11-26T12:00:00Z" }),
+      lead(2, { status: "callback", attrs: { callback_at: "2026-11-28T12:00:00Z" } }),
+      lead(3, { status: "callback", attrs: { callback_at: "2026-11-26T12:00:00Z", next_action: "Review coverage options" } }),
+      lead(4, { granted_at: "2026-11-01T12:00:00Z" }),
+      lead(5, { status: "appointment", bundle_id: "b-2", bundle_name: "Second pack", attrs: { callback_at: "2026-11-27T12:00:00Z" } })];
+    renderPage(); await screen.findAllByTestId("lead-row");
+    expect(rowNames()).toEqual(["Lead3", "Lead5", "Lead4", "Lead1"]);
+    expect(screen.getByTestId("callbacks-due")).toHaveTextContent("2 follow-ups due");
+    expect(screen.getByTestId("lead-next-action")).toHaveTextContent("Review coverage options");
+    expect(screen.getByLabelText("Callback time")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Scheduled (1)" }));
+    expect(rowNames()).toEqual(["Lead2"]);
+    expect(screen.getByTestId("lead-response-state")).toHaveTextContent("Follow-up scheduled");
+  });
+
+  it("Work next lead resets filters and pagination and focuses the actual highest priority candidate", async () => {
+    db.leads = Array.from({ length: 35 }, (_, i) => lead(i + 1, { state: "TX" }));
+    db.leads[0] = lead(1, { state: "AZ", bundle_id: "b-2", bundle_name: "Other pack", granted_at: "2026-11-01T12:00:00Z" });
+    renderPage(); await screen.findAllByTestId("lead-row");
+    fireEvent.change(screen.getByLabelText("Lead state"), { target: { value: "TX" } });
+    fireEvent.change(screen.getByLabelText("Lead pack"), { target: { value: "b-1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Next assigned leads page" }));
+    expect(rowNames()).not.toContain("Lead1");
+    fireEvent.click(screen.getByRole("button", { name: "Work next lead" }));
+    await waitFor(() => expect(openRows()[0]).toHaveTextContent("Lead1"));
+    expect(screen.getByLabelText("Lead state")).toHaveValue("");
+    expect(screen.getByLabelText("Lead pack")).toHaveValue("");
+    expect(screen.getByRole("button", { name: "Previous assigned leads page" })).toBeDisabled();
+    expect(openRows()[0]).toHaveFocus();
+    expect(db.logged).toEqual([]);
+  });
+
+  it("does not choose held, invalid-number or after-hours leads for Work next lead", async () => {
+    db.leads = [lead(1, { attrs: { true_dnc: true } }), lead(2, { callable_now: false }),
+      lead(3, { attrs: { invalid_number: true } }), lead(4, { phone10: "000" }), lead(5)];
+    renderPage(); await screen.findAllByTestId("lead-row");
+    fireEvent.click(screen.getByRole("button", { name: "Work next lead" }));
+    await waitFor(() => expect(openRows()[0]).toHaveTextContent("Lead5"));
+    expect(screen.getAllByTestId("lead-call-link")).toHaveLength(1);
+    expect(db.logged).toEqual([]);
+  });
+
+  it("shows an unknown assignment time and keeps the first outcome pending after a launch tap", async () => {
+    db.leads = [lead(1, { granted_at: null })];
+    renderPage(); await screen.findAllByTestId("lead-row");
+    expect(screen.getByTestId("lead-response-state")).toHaveTextContent("assignment time unknown");
+    fireEvent.click(screen.getByTestId("lead-call-link"));
+    expect(screen.getByTestId("first-outcomes-pending")).toHaveTextContent("1 awaiting a first outcome");
+    expect(db.logged).toEqual([]);
   });
 
   it("keeps search available even for a small pack and can clear it in one tap", async () => {

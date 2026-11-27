@@ -74,11 +74,11 @@ describe("one screen per hire", () => {
     const first = readHire(hire, now, now)!;
     const second = readHire({ ...hire, id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", display_name: "Brooke Lane" }, now, now)!;
     const one = addHireToBatch(null, first);
-    expect(hireHeadline(one)).toBe("Welcome, Daniel");
+    expect(hireHeadline(one)).toBe("Daniel Bridges joined the team");
     const two = addHireToBatch(one, second);
     expect(two.key).toBe(second.id);
     expect(two.hires.map((h) => h.displayName)).toEqual(["Daniel Bridges", "Brooke Lane"]);
-    expect(hireHeadline(two)).toBe("2 new hires");
+    expect(hireHeadline(two)).toBe("2 agents joined the team");
     expect(HIRE_BATCH_NAMES_SHOWN).toBeGreaterThan(0);
   });
 });

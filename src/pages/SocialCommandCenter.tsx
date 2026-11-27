@@ -24,6 +24,7 @@ import { playSoundEffect } from "@/hooks/useSoundEffects";
 import { useCanViewSoldCalls } from "@/hooks/useSoldCallKeys";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SocialDraftReviewDialog } from "@/components/content/SocialDraftReviewDialog";
 import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -45,7 +46,11 @@ type Rpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: unkno
 async function fetchCommandCenter(): Promise<CommandCenterPayload> {
   const { data, error } = await (supabase.rpc as unknown as Rpc)("social_command_center");
   if (error) throw new Error(error.message);
-  return (data ?? { inbox: [], funnel: [], pulls: [], lanes: [], drafts: [], generated_at: "" }) as CommandCenterPayload;
+  if (!data || typeof data !== "object" || Array.isArray(data)
+    || ["inbox", "funnel", "pulls", "lanes", "drafts"].some(key => !Array.isArray((data as Record<string, unknown>)[key]))) {
+    throw new Error("The command center response could not be verified. Try again.");
+  }
+  return data as CommandCenterPayload;
 }
 
 const PLATFORMS = ["all", "instagram", "tiktok", "youtube"] as const;
@@ -78,7 +83,7 @@ export default function SocialCommandCenter() {
   const visible = useMemo(() => filterInbox(inbox, bucket, platform, search), [inbox, bucket, platform, search]);
   const lanes = useMemo(() => sortLanes(q.data?.lanes ?? []), [q.data]);
   const deadLanes = lanes.filter((l) => l.verdict !== "alive").length;
-  const laneHealth: Tone = lanes.some((l) => l.verdict === "dead") ? "hot" : lanes.some((l) => l.verdict === "never") ? "warm" : "good";
+  const laneHealth: Tone = lanes.length === 0 ? "slate" : lanes.some((l) => l.verdict === "dead") ? "hot" : lanes.some((l) => l.verdict === "never") ? "warm" : "good";
   // "All open" is every row except the silent-by-design ones: the same rule filterInbox applies to "all".
   const openCount = inbox.length - counts.silent;
   // While the read is loading or failed the numbers are withheld (a dash), never shown as 0.
@@ -156,7 +161,7 @@ export default function SocialCommandCenter() {
                 <ToneBubble tone={laneHealth} size="sm"><Activity /></ToneBubble> Lanes
               </h2>
               <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-                {deadLanes === 0 ? (
+                {lanes.length === 0 ? <span>Connection health unavailable.</span> : deadLanes === 0 ? (
                   <span className="inline-flex items-center gap-2 font-medium text-tone-good">
                     <span aria-hidden="true" className="apex-breathe inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-tone-good" />
                     Every lane is alive.
@@ -447,34 +452,39 @@ function MessageRow({ r }: { r: InboxRow }) {
 function DraftsQueue({ drafts }: { drafts: DraftRow[] }) {
   const qc = useQueryClient();
   const [busy, setBusy] = useState<number | null>(null);
+  const [reviewId, setReviewId] = useState<number | null>(null);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const groups = useMemo(() => groupDrafts(drafts), [drafts]);
   /** `origin` is the control pressed, read from the event before any await so the bubbles rise from it. */
-  async function setStatus(d: DraftRow, status: "approved" | "archived" | "rejected", origin: Element | null) {
+  async function setStatus(d: DraftRow, status: "archived" | "rejected") {
+    if (busy !== null) return;
     setBusy(d.id);
-    const { error } = await (supabase.rpc as unknown as Rpc)("social_draft_set_status", { p_id: d.id, p_status: status });
-    setBusy(null);
-    if (error) { toast.error(`Could not update draft: ${error.message}`); return; }
-    toast.success(`${d.title ?? "Draft"}: ${status}`);
-    // Only after the save went through: approving is the small win, archiving sends it away, rejecting moves it on.
-    if (status === "approved") void celebrate("save", origin);
-    else playSoundEffect(status === "archived" ? "whoosh" : "tick");
-    await qc.invalidateQueries({ queryKey: [SOCIAL_COMMAND_KEY] });
+    try {
+      const { data, error } = await (supabase.rpc as unknown as Rpc)("social_draft_set_status", { p_id: d.id, p_status: status });
+      if (error) throw new Error(error.message);
+      const result = data as { id?: number; status?: string } | null;
+      if (result?.id !== d.id || result.status !== status) throw new Error("The change was not confirmed. Refresh the queue before retrying.");
+      toast.success(`${d.title ?? "Draft"}: ${status}`);
+      playSoundEffect(status === "archived" ? "whoosh" : "tick");
+      await qc.invalidateQueries({ queryKey: [SOCIAL_COMMAND_KEY] });
+    } catch (error) { toast.error(`Could not update draft: ${error instanceof Error ? error.message : "Unknown error"}`); }
+    finally { setBusy(null); }
   }
   return (
     <section className="rounded-xl border border-border bg-card" aria-label="Content queue">
       <header className="border-b border-border px-4 py-3">
         <h2 className="text-xl font-bold text-foreground">Content queue</h2>
-        <p className="text-sm text-muted-foreground">{drafts.length} drafts waiting. Approve means the content engine may schedule it; nothing posts unapproved.</p>
+        <p className="text-sm text-muted-foreground">{drafts.length} drafts loaded for review. Review the full copy and destination before approval.</p>
       </header>
       {groups.length === 0 ? (
-        <div className="px-4 py-6"><EmptyState icon={<CheckCircle2 className="h-6 w-6" />} title="Queue is empty" description="The Monday content run will fill it." /></div>
+        <div className="px-4 py-6"><EmptyState icon={<CheckCircle2 className="h-6 w-6" />} title="Queue is empty" description="No drafts were returned for this review window." /></div>
       ) : (
         <div className="divide-y divide-border px-4">
           {groups.map((g) => (
             <div key={g.platform} className="py-3">
               <h3 className="mb-2 text-base font-bold text-foreground">{platformLabel(g.platform)} <span className="font-normal text-muted-foreground">· {g.drafts.length}</span></h3>
               <RevealList as="ul" className="space-y-2">
-                {g.drafts.slice(0, 12).map((d) => (
+                {g.drafts.slice(0, expanded[g.platform] ? g.drafts.length : 12).map((d) => (
                   <li key={d.id} className="flex flex-wrap items-start justify-between gap-2 rounded-lg border border-border px-3 py-2.5">
                     <div className="flex min-w-0 flex-1 items-start gap-2.5">
                       <PlatformBubble platform={g.platform} />
@@ -486,25 +496,27 @@ function DraftsQueue({ drafts }: { drafts: DraftRow[] }) {
                     </div>
                     <div className="flex shrink-0 gap-1.5">
                       {d.status !== "approved" && (
-                        <Button variant="default" className="h-11" disabled={busy === d.id} onClick={(e) => { const origin = e.currentTarget; void setStatus(d, "approved", origin); }} aria-label={`Approve ${d.title ?? "draft"}`}>
-                          {busy === d.id ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <CheckCircle2 className="h-4 w-4" aria-hidden />} Approve
+                        <Button variant="default" className="h-11" disabled={busy !== null} onClick={() => setReviewId(d.id)} aria-label={`Review ${d.title ?? "draft"}`}>
+                          {busy === d.id ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <CheckCircle2 className="h-4 w-4" aria-hidden />} Review
                         </Button>
                       )}
-                      <Button variant="outline" className="h-11" disabled={busy === d.id} onClick={(e) => { const origin = e.currentTarget; void setStatus(d, "archived", origin); }} aria-label={`Archive ${d.title ?? "draft"}`}>
+                      <Button variant="outline" className="h-11" disabled={busy !== null} onClick={() => void setStatus(d, "archived")} aria-label={`Archive ${d.title ?? "draft"}`}>
                         <Archive className="h-4 w-4" aria-hidden /> Archive
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-11 w-11" disabled={busy === d.id} onClick={(e) => { const origin = e.currentTarget; void setStatus(d, "rejected", origin); }} aria-label={`Reject ${d.title ?? "draft"}`}>
+                      <Button variant="ghost" size="icon" className="h-11 w-11" disabled={busy !== null} onClick={() => void setStatus(d, "rejected")} aria-label={`Reject ${d.title ?? "draft"}`}>
                         <XCircle className="h-5 w-5" aria-hidden />
                       </Button>
                     </div>
                   </li>
                 ))}
-                {g.drafts.length > 12 && <li className="text-sm text-muted-foreground">+{g.drafts.length - 12} more {platformLabel(g.platform)} drafts in the queue</li>}
+                {g.drafts.length > 12 && !expanded[g.platform] && <li><Button variant="outline" className="h-11" onClick={() => setExpanded(current => ({ ...current, [g.platform]: true }))}>Review all {g.drafts.length} {platformLabel(g.platform)} drafts</Button></li>}
               </RevealList>
             </div>
           ))}
         </div>
       )}
+      {drafts.length >= 150 && <p className="p-4 text-sm text-muted-foreground">This review window contains the newest 150 active drafts. Older drafts may remain.</p>}
+      {reviewId !== null && <SocialDraftReviewDialog key={reviewId} draftId={reviewId} onClose={() => setReviewId(null)} onApproved={origin => void celebrate("save", origin)} />}
     </section>
   );
 }

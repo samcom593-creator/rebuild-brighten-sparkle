@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { CONTRACTING_PROFILE_PATH } from "@/lib/contractingLinks";
 
 const loginSchema = z.object({
   email: z.string().email("Valid email is required"),
@@ -104,7 +105,9 @@ export default function Login() {
           // Sub-VAs work the calling/recovery queue, not the agent portal.
           navigate("/admin/recovery-queue");
         } else {
-          navigate("/agent-portal");
+          // Licensed-applicant recovery returns to this exact protected next step.
+          // Other ordinary-agent sign-ins keep their existing portal landing.
+          navigate(fromRaw?.pathname === CONTRACTING_PROFILE_PATH ? CONTRACTING_PROFILE_PATH : "/agent-portal");
         }
         return;
       }

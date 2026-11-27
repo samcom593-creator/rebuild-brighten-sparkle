@@ -1,0 +1,113 @@
+/* Shared authenticated shell. The mobile sidebar is portaled outside the
+   workspace root, so its own class carries the same surface and control rules. */
+.galaxy-workspace {
+  font-family: "Hanken Grotesk", system-ui, sans-serif;
+  line-height: 1.5;
+  color: hsl(var(--foreground));
+  background: hsl(var(--background));
+}
+.galaxy-workspace .apex-content-frame {
+  padding: var(--galaxy-page-gutter);
+}
+.galaxy-workspace .apex-page-slot { min-width: 0; }
+.galaxy-workspace .apex-ambient { display: none; }
+.galaxy-workspace .galaxy-topbar {
+  background: hsl(var(--card));
+  border-color: hsl(var(--border) / 0.75);
+}
+.galaxy-workspace .galaxy-topbar::after,
+.galaxy-sidebar[data-collapsed]::before,
+.galaxy-workspace .apex-page-header.galaxy-page-header::after {
+  content: none;
+}
+
+.galaxy-sidebar {
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--border) / 0.75);
+}
+.galaxy-sidebar-brand { border-color: hsl(var(--border) / 0.6); }
+.galaxy-brand-link { min-height: var(--galaxy-control-height); }
+.galaxy-brand-mark { border-radius: var(--apex-r-md); }
+.galaxy-sidebar-search { padding: 0.875rem 0.75rem 0; }
+.galaxy-sidebar .galaxy-search-trigger {
+  background: hsl(var(--background));
+  border-color: hsl(var(--border));
+  color: hsl(var(--muted-foreground));
+  border-radius: var(--apex-r-md);
+  font-size: 0.875rem;
+}
+.galaxy-sidebar .galaxy-search-trigger:hover {
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--input));
+}
+.galaxy-sidebar-nav {
+  padding: 0.875rem 0.5rem;
+  scrollbar-gutter: stable;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
+  overscroll-behavior-y: contain;
+}
+.galaxy-sidebar-nav .nav-section-label {
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  font-weight: 650;
+  letter-spacing: 0.09em;
+  color: hsl(var(--muted-foreground));
+}
+.galaxy-nav-link,
+.galaxy-nav-group-trigger {
+  min-height: var(--galaxy-control-height);
+  border-radius: var(--apex-r-md);
+  transition: background-color var(--galaxy-motion-fast) ease,
+    color var(--galaxy-motion-fast) ease, transform var(--galaxy-motion-fast) ease;
+}
+.galaxy-nav-group { padding-block: 0.125rem; }
+.galaxy-nav-group-trigger { letter-spacing: -0.015em; }
+.galaxy-nav-children {
+  margin-top: 0.25rem;
+  margin-bottom: 0.375rem;
+  border-color: hsl(var(--border) / 0.7);
+}
+.galaxy-nav-link[data-nested="true"] { font-size: 0.875rem; }
+.galaxy-nav-marker { width: 3px; height: 1.125rem; }
+.galaxy-nav-link[aria-current="page"] { color: hsl(var(--foreground)); }
+.galaxy-nav-link:not([aria-current]):hover,
+.galaxy-nav-group-trigger:not([data-active="true"]):hover {
+  background: hsl(var(--muted) / 0.65);
+}
+.galaxy-sidebar :is(a, button):focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: -2px;
+}
+.galaxy-sidebar-actions {
+  padding: 0.75rem;
+  background: hsl(var(--background) / 0.45);
+  border-color: hsl(var(--border) / 0.65);
+}
+.galaxy-sidebar-account,
+.galaxy-sidebar-resize { border-color: hsl(var(--border) / 0.55); }
+.galaxy-sidebar-account > button,
+.galaxy-sidebar-resize > button {
+  min-height: var(--galaxy-control-height);
+  border-radius: var(--apex-r-md);
+}
+.galaxy-sidebar[data-collapsed="true"] .galaxy-sidebar-search,
+.galaxy-sidebar[data-collapsed="true"] .galaxy-sidebar-actions { padding-inline: 0.5rem; }
+.galaxy-sidebar[data-collapsed="true"] .galaxy-sidebar-nav { scrollbar-gutter: auto; }
+.galaxy-sidebar[data-mobile="true"] .galaxy-sidebar-actions { padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px)); }
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .galaxy-sidebar[data-collapsed="false"] .galaxy-nav-link:not([aria-current]):hover { transform: translateX(2px); }
+  .galaxy-nav-link:active,
+  .galaxy-nav-group-trigger:active { transform: scale(0.99); }
+}
+@media (max-width: 639px) {
+  .galaxy-workspace .apex-content-frame { padding-block: 1rem 1.5rem; }
+  .galaxy-sidebar-nav { scrollbar-gutter: auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .galaxy-sidebar,
+  .galaxy-nav-link,
+  .galaxy-nav-group-trigger { transition: none; }
+  .galaxy-sidebar .galaxy-nav-group-trigger > svg { transition: none; }
+}

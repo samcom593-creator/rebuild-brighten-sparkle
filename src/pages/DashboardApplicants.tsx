@@ -1437,7 +1437,7 @@ function ApplicantsClassicView() {
           <div className="pt-3">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="h-10 w-full bg-input sm:h-9">
+          <SelectTrigger aria-label="Filter applicants by status" className="h-10 w-full bg-input sm:h-9">
             <Filter className="mr-2 h-4 w-4 shrink-0" />
             <SelectValue placeholder="Status" />
           </SelectTrigger>
@@ -1451,7 +1451,7 @@ function ApplicantsClassicView() {
           </SelectContent>
         </Select>
         <Select value={licenseFilter} onValueChange={setLicenseFilter}>
-          <SelectTrigger className="h-10 w-full bg-input sm:h-9">
+          <SelectTrigger aria-label="Filter applicants by license status" className="h-10 w-full bg-input sm:h-9">
             <Award className="mr-2 h-4 w-4 shrink-0" />
             <SelectValue placeholder="License" />
           </SelectTrigger>
@@ -1464,7 +1464,7 @@ function ApplicantsClassicView() {
           </SelectContent>
         </Select>
         <Select value={sortOrder} onValueChange={setSortOrder}>
-          <SelectTrigger className="h-10 w-full bg-input sm:h-9">
+          <SelectTrigger aria-label="Sort applicants" className="h-10 w-full bg-input sm:h-9">
             <Clock className="mr-2 h-4 w-4 shrink-0" />
             <SelectValue placeholder="Sort by" />
           </SelectTrigger>
@@ -1475,7 +1475,7 @@ function ApplicantsClassicView() {
         </Select>
         {recruiterOptions.length > 0 && (
           <Select value={agentFilter} onValueChange={setAgentFilter}>
-            <SelectTrigger className="h-10 w-full bg-input sm:h-9">
+            <SelectTrigger aria-label="Filter applicants by recruiting agent" className="h-10 w-full bg-input sm:h-9">
               <Users className="mr-2 h-4 w-4 shrink-0" />
               <SelectValue placeholder="Agent" />
             </SelectTrigger>
@@ -1489,7 +1489,7 @@ function ApplicantsClassicView() {
         )}
         {uplineOptions.length > 0 && (
           <Select value={uplineFilter} onValueChange={setUplineFilter}>
-            <SelectTrigger className="h-10 w-full bg-input sm:h-9">
+            <SelectTrigger aria-label="Filter applicants by upline" className="h-10 w-full bg-input sm:h-9">
               <Users className="mr-2 h-4 w-4 shrink-0" />
               <SelectValue placeholder="Upline" />
             </SelectTrigger>
@@ -1502,7 +1502,7 @@ function ApplicantsClassicView() {
           </Select>
         )}
         <Select value={interviewFilter} onValueChange={setInterviewFilter}>
-          <SelectTrigger className="h-10 w-full bg-input sm:h-9">
+          <SelectTrigger aria-label="Filter applicants by interview status" className="h-10 w-full bg-input sm:h-9">
             <Calendar className="mr-2 h-4 w-4 shrink-0" />
             <SelectValue placeholder="Interview" />
           </SelectTrigger>

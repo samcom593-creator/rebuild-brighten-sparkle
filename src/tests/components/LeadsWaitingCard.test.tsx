@@ -22,7 +22,7 @@ describe("leadsWaitingSummary", () => {
       row(1, "new"), row(2, "new"), row(3, "callback"), row(4, "appointment"), row(5, "no_answer"),
       row(6, "new", false), row(7, "sold"), row(8, "not_interested"), row(9, "do_not_call"), row(10, "bad_number"),
     ]);
-    expect(w).toEqual({ open: 6, toCall: 5, callbacks: 2, neverCalled: 2, closedHours: 1 });
+    expect(w).toEqual({ open: 6, toCall: 5, callbacks: 0, neverCalled: 2, closedHours: 1, scheduled: 0, followupsWithoutTime: 2, held: 0 });
   });
   it("treats a row with no calling-hours verdict as workable, as My Leads does", () => {
     expect(leadsWaitingSummary([{ item_id: "x", status: "new" }]).toCall).toBe(1);
@@ -49,8 +49,8 @@ describe("LeadsWaitingCard", () => {
     db.reply = { data: [row(1, "new"), row(2, "new"), row(3, "callback"), row(4, "no_answer"), row(5, "new", false)], error: null };
     renderCard();
     const card = await screen.findByTestId("leads-waiting");
-    expect(card.textContent).toContain("4 leads to call");
-    expect(card.textContent).toContain("1 waiting on your call back · 2 never called · 1 more open later");
+    expect(card.textContent).toContain("4 leads to work");
+    expect(card.textContent).toContain("1 follow-up needs an agreed time · 2 awaiting a first outcome · 1 more open later");
     expect(screen.getByRole("link", { name: /Work my leads/ }).getAttribute("href")).toBe("/dashboard/my-leads");
   });
 
@@ -66,5 +66,14 @@ describe("LeadsWaitingCard", () => {
     db.reply = { data: null, error: { message: "boom" } };
     renderCard();
     expect((await screen.findByTestId("leads-waiting-error")).textContent).toContain("Your leads did not load");
+  });
+
+  it("shows a future-only queue as scheduled rather than closed hours or due work", async () => {
+    db.reply = { data: [{ ...row(1, "callback"), attrs: { callback_at: "2099-11-28T12:00:00Z" } }], error: null };
+    renderCard();
+    const card = await screen.findByTestId("leads-waiting");
+    expect(card).toHaveTextContent("1 lead scheduled for later");
+    expect(card).not.toHaveTextContent("Calling hours are closed");
+    expect(card).not.toHaveTextContent("follow-ups due");
   });
 });

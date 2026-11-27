@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { resolveTrainingIdentity } from "@/lib/trainingIdentity";
 import { emailPattern } from "@/lib/like-escape";
 import { motion } from "framer-motion";
 import {
@@ -52,10 +53,15 @@ export default function CourseCatalog() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, isAdmin, isManager, isVaManager, isVa } = useAuth();
+  const currentUserRef = useRef(user?.id);
+  currentUserRef.current = user?.id;
   const isStaff = isAdmin || isManager || isVaManager || isVa;
   const { playSound } = useSoundEffects();
   const [agentId, setAgentId] = useState<string | null>(null);
   const [agentNotFound, setAgentNotFound] = useState(false);
+  const [identityError, setIdentityError] = useState<string | null>(null);
+  const [identityLoading, setIdentityLoading] = useState(true);
+  const [identityAttempt, setIdentityAttempt] = useState(0);
   const [autoProvisionAttempted, setAutoProvisionAttempted] = useState(false);
   const [provisioningInProgress, setProvisioningInProgress] = useState(false);
   const [activeTab, setActiveTab] = useState<LessonTab>("video");
@@ -67,51 +73,49 @@ export default function CourseCatalog() {
 
   useEffect(() => {
     let cancelled = false;
-    let retryTimer: ReturnType<typeof setTimeout> | undefined;
-
+    setAgentId(null);
+    setAgentNotFound(false);
+    setAutoProvisionAttempted(false);
+    setProvisioningInProgress(false);
+    setIdentityError(null);
+    setIdentityLoading(true);
+    resumeSelectedRef.current = false;
     const loadAgent = async () => {
-      if (!user?.id) return;
-      const { data } = await supabase
-        .from("agents")
-        .select("id, has_training_course")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(1);
+      const identity = await resolveTrainingIdentity(supabase, user?.id);
       if (cancelled) return;
-
-      const agent = data?.[0];
-      if (agent) {
-        setAgentId(agent.id);
-        if (!agent.has_training_course) {
-          void supabase.from("agents").update({ has_training_course: true }).eq("id", agent.id);
+      if (identity.status === "resolved") {
+        setAgentId(identity.agentId);
+        // PostgREST builders are lazy. Consume this best-effort enrollment
+        // marker so the manager's access panel does not keep reporting it as
+        // missing, but do not block a verified learner on metadata failure.
+        try {
+          const { error } = await supabase.from("agents").update({ has_training_course: true })
+            .eq("id", identity.agentId).eq("has_training_course", false);
+          if (error) console.error("Training enrollment marker could not be saved:", error);
+        } catch (error) {
+          console.error("Training enrollment marker could not be saved:", error);
         }
-        return;
-      }
-
-      retryTimer = setTimeout(async () => {
-        const { data: retryData } = await supabase
-          .from("agents")
-          .select("id")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(1);
         if (cancelled) return;
-        if (retryData?.[0]) setAgentId(retryData[0].id);
-        else setAgentNotFound(true);
-      }, 2_000);
+      } else if (identity.status === "none") {
+        setAgentNotFound(true);
+      } else {
+        setIdentityError(identity.status === "ambiguous"
+          ? "More than one agent record matches your login. Ask your manager to resolve your training account."
+          : identity.message);
+      }
+      setIdentityLoading(false);
     };
 
     void loadAgent();
     return () => {
       cancelled = true;
-      if (retryTimer) clearTimeout(retryTimer);
     };
-  }, [user?.id]);
+  }, [user?.id, identityAttempt]);
 
   useEffect(() => {
     let cancelled = false;
     const checkLicense = async () => {
-      if (!user?.id) return;
+      if (!user?.id || identityLoading || identityError) return;
       if (isStaff) {
         setIsLicensed(true);
         setLicenseCheckLoading(false);
@@ -121,12 +125,11 @@ export default function CourseCatalog() {
       setLicenseCheckLoading(true);
       try {
         const [agentRes, appRes] = await Promise.all([
-          supabase
+          agentId ? supabase
             .from("agents")
             .select("license_status")
-            .eq("user_id", user.id)
-            .order("created_at", { ascending: false })
-            .limit(1),
+            .eq("id", agentId)
+            .limit(1) : Promise.resolve({ data: [], error: null }),
           supabase
             .from("applications")
             .select("license_status, license_progress")
@@ -134,11 +137,14 @@ export default function CourseCatalog() {
             .order("created_at", { ascending: false })
             .limit(1),
         ]);
+        if (agentRes.error || appRes.error) throw agentRes.error || appRes.error;
         const agentLicensed = agentRes.data?.[0]?.license_status === "licensed";
         const app = appRes.data?.[0] as { license_status?: string; license_progress?: string } | undefined;
         const appLicensed = app?.license_status === "licensed"
           || ["licensed", "fingerprints_done", "waiting_on_license"].includes(app?.license_progress || "");
         if (!cancelled) setIsLicensed(agentLicensed || appLicensed);
+      } catch {
+        if (!cancelled) setIdentityError("Your training access could not be verified. Retry to check access; your progress has not been reset.");
       } finally {
         if (!cancelled) setLicenseCheckLoading(false);
       }
@@ -146,27 +152,35 @@ export default function CourseCatalog() {
 
     void checkLicense();
     return () => { cancelled = true; };
-  }, [isStaff, user?.email, user?.id]);
+  }, [isStaff, user?.email, user?.id, agentId, identityLoading, identityError]);
 
   useEffect(() => {
-    if (!licenseCheckLoading && !isLicensed) navigate("/get-licensed", { replace: true });
-  }, [isLicensed, licenseCheckLoading, navigate]);
+    if (!identityLoading && !identityError && !licenseCheckLoading && !isLicensed) navigate("/get-licensed", { replace: true });
+  }, [isLicensed, licenseCheckLoading, identityLoading, identityError, navigate]);
 
   useEffect(() => {
     const autoProvision = async () => {
       if (!agentNotFound || autoProvisionAttempted || !user?.id) return;
       setAutoProvisionAttempted(true);
       setProvisioningInProgress(true);
+      const requestedUserId = user.id;
       try {
         const { data, error } = await supabase.functions.invoke("self-enroll-course", { body: {} });
+        if (currentUserRef.current !== requestedUserId) return;
         if (!error && data?.agentId) {
-          setAgentId(data.agentId);
-          setAgentNotFound(false);
+          const identity = await resolveTrainingIdentity(supabase, requestedUserId);
+          if (currentUserRef.current !== requestedUserId) return;
+          if (identity.status === "resolved") {
+            setAgentId(identity.agentId);
+            setAgentNotFound(false);
+          } else {
+            setIdentityError("Your training account could not be verified after enrollment. Retry to check access.");
+          }
         }
       } catch (error) {
         console.error("Self-enroll error:", error);
       } finally {
-        setProvisioningInProgress(false);
+        if (currentUserRef.current === requestedUserId) setProvisioningInProgress(false);
       }
     };
     void autoProvision();
@@ -179,6 +193,7 @@ export default function CourseCatalog() {
     currentModuleIndex,
     setCurrentModuleIndex,
     loading,
+    loadError,
     updateVideoProgress,
     submitQuiz,
     isModuleUnlocked,
@@ -192,7 +207,7 @@ export default function CourseCatalog() {
   } = useOnboardingCourse(agentId);
 
   useEffect(() => {
-    if (resumeSelectedRef.current || modules.length === 0) return;
+    if (identityLoading || loading || loadError || resumeSelectedRef.current || modules.length === 0) return;
     const requestedModuleId = searchParams.get("module");
     const requestedIndex = requestedModuleId
       ? modules.findIndex((module) => module.id === requestedModuleId)
@@ -206,7 +221,7 @@ export default function CourseCatalog() {
     const resumeIndex = firstIncomplete >= 0 ? firstIncomplete : modules.length - 1;
     setCurrentModuleIndex(requestedUnlocked ? requestedIndex : resumeIndex);
     resumeSelectedRef.current = true;
-  }, [modules, progress, searchParams, setCurrentModuleIndex, isModuleUnlocked]);
+  }, [modules, progress, searchParams, setCurrentModuleIndex, isModuleUnlocked, identityLoading, loading, loadError]);
 
   const completedCount = modules.filter((module) => progress[module.id]?.passed).length;
   const totalMinutes = useMemo(
@@ -240,7 +255,13 @@ export default function CourseCatalog() {
     }
   };
 
-  if (licenseCheckLoading) {
+  if (identityError) {
+    return <div className="mx-auto max-w-4xl space-y-4 p-6"><TrainingWorkspaceNav />
+      <div role="alert" className="space-y-3 rounded-lg border border-destructive/40 p-5">
+        <p>{identityError}</p><Button onClick={() => setIdentityAttempt(attempt => attempt + 1)}>Retry account</Button>
+      </div></div>;
+  }
+  if (identityLoading || licenseCheckLoading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <div className="space-y-2 text-center">
@@ -251,7 +272,13 @@ export default function CourseCatalog() {
     );
   }
   if (!isLicensed) return null;
-  if (loading || provisioningInProgress) return <SkeletonLoader variant="page" />;
+  if (loading || provisioningInProgress || (agentNotFound && !autoProvisionAttempted)) return <SkeletonLoader variant="page" />;
+  if (loadError) return <div className="mx-auto max-w-4xl space-y-4 p-6"><TrainingWorkspaceNav /><p role="alert">{loadError}</p><Button variant="outline" onClick={() => window.location.reload()}>Retry training progress</Button></div>;
+  if (agentNotFound && !isStaff) {
+    return <div className="mx-auto max-w-4xl space-y-4 p-6"><TrainingWorkspaceNav />
+      <p role="status">Your training account is not ready yet. Open your profile to review onboarding with your manager.</p>
+      <Button asChild variant="outline"><Link to="/dashboard/profile">Open profile</Link></Button></div>;
+  }
 
   if (modules.length === 0) {
     return (

@@ -24,8 +24,12 @@ describe("calling hours in the agent portal", () => {
 
   it("closed leads leave To call, the pack's Work button, and work mode", () => {
     expect(page).toContain('s === "open" ? isOpenLead(r.status) && callableNow(r)');
-    expect(page).toContain('r.status === "new" && callableNow(r)).length');
-    expect(page).toContain('const queue = pack.filter((r) => r.status === "new" && callableNow(r));');
+    // Both the button snapshot and the live work-mode queue must reapply the
+    // server hours/hold gate. Additional priority and valid-phone checks are
+    // intentional, and must not replace callableNow.
+    expect(page).toContain('const fresh = selected.filter((r) => r.status === "new" && callableNow(r) &&');
+    expect(page).toContain('setWorkLeadIds(new Set(fresh.map((r) => r.item_id)))');
+    expect(page).toContain('const queue = pack.filter((r) => r.status === "new" && callableNow(r) &&');
   });
 
   it("a closed lead has no Call link anywhere", () => {

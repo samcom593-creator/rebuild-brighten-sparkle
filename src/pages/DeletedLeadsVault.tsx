@@ -254,7 +254,7 @@ export default function DeletedLeadsVault() {
             />
           </div>
           <Select value={filterSource} onValueChange={setFilterSource}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger aria-label="Filter deleted leads by source" className="w-[180px]">
               <SelectValue placeholder="Filter by source" />
             </SelectTrigger>
             <SelectContent>

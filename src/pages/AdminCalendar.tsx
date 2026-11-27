@@ -707,7 +707,7 @@ export default function AdminCalendar() {
               <div>
                 <label className="text-sm font-medium">Start</label>
                 <Select value={String(formStartHour)} onValueChange={v => setFormStartHour(Number(v))}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-label="Start time" className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {HOURS.map(h => <SelectItem key={h} value={String(h)}>{formatHour(h)}</SelectItem>)}
                   </SelectContent>
@@ -716,7 +716,7 @@ export default function AdminCalendar() {
               <div>
                 <label className="text-sm font-medium">End</label>
                 <Select value={String(formEndHour)} onValueChange={v => setFormEndHour(Number(v))}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-label="End time" className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {HOURS.filter(h => h > formStartHour).map(h => <SelectItem key={h} value={String(h)}>{formatHour(h)}</SelectItem>)}
                     <SelectItem value="23">{formatHour(23)}</SelectItem>
@@ -727,7 +727,7 @@ export default function AdminCalendar() {
             <div>
               <label className="text-sm font-medium">Category</label>
               <Select value={formCategory} onValueChange={setFormCategory}>
-                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Calendar category" className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {CATEGORIES.map(c => (
                     <SelectItem key={c.key} value={c.key}>
@@ -749,7 +749,7 @@ export default function AdminCalendar() {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Repeat</label>
                 <Select value={formRepeat} onValueChange={v => setFormRepeat(v as any)}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-label="Repeat calendar block" className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
                     <SelectItem value="daily">Daily</SelectItem>
@@ -801,7 +801,7 @@ export default function AdminCalendar() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <Switch
+                    <Switch aria-label={`Enable recurring block: ${rb.title}`}
                       checked={rb.is_active}
                       onCheckedChange={() => toggleRecurringBlock(rb.id, rb.is_active)}
                     />

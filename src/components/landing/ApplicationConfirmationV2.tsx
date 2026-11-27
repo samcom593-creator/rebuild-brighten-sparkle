@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { CheckCircle2, Crown, Calendar, Sparkles } from "lucide-react";
 import { GradientButton } from "@/components/ui/gradient-button";
@@ -10,6 +11,7 @@ import { LicensingProofStep, type OwnerContact } from "@/components/landing/Lice
 import { supabase } from "@/integrations/supabase/client";
 import { CONTRACTING_PROFILE_PATH } from "@/lib/contractingLinks";
 import { resolveBrand } from "@/config/brand";
+import { Button } from "@/components/ui/button";
 
 /**
  * Stage 1 final success page.
@@ -42,6 +44,7 @@ interface Props {
 }
 
 const BRAND = resolveBrand();
+type ActivationState = { key: string | null; phase: "idle" | "loading" | "ready" | "error"; url: string | null };
 
 export function ApplicationConfirmationV2({
   applicationId,
@@ -49,18 +52,19 @@ export function ApplicationConfirmationV2({
   showCalendly = true,
 }: Props) {
   // useApplicationStatus is a react-query result: the snapshot lives on .data.
-  const { data: snap, isLoading } = useApplicationStatus(applicationId);
+  const { data: snap, isLoading, isError, isFetching, refetch } = useApplicationStatus(applicationId);
 
   // On /status/:id nothing forces the branch, so the license status has to
   // come from the snapshot. Until it arrives we must not guess "unlicensed",
   // or a licensed applicant is briefly told to start the licensing course and
   // the magic link is minted for the wrong destination.
-  const statusPending = !forceLicenseStatus && !!applicationId && isLoading;
-
-  const license =
-    forceLicenseStatus ??
-    (snap?.license_status as "licensed" | "unlicensed" | "pending" | undefined) ??
-    "unlicensed";
+  const recordedLicense = snap && ["licensed", "unlicensed", "pending"].includes(snap.license_status)
+    ? snap.license_status : null;
+  // A confirmed record wins over an old success-page bookmark. A failed lookup
+  // without a known branch must never turn into an unlicensed instruction.
+  const license = recordedLicense ?? forceLicenseStatus ?? null;
+  const statusPending = !license && !!applicationId && isLoading;
+  const statusUnavailable = !!applicationId && !isLoading && (isError || !snap);
 
   const firstName = snap?.first_name?.trim() || "";
 
@@ -74,15 +78,28 @@ export function ApplicationConfirmationV2({
   // the applicant in and redirects to the licensing roadmap (unlicensed) or
   // contracting intake (licensed). If the mint fails for any reason we fall back to
   // the regular non-authenticated CTAs below — never break the flow.
-  const [autoLoginUrl, setAutoLoginUrl] = useState<string | null>(null);
+  const activationKey = applicationId && license ? JSON.stringify([applicationId, license]) : null;
+  const [activation, setActivation] = useState<ActivationState>({ key: null, phase: "idle", url: null });
+  const [activationAttempt, setActivationAttempt] = useState(0);
+  // Never show the previous applicant's link during an identity/track change.
+  const autoLoginUrl = activation.key === activationKey ? activation.url : null;
+  const activationPhase = activation.key === activationKey ? activation.phase : activationKey ? "loading" : "idle";
   useEffect(() => {
     let cancelled = false;
-    if (!applicationId || statusPending) {
-      setAutoLoginUrl(null);
+    let expired = false;
+    if (!applicationId || !license || !activationKey) {
+      setActivation({ key: null, phase: "idle", url: null });
       return () => {
         cancelled = true;
       };
     }
+    const controller = new AbortController();
+    setActivation({ key: activationKey, phase: "loading", url: null });
+    const timeout = window.setTimeout(() => {
+      expired = true;
+      controller.abort();
+      setActivation({ key: activationKey, phase: "error", url: null });
+    }, 12_000);
     // The edge fn looks up email by applicationId server-side — we don't
     // need to wait for the status snapshot to load.
     const redirectPath =
@@ -92,26 +109,28 @@ export function ApplicationConfirmationV2({
       try {
         const { data, error } = await supabase.functions.invoke(
           "applicant-magic-link",
-          { body: { applicationId, redirectPath } },
+          { body: { applicationId, redirectPath }, signal: controller.signal },
         );
-        if (cancelled) return;
-        if (error) {
-          // Non-fatal — leave autoLoginUrl null so CTA falls back to /get-licensed.
+        if (cancelled || expired) return;
+        const link = (data as { action_link?: unknown } | null)?.action_link;
+        if (error || typeof link !== "string" || !/^https:\/\//i.test(link)) {
+          setActivation({ key: activationKey, phase: "error", url: null });
           return;
         }
-        const link = (data as any)?.action_link;
-        if (typeof link === "string" && link.startsWith("http")) {
-          setAutoLoginUrl(link);
-        }
-      } catch { // empty-catch-allow:best-effort-fallback
-        // Non-fatal: keep the legacy CTA as the fallback path.
+        setActivation({ key: activationKey, phase: "ready", url: link });
+      } catch {
+        if (!cancelled && !expired) setActivation({ key: activationKey, phase: "error", url: null });
+      } finally {
+        window.clearTimeout(timeout);
       }
     })();
 
     return () => {
       cancelled = true;
+      window.clearTimeout(timeout);
+      controller.abort();
     };
-  }, [applicationId, license, statusPending]);
+  }, [applicationId, license, activationKey, activationAttempt]);
 
   // Sticky-bottom CTA on mobile so it never gets lost in scroll.
   return (
@@ -135,7 +154,7 @@ export function ApplicationConfirmationV2({
               <span className="text-base font-semibold gradient-text">Galaxy Financial</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold leading-tight">
-              {firstName ? <>{firstName}, your application is <span className="gradient-text">in.</span></> : <>Application <span className="gradient-text">received.</span></>}
+              {snap ? firstName ? <>{firstName}, your application is <span className="gradient-text">in.</span></> : <>Application <span className="gradient-text">received.</span></> : <>Your application <span className="gradient-text">next step.</span></>}
             </h1>
           </div>
 
@@ -144,9 +163,18 @@ export function ApplicationConfirmationV2({
             <p className="text-center text-sm text-muted-foreground" role="status">
               Loading your next step...
             </p>
+          ) : !license ? (
+            <section className="space-y-3 text-center" aria-label="Application recovery">
+              <p role="alert" className="text-sm text-muted-foreground">
+                {applicationId ? "We couldn't confirm your saved next step. Try again to load your application status." : "Open the application link from your confirmation email to continue your saved next step."}
+              </p>
+              {applicationId && <Button type="button" disabled={isFetching} onClick={() => void refetch()}>{isFetching ? "Checking application…" : "Try application status again"}</Button>}
+              <p><Link to="/apply" className="text-sm font-medium text-primary underline underline-offset-4">Open the application</Link></p>
+            </section>
           ) : (
             <>
-              {license === "licensed" ? <LicensedBody applicationId={applicationId} showCalendly={showCalendly} autoLoginUrl={autoLoginUrl} firstName={snap?.first_name} lastName={snap?.last_name} /> : null}
+              {statusUnavailable && <div className="space-y-2 text-center"><p role="status" className="text-sm text-muted-foreground">Your saved application status is unavailable. You can continue with the next step below or check again.</p><Button type="button" variant="outline" disabled={isFetching} onClick={() => void refetch()}>Check application status</Button></div>}
+              {license === "licensed" ? <LicensedBody applicationId={applicationId} applicationConfirmed={Boolean(snap)} showCalendly={showCalendly} autoLoginUrl={autoLoginUrl} activationPhase={activationPhase} onRetryActivation={() => setActivationAttempt(attempt => attempt + 1)} firstName={snap?.first_name} lastName={snap?.last_name} /> : null}
               {license === "unlicensed" ? <UnlicensedBody applicationId={applicationId} autoLoginUrl={autoLoginUrl} firstName={snap?.first_name} lastName={snap?.last_name} manager={snap?.manager ?? null} /> : null}
               {license === "pending" ? <PendingBody applicationId={applicationId} firstName={snap?.first_name} lastName={snap?.last_name} manager={snap?.manager ?? null} /> : null}
             </>
@@ -224,14 +252,20 @@ function UnlicensedBody({
 
 function LicensedBody({
   applicationId,
+  applicationConfirmed,
   showCalendly,
   autoLoginUrl,
+  activationPhase,
+  onRetryActivation,
   firstName,
   lastName,
 }: {
   applicationId: string | null;
+  applicationConfirmed: boolean;
   showCalendly: boolean;
   autoLoginUrl: string | null;
+  activationPhase: ActivationState["phase"];
+  onRetryActivation: () => void;
   firstName?: string | null;
   lastName?: string | null;
 }) {
@@ -246,7 +280,7 @@ function LicensedBody({
       {/* The path */}
       <div className="rounded-md border border-border/40 bg-muted/20 p-4 sm:p-5 space-y-3">
         <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Activation path</p>
-        <Step done label="Application received" />
+        <Step done={applicationConfirmed} label={applicationConfirmed ? "Application received" : "Application status not confirmed"} />
         <Step current label="Book your hire call" detail="The fastest path to your first check." />
         <Step label="Activate portal → submit contracting → complete training" />
       </div>
@@ -271,10 +305,8 @@ function LicensedBody({
         </GradientButton>
       )}
 
-      {/* One-click auto-login into the agent portal — Sam directive
-          2026-06-15: "They're logged in and everything like that." For
-          licensed applicants the destination is /dashboard (training course
-          is for unlicensed). Hidden until the magic-link mint returns. */}
+      {/* Keep portal access recoverable when the one-click link is unavailable.
+          The ordinary protected route preserves the contracting destination. */}
       {autoLoginUrl ? (
         <GradientButton asChild variant="outline" className="w-full" size="lg">
           <a href={autoLoginUrl} className="block">
@@ -282,7 +314,15 @@ function LicensedBody({
             Activate portal &amp; start contracting
           </a>
         </GradientButton>
-      ) : null}
+      ) : (
+        <div className="space-y-2 text-center">
+          {activationPhase === "loading" ? <Button type="button" variant="outline" className="w-full" disabled>Preparing portal access…</Button> : <>
+            <p role="status" className="text-sm text-muted-foreground">Portal access could not be prepared. Your hire call is still available above.</p>
+            {applicationId && <Button type="button" variant="outline" className="w-full" onClick={onRetryActivation}>Try portal access again</Button>}
+          </>}
+          <p><Link to={CONTRACTING_PROFILE_PATH} className="text-sm font-medium text-primary underline underline-offset-4">Open portal sign-in</Link></p>
+        </div>
+      )}
 
       <p className="text-xs text-center text-muted-foreground">
         Slack access is issued after you are hired and your {BRAND.shortName} identity

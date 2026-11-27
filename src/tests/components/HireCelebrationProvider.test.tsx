@@ -87,13 +87,14 @@ describe("the hire screen", () => {
     act(() => send());
     await flush();
     const status = screen.getByRole("status");
-    expect(status).toHaveTextContent("Welcome, Hire");
+    expect(status).toHaveTextContent("Hire 1 joined the team");
     expect(status).toHaveTextContent("Hire 1");
     expect(status).toHaveTextContent("Licensed");
     expect(status).toHaveTextContent("Recruited by Obiajulu Ifediora");
     expect(state.inFilter).toHaveBeenCalledWith("id", [recruiter, otherManager]);
     expect(document.body).not.toHaveTextContent("PRIVATE");
     expect(document.body).not.toHaveTextContent("example.com");
+    expect(document.body).not.toHaveTextContent("The team room has the post");
     expect(state.play).toHaveBeenCalledExactlyOnceWith("fanfare");
     fireEvent.click(screen.getByRole("button", { name: "Dismiss hire celebration" }));
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
@@ -173,11 +174,11 @@ describe("the hire screen", () => {
     await settle();
     act(() => { send(1); send(1); });
     await flush();
-    expect(screen.getByRole("status")).toHaveTextContent("Welcome, Hire");
+    expect(screen.getByRole("status")).toHaveTextContent("Hire 1 joined the team");
     expect(state.play).toHaveBeenCalledTimes(1);
     act(() => { for (let n = 2; n <= 7; n += 1) send(n); });
     await flush(HIRE_CELEBRATION_GAP_MS);
-    expect(screen.getByRole("status")).toHaveTextContent("6 new hires");
+    expect(screen.getByRole("status")).toHaveTextContent("6 agents joined the team");
     expect(screen.getByRole("status")).toHaveTextContent("and 2 more");
     expect(state.play).toHaveBeenCalledTimes(2);
     await flush(HIRE_CELEBRATION_DURATION_MS + 1000);
@@ -203,8 +204,8 @@ describe("the hire screen", () => {
     const view = render(<HireCelebrationProvider />);
     expect(state.channelFactory).not.toHaveBeenCalled();
     expect(state.from).not.toHaveBeenCalled();
-    setDemoMode(false);
     state.preview = true;
+    act(() => setDemoMode(false));
     view.rerender(<HireCelebrationProvider />);
     expect(state.channelFactory).not.toHaveBeenCalled();
     state.preview = false;
@@ -258,6 +259,55 @@ describe("the hire screen", () => {
     await flush();
     expect(screen.getByRole("status")).toHaveTextContent("Hire 1");
     expect(screen.getByRole("status")).not.toHaveTextContent("Recruited by");
+  });
+
+  it("shows a confirmed hire while names are pending and never reopens a dismissed screen", async () => {
+    let finishNames!: (value: { data: Array<{ id: string; display_name: string }>; error: null }) => void;
+    state.inFilter.mockReturnValueOnce(new Promise((resolve) => { finishNames = resolve; }));
+    render(<HireCelebrationProvider />);
+    await settle();
+    act(() => send(1));
+    await flush();
+    expect(screen.getByRole("status")).toHaveTextContent("Hire 1 joined the team");
+    expect(state.play).toHaveBeenCalledExactlyOnceWith("fanfare");
+    fireEvent.click(screen.getByRole("button", { name: "Dismiss hire celebration" }));
+    await act(async () => { finishNames({ data: [{ id: recruiter, display_name: "Recruiter Name" }], error: null }); });
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(state.play).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a saved hire visible when the optional names transport rejects", async () => {
+    state.inFilter.mockRejectedValueOnce(new Error("Network unavailable"));
+    render(<HireCelebrationProvider />);
+    await settle();
+    act(() => send(1));
+    await flush();
+    expect(screen.getByRole("status")).toHaveTextContent("Hire 1 joined the team");
+    expect(screen.getByRole("status")).not.toHaveTextContent("Recruited by");
+    expect(state.play).toHaveBeenCalledExactlyOnceWith("fanfare");
+  });
+
+  it.each(["hidden tab", "presentation"] as const)("does not replay a pending name lookup after a %s cycle", async (mode) => {
+    let finishNames!: (value: { data: Array<{ id: string; display_name: string }>; error: null }) => void;
+    state.inFilter.mockReturnValueOnce(new Promise((resolve) => { finishNames = resolve; }));
+    render(<HireCelebrationProvider />);
+    await settle();
+    act(() => send(1));
+    await flush();
+    act(() => {
+      if (mode === "hidden tab") {
+        Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
+        document.dispatchEvent(new Event("visibilitychange"));
+        Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+        document.dispatchEvent(new Event("visibilitychange"));
+      } else {
+        const release = suppressDealCelebrations();
+        release();
+      }
+    });
+    await act(async () => { finishNames({ data: [{ id: recruiter, display_name: "Recruiter Name" }], error: null }); });
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(state.play).toHaveBeenCalledTimes(1);
   });
 
   it("retains a static readable screen with reduced motion and nonblocking decoration", () => {

@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { resolveBrand } from "@/config/brand";
 import { AwardCopyActions, useOwnedAwardSelection } from "@/components/awards/AwardCopyActions";
 import { presentPlaqueDate, presentPlaqueMetric } from "@/components/awards/plaqueAwardPresentation";
+import { TrophyProgression } from "@/components/awards/TrophyProgression";
 import "@/components/awards/awards.css";
 
 export interface PlaqueRow {
@@ -127,6 +128,8 @@ const TIER_META: Record<string, TierMeta> = {
   single_day_platinum: { label: "Platinum",     accent: TONE.elite,     emoji: "💎" },
   single_day:          { label: "Gold",         accent: TONE.gold,      emoji: "🥇" },
   single_day_bronze:   { label: "Bronze",       accent: TONE.bronze,    emoji: "🥉" },
+  weekly:             { label: "Diamond Week", accent: TONE.elite, emoji: "💠" },
+  monthly:            { label: "Elite Producer", accent: TONE.elite, emoji: "👑" },
   diamond_week:        { label: "Diamond Week", accent: TONE.elite,     emoji: "💠" },
   hot_streak:          { label: "Hot Streak",   accent: TONE.streak,    emoji: "🔥" },
   // Two different awards, previously both reading "First Deal": the daily race
@@ -515,6 +518,8 @@ export default function AwardsGallery() {
         <Button asChild variant="outline"><Link to="/dashboard/hall-of-fame">Hall of Fame</Link></Button>
         {isAdmin && <Button asChild variant="outline"><Link to="/awards">Win Post Studio</Link></Button>}
       </nav>
+
+      <TrophyProgression />
 
       {awards.isError && (
         <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/50 bg-destructive/10 p-4">

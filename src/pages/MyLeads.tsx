@@ -31,6 +31,8 @@ import { QueryState } from "@/components/ui/query-state";
 import { LeadFilterSelect, LeadPagination, LeadSearchField } from "@/components/leads/LeadWorklistControls";
 import { useLeadPagination } from "@/hooks/useLeadPagination";
 import { matchesLeadQuery } from "@/lib/leadWorklist";
+import { compareLeadResponse, leadResponsePriority } from "@/lib/leadResponsePriority";
+import { formatRelativeFromNow } from "@/lib/dateUtils";
 
 interface MyLead {
   item_id: string;
@@ -64,7 +66,8 @@ interface MyLead {
 const heldReason = (r: Pick<MyLead, "attrs" | "status">): string => {
   if (r.status === "do_not_call") return "Do not call";
   const flags = r.attrs ?? {};
-  return holdLabels({ true_dnc: flags.true_dnc, dnc: flags.dnc, current_client: flags.current_client, import_review_required: flags.import_review_required }).join(" · ");
+  const labels = holdLabels({ true_dnc: flags.true_dnc, dnc: flags.dnc, current_client: flags.current_client, import_review_required: flags.import_review_required, invalid_number: flags.invalid_number });
+  return labels.join(" · ") || (flags.blocked === true ? "Contact held" : "");
 };
 const callableNow = (r: Pick<MyLead, "callable_now" | "attrs" | "status">) => r.callable_now !== false && !heldReason(r);
 function opensLabel(iso: string | null | undefined): string {
@@ -83,19 +86,16 @@ function earliestOpening(list: Array<Pick<MyLead, "callable_at">>): string | nul
   for (const r of list) if (r.callable_at && (!best || r.callable_at < best)) best = r.callable_at;
   return best;
 }
-type Show = "open" | "done" | "held" | "all";
+type Show = "open" | "scheduled" | "done" | "held" | "all";
 const SHOW: ReadonlyArray<{ key: Show; label: string }> = [
   { key: "open", label: "To call" },
+  { key: "scheduled", label: "Scheduled" },
   { key: "done", label: "Done" },
   { key: "held", label: "Held" },
   { key: "all", label: "All" },
 ];
-// To call, in the order that makes money (2026-11-19). Measured that day: 656 leads were in agents' hands and 420
-// had never been touched, while the list drew every lead with all eight result buttons open (two leads to a phone
-// screen, 17,000px for a 44-lead pack). People who asked for a call back or booked a time come first, then leads
-// nobody has called, then the no-answers to retry. The sort is stable, so the server's order holds inside each step.
-const CALL_ORDER: Record<string, number> = { callback: 0, appointment: 0, new: 1, no_answer: 2 };
-const callRank = (status: string) => CALL_ORDER[status] ?? 3;
+// Due work, unscheduled follow-ups, oldest first-outcome leads, then retries.
+// A future callback is planned work, not an overdue response.
 const shortDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "");
 
 // ---- Full client file (Sam, 2026-11-09: "they need to be able to see all
@@ -215,6 +215,13 @@ export default function MyLeads() {
   // The one lead whose result buttons are showing. null = the first lead in view (so the page opens ready to
   // work), "" = the agent closed it. Every other lead is a single line until it is opened or its number is tapped.
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [focusLeadId, setFocusLeadId] = useState<string | null>(null);
+  const leadElements = useRef(new Map<string, HTMLLIElement>());
+  const [clock, setClock] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setClock(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
   const [search, setSearch] = useState("");
   const [stateFilter, setStateFilter] = useState("");
   const [bundleFilter, setBundleFilter] = useState("");
@@ -295,12 +302,15 @@ export default function MyLeads() {
   const myWorked = rows.filter((r) => !isOpenLead(r.status)).length;
   // Sam (2026-11-10): after 7 PM leads can't be worked, so they leave "To call". Closed
   // leads stay under "All" so a call made at 6:58 can still be logged.
-  const inView = (r: MyLead, s: Show) => s === "all" || (s === "held" ? !!heldReason(r) : s === "open" ? isOpenLead(r.status) && callableNow(r) : !isOpenLead(r.status));
+  const inView = (r: MyLead, s: Show) => s === "all" || (s === "held" ? !!heldReason(r)
+    : s === "scheduled" ? !heldReason(r) && leadResponsePriority(r, clock).kind === "scheduled"
+    : s === "open" ? isOpenLead(r.status) && callableNow(r) && leadResponsePriority(r, clock).kind !== "scheduled"
+    : !isOpenLead(r.status));
   const matchingRows = rows.filter((r) => (!stateFilter || r.state === stateFilter) && (!bundleFilter || r.bundle_id === bundleFilter)
     && matchesLeadQuery(search, [r.first_name, r.last_name, r.email, r.state, r.bundle_name], [r.phone10]));
   const count = (s: Show) => matchingRows.filter((r) => inView(r, s)).length;
   const matched = matchingRows.filter((r) => inView(r, show));
-  const visible = show === "open" ? [...matched].sort((a, b) => callRank(a.status) - callRank(b.status)) : matched;
+  const visible = show === "open" || show === "scheduled" ? [...matched].sort((a, b) => compareLeadResponse(a, b, clock)) : matched;
   const pagination = useLeadPagination(visible, JSON.stringify([show, search, stateFilter, bundleFilter]));
   const { pageSize, setPage } = pagination;
   const openId = activeId === "" ? null : pagination.items.some((r) => r.item_id === activeId) ? activeId : pagination.items[0]?.item_id ?? null;
@@ -310,18 +320,37 @@ export default function MyLeads() {
     const index = visible.findIndex((r) => r.item_id === activeId);
     if (index >= 0) setPage(Math.floor(index / pageSize));
   }, [activeId, visible, pageSize, setPage]);
+  useEffect(() => {
+    if (!focusLeadId) return;
+    const element = leadElements.current.get(focusLeadId);
+    if (!element || openId !== focusLeadId) return;
+    element.scrollIntoView?.({ behavior: "smooth", block: "center" });
+    element.focus({ preventScroll: true });
+    setFocusLeadId(null);
+  }, [focusLeadId, openId, pagination.page, pagination.items]);
   const states = [...new Set(rows.map((r) => r.state).filter((state): state is string => !!state))].sort();
   const bundles = [...new Map(rows.map((r) => [r.bundle_id, r.bundle_name])).entries()];
   const filtersActive = !!(search.trim() || stateFilter || bundleFilter || show !== "open");
   const resetFilters = () => { setSearch(""); setStateFilter(""); setBundleFilter(""); setShow("open"); setActiveId(null); };
   orderRef.current = visible.map((r) => r.item_id);
   openRef.current = openId;
-  const callbacksDue = rows.filter((r) => (r.status === "callback" || r.status === "appointment") && callableNow(r)).length;
+  const actionable = rows.filter((r) => inView(r, "open") && !!phoneHref(r.phone10)).sort((a, b) => compareLeadResponse(a, b, clock));
+  const nextLead = actionable[0];
+  const callbacksDue = actionable.filter((r) => leadResponsePriority(r, clock).kind === "overdue").length;
+  const missingPlans = actionable.filter((r) => leadResponsePriority(r, clock).kind === "followup_unplanned").length;
+  const firstOutcomes = actionable.filter((r) => leadResponsePriority(r, clock).kind === "first_outcome").length;
+  const workNextLead = () => {
+    if (!nextLead || !q.isSuccess) return;
+    resetFilters(); setPage(0); setActiveId(nextLead.item_id); setFocusLeadId(nextLead.item_id);
+  };
   const closedOpen = rows.filter((r) => isOpenLead(r.status) && !heldReason(r) && !callableNow(r));
   const heldCount = rows.filter((r) => !!heldReason(r)).length;
   const groups: Array<{ id: string; name: string; note: string | null; format: string; leads: MyLead[] }> = [];
   for (const r of pagination.items) {
-    const g = groups.find((x) => x.id === r.bundle_id);
+    // Keep the priority order across packs instead of regrouping later leads
+    // ahead of an earlier deadline in another pack.
+    const last = groups[groups.length - 1];
+    const g = last?.id === r.bundle_id ? last : undefined;
     if (g) g.leads.push(r);
     else groups.push({ id: r.bundle_id, name: r.bundle_name, note: r.bundle_note, format: r.format, leads: [r] });
   }
@@ -329,18 +358,21 @@ export default function MyLeads() {
     <div className="space-y-6">
       <PageHeader title="My Leads" subtitle="Leads given to you to work. Call, then tap what happened." />
       <LeadStatePrompt />
-      {rows.length > 0 && (
+      {q.isSuccess && rows.length > 0 && (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-border/60 bg-muted/20 p-3 text-sm">
           <span className="inline-flex items-center gap-1.5 font-semibold">
-            <Trophy className="h-4 w-4 text-primary" /> You: {myWorked} worked · {mySold} sold
+            <Trophy className="h-4 w-4 text-primary" /> {myWorked} completed outcomes · {mySold} marked sold
           </span>
           {callbacksDue > 0 && (
             <Badge variant="outline" className="border-primary/40 bg-primary/10 font-normal text-primary" data-testid="callbacks-due">
-              {callbacksDue} waiting on your call back, listed first
+              {callbacksDue} follow-up{callbacksDue === 1 ? "" : "s"} due, listed first
             </Badge>
           )}
+          {missingPlans > 0 && <Badge variant="outline" data-testid="followups-unplanned">{missingPlans} follow-up{missingPlans === 1 ? " needs" : "s need"} an agreed time</Badge>}
+          {firstOutcomes > 0 && <Badge variant="outline" data-testid="first-outcomes-pending">{firstOutcomes} awaiting a first outcome</Badge>}
+          {nextLead && <Button type="button" size="sm" onClick={workNextLead}>Work next lead</Button>}
           <span className="text-muted-foreground">
-            Work a lead: <b className="text-foreground">1.</b> Call · <b className="text-foreground">2.</b> Record what happened · <b className="text-foreground">3.</b> Tap the result
+            Open the call, then save the actual outcome. Opening the phone app alone does not record a result.
           </span>
         </div>
       )}
@@ -392,7 +424,7 @@ export default function MyLeads() {
             </div>
           ) : (
             groups.map((g) => (
-              <GlassCard key={g.id} className="p-0">
+              <GlassCard key={`${g.id}:${g.leads[0].item_id}`} className="p-0">
                 <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
                   <div>
                     <div className="text-sm font-semibold">
@@ -402,11 +434,12 @@ export default function MyLeads() {
                     {g.note && <p className="mt-1 text-xs italic text-amber-300/90">“{g.note}”</p>}
                   </div>
                   {(() => {
+                    if (groups.find(group => group.id === g.id) !== g) return null;
                     const selected = visible.filter((r) => r.bundle_id === g.id);
-                    const fresh = selected.filter((r) => r.status === "new" && callableNow(r)).length;
-                    return fresh > 0 ? (
-                      <Button type="button" size="sm" onClick={() => { setWorkLeadIds(new Set(selected.map((r) => r.item_id))); setWorkBundle(g.id); }}>
-                        <PhoneCall className="mr-1.5 h-3.5 w-3.5" /> Work leads ({fresh})
+                    const fresh = selected.filter((r) => r.status === "new" && callableNow(r) && leadResponsePriority(r, clock).kind === "first_outcome" && !!phoneHref(r.phone10));
+                    return fresh.length > 0 ? (
+                      <Button type="button" size="sm" onClick={() => { setWorkLeadIds(new Set(fresh.map((r) => r.item_id))); setWorkBundle(g.id); }}>
+                        <PhoneCall className="mr-1.5 h-3.5 w-3.5" /> Work leads ({fresh.length})
                       </Button>
                     ) : null;
                   })()}
@@ -416,9 +449,10 @@ export default function MyLeads() {
                     const hoursOpen = callableNow(l);
                     const href = canDial(l.status) && hoursOpen ? phoneHref(l.phone10) : null;
                     const open = openId === l.item_id;
+                    const response = leadResponsePriority(l, clock);
                     const leadName = [l.first_name, l.last_name].filter(Boolean).join(" ") || "Name not on file";
                     return (
-                      <li key={l.item_id} className={cn("px-4 py-2.5", open && "bg-muted/20")} data-testid="lead-row" data-open={open ? "true" : "false"}>
+                      <li key={l.item_id} ref={(element) => { if (element) leadElements.current.set(l.item_id, element); else leadElements.current.delete(l.item_id); }} tabIndex={-1} className={cn("px-4 py-2.5 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]", open && "bg-muted/20")} data-testid="lead-row" data-open={open ? "true" : "false"}>
                         <div className="flex items-start gap-1">
                         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 py-1.5">
                           <span className="font-medium">
@@ -434,7 +468,7 @@ export default function MyLeads() {
                             <a href={href} {...contactLinkProps(href)} onClick={dialTapHandler(l.item_id)} onClickCapture={() => setActiveId(l.item_id)} data-testid="lead-call-link" className="inline-flex min-h-[32px] items-center gap-1 font-medium text-primary hover:underline"><Phone className="h-3.5 w-3.5" />{formatPhoneDisplay(l.phone10)}</a>
                           ) : (
                             <span className="text-muted-foreground">
-                              {formatPhoneDisplay(l.phone10)} · {heldReason(l) || (canDial(l.status) && !hoursOpen ? `calling hours closed, opens ${opensLabel(l.callable_at)}` : "do not call")}
+                              {formatPhoneDisplay(l.phone10)} · {heldReason(l) || (canDial(l.status) && !hoursOpen ? `calling hours closed, opens ${opensLabel(l.callable_at)}` : "phone unavailable")}
                             </span>
                           )}
                           {/* A closed row carries the tier as a plain label; the tappable badge that explains the tiers is a
@@ -445,6 +479,10 @@ export default function MyLeads() {
                             <Badge variant="outline" className={cn("font-normal", TIER_STYLE[l.quality_tier ?? ""] ?? "")}>{tierLabel(l.quality_tier)}</Badge>
                           )}
                           <span className="text-muted-foreground">{leadStatusLabel(l.status)}{l.status_note ? `: ${l.status_note}` : ""}</span>
+                          {isOpenLead(l.status) && !heldReason(l) && <span className={cn("text-xs", response.kind === "overdue" ? "font-semibold text-destructive" : "text-muted-foreground")} data-testid="lead-response-state">
+                            {response.label}{response.dueAt ? ` · ${new Date(response.dueAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}` : ""}
+                            {l.status === "new" ? response.assignedAt ? ` · assigned ${formatRelativeFromNow(response.assignedAt, clock)}` : " · assignment time unknown" : ""}
+                          </span>}
                         </div>
                           <Button
                             type="button"
@@ -461,6 +499,7 @@ export default function MyLeads() {
                         </div>
                         {open && (
                         <div className="space-y-2 pb-1.5 pt-1" data-testid="lead-panel">
+                          {isOpenLead(l.status) && !heldReason(l) && <p className="text-sm font-medium" data-testid="lead-next-action">Next: {response.nextAction}</p>}
                           <button
                             type="button"
                             onClick={() => setDetailOpen((s) => { const n = new Set(s); if (n.has(l.item_id)) n.delete(l.item_id); else n.add(l.item_id); return n; })}
@@ -509,6 +548,7 @@ export default function MyLeads() {
                             <CallCenterVoiceRecorder key={l.item_id} {...recorderProps(l.item_id)} className="rounded-lg border border-border/60 p-3" />
                           )}
                         </div>
+                        {isOpenLead(l.status) && !heldReason(l) && <LeadFollowUp key={`${l.item_id}:${String(l.attrs?.callback_at ?? "")}:${String(l.attrs?.next_action ?? "")}`} itemId={l.item_id} context={l.attrs} />}
                         </div>
                         )}
                       </li>
@@ -524,7 +564,7 @@ export default function MyLeads() {
       {workBundle && (() => {
         const pack = rows.filter((r) => r.bundle_id === workBundle && workLeadIds.has(r.item_id));
         if (pack.length === 0) { return null; }
-        const queue = pack.filter((r) => r.status === "new" && callableNow(r));
+        const queue = pack.filter((r) => r.status === "new" && callableNow(r) && leadResponsePriority(r, clock).kind !== "scheduled" && !!phoneHref(r.phone10)).sort((a, b) => compareLeadResponse(a, b, clock));
         const waiting = pack.filter((r) => r.status === "new" && !heldReason(r) && !callableNow(r));
         const held = pack.filter((r) => !!heldReason(r));
         const cur = queue[0] ?? null;
@@ -577,6 +617,7 @@ export default function MyLeads() {
                     <GlassCard className="p-4">
                       <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Client file</p>
                       <LeadDetailGrid itemId={cur.item_id} context={cur.attrs} />
+                      <LeadFollowUp key={cur.item_id} itemId={cur.item_id} context={cur.attrs} />
                     </GlassCard>
                     <div className="space-y-2">
                       <p className="text-sm font-medium">What happened? <span className="font-normal text-muted-foreground">(required — this is what moves you to the next lead)</span></p>
@@ -626,7 +667,7 @@ export default function MyLeads() {
                       </>
                     ) : (
                       <>
-                        <h2 className="text-xl font-semibold">Pack worked — every lead has a result.</h2>
+                        <h2 className="text-xl font-semibold">Every lead in this session has a saved outcome or follow-up.</h2>
                         <p className="text-sm text-muted-foreground">{pack.length} lead{pack.length === 1 ? "" : "s"} · {soldN} sold. Callbacks and no-answers stay in your To call list.</p>
                       </>
                     )}
@@ -667,7 +708,6 @@ function LeadDetailGrid({ itemId, context }: { itemId: string; context: Record<s
           </div>)}
         </dl>)}
       </section>}
-    {context?.blocked !== true && <LeadFollowUp itemId={itemId} context={context} />}
   </div>;
 }
 
@@ -681,11 +721,12 @@ function LeadFollowUp({ itemId, context }: { itemId: string; context: Record<str
   const [action, setAction] = useState(typeof context?.next_action === "string" ? context.next_action : "");
   const save = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.rpc("lead_bundle_followup_set" as never, {
+      const { data, error } = await supabase.rpc("lead_bundle_followup_set" as never, {
         p_item: itemId, p_callback_at: callback ? new Date(callback).toISOString() : null,
         p_next_action: action.trim() || null,
       } as never);
       if (error) throw new Error(error.message);
+      if ((data as { ok?: boolean } | null)?.ok !== true) throw new Error("Follow-up could not be confirmed. Refresh before retrying.");
     },
     onSuccess: () => { toast.success("Follow-up saved"); qc.invalidateQueries({ queryKey: MY_LEADS_QUERY_KEY }); },
     onError: (error: Error) => toast.error(error.message),

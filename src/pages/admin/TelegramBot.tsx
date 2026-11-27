@@ -663,7 +663,7 @@ function BroadcastPanel({ templates }: { templates: Template[] }) {
           <div className="space-y-2">
             <Label>Audience</Label>
             <Select value={audience} onValueChange={setAudience}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger aria-label="Broadcast audience"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {BROADCAST_STAGES.map((s) => (
                   <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
@@ -678,7 +678,7 @@ function BroadcastPanel({ templates }: { templates: Template[] }) {
           <div className="space-y-2">
             <Label>Template</Label>
             <Select value={templateKey} onValueChange={onTemplateChange}>
-              <SelectTrigger><SelectValue placeholder="Pick a template" /></SelectTrigger>
+              <SelectTrigger aria-label="Broadcast template"><SelectValue placeholder="Pick a template" /></SelectTrigger>
               <SelectContent>
                 {templates.filter((t) => t.active).map((t) => (
                   <SelectItem key={t.key} value={t.key}>{t.key}</SelectItem>

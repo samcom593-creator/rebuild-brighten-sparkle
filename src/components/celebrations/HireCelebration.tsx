@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { X } from "lucide-react";
 import { HIRE_BATCH_NAMES_SHOWN, hireHeadline, type HireCelebrationBatch } from "@/lib/hireCelebrations";
 import { prefersReducedMotion } from "@/lib/celebrate";
+import { CelebrationTrophy } from "./CelebrationTrophy";
 import "./hire-celebration.css";
 
 // Hex is what canvas-confetti reads: the dark-theme tones from src/styles/delight.css.
@@ -43,6 +44,7 @@ export function HireCelebration({ batch, managerNames, onDismiss }: {
     <aside className="hire-celebration" aria-label="New hire celebration">
       <div className="hire-celebration-backdrop" aria-hidden="true" />
       <div className="hire-celebration-card">
+        <CelebrationTrophy />
         <div className="hire-celebration-balloons" aria-hidden="true">
           {/* stable-key-allow:fixed-decorative-balloons */}
           {Array.from({ length: 6 }, (_, index) => <span key={index} />)}
@@ -66,7 +68,7 @@ export function HireCelebration({ batch, managerNames, onDismiss }: {
             })}
             {more > 0 && <li className="hire-celebration-more">and {more} more</li>}
           </ul>
-          <p className="hire-celebration-note">Added to the Galaxy roster. The team room has the post.</p>
+          <p className="hire-celebration-note">Added to the Galaxy roster. Welcome to the team.</p>
         </div>
         <button className="hire-celebration-dismiss" type="button" aria-label="Dismiss hire celebration" onClick={onDismiss}>
           <X aria-hidden="true" size={20} />

@@ -143,7 +143,7 @@ function QuickAssignPanel({ managers, unassignedCount, onAssign }: {
         </div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
           <Select value={selectedManager} onValueChange={setSelectedManager}>
-            <SelectTrigger className="w-[200px] h-9 text-sm">
+            <SelectTrigger aria-label="Manager for unassigned leads" className="w-[200px] h-9 text-sm">
               <SelectValue placeholder="Select manager..." />
             </SelectTrigger>
             <SelectContent>
@@ -800,7 +800,7 @@ export default function DashboardAgedLeads() {
           ))}
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[140px] h-8 text-xs">
+          <SelectTrigger aria-label="Filter aged leads by status" className="w-[140px] h-8 text-xs">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -814,7 +814,7 @@ export default function DashboardAgedLeads() {
           </SelectContent>
         </Select>
         <Select value={sourceFilter} onValueChange={(v) => setSourceFilter(v as "all" | "aged" | "new_drip")}>
-          <SelectTrigger className="w-[130px] h-8 text-xs">
+          <SelectTrigger aria-label="Filter aged leads by source" className="w-[130px] h-8 text-xs">
             <SelectValue placeholder="Source" />
           </SelectTrigger>
           <SelectContent>
@@ -925,7 +925,7 @@ export default function DashboardAgedLeads() {
                 </>
               )}
               <Select value={bulkAssignManagerId} onValueChange={setBulkAssignManagerId}>
-                <SelectTrigger className="w-[180px] h-8 text-xs">
+                <SelectTrigger aria-label="Manager for selected leads" className="w-[180px] h-8 text-xs">
                   <SelectValue placeholder="Select manager..." />
                 </SelectTrigger>
                 <SelectContent>

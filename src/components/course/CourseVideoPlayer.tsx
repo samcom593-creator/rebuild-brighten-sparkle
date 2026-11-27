@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { Play, CheckCircle, Clock, ExternalLink, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -73,12 +74,12 @@ export function CourseVideoPlayer({
     : null;
   // Sam-feedback 2026-06-01: 11 modules pointed at the @SamuelJamesHQ channel
   // home as a placeholder, which couldn't be embedded. Detect channel/home
-  // URLs and show a "Recording in progress" CTA instead of a broken player.
+  // URLs and show the available lesson actions instead of a broken player.
   const isPlaceholder =
     isYouTube && !youtubeId && /(@|user\/|channel\/|c\/|\/playlist)/.test(videoUrl);
 
   if (isPlaceholder) {
-    return <VideoComingSoonCard channelUrl={videoUrl} onMarkWatched={onVideoComplete} />;
+    return <VideoUnavailableCard onMarkWatched={onVideoComplete} />;
   }
 
   if (isYouTube && youtubeId) {
@@ -231,33 +232,28 @@ function DriveResourcePlayer({
   );
 }
 
-// ─── Coming-soon placeholder for modules whose video isn't recorded yet ─
+// A channel or playlist URL does not establish that a lesson recording exists.
 
-function VideoComingSoonCard({ channelUrl, onMarkWatched }: { channelUrl: string; onMarkWatched: () => void }) {
+function VideoUnavailableCard({ onMarkWatched }: { onMarkWatched: () => void }) {
   return (
-    <div className="relative w-full aspect-video rounded-md overflow-hidden bg-white dark:bg-card flex flex-col items-center justify-center text-center px-6">
+    <div className="relative w-full min-h-80 md:aspect-video rounded-md bg-white dark:bg-card flex flex-col items-center justify-center text-center px-6 pb-6 pt-16">
       <div className="absolute top-4 left-4">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-600/15 px-3 py-1 text-xs font-medium text-amber-300 border border-amber-600/40">
-          <Clock className="h-3 w-3" /> Recording in progress
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-600/15 px-3 py-1 text-xs font-medium text-amber-700 dark:text-amber-300 border border-amber-600/40">
+          <Clock className="h-3 w-3" /> Lesson recording unavailable
         </span>
       </div>
       <div className="h-16 w-16 rounded-full bg-amber-500/15 flex items-center justify-center mb-4">
         <Play className="h-8 w-8 text-amber-400" />
       </div>
-      <h3 className="text-lg font-bold text-foreground mb-2">Video coming soon</h3>
+      <h3 className="text-lg font-bold text-foreground mb-2">Continue with the lesson material</h3>
       <p className="text-sm text-muted-foreground max-w-md mb-6">
-        Sam is finalizing this module's video. In the meantime, read the description below to
-        cover the material, then check back when the video drops. Subscribe to be notified.
+        This lesson does not have a playable recording. Review the material below before
+        marking it as read. Contact support if you need help with the lesson.
       </p>
       <div className="flex flex-wrap items-center justify-center gap-2">
-        <a
-          href={channelUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 rounded-md bg-rose-600 hover:bg-rose-700 px-4 py-2 text-sm font-medium text-white"
-        >
-          <Play className="h-4 w-4" /> Subscribe on YouTube
-        </a>
+        <Button asChild variant="outline" size="sm">
+          <Link to="/dashboard/help">Get lesson help</Link>
+        </Button>
         <Button variant="outline" size="sm" onClick={onMarkWatched} className="gap-1">
           <CheckCircle className="h-4 w-4" /> Mark as read (unlock quiz)
         </Button>

@@ -9,6 +9,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { gateResend } from "../_shared/resend-gate.ts";
 import { DEPARTED_AGENT_COLUMNS, isDepartedAgent } from "../_shared/departed.ts";
+import { completionOwner, confirmFieldTrainingStage } from "./contract.ts";
 
 const resend = gateResend(new Resend(Deno.env.get("RESEND_API_KEY")));
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -49,9 +50,11 @@ const handler = async (req: Request): Promise<Response> => {
     if (roleError) return json({ error: "Could not check your role" }, 503);
     const callerIsAdmin = (roleRows ?? []).some((r: { role: string }) => r.role === "admin");
     if (!callerIsAdmin) {
-      const { data: owned, error: ownError } = await supabase.from("agents").select("id").eq("id", agentId).eq("user_id", caller.user.id).limit(1);
-      if (ownError) return json({ error: "Could not check agent ownership" }, 503);
-      if (!owned?.length) return json({ error: "You can only report your own course completion" }, 403);
+      const callerClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        auth: { persistSession: false }, global: { headers: { Authorization: `Bearer ${jwt}` } },
+      });
+      const ownership = completionOwner(await callerClient.rpc("personal_task_identity"), caller.user.id, agentId);
+      if (!ownership.ok) return json({ error: ownership.error }, ownership.status);
     }
     const { data: completion, error: completionError } = await supabase
       .from("v_training_required_completion")
@@ -68,11 +71,17 @@ const handler = async (req: Request): Promise<Response> => {
     // Get agent's manager and profile (include manager_id as fallback).
     // license_status gates licensed-only content (matches
     // send-agent-onboarding-email guard).
-    const { data: agent } = await supabase
+    const { data: agent, error: agentError } = await supabase
       .from("agents")
-      .select("invited_by_manager_id, manager_id, profile_id, license_status")
+      .select("invited_by_manager_id, manager_id, profile_id, license_status, status, is_inactive, is_deactivated")
       .eq("id", agentId)
       .single();
+    if (agentError || !agent) return json({ error: "The training account could not be loaded" }, 503);
+    if (isDepartedAgent(agent) || agent.is_inactive || !["active", "pending"].includes(agent.status)) {
+      return json({ error: "An active training account is required" }, 409);
+    }
+    // Confirm progression before any existing completion notification is attempted.
+    await confirmFieldTrainingStage(supabase, agentId);
 
     const licenseStatus = (agent?.license_status ?? "").toString().toLowerCase();
     const isLicensed = licenseStatus === "licensed";
@@ -309,12 +318,6 @@ const handler = async (req: Request): Promise<Response> => {
         console.log(`Congratulations email sent to: ${finalAgentEmail}`);
       }
     }
-
-    // Update agent's onboarding stage to in_field_training
-    await supabase
-      .from("agents")
-      .update({ onboarding_stage: "in_field_training" })
-      .eq("id", agentId);
 
     // NOTE (MP-345): the progression event is deliberately NOT logged here.
     // This previously inserted into `agent_onboarding`, a relation that exists in

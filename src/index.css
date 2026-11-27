@@ -2185,7 +2185,7 @@ html.dark,
 h1,
 .h1,
 .galaxy-display {
-  font-style: italic;
+  font-style: normal;
   font-weight: 800;
 }
 .font-display {
@@ -2215,18 +2215,10 @@ h1.page-title {
 
 .galaxy-card {
   position: relative;
-  border-radius: 8px;
+  border-radius: var(--apex-r-lg);
 }
 .galaxy-card::before {
-  content: "";
-  position: absolute;
-  top: -1px;
-  left: 14px;
-  width: 44px;
-  height: 3px;
-  background: hsl(var(--primary));
-  clip-path: polygon(4% 0, 100% 0, 94% 100%, 0 80%);
-  pointer-events: none;
+  content: none;
 }
 
 /* Legacy card classes use the same quiet canvas as the shared primitives. */

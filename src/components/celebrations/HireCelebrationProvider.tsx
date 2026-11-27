@@ -5,7 +5,7 @@ import { useRolePreview } from "@/hooks/useRolePreview";
 import { playSoundEffect, getSoundReadiness, stopSoundEffects } from "@/lib/soundEngine";
 import { isSoundEnabled, subscribeSoundPreference } from "@/lib/soundPreference";
 import { isDemoMode, subscribeDemoMode } from "@/lib/demoMode";
-import { DealCelebrationLedger, areDealCelebrationsSuppressed, subscribeDealCelebrationSuppression } from "@/lib/dealCelebrations";
+import { DealCelebrationLedger, areDealCelebrationsSuppressed, readCelebrationAgentNames, subscribeDealCelebrationSuppression } from "@/lib/dealCelebrations";
 import {
   addHireToBatch, canViewHire, HIRE_BATCH_DELAY_MS, HIRE_CELEBRATION_DURATION_MS, HIRE_CELEBRATION_GAP_MS,
   readRealtimeHire, type Hire, type HireCelebrationBatch,
@@ -45,6 +45,8 @@ export function HireCelebrationProvider() {
     let dismissTimer: ReturnType<typeof setTimeout> | undefined;
     let lastShownAt = -Infinity;
     let visibleSince = armedAt;
+    let visibilityEpoch = 0;
+    let suppressionEpoch = 0;
 
     const clearPending = () => {
       clearTimeout(flushTimer);
@@ -61,24 +63,32 @@ export function HireCelebrationProvider() {
       // "Recruited by" chip, it never invents a name.
       const { data, error } = await supabase.from("agents").select("id, display_name").in("id", ids);
       if (error || !data) return {};
-      const names: Record<string, string> = {};
-      for (const row of data) if (typeof row.display_name === "string" && row.display_name.trim()) names[row.id] = row.display_name.trim();
-      return names;
+      return readCelebrationAgentNames(data, ids);
     };
-    // Read through a call on purpose: the tab can go hidden DURING the awaited
-    // name read below, and a bare property read would be narrowed to "visible"
-    // by the first guard (TS2367 on the second check).
     const tabHidden = () => document.visibilityState === "hidden";
-    const flush = async () => {
+    const flush = () => {
       flushTimer = undefined;
       if (!live || isDemoMode() || areDealCelebrationsSuppressed() || tabHidden() || !batch) { clearPending(); return; }
       const shown = batch;
       const maySound = batchMaySound;
       batch = null;
       batchMaySound = false;
-      const managerNames = await managerNamesFor(shown.hires);
-      if (!live || isDemoMode() || areDealCelebrationsSuppressed() || tabHidden()) return;
-      setActive({ ...shown, userId, managerNames });
+      setActive({ ...shown, userId, managerNames: {} });
+      const nameVisibility = visibilityEpoch;
+      const nameSuppression = suppressionEpoch;
+      // The authorized hire is already confirmed. Optional recruiter names
+      // cannot delay the win or revive a dismissed, hidden or replaced batch.
+      void (async () => {
+        try {
+          const managerNames = await managerNamesFor(shown.hires);
+          if (!live || nameVisibility !== visibilityEpoch || nameSuppression !== suppressionEpoch
+            || isDemoMode() || areDealCelebrationsSuppressed() || tabHidden()) return;
+          setActive((current) => current?.key === shown.key && current.userId === userId ? { ...current, managerNames } : current);
+        } catch {
+          // A failed optional lookup leaves the confirmed hire visible.
+          return;
+        }
+      })();
       lastShownAt = Date.now();
       // A pre-gesture or muted event stays silent even if audio is enabled during
       // the aggregation window. There is no sound backlog.
@@ -99,10 +109,12 @@ export function HireCelebrationProvider() {
       }
     };
     const onVisibility = () => {
+      visibilityEpoch += 1;
       if (document.visibilityState === "hidden") clearPending();
       else visibleSince = Date.now();
     };
     const unsubscribeSuppression = subscribeDealCelebrationSuppression(() => {
+      suppressionEpoch += 1;
       if (areDealCelebrationsSuppressed()) { clearPending(); stopSoundEffects("fanfare"); }
       else visibleSince = Date.now();
     });

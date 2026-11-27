@@ -386,11 +386,11 @@ export default function AgentManagement() {
           />
         </div>
         <Select value={stageFilter} onValueChange={setStageFilter}>
-          <SelectTrigger className="w-full sm:w-[160px]"><SelectValue /></SelectTrigger>
+          <SelectTrigger aria-label="Filter agents by stage" className="w-full sm:w-[160px]"><SelectValue /></SelectTrigger>
           <SelectContent>{STAGE_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
         </Select>
         <Select value={licenseFilter} onValueChange={setLicenseFilter}>
-          <SelectTrigger className="w-full sm:w-[140px]"><SelectValue /></SelectTrigger>
+          <SelectTrigger aria-label="Filter agents by license status" className="w-full sm:w-[140px]"><SelectValue /></SelectTrigger>
           <SelectContent>{LICENSE_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
         </Select>
         <Button
@@ -402,7 +402,7 @@ export default function AgentManagement() {
           <TrendingUp className="h-3.5 w-3.5" /> Producing only
         </Button>
         <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
-          <SelectTrigger className="w-full sm:w-[150px]"><SelectValue /></SelectTrigger>
+          <SelectTrigger aria-label="Sort agents" className="w-full sm:w-[150px]"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="weekAlp">Sort: Week ALP</SelectItem>
             <SelectItem value="monthAlp">Sort: Month ALP</SelectItem>

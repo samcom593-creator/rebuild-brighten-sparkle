@@ -501,7 +501,7 @@ export const AgedLeadImporter = forwardRef<HTMLDivElement, AgedLeadImporterProps
               <div className="space-y-2">
                 <Label>Assign to Manager *</Label>
                 <Select value={selectedManager} onValueChange={setSelectedManager}>
-                  <SelectTrigger>
+                  <SelectTrigger aria-label="Assign imported leads to manager">
                     <SelectValue placeholder="Select a manager" />
                   </SelectTrigger>
                   <SelectContent>
@@ -521,7 +521,7 @@ export const AgedLeadImporter = forwardRef<HTMLDivElement, AgedLeadImporterProps
                   Categorize these leads for tracking and filtering
                 </p>
                 <Select value={leadSource} onValueChange={(v) => setLeadSource(v as "aged" | "new_drip")}>
-                  <SelectTrigger>
+                  <SelectTrigger aria-label="Lead category">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -538,7 +538,7 @@ export const AgedLeadImporter = forwardRef<HTMLDivElement, AgedLeadImporterProps
                   Used when spreadsheet doesn't specify license status
                 </p>
                 <Select value={defaultLicenseStatus} onValueChange={setDefaultLicenseStatus}>
-                  <SelectTrigger>
+                  <SelectTrigger aria-label="Default license status">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

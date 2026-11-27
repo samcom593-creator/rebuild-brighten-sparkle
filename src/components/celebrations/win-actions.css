@@ -1,0 +1,41 @@
+.win-action {
+  --win-accent: var(--tone-gold);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  min-height: 44px;
+  transition: border-color 180ms ease, background-color 180ms ease, transform 180ms ease;
+}
+.win-action[data-win-action="hire"] { --win-accent: var(--tone-good); }
+.win-action-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: hsl(var(--win-accent) / 0.1);
+  transition: background-color 180ms ease, transform 180ms ease;
+}
+.win-action-label { position: relative; font-weight: 650; }
+.win-action::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid hsl(var(--win-accent) / 0);
+  pointer-events: none;
+  transition: border-color 180ms ease;
+}
+.win-action:not(:disabled):focus-visible::after { border-color: hsl(var(--win-accent) / 0.65); }
+.win-action:not(:disabled):active { transform: scale(0.98); }
+.win-action:not(:disabled):active .win-action-icon { transform: scale(0.94); }
+@media (hover: hover) {
+  .win-action:not(:disabled):hover { border-color: hsl(var(--win-accent) / 0.55); background: hsl(var(--win-accent) / 0.07); transform: translateY(-1px); }
+  .win-action:not(:disabled):hover .win-action-icon { background: hsl(var(--win-accent) / 0.18); transform: rotate(-7deg) scale(1.08); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .win-action, .win-action::after, .win-action-icon { transition: none; }
+  .win-action:not(:disabled):hover, .win-action:not(:disabled):active,
+  .win-action:not(:disabled):hover .win-action-icon, .win-action:not(:disabled):active .win-action-icon { transform: none; }
+}

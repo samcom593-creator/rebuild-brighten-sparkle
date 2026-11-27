@@ -20,7 +20,7 @@ describe("RecruitingWorkspaceNav", () => {
     expect(screen.getByRole("link", { name: "Pipeline" }).getAttribute("href")).toBe("/dashboard/recruiting/pipeline");
     expect(screen.getByRole("link", { name: "New hires" }).getAttribute("href")).toBe("/dashboard/recruits");
     expect(screen.getByRole("link", { name: "Calendar" }).getAttribute("href")).toBe("/dashboard/calendar");
-    expect(screen.getByRole("link", { name: "Galaxy Training" }).getAttribute("href")).toBe("/dashboard/recruiting/training");
+    expect(screen.getByRole("link", { name: "Galaxy Training" }).getAttribute("href")).toBe("/dashboard/training");
     expect(screen.queryByRole("link", { name: "Interviews" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Follow-ups" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Hires" })).toBeNull();
@@ -30,6 +30,17 @@ describe("RecruitingWorkspaceNav", () => {
     renderNav("/dashboard/recruiting/pipeline");
     expect(screen.getByRole("link", { name: "Pipeline" }).getAttribute("aria-current")).toBe("page");
     expect(screen.getByRole("link", { name: "Call list" }).getAttribute("aria-current")).toBeNull();
+  });
+
+  it.each([
+    ["/dashboard/training/library/course/synthetic", "Galaxy Training"],
+    ["/dashboard/recruiting/training/sales-course", "Galaxy Training"],
+    ["/dashboard/recruiting/follow-ups", "Call list"],
+    ["/dashboard/recruiting/interviews", "Calendar"],
+  ])("keeps %s anchored in its working section", (path, label) => {
+    renderNav(path);
+    expect(screen.getByRole("link", { name: label })).toHaveAttribute("aria-current", "page");
+    expect(screen.getAllByRole("link").filter((link) => link.getAttribute("aria-current") === "page")).toHaveLength(1);
   });
 
   it("colours only the open tab's icon, in its page's tone, under the gold underline, with 15px labels", () => {

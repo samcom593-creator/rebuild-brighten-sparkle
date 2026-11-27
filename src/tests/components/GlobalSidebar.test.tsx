@@ -243,7 +243,7 @@ describe("GlobalSidebar · AgentCloud application navigation", () => {
   it("keeps the canonical Add Agent action pinned at the bottom for hiring roles", () => {
     setRoles({ isManager: true });
     renderSidebar();
-    expect(screen.getByRole("button", { name: "Add Agent" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Hire an Agent" })).toBeTruthy();
   });
 
   it("keeps sign out visible for every signed-in role", () => {
@@ -255,8 +255,8 @@ describe("GlobalSidebar · AgentCloud application navigation", () => {
     setRoles({ isManager: true });
     renderSidebar("/dashboard", true);
     openGroups("Settings");
-    expect(screen.getByRole("button", { name: "Post a Deal" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Add Agent" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add a Deal" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Hire an Agent" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Search people and pages" })).toBeTruthy();
     expect(screen.getAllByRole("link", { name: "Support desk" })).toHaveLength(1);
   });
@@ -359,8 +359,8 @@ describe("GlobalSidebar · applicant rail on every surface (F26)", () => {
     expect(link("Training")?.getAttribute("href")).toBe("/dashboard/training/library");
     expect(group("Sell")).toBeNull();
     expect(link("Book of Business")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Post a Deal" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Add Agent" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add a Deal" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Hire an Agent" })).toBeNull();
   });
 });
 
@@ -368,18 +368,18 @@ describe("GlobalSidebar · one permanent Add Agent / Post a Deal pair (F37)", ()
   it.each([false, true])("keeps Post a Deal directly under Add Agent for hiring roles (mobile=%s)", (mobile) => {
     setRoles({ isManager: true });
     renderSidebar("/dashboard", mobile);
-    const addAgent = screen.getByRole("button", { name: "Add Agent" });
-    const postDeal = screen.getByRole("button", { name: "Post a Deal" });
+    const addAgent = screen.getByRole("button", { name: "Hire an Agent" });
+    const postDeal = screen.getByRole("button", { name: "Add a Deal" });
     expect(addAgent.compareDocumentPosition(postDeal) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(screen.getAllByRole("button", { name: "Add Agent" })).toHaveLength(1);
-    expect(screen.getAllByRole("button", { name: "Post a Deal" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Hire an Agent" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Add a Deal" })).toHaveLength(1);
   });
 
   it("gives a plain agent Post a Deal on the desktop rail and no Add Agent", () => {
     setRoles({ isAgent: true, hasAgentRecord: true });
     renderSidebar("/dashboard", false);
-    expect(screen.getByRole("button", { name: "Post a Deal" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Add Agent" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Add a Deal" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Hire an Agent" })).toBeNull();
   });
 
   it("leaves the top bar with context and utilities only, so the desktop shell has one search entry and one creation pair", () => {
@@ -510,8 +510,8 @@ describe("GlobalSidebar · section tones (colour layer, 2026-10-28)", () => {
   it("colours the quick-action icons (Add Agent good, Post a Deal gold) and keeps both outline, never a second gold fill", () => {
     setRoles({ isManager: true });
     renderSidebar("/dashboard", true);
-    const addAgent = screen.getByRole("button", { name: "Add Agent" });
-    const postDeal = screen.getByRole("button", { name: "Post a Deal" });
+    const addAgent = screen.getByRole("button", { name: "Hire an Agent" });
+    const postDeal = screen.getByRole("button", { name: "Add a Deal" });
     expect(addAgent.querySelector("svg")?.getAttribute("class")).toContain(TONE_CLASS.good.text);
     expect(postDeal.querySelector("svg")?.getAttribute("class")).toContain(TONE_CLASS.gold.text);
     for (const button of [addAgent, postDeal]) {

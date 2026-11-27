@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { ConfettiCelebration } from "./ConfettiCelebration";
+import { celebrate } from "@/lib/celebrate";
+import { RECOGNITION_MILESTONES } from "@/lib/recognitionQueue";
 import { ALPCalculator } from "./ALPCalculator";
 import { format, subDays } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
@@ -49,7 +50,6 @@ interface ManagerGroup {
 
 export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEntryProps) {
   const [saving, setSaving] = useState(false);
-  const [showConfetti, setShowConfetti] = useState(false);
   const [isManager, setIsManager] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
@@ -238,6 +238,7 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const origin = e.currentTarget;
     setSaving(true);
 
     try {
@@ -275,8 +276,9 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
         }
       }
 
-      // Trigger confetti celebration!
-      setShowConfetti(true);
+      // Activity saved is a small acknowledgement. Only a confirmed new deal
+      // receipt may trigger the global closed-deal celebration.
+      void celebrate("save", origin);
       
       // Find the selected agent's full name for notifications
       let selectedAgentName = currentUserFullName;
@@ -330,10 +332,11 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
       
       // 🏆 MILESTONE PLAQUES: Check for single-day milestones (also delayed)
       const alpAmount = Number(formData.aop) || 0;
-      if (alpAmount >= 3000) {
+      if (alpAmount >= 1000) {
         setTimeout(async () => {
           try {
-            const milestoneType = alpAmount >= 5000 ? "single_day" : "single_day_bronze";
+            const milestoneType = alpAmount >= 5000 ? RECOGNITION_MILESTONES.platinum
+              : alpAmount >= 3000 ? RECOGNITION_MILESTONES.gold : RECOGNITION_MILESTONES.bronze;
             // console.log(`🏆 Triggering ${milestoneType} plaque for ${selectedAgentName}: $${alpAmount.toLocaleString()}`);
             
             await supabase.functions.invoke("send-plaque-recognition", {
@@ -387,11 +390,6 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
 
   return (
     <>
-      <ConfettiCelebration 
-        trigger={showConfetti} 
-        onComplete={() => setShowConfetti(false)} 
-      />
-      
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -468,7 +466,7 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
                 {/* Admin: All agents grouped by manager with FULL NAMES */}
                 {isAdmin && allAgentsGrouped.length > 0 && (
                   <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
-                    <SelectTrigger className="w-full sm:w-[220px] h-10 text-sm border-2 border-primary/20 bg-background/80 ">
+                    <SelectTrigger aria-label="Production agent" className="w-full sm:w-[220px] h-10 text-sm border-2 border-primary/20 bg-background/80 ">
                       <SelectValue placeholder="Select agent" />
                     </SelectTrigger>
                     <SelectContent className="max-h-[400px] min-w-[280px]">
@@ -501,7 +499,7 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
                 {/* Manager: Just their team with FULL NAMES */}
                 {!isAdmin && isManager && teamMembers.length > 0 && (
                   <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
-                    <SelectTrigger className="w-full sm:w-[200px] h-10 text-sm border-2 border-primary/20">
+                    <SelectTrigger aria-label="Production agent" className="w-full sm:w-[200px] h-10 text-sm border-2 border-primary/20">
                       <SelectValue placeholder="Select agent" />
                     </SelectTrigger>
                     <SelectContent className="min-w-[240px]">

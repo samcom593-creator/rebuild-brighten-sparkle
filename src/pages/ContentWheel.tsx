@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page-header";
+import { ContentWorkspaceNav } from "@/components/content/ContentWorkspaceNav";
 import { Crown } from "lucide-react";
 import { ContentWheelSubNav } from "@/components/contentwheel/ContentWheelSubNav";
 import { DashboardModule } from "@/components/contentwheel/DashboardModule";
@@ -43,6 +44,8 @@ export default function ContentWheel() {
         title="ContentWheel"
         subtitle="Ideate · Hook · Shoot · Test · Iterate · Recruit. Hold the Standard. Average is the disease."
       />
+
+      <ContentWorkspaceNav />
 
       <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
         <aside>

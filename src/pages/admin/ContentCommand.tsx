@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, formatDistanceToNow } from "date-fns";
 import {
-  ArrowRight,
   CheckCircle2,
   Clipboard,
   Copy,
@@ -24,6 +23,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/ui/page-header";
+import { ContentWorkspaceNav } from "@/components/content/ContentWorkspaceNav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +39,8 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { SocialDraftReviewDialog } from "@/components/content/SocialDraftReviewDialog";
+import { safeContentUrl } from "@/lib/socialDraftReview";
 
 type DraftStatus = "pending" | "awaiting_approval" | "awaiting_film" | "approved" | "shipped" | "rejected" | string;
 
@@ -46,6 +48,8 @@ type Draft = {
   id: number;
   draft_date: string | null;
   platform: string | null;
+  account: string | null;
+  content_hash: string;
   slot: string | null;
   pillar: string | null;
   title: string | null;
@@ -124,12 +128,6 @@ function statusTone(status: DraftStatus) {
   return "bg-slate-500/15 text-slate-600 dark:text-slate-300 border-slate-500/30";
 }
 
-function sourceFileHref(filePath?: string | null) {
-  if (!filePath) return null;
-  const clean = filePath.split("#")[0];
-  if (!clean.startsWith("/")) return null;
-  return `file://${clean}`;
-}
 
 function draftCopy(d: Draft) {
   return [
@@ -230,7 +228,7 @@ function CultureFeed({ onApproveDraft }: { onApproveDraft: (id: number) => void 
                   className="h-6 text-[11px] border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10 mt-0.5"
                   onClick={() => onApproveDraft(ev.draft_id!)}
                 >
-                  Approve draft
+                  Review draft
                 </Button>
               ) : ev.draft_status === "approved" ? (
                 <Badge variant="outline" className="text-[11px] text-amber-300 border-amber-500/30 w-fit">approved</Badge>
@@ -252,12 +250,13 @@ export default function ContentCommand() {
   // Render window — the draft list can be 1,000+ (~152,000px DOM wall).
   const [visibleCount, setVisibleCount] = useState(60);
   const [editing, setEditing] = useState<Draft | null>(null);
+  const [reviewId, setReviewId] = useState<number | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editHook, setEditHook] = useState("");
   const [editCaption, setEditCaption] = useState("");
   const [editBody, setEditBody] = useState("");
 
-  const { data: drafts, isLoading, refetch, isRefetching } = useQuery({
+  const { data: drafts, isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ["content_command_drafts", statusFilter],
     refetchInterval: 300_000,
     queryFn: async () => {
@@ -275,7 +274,7 @@ export default function ContentCommand() {
       // the current active count (~560) so nothing is silently cut; if any fetch fills the
       // window, the UI reports the overflow rather than quietly truncating (banner below).
       let query = (supabase as any)
-        .from("social_bot_drafts").select("id, draft_date, platform, slot, pillar, title, hook, body, cta, caption, hashtags, file_path, status, created_at");
+        .from("social_bot_drafts").select("id, draft_date, platform, account, slot, pillar, title, hook, body, cta, caption, hashtags, file_path, status, created_at, content_hash, shipped_at, shipped_url, updated_at");
       if (statusFilter === "active") query = query.in("status", ACTIVE_STATUSES);
       else if (statusFilter !== "all") query = query.eq("status", statusFilter);
       const { data, error } = await query
@@ -284,16 +283,6 @@ export default function ContentCommand() {
         .limit(DRAFT_FETCH_LIMIT);
       if (error) throw error;
       return (data ?? []) as Draft[];
-    },
-  });
-
-  const { data: bridge } = useQuery({
-    queryKey: ["content_command_bridge"],
-    refetchInterval: 300_000,
-    queryFn: async () => {
-      const { data, error } = await (supabase as any).from("v_smb_cw_bridge").select("*").maybeSingle();
-      if (error) return null;
-      return data as Record<string, unknown> | null;
     },
   });
 
@@ -326,25 +315,26 @@ export default function ContentCommand() {
   });
 
   const statusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: number; status: "approved" | "rejected" | "shipped" }) => {
-      const now = new Date().toISOString();
-      const patch: Record<string, unknown> = { status, updated_at: now };
-      if (status === "approved") patch.approved_at = now;
-      if (status === "shipped") patch.shipped_at = now;
-      const { error } = await (supabase as any).from("social_bot_drafts").update(patch).eq("id", id);
+    mutationFn: async (draft: Draft) => {
+      const { data, error } = await (supabase as any).from("social_bot_drafts")
+        .update({ status: "rejected", updated_at: new Date().toISOString() })
+        .eq("id", draft.id).eq("content_hash", draft.content_hash).eq("status", draft.status)
+        .select("id").maybeSingle();
       if (error) throw error;
+      if (data?.id !== draft.id) throw new Error("This draft changed or is no longer available. Refresh before retrying.");
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["content_command_drafts"] });
-      qc.invalidateQueries({ queryKey: ["social-bot-dashboard"] });
-      toast.success("Draft updated");
+      void qc.invalidateQueries({ queryKey: ["content_command_drafts"] });
+      void qc.invalidateQueries({ queryKey: ["content_command_status_counts"] });
+      toast.success("Draft rejected");
     },
     onError: (e) => toast.error(`Draft update failed: ${String(e)}`),
   });
 
   const saveMutation = useMutation({
     mutationFn: async (id: number) => {
-      const { error } = await (supabase as any)
+      if (!editing || editing.id !== id) throw new Error("Open the draft again before saving.");
+      const { data, error } = await (supabase as any)
         .from("social_bot_drafts")
         .update({
           title: editTitle,
@@ -353,8 +343,10 @@ export default function ContentCommand() {
           body: editBody,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", id);
+        .eq("id", id).eq("content_hash", editing.content_hash).eq("status", editing.status)
+        .select("id").maybeSingle();
       if (error) throw error;
+      if (data?.id !== id) throw new Error("This draft changed. Reopen it before saving edits.");
     },
     onSuccess: () => {
       setEditing(null);
@@ -406,66 +398,44 @@ export default function ContentCommand() {
           .select("id", { count: "exact", head: true })
           .eq("status", status);
         if (error) throw error;
-        return c ?? 0;
+        if (typeof c !== "number") throw new Error("Draft counts could not be verified.");
+        return c;
       };
-      const [awaiting, approved, shipped, pending, awaitingFilm] = await Promise.all([
+      const [awaiting, approved, pending, awaitingFilm] = await Promise.all([
         count("awaiting_approval"),
         count("approved"),
-        count("shipped"),
         count("pending"),
         count("awaiting_film"),
       ]);
-      return { awaiting, approved, shipped, pending, awaitingFilm };
+      return { awaiting, approved, pending, awaitingFilm };
     },
   });
 
-  const totals = useMemo(() => ({
-    active: (statusCounts?.awaiting ?? 0) + (statusCounts?.approved ?? 0) + (statusCounts?.pending ?? 0) + (statusCounts?.awaitingFilm ?? 0),
-    awaiting: statusCounts?.awaiting ?? 0,
-    awaitingFilm: statusCounts?.awaitingFilm ?? 0,
-    approved: statusCounts?.approved ?? 0,
-    shipped: statusCounts?.shipped ?? 0,
-  }), [statusCounts]);
+  const totals = {
+    active: statusCounts ? statusCounts.awaiting + statusCounts.approved + statusCounts.pending + statusCounts.awaitingFilm : null,
+    awaiting: statusCounts?.awaiting ?? null,
+    awaitingFilm: statusCounts?.awaitingFilm ?? null,
+    approved: statusCounts?.approved ?? null,
+  };
 
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
 
-  // Chunked so a 561-row selection cannot blow the PostgREST URL length or time out as one
-  // statement. Reports the real number written, and does NOT clear the selection on failure
-  // so a partial run can be retried against exactly what is left.
-  const runBulk = async (status: "approved" | "rejected") => {
-    const ids = Array.from(selectedIds);
-    if (ids.length === 0) return;
+  const rejectSelected = async () => {
+    const selected = filtered.filter(d => selectedIds.has(d.id) && d.status !== "shipped" && d.status !== "rejected");
+    if (!selected.length || bulkBusy) return;
     setBulkBusy(true);
-    const now = new Date().toISOString();
-    const patch: Record<string, unknown> = { status, updated_at: now };
-    if (status === "approved") patch.approved_at = now;
     let done = 0;
     try {
-      for (let i = 0; i < ids.length; i += 100) {
-        const slice = ids.slice(i, i + 100);
-        const { error } = await (supabase as any)
-          .from("social_bot_drafts")
-          .update(patch)
-          .in("id", slice);
-        if (error) throw error;
-        done += slice.length;
+      for (const draft of selected) {
+        await statusMutation.mutateAsync(draft);
+        done += 1;
+        setSelectedIds(previous => { const next = new Set(previous); next.delete(draft.id); return next; });
       }
-      toast.success(`${done.toLocaleString()} draft${done === 1 ? "" : "s"} ${status}`);
-      setSelectedIds(new Set());
-      qc.invalidateQueries({ queryKey: ["content_command_drafts"] });
-      qc.invalidateQueries({ queryKey: ["content_command_status_counts"] });
-    } catch (err) {
-      // Say how far it got. "Failed" alone would leave Sam unable to tell whether 0 or 400
-      // drafts moved, and he would have to go count them by hand.
-      toast.error(
-        `Stopped after ${done.toLocaleString()} of ${ids.length.toLocaleString()}: ${(err as Error).message.slice(0, 90)}`,
-      );
-      qc.invalidateQueries({ queryKey: ["content_command_drafts"] });
-      qc.invalidateQueries({ queryKey: ["content_command_status_counts"] });
-    } finally {
-      setBulkBusy(false);
-    }
+      toast.success(`${done} drafts rejected`);
+    } catch (error) {
+      toast.error(`Stopped after ${done} of ${selected.length}: ${error instanceof Error ? error.message : "Change not confirmed"}`);
+    } finally { setBulkBusy(false); }
   };
 
   const openEditor = (d: Draft) => {
@@ -483,12 +453,9 @@ export default function ContentCommand() {
         eyebrow="Admin · Content"
         eyebrowIcon={<Sparkles className="h-3 w-3" />}
         title="Content Command"
-        subtitle="One place for drafts, approvals, source files, ContentWheel context, and what Sam should post next."
+        subtitle="Review the complete draft and its destination, approve that version, and track the recorded publishing outcome."
         actions={
           <div className="flex items-center gap-2">
-            <Button asChild variant="outline" size="sm">
-              <Link to="/admin/contentwheel">ContentWheel <ArrowRight className="h-3.5 w-3.5 ml-1" /></Link>
-            </Button>
             <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isRefetching}>
               <RefreshCw className={cn("h-4 w-4 mr-2", isRefetching && "animate-spin")} /> Refresh
             </Button>
@@ -496,9 +463,10 @@ export default function ContentCommand() {
         }
       />
 
-      <PoolOverview counts={statusCounts} />
+      <ContentWorkspaceNav />
 
-      <CultureFeed onApproveDraft={(id) => statusMutation.mutate({ id, status: "approved" })} />
+      <CultureFeed onApproveDraft={setReviewId} />
+      {isError && <p role="alert" className="text-sm text-destructive">Drafts could not be loaded. Refresh to try again.</p>}
 
       {/* Silent truncation on a review queue reads as "that is all of them". It is exactly
           how 387 drafts stayed invisible behind an ascending .limit(200). If the queue ever
@@ -513,12 +481,11 @@ export default function ContentCommand() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Metric label="Active drafts" value={totals.active} tone="text-info" />
-        <Metric label="Awaiting stamp" value={totals.awaiting} tone="text-amber-300" />
+        <Metric label="Needs approval" value={totals.awaiting} tone="text-amber-300" />
         <Metric label="Awaiting film" value={totals.awaitingFilm} tone="text-violet-300" />
         <Metric label="Approved" value={totals.approved} tone="text-emerald-300" />
-        <Metric label="Shipped" value={totals.shipped} tone="text-slate-600 dark:text-slate-300" />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-4">
@@ -526,23 +493,23 @@ export default function ContentCommand() {
           <Card className="border-amber-500/20 bg-gradient-to-br from-amber-500/[0.04] via-background to-background">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <Send className="h-4 w-4 text-amber-300" /> What Sam should post next
+                <Send className="h-4 w-4 text-amber-300" /> Review next
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {isLoading ? <Skeleton className="h-28 w-full" /> : ranked.length === 0 ? (
                 <HonestEmpty
-                  title="No active drafts found"
-                  detail="Expected source: public.social_bot_drafts with status pending, awaiting_approval, awaiting_film, or approved. A non-active status filter also empties this card — it only ranks active drafts."
+                  title={isError ? "Drafts unavailable" : "No active drafts in this view"}
+                  detail="Refresh the queue or choose an active status to review drafts."
                 />
               ) : ranked.map((d, index) => (
                 <DraftRow
                   key={d.id}
                   draft={d}
                   rank={index + 1}
-                  onApprove={() => statusMutation.mutate({ id: d.id, status: "approved" })}
-                  onReject={() => statusMutation.mutate({ id: d.id, status: "rejected" })}
-                  onShip={() => statusMutation.mutate({ id: d.id, status: "shipped" })}
+                  onReview={() => setReviewId(d.id)}
+                  onReject={() => statusMutation.mutate(d)}
+                  busy={bulkBusy || statusMutation.isPending}
                   onEdit={() => openEditor(d)}
                 />
               ))}
@@ -557,7 +524,7 @@ export default function ContentCommand() {
                 </CardTitle>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-full sm:w-[180px]"><Filter className="h-3.5 w-3.5 mr-2" /><SelectValue /></SelectTrigger>
+                    <SelectTrigger aria-label="Filter drafts by status" className="w-full sm:w-[180px]"><Filter className="h-3.5 w-3.5 mr-2" /><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="active">Active only</SelectItem>
                       <SelectItem value="awaiting_approval">Awaiting approval</SelectItem>
@@ -570,7 +537,7 @@ export default function ContentCommand() {
                     </SelectContent>
                   </Select>
                   <Select value={platformFilter} onValueChange={setPlatformFilter}>
-                    <SelectTrigger className="w-full sm:w-[160px]"><SelectValue /></SelectTrigger>
+                    <SelectTrigger aria-label="Filter drafts by platform" className="w-full sm:w-[160px]"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All platforms</SelectItem>
                       {platforms.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
@@ -579,14 +546,6 @@ export default function ContentCommand() {
                 </div>
               </div>
             </CardHeader>
-            {/* Bulk bar. 561 drafts sit awaiting approval and one-at-a-time will never
-                clear that; it is why the backlog reached a year deep. Acts ONLY on what is
-                selected from the current filter — there is no "approve everything" button,
-                because approving content Sam has not looked at is not a feature.
-                Safe to bulk: the only trigger on social_bot_drafts
-                (trg_cw_smb_drafts_auto_ingest) returns early unless status='shipped', and
-                even then it just records an already-published URL into cw_posts. Approving
-                posts nothing anywhere. */}
             {selectedIds.size > 0 && (
               <div className="mx-6 mb-2 flex flex-wrap items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 p-2.5">
                 <span className="text-xs font-semibold tabular-nums">
@@ -595,16 +554,16 @@ export default function ContentCommand() {
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={bulkBusy}
-                  onClick={() => runBulk("approved")}
+                  disabled={bulkBusy || !filtered.some(d => selectedIds.has(d.id) && d.status === "awaiting_approval")}
+                  onClick={() => { const next = filtered.find(d => selectedIds.has(d.id) && d.status === "awaiting_approval"); if (next) setReviewId(next.id); }}
                 >
-                  <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Approve selected
+                  <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Review selected
                 </Button>
                 <Button
                   size="sm"
                   variant="outline"
                   disabled={bulkBusy}
-                  onClick={() => runBulk("rejected")}
+                  onClick={() => void rejectSelected()}
                 >
                   <XCircle className="mr-1.5 h-3.5 w-3.5" /> Reject selected
                 </Button>
@@ -612,7 +571,7 @@ export default function ContentCommand() {
                   Clear
                 </Button>
                 <span className="text-[12px] text-muted-foreground">
-                  Nothing is posted — this only sets the review state.
+                  Each approval requires a full version review.
                 </span>
               </div>
             )}
@@ -620,8 +579,8 @@ export default function ContentCommand() {
             <CardContent className="space-y-2">
               {isLoading ? <Skeleton className="h-96 w-full" /> : filtered.length === 0 ? (
                 <HonestEmpty
-                  title="No drafts match this filter"
-                  detail="Source checked: public.social_bot_drafts. Change filters or run the Social Media Bot draft generator."
+                  title={isError ? "Drafts unavailable" : "No drafts match this filter"}
+                  detail="Refresh the queue or change the filters."
                 />
               ) : (
                 <>
@@ -658,9 +617,9 @@ export default function ContentCommand() {
                       <div className="min-w-0 flex-1">
                         <DraftRow
                           draft={d}
-                          onApprove={() => statusMutation.mutate({ id: d.id, status: "approved" })}
-                          onReject={() => statusMutation.mutate({ id: d.id, status: "rejected" })}
-                          onShip={() => statusMutation.mutate({ id: d.id, status: "shipped" })}
+                          onReview={() => setReviewId(d.id)}
+                          onReject={() => statusMutation.mutate(d)}
+                          busy={bulkBusy || statusMutation.isPending}
                           onEdit={() => openEditor(d)}
                         />
                       </div>
@@ -687,17 +646,6 @@ export default function ContentCommand() {
         </div>
 
         <aside className="space-y-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2"><Sparkles className="h-4 w-4 text-amber-300" /> Source health</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <HealthLine label="Draft table" ok={(drafts?.length ?? 0) > 0} detail={`${drafts?.length ?? 0} rows loaded from social_bot_drafts`} />
-              <HealthLine label="ContentWheel bridge" ok={Boolean(bridge)} detail={bridge ? "v_smb_cw_bridge reachable" : "v_smb_cw_bridge missing or blocked"} />
-              <HealthLine label="STAMP queue" ok detail="/Users/samjames/business-ops/social-media-bot/drafts/STAMP-QUEUE.md" />
-              <HealthLine label="Approval actions" ok detail="approve / reject / shipped update social_bot_drafts directly" />
-            </CardContent>
-          </Card>
 
           <Card>
             <CardHeader className="pb-3">
@@ -739,6 +687,7 @@ export default function ContentCommand() {
         </aside>
       </div>
 
+      {reviewId !== null && <SocialDraftReviewDialog key={reviewId} draftId={reviewId} ownerOnly onClose={() => setReviewId(null)} onApproved={() => setSelectedIds(previous => { const next = new Set(previous); next.delete(reviewId); return next; })} />}
       {editing ? (
         <Card className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-4xl border-amber-500/30 bg-background/95 backdrop-blur shadow-sm">
           <CardHeader className="pb-2">
@@ -762,11 +711,11 @@ export default function ContentCommand() {
   );
 }
 
-function Metric({ label, value, tone }: { label: string; value: number; tone: string }) {
+function Metric({ label, value, tone }: { label: string; value: number | null; tone: string }) {
   return (
     <Card>
       <CardContent className="p-4">
-        <div className={cn("text-3xl font-bold tabular-nums", tone)}>{value}</div>
+        <div className={cn("text-3xl font-bold tabular-nums", tone)}>{value ?? "—"}</div>
         <div className="text-xs text-muted-foreground mt-1">{label}</div>
       </CardContent>
     </Card>
@@ -776,21 +725,22 @@ function Metric({ label, value, tone }: { label: string; value: number; tone: st
 function DraftRow({
   draft,
   rank,
-  onApprove,
+  onReview,
   onReject,
-  onShip,
   onEdit,
+  busy,
 }: {
   draft: Draft;
   rank?: number;
-  onApprove: () => void;
+  onReview: () => void;
   onReject: () => void;
-  onShip: () => void;
   onEdit: () => void;
+  busy: boolean;
 }) {
   const Icon = platformIcon(draft.platform);
   const due = draft.draft_date ? format(new Date(`${draft.draft_date}T12:00:00`), "MMM d") : "no date";
-  const sourceHref = sourceFileHref(draft.file_path);
+  const sourceHref = safeContentUrl(draft.file_path);
+  const publishedUrl = safeContentUrl(draft.shipped_url);
 
   return (
     <div className="rounded-lg border border-border bg-white/[0.025] p-3 hover:border-amber-500/30 transition-colors">
@@ -810,22 +760,16 @@ function DraftRow({
           {draft.file_path ? <div className="mt-2 text-[12px] text-slate-600 dark:text-slate-300 font-mono truncate">{draft.file_path}</div> : null}
         </div>
         <div className="flex flex-wrap lg:justify-end gap-1.5 shrink-0">
-          {draft.status !== "approved" && draft.status !== "shipped" ? (
-            <Button size="sm" variant="outline" onClick={onApprove}>
-              <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Approve
-            </Button>
-          ) : null}
-          {draft.status === "approved" ? (
-            <Button size="sm" onClick={onShip}>
-              <Send className="h-3.5 w-3.5 mr-1" /> Shipped
-            </Button>
-          ) : null}
+          <Button size="sm" variant="outline" onClick={onReview} disabled={busy}>
+            <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Review
+          </Button>
+          {draft.status === "shipped" && publishedUrl && draft.shipped_at ? <Button size="sm" variant="outline" asChild><a href={publishedUrl} target="_blank" rel="noopener noreferrer">Recorded post <ExternalLink className="ml-1 h-3.5 w-3.5" /></a></Button> : draft.status === "shipped" ? <span className="text-xs text-muted-foreground">Publishing receipt unavailable</span> : null}
           {draft.status !== "rejected" && draft.status !== "shipped" ? (
-            <Button size="sm" variant="ghost" onClick={onReject}>
+            <Button size="sm" variant="ghost" onClick={onReject} disabled={busy}>
               <XCircle className="h-3.5 w-3.5 mr-1" /> Reject
             </Button>
           ) : null}
-          <Button size="sm" variant="ghost" onClick={onEdit}>Edit</Button>
+          <Button size="sm" variant="ghost" onClick={onEdit} disabled={busy || draft.status === "shipped"}>Edit</Button>
           <Button size="sm" variant="ghost" onClick={() => copyText(draftCopy(draft), "Draft copy")}>
             <Copy className="h-3.5 w-3.5 mr-1" /> Copy
           </Button>
@@ -847,97 +791,11 @@ function DraftRow({
   );
 }
 
-function HealthLine({ label, ok, detail }: { label: string; ok: boolean; detail: string }) {
-  return (
-    <div className="flex items-start gap-2">
-      {ok ? <CheckCircle2 className="h-4 w-4 text-emerald-400 mt-0.5" /> : <XCircle className="h-4 w-4 text-amber-400 mt-0.5" />}
-      <div>
-        <div className="font-medium">{label}</div>
-        <div className="text-xs text-slate-600 dark:text-slate-300">{detail}</div>
-      </div>
-    </div>
-  );
-}
-
 function HonestEmpty({ title, detail }: { title: string; detail: string }) {
   return (
     <div className="rounded-lg border border-dashed border-border bg-white/[0.02] p-5 text-sm">
       <div className="font-medium text-slate-700 dark:text-slate-200">{title}</div>
       <div className="text-xs text-slate-600 dark:text-slate-300 mt-1">{detail}</div>
     </div>
-  );
-}
-
-/* ------------------------------------------------------------------------
-   PoolOverview — 7-pool flow strip per Sam's add-on. Reads real ContentWheel
-   tables (cw_ideas / cw_hooks / cw_demand_mines / cw_outliers) + the shared
-   head-count totals for the draft pools (the fetched draft window is scoped
-   to the status filter, so deriving pool counts from it would zero the strip
-   whenever a non-active filter is selected). Empty pools render '—' instead
-   of fake zero.
-   ------------------------------------------------------------------------ */
-function PoolOverview({
-  counts,
-}: {
-  counts?: { awaiting: number; awaitingFilm: number; approved: number; shipped: number; pending: number };
-}) {
-  const { data } = useQuery({
-    queryKey: ["content_command_pools"],
-    queryFn: async () => {
-      const probes = await Promise.all([
-        (supabase as any).from("cw_ideas").select("id", { count: "exact", head: true }),
-        (supabase as any).from("cw_hooks").select("id", { count: "exact", head: true }),
-        (supabase as any).from("cw_demand_mines").select("id", { count: "exact", head: true }),
-        (supabase as any).from("cw_outliers").select("id", { count: "exact", head: true }),
-        (supabase as any).from("cw_posts").select("id", { count: "exact", head: true }),
-      ]);
-      return {
-        ideas: probes[0].count ?? null,
-        hooks: probes[1].count ?? null,
-        demand_mines: probes[2].count ?? null,
-        outliers: probes[3].count ?? null,
-        posts: probes[4].count ?? null,
-      };
-    },
-    staleTime: 5 * 60_000,
-  });
-
-  const draftAwait = counts ? counts.awaiting + counts.pending + counts.awaitingFilm : undefined;
-  const draftApproved = counts?.approved;
-  const draftShipped = counts === undefined ? undefined : counts.shipped + (data?.posts ?? 0);
-
-  const pools = [
-    { label: "Raw Ideas", value: data?.ideas, hint: "cw_ideas", tone: "text-slate-600 dark:text-slate-300" },
-    { label: "Demand mines", value: data?.demand_mines, hint: "cw_demand_mines", tone: "text-slate-600 dark:text-slate-300" },
-    { label: "Hook pool", value: data?.hooks, hint: "cw_hooks", tone: "text-violet-300" },
-    { label: "Outliers", value: data?.outliers, hint: "cw_outliers", tone: "text-info" },
-    { label: "Drafts awaiting", value: draftAwait, hint: "social_bot_drafts", tone: "text-amber-300" },
-    { label: "Approved to post", value: draftApproved, hint: "social_bot_drafts", tone: "text-emerald-300" },
-    { label: "Shipped", value: draftShipped, hint: "social_bot_drafts + cw_posts", tone: "text-muted-foreground" },
-  ];
-
-  return (
-    <Card className="ops-card-depth border-border bg-white/[0.02]">
-      <CardContent className="p-3 md:p-4">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-[11px] font-mono uppercase tracking-wider text-slate-600 dark:text-slate-300">Full content flow</span>
-          <span className="text-[11px] text-muted-foreground">read-only · pulls live</span>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
-          {pools.map((p, i) => (
-            <div key={p.label} className="rounded-md border border-border bg-white/[0.02] p-2.5">
-              <div className="flex items-center gap-1.5 mb-1">
-                <span className={cn("text-[10px] font-mono", p.tone)}>{i + 1}</span>
-                <span className="text-[11px] text-muted-foreground truncate">{p.label}</span>
-              </div>
-              <div className={cn("text-xl font-bold tabular-nums leading-tight", p.tone)}>
-                {p.value === null || p.value === undefined ? <span className="text-muted-foreground">—</span> : p.value}
-              </div>
-              <div className="text-[10px] text-muted-foreground font-mono mt-0.5 truncate" title={p.hint}>{p.hint}</div>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
   );
 }

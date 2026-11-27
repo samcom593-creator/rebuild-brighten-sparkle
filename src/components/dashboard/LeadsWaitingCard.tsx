@@ -27,9 +27,12 @@ export function LeadsWaitingCard() {
   if (w.open === 0) return null;
 
   const detail = [
-    w.callbacks > 0 ? `${w.callbacks} waiting on your call back` : null,
-    w.neverCalled > 0 ? `${w.neverCalled} never called` : null,
+    w.callbacks > 0 ? `${w.callbacks} follow-up${w.callbacks === 1 ? "" : "s"} due` : null,
+    w.followupsWithoutTime > 0 ? `${w.followupsWithoutTime} follow-up${w.followupsWithoutTime === 1 ? " needs" : "s need"} an agreed time` : null,
+    w.neverCalled > 0 ? `${w.neverCalled} awaiting a first outcome` : null,
     w.toCall > 0 && w.closedHours > 0 ? `${w.closedHours} more open later` : null,
+    w.scheduled > 0 ? `${w.scheduled} scheduled for later` : null,
+    w.held > 0 ? `${w.held} held for review` : null,
   ].filter(Boolean).join(" · ");
 
   return (
@@ -40,10 +43,11 @@ export function LeadsWaitingCard() {
         </span>
         <div className="min-w-0">
           <p className="text-base font-semibold leading-tight">
-            {w.toCall > 0 ? `${leads(w.toCall)} to call` : `Calling hours are closed for your ${leads(w.closedHours)}`}
+            {w.toCall > 0 ? `${leads(w.toCall)} to work` : w.closedHours > 0 ? `Calling hours are closed for your ${leads(w.closedHours)}`
+              : w.scheduled > 0 ? `${leads(w.scheduled)} scheduled for later` : `${leads(w.held)} held for review`}
           </p>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            {w.toCall > 0 ? detail || "Each one is waiting on a call from you." : "They open again in the morning where those clients live."}
+            {detail || "Open My Leads to check the next available calling time."}
           </p>
         </div>
       </div>

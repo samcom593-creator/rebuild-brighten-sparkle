@@ -19,8 +19,8 @@ const VIEWS = [
   { label: "Recruit progress", href: TRAINING_ROUTES.root, icon: BookOpenCheck, staffOnly: true, exact: true },
   { label: "Training home", href: TRAINING_ROUTES.home, icon: BookOpen },
   { label: "Field course", href: TRAINING_ROUTES.fieldCourse, icon: GraduationCap },
-  { label: "Team progress", href: TRAINING_ROUTES.teamProgress, icon: Users, staffOnly: true },
-  { label: "Course content", href: TRAINING_ROUTES.courseContent, icon: ListChecks, staffOnly: true },
+  { label: "Team progress", href: TRAINING_ROUTES.teamProgress, icon: Users, staffOnly: true, recruiters: true },
+  { label: "Course content", href: TRAINING_ROUTES.courseContent, icon: ListChecks, staffOnly: true, recruiters: true },
   { label: "Annuities", href: TRAINING_ROUTES.annuities, icon: TrendingUp },
 ] as const;
 
@@ -28,7 +28,7 @@ const VIEWS = [
 export function TrainingWorkspaceNav() {
   const { pathname } = useLocation();
   const canonicalPathname = toCanonicalTrainingHref(pathname);
-  const { isAdmin, isManager, isVaManager, isVa } = useAuth();
+  const { isAdmin, isManager, isVaManager, isVa, isRecruiter } = useAuth();
   const isStaff = isAdmin || isManager || isVaManager || isVa;
 
   return (
@@ -37,7 +37,7 @@ export function TrainingWorkspaceNav() {
       className="overflow-x-auto border-b border-border"
     >
       <div className="flex min-w-max gap-1">
-        {VIEWS.filter((view) => !("staffOnly" in view) || !view.staffOnly || isStaff).map((view) => {
+        {VIEWS.filter((view) => !("staffOnly" in view) || !view.staffOnly || isStaff || ("recruiters" in view && isRecruiter)).map((view) => {
           const active = "exact" in view && view.exact
             ? canonicalPathname === view.href
             : canonicalPathname === view.href || canonicalPathname.startsWith(`${view.href}/`);

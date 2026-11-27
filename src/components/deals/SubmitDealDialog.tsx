@@ -16,11 +16,13 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { invalidateOperationalTruth } from "@/lib/invalidateOperationalTruth";
 import { announcePostedDealReceipt } from "@/lib/dealCelebrations";
+import { WinActionButton } from "@/components/celebrations/WinActionButton";
 import { normalizePolicyNumber, sanitizePolicyInput, isWithinPolicyNumberGrace, policyNumberGrade } from "@/lib/policyNumber";
 import { parseFinancePolicyBook, policyNameKey } from "@/lib/financePolicyBook";
 import { LEAD_TYPES } from "@/lib/leadTypes";
 import { enqueue, isOffline, isTransportError } from "@/lib/offlineQueue";
 import { TeamLookupError } from "@/components/shared/TeamLookupError";
+import { COVERAGE_REVIEW_QUERY_KEY, readCoverageHold, type CoverageHold } from "@/lib/dealCoverageReview";
 
 type PremiumMode = "annual" | "semiannual" | "quarterly" | "monthly" | "single_pay" | "other";
 type PaymentMethod = "" | "bank_draft" | "credit_card" | "debit_card" | "direct_express" | "check" | "social_security";
@@ -225,6 +227,7 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
   const [evidence, setEvidence] = useState<EvidenceRow[]>([]);
   const [receipt, setReceipt] = useState<Receipt | null>(null);
   const [offlineReceipt, setOfflineReceipt] = useState<OfflineReceipt | null>(null);
+  const [coverageHold, setCoverageHold] = useState<CoverageHold | null>(null);
 
   // One draft slot per client a dialog was opened for. A Resold dialog prefilled for one client
   // used to share the user's single slot, so it could recover another client's unfinished draft
@@ -659,7 +662,27 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
       downstreamState?: string;
       correlationId?: string;
       replayed?: boolean;
+      ok?: boolean;
+      reviewId?: string;
+      reviewVersion?: number;
+      matchCount?: number;
     }>("submit_apex_deal", queuedArgs);
+    if (!error) {
+      try {
+        const held = readCoverageHold(data);
+        if (held) {
+          setCoverageHold(held);
+          void queryClient.invalidateQueries({ queryKey: [COVERAGE_REVIEW_QUERY_KEY, user?.id] });
+          toast.info(held.status === "review_rejected" ? "This draft needs changes after coverage review. No deal was posted." : "Draft saved for coverage review. No deal was posted.");
+          setSaving(false);
+          return;
+        }
+      } catch {
+        toast.error("The review response could not be verified. Keep this draft and retry.");
+        setSaving(false);
+        return;
+      }
+    }
     if (error || !data?.dealId) {
       if (error && isTransportError(error)) queueCurrentDeal();
       else toast.error(error?.message || "The deal could not be submitted. Your draft remains saved.");
@@ -673,6 +696,7 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
       correlationId: data.correlationId || "recorded",
     };
     setReceipt(nextReceipt);
+    setCoverageHold(null);
     if (user?.id) announcePostedDealReceipt(user.id, data);
     onPosted?.({
       dealId: data.dealId,
@@ -700,6 +724,7 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
     setEvidence([]);
     setReceipt(null);
     setOfflineReceipt(null);
+    setCoverageHold(null);
     setRecovered(false);
     setLinkedClient(null);
     setClientMode("new");
@@ -750,10 +775,7 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {trigger ?? (
-          <Button className="h-11 gap-2 sm:h-10">
-            <FilePlus2 className="h-4 w-4" />
-            Post a Deal
-          </Button>
+          <WinActionButton kind="deal" />
         )}
       </DialogTrigger>
       <DialogContent className="flex max-h-[96dvh] w-[calc(100vw-1rem)] max-w-3xl flex-col overflow-hidden p-0 sm:w-full">
@@ -817,6 +839,20 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
           </div>
         ) : (
           <form className="flex min-h-0 flex-1 flex-col" onSubmit={submit}>
+            {coverageHold && <aside role="status" className="mx-5 mt-4 rounded-lg border border-amber-500/40 bg-amber-500/5 p-4 text-sm">
+              <h3 className="font-semibold">{coverageHold.status === "review_rejected" ? "Coverage review did not approve this draft" : "Existing coverage needs review"}</h3>
+              <p className="mt-1">The saved draft matches an existing insured by date of birth and name or phone with the same carrier. A manager must verify the coverage and document the reason for another policy. A different card or policy number does not clear this review.</p>
+              <p className="mt-2 font-medium">No new deal has been posted or counted as production.</p>
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <Link to={`/dashboard/production?review=${encodeURIComponent(coverageHold.reviewId)}`} className="font-semibold underline" onClick={() => setOpen(false)}>Open coverage review</Link>
+                <Button type="button" size="sm" variant="outline" disabled={saving || uploading} onClick={() => {
+                  const nextKey = newIdempotencyKey();
+                  setIdempotencyKey(nextKey); setDraftId(null); setEvidence([]); setCoverageHold(null);
+                  if (storageKey) localStorage.setItem(storageKey, nextKey);
+                }}>Start a corrected draft</Button>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">Approval applies only to the exact reviewed draft. Changes are checked again before posting.</p>
+            </aside>}
             <div className="border-b border-border px-5 py-3">
               <RadioGroup
                 value={clientMode}

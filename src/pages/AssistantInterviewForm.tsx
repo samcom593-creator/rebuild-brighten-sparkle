@@ -396,7 +396,7 @@ export default function AssistantInterviewForm() {
                 value={interviewType}
                 onValueChange={(v) => setInterviewType(v)}
               >
-                <SelectTrigger className="h-12 text-base">
+                <SelectTrigger aria-label="Interview type" className="h-12 text-base">
                   <SelectValue placeholder="General" />
                 </SelectTrigger>
                 <SelectContent>

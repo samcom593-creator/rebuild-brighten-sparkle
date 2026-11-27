@@ -133,7 +133,7 @@ export function HookLabModule() {
           </div>
           <div className="md:col-span-3">
             <Select value={audience} onValueChange={(v) => setAudience(v as any)}>
-              <SelectTrigger><SelectValue placeholder="Audience" /></SelectTrigger>
+              <SelectTrigger aria-label="Filter hooks by audience"><SelectValue placeholder="Audience" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All audiences</SelectItem>
                 <SelectItem value="icp">ICP only</SelectItem>
@@ -143,7 +143,7 @@ export function HookLabModule() {
           </div>
           <div className="md:col-span-4">
             <Select value={filter} onValueChange={(v) => setFilter(v as any)}>
-              <SelectTrigger><SelectValue placeholder="3 C's filter" /></SelectTrigger>
+              <SelectTrigger aria-label="Filter hooks by 3 C's completeness"><SelectValue placeholder="3 C's filter" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All hooks</SelectItem>
                 <SelectItem value="agenda">★ Agenda only</SelectItem>

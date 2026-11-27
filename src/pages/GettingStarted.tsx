@@ -507,7 +507,7 @@ export default function GettingStarted() {
           />
         </div>
         <Select value={stageFilter} onValueChange={(v) => setStageFilter(v as any)}>
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger aria-label="Filter onboarding by stage" className="w-[200px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -597,7 +597,7 @@ export default function GettingStarted() {
                       </Button>
                     )}
                     <Select value={p.current_stage} onValueChange={(v) => advanceStage(p.id, v as Stage)}>
-                      <SelectTrigger className="h-8 w-[150px] text-xs">
+                      <SelectTrigger aria-label={`Onboarding stage for ${agent.display_name}`} className="h-8 w-[150px] text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>

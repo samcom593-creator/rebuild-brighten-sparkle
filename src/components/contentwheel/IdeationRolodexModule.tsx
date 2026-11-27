@@ -131,7 +131,7 @@ export function IdeationRolodexModule() {
           </div>
           <div className="md:col-span-3">
             <Select value={audience} onValueChange={(v) => setAudience(v as any)}>
-              <SelectTrigger><SelectValue placeholder="Audience" /></SelectTrigger>
+              <SelectTrigger aria-label="Filter ideas by audience"><SelectValue placeholder="Audience" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All audiences</SelectItem>
                 <SelectItem value="icp">ICP (recruit-now)</SelectItem>
@@ -141,7 +141,7 @@ export function IdeationRolodexModule() {
           </div>
           <div className="md:col-span-4">
             <Select value={status} onValueChange={(v) => setStatus(v as any)}>
-              <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectTrigger aria-label="Filter ideas by status"><SelectValue placeholder="Status" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All status ({ideas?.length ?? 0})</SelectItem>
                 {STATUS_ORDER.map((s) => (

@@ -140,7 +140,7 @@ function KanbanTab() {
                     <div className="text-slate-600 dark:text-slate-300 mt-0.5">{st.state ?? "—"} · {Math.round(st.days_in_stage)}d in stage</div>
                     <div className="mt-2">
                       <Select value={st.current_stage} onValueChange={(v) => moveStage.mutate({ id: st.id, stage: v as Stage })}>
-                        <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectTrigger aria-label={`Licensing stage for ${[st.first_name, st.last_name].filter(Boolean).join(" ")}`} className="h-7 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {STAGES.map(opt => (
                             <SelectItem key={opt.key} value={opt.key}>{opt.label}</SelectItem>

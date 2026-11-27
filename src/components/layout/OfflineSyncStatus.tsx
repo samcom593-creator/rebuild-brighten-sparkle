@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { CloudOff, CloudUpload, Loader2, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,18 +10,20 @@ import { useBrand } from "@/hooks/useBrand";
 import { supabase } from "@/integrations/supabase/client";
 import { invalidateOperationalTruth } from "@/lib/invalidateOperationalTruth";
 import { announcePostedDealReceipt } from "@/lib/dealCelebrations";
+import { readCoverageHold } from "@/lib/dealCoverageReview";
 import {
   flushQueue,
   isParked,
   readQueueForUser,
+  retryParkedDeals,
   subscribe,
   type QueuedEntry,
   type SendResult,
 } from "@/lib/offlineQueue";
 
-type DealSubmitResponse = { dealId?: string; status?: string; replayed?: boolean } | null;
+type DealSubmitResponse = { dealId?: string; status?: string; replayed?: boolean; ok?: boolean; reviewId?: string; reviewVersion?: number; matchCount?: number } | null;
 
-async function sendQueuedEntry(entry: QueuedEntry): Promise<SendResult> {
+export async function sendQueuedEntry(entry: QueuedEntry): Promise<SendResult> {
   if (entry.kind !== "submit_apex_deal") {
     return { ok: false, error: `Unsupported queued operation: ${entry.kind}`, permanent: true };
   }
@@ -32,6 +35,10 @@ async function sendQueuedEntry(entry: QueuedEntry): Promise<SendResult> {
     entry.args,
   );
   if (error) return { ok: false, error: error.message || "Server rejected the queued deal." };
+  const held = readCoverageHold(data);
+  if (held) return { ok: false, permanent: true, error: held.status === "review_rejected"
+    ? "Coverage review rejected this draft. Open Book of Business to review the decision; no deal was posted."
+    : "Coverage review is required. Open Book of Business; no deal was posted." };
   if (data?.dealId || data?.status === "already_recorded") {
     announcePostedDealReceipt(entry.ownerUserId, data);
     return { ok: true };
@@ -125,12 +132,19 @@ export function OfflineSyncStatus() {
                 : `${brand.shortName} is offline`}
           </p>
           <p className="text-xs text-muted-foreground">
-            {online
+            {parked > 0 ? "Saved deals need review or correction. They have not been posted by this device. Open coverage reviews, then retry only after the issue is resolved." : online
               ? `${brand.shortName} is reconnecting to the canonical deal ledger. Nothing is counted twice.`
               : "Previously opened pages remain available. New deals are stored on this device and sent when internet returns."}
           </p>
         </div>
       </div>
+      {parked > 0 && <div className="flex flex-wrap gap-2">
+        <Button asChild type="button" size="sm" variant="outline"><Link to="/dashboard/production">Review saved deals</Link></Button>
+        {online && <Button type="button" size="sm" variant="outline" disabled={syncing} onClick={() => {
+          if (user?.id) retryParkedDeals(user.id);
+          void flushNow();
+        }}>{syncing ? "Checking…" : "Retry saved deals"}</Button>}
+      </div>}
       {online && entries.length > 0 && parked < entries.length ? (
         <Button type="button" size="sm" variant="outline" className="h-10 shrink-0 gap-2" onClick={() => void flushNow()} disabled={syncing}>
           {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CloudUpload className="h-4 w-4" />}

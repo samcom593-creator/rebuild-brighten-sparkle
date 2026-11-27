@@ -150,7 +150,7 @@ export function RecruitingSystemPanel({ agentId }: { agentId: string }) {
               <div className="space-y-1.5">
                 <Label className="text-[13px] text-muted-foreground">Payment plan</Label>
                 <Select value={plan} onValueChange={(v) => setPlan(v as PlanValue)}>
-                  <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-label="Recruiting payment plan" className="h-10"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {PLANS.map((p) => (
                       <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>

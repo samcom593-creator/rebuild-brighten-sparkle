@@ -782,7 +782,7 @@ export function AgentQuickEditDialog({
             <div className="space-y-3 rounded-lg border border-primary/25 bg-primary/5 p-3">
               <Label className="text-primary">Account mode</Label>
               <Select value={accountMode} onValueChange={handleModeChange} disabled={savingMode}>
-                <SelectTrigger><SelectValue placeholder="Account mode" /></SelectTrigger>
+                <SelectTrigger aria-label="Account mode"><SelectValue placeholder="Account mode" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="agent">Agent</SelectItem>
                   <SelectItem value="manager">Manager</SelectItem>
@@ -825,7 +825,7 @@ export function AgentQuickEditDialog({
               <Label className="text-amber-600 dark:text-amber-400">License &amp; onboarding control</Label>
               <div className="grid grid-cols-2 gap-2">
                 <Select value={licenseStatus} onValueChange={setLicenseStatus}>
-                  <SelectTrigger><SelectValue placeholder="License status" /></SelectTrigger>
+                  <SelectTrigger aria-label="License status"><SelectValue placeholder="License status" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="unlicensed">Unlicensed</SelectItem>
                     <SelectItem value="pending">Pending</SelectItem>
@@ -833,7 +833,7 @@ export function AgentQuickEditDialog({
                   </SelectContent>
                 </Select>
                 <Select value={onboardingStage} onValueChange={setOnboardingStage}>
-                  <SelectTrigger><SelectValue placeholder="Onboarding stage" /></SelectTrigger>
+                  <SelectTrigger aria-label="Onboarding stage"><SelectValue placeholder="Onboarding stage" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="pre_licensed">Pre-licensed</SelectItem>
                     <SelectItem value="onboarding">Onboarding</SelectItem>

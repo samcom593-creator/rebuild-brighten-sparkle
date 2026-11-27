@@ -1,15 +1,15 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-11-25T03:34:02.352Z
-Repository: `/workspace/scratch/842b8a77170a/galaxy-finances-access`
+Generated: 2026-11-27T04:40:39.222Z
+Repository: `/workspace/scratch/46ab0b024b5a/galaxy-completion`
 
 ## Inventory Summary
 
 - Total Local Edge Functions: **264**
 - Configured in `config.toml`: **265**
 - Invoked Edge Functions in Source: **106**
-- Invoked RPC Calls in Source: **342**
-- SQL Functions in Migrations: **1124**
+- Invoked RPC Calls in Source: **356**
+- SQL Functions in Migrations: **1166**
 
 ## Edge Function Auth & Verification Contracts
 
@@ -288,6 +288,6 @@ applied by hand through bot-sql and never round-tripped into
 `supabase/migrations`, so this directory does not model the deployed database.
 `apex-doctor` queries `pg_proc` and is the authority on deployed state.
 
-- Invoked RPCs: **342**
-- Also declared in this commit's migrations: **334**
+- Invoked RPCs: **356**
+- Also declared in this commit's migrations: **348**
 - Declared only in the database: **8**

@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
+import { assertRecognitionSent } from "@/lib/recognitionQueue";
 
 interface LogEntry {
   id: string;
@@ -51,18 +52,21 @@ const STATUS_META: Record<string, { color: string; icon: any; label: string }> =
   delivered: { color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30", icon: CheckCircle2, label: "Delivered" },
   bounced:   { color: "bg-red-500/10 text-red-400 border-red-500/30",             icon: XCircle,      label: "Bounced" },
   failed:    { color: "bg-red-500/20 text-red-400 border-red-500/40",             icon: AlertCircle,  label: "Failed" },
+  unknown:   { color: "bg-muted text-foreground border-border", icon: AlertCircle, label: "Receipt review needed" },
 };
 
 export default function EmailDeliveryLog() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [templateFilter, setTemplateFilter] = useState("all");
   const [visibleCount, setVisibleCount] = useState(100);
+  const [retryingId, setRetryingId] = useState<string | null>(null);
 
   const { data: logs = [], isLoading, isError, error } = useQuery({
-    queryKey: ["email-delivery-log"],
+    queryKey: ["email-delivery-log", user?.id],
+    enabled: Boolean(user?.id && isAdmin),
     queryFn: async (): Promise<LogEntry[]> => {
       const { data, error } = await supabase
         .from("email_delivery_log" as any)
@@ -116,6 +120,7 @@ export default function EmailDeliveryLog() {
   }, [logs]);
 
   const retryEmail = async (entry: LogEntry) => {
+    if (retryingId) return;
     if (entry.template !== "plaque" && entry.template !== "plaque_manager_notify") {
       toast.error("Retry only supported for plaque emails in this build");
       return;
@@ -124,34 +129,32 @@ export default function EmailDeliveryLog() {
       toast.error("Cannot retry — no related plaque record");
       return;
     }
+    setRetryingId(entry.id);
     try {
-      const { data: plaque } = await supabase
+      const { data: plaque, error: plaqueError } = await supabase
         .from("plaque_awards")
         .select("agent_id, milestone_type, amount, milestone_date")
         .eq("id", entry.related_record_id)
         .single();
-      if (!plaque) {
-        toast.error("Original plaque not found");
-        return;
-      }
+      if (plaqueError || !plaque) throw new Error("The original recognition could not be loaded.");
 
-      const { error } = await supabase.functions.invoke("send-plaque-recognition", {
+      const { data, error } = await supabase.functions.invoke("send-plaque-recognition", {
         body: {
           agentId: (plaque as any).agent_id,
           milestoneType: (plaque as any).milestone_type,
           amount: (plaque as any).amount,
           date: (plaque as any).milestone_date,
+          retryTarget: entry.template === "plaque_manager_notify" ? "manager" : "agent",
         },
       });
       if (error) throw error;
-      toast.success("Retry triggered");
-      await supabase
-        .from("email_delivery_log" as any)
-        .update({ retries: entry.retries + 1, updated_at: new Date().toISOString() })
-        .eq("id", entry.id);
-      queryClient.invalidateQueries({ queryKey: ["email-delivery-log"] });
+      assertRecognitionSent(data);
+      toast.success("Recognition accepted by the email provider");
     } catch (e: any) {
       toast.error("Retry failed: " + (e.message || "unknown"));
+    } finally {
+      setRetryingId(null);
+      void queryClient.invalidateQueries({ queryKey: ["email-delivery-log", user?.id] });
     }
   };
 
@@ -259,7 +262,7 @@ export default function EmailDeliveryLog() {
           />
         </div>
         <Select value={templateFilter} onValueChange={setTemplateFilter}>
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger aria-label="Filter email deliveries by template" className="w-[200px]">
             <SelectValue placeholder="Template" />
           </SelectTrigger>
           <SelectContent>
@@ -340,9 +343,9 @@ export default function EmailDeliveryLog() {
                       </>
                     )}
                   </div>
-                  {(entry.status === "failed" || entry.status === "bounced") &&
+                  {entry.status === "failed" &&
                     entry.template.startsWith("plaque") && (
-                      <Button size="sm" variant="outline" onClick={() => retryEmail(entry)}>
+                      <Button size="sm" variant="outline" disabled={retryingId !== null} onClick={() => retryEmail(entry)}>
                         <RotateCcw className="h-3.5 w-3.5 mr-1" /> Retry
                       </Button>
                     )}

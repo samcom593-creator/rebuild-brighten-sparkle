@@ -4,32 +4,25 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
-// Press feedback (motion review, 2026-10-28): every pressable scales to 0.97 on :active over
-// 120ms on a strong ease-out, so the button answers the finger on pointer-down, before the
-// click lands. The properties are named one by one (never `all`), the scale is skipped under
-// prefers-reduced-motion (the brightness dip stays as the press signal), and the transition
-// runs on transform and paint-only properties, so nothing here reflows the page.
-//
-// The duration and the curve are arbitrary properties, not `duration-[140ms]` / `ease-[...]`:
-// with tailwindcss-animate installed this config does not emit those two arbitrary utilities
-// (checked with the Tailwind CLI), so the shipped `duration-[140ms]` had always fallen back to
-// the 150ms default. `[transition-duration:…]` compiles under every config, the landing one too.
+// Shared public/workspace control: immediate press feedback, a visible keyboard focus,
+// and no movement under reduced motion. Dense sizes stay compact; page action toolbars
+// provide their own 44px touch targets. Token fallbacks also work outside the app shell.
 const buttonVariants = cva(
-  "galaxy-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-[background-color,box-shadow,filter,transform] [transition-duration:120ms] [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] motion-safe:active:scale-[0.97] focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "galaxy-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[var(--apex-r-md,0.5rem)] text-sm font-semibold transition-[background-color,border-color,color,box-shadow,filter,transform] [transition-duration:var(--galaxy-motion-fast,140ms)] [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] motion-safe:active:scale-[0.98] motion-reduce:transition-none focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none disabled:filter-none disabled:transform-none [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:brightness-110 active:brightness-95",
-        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline: "border border-input bg-transparent hover:bg-accent hover:text-accent-foreground",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
+        default: "bg-primary text-primary-foreground hover:brightness-95 active:brightness-90",
+        destructive: "bg-destructive text-destructive-foreground hover:brightness-95 active:brightness-90",
+        outline: "border border-input bg-transparent hover:border-foreground/20 hover:bg-accent hover:text-accent-foreground active:bg-accent/80",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80 active:bg-secondary/70",
+        ghost: "hover:bg-accent hover:text-accent-foreground active:bg-accent/80",
+        link: "text-primary underline-offset-4 hover:underline active:opacity-80",
       },
       size: {
         default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-md px-3",
-        lg: "h-11 rounded-md px-8",
+        sm: "h-9 px-3",
+        lg: "h-11 px-8",
         icon: "h-10 w-10",
       },
     },

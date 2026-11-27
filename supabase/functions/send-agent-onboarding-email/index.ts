@@ -229,43 +229,73 @@ function buildGetLicensedEmail(
   return { subject, html, text };
 }
 
-function buildCourseEmail(name: string): { subject: string; html: string; text: string } {
+// MP-FIRST-STEPS (2026-11-26). Sam: a hire he had just called "said he didn't get any of the links …
+// steps forward must be extremely clear: what training videos to watch, join the Discord, all of that."
+// Resend showed the four onboarding emails DELIVERED to that hire; they had gone out from the retired
+// apex-financial.org sender while talking about Galaxy, and they split the links across four mails. This
+// one email now carries every first step with its real link, in order, so a hire who finds only one of
+// our emails still has the whole path. Links come from the same system_settings the Getting Started
+// checklist reads, so the two cannot drift. A missing link is said out loud, never faked.
+function buildCourseEmail(name: string, settings: Settings): { subject: string; html: string; text: string } {
   const fn = escapeHtml(firstName(name));
   const trainingUrl = FIELD_COURSE_URL;
   const roadmapUrl = "https://galaxyfinancial.org/agent-portal";
-  const url = escapeHtml(trainingUrl);
-  const roadmap = escapeHtml(roadmapUrl);
-  const subject = "Your Galaxy online training is ready";
+  const slackUrl = settings.community_invite_url;
+  const discordUrl = settings.discord_invite_url;
+  const callUrl = settings.onboarding_call_scheduling_url;
+  const subject = "Your first steps at Galaxy: training videos, Slack, Discord, your call";
+
+  const linkOrAsk = (url: string | null, what: string) =>
+    url ? url : `(reply to this email and I'll send you the ${what} link)`;
+
   const text = [
     `Hey ${fn},`,
     ``,
     SPAM_NOTE_TEXT,
     ``,
-    `You're licensed. Your Galaxy online training is ready: ${trainingUrl}`,
+    `You're on the team. Here is every first step with its link, in order. Do these today:`,
     ``,
-    `Step 1 — Sign in and confirm your Galaxy account and profile.`,
-    `Step 2 — Complete onboarding, scripts, objections, ReadyMode, pipeline, deal-posting, and underwriting modules in order.`,
-    `Step 3 — Open your live roadmap for the next unlocked action: ${roadmapUrl}`,
-    `Step 4 — Use Slack for training questions and team support.`,
+    `Step 1 — Watch the training videos: ${trainingUrl}`,
+    `   Sign in with this email address. Go in order: onboarding, scripts, objections, ReadyMode, pipeline, deal posting, underwriting.`,
+    `Step 2 — Join the team Slack: ${linkOrAsk(slackUrl, "Slack")}`,
+    `   Questions, contracting help and sales wins live there.`,
+    `Step 3 — Join the Discord: ${linkOrAsk(discordUrl, "Discord")}`,
+    `Step 4 — Book your onboarding call with Sam: ${linkOrAsk(callUrl, "booking")}`,
+    `   Already booked? You're set.`,
+    `Step 5 — Open your roadmap: ${roadmapUrl}`,
+    `   It shows your next unlocked action, and your scripts open once training is passed.`,
     ``,
-    `If you hit a snag, reply here. We move fast.`,
+    `Stuck on any step? Reply to this email. We move fast.`,
     ``,
     `— Sam`,
     `Galaxy Financial`,
   ].join("\n");
+
+  const btn = (url: string, label: string, bg: string) =>
+    `<a href="${escapeHtml(url)}" style="display:inline-block;margin:4px 8px 4px 0;padding:12px 20px;background:${bg};color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">${label}</a>`;
+  const ask = (what: string) => `<em>Reply to this email and I'll send you the ${what} link.</em>`;
 
   const html = `
   ${SPAM_NOTE_HTML}
 <!doctype html>
 <html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111;line-height:1.55;">
   <p>Hey ${fn},</p>
-  <p>You're licensed. Your Galaxy online training is ready:</p>
-  <p><a href="${url}" style="display:inline-block;padding:12px 20px;background:#0a0a0a;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Start online training</a></p>
-  <p style="margin-top:24px;"><strong>Step 1.</strong> Sign in and confirm your Galaxy account and profile.<br/>
-  <strong>Step 2.</strong> Complete onboarding, scripts, objections, ReadyMode, pipeline, deal-posting, and underwriting modules in order.<br/>
-  <strong>Step 3.</strong> <a href="${roadmap}">Open your live roadmap</a> for the next unlocked action.<br/>
-  <strong>Step 4.</strong> Use Slack for training questions and team support.</p>
-  <p>If you hit a snag, reply here. We move fast.</p>
+  <p>You're on the team. Here is every first step with its link, in order. Do these today:</p>
+  <p style="margin-top:20px;"><strong>Step 1. Watch the training videos.</strong><br/>
+  ${btn(trainingUrl, "Open the training videos", "#0a0a0a")}<br/>
+  <span style="color:#444;font-size:14px;">Sign in with this email address. Go in order: onboarding, scripts, objections, ReadyMode, pipeline, deal posting, underwriting.</span></p>
+  <p style="margin-top:20px;"><strong>Step 2. Join the team Slack.</strong><br/>
+  ${slackUrl ? btn(slackUrl, "Join the Galaxy Slack", "#4A154B") : ask("Slack")}<br/>
+  <span style="color:#444;font-size:14px;">Questions, contracting help and sales wins live there.</span></p>
+  <p style="margin-top:20px;"><strong>Step 3. Join the Discord.</strong><br/>
+  ${discordUrl ? btn(discordUrl, "Join the Discord", "#5865F2") : ask("Discord")}</p>
+  <p style="margin-top:20px;"><strong>Step 4. Book your onboarding call with Sam.</strong><br/>
+  ${callUrl ? btn(callUrl, "Book my onboarding call", "#0a0a0a") : ask("booking")}<br/>
+  <span style="color:#444;font-size:14px;">Already booked? You're set.</span></p>
+  <p style="margin-top:20px;"><strong>Step 5. Open your roadmap.</strong><br/>
+  <a href="${escapeHtml(roadmapUrl)}">${escapeHtml(roadmapUrl)}</a><br/>
+  <span style="color:#444;font-size:14px;">It shows your next unlocked action, and your scripts open once training is passed.</span></p>
+  <p style="margin-top:24px;">Stuck on any step? Reply to this email. We move fast.</p>
   <p style="margin-top:24px;">— Sam<br/>Galaxy Financial</p>
 </body></html>`.trim();
 
@@ -673,7 +703,7 @@ async function drainQueue(sb: any, settings: Settings, dryRun: boolean): Promise
     if (row.email_kind === "get_licensed") {
       built = buildGetLicensedEmail(name ?? "", settings.onboarding_call_scheduling_url ?? null);
     } else if (row.email_kind === "course") {
-      built = buildCourseEmail(name ?? "");
+      built = buildCourseEmail(name ?? "", settings);
     } else if (row.email_kind === "scripts_packet") {
       built = buildScriptsPacketEmail(name ?? "");
       meta = { packet_version: (row.meta as Record<string, unknown> | null)?.packet_version ?? null };

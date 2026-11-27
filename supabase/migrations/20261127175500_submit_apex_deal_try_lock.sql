@@ -125,8 +125,10 @@ begin
     raise exception 'Posting returned no durable deal receipt' using errcode = 'P0001';
   end if;
   if v_review.id is not null then
+    -- deal_coverage_reviews_check: submitted requires reviewer, time and reason; the auto-post is its own review.
     update public.deal_coverage_reviews
        set status = 'submitted', deal_id = (v_result->>'dealId')::uuid, version = version + 1,
+           reviewed_by = coalesce(reviewed_by, v_user), reviewed_at = coalesce(reviewed_at, now()),
            decision_reason = coalesce(decision_reason, 'auto_posted:no_queue'), updated_at = now()
      where id = v_review.id;
   end if;

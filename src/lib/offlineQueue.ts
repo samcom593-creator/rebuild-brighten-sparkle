@@ -30,6 +30,46 @@ export const MAX_ATTEMPTS = 8;
  *  and take the rest of the app down with it. */
 export const MAX_ENTRIES = 50;
 
+/** Retry pacing. A transient failure (timeout, 5xx, dropped connection) waits
+ *  30s before the next try and doubles per attempt, capped at 10 minutes.
+ *  Immediate re-sends of the same key are what convoyed submit_apex_deal on
+ *  2026-11-27: every retry queued behind the running attempt on that key's
+ *  advisory lock and died at the 8s statement timeout, which fed another retry. */
+export const FIRST_RETRY_DELAY_MS = 30_000;
+export const MAX_RETRY_DELAY_MS = 600_000;
+/** How long to wait before asking again when the server says another attempt
+ *  for this key is still running. Not a failure, so it burns no attempt. */
+export const IN_PROGRESS_RETRY_MS = 15_000;
+/** The outbox is shared by every tab of this browser (localStorage), and each
+ *  tab runs its own flush timer. A send holds a lease on its entry for this long
+ *  so a second tab does not fire the same key while the first is still waiting
+ *  on the server; sized just past the 120s PostgREST statement timeout measured
+ *  on 2026-11-27, after which the first attempt is dead either way. */
+export const SEND_LEASE_MS = 130_000;
+
+export function backoffMs(attempts: number): number {
+  const exponent = Math.max(0, attempts - 1);
+  return Math.min(FIRST_RETRY_DELAY_MS * 2 ** exponent, MAX_RETRY_DELAY_MS);
+}
+
+// Keys with a request in flight IN THIS TAB. The dialog and the outbox flusher
+// both register here, so a Post click, a timer flush and a "Sync now" can never
+// send the same submission twice at once. Other tabs are paced by nextAttemptAt
+// in storage; the server's own idempotency lock is the last line.
+const inFlight = new Set<string>();
+const flightKey = (ownerUserId: string, idempotencyKey: string) => `${ownerUserId}:${idempotencyKey}`;
+
+export function isInFlight(ownerUserId: string, idempotencyKey: string): boolean {
+  return inFlight.has(flightKey(ownerUserId, idempotencyKey));
+}
+
+/** Returns the release function. Always call it in a finally. */
+export function markInFlight(ownerUserId: string, idempotencyKey: string): () => void {
+  const key = flightKey(ownerUserId, idempotencyKey);
+  inFlight.add(key);
+  return () => { inFlight.delete(key); };
+}
+
 /** Operations allowed in the outbox. Each one MUST be idempotent server-side. */
 export type QueuedKind = "submit_apex_deal";
 
@@ -47,6 +87,10 @@ export type QueuedEntry = {
   createdAt: string;
   attempts: number;
   lastError: string | null;
+  /** Earliest time the next attempt may be sent (ISO). Absent or null = now. */
+  nextAttemptAt?: string | null;
+  /** While set and in the future, some tab is sending this entry right now. */
+  leaseUntil?: string | null;
   /** A human label so the UI can say WHICH deal is waiting, not just "1 item". */
   label: string;
 };
@@ -54,6 +98,9 @@ export type QueuedEntry = {
 export type FlushOutcome = {
   sent: number;
   failed: number;
+  /** Entries this pass did not send on purpose: in flight elsewhere, still inside
+   *  their backoff, or told by the server to ask again later. Not failures. */
+  deferred: number;
   remaining: number;
   /** True only when there was nothing to do. Distinguished from "tried and all
    *  failed" so a caller can never render an empty queue as a successful send. */
@@ -162,6 +209,15 @@ export function isOffline(): boolean {
  */
 export function isTransportError(error: unknown): boolean {
   if (isOffline()) return true;
+  // A gateway or statement timeout is a request the server never finished
+  // judging: PostgREST maps Postgres 57014 (statement_timeout) to HTTP 504, and
+  // the message that comes back is often empty.
+  const shaped = (error && typeof error === "object" ? error : {}) as { status?: unknown; statusCode?: unknown; code?: unknown };
+  const status = typeof shaped.status === "number" ? shaped.status : typeof shaped.statusCode === "number" ? shaped.statusCode : null;
+  if (status !== null && [408, 425, 429, 502, 503, 504].includes(status)) return true;
+  // 57014 statement_timeout; 55P03 lock_not_available (the server's lock_timeout
+  // fired before it could even look at the submission). Neither judged the write.
+  if (["57014", "55P03"].includes(String(shaped.code ?? ""))) return true;
   const message = (
     error instanceof Error
       ? error.message
@@ -196,7 +252,11 @@ export function enqueue(input: {
   idempotencyKey: string;
   args: Record<string, unknown>;
   label: string;
+  /** Epoch ms before which the outbox must not try this entry. Set it when the
+   *  write that is being queued may still be running on the server. */
+  firstAttemptAt?: number | null;
 }): EnqueueResult {
+  const nextAttemptAt = typeof input.firstAttemptAt === "number" ? new Date(input.firstAttemptAt).toISOString() : null;
   // The invariant that makes replay safe. Refuse rather than risk a duplicate
   // policy landing in the book commissions are computed from.
   if (!input.ownerUserId || !input.idempotencyKey || !input.idempotencyKey.trim()) {
@@ -212,7 +272,7 @@ export function enqueue(input: {
   if (existing) {
     const updated = current.map((row) =>
       row.ownerUserId === input.ownerUserId && row.idempotencyKey === input.idempotencyKey
-        ? { ...row, args: input.args, label: input.label, lastError: null }
+        ? { ...row, args: input.args, label: input.label, lastError: null, nextAttemptAt }
         : row,
     );
     if (!writeQueue(updated)) return { ok: false, reason: "storage-unavailable" };
@@ -235,6 +295,8 @@ export function enqueue(input: {
     createdAt: new Date().toISOString(),
     attempts: 0,
     lastError: null,
+    nextAttemptAt,
+    leaseUntil: null,
     label: input.label,
   };
   if (!writeQueue([...current, entry])) return { ok: false, reason: "storage-unavailable" };
@@ -263,10 +325,33 @@ export function removeQueuedDealAfterReceipt(ownerUserId: string, idempotencyKey
 /** A deliberate user retry, after review or correction; never another account. */
 export function retryParkedDeals(ownerUserId: string): void {
   writeQueue(readQueue().map(row => row.ownerUserId === ownerUserId && isParked(row)
-    ? { ...row, attempts: 0, lastError: null } : row));
+    ? { ...row, attempts: 0, lastError: null, nextAttemptAt: null } : row));
 }
 
-export type SendResult = { ok: true } | { ok: false; error: string; permanent?: boolean };
+/** `retryAfterMs`: the server is still working on an earlier attempt for this
+ *  key. Not a failure and not a burned attempt; ask again after that pause. */
+export type SendResult = { ok: true } | { ok: false; error: string; permanent?: boolean; retryAfterMs?: number };
+
+export type FlushOptions = {
+  /** A deliberate "Sync now": still never sends a key that is in flight, but
+   *  does not wait out a backoff. */
+  ignoreBackoff?: boolean;
+  /** Clock, injectable for tests. */
+  now?: () => number;
+};
+
+export function isDue(entry: QueuedEntry, now: number): boolean {
+  if (!entry.nextAttemptAt) return true;
+  const at = Date.parse(entry.nextAttemptAt);
+  return Number.isNaN(at) || at <= now;
+}
+
+/** True while another tab's send of this entry may still be running. */
+export function isLeased(entry: QueuedEntry, now: number): boolean {
+  if (!entry.leaseUntil) return false;
+  const until = Date.parse(entry.leaseUntil);
+  return !Number.isNaN(until) && until > now;
+}
 
 /**
  * Drain the outbox through `send`. Entries are removed ONLY on a definite
@@ -278,26 +363,40 @@ export type SendResult = { ok: true } | { ok: false; error: string; permanent?: 
 export async function flushQueue(
   send: (entry: QueuedEntry) => Promise<SendResult>,
   ownerUserId?: string,
+  options: FlushOptions = {},
 ): Promise<FlushOutcome> {
+  const now = options.now ?? Date.now;
   const belongsToUser = (row: QueuedEntry) => !ownerUserId || row.ownerUserId === ownerUserId;
   const pending = readQueue().filter((row) => belongsToUser(row) && !isParked(row));
-  if (pending.length === 0) {
-    return { sent: 0, failed: 0, remaining: readQueue().filter(belongsToUser).length, idle: true };
+  // A lease is never overridden, not even by "Sync now": it means a send is out.
+  const due = pending.filter((row) =>
+    !isInFlight(row.ownerUserId, row.idempotencyKey) && !isLeased(row, now()) && (options.ignoreBackoff || isDue(row, now())));
+  let deferred = pending.length - due.length;
+  if (due.length === 0) {
+    return { sent: 0, failed: 0, deferred, remaining: readQueue().filter(belongsToUser).length, idle: deferred === 0 };
   }
 
   let sent = 0;
   let failed = 0;
 
-  for (const entry of pending) {
+  for (const entry of due) {
     // Re-read each iteration: a concurrent tab may have drained this already.
     const live = readQueue().find((row) => row.id === entry.id);
     if (!live) continue;
+    // A Post click may have started this key while the loop was awaiting another.
+    if (isInFlight(live.ownerUserId, live.idempotencyKey)) { deferred += 1; continue; }
 
+    const release = markInFlight(live.ownerUserId, live.idempotencyKey);
+    // Written to storage BEFORE the send so every other tab sees it at once.
+    const leaseUntil = new Date(now() + SEND_LEASE_MS).toISOString();
+    writeQueue(readQueue().map((row) => (row.id === live.id ? { ...row, leaseUntil } : row)));
     let result: SendResult;
     try {
       result = await send(live);
     } catch (error) {
       result = { ok: false, error: error instanceof Error ? error.message : String(error) };
+    } finally {
+      release();
     }
 
     if (result.ok === true) {
@@ -306,23 +405,40 @@ export async function flushQueue(
       continue;
     }
 
-    failed += 1;
     if (result.permanent) {
       // The server has definitively refused it. Park it at the attempt ceiling
       // so it stops retrying but stays visible for a human.
+      failed += 1;
       writeQueue(
         readQueue().map((row) =>
-          row.id === live.id ? { ...row, attempts: MAX_ATTEMPTS, lastError: result.error } : row,
+          row.id === live.id ? { ...row, attempts: MAX_ATTEMPTS, lastError: result.error, nextAttemptAt: null, leaseUntil: null } : row,
         ),
       );
       continue;
     }
+
+    if (typeof result.retryAfterMs === "number") {
+      // The server is still working on an earlier attempt for this key. Asking
+      // again right away is what built the convoy; wait, and keep the attempt.
+      deferred += 1;
+      const retryAt = new Date(now() + result.retryAfterMs).toISOString();
+      writeQueue(
+        readQueue().map((row) =>
+          row.id === live.id ? { ...row, lastError: result.error, nextAttemptAt: retryAt, leaseUntil: null } : row,
+        ),
+      );
+      continue;
+    }
+
+    failed += 1;
     writeQueue(
-      readQueue().map((row) =>
-        row.id === live.id ? { ...row, attempts: row.attempts + 1, lastError: result.error } : row,
-      ),
+      readQueue().map((row) => {
+        if (row.id !== live.id) return row;
+        const attempts = row.attempts + 1;
+        return { ...row, attempts, lastError: result.error, nextAttemptAt: new Date(now() + backoffMs(attempts)).toISOString(), leaseUntil: null };
+      }),
     );
   }
 
-  return { sent, failed, remaining: readQueue().filter(belongsToUser).length, idle: false };
+  return { sent, failed, deferred, remaining: readQueue().filter(belongsToUser).length, idle: false };
 }

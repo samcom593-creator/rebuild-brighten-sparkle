@@ -20,7 +20,7 @@ import { WinActionButton } from "@/components/celebrations/WinActionButton";
 import { normalizePolicyNumber, sanitizePolicyInput, isWithinPolicyNumberGrace, policyNumberGrade } from "@/lib/policyNumber";
 import { parseFinancePolicyBook, policyNameKey } from "@/lib/financePolicyBook";
 import { LEAD_TYPES } from "@/lib/leadTypes";
-import { enqueue, isOffline, isTransportError } from "@/lib/offlineQueue";
+import { FIRST_RETRY_DELAY_MS, IN_PROGRESS_RETRY_MS, enqueue, isInFlight, isOffline, isTransportError, markInFlight } from "@/lib/offlineQueue";
 import { TeamLookupError } from "@/components/shared/TeamLookupError";
 import { COVERAGE_REVIEW_QUERY_KEY, readCoverageHold, type CoverageHold } from "@/lib/dealCoverageReview";
 
@@ -93,10 +93,48 @@ interface Receipt {
   correlationId: string;
 }
 
+/** Why this deal is on the device instead of confirmed by the server. The copy
+ *  must say which, because "waiting for internet" on a connected laptop reads as
+ *  a lie and sends the agent to re-post. */
+type OfflineReason = "offline" | "server_busy" | "still_saving";
+
 interface OfflineReceipt {
   localId: string;
   label: string;
+  reason: OfflineReason;
 }
+
+const OFFLINE_REASON_COPY: Record<OfflineReason, { dialogTitle: string; description: string; title: string; body: string; syncStatus: string; toast: string }> = {
+  offline: {
+    dialogTitle: "Deal waiting to sync",
+    description: "This deal is stored on this device and has not been recorded by the server yet.",
+    title: "Saved on this device",
+    body: "Keep this device signed in. It will submit automatically when internet returns, using the same duplicate-safe key.",
+    syncStatus: "Waiting for internet",
+    toast: "Saved on this device. The deal will post automatically when internet returns.",
+  },
+  server_busy: {
+    dialogTitle: "Deal saved on this device",
+    description: "This deal is stored on this device and has not been recorded by the server yet.",
+    title: "Saved, retrying in the background",
+    body: "The server was busy or the connection dropped before it answered. This device retries on its own with a growing pause, using the same duplicate-safe key, so nothing is counted twice.",
+    syncStatus: "Retrying with a growing pause",
+    toast: "The server is busy. Your deal is saved on this device and will retry on its own. Nothing is counted twice.",
+  },
+  still_saving: {
+    dialogTitle: "Deal still saving",
+    description: "This device has not yet confirmed that the server recorded this deal.",
+    title: "The server is still saving this deal",
+    body: "An earlier attempt is still running on the server. This device checks back for its receipt with the same duplicate-safe key; it will not send the deal twice.",
+    syncStatus: "Confirming the server's copy",
+    toast: "The server is still saving this deal. This device will confirm it; nothing is counted twice.",
+  },
+};
+
+// After the server reports an attempt for this key is still running, read the
+// ledger for its receipt at this pace, then hand the key to the outbox.
+const RECEIPT_POLL_ATTEMPTS = 6;
+const RECEIPT_POLL_INTERVAL_MS = 5_000;
 
 type RpcError = { message?: string; code?: string; status?: number };
 
@@ -182,8 +220,11 @@ function likeLiteral(term: string): string {
   return term.replace(/[\\%_*]/g, (character) => `\\${character}`);
 }
 
-function rpc<T>(name: string, args: Record<string, unknown>): Promise<{ data: T | null; error: RpcError | null }> {
-  return (supabase.rpc as unknown as (fn: string, values: Record<string, unknown>) => Promise<{ data: T | null; error: RpcError | null }>)(name, args);
+// `status` is the HTTP status of the response. PostgREST turns a Postgres
+// statement timeout into a 504 with an empty message, and that status is the
+// only honest way to tell "the server never answered" from "the server said no".
+function rpc<T>(name: string, args: Record<string, unknown>): Promise<{ data: T | null; error: RpcError | null; status?: number }> {
+  return (supabase.rpc as unknown as (fn: string, values: Record<string, unknown>) => Promise<{ data: T | null; error: RpcError | null; status?: number }>)(name, args);
 }
 
 interface InitialDealClient {
@@ -626,93 +667,10 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
     setUploading(false);
   };
 
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-    // 2026-08-19 (Sam, exact Agent Cloud Post-a-Deal): single page, and evidence
-    // is OPTIONAL there — validate only client / policy / premium (0,1,2), never
-    // the evidence step. submit_apex_deal already accepts a deal with no files.
-    for (let index = 0; index < 3; index += 1) {
-      const validation = validateStep(index);
-      if (validation) { toast.error(validation); return; }
-    }
-    setSaving(true);
-    const queuedArgs = {
-      p_idempotency_key: idempotencyKey,
-      p_payload: payload,
-      p_agent_id: selectedAgentId || null,
-    };
-    const queueCurrentDeal = (): boolean => {
-      if (!user?.id) return false;
-      const clientName = `${form.clientFirstName} ${form.clientLastName}`.trim();
-      const policyNumber = normalizePolicyNumber(form.policyNumber);
-      const label = `${clientName} · ${policyNumber || "Policy number pending"}`;
-      const queued = enqueue({
-        ownerUserId: user.id,
-        kind: "submit_apex_deal",
-        idempotencyKey,
-        args: queuedArgs,
-        label,
-      });
-      if (queued.ok === false) {
-        const message = queued.reason === "queue-full"
-          ? "This device already has 50 deals waiting to sync. Reconnect before posting another."
-          : "This deal could not be stored safely on this device. Keep the form open and reconnect.";
-        toast.error(message);
-        return false;
-      }
-      setOfflineReceipt({ localId: queued.entry.id, label });
-      if (storageKey) localStorage.removeItem(storageKey);
-      toast.info("Saved on this device. The deal will post automatically when internet returns.");
-      return true;
-    };
-
-    if (isOffline()) {
-      queueCurrentDeal();
-      setSaving(false);
-      return;
-    }
-
-    const saved = await saveSection("review");
-    if (!saved.draftId) {
-      if (saved.error && isTransportError(saved.error)) queueCurrentDeal();
-      else toast.error(saved.error?.message || "The draft could not be saved.");
-      setSaving(false);
-      return;
-    }
-    const { data, error } = await rpc<{
-      dealId?: string;
-      status?: string;
-      dealStatus?: string;
-      downstreamState?: string;
-      correlationId?: string;
-      replayed?: boolean;
-      ok?: boolean;
-      reviewId?: string;
-      reviewVersion?: number;
-      matchCount?: number;
-    }>("submit_apex_deal", queuedArgs);
-    if (!error) {
-      try {
-        const held = readCoverageHold(data);
-        if (held) {
-          setCoverageHold(held);
-          void queryClient.invalidateQueries({ queryKey: [COVERAGE_REVIEW_QUERY_KEY, user?.id] });
-          toast.info(held.status === "review_rejected" ? "This draft needs changes after coverage review. No deal was posted." : "Draft saved for coverage review. No deal was posted.");
-          setSaving(false);
-          return;
-        }
-      } catch {
-        toast.error("The review response could not be verified. Keep this draft and retry.");
-        setSaving(false);
-        return;
-      }
-    }
-    if (error || !data?.dealId) {
-      if (error && isTransportError(error)) queueCurrentDeal();
-      else toast.error(error?.message || "The deal could not be submitted. Your draft remains saved.");
-      setSaving(false);
-      return;
-    }
+  // One receipt, one place. The live RPC answer and a receipt recovered from the
+  // ledger both end here, so the celebration, the caller's callback and the cache
+  // refresh cannot drift apart.
+  const finishWithReceipt = (data: { dealId: string; status?: string; downstreamState?: string; correlationId?: string }) => {
     const nextReceipt = {
       dealId: data.dealId,
       status: data.status || "submitted",
@@ -737,7 +695,147 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
     } else {
       toast.success("Deal saved. Delivery is queued independently.");
     }
-    setSaving(false);
+  };
+
+  // The server answered that ANOTHER attempt for this same key is still running
+  // (2026-11-27: concurrent retries of one submission convoyed on its idempotency
+  // lock and each died at the 8s statement timeout). Never re-call the RPC here;
+  // read the ledger for the receipt that attempt will leave.
+  const awaitReceiptByKey = async (): Promise<{ dealId: string; status: string } | null> => {
+    if (!user?.id) return null;
+    for (let attempt = 0; attempt < RECEIPT_POLL_ATTEMPTS; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, RECEIPT_POLL_INTERVAL_MS));
+      const { data: rows, error } = await supabase
+        .from("deals")
+        .select("id, status")
+        .eq("idempotency_key", idempotencyKey)
+        .eq("submitted_by_user_id", user.id)
+        .limit(1);
+      if (error) continue;
+      const row = (rows ?? [])[0];
+      if (row?.id) return { dealId: row.id, status: row.status ?? "submitted" };
+    }
+    return null;
+  };
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    // 2026-08-19 (Sam, exact Agent Cloud Post-a-Deal): single page, and evidence
+    // is OPTIONAL there — validate only client / policy / premium (0,1,2), never
+    // the evidence step. submit_apex_deal already accepts a deal with no files.
+    for (let index = 0; index < 3; index += 1) {
+      const validation = validateStep(index);
+      if (validation) { toast.error(validation); return; }
+    }
+    // A second Post for the same key while the first is still out (double tap,
+    // or the outbox flushing it) is the convoy in miniature. One at a time.
+    if (user?.id && isInFlight(user.id, idempotencyKey)) {
+      toast.info("This deal is already being saved. Give it a moment.");
+      return;
+    }
+    const release = user?.id ? markInFlight(user.id, idempotencyKey) : () => {};
+    setSaving(true);
+    try {
+      const queuedArgs = {
+        p_idempotency_key: idempotencyKey,
+        p_payload: payload,
+        p_agent_id: selectedAgentId || null,
+      };
+      const queueCurrentDeal = (reason: OfflineReason): boolean => {
+        if (!user?.id) return false;
+        const clientName = `${form.clientFirstName} ${form.clientLastName}`.trim();
+        const policyNumber = normalizePolicyNumber(form.policyNumber);
+        const label = `${clientName} · ${policyNumber || "Policy number pending"}`;
+        // Offline: send the moment the connection returns. Otherwise the server
+        // may still be chewing on the attempt that just failed, so the outbox
+        // waits before it asks again instead of joining the queue behind it.
+        const firstAttemptAt = reason === "offline"
+          ? null
+          : Date.now() + (reason === "still_saving" ? IN_PROGRESS_RETRY_MS : FIRST_RETRY_DELAY_MS);
+        const queued = enqueue({
+          ownerUserId: user.id,
+          kind: "submit_apex_deal",
+          idempotencyKey,
+          args: queuedArgs,
+          label,
+          firstAttemptAt,
+        });
+        if (queued.ok === false) {
+          const message = queued.reason === "queue-full"
+            ? "This device already has 50 deals waiting to sync. Reconnect before posting another."
+            : "This deal could not be stored safely on this device. Keep the form open and reconnect.";
+          toast.error(message);
+          return false;
+        }
+        setOfflineReceipt({ localId: queued.entry.id, label, reason });
+        if (storageKey) localStorage.removeItem(storageKey);
+        toast.info(OFFLINE_REASON_COPY[reason].toast);
+        return true;
+      };
+      // "Waiting for internet" on a connected laptop is a lie that sends people
+      // back to re-post. Name the real reason.
+      const transportReason = (): OfflineReason => (isOffline() ? "offline" : "server_busy");
+
+      if (isOffline()) {
+        queueCurrentDeal("offline");
+        return;
+      }
+
+      const saved = await saveSection("review");
+      if (!saved.draftId) {
+        if (saved.error && isTransportError(saved.error)) queueCurrentDeal(transportReason());
+        else toast.error(saved.error?.message || "The draft could not be saved.");
+        return;
+      }
+      const response = await rpc<{
+        dealId?: string;
+        status?: string;
+        dealStatus?: string;
+        downstreamState?: string;
+        correlationId?: string;
+        replayed?: boolean;
+        ok?: boolean;
+        reviewId?: string;
+        reviewVersion?: number;
+        matchCount?: number;
+        idempotencyKey?: string;
+      }>("submit_apex_deal", queuedArgs);
+      const data = response.data;
+      const error: RpcError | null = response.error ? { ...response.error, status: response.error.status ?? response.status } : null;
+      if (!error) {
+        try {
+          const held = readCoverageHold(data);
+          if (held) {
+            setCoverageHold(held);
+            void queryClient.invalidateQueries({ queryKey: [COVERAGE_REVIEW_QUERY_KEY, user?.id] });
+            toast.info(held.status === "review_rejected" ? "This draft needs changes after coverage review. No deal was posted." : "Draft saved for coverage review. No deal was posted.");
+            return;
+          }
+        } catch {
+          toast.error("The review response could not be verified. Keep this draft and retry.");
+          return;
+        }
+        if (data && data.ok === false && data.status === "in_progress") {
+          toast.info("The server is still saving this deal from an earlier attempt. Checking for its receipt…");
+          const recovered = await awaitReceiptByKey();
+          if (recovered) {
+            finishWithReceipt({ ...recovered, downstreamState: "queued", correlationId: "recovered" });
+            return;
+          }
+          queueCurrentDeal("still_saving");
+          return;
+        }
+      }
+      if (error || !data?.dealId) {
+        if (error && isTransportError(error)) queueCurrentDeal(transportReason());
+        else toast.error(error?.message || "The deal could not be submitted. Your draft remains saved.");
+        return;
+      }
+      finishWithReceipt({ dealId: data.dealId, status: data.status, downstreamState: data.downstreamState, correlationId: data.correlationId });
+    } finally {
+      release();
+      setSaving(false);
+    }
   };
 
   const resetAfterClose = () => {
@@ -807,12 +905,12 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
       </DialogTrigger>
       <DialogContent className="flex max-h-[96dvh] w-[calc(100vw-1rem)] max-w-3xl flex-col overflow-hidden p-0 sm:w-full">
         <DialogHeader className="border-b border-border px-5 py-4 pr-12">
-          <DialogTitle>{receipt ? "Deal saved" : offlineReceipt ? "Deal waiting to sync" : title ?? "Post a Deal"}</DialogTitle>
+          <DialogTitle>{receipt ? "Deal saved" : offlineReceipt ? OFFLINE_REASON_COPY[offlineReceipt.reason].dialogTitle : title ?? "Post a Deal"}</DialogTitle>
           <DialogDescription>
             {receipt
               ? "The deal is durable. Integration delivery continues independently."
               : offlineReceipt
-                ? "This deal is stored on this device and has not been recorded by the server yet."
+                ? OFFLINE_REASON_COPY[offlineReceipt.reason].description
               : description ?? "Who you sold to, what you sold, and what it costs. Everything else is optional."}
           </DialogDescription>
           {secondaryAction && !receipt && !offlineReceipt && (
@@ -853,14 +951,16 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
         ) : offlineReceipt ? (
           <div className="overflow-y-auto px-5 py-8">
             <div className="mx-auto max-w-lg rounded-lg border border-amber-500/30 bg-amber-500/5 p-5">
-              <WifiOff className="mb-3 h-8 w-8 text-amber-500" />
-              <h3 className="text-lg font-semibold">Saved on this device</h3>
+              {offlineReceipt.reason === "offline"
+                ? <WifiOff className="mb-3 h-8 w-8 text-amber-500" />
+                : <Clock3 className="mb-3 h-8 w-8 text-amber-500" />}
+              <h3 className="text-lg font-semibold">{OFFLINE_REASON_COPY[offlineReceipt.reason].title}</h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                Keep this device signed in. It will submit automatically when internet returns, using the same duplicate-safe key.
+                {OFFLINE_REASON_COPY[offlineReceipt.reason].body}
               </p>
               <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
                 <ReviewItem label="Pending deal" value={offlineReceipt.label} />
-                <ReviewItem label="Sync status" value="Waiting for internet" />
+                <ReviewItem label="Sync status" value={OFFLINE_REASON_COPY[offlineReceipt.reason].syncStatus} />
                 <ReviewItem label="Protection" value="Duplicate-safe retry" />
                 <ReviewItem label="Local receipt" value={offlineReceipt.localId} />
               </dl>

@@ -255,6 +255,17 @@ export function isParked(entry: QueuedEntry): boolean {
   return entry.attempts >= MAX_ATTEMPTS;
 }
 
+/** Call only after the server returns a real deal receipt for this exact key. */
+export function removeQueuedDealAfterReceipt(ownerUserId: string, idempotencyKey: string): void {
+  writeQueue(readQueue().filter(row => row.ownerUserId !== ownerUserId || row.idempotencyKey !== idempotencyKey));
+}
+
+/** A deliberate user retry, after review or correction; never another account. */
+export function retryParkedDeals(ownerUserId: string): void {
+  writeQueue(readQueue().map(row => row.ownerUserId === ownerUserId && isParked(row)
+    ? { ...row, attempts: 0, lastError: null } : row));
+}
+
 export type SendResult = { ok: true } | { ok: false; error: string; permanent?: boolean };
 
 /**

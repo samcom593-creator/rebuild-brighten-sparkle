@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { reviewContentQueue } from "@/lib/contentQueueReview";
+import { formatTimeAgo } from "@/lib/dateUtils";
 
 /**
  * ContentQueue — Sam's phone surface for the content pipeline (MP-CONTENT-1).
@@ -45,7 +47,6 @@ const SLOTS: { slot: string; pillars: string[]; brand: string; job: string }[] =
   { slot: "Samuel James brand", pillars: ["LEADERSHIP", "PERSONALITY", "TESTIMONIAL"], brand: "SJ", job: "on-brand" },
   { slot: "Samuel James TOF", pillars: ["PERSONALITY", "LIFESTYLE"], brand: "SJ", job: "reach" },
 ];
-const DAILY_TARGET = 13;
 const OPEN_STATUSES = ["INBOX", "EDITING", "NEEDS_REVIEW", "APPROVED", "READY"];
 const MEDIA_BUCKET = "content-media";
 const CONTENT_URL = "https://galaxyfinancial.org/dashboard/launch-board?tab=queue";
@@ -65,7 +66,7 @@ const DAILY_PLAN: { group: string; lines: string[] }[] = [
     "Systems: the AI system + stop-doing-this-manually (I Make Systems)",
     "Samuel James: vision/standard + honest takes (Samuel James)",
   ] },
-  { group: "3-4 Snapchat a day", lines: ["Repurpose mirrors the strongest verticals automatically — never post by hand."] },
+  { group: "3-4 Snapchat a day", lines: ["Check the configured publishing workflow before scheduling a Snapchat destination."] },
 ];
 const SETUP_STEPS: { title: string; steps: string[] }[] = [
   { title: "1. Metricool (once)", steps: [
@@ -76,13 +77,13 @@ const SETUP_STEPS: { title: string; steps: string[] }[] = [
   { title: "2. Repurpose (once)", steps: [
     "repurpose.io -> log in.",
     "One workflow per account: source = that account's READY folder, destination = Snapchat Spotlight (optional TikTok/Reels mirror).",
-    "It watches the folder and pushes on its own.",
+    "Confirm the destination, permissions and schedule in the publishing tool.",
   ] },
   { title: "3. Post (daily)", steps: [
     "Launch Board -> Library -> tap a pillar -> pick clips -> download.",
     "Drop each on the Metricool calendar, one-line caption, set as Draft.",
     "Approve here on this page (or on the slate below).",
-    "After it goes live, record the post URL so it counts on the score.",
+    "After it goes live, record the post URL in the publishing workflow.",
   ] },
 ];
 
@@ -148,12 +149,13 @@ export default function ContentQueue({ embedded = false }: { embedded?: boolean 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [editing, setEditing] = useState<string | null>(null);
+  const [editVersion, setEditVersion] = useState<string | null>(null);
   const [draft, setDraft] = useState<{ hook: string; caption: string; cta: string }>({ hook: "", caption: "", cta: "" });
   const [playing, setPlaying] = useState<{ id: string; url: string } | null>(null);
   const [showPlaybook, setShowPlaybook] = useState(false);
 
   const rowsQuery = useQuery({
-    queryKey: ["content_queue"],
+    queryKey: ["content_queue", user?.id],
     queryFn: async (): Promise<QueueRow[]> => {
       const { data, error } = await contentQueue().select("*").order("updated_at", { ascending: false });
       if (error) throw error;
@@ -165,19 +167,8 @@ export default function ContentQueue({ embedded = false }: { embedded?: boolean 
   const rows = rowsQuery.data ?? [];
   const today = phoenixDate(0);
 
-  const score = useMemo(() => {
-    const days = Array.from({ length: 7 }, (_, i) => phoenixDate(-(i + 1)));
-    const counts = days.map((d) => rows.filter((r) => (r.notes ?? "").includes(`archived ${d}`)).length);
-    let streak = 0;
-    for (const c of counts) {
-      if (c < DAILY_TARGET) break;
-      streak += 1;
-    }
-    return { yesterday: counts[0], streak, week: counts.reduce((a, b) => a + b, 0) };
-  }, [rows]);
-
   const slate = useMemo(
-    () => SLOTS.map((s) => ({ ...s, row: rows.find((r) => (r.notes ?? "").includes(`slated ${today} ${s.slot}`)) ?? null })),
+    () => SLOTS.map((s) => ({ ...s, row: rows.find((r) => OPEN_STATUSES.includes(r.status ?? "") && (r.notes ?? "").includes(`slated ${today} ${s.slot}`)) ?? null })).filter(s => s.row),
     [rows, today],
   );
 
@@ -192,9 +183,14 @@ export default function ContentQueue({ embedded = false }: { embedded?: boolean 
   }, [rows, search, statusFilter]);
 
   const patch = useMutation({
-    mutationFn: async ({ id, fields }: { id: string; fields: Patch }) => {
-      const { error } = await contentQueue().update(fields).eq("content_id", id);
+    mutationFn: async ({ id, version, fields }: { id: string; version: string; fields: Patch }) => {
+      if (fields.status === "APPROVED" || fields.status === "REWORK") {
+        await reviewContentQueue(id, version, fields.status);
+        return;
+      }
+      const { data, error } = await contentQueue().update(fields).eq("content_id", id).eq("updated_at", version).select("content_id").maybeSingle();
       if (error) throw error;
+      if (data?.content_id !== id) throw new Error("This clip changed. Refresh the queue before saving.");
     },
     onSuccess: (_d, v) => {
       void qc.invalidateQueries({ queryKey: ["content_queue"] });
@@ -203,25 +199,27 @@ export default function ContentQueue({ embedded = false }: { embedded?: boolean 
     onError: (e: Error) => toast.error(e.message || "Save failed"),
   });
 
-  const approve = (r: QueueRow) => patch.mutate({ id: r.content_id, fields: { status: "APPROVED", approved_by: approver } });
-  const rework = (r: QueueRow) => patch.mutate({ id: r.content_id, fields: { status: "REWORK" } });
+  const approve = (r: QueueRow) => patch.mutate({ id: r.content_id, version: r.updated_at, fields: { status: "APPROVED", approved_by: approver } });
+  const rework = (r: QueueRow) => patch.mutate({ id: r.content_id, version: r.updated_at, fields: { status: "REWORK" } });
   const markReviewed = (r: QueueRow) => {
     const stamp = `REVIEWED by ${approver} ${today}: `;
     const fields: Patch = {};
     if ((r.privacy_risk ?? "").startsWith("FLAG:")) fields.privacy_risk = stamp + (r.privacy_risk ?? "").slice(6);
     if ((r.earnings_claim_risk ?? "").startsWith("FLAG:")) fields.earnings_claim_risk = stamp + (r.earnings_claim_risk ?? "").slice(6);
-    patch.mutate({ id: r.content_id, fields });
+    patch.mutate({ id: r.content_id, version: r.updated_at, fields });
   };
   const startEdit = (r: QueueRow) => {
     setEditing(r.content_id);
+    setEditVersion(r.updated_at);
     setDraft({ hook: r.hook ?? "", caption: r.caption ?? "", cta: r.cta ?? "" });
   };
   const saveEdit = (r: QueueRow) => {
-    patch.mutate({ id: r.content_id, fields: { hook: draft.hook, caption: draft.caption, cta: draft.cta } }, { onSuccess: () => setEditing(null) });
+    if (!editVersion) return;
+    patch.mutate({ id: r.content_id, version: editVersion, fields: { hook: draft.hook, caption: draft.caption, cta: draft.cta } }, { onSuccess: () => setEditing(null) });
   };
   const play = async (r: QueueRow) => {
     if (!r.media_path) {
-      toast.error("No playable copy uploaded yet — run `cops sync` on the Mac after autocut/prepare.");
+      toast.error("No playable clip has been uploaded yet.");
       return;
     }
     const { data, error } = await supabase.storage.from(MEDIA_BUCKET).createSignedUrl(r.media_path, 900);
@@ -282,7 +280,7 @@ export default function ContentQueue({ embedded = false }: { embedded?: boolean 
     const flagged = isFlagged(r);
     return (
       <div className="flex flex-wrap gap-2 pt-2">
-        <Button size="sm" onClick={() => void play(r)} variant="secondary" disabled={!r.media_path && !r.thumbnail_url}>
+        <Button size="sm" onClick={() => void play(r)} variant="secondary" disabled={!r.media_path}>
           <Play className="mr-1 h-4 w-4" aria-hidden /> {r.media_path ? "Play" : "No clip yet"}
         </Button>
         {flagged ? (
@@ -290,7 +288,7 @@ export default function ContentQueue({ embedded = false }: { embedded?: boolean 
             <ShieldAlert className="mr-1 h-4 w-4" aria-hidden /> Reviewed
           </Button>
         ) : (
-          <Button size="sm" onClick={() => approve(r)} disabled={patch.isPending || r.status === "APPROVED" || r.status === "READY"}>
+          <Button size="sm" onClick={() => approve(r)} disabled={patch.isPending || editing === r.content_id || r.status === "APPROVED" || r.status === "READY"}>
             <Check className="mr-1 h-4 w-4" aria-hidden /> Approve
           </Button>
         )}
@@ -340,6 +338,7 @@ export default function ContentQueue({ embedded = false }: { embedded?: boolean 
             {r.cta ? <p className="text-xs">CTA: {r.cta}</p> : null}
           </div>
         )}
+        <p className="text-xs text-muted-foreground">Last synced or edited {formatTimeAgo(r.updated_at)} · Approval records a review, not publication.</p>
         {renderControls(r)}
       </CardContent>
     </Card>
@@ -349,14 +348,14 @@ export default function ContentQueue({ embedded = false }: { embedded?: boolean 
     <div className={embedded ? "mx-auto max-w-2xl space-y-6" : "mx-auto max-w-2xl space-y-6 p-4"}>
       {embedded ? (
         <p className="text-sm text-muted-foreground">
-          Approval queue synced from the Mac content-ops tool. Yesterday {score.yesterday}/{DAILY_TARGET} posted · streak {score.streak} · last 7 days {score.week}/{7 * DAILY_TARGET}. Only clips archived with a post URL count.
+          Review the synced clip, copy and flags before approval. Publishing is tracked separately through recorded post URLs.
         </p>
       ) : (
         <PageHeader
           eyebrow="Content"
           eyebrowIcon={<Clapperboard className="h-3.5 w-3.5" aria-hidden />}
           title="Content Queue"
-          subtitle={`Yesterday ${score.yesterday}/${DAILY_TARGET} posted · streak ${score.streak} · last 7 days ${score.week}/${7 * DAILY_TARGET}. Only clips archived with a post URL count.`}
+          subtitle="Review the synced clip, copy and flags. Approval records your review; publishing needs a recorded post URL."
         />
       )}
 
@@ -390,7 +389,7 @@ export default function ContentQueue({ embedded = false }: { embedded?: boolean 
                     <ol className="mt-1 list-decimal space-y-0.5 pl-5 text-sm text-muted-foreground">{s.steps.map((x) => <li key={x}>{x}</li>)}</ol>
                   </div>
                 ))}
-                <p className="text-xs text-muted-foreground">One login to Metricool and Repurpose unlocks the automated half. Everything else is live.</p>
+                <p className="text-xs text-muted-foreground">Verify each account and destination in the publishing tool before scheduling. Connection status is not checked here.</p>
               </div>
             </div>
           ) : null}
@@ -405,12 +404,12 @@ export default function ContentQueue({ embedded = false }: { embedded?: boolean 
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Today&apos;s slate · {today}</h2>
         {rowsQuery.isLoading ? (
           <div className="space-y-2">{SLOTS.map((s) => <Skeleton key={s.slot} className="h-16 w-full" />)}</div>
-        ) : (
+        ) : slate.length === 0 ? <p className="text-sm text-muted-foreground">No clips assigned to today’s slate. Review the queue below.</p> : (
           slate.map((s) => (
             <div key={s.slot} className="space-y-2">
               <p className="text-xs font-semibold">{s.slot} <span className="font-normal text-muted-foreground">· {s.job} · {s.brand}</span></p>
               {s.row ? renderRow(s.row) : (
-                <Card><CardContent className="p-4 text-sm text-muted-foreground">Nothing slated. Record today: {s.pillars.join(" / ").toLowerCase()}. The 06:00 slate push carries the hook.</CardContent></Card>
+                <Card><CardContent className="p-4 text-sm text-muted-foreground">Nothing slated. Record today: {s.pillars.join(" / ").toLowerCase()}. Assign a clip to this slot in the planning workflow.</CardContent></Card>
               )}
             </div>
           ))
@@ -428,7 +427,7 @@ export default function ContentQueue({ embedded = false }: { embedded?: boolean 
         {rowsQuery.isLoading ? (
           <Skeleton className="h-24 w-full" />
         ) : queue.length === 0 ? (
-          <Card><CardContent className="p-4 text-sm text-muted-foreground">Queue is empty. Drop clips into SAM CONTENT / 01 INBOX on the Mac; the scan and sync run every 30 minutes.</CardContent></Card>
+          <Card><CardContent className="p-4 text-sm text-muted-foreground">No clips match this queue view. Add or sync clips from the content library, or change the filter.</CardContent></Card>
         ) : (
           queue.map(renderRow)
         )}

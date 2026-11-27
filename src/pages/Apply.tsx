@@ -292,7 +292,6 @@ export default function Apply() {
   const [selectedReferrer, setSelectedReferrer] = useState<string>("");
   const [customReferrer, setCustomReferrer] = useState("");
   
-  const [smsConsentError, setSmsConsentError] = useState(false);
   // WP2: submit-application refuses a known typo domain (gmail.fom, icloud.con, ...) with a
   // 422 + suggestion so the day-0 email cannot bounce. The prompt BLOCKS until the applicant
   // picks the suggestion or says their address is right; "My email is correct" resubmits
@@ -1457,14 +1456,6 @@ export default function Apply() {
                         <p className="text-muted-foreground">Help us understand what you're looking for.</p>
                       </div>
 
-                      {/* SMS Consent Error Banner */}
-                      {smsConsentError && (
-                        <div className="p-4 rounded-md border border-destructive/30 bg-destructive/10 text-destructive">
-                          <p className="font-semibold text-sm">⚠️ SMS Consent Required</p>
-                          <p className="text-xs mt-1">Please scroll down and check the SMS consent checkbox to submit your application.</p>
-                        </div>
-                      )}
-
                       <div className="space-y-2">
                         <Label>Availability *</Label>
                         <ApplySelect
@@ -1652,11 +1643,6 @@ export default function Apply() {
                         onClick={async () => {
                           const step4Valid = await validateStep(4);
                           if (!step4Valid) {
-                            // SMS is optional. The old branch inspected an
-                            // unchecked SMS box whenever any Step 4 field was
-                            // invalid, then falsely told the applicant consent
-                            // was required even though the schema allowed false.
-                            setSmsConsentError(false);
                             // PL-WIB-APPLY-SUBMIT-BLOCKED (2026-10-08): both
                             // refusals on this button were a toast and nothing
                             // else, so "pressed Submit and was refused" and
@@ -1676,7 +1662,6 @@ export default function Apply() {
                             toast.error("Please complete your availability and motivation to continue.");
                             return;
                           }
-                          setSmsConsentError(false);
                           handleSubmit(onSubmit, (validationErrors) => {
                             const fieldNames = Object.keys(validationErrors);
                             track("apply_submit_blocked", {

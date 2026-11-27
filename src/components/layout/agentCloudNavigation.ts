@@ -234,7 +234,7 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       // The leads given to you to work (MP-310 wave 3). Every producer.
       { label: "My Leads", href: "/dashboard/my-leads", icon: Inbox },
       { label: "Finances", href: "/dashboard/finances", icon: WalletCards },
-      { label: "Retention", href: "/dashboard/retention", icon: Shield, grant: "sold_calls" },
+      { label: "Policy retention", href: "/dashboard/retention", icon: Shield, grant: "sold_calls" },
     ],
   },
 
@@ -255,6 +255,7 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       { label: "Leaderboard", href: "/dashboard/leaderboard", icon: Trophy, modes: PRODUCERS },
       { label: "Wins & Awards", href: "/dashboard/awards", icon: Crown },
       { label: "My Team", href: "/dashboard/team", icon: Users },
+      { label: "Team recovery", href: "/dashboard/inactive-agents", icon: Activity, modes: LEADERS },
       // Leaders call the people under them who hold the Ethos contract; the database scopes the rows (MP-ETHOS-CALLSHEET).
       { label: "Call sheet", href: "/dashboard/ethos-call-sheet", icon: PhoneCall, modes: LEADERS },
       // MP-304: a leader's whole process on one page — recruit link, Join link (hire + contract in one), the board.

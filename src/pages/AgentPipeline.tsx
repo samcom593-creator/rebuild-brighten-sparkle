@@ -708,7 +708,7 @@ export default function AgentPipeline() {
             className="pl-10 bg-input" />
         </div>
         <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); playSound("click"); }}>
-          <SelectTrigger className="w-full sm:w-44 bg-input">
+          <SelectTrigger aria-label="Filter recruits by status" className="w-full sm:w-44 bg-input">
             <Filter className="h-4 w-4 mr-2" />
             <SelectValue placeholder="Filter" />
           </SelectTrigger>
@@ -721,7 +721,7 @@ export default function AgentPipeline() {
           </SelectContent>
         </Select>
         <Select value={sortMode} onValueChange={(v) => setSortMode(v as any)}>
-          <SelectTrigger className="w-full sm:w-40 bg-input">
+          <SelectTrigger aria-label="Sort recruits" className="w-full sm:w-40 bg-input">
             <SelectValue placeholder="Sort" />
           </SelectTrigger>
           <SelectContent>

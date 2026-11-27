@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireSendAuth } from "../_shared/require-send-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,6 +17,10 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
+  const auth = await requireSendAuth(req);
+  if (!auth.ok) return new Response(JSON.stringify({ error: auth.error }), {
+    status: auth.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 
   try {
     const supabase = createClient(
@@ -27,12 +32,14 @@ serve(async (req) => {
     const limit = Math.min(Number(body.limit ?? 50), 200);
     const dryRun = !!body.dryRun;
 
-    const { data: orphans } = await supabase
+    const { data: orphans, error: readError } = await supabase
       .from("plaque_awards")
       .select("id, agent_id, milestone_type, amount, milestone_date")
       .is("image_png_url", null)
-      .order("created_at", { ascending: false })
+      .order("awarded_at", { ascending: false })
       .limit(limit);
+
+    if (readError) throw readError;
 
     if (!orphans || orphans.length === 0) {
       return new Response(
@@ -58,21 +65,20 @@ serve(async (req) => {
 
     for (const orphan of orphans) {
       try {
-        await supabase.from("plaque_awards").delete().eq("id", orphan.id);
-
+        // The renderer repairs the existing award. Keep its ID, receipt and share history.
         const res = await supabase.functions.invoke("send-plaque-recognition", {
           body: {
             agentId: orphan.agent_id,
             milestoneType: orphan.milestone_type,
-            amount: Number(orphan.amount) || 0,
-            date: orphan.milestone_date || new Date().toISOString().split("T")[0],
+            amount: Number(orphan.amount),
+            date: orphan.milestone_date,
             skipEmail: true,
           },
         });
 
-        if (res.error) {
+        if (res.error || res.data?.success !== true) {
           failed++;
-          errors.push(`${orphan.id}: ${res.error.message || "unknown"}`);
+          errors.push(`${orphan.id}: ${res.error?.message || res.data?.error || "Repair was not confirmed"}`);
         } else {
           succeeded++;
         }

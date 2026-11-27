@@ -392,7 +392,7 @@ export default function AgentPipelineSimple() {
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">New Manager</label>
               <Select value={switchTargetManager} onValueChange={setSwitchTargetManager}>
-                <SelectTrigger>
+                <SelectTrigger aria-label="New manager">
                   <SelectValue placeholder="Select manager..." />
                 </SelectTrigger>
                 <SelectContent>

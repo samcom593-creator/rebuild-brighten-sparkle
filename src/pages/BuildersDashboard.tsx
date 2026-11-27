@@ -699,7 +699,7 @@ export default function BuildersDashboard({ mode = "builders" }: { mode?: Dashbo
                   />
                 </div>
                 <Select value={sortKey} onValueChange={(value) => setSortKey(value as SortKey)}>
-                  <SelectTrigger className="h-9 sm:w-56">
+                  <SelectTrigger aria-label="Sort builders" className="h-9 sm:w-56">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

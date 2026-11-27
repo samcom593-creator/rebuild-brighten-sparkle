@@ -450,7 +450,7 @@ export default function PrelicensingManager() {
                       value={stageKey}
                       onValueChange={(v) => updateStage(a.id, v as StageKey)}
                     >
-                      <SelectTrigger className="h-8 w-[160px] text-xs">
+                      <SelectTrigger aria-label={`Prelicensing stage for ${[a.first_name, a.last_name].filter(Boolean).join(" ")}`} className="h-8 w-[160px] text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>

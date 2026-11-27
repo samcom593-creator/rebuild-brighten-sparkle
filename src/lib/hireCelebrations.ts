@@ -96,6 +96,6 @@ export function addHireToBatch(batch: HireCelebrationBatch | null, hire: Hire): 
 
 /** The screen's headline for one hire or a batch. */
 export function hireHeadline(batch: HireCelebrationBatch): string {
-  if (batch.hires.length === 1) return `Welcome, ${batch.hires[0].firstName}`;
-  return `${batch.hires.length} new hires`;
+  if (batch.hires.length === 1) return `${batch.hires[0].displayName} joined the team`;
+  return `${batch.hires.length} agents joined the team`;
 }

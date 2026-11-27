@@ -286,7 +286,7 @@ export default function AwardGraphics() {
             <div className="space-y-1.5">
               <label className="text-xs text-muted-foreground font-medium">Award Type</label>
               <Select value={awardType} onValueChange={setAwardType}>
-                <SelectTrigger className="w-52"><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Award type" className="w-52"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {AWARD_TYPES.map((a) => (
                     <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
@@ -298,7 +298,7 @@ export default function AwardGraphics() {
             <div className="space-y-1.5">
               <label className="text-xs text-muted-foreground font-medium">Period</label>
               <Select value={period} onValueChange={(v) => { setPeriod(v); setCustomDate(undefined); }}>
-                <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Award period" className="w-40"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {PERIODS.map((p) => (
                     <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>

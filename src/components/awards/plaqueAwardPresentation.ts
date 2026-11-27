@@ -22,6 +22,7 @@ const STREAK_DAYS = new Set(["hot_streak", "on_fire", "unstoppable", "streak_5",
 // the UI cannot establish that every legacy row has the same ALP definition.
 const LEGACY_PREMIUM = new Set([
   "single_day_platinum", "single_day", "single_day_bronze", "diamond_week",
+  "weekly", "monthly",
   "team_single_day_10k", "team_single_day_25k", "team_two_day_20k", "team_week_50k",
 ]);
 // check-daily-awards, generate-monthly-awards and 20260423200000 explicitly

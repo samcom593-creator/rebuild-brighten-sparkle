@@ -955,7 +955,7 @@ export default function DashboardAccounts() {
                 <div className="space-y-2">
                   <Label htmlFor="edit-role">Role</Label>
                   <Select value={editRole} onValueChange={(v) => setEditRole(v as AccountRole)}>
-                    <SelectTrigger>
+                    <SelectTrigger id="edit-role">
                       <SelectValue placeholder="Select role" />
                     </SelectTrigger>
                     <SelectContent>

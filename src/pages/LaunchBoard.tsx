@@ -43,8 +43,9 @@ import { toast } from "sonner";
 import { Link, useSearchParams } from "react-router-dom";
 import { PageSkeleton } from "@/components/ui/page-skeleton";
 import { PageHeader } from "@/components/ui/page-header";
+import { ContentWorkspaceNav } from "@/components/content/ContentWorkspaceNav";
 import { TonePill } from "@/components/ui/delight/ToneBubble";
-import { useInsights, usePosts, type Insights } from "@/components/content/AccountsAnalytics";
+import { useInsights, usePosts, type Insights } from "@/hooks/useContentAnalytics";
 import { FilmNextPanel } from "@/components/content/FilmNextPanel";
 import { FilmingPackSheet } from "@/components/content/FilmingPackSheet";
 import { WinnersPanel } from "@/components/content/WinnersPanel";
@@ -792,7 +793,6 @@ export default function LaunchBoard() {
         icon={<Clapperboard />}
         tone="gold"
         title="Launch Board"
-        secondaryActions={<Button asChild variant="outline" className="min-h-11"><Link to="/dashboard/admin/social-media-bot">Social media approvals</Link></Button>}
         subtitle="Every video from idea to published."
         primaryAction={
           // Outline on purpose: the one gold button is Up next's.
@@ -801,6 +801,8 @@ export default function LaunchBoard() {
           </Button>
         }
       />
+
+      <ContentWorkspaceNav />
 
       <nav aria-label="Launch Board views" className="mb-5 flex gap-1 overflow-x-auto border-b border-border [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {VIEWS.map((v) => {

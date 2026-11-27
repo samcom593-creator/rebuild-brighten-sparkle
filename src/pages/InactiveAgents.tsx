@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,13 +10,15 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  UserX, AlertTriangle, Search, Phone, MessageSquare, Mail, MoreHorizontal, CheckCircle2, XCircle,
-  ArrowRightLeft, PauseCircle, RefreshCw, Flame,
+  UserX, AlertTriangle, Search, Phone, MessageSquare, Mail, MoreHorizontal, CheckCircle2,
+  ArrowRight, RefreshCw, Flame,
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow, format } from "date-fns";
@@ -40,6 +43,7 @@ interface InactiveEntry {
   status: string;
   resolved_at: string | null;
   resolution: string | null;
+  updated_at: string;
 }
 
 interface AgentInfo {
@@ -49,6 +53,8 @@ interface AgentInfo {
   phone?: string;
   onboarding_stage?: string;
   licensed: boolean;
+  canonicalId: string;
+  canContact: boolean;
 }
 
 const SEVERITY_META: Record<string, { label: string; color: string; icon: any }> = {
@@ -62,9 +68,12 @@ const REASON_LABEL: Record<string, string> = {
   no_login_7d: "No login 7+ days",
   stalled_onboarding: "Stalled in onboarding",
   manual_flag: "Flagged manually",
+  no_recorded_activity: "No recent production or calling activity recorded",
+  no_activity_since_joining: "No production or calling activity recorded since joining",
+  activity_resumed: "Activity resumed — review recovery",
 };
 
-type ProducerSegment = "all" | "never_sold" | "sold_at_least_one" | "sold_only_one";
+type ProducerSegment = "all" | "recorded" | "none_recorded" | "unknown";
 
 export default function InactiveAgents() {
   const { user, isAdmin, isManager } = useAuth();
@@ -75,18 +84,23 @@ export default function InactiveAgents() {
   const [severityFilter, setSeverityFilter] = useState("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [scanning, setScanning] = useState(false);
-  // PL-063: CRM-grade segmentation — never sold, sold at least one,
-  // sold exactly one. Each group needs different outreach pressure.
+  const [contactEntry, setContactEntry] = useState<InactiveEntry | null>(null);
+  const [contactNotes, setContactNotes] = useState("");
+  const [contactOutcome, setContactOutcome] = useState("No answer");
+  const [savingContact, setSavingContact] = useState(false);
+  // A missing or failed evidence read must not classify someone as a non-producer.
   const [segment, setSegment] = useState<ProducerSegment>("all");
   const [visibleCount, setVisibleCount] = useState(100);
 
   const canAccess = isAdmin || isManager;
 
+  useEffect(() => { setSelectedIds(new Set()); setVisibleCount(100); }, [statusFilter, segment, severityFilter, search, user?.id]);
+
   // Whole-object + throw-on-error: the queryFn used to swallow .error and return
   // [], so a dead inactive_agent_queue rendered "everyone's active" + 0 tiles — a
   // retention lie (producer churn is the agency's core problem).
   const entriesQuery = useQuery({
-    queryKey: ["inactive-queue", statusFilter],
+    queryKey: ["inactive-queue", user?.id, statusFilter],
     queryFn: async (): Promise<InactiveEntry[]> => {
       let q = supabase.from("inactive_agent_queue" as any).select("*");
       if (statusFilter !== "all") q = q.eq("status", statusFilter);
@@ -108,73 +122,67 @@ export default function InactiveAgents() {
   );
 
   const agentInfoQuery = useQuery({
-    queryKey: ["inactive-agents-info", sortedAgentIds],
+    queryKey: ["inactive-agents-info", user?.id, sortedAgentIds],
     queryFn: async (): Promise<AgentInfo[]> => {
       if (entries.length === 0) return [];
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("agents")
         .select(
-          "id, display_name, user_id, onboarding_stage, profile:profiles!agents_profile_id_fkey(full_name, email, phone)",
+          "id, display_name, user_id, onboarding_stage, canonical_agent_id, license_status, status, is_inactive, is_deactivated, profile:profiles!agents_profile_id_fkey(full_name, email, phone)",
         )
         .in("id", entries.map((e) => e.agent_id));
-      const emails = ((data || []).map((a: any) => a.profile?.email).filter(Boolean)) as string[];
-      let licensedEmails = new Set<string>();
-      if (emails.length > 0) {
-        const { data: apps } = await supabase
-          .from("applications")
-          .select("email, license_status")
-          .in("email", emails);
-        licensedEmails = new Set(
-          (apps || []).filter((a: any) => a.license_status === "licensed").map((a: any) => a.email),
-        );
-      }
+      if (error) throw error;
+      if (!Array.isArray(data)) throw new Error("Agent details could not be read.");
       return (data || []).map((a: any) => ({
         id: a.id,
         display_name: a.profile?.full_name || a.display_name || "—",
         email: a.profile?.email,
         phone: a.profile?.phone,
         onboarding_stage: a.onboarding_stage,
-        licensed: licensedEmails.has(a.profile?.email),
+        licensed: a.license_status === "licensed",
+        canonicalId: a.canonical_agent_id || a.id,
+        canContact: a.status === "active" && !a.is_inactive && !a.is_deactivated,
       }));
     },
-    enabled: entries.length > 0,
+    enabled: canAccess && entries.length > 0,
   });
   const agentInfo = agentInfoQuery.data ?? [];
 
   const agentMap = useMemo(() => new Map(agentInfo.map((a) => [a.id, a])), [agentInfo]);
 
-  // PL-063: deal count per inactive agent for CRM segmentation.
-  const dealCountsQuery = useQuery({
-    queryKey: ["inactive-agents-deal-counts", sortedAgentIds],
-    queryFn: async (): Promise<Record<string, number>> => {
-      if (entries.length === 0) return {};
-      const { data } = await supabase
-        .from("deals")
-        .select("agent_id")
-        .in("agent_id", entries.map((e) => e.agent_id))
-        .in("status", ["active", "submitted"]);
-      const counts: Record<string, number> = {};
-      for (const row of (data as Array<{ agent_id: string }>) ?? []) {
-        counts[row.agent_id] = (counts[row.agent_id] ?? 0) + 1;
-      }
-      return counts;
+  const canonicalIds = useMemo(() => [...new Set(agentInfo.map(agent => agent.canonicalId))].sort(), [agentInfo]);
+  const evidenceQuery = useQuery({
+    queryKey: ["inactive-production-evidence", user?.id, canonicalIds],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("v_agent_activation_state")
+        .select("agent_id, first_deal_at").in("agent_id", canonicalIds);
+      if (error) throw error;
+      if (!Array.isArray(data)) throw new Error("Production evidence could not be read.");
+      return data;
     },
-    enabled: entries.length > 0,
+    enabled: canAccess && canonicalIds.length > 0 && agentInfoQuery.isSuccess,
   });
-  const dealCounts = dealCountsQuery.data ?? {};
+  const productionState = useMemo(() => {
+    const byId = new Map((evidenceQuery.data ?? []).map(row => [row.agent_id, row]));
+    return new Map(entries.map(entry => {
+      const canonical = agentMap.get(entry.agent_id)?.canonicalId;
+      const row = canonical ? byId.get(canonical) : undefined;
+      const state: ProducerSegment = !evidenceQuery.isSuccess || !row ? "unknown"
+        : row.first_deal_at ? "recorded" : "none_recorded";
+      return [entry.agent_id, state];
+    }));
+  }, [entries, agentMap, evidenceQuery.data, evidenceQuery.isSuccess]);
 
   const segmentCounts = useMemo(() => {
-    let neverSold = 0, atLeastOne = 0, onlyOne = 0;
+    let recorded = 0, none = 0, unknown = 0;
     for (const e of entries) {
-      const n = dealCounts[e.agent_id] ?? 0;
-      if (n === 0) neverSold += 1;
-      else {
-        atLeastOne += 1;
-        if (n === 1) onlyOne += 1;
-      }
+      const state = productionState.get(e.agent_id);
+      if (state === "recorded") recorded++;
+      else if (state === "none_recorded") none++;
+      else unknown++;
     }
-    return { neverSold, atLeastOne, onlyOne };
-  }, [entries, dealCounts]);
+    return { recorded, none, unknown };
+  }, [entries, productionState]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -183,10 +191,7 @@ export default function InactiveAgents() {
       if (severityFilter !== "all" && (e as any).severity !== severityFilter) return false;
 
       // PL-063: segment filter first.
-      const dealN = dealCounts[e.agent_id] ?? 0;
-      if (segment === "never_sold" && dealN !== 0) return false;
-      if (segment === "sold_at_least_one" && dealN === 0) return false;
-      if (segment === "sold_only_one" && dealN !== 1) return false;
+      if (segment !== "all" && productionState.get(e.agent_id) !== segment) return false;
 
       if (!search) return true;
       const a = agentMap.get(e.agent_id);
@@ -197,7 +202,7 @@ export default function InactiveAgents() {
         a.phone?.includes(q)
       );
     });
-  }, [entries, search, agentMap, segment, dealCounts, severityFilter]);
+  }, [entries, search, agentMap, segment, productionState, severityFilter]);
 
   const stats = useMemo(() => {
     const result = { warning: 0, critical: 0, abandoned: 0, total: entries.length };
@@ -213,8 +218,10 @@ export default function InactiveAgents() {
     try {
       const res: any = await supabase.functions.invoke("detect-inactive-agents", { body: {} });
       if (res?.error) throw new Error(res.error.message || "Scan failed");
+      if (!res.data || typeof res.data.inserted !== "number") throw new Error("Scan result could not be confirmed.");
       const added = res?.data?.inserted ?? 0;
-      toast.success(`Scan complete. ${added} new inactive agent${added === 1 ? "" : "s"} flagged.`);
+      toast.success(`Scan complete. ${added} new recovery case${added === 1 ? "" : "s"}; ${res.data.updated ?? 0} existing cases refreshed.`);
+      if (res.data.evidence_unknown > 0) toast.warning(`${res.data.evidence_unknown} agent records had incomplete activity evidence and were left unchanged.`);
       queryClient.invalidateQueries({ queryKey: ["inactive-queue"] });
     } catch (e: any) {
       toast.error(`Scan failed: ${e.message || "unknown"}`);
@@ -224,7 +231,12 @@ export default function InactiveAgents() {
   };
 
   const resolve = async (id: string, status: string, note?: string) => {
-    const { error } = await supabase
+    const confirmed = await askConfirm({ title: "Confirm this agent has resumed activity?",
+      description: "Close this recovery case only after reviewing current activity. This records your review and does not change the agent's account, manager or access.",
+      confirmText: "Confirm recovery" });
+    if (!confirmed) return;
+    try {
+    const { data, error } = await supabase
       .from("inactive_agent_queue" as any)
       .update({
         status,
@@ -233,32 +245,45 @@ export default function InactiveAgents() {
         resolution: note || status,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", id);
-    if (error) {
-      toast.error(error.message);
+      .eq("id", id).eq("status", "open").select("id").single();
+    if (error || !data) {
+      toast.error("The recovery case could not be updated. Refresh the queue before retrying.");
       return;
     }
-    toast.success(`Marked ${status}`);
+    toast.success("Recovery review recorded.");
     queryClient.invalidateQueries({ queryKey: ["inactive-queue"] });
+    } catch { toast.error("The recovery case could not be updated. Refresh before retrying."); }
   };
 
-  const logAttempt = async (id: string, notes: string) => {
-    const entry = entries.find((e) => e.id === id);
-    if (!entry) return;
-    const { error } = await supabase
+  const logAttempt = async () => {
+    const entry = contactEntry;
+    if (!entry || savingContact) return;
+    setSavingContact(true);
+    const at = new Date().toISOString();
+    const note = `${at} · ${contactOutcome}${contactNotes.trim() ? ` — ${contactNotes.trim()}` : ""}`;
+    try {
+    const { data, error } = await supabase
       .from("inactive_agent_queue" as any)
       .update({
         recovery_attempts: (entry.recovery_attempts || 0) + 1,
-        last_recovery_attempt_at: new Date().toISOString(),
-        recovery_notes: notes,
-        updated_at: new Date().toISOString(),
+        last_recovery_attempt_at: at,
+        recovery_notes: [entry.recovery_notes, note].filter(Boolean).join("\n"),
+        updated_at: at,
       })
-      .eq("id", id);
-    if (error) {
-      toast.error(error.message);
+      .eq("id", entry.id).eq("status", "open").eq("updated_at", entry.updated_at).select("id").single();
+    if (error || !data) {
+      toast.error("Contact outcome could not be saved, or another manager updated this case. Refresh before retrying.");
+      const refreshed = await entriesQuery.refetch();
+      const current = refreshed.data?.find(row => row.id === entry.id && row.status === "open");
+      if (current) setContactEntry(current);
       return;
     }
+    setContactEntry(null);
+    setContactNotes("");
+    toast.success("Contact outcome recorded.");
     queryClient.invalidateQueries({ queryKey: ["inactive-queue"] });
+    } catch { toast.error("Contact outcome could not be saved. Refresh before retrying."); }
+    finally { setSavingContact(false); }
   };
 
   const toggleSelect = (id: string) => {
@@ -270,27 +295,31 @@ export default function InactiveAgents() {
   const bulkResolve = async (status: string) => {
     if (selectedIds.size === 0) return;
     const ok = await askConfirm({
-      title: `Mark ${selectedIds.size} agent${selectedIds.size === 1 ? "" : "s"} as ${status}?`,
-      description: `Every selected row gets status ${status} + resolved timestamp. This can be re-opened by editing the row.`,
-      confirmText: `Mark ${status}`,
+      title: `Confirm recovery for ${selectedIds.size} selected case${selectedIds.size === 1 ? "" : "s"}?`,
+      description: "Record this only after reviewing resumed activity for every selected agent. Account status, manager and access are unchanged.",
+      confirmText: "Confirm recovery",
     });
     if (!ok) return;
-    const { error } = await supabase
+    try {
+    const { data, error } = await supabase
       .from("inactive_agent_queue" as any)
       .update({
         status,
         resolved_at: new Date().toISOString(),
         resolved_by: user?.id,
         resolution: `Bulk ${status}`,
+        updated_at: new Date().toISOString(),
       })
-      .in("id", Array.from(selectedIds));
-    if (error) {
-      toast.error(error.message);
+      .in("id", Array.from(selectedIds)).eq("status", "open").select("id");
+    if (error || data?.length !== selectedIds.size) {
+      toast.error("Not all selected recovery cases were updated. Refresh the queue before retrying.");
+      void queryClient.invalidateQueries({ queryKey: ["inactive-queue"] });
       return;
     }
-    toast.success(`${selectedIds.size} marked ${status}`);
+    toast.success(`${selectedIds.size} recovery reviews recorded.`);
     setSelectedIds(new Set());
     queryClient.invalidateQueries({ queryKey: ["inactive-queue"] });
+    } catch { toast.error("Recovery reviews could not be saved. Refresh before retrying."); }
   };
 
   if (!canAccess) {
@@ -311,7 +340,7 @@ export default function InactiveAgents() {
       eyebrow="Admin · Recovery"
       eyebrowIcon={<UserX className="h-3 w-3" />}
       title="Inactive Agent Recovery"
-      subtitle="Find, re-engage, or re-route agents who've gone quiet. Severity color-coded by how long since last activity."
+      subtitle="Review recorded activity, contact agents, and record recovery outcomes. Use the agent profile for manager or account changes."
       actions={
         <Button onClick={runScan} disabled={scanning}>
           <RefreshCw className={scanning ? "h-4 w-4 mr-1.5 animate-spin" : "h-4 w-4 mr-1.5"} />
@@ -336,6 +365,9 @@ export default function InactiveAgents() {
     <div className="space-y-6 p-4 md:p-6 page-enter">
       {recoveryHeader}
 
+      {agentInfoQuery.isError && <QueryState status="error" label="agent details" error={agentInfoQuery.error} onRetry={() => void agentInfoQuery.refetch()} />}
+      {evidenceQuery.isError && <QueryState status="error" label="production evidence" error={evidenceQuery.error} onRetry={() => void evidenceQuery.refetch()} />}
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <button
           onClick={() => setSeverityFilter(severityFilter === "warning" ? "all" : "warning")}
@@ -359,7 +391,7 @@ export default function InactiveAgents() {
             <Flame className="h-3 w-3" /> Critical
           </p>
           <p className="text-2xl font-bold">{stats.critical}</p>
-          <p className="text-[11px] opacity-70">14-30 days inactive</p>
+          <p className="text-[11px] opacity-70">14-29 days inactive</p>
         </button>
         <button
           onClick={() => setSeverityFilter(severityFilter === "abandoned" ? "all" : "abandoned")}
@@ -380,13 +412,13 @@ export default function InactiveAgents() {
         </div>
       </div>
 
-      {/* PL-063: Producer segment tabs. Each group needs different outreach. */}
+      <p className="text-xs text-muted-foreground">Recorded production does not confirm issue or payment. Unknown evidence needs review.</p>
       <div className="flex items-center gap-1 rounded-md border border-border/40 bg-muted/30 p-1 flex-wrap">
         {([
-          { key: "all" as ProducerSegment,                label: "All",                  count: entries.length },
-          { key: "never_sold" as ProducerSegment,         label: "Never sold",           count: segmentCounts.neverSold },
-          { key: "sold_at_least_one" as ProducerSegment,  label: "Sold ≥ 1",             count: segmentCounts.atLeastOne },
-          { key: "sold_only_one" as ProducerSegment,      label: "Sold only one",        count: segmentCounts.onlyOne },
+          { key: "all" as ProducerSegment, label: "All", count: entries.length },
+          { key: "recorded" as ProducerSegment, label: "Production recorded", count: segmentCounts.recorded },
+          { key: "none_recorded" as ProducerSegment, label: "No production recorded", count: segmentCounts.none },
+          { key: "unknown" as ProducerSegment, label: "Evidence unknown", count: segmentCounts.unknown },
         ]).map(({ key, label, count }) => (
           <button
             key={key}
@@ -413,15 +445,15 @@ export default function InactiveAgents() {
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[150px]">
+          <SelectTrigger aria-label="Filter inactivity records by status" className="w-[150px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="open">Open</SelectItem>
-            <SelectItem value="reactivated">Reactivated</SelectItem>
-            <SelectItem value="terminated">Terminated</SelectItem>
-            <SelectItem value="transferred">Transferred</SelectItem>
-            <SelectItem value="snoozed">Snoozed</SelectItem>
+            <SelectItem value="reactivated">Recovery confirmed</SelectItem>
+            <SelectItem value="terminated">Termination noted</SelectItem>
+            <SelectItem value="transferred">Transfer noted</SelectItem>
+            <SelectItem value="snoozed">Legacy snoozed</SelectItem>
             <SelectItem value="all">All</SelectItem>
           </SelectContent>
         </Select>
@@ -436,25 +468,25 @@ export default function InactiveAgents() {
             variant="outline"
             onClick={() => {
               const phones = filtered
-                .filter((e) => selectedIds.has(e.id))
+                .filter((e) => selectedIds.has(e.id) && e.status === "open" && agentMap.get(e.agent_id)?.canContact)
                 .map((e) => agentMap.get(e.agent_id)?.phone)
                 .filter(Boolean);
               if (phones.length === 0) {
                 toast.error("No phones");
                 return;
               }
-              /* contact-scheme-allow: multi-recipient blast. Google Voice has no multi-recipient deep link and smsHref() normalises ONE number, so the helper cannot express this. Still a desktop dead click, and the toast below reports success on a no-op — published by MP-405, not fixed: a real remedy is a product decision. */
+              /* contact-scheme-allow: opens a multi-recipient draft only; no contact is recorded. */
               window.location.href = `sms:${phones.join(",")}`;
             }}
           >
-            <MessageSquare className="h-3.5 w-3.5 mr-1" /> Text All
+            <MessageSquare className="h-3.5 w-3.5 mr-1" /> Open group text
           </Button>
           <Button
             size="sm"
             variant="outline"
             onClick={() => {
               const emails = filtered
-                .filter((e) => selectedIds.has(e.id))
+                .filter((e) => selectedIds.has(e.id) && e.status === "open" && agentMap.get(e.agent_id)?.canContact)
                 .map((e) => agentMap.get(e.agent_id)?.email)
                 .filter(Boolean);
               if (emails.length === 0) {
@@ -464,13 +496,10 @@ export default function InactiveAgents() {
               window.location.href = `mailto:${emails.join(",")}`;
             }}
           >
-            <Mail className="h-3.5 w-3.5 mr-1" /> Email All
+            <Mail className="h-3.5 w-3.5 mr-1" /> Open email draft
           </Button>
           <Button size="sm" variant="outline" onClick={() => bulkResolve("reactivated")}>
-            <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Mark Reactivated
-          </Button>
-          <Button size="sm" variant="destructive" onClick={() => bulkResolve("terminated")}>
-            <XCircle className="h-3.5 w-3.5 mr-1" /> Terminate
+            <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Confirm recovery
           </Button>
           <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())} className="ml-auto">
             Clear
@@ -490,14 +519,13 @@ export default function InactiveAgents() {
         {!isLoading && filtered.length === 0 && (
           <Card>
             <CardContent className="p-8 text-center text-sm text-muted-foreground">
-              No inactive agents match this filter.{" "}
-              {statusFilter === "open" && "Nice — everyone's active."}
+              No recovery cases match this filter.
             </CardContent>
           </Card>
         )}
         {filtered.slice(0, visibleCount).map((e) => {
           const agent = agentMap.get(e.agent_id);
-          if (!agent) return null;
+          if (!agent) return <Card key={e.id}><CardContent className="p-4 text-sm text-muted-foreground">{agentInfoQuery.isLoading ? "Loading agent details…" : "Agent details unavailable. This recovery case needs review."}</CardContent></Card>;
           const sev = SEVERITY_META[e.severity] || SEVERITY_META.warning;
           const SevIcon = sev.icon;
           const isOpen = e.status === "open";
@@ -506,10 +534,10 @@ export default function InactiveAgents() {
             <Card key={e.id} className={isOpen && e.severity === "critical" ? "border-red-500/30" : ""}>
               <CardContent className="p-4">
                 <div className="flex items-center gap-3 flex-wrap">
-                  <Checkbox checked={selectedIds.has(e.id)} onCheckedChange={() => toggleSelect(e.id)} />
+                  {isOpen && <Checkbox aria-label={`Select ${agent.display_name}`} checked={selectedIds.has(e.id)} onCheckedChange={() => toggleSelect(e.id)} />}
                   <div className="flex-1 min-w-[200px]">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <p className="font-semibold">{agent.display_name}</p>
+                      <Link className="font-semibold hover:underline" to={`/dashboard/agent/${agent.canonicalId}`}>{agent.display_name}</Link>
                       <Badge variant="outline" className={sev.color + " text-xs"}>
                         <SevIcon className="h-3 w-3 mr-0.5" /> {sev.label}
                       </Badge>
@@ -531,7 +559,7 @@ export default function InactiveAgents() {
                       )}
                     </div>
                     <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
-                      <span>{e.days_inactive} days inactive</span>
+                      <span>{e.reason === "activity_resumed" ? "Recent activity recorded" : `${e.days_inactive} days since recorded activity`}</span>
                       {e.last_production_date && (
                         <span>Last prod {format(new Date(e.last_production_date), "MMM d")}</span>
                       )}
@@ -542,7 +570,7 @@ export default function InactiveAgents() {
                       )}
                       {e.last_recovery_attempt_at && (
                         <span>
-                          Last contact{" "}
+                          Last outcome recorded{" "}
                           {formatDistanceToNow(new Date(e.last_recovery_attempt_at), { addSuffix: true })}
                         </span>
                       )}
@@ -555,15 +583,15 @@ export default function InactiveAgents() {
                   </div>
 
                   <div className="flex items-center gap-1">
-                    {agent.phone && isOpen && (
+                    {agent.phone && agent.canContact && isOpen && (
                       <>
                         <Button
                           size="sm"
                           variant="ghost"
                           className="h-8 w-8 p-0"
                           asChild
-                          title="Call"
-                          onClick={() => logAttempt(e.id, "Called")}
+                          title="Open phone app"
+                          aria-label={`Open phone app for ${agent.display_name}`}
                         >
                           <a href={phoneHref(agent.phone) ?? `tel:${agent.phone}`} {...contactLinkProps(phoneHref(agent.phone))}>
                             <Phone className="h-4 w-4" />
@@ -574,8 +602,8 @@ export default function InactiveAgents() {
                           variant="ghost"
                           className="h-8 w-8 p-0"
                           asChild
-                          title="Text"
-                          onClick={() => logAttempt(e.id, "Texted")}
+                          title="Open text draft"
+                          aria-label={`Open text draft for ${agent.display_name}`}
                         >
                           <a href={smsHref(agent.phone) ?? `sms:${agent.phone}`} {...contactLinkProps(smsHref(agent.phone))}>
                             <MessageSquare className="h-4 w-4" />
@@ -583,14 +611,14 @@ export default function InactiveAgents() {
                         </Button>
                       </>
                     )}
-                    {agent.email && isOpen && (
+                    {agent.email && agent.canContact && isOpen && (
                       <Button
                         size="sm"
                         variant="ghost"
                         className="h-8 w-8 p-0"
                         asChild
-                        title="Email"
-                        onClick={() => logAttempt(e.id, "Emailed")}
+                        title="Open email draft"
+                        aria-label={`Open email draft for ${agent.display_name}`}
                       >
                         <a href={`mailto:${agent.email}`}>
                           <Mail className="h-4 w-4" />
@@ -600,28 +628,19 @@ export default function InactiveAgents() {
                     {isOpen && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" aria-label={`Recovery actions for ${agent.display_name}`}>
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => resolve(e.id, "reactivated", "Agent came back")}>
-                            <CheckCircle2 className="h-4 w-4 mr-2 text-emerald-400" /> Mark Reactivated
+                          <DropdownMenuItem onClick={() => { setContactEntry(e); setContactNotes(""); setContactOutcome("No answer"); }}>
+                            <MessageSquare className="h-4 w-4 mr-2" /> Record contact outcome
                           </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => resolve(e.id, "transferred", "Transferred to another manager")}
-                          >
-                            <ArrowRightLeft className="h-4 w-4 mr-2 text-info" /> Transfer to Another Manager
+                          <DropdownMenuItem onClick={() => resolve(e.id, "reactivated", "Manager confirmed resumed activity")}>
+                            <CheckCircle2 className="h-4 w-4 mr-2 text-emerald-400" /> Confirm recovery
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => resolve(e.id, "snoozed", "Snoozed 14 days")}>
-                            <PauseCircle className="h-4 w-4 mr-2 text-amber-400" /> Snooze 14 days
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => resolve(e.id, "terminated", "Terminated due to inactivity")}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <XCircle className="h-4 w-4 mr-2" /> Terminate
+                          <DropdownMenuItem asChild>
+                            <Link to={`/dashboard/agent/${agent.canonicalId}`}><ArrowRight className="h-4 w-4 mr-2" /> Open agent profile</Link>
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -640,6 +659,19 @@ export default function InactiveAgents() {
           <button type="button" onClick={() => setVisibleCount(filtered.length)} className="rounded-md px-3 py-1.5 font-medium text-primary transition hover:underline">Show all</button>
         </div>
       )}
+      <Dialog open={!!contactEntry} onOpenChange={(open) => { if (!open && !savingContact) setContactEntry(null); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Record contact outcome</DialogTitle><DialogDescription>Opening a phone, text or email app does not record contact. Save what actually happened.</DialogDescription></DialogHeader>
+          <label className="text-sm font-medium" htmlFor="recovery-outcome">Outcome</label>
+          <Select value={contactOutcome} onValueChange={setContactOutcome} disabled={savingContact}>
+            <SelectTrigger id="recovery-outcome"><SelectValue /></SelectTrigger>
+            <SelectContent>{["No answer", "Voicemail left", "Message sent", "Connected"].map(outcome => <SelectItem key={outcome} value={outcome}>{outcome}</SelectItem>)}</SelectContent>
+          </Select>
+          <label className="text-sm font-medium" htmlFor="recovery-notes">Notes</label>
+          <Textarea id="recovery-notes" value={contactNotes} onChange={event => setContactNotes(event.target.value)} disabled={savingContact} placeholder="Channel used, result, and next step agreed" maxLength={2000} />
+          <Button onClick={logAttempt} disabled={savingContact}>{savingContact ? "Saving…" : "Save outcome"}</Button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

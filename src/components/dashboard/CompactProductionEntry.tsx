@@ -9,8 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { ConfettiCelebration } from "./ConfettiCelebration";
-import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { celebrate } from "@/lib/celebrate";
 import { format, subDays } from "date-fns";
 import { BubbleStatInput } from "./BubbleStatInput";
 
@@ -22,12 +21,10 @@ interface CompactProductionEntryProps {
 
 export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactProductionEntryProps) {
   const [saving, setSaving] = useState(false);
-  const [showConfetti, setShowConfetti] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [loadingExisting, setLoadingExisting] = useState(true);
-  const { playSound } = useSoundEffects();
   const formRef = useRef<HTMLFormElement>(null);
   
   const [formData, setFormData] = useState({
@@ -116,13 +113,9 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 500);
 
-      // Celebration!
-      setShowConfetti(true);
-      if (canonical.aop >= 5000) {
-        playSound("celebrate");
-      } else {
-        playSound("success");
-      }
+      // Existing production totals are not a new sale. Acknowledge this
+      // activity save; the global deal receipt owns closed-deal celebrations.
+      void celebrate("save", formRef.current);
       
       toast.success(
         <div className="flex flex-col gap-0.5">
@@ -213,11 +206,6 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
 
   return (
     <>
-      <ConfettiCelebration 
-        trigger={showConfetti} 
-        onComplete={() => setShowConfetti(false)} 
-      />
-      
       <motion.div 
         className="relative bg-card/80  rounded-md border border-border/50 shadow-sm overflow-hidden"
         initial={{ opacity: 0, y: 10 }}

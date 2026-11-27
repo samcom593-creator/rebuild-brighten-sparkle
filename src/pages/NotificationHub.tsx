@@ -434,7 +434,7 @@ function CarrierAssignmentTool() {
             <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
               <span className="text-sm font-medium">{selectedIds.size} selected</span>
               <Select value={bulkCarrier} onValueChange={setBulkCarrier}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger aria-label="Carrier for selected leads" className="w-[180px]">
                   <SelectValue placeholder="Bulk carrier..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -515,7 +515,7 @@ function CarrierAssignmentTool() {
                     <TableCell className="text-sm text-muted-foreground">{lead.phone}</TableCell>
                     <TableCell>
                       <Select onValueChange={(v) => updateCarrier.mutate({ id: lead.id, carrier: v })}>
-                        <SelectTrigger className="w-full sm:w-[150px] h-8">
+                        <SelectTrigger aria-label={`Carrier for ${[lead.first_name, lead.last_name].filter(Boolean).join(" ") || "this lead"}`} className="w-full sm:w-[150px] h-8">
                           <SelectValue placeholder="Select..." />
                         </SelectTrigger>
                         <SelectContent>
@@ -1541,7 +1541,7 @@ export default function NotificationHub() {
               />
             </div>
             <Select value={channelFilter} onValueChange={setChannelFilter}>
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger aria-label="Filter notifications by channel" className="w-[140px]">
                 <SelectValue placeholder="Channel" />
               </SelectTrigger>
               <SelectContent>
@@ -1553,7 +1553,7 @@ export default function NotificationHub() {
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[120px]">
+              <SelectTrigger aria-label="Filter notifications by status" className="w-[120px]">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -1564,7 +1564,7 @@ export default function NotificationHub() {
               </SelectContent>
             </Select>
             <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger className="w-[150px]">
+              <SelectTrigger aria-label="Filter notifications by recipient role" className="w-[150px]">
                 <SelectValue placeholder="Recipient role" />
               </SelectTrigger>
               <SelectContent>

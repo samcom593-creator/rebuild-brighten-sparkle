@@ -341,7 +341,7 @@ export default function AdminStrikes() {
             />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="md:w-[140px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger aria-label="Filter strikes by status" className="md:w-[140px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__all__">All statuses</SelectItem>
               <SelectItem value="active">Active</SelectItem>
@@ -351,7 +351,7 @@ export default function AdminStrikes() {
             </SelectContent>
           </Select>
           <Select value={severityFilter} onValueChange={setSeverityFilter}>
-            <SelectTrigger className="md:w-[160px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger aria-label="Filter strikes by severity" className="md:w-[160px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__all__">Any severity</SelectItem>
               <SelectItem value="warning">Warning</SelectItem>
@@ -685,7 +685,7 @@ function IssueStrikeDialog({ open, onOpenChange }: IssueDialogProps) {
               <Sparkles className="h-3 w-3" /> Template
             </label>
             <Select value={templateSlug} onValueChange={applyTemplate}>
-              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+              <SelectTrigger aria-label="Strike template" className="mt-1"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__custom__">Start from scratch</SelectItem>
                 {templates.map((t) => (
@@ -737,7 +737,7 @@ function IssueStrikeDialog({ open, onOpenChange }: IssueDialogProps) {
             <div>
               <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Reason</label>
               <Select value={reasonCode} onValueChange={setReasonCode}>
-                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Strike reason" className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {REASON_OPTIONS.map((o) => (
                     <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
@@ -748,7 +748,7 @@ function IssueStrikeDialog({ open, onOpenChange }: IssueDialogProps) {
             <div>
               <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Severity</label>
               <Select value={severity} onValueChange={(v) => setSeverity(v as any)}>
-                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Strike severity" className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="warning">Warning</SelectItem>
                   <SelectItem value="minor">Minor</SelectItem>

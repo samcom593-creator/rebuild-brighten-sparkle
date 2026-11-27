@@ -113,11 +113,13 @@ describe("Button press feedback", () => {
   it("transitions named properties only, never `all`, and presses in on :active when motion is allowed", () => {
     render(<Button>Save</Button>);
     const cls = screen.getByRole("button", { name: "Save" }).className;
-    expect(cls).toContain("transition-[background-color,box-shadow,filter,transform]");
+    expect(cls).toContain("transition-[background-color,border-color,color,box-shadow,filter,transform]");
     expect(cls).not.toMatch(/transition-all/);
-    expect(cls).toContain("motion-safe:active:scale-[0.97]");
+    expect(cls).toContain("motion-safe:active:scale-[0.98]");
+    expect(cls).toContain("motion-reduce:transition-none");
+    expect(cls).toContain("focus-visible:shadow-[var(--apex-focus-ring)]");
     // Arbitrary properties, because `duration-[140ms]` and `ease-[…]` never compiled in this config.
-    expect(cls).toContain("[transition-duration:120ms]");
+    expect(cls).toContain("[transition-duration:var(--galaxy-motion-fast,140ms)]");
     expect(cls).toContain("[transition-timing-function:cubic-bezier(0.23,1,0.32,1)]");
     expect(cls).not.toMatch(/\bduration-\[/);
   });
@@ -181,12 +183,13 @@ describe("SoundToggle under reduced motion", () => {
 });
 
 describe("PageHeader with an icon", () => {
-  it("keeps the title as the heading and puts the icon in a bubble of the page's tone", () => {
+  it("keeps the title as the heading and puts the decorative icon in the compact holder of the page's tone", () => {
     const { container } = render(<PageHeader title="Pipeline" subtitle="Everyone from first call to active agent." icon={<Phone />} tone="cool" />);
     expect(screen.getByRole("heading", { level: 1, name: "Pipeline" })).toBeInTheDocument();
-    const bubble = container.querySelector(".apex-pop");
+    const bubble = container.querySelector("svg.lucide-phone")?.closest("span");
     expect(bubble).toHaveAttribute("aria-hidden", "true");
-    expect(bubble).toHaveClass("bg-tone-cool/12");
+    expect(bubble).toHaveClass("bg-tone-cool/12", "text-tone-cool", "h-10", "w-10", "rounded-lg");
+    expect(bubble).not.toHaveClass("apex-pop");
   });
 });
 

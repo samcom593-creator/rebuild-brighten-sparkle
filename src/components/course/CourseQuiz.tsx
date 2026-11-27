@@ -39,6 +39,7 @@ export function CourseQuiz({
   const [score, setScore] = useState(0);
   const [passed, setPassed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
 
   const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -49,17 +50,19 @@ export function CourseQuiz({
   const isLastQuestion = currentIndex === questions.length - 1;
 
   // `attempts` is the count BEFORE this run, so the try in progress is +1.
-  const attemptNumber = Math.min(attempts + 1, maxAttempts);
+  const [attemptNumber, setAttemptNumber] = useState(() => Math.min(attempts + 1, maxAttempts));
   const retakesLeft = Math.max(0, maxAttempts - attemptNumber);
 
   const handleAnswerSelect = (answerIndex: number) => {
-    if (showFeedback) return;
+    if (showFeedback || submitting || saveError) return;
     const newAnswers = [...answers];
     newAnswers[currentIndex] = answerIndex;
     setAnswers(newAnswers);
   };
 
   const handleNext = () => {
+    if (submitting || showFeedback) return;
+    setSaveError(null);
     setShowFeedback(true);
     feedbackTimerRef.current = setTimeout(() => {
       setShowFeedback(false);
@@ -72,6 +75,7 @@ export function CourseQuiz({
   };
 
   const calculateResults = async () => {
+    if (submitting) return;
     let correct = 0;
     answers.forEach((answer, index) => {
       if (answer === questions[index].correct_answer) {
@@ -82,17 +86,20 @@ export function CourseQuiz({
     const finalScore = Math.round((correct / questions.length) * 100);
     const didPass = finalScore >= passThreshold;
     
-    setScore(finalScore);
-    setPassed(didPass);
-    setShowResult(true);
-    
-    if (didPass) {
-      setShowConfetti(true);
-    }
-    
     setSubmitting(true);
-    await onSubmit(answers as number[], finalScore, didPass);
-    setSubmitting(false);
+    setSaveError(null);
+    try {
+      const saved = await onSubmit(answers as number[], finalScore, didPass);
+      if (!saved) throw new Error("Quiz result was not saved.");
+      setScore(finalScore);
+      setPassed(didPass);
+      setShowResult(true);
+      if (didPass) setShowConfetti(true);
+    } catch {
+      setSaveError("Your result could not be saved. Your answers are still here. Check your connection and retry saving.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleRetry = () => {
@@ -102,6 +109,8 @@ export function CourseQuiz({
     setShowFeedback(false);
     setScore(0);
     setPassed(false);
+    setSaveError(null);
+    setAttemptNumber(Math.min(attempts + 1, maxAttempts));
     onRetry();
   };
 
@@ -203,8 +212,9 @@ export function CourseQuiz({
             <CardTitle className="text-lg mb-6">{currentQuestion.question}</CardTitle>
 
             <RadioGroup
-              value={selectedAnswer?.toString()}
+              value={selectedAnswer?.toString() ?? ""}
               onValueChange={(value) => handleAnswerSelect(parseInt(value))}
+              disabled={showFeedback || submitting || !!saveError}
               className="space-y-3"
             >
               {currentQuestion.options.map((option, index) => {
@@ -255,13 +265,15 @@ export function CourseQuiz({
               </motion.div>
             )}
 
+            {saveError && <p role="alert" className="mt-4 text-sm text-destructive">{saveError}</p>}
+            {submitting && <p role="status" className="mt-4 text-sm text-muted-foreground">Saving your result…</p>}
             <div className="mt-6 flex justify-end">
               <Button
-                onClick={handleNext}
-                disabled={selectedAnswer === null || showFeedback}
+                onClick={saveError ? calculateResults : handleNext}
+                disabled={selectedAnswer === null || showFeedback || submitting}
                 className="gap-2"
               >
-                {isLastQuestion ? "Finish Quiz" : "Next Question"}
+                {submitting ? "Saving…" : saveError ? "Retry saving" : isLastQuestion ? "Finish Quiz" : "Next Question"}
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </div>

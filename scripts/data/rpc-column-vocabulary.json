@@ -1058,7 +1058,12 @@
     "personal_task_create": "jsonb",
     "personal_task_identity": "jsonb",
     "personal_task_list": "jsonb",
-    "personal_task_set_completed": "jsonb"
+    "personal_task_set_completed": "jsonb",
+    "training_canonical_self_id": "uuid",
+    "training_progress_access": "jsonb",
+    "deal_coverage_review_queue": "jsonb",
+    "decide_deal_coverage_review": "jsonb",
+    "resume_deal_coverage_review": "jsonb"
   },
   "columns": {
     "active_manager_emails.email": {
@@ -23279,6 +23284,36 @@
       "return_type": "jsonb",
       "named_output_columns": false,
       "source": "Exact authored migration signature, executed in isolated PostgreSQL fixtures; validate against deployed pg_proc after application."
+    },
+    "training_canonical_self_id": {
+      "migration": "20261127044000_training_canonical_access.sql",
+      "return_type": "uuid",
+      "named_output_columns": false,
+      "source": "Exact authored migration signature, executed in isolated PostgreSQL fixtures; validate against deployed pg_proc after application."
+    },
+    "training_progress_access": {
+      "migration": "20261127044000_training_canonical_access.sql",
+      "return_type": "jsonb",
+      "named_output_columns": false,
+      "source": "Exact authored migration signature, executed in isolated PostgreSQL fixtures; validate against deployed pg_proc after application."
+    },
+    "deal_coverage_review_queue": {
+      "migration": "20261127050000_deal_coverage_review.sql",
+      "return_type": "jsonb",
+      "named_output_columns": false,
+      "source": "Exact authored migration signature executed in isolated PostgreSQL fixtures; verify deployed pg_proc and ACLs after application."
+    },
+    "decide_deal_coverage_review": {
+      "migration": "20261127050000_deal_coverage_review.sql",
+      "return_type": "jsonb",
+      "named_output_columns": false,
+      "source": "Exact authored migration signature executed in isolated PostgreSQL fixtures; verify deployed pg_proc and ACLs after application."
+    },
+    "resume_deal_coverage_review": {
+      "migration": "20261127050000_deal_coverage_review.sql",
+      "return_type": "jsonb",
+      "named_output_columns": false,
+      "source": "Exact authored migration signature executed in isolated PostgreSQL fixtures; verify deployed pg_proc and ACLs after application."
     }
   }
 }

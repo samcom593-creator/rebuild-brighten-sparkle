@@ -1,0 +1,11 @@
+html, body { margin: 0; min-height: 100%; background: hsl(var(--background)); color: hsl(var(--foreground)); }
+.visual-qa-workspace { max-width: 1200px; margin-inline: auto; }
+.visual-qa-control-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.visual-qa-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
+.visual-qa-icon-actions { display: flex; gap: 0.5rem; align-items: center; }
+.visual-qa-public { max-width: 1200px; padding: 0 var(--galaxy-page-gutter) var(--galaxy-page-gutter); margin-inline: auto; }
+.visual-qa-public-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+@media (max-width: 639px) {
+  .visual-qa-control-grid { grid-template-columns: minmax(0, 1fr); }
+  .visual-qa-actions > .win-action, .visual-qa-actions > .galaxy-button { width: 100%; }
+}

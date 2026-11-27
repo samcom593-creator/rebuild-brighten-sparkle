@@ -20,6 +20,7 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { useOnboardingCourse } from "@/hooks/useOnboardingCourse";
 
@@ -81,7 +82,7 @@ function Probe() {
 }
 
 async function renderProbe() {
-  render(<Probe />);
+  render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><Probe /></QueryClientProvider>);
   await waitFor(() => expect(screen.getByTestId("loaded").textContent).toBe("3"));
 }
 

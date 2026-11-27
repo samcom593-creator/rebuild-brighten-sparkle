@@ -65,4 +65,12 @@ describe("TrainingWorkspaceNav", () => {
       "page",
     );
   });
+
+  it("gives recruiters the review destinations their routes permit", () => {
+    auth.isRecruiter = true;
+    renderNav("/dashboard/training/progress");
+    expect(screen.getByRole("link", { name: "Team progress" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Course content" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Recruit progress" })).not.toBeInTheDocument();
+  });
 });

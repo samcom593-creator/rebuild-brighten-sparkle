@@ -143,7 +143,7 @@ export default function AdminBoardAccess() {
                     const cellKey = `${m.user_id}:${b.key}`;
                     return (
                       <td key={b.key} className="px-3 py-3">
-                        <Switch
+                        <Switch aria-label={`${b.label} access for ${m.full_name ?? m.email}`}
                           checked={granted}
                           disabled={savingKey === cellKey}
                           onCheckedChange={() => toggleGrant(m.user_id, b.key, granted)}

@@ -29,6 +29,20 @@
   --apex-shadow-3: var(--elev-3);
   --apex-focus-ring: 0 0 0 1px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.9);
   --apex-hover-ring: 0 0 0 3px hsl(var(--primary) / 0.3);
+  --galaxy-motion-fast: 140ms;
+  --galaxy-motion-base: 180ms;
+  --galaxy-control-height: 44px;
+  --galaxy-page-gutter: clamp(1rem, 2vw, 1.75rem);
+  --galaxy-section-gap: 1.25rem;
+}
+
+/* Operating surfaces share a quieter scale. Public conversion layouts keep
+   their own spacing while the same controls retain compatible token fallbacks. */
+.apex-app-shell,
+.galaxy-sidebar {
+  --apex-r-sm: 6px;
+  --apex-r-md: 10px;
+  --apex-r-lg: 14px;
 }
 
 /* Global body bg switches with theme */
@@ -131,11 +145,11 @@ body {
   box-shadow: var(--apex-shadow-1);
 }
 
-/* Card hover gives a subtle lift, real visual feedback */
+/* Surface paint stays quiet; interactive controls own their hover feedback. */
 :root.light .bg-card,
 :root.light .bg-white {
   transition: box-shadow 180ms ease;
 }
-:root.light .bg-white:hover {
-  box-shadow: var(--apex-shadow-2);
+@media (prefers-reduced-motion: reduce) {
+  body { transition: none; }
 }

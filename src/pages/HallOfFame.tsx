@@ -367,7 +367,7 @@ export default function HallOfFame() {
               />
             </div>
             <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
-              <SelectTrigger className="md:w-[150px]"><SelectValue /></SelectTrigger>
+              <SelectTrigger aria-label="Recognition period" className="md:w-[150px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All time</SelectItem>
                 <SelectItem value="month">Last 30 days</SelectItem>

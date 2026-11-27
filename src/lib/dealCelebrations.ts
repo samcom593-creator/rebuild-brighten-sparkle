@@ -28,10 +28,10 @@ export function suppressDealCelebrations(): () => void {
   };
 }
 
-export type PostedDeal = { id: string; postedAt: number; annualPremium: number | null };
+export type PostedDeal = { id: string; postedAt: number; annualPremium: number | null; agentId?: string };
 export type PostedDealReceipt = { dealId?: unknown; status?: unknown; replayed?: unknown };
 export type LocalDealReceiptDetail = { userId: string; dealId: string };
-export type DealCelebrationBatch = { key: string; count: number; annualPremium: number | null };
+export type DealCelebrationBatch = { key: string; count: number; annualPremium: number | null; agentCounts: Record<string, number> };
 
 export function isDealId(value: unknown): value is string {
   return typeof value === "string" && UUID.test(value);
@@ -55,7 +55,10 @@ export function readPostedDeal(value: unknown, armedAt: number, now: number, all
   const postedAt = Date.parse(eventTime);
   if (!Number.isFinite(postedAt) || postedAt < armedAt || postedAt < now - DEAL_FRESHNESS_MS || postedAt > now + 5_000) return null;
   const premium = typeof row.annual_premium === "number" ? row.annual_premium : typeof row.annual_premium === "string" && row.annual_premium.trim() ? Number(row.annual_premium) : NaN;
-  return { id: row.id, postedAt, annualPremium: Number.isFinite(premium) && premium > 0 ? premium : null };
+  return {
+    id: row.id, postedAt, annualPremium: Number.isFinite(premium) && premium > 0 ? premium : null,
+    ...(isDealId(row.agent_id) ? { agentId: row.agent_id } : {}),
+  };
 }
 
 /** A known non-draft UPDATE is a correction/status change, not a second new deal. */
@@ -89,9 +92,36 @@ export class DealCelebrationLedger {
 }
 
 export function addDealToBatch(batch: DealCelebrationBatch | null, deal: PostedDeal): DealCelebrationBatch {
+  const agentCounts = { ...batch?.agentCounts };
+  if (deal.agentId) agentCounts[deal.agentId] = (agentCounts[deal.agentId] ?? 0) + 1;
   return {
     key: deal.id,
     count: (batch?.count ?? 0) + 1,
     annualPremium: batch ? batch.annualPremium !== null && deal.annualPremium !== null ? batch.annualPremium + deal.annualPremium : null : deal.annualPremium,
+    agentCounts,
   };
+}
+
+/** Only the separately authorized agent rows may supply a person's name, never deal payload text. */
+export function readCelebrationAgentNames(value: unknown, agentIds: readonly string[]): Record<string, string> {
+  const allowed = new Set(agentIds);
+  const names: Record<string, string> = {};
+  if (!Array.isArray(value)) return names;
+  for (const row of value) {
+    if (!row || typeof row !== "object" || !isDealId(row.id) || !allowed.has(row.id)) continue;
+    const name = typeof row.display_name === "string" ? row.display_name.trim().replace(/\s+/g, " ").slice(0, 80) : "";
+    if (!name || /^(agent|unknown|unassigned|n\/a|[-—])$/i.test(name)) continue;
+    names[row.id] = name;
+  }
+  return names;
+}
+
+export function dealHeadline(batch: DealCelebrationBatch, agentNames: Record<string, string>): string {
+  const entries = Object.entries(batch.agentCounts);
+  if (entries.length === 1) {
+    const [agentId, count] = entries[0];
+    const name = agentNames[agentId];
+    if (name && count === batch.count) return `${name} closed ${count === 1 ? "a deal" : `${count} deals`}`;
+  }
+  return batch.count === 1 ? "Deal posted" : `${batch.count} deals posted`;
 }

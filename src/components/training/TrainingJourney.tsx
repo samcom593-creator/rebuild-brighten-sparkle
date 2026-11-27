@@ -10,6 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Check, ChevronDown, FileText, GraduationCap, Headphones, MessageCircleQuestion, Mic, Phone, Star, TrendingUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useTrainingIdentity } from "@/hooks/useTrainingIdentity";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Progress } from "@/components/ui/progress";
@@ -36,19 +37,9 @@ interface Step {
 }
 
 function useFieldCourse() {
-  const { user } = useAuth();
-  // Same keys as TrainingPathPanel, so opening the module list below costs no second read.
-  const agentQ = useQuery({
-    queryKey: ["training-path-agent", user?.id],
-    enabled: !!user?.id,
-    staleTime: 5 * 60_000,
-    queryFn: async () => {
-      const { data, error } = await supabase.from("agents").select("id, display_name").eq("user_id", user!.id).order("created_at", { ascending: false }).limit(1);
-      if (error) throw error;
-      return (data?.[0] as { id: string; display_name: string | null } | undefined) ?? null;
-    },
-  });
-  const agentId = agentQ.data?.id ?? null;
+  // Share canonical identity and progress with the detailed path and course player.
+  const agentQ = useTrainingIdentity();
+  const agentId = agentQ.agentId;
   const modulesQ = useQuery({
     queryKey: ["training-path-modules"],
     staleTime: 5 * 60_000,
@@ -71,7 +62,10 @@ function useFieldCourse() {
   const total = modulesQ.data?.length ?? 0;
   const passedIds = new Set((progressQ.data ?? []).filter((p) => p.passed === true).map((p) => p.module_id));
   const passed = (modulesQ.data ?? []).filter((m) => passedIds.has(m.id)).length;
-  return { total, passed, firstName: (agentQ.data?.display_name ?? "").trim().split(/\s+/)[0] || "" };
+  const ready = agentQ.identity?.status === "resolved" && modulesQ.isSuccess && progressQ.isSuccess;
+  return { total, passed, ready,
+    loading: agentQ.isLoading || modulesQ.isLoading || (!!agentId && progressQ.isLoading),
+  };
 }
 
 function usePracticeCount() {
@@ -106,9 +100,9 @@ export function TrainingJourney({ onOpenTab, callsAvailable }: { onOpenTab: (tab
       title: "Field Course",
       blurb: "The script, the dialer and the close, one lesson at a time.",
       icon: GraduationCap,
-      done: course.total > 0 && course.passed >= course.total,
-      status: course.total > 0 ? `${course.passed} of ${course.total} lessons passed` : "Your lessons",
-      cta: course.total > 0 && course.passed >= course.total ? "Review" : course.passed > 0 ? "Continue" : "Start",
+      done: course.ready && course.total > 0 && course.passed >= course.total,
+      status: !course.ready ? course.loading ? "Checking progress…" : "Progress unavailable — open your path" : course.total > 0 ? `${course.passed} of ${course.total} lessons passed` : "Your lessons",
+      cta: !course.ready ? "Open path" : course.total > 0 && course.passed >= course.total ? "Review" : course.passed > 0 ? "Continue" : "Start",
       go: () => {
         setShowModules(true);
         requestAnimationFrame(() => document.getElementById("training-course-modules")?.scrollIntoView({ behavior: "smooth", block: "start" }));
@@ -139,8 +133,8 @@ export function TrainingJourney({ onOpenTab, callsAvailable }: { onOpenTab: (tab
       title: "Practice a call",
       blurb: "Run the script out loud against a live roleplay before you dial.",
       icon: Mic,
-      done: practiced > 0,
-      status: practiced > 0 ? `${practiced} practice call${practiced === 1 ? "" : "s"} done` : "No practice calls yet",
+      done: practice.isSuccess && practiced > 0,
+      status: practice.isPending ? "Checking practice…" : practice.isError ? "Practice history unavailable" : practiced > 0 ? `${practiced} practice call${practiced === 1 ? "" : "s"} done` : "No practice calls yet",
       cta: "Practice",
       go: () => undefined,
       href: "/dashboard/call-lab",
@@ -157,9 +151,9 @@ export function TrainingJourney({ onOpenTab, callsAvailable }: { onOpenTab: (tab
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-wide text-primary">{next ? "Next up" : "All four steps done"}</p>
             <h2 className="mt-1 text-2xl font-bold leading-tight sm:text-3xl">
-              {next ? next.title : `${course.firstName ? `${course.firstName}, you` : "You"} are phone-ready`}
+              {next ? next.title : "Training sequence complete"}
             </h2>
-            <p className="mt-1 text-sm text-muted-foreground">{next ? next.blurb : "Keep the top calls and the objections open while you dial."}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{next ? next.blurb : "Review your practice feedback with your manager before field calls."}</p>
           </div>
           {next && <StepAction step={next} size="lg" />}
         </div>

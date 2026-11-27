@@ -9,6 +9,7 @@
 // Reads public.v_interview_pipeline (one bucket per interview, America/Chicago
 // date math, nothing filtered out) and writes through cc_dispose_interview.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -242,7 +243,7 @@ export default function InterviewRecovery() {
   const [activeBucket, setActiveBucket] = useState<Bucket | "backlog" | "all" | "prospects">("backlog");
   const [search, setSearch] = useState("");
   const [catchUp, setCatchUp] = useState(false);
-  const [catchIndex, setCatchIndex] = useState(0);
+  const [catchId, setCatchId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [detailAppId, setDetailAppId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -368,13 +369,19 @@ export default function InterviewRecovery() {
     ),
     [backlog],
   );
+  // Keep the selected person stable when a refresh reorders/removes rows.
+  const catchIndex = Math.max(0, catchQueue.findIndex(row => row.id === catchId));
   const current = catchQueue[catchIndex] ?? null;
 
   useEffect(() => {
-    if (catchUp && catchIndex >= catchQueue.length && catchQueue.length > 0) {
-      setCatchIndex(catchQueue.length - 1);
-    }
-  }, [catchUp, catchIndex, catchQueue.length]);
+    if (catchUp && catchId !== (current?.id ?? null)) setCatchId(current?.id ?? null);
+  }, [catchUp, catchId, current?.id]);
+
+  const moveCatchUp = useCallback((direction: -1 | 1) => {
+    if (writeInFlight.current) return;
+    const index = Math.max(0, Math.min(catchIndex + direction, catchQueue.length - 1));
+    setCatchId(catchQueue[index]?.id ?? null);
+  }, [catchIndex, catchQueue]);
 
   useEffect(() => { setNoteDraft(current?.notes ?? ""); }, [current?.id, current?.notes]);
 
@@ -448,6 +455,9 @@ export default function InterviewRecovery() {
   const disposeAndAdvance = useCallback(
     async (outcome: Outcome) => {
       if (!current) return;
+      // Capture the next identity before saving. Refetch removes the saved row;
+      // incrementing its old numeric index afterward would skip the next person.
+      const nextId = catchQueue[catchIndex + 1]?.id ?? catchQueue.find(row => row.id !== current.id)?.id ?? null;
       const due =
         followupDays > 0
           ? new Date(Date.now() + followupDays * 86_400_000).toISOString()
@@ -456,9 +466,9 @@ export default function InterviewRecovery() {
       if (!saved) return;
       setNoteDraft("");
       setFollowupDays(0);
-      setCatchIndex((i) => Math.min(i + 1, Math.max(0, catchQueue.length - 2)));
+      setCatchId(nextId);
     },
-    [current, dispose, noteDraft, followupDays, catchQueue.length],
+    [current, dispose, noteDraft, followupDays, catchQueue, catchIndex],
   );
 
   const bulkDispose = useCallback(
@@ -502,13 +512,13 @@ export default function InterviewRecovery() {
 
       const hit = DISPOSITIONS.find((d) => d.hotkey === e.key);
       if (hit) { e.preventDefault(); void disposeAndAdvance(hit.key); return; }
-      if (e.key === "n") { e.preventDefault(); setCatchIndex((i) => Math.min(i + 1, catchQueue.length - 1)); }
-      if (e.key === "p") { e.preventDefault(); setCatchIndex((i) => Math.max(0, i - 1)); }
+      if (e.key === "n") { e.preventDefault(); moveCatchUp(1); }
+      if (e.key === "p") { e.preventDefault(); moveCatchUp(-1); }
       if (e.key === "Escape") { e.preventDefault(); setCatchUp(false); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [catchUp, catchQueue.length, disposeAndAdvance]);
+  }, [catchUp, moveCatchUp, disposeAndAdvance]);
 
   const oldest = backlog.length
     ? Math.max(...backlog.map((r) => r.days_overdue))
@@ -816,12 +826,12 @@ export default function InterviewRecovery() {
               </div>
 
               <div className="mt-3 flex gap-2">
-                <Button variant="outline" className="h-10 flex-1 sm:h-9" disabled={catchIndex === 0}
-                        onClick={() => setCatchIndex((i) => Math.max(0, i - 1))} aria-label="Previous candidate">
+                <Button variant="outline" className="h-10 flex-1 sm:h-9" disabled={busy || catchIndex === 0}
+                        onClick={() => moveCatchUp(-1)} aria-label="Previous candidate">
                   Previous
                 </Button>
-                <Button variant="outline" className="h-10 flex-1 sm:h-9"
-                        onClick={() => setCatchIndex((i) => Math.min(i + 1, catchQueue.length - 1))}
+                <Button variant="outline" className="h-10 flex-1 sm:h-9" disabled={busy || catchIndex >= catchQueue.length - 1}
+                        onClick={() => moveCatchUp(1)}
                         aria-label="Skip to next candidate">
                   <SkipForward className="mr-1.5 h-4 w-4" /> Skip
                 </Button>
@@ -867,7 +877,7 @@ export default function InterviewRecovery() {
               size="sm"
               className="h-10 bg-[#C9A961] font-bold text-black hover:bg-[#8A7340]"
               disabled={!backlog.length}
-              onClick={() => { setCatchIndex(0); setCatchUp(true); }}
+              onClick={() => { setCatchId(catchQueue[0]?.id ?? null); setCatchUp(true); }}
             >
               <Rocket className="h-4 w-4" /> Work queue{backlog.length ? ` · ${backlog.length}` : ""}
             </Button>
@@ -1182,6 +1192,12 @@ function UnmatchedPanel({
   eventType?: string | null;
   matchCandidates?: number;
 }) {
+  // The existing recruiting worklist reads q and searches name/email/phone.
+  // This is review only: a search never asserts or writes an identity link.
+  const applicationSearch = email?.trim() || phone?.trim() || (name === "Unnamed booking" ? "" : name.trim());
+  const reviewParams = new URLSearchParams({ queue: "all_open" });
+  if (applicationSearch) reviewParams.set("q", applicationSearch);
+  const reviewHref = `/dashboard/recruiting?${reviewParams.toString()}`;
   const why =
     matchCandidates === undefined
       ? "Booked through Calendly without a Galaxy application. Everything known about them is below."
@@ -1204,6 +1220,10 @@ function UnmatchedPanel({
             <Fact label="Booked"    value={eventType?.trim() || null} />
             <Fact label="Owner"     value={owner} />
             <Fact label="They said" value={theySaid} />
+          </div>
+          <div className="mt-3 space-y-2">
+            <Button asChild size="sm" variant="outline"><Link to={reviewHref}><Search className="mr-1.5 h-4 w-4" />Find application</Link></Button>
+            <p className="text-xs text-muted-foreground">Search open recruit records, then confirm the identity with an administrator before linking this booking. Hiring stays unavailable until the link is verified.</p>
           </div>
         </div>
       </div>

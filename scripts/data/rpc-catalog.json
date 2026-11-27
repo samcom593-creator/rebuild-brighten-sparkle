@@ -13790,6 +13790,106 @@
         "unnamed": false,
         "raw": "p_agent_id uuid, p_task_id uuid, p_completed boolean"
       }
+    ],
+    "social_draft_review": [
+      {
+        "all": [
+          "p_id"
+        ],
+        "required": [
+          "p_id"
+        ],
+        "unnamed": false,
+        "raw": "p_id bigint"
+      }
+    ],
+    "social_draft_review_set_status": [
+      {
+        "all": [
+          "p_id",
+          "p_seen_hash",
+          "p_status"
+        ],
+        "required": [
+          "p_id",
+          "p_seen_hash",
+          "p_status"
+        ],
+        "unnamed": false,
+        "raw": "p_id bigint, p_seen_hash text, p_status text"
+      }
+    ],
+    "content_queue_review_set_status": [
+      {
+        "all": [
+          "p_content_id",
+          "p_seen_updated_at",
+          "p_status"
+        ],
+        "required": [
+          "p_content_id",
+          "p_seen_updated_at",
+          "p_status"
+        ],
+        "unnamed": false,
+        "raw": "p_content_id text, p_seen_updated_at timestamp with time zone, p_status text"
+      }
+    ],
+    "training_canonical_self_id": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "training_progress_access": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "deal_coverage_review_queue": [
+      {
+        "all": [],
+        "required": [],
+        "unnamed": false,
+        "raw": ""
+      }
+    ],
+    "decide_deal_coverage_review": [
+      {
+        "all": [
+          "p_review_id",
+          "p_decision",
+          "p_reason",
+          "p_expected_version"
+        ],
+        "required": [
+          "p_review_id",
+          "p_decision",
+          "p_reason",
+          "p_expected_version"
+        ],
+        "unnamed": false,
+        "raw": "p_review_id uuid, p_decision text, p_reason text, p_expected_version integer"
+      }
+    ],
+    "resume_deal_coverage_review": [
+      {
+        "all": [
+          "p_review_id",
+          "p_expected_version"
+        ],
+        "required": [
+          "p_review_id",
+          "p_expected_version"
+        ],
+        "unnamed": false,
+        "raw": "p_review_id uuid, p_expected_version integer"
+      }
     ]
   },
   "_declared_migration_contracts": {
@@ -13816,6 +13916,54 @@
       "return_type": "jsonb",
       "named_output_columns": false,
       "source": "Exact authored migration signature, executed in isolated PostgreSQL fixtures; validate against deployed pg_proc after application."
+    },
+    "social_draft_review": {
+      "migration": "20261127043000_versioned_social_review.sql",
+      "return_type": "jsonb",
+      "named_output_columns": false,
+      "source": "Exact authored migration signature, validated with isolated PostgreSQL fixtures; validate deployed pg_proc and ACLs after application."
+    },
+    "social_draft_review_set_status": {
+      "migration": "20261127043000_versioned_social_review.sql",
+      "return_type": "text",
+      "named_output_columns": false,
+      "source": "Exact authored migration signature, validated with isolated PostgreSQL fixtures; validate deployed pg_proc and ACLs after application."
+    },
+    "content_queue_review_set_status": {
+      "migration": "20261127043000_versioned_social_review.sql",
+      "return_type": "text",
+      "named_output_columns": false,
+      "source": "Exact authored migration signature, validated with isolated PostgreSQL fixtures; validate deployed pg_proc and ACLs after application."
+    },
+    "training_canonical_self_id": {
+      "migration": "20261127044000_training_canonical_access.sql",
+      "return_type": "uuid",
+      "named_output_columns": false,
+      "source": "Exact authored migration signature, executed in isolated PostgreSQL fixtures; validate against deployed pg_proc after application."
+    },
+    "training_progress_access": {
+      "migration": "20261127044000_training_canonical_access.sql",
+      "return_type": "jsonb",
+      "named_output_columns": false,
+      "source": "Exact authored migration signature, executed in isolated PostgreSQL fixtures; validate against deployed pg_proc after application."
+    },
+    "deal_coverage_review_queue": {
+      "migration": "20261127050000_deal_coverage_review.sql",
+      "return_type": "jsonb",
+      "named_output_columns": false,
+      "source": "Exact authored migration signature; isolated PostgreSQL fixtures verify the contract before deployment. Verify deployed pg_proc and ACLs after application."
+    },
+    "decide_deal_coverage_review": {
+      "migration": "20261127050000_deal_coverage_review.sql",
+      "return_type": "jsonb",
+      "named_output_columns": false,
+      "source": "Exact authored migration signature; isolated PostgreSQL fixtures verify the contract before deployment. Verify deployed pg_proc and ACLs after application."
+    },
+    "resume_deal_coverage_review": {
+      "migration": "20261127050000_deal_coverage_review.sql",
+      "return_type": "jsonb",
+      "named_output_columns": false,
+      "source": "Exact authored migration signature; isolated PostgreSQL fixtures verify the contract before deployment. Verify deployed pg_proc and ACLs after application."
     }
   }
 }

@@ -12,6 +12,7 @@ const db = vi.hoisted(() => ({
 const auth = vi.hoisted(() => ({ user: { id: "synthetic-viewer" }, isAdmin: false }));
 
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => auth }));
+vi.mock("@/components/awards/TrophyProgression", () => ({ TrophyProgression: () => null }));
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     from: (table: string) => {

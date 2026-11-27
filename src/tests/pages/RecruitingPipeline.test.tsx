@@ -266,13 +266,15 @@ describe("Recruiting Pipeline", () => {
     expect(screen.queryByText(/manual override/)).toBeNull();
   });
 
-  it("keeps the subtitle short enough for one line on a phone, under a cool header bubble", async () => {
+  it("keeps the subtitle short enough for one line on a phone, beside the compact cool header icon", async () => {
     renderPage();
     const subtitle = await screen.findByText("Everyone from first call to active agent.");
     expect((subtitle.textContent ?? "").length).toBeLessThanOrEqual(48);
     // The Pipeline is the flow of new people (cool); gold stays on the Expected Monday tile.
     const header = screen.getByRole("heading", { level: 1, name: "Pipeline" }).closest("header") as HTMLElement;
-    expect(header.querySelector('span[aria-hidden="true"].rounded-full')?.className).toMatch(/\btext-tone-cool\b/);
+    const iconHolder = header.querySelector("svg.lucide-route")?.closest("span");
+    expect(iconHolder).toHaveAttribute("aria-hidden", "true");
+    expect(iconHolder).toHaveClass("text-tone-cool", "bg-tone-cool/12", "h-10", "w-10", "rounded-lg");
   });
 
   it("keeps every control at 44px or taller", async () => {

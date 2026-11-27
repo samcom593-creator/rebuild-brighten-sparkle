@@ -94,18 +94,9 @@ export interface PageHeaderProps {
   className?: string;
 }
 
-const ACCENT_BARS: Record<NonNullable<PageHeaderProps["accent"]>, string> = {
-  // 2026-08-18 template pass: the per-page rainbow gradient bars are retired.
-  // One brand accent, everywhere. Map kept so the public API and call sites
-  // (100 pages) need zero edits — every value now renders nothing.
-  primary: "hidden", emerald: "hidden", blue: "hidden", amber: "hidden",
-  rose: "hidden", purple: "hidden", cyan: "hidden",
-};
-
-const ACCENT_SHEENS: Record<NonNullable<PageHeaderProps["accent"]>, string> = {
-  primary: "hidden", emerald: "hidden", blue: "hidden", amber: "hidden",
-  rose: "hidden", purple: "hidden", cyan: "hidden",
-};
+// Header actions are key targets. Keep their minimum local so table/inline buttons
+// retain their compact sizes elsewhere, including public conversion layouts.
+const TOOLBAR_CLASS = "apex-page-actions min-w-0 max-w-full [&_button]:h-auto [&_.galaxy-button]:h-auto [&_button]:min-h-11 [&_button]:min-w-11 [&_.galaxy-button]:min-h-11 [&_.galaxy-button]:min-w-11 [&_.galaxy-button]:whitespace-normal [&_.galaxy-button]:text-center";
 
 type ActionElement = ReactElement<{
   children?: ReactNode;
@@ -172,15 +163,15 @@ function ActionToolbar({ primary, secondary }: { primary: ReactNode; secondary: 
   const hasPrimary = isRenderable(primary);
 
   if (secondary.length === 0) {
-    return hasPrimary ? <div className="apex-page-actions apex-page-actions-single">{primary}</div> : null;
+    return hasPrimary ? <div className={cn(TOOLBAR_CLASS, "apex-page-actions-single")}>{primary}</div> : null;
   }
   if (!hasPrimary && secondary.length === 1) {
-    return <div className="apex-page-actions apex-page-actions-single">{Children.toArray(secondary)}</div>;
+    return <div className={cn(TOOLBAR_CLASS, "apex-page-actions-single")}>{Children.toArray(secondary)}</div>;
   }
 
   return (
-    <div className="apex-page-actions">
-      {hasPrimary && <div className="apex-page-primary-action">{primary}</div>}
+    <div className={TOOLBAR_CLASS}>
+      {hasPrimary && <div className="apex-page-primary-action min-w-0 max-w-full">{primary}</div>}
       <Button
         type="button"
         variant="outline"
@@ -191,11 +182,11 @@ function ActionToolbar({ primary, secondary }: { primary: ReactNode; secondary: 
         onClick={() => setExpanded((value) => !value)}
       >
         {expanded ? "Fewer" : `More (${secondary.length})`}
-        <ChevronDown className={cn("h-4 w-4 transition-transform", expanded && "rotate-180")} />
+        <ChevronDown aria-hidden className={cn("h-4 w-4 transition-transform motion-reduce:transition-none", expanded && "rotate-180")} />
       </Button>
       <div
         id={disclosureId}
-        className={cn("apex-page-secondary-actions", expanded ? "flex" : "hidden", "sm:flex")}
+        className={cn("apex-page-secondary-actions min-w-0 max-w-full", expanded ? "flex" : "hidden", "sm:flex")}
       >
         {/* Children.toArray assigns each action a key. The actions arrive as an unkeyed array, which made React warn on
             every page that passes more than one. */}
@@ -262,30 +253,23 @@ export function PageHeader({
   const hasViewControls = isRenderable(viewControls);
   return (
     <header
+      data-accent={accent}
       className={cn(
         "apex-page-header galaxy-page-header relative mb-4 py-0.5",
         className,
       )}
     >
-      <span aria-hidden className={cn("absolute inset-x-0 top-0 h-1 ", ACCENT_BARS[accent])} />
-      <span
-        aria-hidden
-        className={cn(
-          "pointer-events-none absolute inset-y-0 left-0 w-1 opacity-80",
-          ACCENT_SHEENS[accent],
-        )}
-      />
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex min-w-0 flex-1 items-start gap-3">
           {icon ? (
-            <ToneBubble tone={tone} size="lg" className="apex-pop mt-0.5">
+            <ToneBubble tone={tone} size="md" className="mt-0.5 rounded-lg">
               {icon}
             </ToneBubble>
           ) : null}
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               {!icon && eyebrowIcon && <span className="text-muted-foreground">{eyebrowIcon}</span>}
-              <h1 className="text-[22px] font-extrabold italic uppercase leading-7 tracking-[-0.02em] text-foreground sm:text-[26px] sm:leading-8">
+              <h1 className="break-words text-[22px] font-bold not-italic normal-case leading-7 tracking-[-0.02em] text-foreground sm:text-[26px] sm:leading-8">
                 {title}
               </h1>
               {eyebrow && (
@@ -306,14 +290,14 @@ export function PageHeader({
           </div>
         </div>
         {explicit ? (
-          <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
+          <div className="flex min-w-0 max-w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 lg:max-w-[60%] lg:justify-end">
             {hasViewControls && (
-              <div className="apex-page-view-controls flex flex-wrap items-center gap-2">{viewControls}</div>
+              <div className="apex-page-view-controls flex min-w-0 max-w-full flex-wrap items-center gap-2">{viewControls}</div>
             )}
             <ExplicitPageActions primaryAction={primaryAction} secondaryActions={secondaryActions} actions={actions} />
           </div>
         ) : (
-          actions && <LegacyPageActions actions={actions} />
+          actions && <div className="min-w-0 max-w-full lg:max-w-[60%]"><LegacyPageActions actions={actions} /></div>
         )}
       </div>
     </header>

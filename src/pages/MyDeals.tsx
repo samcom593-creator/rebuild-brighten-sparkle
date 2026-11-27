@@ -8,6 +8,7 @@ import { useFullBookReader } from "@/hooks/useFullBookReader";
 import { useResolvedDownline } from "@/hooks/useResolvedDownline";
 import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
 import { NativePaymentReconcile } from "@/components/deals/NativePaymentReconcile";
+import { DealCoverageReviewQueue } from "@/components/deals/DealCoverageReviewQueue";
 import { SoldCallPanel } from "@/components/clients/SoldCallPanel";
 import { ClientContactLine } from "@/components/clients/ClientContactLine";
 import { BookRowWork } from "@/components/books/BookRowWork";
@@ -778,6 +779,8 @@ export default function MyDeals() {
           />
         }
       />
+
+      <DealCoverageReviewQueue />
 
       {/* OVERHAUL-book: the money flow Sam asked to remove (the premium totals, the "not counted"
           line and the split by agency) is gone from this page. The same numbers live on Home:

@@ -169,7 +169,7 @@ export function InsuraCloudOutbox() {
               <Label className="text-sm">Auto-push deals to InsuraCloud on submit</Label>
               <p className="text-xs text-muted-foreground">Disable to pause all syncing. Sweeper still queues retries.</p>
             </div>
-            <Switch checked={autoPush} onCheckedChange={toggleAutoPush} disabled={savingToggle} />
+            <Switch aria-label="Auto-push deals to InsuraCloud on submit" checked={autoPush} onCheckedChange={toggleAutoPush} disabled={savingToggle} />
           </div>
           <div className="flex flex-wrap gap-2 pt-2 border-t border-border/30">
             <Button size="sm" variant="outline" onClick={sweepNow} disabled={sweeping}>

@@ -255,7 +255,12 @@ export default function TrainingHubCourse() {
               <GlassCard className="p-6 text-center text-sm text-muted-foreground">
                 {activeItem.link
                   ? "This lesson's video link isn't a Google Drive or YouTube URL, so it can't be played here."
-                  : "Video coming soon for this lesson."}
+                  : "No video is attached to this lesson. Review the available lesson material below, or contact support for help."}
+                <div className="mt-3">
+                  <Button asChild variant="outline" size="sm">
+                    <Link to="/dashboard/help">Get lesson help</Link>
+                  </Button>
+                </div>
               </GlassCard>
             )}
             {activeItem.blurb && (

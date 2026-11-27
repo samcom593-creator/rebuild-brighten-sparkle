@@ -1,6 +1,6 @@
 import { useCallback, useState, useEffect, type ReactNode } from "react";
 import { EmailTypoHint } from "@/components/ui/email-typo-hint";
-import { ArrowLeft, Check, Copy, Crown, ExternalLink, GraduationCap, Link2, Loader2, ShieldCheck, User, UserPlus, Users, type LucideIcon } from "lucide-react";
+import { ArrowLeft, Check, Copy, Crown, ExternalLink, GraduationCap, Link2, Loader2, ShieldCheck, User, Users, type LucideIcon } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -24,7 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { celebrate } from "@/lib/celebrate";
+import { WinActionButton } from "@/components/celebrations/WinActionButton";
 import { invalidateOperationalTruth } from "@/lib/invalidateOperationalTruth";
 import { ONBOARDING_CONTACT, SCHEDULING_LINKS, TEAM_COMMUNITY_LINKS } from "@/lib/apexConfig";
 import { resolveBrand } from "@/config/brand";
@@ -381,8 +381,8 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
       if (partial) {
         toast.warning(displayMessage);
       } else {
-        // A hire is the win this whole section exists for: bubbles and a fanfare.
-        void celebrate("hire");
+        // The authorized agents INSERT owns the one global hire celebration.
+        // A form response confirms the save; it must not create a second burst.
         toast.success(displayMessage);
       }
 
@@ -434,10 +434,7 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {trigger ?? (
-          <Button className="gap-2">
-            <UserPlus className="h-4 w-4" />
-            Add Agent
-          </Button>
+          <WinActionButton kind="hire" />
         )}
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[460px]">

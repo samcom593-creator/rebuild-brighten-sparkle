@@ -197,11 +197,11 @@ export function OwnerSystemPanel() {
             </div>
             <label className="flex min-h-11 items-center justify-between gap-3 text-[15px]">
               <span>Send the daily overview</span>
-              <Switch checked={s.enabled} disabled={busy !== null} onCheckedChange={(v) => void saveSettings({ p_enabled: v }, v ? "Daily overview on." : "Daily overview off.")} aria-label="Send the daily overview" />
+              <Switch aria-label="Send the daily overview" checked={s.enabled} disabled={busy !== null} onCheckedChange={(v) => void saveSettings({ p_enabled: v }, v ? "Daily overview on." : "Daily overview off.")} />
             </label>
             <label className="flex min-h-11 items-center justify-between gap-3 text-[15px]">
               <span>Keep per-person notices out of my inbox<span className="block text-[13px] text-muted-foreground">{s.mute_subjects.length} notice types muted for your addresses only. Applicant alerts and sign-in mail are never muted.</span></span>
-              <Switch checked={s.mute_enabled} disabled={busy !== null} onCheckedChange={(v) => void saveSettings({ p_mute_enabled: v }, v ? "Notices muted." : "Notices will reach your inbox again.")} aria-label="Keep per-person notices out of my inbox" />
+              <Switch aria-label="Keep per-person notices out of my inbox" checked={s.mute_enabled} disabled={busy !== null} onCheckedChange={(v) => void saveSettings({ p_mute_enabled: v }, v ? "Notices muted." : "Notices will reach your inbox again.")} />
             </label>
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" className="h-11" disabled={busy !== null} onClick={async () => {

@@ -177,7 +177,7 @@ export function DealEntryForm({ onSaved }: { onSaved?: () => void }) {
               <QueryState status="error" compact label="carriers" error={carriersErr} onRetry={() => void refetchCarriers()} />
             ) : (
               <Select value={form.carrier_id} onValueChange={v => set("carrier_id", v)}>
-                <SelectTrigger><SelectValue placeholder="Select carrier" /></SelectTrigger>
+                <SelectTrigger aria-label="Insurance carrier"><SelectValue placeholder="Select carrier" /></SelectTrigger>
                 <SelectContent>
                   {carriers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                 </SelectContent>

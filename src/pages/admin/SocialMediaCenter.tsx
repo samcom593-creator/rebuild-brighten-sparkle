@@ -34,6 +34,7 @@ import { isSamEmail } from "@/lib/samOnly";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
+import { ContentWorkspaceNav } from "@/components/content/ContentWorkspaceNav";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TonePill } from "@/components/ui/delight/ToneBubble";
@@ -292,6 +293,8 @@ export default function SocialMediaCenter() {
         subtitle="Approve, post, answer."
         secondaryActions={<Button variant="outline" className="h-11" onClick={refresh} aria-label="Refresh"><RefreshCw className="h-4 w-4" aria-hidden /></Button>}
       />
+
+      <ContentWorkspaceNav />
 
       {q.isError && (
         <EmptyState variant="warning" icon={<AlertTriangle />} title="The center did not load" description={(q.error as Error)?.message ?? "Try again."}

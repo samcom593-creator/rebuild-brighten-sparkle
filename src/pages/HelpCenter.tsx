@@ -69,7 +69,7 @@ const FAQ: FaqItem[] = [
   { category: "Tools", q: "Where's the AI assistant?",
     a: "There is no in-app AI chat right now. Open the Support Desk tab on this page or message your manager, and we will answer." },
   { category: "Tools", q: "How do I share a Galaxy win on social?",
-    a: "Tap 'Post a Deal' in the top bar (or 'Add Deal' on Community, /dashboard/community) → fill in premium + product. It posts to the live News Feed and we'll auto-feed it to the public landing page ticker." },
+    a: "Tap 'Add a Deal' in the sidebar or mobile Actions, enter the deal details, and save. The deal celebration appears after the saved record is confirmed." },
 
   // Brand + Culture
   { category: "Brand + Culture", q: "What's the Galaxy Standard?",

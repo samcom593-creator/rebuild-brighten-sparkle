@@ -717,7 +717,7 @@ export default function ContentLibrary() {
                     <Input placeholder="Search content, tags, descriptions..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
                   </div>
                   <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
-                    <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
+                    <SelectTrigger aria-label="Sort content library" className="w-[130px]"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="newest">Newest</SelectItem>
                       <SelectItem value="oldest">Oldest</SelectItem>
@@ -975,7 +975,7 @@ export default function ContentLibrary() {
                 <div className="space-y-2">
                   <Label>Agent Name</Label>
                   <Select onValueChange={(val) => setAwardAgentName(val)}>
-                    <SelectTrigger><SelectValue placeholder="Select agent..." /></SelectTrigger>
+                    <SelectTrigger aria-label="Agent name for award"><SelectValue placeholder="Select agent..." /></SelectTrigger>
                     <SelectContent>
                       {agents.map(a => (<SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>))}
                     </SelectContent>
@@ -1039,7 +1039,7 @@ export default function ContentLibrary() {
               <div className="space-y-2">
                 <Label>Tag (optional)</Label>
                 <Select value={uploadTag} onValueChange={setUploadTag}>
-                  <SelectTrigger><SelectValue placeholder="Select tag..." /></SelectTrigger>
+                  <SelectTrigger aria-label="Upload tag"><SelectValue placeholder="Select tag..." /></SelectTrigger>
                   <SelectContent>
                     {TAG_OPTIONS.map(t => (<SelectItem key={t} value={t}>{t}</SelectItem>))}
                   </SelectContent>

@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AlertCircle, ArrowRight, CheckCircle2, Lock, RefreshCw, Trophy } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
+import { useTrainingIdentity } from "@/hooks/useTrainingIdentity";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -66,29 +66,8 @@ function EmptyCard({ title, body, action }: { title: string; body: string; actio
 }
 
 export function TrainingPathPanel() {
-  const { user } = useAuth();
-
-  // The caller's agent row. .limit(1) rather than .maybeSingle(): agents is
-  // not unique on user_id, and PostgREST returns data=null on a multi-row
-  // match — which would read as "this person has no agent record" for the one
-  // population most likely to have a duplicate.
-  const agentQ = useQuery({
-    queryKey: ["training-path-agent", user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("agents")
-        .select("id, display_name")
-        .eq("user_id", user!.id)
-        .order("created_at", { ascending: false })
-        .limit(1);
-      if (error) throw error;
-      return (data?.[0] as { id: string; display_name: string | null } | undefined) ?? null;
-    },
-    enabled: !!user?.id,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const agentId = agentQ.data?.id ?? null;
+  const agentQ = useTrainingIdentity();
+  const agentId = agentQ.agentId;
 
   const modulesQ = useQuery({
     queryKey: ["training-path-modules"],
@@ -147,11 +126,12 @@ export function TrainingPathPanel() {
   }
 
   // A failed read is NOT "0 modules complete". Say so, and offer the retry.
+  if (agentQ.identity?.status === "history_review") return <EmptyCard title="Your training history needs review" body={agentQ.identity.message} />;
   if (failed) {
     return (
       <EmptyCard
         title="Couldn't load your training path"
-        body="Your progress is safe — this is a connection problem, not a reset. Retry to load it."
+        body={agentQ.identity?.status === "error" ? agentQ.identity.message : "Your progress could not be loaded. Retry to check it; saved results have not been reset."}
         action={
           <Button
             className="gap-2"
@@ -169,7 +149,11 @@ export function TrainingPathPanel() {
     );
   }
 
-  if (!agentQ.data) {
+  if (agentQ.identity?.status === "ambiguous") {
+    return <EmptyCard title="Your training account needs review" body="More than one agent record matches your login. Ask your manager to resolve the account before continuing." />;
+  }
+
+  if (!agentId) {
     return (
       <EmptyCard
         title="No agent record on file yet"

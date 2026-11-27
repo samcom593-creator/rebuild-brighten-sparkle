@@ -487,7 +487,7 @@ export default function InboxPage() {
             <div className="space-y-1.5">
               <Label>Campaign</Label>
               <Select value={blastCampaign} onValueChange={(v) => setBlastCampaign(v as typeof blastCampaign)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Message campaign"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="reapply">Reapply blast (doors-back-open · warm 30d)</SelectItem>
                   <SelectItem value="seminar">Seminar invite blast (RSVP'd in last 14d)</SelectItem>

@@ -152,7 +152,7 @@ export function LicensingDelegateSection({ applicationId }: Props) {
 
       <div className="space-y-2">
         <Select value={selectedDelegate} onValueChange={setSelectedDelegate}>
-          <SelectTrigger className="text-sm">
+          <SelectTrigger aria-label="Licensing delegate" className="text-sm">
             <SelectValue placeholder="Select admin/manager…" />
           </SelectTrigger>
           <SelectContent>

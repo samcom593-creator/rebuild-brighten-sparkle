@@ -239,7 +239,7 @@ export function AgentTaskManager({
               </DialogHeader>
               <div className="space-y-3">
                 {!agentFilter && <Select value={formAgentId} onValueChange={setFormAgentId}>
-                  <SelectTrigger>
+                  <SelectTrigger aria-label="Task assignee">
                     <SelectValue placeholder="Select Agent" />
                   </SelectTrigger>
                   <SelectContent>
@@ -263,7 +263,7 @@ export function AgentTaskManager({
                 />
                 <div className="grid grid-cols-2 gap-2">
                   <Select value={formType} onValueChange={setFormType}>
-                    <SelectTrigger>
+                    <SelectTrigger aria-label="Task type">
                       <SelectValue placeholder="Type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -273,7 +273,7 @@ export function AgentTaskManager({
                     </SelectContent>
                   </Select>
                   <Select value={formPriority} onValueChange={setFormPriority}>
-                    <SelectTrigger>
+                    <SelectTrigger aria-label="Task priority">
                       <SelectValue placeholder="Priority" />
                     </SelectTrigger>
                     <SelectContent>

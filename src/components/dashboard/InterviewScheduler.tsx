@@ -331,7 +331,7 @@ export function InterviewScheduler({
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-muted-foreground" />
                 <Select value={timeHour} onValueChange={setTimeHour}>
-                  <SelectTrigger className="w-20">
+                  <SelectTrigger aria-label="Interview hour" className="w-20">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -342,7 +342,7 @@ export function InterviewScheduler({
                 </Select>
                 <span className="text-muted-foreground">:</span>
                 <Select value={timeMinute} onValueChange={setTimeMinute}>
-                  <SelectTrigger className="w-20">
+                  <SelectTrigger aria-label="Interview minute" className="w-20">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -352,7 +352,7 @@ export function InterviewScheduler({
                   </SelectContent>
                 </Select>
                 <Select value={timePeriod} onValueChange={(v) => setTimePeriod(v as "AM" | "PM")}>
-                  <SelectTrigger className="w-20">
+                  <SelectTrigger aria-label="Interview AM or PM" className="w-20">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

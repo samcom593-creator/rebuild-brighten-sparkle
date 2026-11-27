@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -67,11 +68,16 @@ export interface OnboardingProgress {
 }
 
 export function useOnboardingCourse(agentId: string | null) {
+  const queryClient = useQueryClient();
   const [modules, setModules] = useState<OnboardingModule[]>([]);
   const [questions, setQuestions] = useState<Record<string, OnboardingQuestion[]>>({});
   const [progress, setProgress] = useState<Record<string, OnboardingProgress>>({});
   const [currentModuleIndex, setCurrentModuleIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const currentAgentRef = useRef(agentId);
+  const loadedAgentRef = useRef<string | null>(null);
+  currentAgentRef.current = agentId;
 
 
   /**
@@ -116,7 +122,7 @@ export function useOnboardingCourse(agentId: string | null) {
 
     if (error) {
       console.error("Error fetching modules:", error);
-      return;
+      throw error;
     }
 
     setModules((data || []).map((module) => ({
@@ -181,7 +187,7 @@ export function useOnboardingCourse(agentId: string | null) {
   }, [questions]);
 
   const fetchProgress = useCallback(async () => {
-    if (!agentId) return;
+    if (!agentId) { setProgress({}); return; }
 
     const { data, error } = await supabase
       .from("onboarding_progress")
@@ -190,8 +196,11 @@ export function useOnboardingCourse(agentId: string | null) {
 
     if (error) {
       console.error("Error fetching progress:", error);
-      return;
+      throw error;
     }
+    if (currentAgentRef.current !== agentId) return;
+    if (!Array.isArray(data)) throw new Error("Training progress could not be read.");
+    loadedAgentRef.current = agentId;
 
     const progressMap: Record<string, OnboardingProgress> = {};
     (data || []).forEach(p => {
@@ -204,7 +213,7 @@ export function useOnboardingCourse(agentId: string | null) {
   }, [agentId]);
 
   const updateVideoProgress = useCallback(async (moduleId: string, percent: number) => {
-    if (!agentId || reviewMode) return;
+    if (!agentId || reviewMode || loading || loadError || loadedAgentRef.current !== agentId) return;
 
     const existing = progress[moduleId];
     
@@ -213,12 +222,13 @@ export function useOnboardingCourse(agentId: string | null) {
         const { error } = await supabase
           .from("onboarding_progress")
           .update({ video_watched_percent: percent })
-          .eq("id", existing.id);
+          .eq("id", existing.id).eq("agent_id", agentId);
 
         if (error) {
           console.error("Error saving video progress:", error);
           return;
         }
+        if (currentAgentRef.current !== agentId) return;
 
         setProgress(prev => ({
           ...prev,
@@ -239,7 +249,7 @@ export function useOnboardingCourse(agentId: string | null) {
         .select()
         .single();
 
-      if (!error && data) {
+      if (!error && data && currentAgentRef.current === agentId) {
         setProgress(prev => ({
           ...prev,
           [moduleId]: {
@@ -264,7 +274,7 @@ export function useOnboardingCourse(agentId: string | null) {
         }
       }
     }
-  }, [agentId, progress, reviewMode]);
+  }, [agentId, progress, reviewMode, loading, loadError]);
 
   const submitQuiz = useCallback(async (
     moduleId: string,
@@ -277,7 +287,7 @@ export function useOnboardingCourse(agentId: string | null) {
     // notify-course-complete side effect below cannot fire from a leader
     // reading through the last lesson.
     if (reviewMode) return true;
-    if (!agentId) return false;
+    if (!agentId || loading || loadError || loadedAgentRef.current !== agentId) return false;
 
     const existing = progress[moduleId];
     const attempts = (existing?.attempts || 0) + 1;
@@ -298,35 +308,34 @@ export function useOnboardingCourse(agentId: string | null) {
       completed_at: passed ? new Date().toISOString() : null
     };
 
-    if (existing) {
-      const { error } = await supabase
+    const result = existing
+      ? await supabase
         .from("onboarding_progress")
         .update(updateData)
-        .eq("id", existing.id);
-
-      if (error) {
-        toast.error("Error saving quiz results");
-        return false;
-      }
-    } else {
-      // upsert (not insert) — a race on the (agent_id, module_id) unique key
-      // otherwise 409s and shows the agent a false "Error saving quiz results".
-      const { error } = await supabase
+        .eq("id", existing.id)
+        .eq("agent_id", agentId)
+        .eq("attempts", existing.attempts)
+        .select()
+        .single()
+      : await supabase
         .from("onboarding_progress")
         .upsert({
           agent_id: agentId,
           module_id: moduleId,
           video_watched_percent: 100,
           ...updateData
-        }, { onConflict: "agent_id,module_id" });
-
-      if (error) {
-        toast.error("Error saving quiz results");
-        return false;
-      }
+        }, { onConflict: "agent_id,module_id" })
+        .select()
+        .single();
+    const saved = result.data;
+    if (result.error || !saved || saved.agent_id !== agentId || saved.module_id !== moduleId
+      || saved.passed !== passed || saved.score !== score || saved.attempts !== attempts) {
+      toast.error("Your quiz result could not be confirmed. Refresh your progress before retrying.");
+      return false;
     }
-
-    await fetchProgress();
+    if (currentAgentRef.current !== agentId) return false;
+    setProgress(previous => ({ ...previous, [moduleId]: { ...saved, answers: saved.answers as number[] | null } }));
+    void queryClient.invalidateQueries({ queryKey: ["training-path-progress", agentId] });
 
     // Check if this completes the entire course (all modules passed)
     if (passed) {
@@ -337,18 +346,20 @@ export function useOnboardingCourse(agentId: string | null) {
       if (allModulesPassed) {
         // Trigger course completion notification and CRM stage update
         try {
-          await supabase.functions.invoke("notify-course-complete", {
+          const { error } = await supabase.functions.invoke("notify-course-complete", {
             body: { agentId }
           });
+          if (error) throw error;
           toast("🎓 Course Complete!", { description: "Congratulations! Moving to field training." });
         } catch (error) {
           console.error("Failed to trigger course completion:", error);
+          toast.error("Your course result is saved. Your next training step could not update; contact your manager.");
         }
       }
     }
 
     return true;
-  }, [agentId, progress, modules, toast, fetchProgress, reviewMode]);
+  }, [agentId, progress, modules, queryClient, reviewMode, loading, loadError]);
 
   const isModuleUnlocked = useCallback((moduleIndex: number) => {
     if (reviewMode) return true;
@@ -393,18 +404,29 @@ export function useOnboardingCourse(agentId: string | null) {
   }, [modules, progress]);
 
   useEffect(() => {
+    let cancelled = false;
     const init = async () => {
       setLoading(true);
-      await fetchModules();
-      await fetchProgress();
-      setLoading(false);
+      loadedAgentRef.current = null;
+      setLoadError(null);
+      setProgress({});
+      setCurrentModuleIndex(0);
+      try {
+        await fetchModules();
+        await fetchProgress();
+      } catch {
+        if (!cancelled) setLoadError("Training progress could not be loaded. Refresh to retry; your saved results have not been reset.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     };
-    init();
+    void init();
+    return () => { cancelled = true; };
   }, [fetchModules, fetchProgress]);
 
   // Auto-initialize progress record when viewing a module (ensures started_at is set)
   const initializeProgress = useCallback(async (moduleId: string) => {
-    if (!agentId || reviewMode || progress[moduleId]) return;
+    if (!agentId || reviewMode || loading || loadError || loadedAgentRef.current !== agentId || progress[moduleId]) return;
     
     // upsert with ignoreDuplicates so re-viewing a module never 409s on the
     // (agent_id, module_id) unique key — if a row already exists, leave it be
@@ -422,7 +444,7 @@ export function useOnboardingCourse(agentId: string | null) {
       .select();
 
     const row = data?.[0];
-    if (!error && row) {
+    if (!error && row && currentAgentRef.current === agentId) {
       setProgress(prev => ({
         ...prev,
         [moduleId]: {
@@ -442,7 +464,7 @@ export function useOnboardingCourse(agentId: string | null) {
         }
       }
     }
-  }, [agentId, progress, reviewMode]);
+  }, [agentId, progress, reviewMode, loading, loadError]);
 
   useEffect(() => {
     const current = modules[currentModuleIndex];
@@ -458,7 +480,8 @@ export function useOnboardingCourse(agentId: string | null) {
     progress,
     currentModuleIndex,
     setCurrentModuleIndex,
-    loading,
+    loading: loading || Boolean(agentId && loadedAgentRef.current !== agentId && !loadError),
+    loadError,
     updateVideoProgress,
     submitQuiz,
     isModuleUnlocked,

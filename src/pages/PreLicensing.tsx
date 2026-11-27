@@ -376,7 +376,7 @@ export default function PreLicensing() {
             />
           </div>
           <Select value={sectionFilter} onValueChange={setSectionFilter}>
-            <SelectTrigger className="md:w-[180px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger aria-label="Filter prelicensing by course" className="md:w-[180px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__all__">All courses</SelectItem>
               {Object.entries(SECTION_META).map(([k, m]) => (
@@ -385,7 +385,7 @@ export default function PreLicensing() {
             </SelectContent>
           </Select>
           <Select value={healthFilter} onValueChange={setHealthFilter}>
-            <SelectTrigger className="md:w-[160px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger aria-label="Filter prelicensing by status" className="md:w-[160px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__all__">All status</SelectItem>
               {(Object.keys(HEALTH_META) as Array<XcelStudent["health_bucket"]>).map((b) => (

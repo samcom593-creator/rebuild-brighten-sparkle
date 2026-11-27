@@ -203,7 +203,7 @@ export default function UnclaimedLeads() {
             className="md:max-w-sm"
           />
           <Select value={filter} onValueChange={v => setFilter(v as any)}>
-            <SelectTrigger className="md:max-w-xs"><SelectValue /></SelectTrigger>
+            <SelectTrigger aria-label="Filter unclaimed leads by assignment" className="md:max-w-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All stage=new</SelectItem>
               <SelectItem value="inactive_assignee">Departed/inactive assignee</SelectItem>

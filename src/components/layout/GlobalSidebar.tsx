@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { ChevronDown, ChevronLeft, ChevronRight, Cloud, HandCoins, Loader2, LogOut, Search, Star, UserPlus } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Cloud, Loader2, LogOut, Search, Star } from "lucide-react";
 import { isSamEmail } from "@/lib/samOnly";
 import { useAuth } from "@/hooks/useAuth";
 import { useRolePreview } from "@/hooks/useRolePreview";
@@ -35,6 +35,7 @@ import {
 import { useFavoriteRoutes } from "./favoriteRoutes";
 import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
 import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
+import { WinActionButton } from "@/components/celebrations/WinActionButton";
 import { useUIStore } from "@/shared/store/uiStore";
 import { toast } from "sonner";
 
@@ -157,7 +158,7 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
   // (the row's aria-current and semibold label carry the state), so it is hidden from assistive
   // technology.
   const activeBar = (tone: Tone) => (
-    <span aria-hidden="true" className={cn("absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full", TONE_CLASS[tone].dot)} />
+    <span aria-hidden="true" className={cn("galaxy-nav-marker absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full", TONE_CLASS[tone].dot)} />
   );
 
   // Colour layer (2026-10-28): a top-level row carries its section's icon in a tinted bubble; the
@@ -173,10 +174,10 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
         to={item.href}
         aria-current={active ? "page" : undefined}
         aria-label={collapsed ? item.label : undefined}
+        data-nested={nested}
         onClick={mobile ? onToggle : undefined}
         className={cn(
-          "relative flex items-center rounded-lg text-[15px] leading-5 transition-colors",
-          nested && !mobile ? "min-h-10" : "min-h-11",
+          "galaxy-nav-link relative flex min-h-11 items-center rounded-lg text-[15px] leading-5 transition-colors",
           collapsed ? "justify-center px-2" : nested ? "gap-2.5 px-3" : "gap-3 px-3",
           active
             ? cn("font-semibold text-foreground", t.soft)
@@ -206,8 +207,9 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
         onClick={() => collapsed ? onToggle() : setExpansion((value) => toggleNavGroup(value, group.label))}
         aria-expanded={open}
         aria-label={collapsed ? group.label : undefined}
+        data-active={active}
         className={cn(
-          "relative flex min-h-11 w-full items-center rounded-lg text-[15px] leading-5 transition-colors",
+          "galaxy-nav-group-trigger relative flex min-h-11 w-full items-center rounded-lg text-[15px] leading-5 transition-colors",
           collapsed ? "justify-center px-2" : "gap-3 px-3",
           active ? "font-semibold text-foreground" : "font-medium text-muted-foreground hover:bg-accent hover:text-foreground",
           tintTrigger && TONE_CLASS[tone].soft,
@@ -221,11 +223,11 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
     );
 
     return (
-      <div key={group.label} className="space-y-0.5">
+      <div key={group.label} className="galaxy-nav-group space-y-0.5">
         {withTooltip(group.label, trigger)}
         {!collapsed && open && (
           // The guide line hangs from the centre of the 32px bubble (12px padding + 16px).
-          <div className="ml-[27px] space-y-0.5 border-l border-border pl-2">
+          <div className="galaxy-nav-children ml-[27px] space-y-0.5 border-l border-border pl-2">
             {group.items.map((item) => <div key={item.href}>{renderLeaf(item, { tone, nested: true })}</div>)}
           </div>
         )}
@@ -241,6 +243,8 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
 
   return (
     <aside
+      data-collapsed={collapsed}
+      data-mobile={mobile}
       className={cn(
         "galaxy-sidebar overflow-hidden bg-sidebar",
         mobile
@@ -251,14 +255,14 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
       style={mobile ? undefined : { width: isFullscreen ? 0 : collapsed ? 72 : 256 }}
     >
       <div className="flex h-full flex-col">
-        <div className={cn("flex h-[60px] shrink-0 items-center border-b border-border", collapsed ? "justify-center" : "px-4", mobile && "pr-14")}>
+        <div className={cn("galaxy-sidebar-brand flex h-[60px] shrink-0 items-center border-b border-border", collapsed ? "justify-center" : "px-4", mobile && "pr-14")}>
           <Link
             to="/dashboard"
             onClick={mobile ? onToggle : undefined}
             aria-label={collapsed ? brand.legalName : undefined}
-            className="flex min-w-0 items-center gap-3"
+            className="galaxy-brand-link flex min-w-0 items-center gap-3"
           >
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground">
+            <span className="galaxy-brand-mark grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground">
               <Cloud className="h-[18px] w-[18px]" strokeWidth={2.25} />
             </span>
             {!collapsed && (
@@ -269,15 +273,15 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
           </Link>
         </div>
 
-        <div className="shrink-0 px-2 pt-3">
+        <div className="galaxy-sidebar-search shrink-0 px-2 pt-3">
           <Button variant="outline" aria-label="Search people and pages" title="Search people and pages (Ctrl or Command K)"
-            className={cn("h-11 w-full gap-2 text-[15px] font-medium", collapsed ? "px-0" : "justify-start px-3")}
+            className={cn("galaxy-search-trigger h-11 w-full gap-2 text-[15px] font-medium", collapsed ? "px-0" : "justify-start px-3")}
             onClick={() => { if (mobile) onToggle(); useUIStore.getState().setCommandPaletteOpen(true); }}>
             <Search className="h-4 w-4 shrink-0" />
             {!collapsed && <span>Search people & pages</span>}
           </Button>
         </div>
-        <nav aria-label="Primary" className="min-h-0 flex-1 overflow-y-auto px-2 py-3 [scrollbar-width:thin]">
+        <nav aria-label="Primary" className="galaxy-sidebar-nav min-h-0 flex-1 overflow-y-auto px-2 py-3 [scrollbar-width:thin]">
           {favorites.length > 0 && (
             <div className="mb-3">
               {!collapsed && <div className="nav-section-label px-3 pb-1.5">Favorites</div>}
@@ -301,38 +305,32 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
         </nav>
 
         {(canAddAgent || canPostDeal) && (
-          <div className={cn("shrink-0 border-t border-border p-2", mobile ? "space-y-2" : "space-y-1")}>
+          <div className={cn("galaxy-sidebar-actions shrink-0 border-t border-border p-2", mobile ? "space-y-2" : "space-y-1")}>
             {mobile && <div className="nav-section-label px-2 pt-1">Quick actions</div>}
             {canAddAgent && (
               <AddAgentModal
                 trigger={(
-                  <Button size="sm" variant="outline" className={quickActionClass} aria-label="Add Agent">
-                    <UserPlus className={cn("h-4 w-4 shrink-0", TONE_CLASS.good.text)} />
-                    {!collapsed && <span>Add Agent</span>}
-                  </Button>
+                  <WinActionButton kind="hire" size="sm" className={quickActionClass} compact={collapsed} />
                 )}
               />
             )}
             {canPostDeal && (
               <SubmitDealDialog
                 trigger={(
-                  <Button size="sm" variant="outline" className={quickActionClass} aria-label="Post a Deal">
-                    <HandCoins className={cn("h-4 w-4 shrink-0", TONE_CLASS.gold.text)} />
-                    {!collapsed && <span>Post a Deal</span>}
-                  </Button>
+                  <WinActionButton kind="deal" size="sm" className={quickActionClass} compact={collapsed} />
                 )}
               />
             )}
           </div>
         )}
 
-        <div className="shrink-0 border-t border-border p-2">
+        <div className="galaxy-sidebar-account shrink-0 border-t border-border p-2">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => void handleSignOut()}
             disabled={signingOut}
-            className={cn("h-10 text-[15px] font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive", mobile && "h-11", collapsed ? "w-full px-0" : "w-full justify-start gap-3 px-3")}
+            className={cn("h-11 text-[15px] font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive", collapsed ? "w-full px-0" : "w-full justify-start gap-3 px-3")}
             aria-label="Sign out"
           >
             {signingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
@@ -340,12 +338,12 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen, mobile = false }
           </Button>
         </div>
 
-        {!mobile && <div className="flex h-12 shrink-0 items-center border-t border-border px-2">
+        {!mobile && <div className="galaxy-sidebar-resize flex h-12 shrink-0 items-center border-t border-border px-2">
           <Button
             variant="ghost"
             size="sm"
             onClick={onToggle}
-            className={cn("h-9 text-[13px] font-medium text-muted-foreground hover:bg-accent hover:text-foreground", collapsed ? "w-full px-0" : "w-full justify-start gap-3 px-3")}
+            className={cn("h-11 text-[13px] font-medium text-muted-foreground hover:bg-accent hover:text-foreground", collapsed ? "w-full px-0" : "w-full justify-start gap-3 px-3")}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}

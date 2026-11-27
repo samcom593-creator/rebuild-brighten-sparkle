@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Award, Check, X, Loader2, Send, Eye } from "lucide-react";
+import { Award, Loader2, Send, Eye, RefreshCw } from "lucide-react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,16 +9,13 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { format, startOfWeek, startOfMonth } from "date-fns";
-
-interface PlaqueCandidate {
-  agentId: string;
-  agentName: string;
-  achievement: "bronze" | "gold" | "platinum" | "weekly" | "monthly";
-  amount: number;
-  period: string;
-  periodLabel: string;
-}
+import { useAuth } from "@/hooks/useAuth";
+import { useBusinessToday } from "@/hooks/useBusinessToday";
+import { looseSupabase } from "@/lib/looseSupabase";
+import {
+  assertRecognitionSent, buildRecognitionCandidates, readRecognitionProduction,
+  recognitionWindows, RECOGNITION_MILESTONES, type PlaqueCandidate, type RecognitionAward,
+} from "@/lib/recognitionQueue";
 
 const achievementConfig = {
   bronze: { label: "Bronze Achievement", threshold: 1000, color: "bg-amber-700", textColor: "text-amber-700" },
@@ -31,153 +29,72 @@ export function RecognitionQueue() {
   const queryClient = useQueryClient();
   const [previewCandidate, setPreviewCandidate] = useState<PlaqueCandidate | null>(null);
 
-  // Scan for recognition candidates
-  const { data: candidates, isLoading } = useQuery({
-    queryKey: ["recognition-candidates"],
+  const { user } = useAuth();
+  const today = useBusinessToday();
+  const { data: candidates, isLoading, isError, error, refetch, isFetching } = useQuery({
+    queryKey: ["recognition-candidates", user?.id, today],
+    enabled: Boolean(user?.id),
+    staleTime: 120_000,
+    retry: 1,
     queryFn: async () => {
-      const now = new Date();
-      const weekStart = format(startOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd");
-      const monthStart = format(startOfMonth(now), "yyyy-MM-dd");
-      const today = format(now, "yyyy-MM-dd");
-
-      // Get all production with agent names
-      const { data: production, error } = await supabase
-        .from("daily_production")
-        .select(`
-          agent_id,
-          aop,
-          production_date,
-          agents!daily_production_agent_id_fkey (
-            profiles!agents_profile_id_fkey (
-              full_name
-            )
-          )
-        `)
-        .gte("production_date", monthStart);
-
-      if (error) throw error;
-
-      const candidates: PlaqueCandidate[] = [];
-      const agentStats = new Map<string, { 
-        name: string; 
-        daily: Map<string, number>;
-        weekTotal: number;
-        monthTotal: number;
-      }>();
-
-      // Aggregate production
-      production?.forEach((p) => {
-        const name = p.agents?.profiles?.full_name || "—";
-        if (name === "—" || !name.trim()) return;
-
-        const existing = agentStats.get(p.agent_id) || {
-          name,
-          daily: new Map(),
-          weekTotal: 0,
-          monthTotal: 0,
-        };
-
-        const dayAmount = existing.daily.get(p.production_date) || 0;
-        existing.daily.set(p.production_date, dayAmount + Number(p.aop || 0));
-        existing.monthTotal += Number(p.aop || 0);
-        
-        if (p.production_date >= weekStart) {
-          existing.weekTotal += Number(p.aop || 0);
+      const windows = recognitionWindows(today);
+      const readPeriod = async (period: keyof typeof windows) => {
+        const window = windows[period];
+        // Reuse the scoreboard cache and its server-side identity/scope rules.
+        // Do not add a polling loop to this expensive production read.
+        const value = await queryClient.fetchQuery({
+          queryKey: ["scoped-production-scoreboard", window.start, window.end, user!.id],
+          staleTime: 120_000,
+          queryFn: async () => {
+            const { data, error } = await looseSupabase.rpc("scoped_production_scoreboard", {
+              p_start: window.start, p_end: window.end,
+            });
+            if (error) throw error;
+            return data;
+          },
+        });
+        return readRecognitionProduction(value);
+      };
+      const readAwards = async () => {
+        const awards: RecognitionAward[] = [];
+        const start = windows.week.start < windows.month.start ? windows.week.start : windows.month.start;
+        for (let offset = 0; ; offset += 1000) {
+          const { data, error } = await supabase.from("plaque_awards")
+            .select("agent_id, milestone_type, milestone_date, email_sent_at, email_delivery_status")
+            .gte("milestone_date", start).lte("milestone_date", today)
+            .order("id").range(offset, offset + 999);
+          if (error) throw error;
+          if (!data) throw new Error("Existing recognition records could not be loaded.");
+          awards.push(...data);
+          if (data.length < 1000) return awards;
         }
-
-        agentStats.set(p.agent_id, existing);
-      });
-
-      // Scan for achievements
-      agentStats.forEach((stats, agentId) => {
-        // Daily achievements (today only for queue)
-        const todayAmount = stats.daily.get(today) || 0;
-        
-        if (todayAmount >= 5000) {
-          candidates.push({
-            agentId,
-            agentName: stats.name,
-            achievement: "platinum",
-            amount: Math.round(todayAmount),
-            period: today,
-            periodLabel: "Today",
-          });
-        } else if (todayAmount >= 3000) {
-          candidates.push({
-            agentId,
-            agentName: stats.name,
-            achievement: "gold",
-            amount: Math.round(todayAmount),
-            period: today,
-            periodLabel: "Today",
-          });
-        } else if (todayAmount >= 1000) {
-          candidates.push({
-            agentId,
-            agentName: stats.name,
-            achievement: "bronze",
-            amount: Math.round(todayAmount),
-            period: today,
-            periodLabel: "Today",
-          });
-        }
-
-        // Weekly achievement
-        if (stats.weekTotal >= 10000) {
-          candidates.push({
-            agentId,
-            agentName: stats.name,
-            achievement: "weekly",
-            amount: Math.round(stats.weekTotal),
-            period: weekStart,
-            periodLabel: "This Week",
-          });
-        }
-
-        // Monthly achievement
-        if (stats.monthTotal >= 25000) {
-          candidates.push({
-            agentId,
-            agentName: stats.name,
-            achievement: "monthly",
-            amount: Math.round(stats.monthTotal),
-            period: monthStart,
-            periodLabel: format(now, "MMMM yyyy"),
-          });
-        }
-      });
-
-      // Sort by amount descending
-      return candidates.sort((a, b) => b.amount - a.amount);
+      };
+      const [day, week, month, awards] = await Promise.all([
+        readPeriod("day"), readPeriod("week"), readPeriod("month"), readAwards(),
+      ]);
+      return buildRecognitionCandidates(today, { day, week, month }, awards);
     },
-    refetchInterval: 300_000, // Refresh every minute
   });
 
   // Send plaque mutation
   const sendPlaque = useMutation({
     mutationFn: async (candidate: PlaqueCandidate) => {
-      const milestoneTypeMap: Record<string, string> = {
-        bronze: "single_day_bronze",
-        gold: "single_day",
-        platinum: "single_day",
-        weekly: "weekly",
-        monthly: "monthly",
-      };
-
-      const { error } = await supabase.functions.invoke("send-plaque-recognition", {
+      const { data, error } = await supabase.functions.invoke("send-plaque-recognition", {
         body: {
           agentId: candidate.agentId,
-          milestoneType: milestoneTypeMap[candidate.achievement],
+          milestoneType: RECOGNITION_MILESTONES[candidate.achievement],
           amount: candidate.amount,
           date: candidate.period,
         },
       });
 
       if (error) throw error;
+      assertRecognitionSent(data);
     },
     onSuccess: (_, candidate) => {
       toast("Recognition sent", { description: `${achievementConfig[candidate.achievement].label} plaque sent to ${candidate.agentName}` });
-      queryClient.invalidateQueries({ queryKey: ["recognition-candidates"] });
+      void queryClient.invalidateQueries({ queryKey: ["recognition-candidates", user?.id] });
+      void queryClient.invalidateQueries({ queryKey: ["email-delivery-log"] });
     },
     onError: (error) => {
       toast.error("Failed to send", { description: error.message });
@@ -199,7 +116,15 @@ export function RecognitionQueue() {
           </div>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          <p className="mb-3 text-xs text-muted-foreground">Posted annual premium · business dates · your production scope</p>
+          {isError ? (
+            <div role="alert" className="space-y-3 py-5 text-sm">
+              <p>Recognition could not be checked. {error instanceof Error ? error.message : "Retry to load production and delivery records."}</p>
+              <Button variant="outline" size="sm" onClick={() => void refetch()} disabled={isFetching}>
+                <RefreshCw className="mr-2 h-4 w-4" /> Retry
+              </Button>
+            </div>
+          ) : isLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
@@ -207,11 +132,11 @@ export function RecognitionQueue() {
             <div className="text-center py-8 text-muted-foreground">
               <Award className="h-10 w-10 mx-auto mb-3 opacity-50" />
               <p className="text-sm">No pending recognitions</p>
-              <p className="text-xs mt-1">Achievements will appear here automatically</p>
+              <p className="text-xs mt-1">No unsent milestones found for these business dates.</p>
             </div>
           ) : (
             <div className="space-y-3 max-h-[400px] overflow-y-auto scrollbar-custom">
-              {candidates.map((candidate, index) => {
+              {candidates.map((candidate) => {
                 const config = achievementConfig[candidate.achievement];
                 return (
                   <div
@@ -234,7 +159,7 @@ export function RecognitionQueue() {
                     </div>
 
                     <div className="text-right mr-2">
-                      <p className="font-bold">${candidate.amount.toLocaleString()}</p>
+                      <p className="font-bold">${Math.round(candidate.amount).toLocaleString()}</p>
                     </div>
 
                     <div className="flex items-center gap-1">
@@ -267,6 +192,9 @@ export function RecognitionQueue() {
               })}
             </div>
           )}
+          <Link to="/dashboard/email-log" className="mt-4 inline-flex min-h-11 items-center text-sm font-medium text-primary underline underline-offset-4">
+            Review recognition delivery
+          </Link>
         </CardContent>
       </Card>
 
@@ -285,7 +213,7 @@ export function RecognitionQueue() {
                 {previewCandidate.agentName}
               </h2>
               <div className="text-4xl font-bold text-amber-400">
-                ${previewCandidate.amount.toLocaleString()}
+                ${Math.round(previewCandidate.amount).toLocaleString()}
               </div>
               <p className="text-sm text-muted-foreground">{previewCandidate.periodLabel}</p>
               <div className="pt-4 border-t border-border">

@@ -126,7 +126,7 @@ describe("onboarding exception derivation", () => {
   it("no contracting requirement declares a dependency on training, the call, the start or an account", () => {
     for (const k of CONTRACTING_KEYS) {
       for (const p of REQUIREMENT_PREREQUISITES[k]) {
-        expect(["licensed", "intake_accepted", "not_producing"]).toContain(p);
+        expect(["licensed", "intake_accepted", "not_producing", "production_record"]).toContain(p);
       }
     }
   });
@@ -204,9 +204,23 @@ describe("onboarding exception derivation", () => {
     expect(keys(facts({ first_deal_at: null, hired_at: "2026-01-01T00:00:00Z", expected_start_status: null, expected_start_on: null, start_outcome: null }))).not.toContain("start_not_set");
   });
 
-  it("a producer is never asked about starts or carriers", () => {
-    const k = keys(facts({ carrier_active_count: 0, expected_start_status: null, start_outcome: null, onboarding_call_event_id: null }));
-    expect(k.filter((x) => REQUIREMENT_TRACK[x] === "start" || x.startsWith("carrier_"))).toEqual([]);
+  it("a first-deal timestamp leaves a nonblocking carrier-record review when appointment evidence is absent", () => {
+    const list = deriveExceptions(facts({ carrier_active_count: 0, expected_start_status: null, start_outcome: null, onboarding_call_event_id: null }), NOW);
+    expect(list.filter(e => e.track === "start")).toEqual([]);
+    expect(list.filter(e => e.track === "contracting")).toEqual([expect.objectContaining({
+      key: "carrier_record_unverified", blocking: false, ownerKind: "contracting",
+      resolution: { kind: "open_contracting" }, waitingSince: "2026-10-03T15:00:00Z",
+    })]);
+    expect(list.some(e => e.key === "carrier_none" || e.key === "carrier_pending" || e.key === "intake_missing")).toBe(false);
+  });
+
+  it("clears carrier-record review only with appointment evidence and retains unknown coverage wording", () => {
+    expect(keys(facts({ carrier_active_count: 1 }))).not.toContain("carrier_record_unverified");
+    const unknown = deriveExceptions(facts({ carrier_active_count: null }), NOW).find(e => e.key === "carrier_record_unverified");
+    expect(unknown?.label).toBe("Carrier appointment evidence unavailable");
+    expect(unknown?.blocking).toBe(false);
+    expect(keys(facts({ carrier_active_count: "0", carrier_pending_count: 2 }))).toContain("carrier_record_unverified");
+    expect(keys(facts({ first_deal_at: null, carrier_active_count: 0 }))).not.toContain("carrier_record_unverified");
   });
 
   it("an onboarding call in the past with no outcome offers Attended / No-show / Rescheduled on that event", () => {

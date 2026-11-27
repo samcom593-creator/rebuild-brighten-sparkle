@@ -38,6 +38,7 @@ export type RequirementKey =
   | "intake_review"
   | "carrier_pending"
   | "carrier_none"
+  | "carrier_record_unverified"
   | "training_not_started"
   | "training_incomplete"
   | "dialer_missing"
@@ -192,6 +193,7 @@ export const REQUIREMENT_TRACK: Record<RequirementKey, Track> = {
   intake_review: "contracting",
   carrier_pending: "contracting",
   carrier_none: "contracting",
+  carrier_record_unverified: "contracting",
   training_not_started: "training",
   training_incomplete: "training",
   dialer_missing: "access",
@@ -207,7 +209,7 @@ export const REQUIREMENT_TRACK: Record<RequirementKey, Track> = {
   first_deal_missing: "production",
 };
 
-export type Prerequisite = "licensed" | "intake_accepted" | "carrier_active" | "account" | "training_catalog" | "onboarding_call_booked" | "not_producing";
+export type Prerequisite = "licensed" | "intake_accepted" | "carrier_active" | "account" | "training_catalog" | "onboarding_call_booked" | "not_producing" | "production_record";
 
 export const REQUIREMENT_PREREQUISITES: Record<RequirementKey, readonly Prerequisite[]> = {
   account_missing: [],
@@ -219,6 +221,7 @@ export const REQUIREMENT_PREREQUISITES: Record<RequirementKey, readonly Prerequi
   intake_review: ["licensed", "not_producing"],
   carrier_pending: ["licensed", "intake_accepted", "not_producing"],
   carrier_none: ["licensed", "intake_accepted", "not_producing"],
+  carrier_record_unverified: ["licensed", "production_record"],
   training_not_started: ["training_catalog"],
   training_incomplete: ["training_catalog"],
   dialer_missing: ["licensed", "not_producing"],
@@ -396,9 +399,20 @@ export function deriveExceptions(f: OnboardingFacts, now: Date = new Date()): On
   }
 
   // ---- contracting (depends on the license only) --------------------------
-  // A first deal is evidence a carrier already appointed them, so a producer's
-  // missing intake / documents / carrier record is a records gap for the
-  // contracting team, not a block, and is not queued here.
+  // A first deal does not prove a current appointment. Established producers
+  // avoid new-hire blockers, but missing carrier evidence still needs review.
+  if (licensed && producing && !carrierActive) {
+    out.push(mk(f, "carrier_record_unverified", {
+      label: num(f.carrier_active_count) === null ? "Carrier appointment evidence unavailable" : "Carrier appointment not recorded",
+      why: "A first-deal record does not confirm a current carrier appointment. The contracting team needs to verify the record.",
+      ownerKind: "contracting",
+      waitingSince: f.first_deal_at,
+      waitingBasis: "since the first recorded deal",
+      nextAction: "Verify their carrier appointment in the MGN Agent Hub and update the contracting record.",
+      resolution: { kind: "open_contracting" },
+      blocking: false,
+    }));
+  }
   if (licensed && !producing) {
     if (f.contracting_started !== true) {
       if (f.intake_status === "needs_review") {
@@ -429,7 +443,7 @@ export function deriveExceptions(f: OnboardingFacts, now: Date = new Date()): On
     // Agent Hub, and anything a carrier needs (E&O, EFT, ID) the carrier's own portal collects. Contracting
     // here asks contracting questions only, so a missing upload is not a block and never queues a hire.
     // Carrier authorization. Training never satisfies this; an accepted intake
-    // never satisfies this. A first deal is evidence a carrier appointed them.
+    // never satisfies this. Producers' missing records are reviewed above.
     if (f.contracting_started === true && !carrierActive) {
       if (carrierPending > 0) {
         out.push(mk(f, "carrier_pending", {

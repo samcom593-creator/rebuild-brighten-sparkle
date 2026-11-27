@@ -1,17 +1,18 @@
 -- MP-DEAL-SUBMIT-CONVOY (2026-11-27, incident "agents cannot post deals"). Measured live:
 --   * 10 PostgREST sessions queued on ONE advisory lock, hashtextextended(user_id || ':' || idempotency_key),
---     i.e. one submission (an owner-account deal pending coverage review) re-sent concurrently;
+--     i.e. one submission (an owner-account deal then pending coverage review) re-sent concurrently;
 --   * those sessions run with statement_timeout 120 s (the 8 s role setting is not in effect for them), so each
 --     queued retry hung ~125 s until the gateway returned 504 (9 of 29 submits this morning), while the
 --     retrying browsers refilled the queue and the whole 1 GB instance timed out other reads (57014 on the
 --     deals lists from 16:47Z, which is what "my deals are missing" looked like);
 --   * only 16 submit calls completed since the 12:18Z restart; 2 deals landed today.
--- Fix: the per-submission lock is now TRY: a second concurrent attempt for the same key returns
+-- Fix: the per-submission lock is TRY: a second concurrent attempt for the same key returns
 -- {ok:false, status:'in_progress'} at once instead of queueing (the client polls the receipt by key),
 -- and lock_timeout is bounded to 5 s inside this function so no residual wait can hold a request for
--- two minutes. Nothing else in the function changes; the coverage logic is byte-for-byte the same.
+-- two minutes. Builds on 20261127172638_deal_coverage_no_queue (Sam: "there's no queue"): no review hold,
+-- matches are recorded and the deal posts.
 --
--- Applied through CI on merge (a live MCP apply of this exact text was declined at 17:5x UTC, so this file
+-- Applied through CI on merge (a live MCP apply of the try-lock text was declined at 17:5x UTC, so this file
 -- is the only path and the pre-push "left for CI" note is expected).
 create or replace function public.submit_apex_deal(p_idempotency_key uuid, p_payload jsonb, p_agent_id uuid default null::uuid)
 returns jsonb
@@ -112,56 +113,23 @@ begin
   select coalesce(array_agg(x), '{}'::text[]) into v_signals from jsonb_array_elements_text(v_evidence->'signals') x;
   select * into v_review from public.deal_coverage_reviews
    where owner_user_id = v_user and idempotency_key = p_idempotency_key for update;
-  if cardinality(v_matches) > 0 then
-    if v_review.id is null then
-      insert into public.deal_coverage_reviews (draft_id, owner_user_id, idempotency_key, agent_id, manager_agent_id,
-                                                payload_hash, evidence_hash, matched_deal_ids, match_signals)
-      values (v_draft.id, v_user, p_idempotency_key, v_agent, v_manager, v_hash, v_evidence->>'hash', v_matches, v_signals)
-      returning * into v_review;
-    elsif v_review.payload_hash <> v_hash or v_review.evidence_hash <> v_evidence->>'hash'
-          or v_review.agent_id <> v_agent or v_review.manager_agent_id is distinct from v_manager then
-      insert into public.audit_log (action, actor_user_id, before_data, after_data, entity_id, entity_type)
-      values ('deal.coverage_review_invalidated', v_user,
-              jsonb_build_object('status', v_review.status, 'version', v_review.version),
-              jsonb_build_object('reason', 'draft_or_coverage_changed'), v_review.id::text, 'deal_coverage_review');
-      update public.deal_coverage_reviews
-         set draft_id = v_draft.id, agent_id = v_agent, manager_agent_id = v_manager,
-             payload_hash = v_hash, evidence_hash = v_evidence->>'hash', matched_deal_ids = v_matches, match_signals = v_signals,
-             status = 'pending', version = version + 1, reviewed_by = null, reviewed_at = null, decision_reason = null,
-             deal_id = null, updated_at = now()
-       where id = v_review.id
-      returning * into v_review;
-    end if;
-    if v_review.status <> 'approved' then
-      return jsonb_build_object('ok', false,
-                                'status', case when v_review.status = 'rejected' then 'review_rejected' else 'review_required' end,
-                                'reviewId', v_review.id, 'reviewVersion', v_review.version, 'matchCount', cardinality(v_matches));
-    end if;
-  elsif v_review.id is not null then
-    -- A changed identity cannot reuse an earlier approval. The normal no-match
-    -- path is re-evaluated from the actual payload; no policy is auto-deleted.
-    if v_review.payload_hash <> v_hash or v_review.evidence_hash <> v_evidence->>'hash' then
-      raise exception 'This reviewed draft changed. Start a new deal after correcting the insured details.' using errcode = '40001';
-    end if;
-    if v_review.status <> 'approved' then
-      return jsonb_build_object('ok', false,
-                                'status', case when v_review.status = 'rejected' then 'review_rejected' else 'review_required' end,
-                                'reviewId', v_review.id, 'reviewVersion', v_review.version, 'matchCount', 0);
-    end if;
+  -- MP-DEAL-NO-QUEUE: a match is RECORDED, never a hold. The deal posts below either way.
+  if cardinality(v_matches) > 0 and v_review.id is null then
+    insert into public.deal_coverage_reviews (draft_id, owner_user_id, idempotency_key, agent_id, manager_agent_id,
+                                              payload_hash, evidence_hash, matched_deal_ids, match_signals)
+    values (v_draft.id, v_user, p_idempotency_key, v_agent, v_manager, v_hash, v_evidence->>'hash', v_matches, v_signals)
+    returning * into v_review;
   end if;
-  insert into public.deal_coverage_post_permits (transaction_id, owner_user_id, idempotency_key, agent_id)
-  values (txid_current(), v_user, p_idempotency_key, v_agent);
   v_result := public.submit_apex_deal_before_coverage_review(p_idempotency_key, p_payload, p_agent_id);
-  delete from public.deal_coverage_post_permits
-   where transaction_id = txid_current() and owner_user_id = v_user and idempotency_key = p_idempotency_key;
   if v_result->>'dealId' is null then
     raise exception 'Posting returned no durable deal receipt' using errcode = 'P0001';
   end if;
   if v_review.id is not null then
     update public.deal_coverage_reviews
-       set status = 'submitted', deal_id = (v_result->>'dealId')::uuid, version = version + 1, updated_at = now()
+       set status = 'submitted', deal_id = (v_result->>'dealId')::uuid, version = version + 1,
+           decision_reason = coalesce(decision_reason, 'auto_posted:no_queue'), updated_at = now()
      where id = v_review.id;
   end if;
-  return v_result;
+  return v_result || jsonb_build_object('coverageMatches', cardinality(v_matches));
 end;
 $function$;

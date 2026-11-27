@@ -1,6 +1,7 @@
-// One finance workspace: the viewer's commission ledger and carrier policy
-// book are separate financial sources. Real admins can additionally mount
-// the existing agency estimates and CFO reconciliation; preview roles cannot.
+// One finance workspace: the viewer's commissions dashboard (posted production
+// priced at the contract rate, with the carrier portal's verdict per deal) and
+// the carrier policy book are separate financial sources. Real admins can
+// additionally mount the agency estimates and CFO reconciliation; preview roles cannot.
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -17,7 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useAuth } from "@/hooks/useAuth";
 import { useRolePreview } from "@/hooks/useRolePreview";
-import MyCommissions from "@/pages/MyCommissions";
+import { CommissionsDashboard } from "@/components/finances/CommissionsDashboard";
 import { PersonalPolicyBook } from "@/components/finances/PersonalPolicyBook";
 import { ImoByAgency } from "@/components/dashboard/ImoByAgency";
 import { PageHeader } from "@/components/ui/page-header";
@@ -898,7 +899,7 @@ export default function Finances() {
       ) : activeTab === "policies" ? (
         <PersonalPolicyBook key={user.id} onViewPayments={() => setTab("personal")} />
       ) : (
-        <MyCommissions key={user.id} embedded onViewPolicies={() => setTab("policies")} />
+        <CommissionsDashboard key={user.id} embedded onViewPolicies={() => setTab("policies")} />
       )}
     </FinanceWorkspaceView>
   );

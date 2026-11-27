@@ -35,7 +35,7 @@ import { formatTimeAgo } from "@/lib/dateUtils";
 import { TONE_CLASS, inboxBucketTone, laneTone, platformTone, type Tone } from "@/lib/tones";
 import { cn } from "@/lib/utils";
 import {
-  BUCKET_HINT, BUCKET_LABEL, SOCIAL_COMMAND_KEY, bucketCounts, displayName, filterInbox, fmtWhen, groupDrafts, laneLink, laneStatus, laneVerdictLabel, num, pct,
+  BUCKET_HINT, BUCKET_LABEL, SOCIAL_COMMAND_KEY, bucketCounts, displayName, filterInbox, fmtWhen, groupDrafts, isNumericInstagramId, laneLink, laneStatus, laneVerdictLabel, num, pct,
   platformLabel, poolSummary, profileHref, replyRate, replyRateTone, sortLanes,
   type Bucket, type CommandCenterPayload, type DraftRow, type InboxRow, type LaneRow,
 } from "@/lib/socialCommand";
@@ -416,8 +416,11 @@ function MessageRow({ r }: { r: InboxRow }) {
   const href = profileHref(r);
   // MP-SOCIAL-INBOX-TRUTH: a sender Meta could not resolve shows as "Instagram user …1234", never a bare number.
   const name = displayName(r);
+  // The row is named by bucket + handle (stable, what the tests and search use); only a number-only sender
+  // takes the readable fallback, because a 17-digit id read aloud identifies nobody.
+  const rowLabel = `${BUCKET_LABEL[r.bucket]}: ${isNumericInstagramId(r) ? name : r.sender_handle}`;
   return (
-    <li className="flex flex-wrap items-start justify-between gap-2 py-2.5" aria-label={`${BUCKET_LABEL[r.bucket]}: ${name}`}>
+    <li className="flex flex-wrap items-start justify-between gap-2 py-2.5" aria-label={rowLabel}>
       <div className="min-w-0 flex-1">
         <div className="flex min-h-11 flex-wrap items-center gap-2">
           <TonePill tone={inboxBucketTone(r.bucket)}>{BUCKET_LABEL[r.bucket]}</TonePill>

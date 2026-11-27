@@ -51,14 +51,29 @@ const PERSISTENT_TOKEN = Deno.env.get("BOT_SQL_PERSISTENT_TOKEN")?.trim() ?? "";
 // (writes to system_settings), function still validates against stale env.
 // Now all three are candidate tokens; caller's bearer is accepted if it
 // matches any one.
-async function resolveBotTokens(sb: ReturnType<typeof createClient>): Promise<string[]> {
+//
+// MP-SITE-SPEED (2026-11-27): this ran one system_settings read per request.
+// Measured over 11 business hours (edge logs 2026-11-26 16:00Z-03:00Z): 17,670
+// bot-sql invocations, and 17,699 of the 21,559 GETs on system_settings (82%)
+// were this one unchanging row, ~27/min around the clock on a 1 GB Micro box
+// that crashed twice in 34h. The resolved list is cached in the isolate for
+// 60s. Rotation still works: an unknown bearer forces ONE fresh read before a
+// 401 is returned, so a token written seconds ago is accepted on its first use,
+// and the old token stops being accepted within TOKEN_CACHE_MS.
+const TOKEN_CACHE_MS = 60_000;
+let tokenCache: { tokens: string[]; at: number } | null = null;
+async function resolveBotTokens(sb: ReturnType<typeof createClient>, force = false): Promise<string[]> {
+  if (!force && tokenCache && Date.now() - tokenCache.at < TOKEN_CACHE_MS) return tokenCache.tokens;
   const tokens: string[] = [];
   if (PERSISTENT_TOKEN.length > 16) tokens.push(PERSISTENT_TOKEN);
   const env = Deno.env.get("APEX_BOT_TOKEN");
   if (env && env.length > 16) tokens.push(env);
-  const { data } = await sb.from("system_settings").select("value").eq("key", "apex_bot_token").maybeSingle();
+  const { data, error } = await sb.from("system_settings").select("value").eq("key", "apex_bot_token").maybeSingle();
   const v = (data as { value?: string })?.value;
   if (v && v.length > 16) tokens.push(v);
+  // Never cache a failed read: a transient DB error must not lock the
+  // system_settings token out for the next 60s.
+  if (!error) tokenCache = { tokens, at: Date.now() };
   return tokens;
 }
 
@@ -105,7 +120,12 @@ Deno.serve(async (req) => {
   // ─── Auth ──
   const authHeader = req.headers.get("Authorization") ?? req.headers.get("authorization") ?? "";
   const presented  = authHeader.replace(/^Bearer\s+/i, "").trim();
-  const validTokens = await resolveBotTokens(sb);
+  let validTokens = await resolveBotTokens(sb);
+  if (presented && !validTokens.includes(presented)) {
+    // Cache miss on the bearer: re-read once so a just-rotated token is
+    // accepted immediately instead of 401ing until the cache expires.
+    validTokens = await resolveBotTokens(sb, true);
+  }
   const expected   = validTokens[0] ?? null; // for 503 "not configured" check
 
   // ─── First-run bootstrap: anyone may claim the install IF no token is set ──
@@ -124,6 +144,7 @@ Deno.serve(async (req) => {
       { key: "apex_bot_token", value: newToken },
       { onConflict: "key" },
     );
+    tokenCache = null; // the row just changed; never serve the pre-bootstrap list
     if (upsertErr) {
       return new Response(JSON.stringify({ error: `Bootstrap failed: ${upsertErr.message}` }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },

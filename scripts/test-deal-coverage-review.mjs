@@ -224,6 +224,92 @@ try {
     await reset();await query("select set_config('test.uid','',false)");
     await query("insert into public.deals(agent_id,carrier_id,client_first_name,client_last_name,client_phone,client_dob,policy_number,status,source) values($1,$2,'Fixture','Insured','2025550101','1990-01-02','TRUSTED-IMPORT','submitted','agent_link')",[A.agent,C]);
   });
+  const migration = await read('20261127050000_deal_coverage_review.sql');
+  const durableTables = ['deals','deal_drafts','deal_coverage_reviews','deal_coverage_post_permits',
+    'deal_beneficiaries','deal_status_history','outbox_events','audit_log'];
+  async function durableSnapshot() {
+    await reset();
+    return Object.fromEntries(await Promise.all(durableTables.map(async table => [table,
+      await scalar(`select coalesce(jsonb_agg(to_jsonb(r) order by to_jsonb(r)::text),'[]'::jsonb) as v from public.${table} r`)])));
+  }
+  const baselineSnapshot = () => scalar(`select jsonb_agg(jsonb_build_object('oid',p.oid,'name',p.proname,
+    'body',p.prosrc,'configuration',p.proconfig,'definer',p.prosecdef) order by p.proname) as v
+    from pg_proc p where p.oid in ('public.submit_apex_deal_before_coverage_review(uuid,jsonb,uuid)'::regprocedure,
+      'public.submit_apex_deal_ledger_impl(uuid,jsonb,uuid)'::regprocedure)`);
+  await check('rerunning a completed unrecorded migration preserves history, baseline and approved draft receipts',async()=>{
+    await as('agent');const p=payload(),k=key(),h=await submit(k,p);
+    await as('admin');const approval=await decide(h);
+    const before=await durableSnapshot(),baseline=await baselineSnapshot();
+    await db.exec(migration);await db.exec(migration);
+    assert.deepEqual(await durableSnapshot(),before);
+    assert.deepEqual(await baselineSnapshot(),baseline);
+    assert.equal(await scalar("select count(*)::int as v from pg_trigger where tgrelid='public.deals'::regclass and tgname='zz_deal_coverage_review_guard' and not tgisinternal"),1);
+    await as('agent');
+    await denied(()=>call('submit_apex_deal_before_coverage_review',[key(),JSON.stringify(payload()),A.agent]));
+    await denied(()=>query('select * from public.deal_coverage_reviews'));
+    const receipt=await call('resume_deal_coverage_review',[h.reviewId,approval.version]);
+    assert(receipt.dealId);assert.equal((await submit(k,p)).dealId,receipt.dealId);
+    const after=await counts();assert.equal(after.deals,before.deals.length+1);
+    assert.equal(after.outbox,before.outbox_events.length+1);assert.equal(after.permits,0);
+  });
+  await check('rerun restores canonical RLS and known API grants without changing durable rows',async()=>{
+    const before=await durableSnapshot();
+    await db.exec(`alter table public.deal_coverage_reviews disable row level security;
+      grant select on public.deal_coverage_reviews to authenticated;
+      grant execute on function public.deal_coverage_candidates(uuid,date,text,text,uuid) to authenticated;`);
+    await db.exec(migration);assert.deepEqual(await durableSnapshot(),before);
+    assert.equal(await scalar("select relrowsecurity as v from pg_class where oid='public.deal_coverage_reviews'::regclass"),true);
+    await as('agent');await denied(()=>query('select * from public.deal_coverage_reviews'));
+    await denied(()=>call('deal_coverage_candidates',[C,'1990-01-02','fixture insured','2025550101',null]));
+  });
+  async function rejectDrift(alter, restore) {
+    const before=await durableSnapshot();
+    await db.exec(alter);
+    await denied(()=>db.exec(migration),'23514');
+    await db.exec('rollback');
+    await db.exec(restore);
+    assert.deepEqual(await durableSnapshot(),before);
+  }
+  await check('rerun fails closed on nullable columns, changed defaults and foreign-key deletion behavior',async()=>{
+    await rejectDrift('alter table public.deal_coverage_reviews alter column evidence_hash drop not null',
+      'alter table public.deal_coverage_reviews alter column evidence_hash set not null');
+    await rejectDrift("alter table public.deal_coverage_reviews alter column status set default 'approved'",
+      "alter table public.deal_coverage_reviews alter column status set default 'pending'");
+    await rejectDrift(`alter table public.deal_coverage_reviews drop constraint deal_coverage_reviews_draft_id_fkey;
+      alter table public.deal_coverage_reviews add constraint deal_coverage_reviews_draft_id_fkey foreign key(draft_id) references public.deal_drafts(id) on delete cascade`,
+      `alter table public.deal_coverage_reviews drop constraint deal_coverage_reviews_draft_id_fkey;
+      alter table public.deal_coverage_reviews add constraint deal_coverage_reviews_draft_id_fkey foreign key(draft_id) references public.deal_drafts(id) on delete restrict`);
+  });
+  await check('rerun rejects an altered partial index and missing decision-state constraint',async()=>{
+    const index=await scalar("select pg_get_indexdef('public.deals_coverage_identity_idx'::regclass) as v");
+    await rejectDrift(`drop index public.deals_coverage_identity_idx;
+      create index deals_coverage_identity_idx on public.deals(carrier_id,client_dob) where status<>'draft'`,
+      `drop index public.deals_coverage_identity_idx; ${index}`);
+    const constraint=await scalar("select pg_get_constraintdef(oid) as v from pg_constraint where conrelid='public.deal_coverage_reviews'::regclass and conname='deal_coverage_reviews_check'");
+    await rejectDrift('alter table public.deal_coverage_reviews drop constraint deal_coverage_reviews_check',
+      `alter table public.deal_coverage_reviews add constraint deal_coverage_reviews_check ${constraint}`);
+  });
+  await check('rerun rejects a modified saved posting baseline instead of recursively wrapping or replacing it',async()=>{
+    await reset();const original=await scalar("select pg_get_functiondef('public.submit_apex_deal_before_coverage_review(uuid,jsonb,uuid)'::regprocedure) as v");
+    await rejectDrift(`create or replace function public.submit_apex_deal_before_coverage_review(p_idempotency_key uuid,p_payload jsonb,p_agent_id uuid default null)
+      returns jsonb language plpgsql security definer set search_path=public,extensions as $$ begin return '{}'::jsonb; end; $$`,original);
+  });
+  await check('rerun rejects unexpected column-level and private-function grants',async()=>{
+    await reset();await db.exec('create role coverage_fixture_custom');
+    await rejectDrift('grant select(payload_hash) on public.deal_coverage_reviews to coverage_fixture_custom',
+      'revoke select(payload_hash) on public.deal_coverage_reviews from coverage_fixture_custom');
+    await rejectDrift('grant execute on function public.deal_coverage_candidates(uuid,date,text,text,uuid) to coverage_fixture_custom',
+      'revoke execute on function public.deal_coverage_candidates(uuid,date,text,text,uuid) from coverage_fixture_custom');
+    await db.exec('drop role coverage_fixture_custom');
+    await db.exec(migration);
+  });
+  await check('rerun rejects changed ownership of a public security-definer entry point',async()=>{
+    await reset();await db.exec('create role coverage_fixture_owner');
+    await rejectDrift('alter function public.deal_coverage_review_queue() owner to coverage_fixture_owner',
+      'alter function public.deal_coverage_review_queue() owner to postgres');
+    await db.exec('drop role coverage_fixture_owner');
+    await db.exec(migration);
+  });
   console.log(`PASS ${checks} coverage-review SQL scenarios`);
 } catch (error) {
   console.error(error?.message ?? error);

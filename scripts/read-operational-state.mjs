@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { randomBytes, createCipheriv, publicEncrypt, constants } from 'node:crypto';
 
 const PROJECT = 'xrzweoneiieddzxogewk';
-const QUERY_FILES = { release: 'release.sql', release_contracts: 'release-contracts.sql', coverage_fingerprint: 'coverage-fingerprint.sql' };
+const QUERY_FILES = { release: 'release.sql', lead_inventory: 'lead-inventory.sql' };
 const SIGNERS = ['readymode-recording-url', 'training-recording-url', 'lead-recording-url', 'personal-task-create'];
 const AUDIO_COUNTS = [
   'dialer_calls','calls_with_provider_recording_reference','calls_linked_to_agent','calls_linked_to_application','calls_linked_to_lead',
@@ -92,6 +92,35 @@ const array = value => { if (!Array.isArray(value) || value.length > 100) throw 
 const date = value => { if (value !== null && (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value))) throw new Error('invalid aggregate date'); return value; };
 
 function sanitize(name, value) {
+  if (name === 'lead_inventory') {
+    const exact = (value, keys) => {
+      const row = object(value);
+      if (Object.keys(row).length !== keys.length || Object.keys(row).some(key => !keys.includes(key))) throw new Error('unexpected lead aggregate field');
+      return row;
+    };
+    const timestamp = value => {
+      if (value !== null && (typeof value !== 'string' || value.length > 40 || !/^\d{4}-\d{2}-\d{2}T/.test(value) || !Number.isFinite(Date.parse(value)))) throw new Error('invalid aggregate timestamp');
+      return value;
+    };
+    const row = exact(value, ['application_functions_executed','customer_rows_returned','mutations_executed','readymode','pool_snapshot','pools','policy_leads','recruiting_applications','migration_recorded','phc_function']);
+    for (const key of ['application_functions_executed','customer_rows_returned','mutations_executed']) if (row[key] !== false) throw new Error('invalid lead aggregate boundary');
+    const rm = exact(row.readymode, ['records','dialable_records','unique_dialable_phones','oldest_pull','latest_pull','records_pulled_last_24h']);
+    const readymode = Object.fromEntries(Object.entries(rm).map(([key,value]) => [key, key.endsWith('_pull') ? timestamp(value) : count(value)]));
+    if (readymode.records < readymode.dialable_records || readymode.dialable_records < readymode.unique_dialable_phones || readymode.records < readymode.records_pulled_last_24h) throw new Error('inconsistent lead totals');
+    const meta = row.pool_snapshot === null ? null : exact(row.pool_snapshot, ['refreshed_at','started_at','rows','duration_ms','has_error','error_at']);
+    const pool_snapshot = meta === null ? null : Object.fromEntries(Object.entries(meta).map(([key,value]) => [key, key.endsWith('_at') ? timestamp(value) : key === 'has_error' ? boolean(value) : value === null ? null : count(value)]));
+    const pools = array(row.pools).map(value => {
+      const pool = exact(value, ['source','records','unique_phones']);
+      return { source: enumeration(pool.source,['marketing','dialer','rewrite','winback']), records: count(pool.records), unique_phones: count(pool.unique_phones) };
+    });
+    if (new Set(pools.map(pool => pool.source)).size !== pools.length || pools.some(pool => pool.unique_phones > pool.records)) throw new Error('invalid pool aggregate');
+    const fn = exact(row.phc_function, ['present','definition','security_definer','stable','public_search_path','authenticated_execute','service_execute','anon_execute','public_execute']);
+    const { definition, ...flags } = fn;
+    if (typeof definition !== 'string' || definition.length > 20000 || !definition.startsWith('CREATE OR REPLACE FUNCTION public.phc_admin_leads(') || definition.includes('\u0000')) throw new Error('invalid function metadata');
+    return { application_functions_executed:false,customer_rows_returned:false,mutations_executed:false,
+      readymode, pool_snapshot, pools, policy_leads:count(row.policy_leads), recruiting_applications:count(row.recruiting_applications),
+      migration_recorded:boolean(row.migration_recorded), phc_function: { definition, ...Object.fromEntries(Object.entries(flags).map(([key,value])=>[key,boolean(value)])) } };
+  }
   if (name === 'coverage_fingerprint') {
     const exact = (value,keys) => {
       const row=object(value);

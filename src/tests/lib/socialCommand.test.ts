@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  BUCKET_HINT, BUCKET_LABEL, BUCKET_ORDER, BUCKET_TONE, LANE_TONE, bucketCounts, filterInbox, groupDrafts, laneLink, laneStatus, laneVerdictLabel, poolSummary,
+  BUCKET_HINT, BUCKET_LABEL, BUCKET_ORDER, BUCKET_TONE, LANE_TONE, bucketCounts, displayName, filterInbox, groupDrafts, isNumericInstagramId, laneLink, laneStatus, laneVerdictLabel, poolSummary,
   profileHref, replyRate, replyRateTone, silentFor, sortLanes,
   type Bucket, type DraftRow, type FunnelRow, type InboxRow, type LaneRow,
 } from "@/lib/socialCommand";
@@ -46,6 +46,17 @@ describe("social command center: who gets worked first", () => {
     expect(profileHref(row({ source: "tiktok", sender_handle: "h0ll0wp3arl" }))).toBe("https://www.tiktok.com/@h0ll0wp3arl");
     expect(profileHref(row({ source: "youtube", sender_handle: "UC33uBvetH8gBcSqHVpf3Ayg" }))).toBe("https://www.youtube.com/channel/UC33uBvetH8gBcSqHVpf3Ayg");
     expect(profileHref(row({ source: "snapchat", sender_handle: "x" }))).toBeNull();
+  });
+
+  it("a number-only Instagram sender (dead token, unresolved IGSID) gets a readable name and no dead profile link", () => {
+    const numeric = row({ source: "instagram", sender_handle: "29109691635327188", sender_name: null });
+    expect(isNumericInstagramId(numeric)).toBe(true);
+    expect(profileHref(numeric)).toBeNull();
+    expect(displayName(numeric)).toBe("Instagram user …7188");
+    expect(displayName(row({ source: "instagram", sender_handle: "@adamrutt_", sender_name: null }))).toBe("@adamrutt_");
+    expect(displayName(row({ source: "instagram", sender_handle: "29109691635327188", sender_name: "Adam Rutt" }))).toBe("Adam Rutt");
+    // A TikTok or YouTube handle that happens to be digits is still a handle.
+    expect(isNumericInstagramId(row({ source: "tiktok", sender_handle: "123456789" }))).toBe(false);
   });
 });
 

@@ -128,10 +128,26 @@ export function filterInbox(rows: InboxRow[], bucket: Bucket | "all", platform: 
     .sort((a, b) => BUCKET_ORDER.indexOf(a.bucket) - BUCKET_ORDER.indexOf(b.bucket) || (b.last_in ?? "").localeCompare(a.last_in ?? ""));
 }
 
-/** Where a person's thread lives, per platform. */
+/**
+ * An Instagram sender we only know by number: Meta's scoped id (IGSID), written when the profile lookup
+ * failed (dead token). It is not a username, so it never becomes a profile link.
+ */
+export function isNumericInstagramId(r: Pick<InboxRow, "source" | "sender_handle">): boolean {
+  return r.source === "instagram" && /^\d{6,}$/.test((r.sender_handle ?? "").trim());
+}
+
+/** The name a row shows: the real name, else the @handle, else "Instagram user …1234" for a number-only sender. */
+export function displayName(r: Pick<InboxRow, "source" | "sender_handle" | "sender_name">): string {
+  if (r.sender_name && r.sender_name.trim()) return r.sender_name.trim();
+  if (isNumericInstagramId(r)) return `Instagram user …${r.sender_handle.trim().slice(-4)}`;
+  return r.sender_handle;
+}
+
+/** Where a person's thread lives, per platform. A number-only Instagram sender has no profile page to link. */
 export function profileHref(r: InboxRow): string | null {
   const h = (r.sender_handle ?? "").replace(/^@/, "");
   if (!h) return null;
+  if (isNumericInstagramId(r)) return null;
   if (r.source === "instagram") return `https://www.instagram.com/${encodeURIComponent(h)}/`;
   if (r.source === "tiktok") return `https://www.tiktok.com/@${encodeURIComponent(h)}`;
   if (r.source === "youtube") return h.startsWith("UC") ? `https://www.youtube.com/channel/${h}` : `https://www.youtube.com/@${encodeURIComponent(h)}`;

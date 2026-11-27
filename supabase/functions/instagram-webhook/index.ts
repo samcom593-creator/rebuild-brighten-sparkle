@@ -27,6 +27,20 @@ async function verifySignature(body: string, signature: string | null, secret: s
   return hex === expected;
 }
 
+// system_settings.value is TEXT and a trigger refuses JSON-quoted scalars, so the stamps are plain strings.
+// The lane view compares meta_instagram_token_last_error_at against meta_instagram_token_last_ok_at.
+async function stampTokenTruth(sb: any, ok: boolean, error: string | null): Promise<void> {
+  try {
+    const at = new Date().toISOString();
+    const rows = ok
+      ? [{ key: "meta_instagram_token_last_ok_at", value: at }]
+      : [{ key: "meta_instagram_token_last_error_at", value: at }, { key: "meta_instagram_token_last_error", value: error ?? "unknown" }];
+    await sb.from("system_settings").upsert(rows.map((r) => ({ ...r, updated_at: at })), { onConflict: "key" });
+  } catch (e) {
+    console.warn("[instagram-webhook] token truth stamp failed", e);
+  }
+}
+
 // IGSID -> { name, username } via the Instagram-Login user profile endpoint,
 // with the same token send-instagram-dm uses. Best-effort: any failure returns
 // nulls and the pipeline carries on with the numeric id.
@@ -42,7 +56,16 @@ async function resolveSender(sb: any, igsid: string): Promise<{ name: string | n
       { signal: AbortSignal.timeout(4000) },
     );
     const j = await r.json();
-    if (!r.ok || j?.error) { console.warn("[instagram-webhook] profile lookup failed", JSON.stringify(j).slice(0, 200)); return none; }
+    // MP-SOCIAL-INBOX-TRUTH (2026-11-26): the token lane graded on the token's expiry date and read "alive"
+    // for a week while Meta refused the token (code 190) and every new sender became a number. Each lookup
+    // now stamps its outcome so v_social_lane_health can go dead the moment Meta says no. Best-effort
+    // writes: a failed stamp must never stop the DM pipeline.
+    if (!r.ok || j?.error) {
+      console.warn("[instagram-webhook] profile lookup failed", JSON.stringify(j).slice(0, 200));
+      await stampTokenTruth(sb, false, j?.error?.message ? `Meta code ${j.error.code ?? "?"}: ${String(j.error.message).slice(0, 220)}` : `HTTP ${r.status}`);
+      return none;
+    }
+    await stampTokenTruth(sb, true, null);
     return { name: typeof j?.name === "string" ? j.name : null, username: typeof j?.username === "string" ? j.username : null };
   } catch (e) {
     console.warn("[instagram-webhook] profile lookup threw", e);

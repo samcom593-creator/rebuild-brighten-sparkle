@@ -26,7 +26,14 @@ with wanted_functions(signature) as (values
       'default_count',p.pronargdefaults,'defaults',pg_get_expr(p.proargdefaults,0),
       'security_definer',p.prosecdef,'strict',p.proisstrict,'leakproof',p.proleakproof,
       'volatility',p.provolatile,'parallel',p.proparallel,'function_kind',p.prokind,
-      'configuration',to_jsonb(p.proconfig)) end as shape
+      'configuration',to_jsonb(p.proconfig),
+      'private_nonowner_grants',case when w.signature in (
+        'public.submit_apex_deal(uuid,jsonb,uuid)','public.decide_deal_coverage_review(uuid,text,text,integer)',
+        'public.resume_deal_coverage_review(uuid,integer)','public.deal_coverage_review_queue()') then null
+        else (select coalesce(jsonb_agg(jsonb_build_object('grantee',case when a.grantee=0 then 'PUBLIC' else pg_get_userbyid(a.grantee) end,
+          'privilege',a.privilege_type,'grantable',a.is_grantable)
+          order by case when a.grantee=0 then 'PUBLIC' else pg_get_userbyid(a.grantee) end,a.privilege_type),'[]'::jsonb)
+          from aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) a where a.grantee<>p.proowner) end) end as shape
   from wanted_functions w left join pg_proc p on p.oid=to_regprocedure(w.signature)
   left join pg_language l on l.oid=p.prolang
 ), wanted_tables(name) as (values ('deal_coverage_reviews'),('deal_coverage_post_permits')),
@@ -35,10 +42,20 @@ table_shapes as (
     case when c.oid is not null then jsonb_build_object(
       'kind',c.relkind,'persistence',c.relpersistence,'owner',pg_get_userbyid(c.relowner),
       'rls_enabled',c.relrowsecurity,'rls_forced',c.relforcerowsecurity,
+      'nonowner_grants',(select coalesce(jsonb_agg(jsonb_build_object(
+        'grantee',case when x.grantee=0 then 'PUBLIC' else pg_get_userbyid(x.grantee) end,
+        'privilege',x.privilege_type,'grantable',x.is_grantable)
+        order by case when x.grantee=0 then 'PUBLIC' else pg_get_userbyid(x.grantee) end,x.privilege_type),'[]'::jsonb)
+        from aclexplode(coalesce(c.relacl,acldefault('r',c.relowner))) x where x.grantee<>c.relowner),
       'columns',(select coalesce(jsonb_agg(jsonb_build_object(
         'name',a.attname,'type',format_type(a.atttypid,a.atttypmod),'not_null',a.attnotnull,
         'default',pg_get_expr(d.adbin,d.adrelid),'identity',a.attidentity,'generated',a.attgenerated,
-        'collation',co.collname) order by a.attnum),'[]'::jsonb)
+        'collation',co.collname,
+        'nonowner_grants',(select coalesce(jsonb_agg(jsonb_build_object(
+          'grantee',case when x.grantee=0 then 'PUBLIC' else pg_get_userbyid(x.grantee) end,
+          'privilege',x.privilege_type,'grantable',x.is_grantable)
+          order by case when x.grantee=0 then 'PUBLIC' else pg_get_userbyid(x.grantee) end,x.privilege_type),'[]'::jsonb)
+          from aclexplode(a.attacl) x where x.grantee<>c.relowner)) order by a.attnum),'[]'::jsonb)
         from pg_attribute a left join pg_attrdef d on d.adrelid=a.attrelid and d.adnum=a.attnum
         left join pg_collation co on co.oid=a.attcollation
         where a.attrelid=c.oid and a.attnum>0 and not a.attisdropped),

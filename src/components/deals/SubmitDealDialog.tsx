@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Clock3, FilePlus2, FileCheck2, Loader2, Plus, Search, ShieldCheck, Trash2, UserCheck, WifiOff } from "lucide-react";
+import { CheckCircle2, ChevronDown, Clock3, FilePlus2, FileCheck2, Loader2, Plus, Search, Trash2, UserCheck, WifiOff } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -147,6 +147,23 @@ function newIdempotencyKey() {
   return crypto.randomUUID();
 }
 
+type PolicyCheck = { state: "idle" | "checking" | "unused" | "duplicate" | "error"; message?: string };
+
+// A recovered draft that already used the optional fields opens them, so nothing
+// a person typed is hidden behind the fold.
+function usesOptionalDetails(payload: Partial<DealForm> | null | undefined): boolean {
+  if (!payload || typeof payload !== "object") return false;
+  return Boolean(
+    payload.effectiveDate ||
+    payload.paymentMethod ||
+    payload.draftDay ||
+    payload.notes ||
+    (payload.beneficiaries && payload.beneficiaries.length > 0) ||
+    (payload.policyStatus && payload.policyStatus !== EMPTY_FORM.policyStatus) ||
+    (payload.applicationDate && payload.applicationDate !== TODAY),
+  );
+}
+
 function safeNumber(value: string): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -219,7 +236,8 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
   const [clientSearch, setClientSearch] = useState("");
   const [clientQuery, setClientQuery] = useState("");
   const [linkedClient, setLinkedClient] = useState<ClientHit | null>(null);
-  const [checking, setChecking] = useState(false);
+  const [policyCheck, setPolicyCheck] = useState<PolicyCheck>({ state: "idle" });
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [recovering, setRecovering] = useState(false);
@@ -429,6 +447,7 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
       if (draft) {
         setDraftId(draft.id);
         setForm((current) => ({ ...current, ...draft.payload }));
+        if (usesOptionalDetails(draft.payload)) setDetailsOpen(true);
         const recoveredStep = Math.max(0, SECTIONS.findIndex((section) => section.key === draft.current_section));
         setStep(recoveredStep);
         setRecovered(true);
@@ -438,6 +457,7 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
           .eq("draft_id", draft.id)
           .order("created_at");
         if (active) setEvidence((rows ?? []) as unknown as EvidenceRow[]);
+        if (active && (rows ?? []).length > 0) setDetailsOpen(true);
       }
       setRecovering(false);
     };
@@ -524,37 +544,41 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
     return { draftId: savedDraftId ?? null, error: null };
   };
 
-  // Pre-flight. Runs the same gates the submit runs, then asks the database the
-  // one question the browser cannot answer on its own: is this application or
-  // policy number already on a deal? submit_apex_deal rejects a duplicate with
-  // 23505, so catching it here turns a failed post into a corrected one before
-  // anything is written.
-  const runCheck = async () => {
-    for (let index = 0; index < 3; index += 1) {
-      const validation = validateStep(index);
-      if (validation) { toast.error(validation); return; }
-    }
-    setChecking(true);
-    // Ask about the normalized string, because that is what submit_apex_deal
-    // stores: a pasted tab used to make these two disagree.
+  // The duplicate check runs the moment the agent leaves the policy-number field,
+  // so a number already on a deal is called out under the field instead of
+  // surfacing as a 23505 after Post. It asks about the normalized string, because
+  // that is what submit_apex_deal stores, and the server still refuses the
+  // duplicate on its own.
+  const checkPolicyNumber = async () => {
     const policyNumber = normalizePolicyNumber(form.policyNumber);
-    if (!policyNumber) {
-      setChecking(false);
-      toast.success(`Ready to post — ${formatMoney(calculatedAnnualPaid)} annual. Add the policy number within 30 days of the sale date.`);
-      return;
-    }
+    if (!policyNumber) { setPolicyCheck({ state: "idle" }); return; }
+    setPolicyCheck({ state: "checking" });
     const { count, error } = await supabase
       .from("deals")
       .select("id", { count: "exact", head: true })
       .ilike("policy_number", likeLiteral(policyNumber));
-    setChecking(false);
-    if (error) { toast.error(`The duplicate check could not run: ${error.message}`); return; }
-    if ((count ?? 0) > 0) {
-      toast.error(`Policy number ${policyNumber} is already on a deal. Change it before posting.`);
-      return;
-    }
-    toast.success(`Ready to post — ${formatMoney(calculatedAnnualPaid)} annual, policy number is unused.`);
+    if (error) { setPolicyCheck({ state: "error", message: `The duplicate check could not run: ${error.message}` }); return; }
+    setPolicyCheck((count ?? 0) > 0
+      ? { state: "duplicate", message: `${policyNumber} is already on a deal. Change it before posting.` }
+      : { state: "unused", message: "Not on any deal yet." });
   };
+
+  // What still blocks Post, in the order the form asks for it. Shown live in the
+  // footer so the agent never has to hunt for the field a toast named.
+  const missing = useMemo(() => {
+    const out: string[] = [];
+    if (!form.clientFirstName.trim()) out.push("first name");
+    if (!form.clientLastName.trim()) out.push("last name");
+    if (form.clientPhone.replace(/\D/g, "").length < 10) out.push("phone");
+    if (!form.clientDob) out.push("date of birth");
+    if (!form.carrierId) out.push("carrier");
+    if (!form.product.trim()) out.push("product");
+    if (safeNumber(form.modalPremium) <= 0) out.push("premium");
+    if (factor === null && safeNumber(form.annualizedPaidPremium) <= 0) out.push("annual paid premium");
+    if (safeNumber(form.faceAmount) <= 0) out.push("face amount");
+    if (!form.leadSource.trim()) out.push("lead type");
+    return out;
+  }, [factor, form]);
 
   const uploadEvidence = async (file: File | undefined) => {
     if (!file || !user?.id) return;
@@ -726,6 +750,8 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
     setOfflineReceipt(null);
     setCoverageHold(null);
     setRecovered(false);
+    setPolicyCheck({ state: "idle" });
+    setDetailsOpen(false);
     setLinkedClient(null);
     setClientMode("new");
     setClientSearch("");
@@ -766,6 +792,7 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
         faceAmount: current.faceAmount || money(initialDeal?.faceAmount),
         effectiveDate: current.effectiveDate || initialDeal?.effectiveDate || "",
       }));
+      if (initialDeal?.effectiveDate) setDetailsOpen(true);
     }
     setOpen(next);
     if (!next) resetAfterClose();
@@ -786,7 +813,7 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
               ? "The deal is durable. Integration delivery continues independently."
               : offlineReceipt
                 ? "This deal is stored on this device and has not been recorded by the server yet."
-              : description ?? "Record a new policy for yourself or a downline agent."}
+              : description ?? "Who you sold to, what you sold, and what it costs. Everything else is optional."}
           </DialogDescription>
           {secondaryAction && !receipt && !offlineReceipt && (
             <button
@@ -811,11 +838,16 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
                 <ReviewItem label="Delivery" value={receipt.downstreamState} />
                 <ReviewItem label="Correlation" value={receipt.correlationId} />
               </dl>
-              <Button asChild className="mt-5 h-11 w-full sm:h-10">
-                <Link to={`/dashboard/production?deal=${encodeURIComponent(receipt.dealId)}`} onClick={() => setOpen(false)}>
-                  View deal
-                </Link>
-              </Button>
+              <div className="mt-5 grid gap-2 sm:grid-cols-2">
+                <Button asChild className="h-11 sm:h-10">
+                  <Link to={`/dashboard/production?deal=${encodeURIComponent(receipt.dealId)}`} onClick={() => setOpen(false)}>
+                    View deal
+                  </Link>
+                </Button>
+                <Button type="button" variant="outline" className="h-11 sm:h-10" onClick={resetAfterClose}>
+                  Post another deal
+                </Button>
+              </div>
             </div>
           </div>
         ) : offlineReceipt ? (
@@ -853,41 +885,16 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
               </div>
               <p className="mt-2 text-xs text-muted-foreground">Approval applies only to the exact reviewed draft. Changes are checked again before posting.</p>
             </aside>}
-            <div className="border-b border-border px-5 py-3">
-              <RadioGroup
-                value={clientMode}
-                onValueChange={(value) => {
-                  const mode = value as ClientMode;
-                  setClientMode(mode);
-                  if (mode === "new") {
-                    setLinkedClient(null);
-                    setClientSearch("");
-                    setClientQuery("");
-                  }
-                }}
-                className="flex flex-wrap gap-6"
-              >
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem value="new" id="deal-client-new" />
-                  <Label htmlFor="deal-client-new" className="cursor-pointer font-normal">New Client</Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem value="existing" id="deal-client-existing" />
-                  <Label htmlFor="deal-client-existing" className="cursor-pointer font-normal">Existing Client</Label>
-                </div>
-              </RadioGroup>
-            </div>
-
             <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
-              {recovering && <p className="mb-4 text-sm text-muted-foreground">Recovering saved draft…</p>}
+              {recovering && <p className="text-sm text-muted-foreground">Recovering saved draft…</p>}
               {recovered && !recovering && (
-                <div className="mb-4 rounded-md border border-info/30 bg-info/5 px-3 py-2 text-sm text-info dark:text-info">
-                  Your last server-saved draft was recovered.
+                <div className="rounded-md border border-info/30 bg-info/5 px-3 py-2 text-sm text-info dark:text-info">
+                  Your last saved draft was recovered.
                 </div>
               )}
 
-              <div className="mb-5 grid gap-3 rounded-lg border border-border bg-muted/20 p-3 sm:grid-cols-2">
-                {(isAdmin || isManager) && availableAgents.length > 1 ? (
+              {(isAdmin || isManager) && availableAgents.length > 1 ? (
+                <div className="grid gap-3 rounded-lg border border-border bg-muted/20 p-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label htmlFor="deal-writing-agent">Writing agent</Label>
                     <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
@@ -895,12 +902,38 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
                       <SelectContent>{availableAgents.map((agent) => <SelectItem key={agent.id} value={agent.id}>{agent.displayName}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                ) : <ReviewItem label="Writing agent" value={writingAgent?.displayName || "Linking account…"} />}
-                <ReviewItem label="Manager / upline" value={writingAgent?.managerId ? manager.data || "Loading assigned manager…" : "No manager assigned"} />
-              </div>
+                  <ReviewItem label="Manager / upline" value={writingAgent?.managerId ? manager.data || "Loading assigned manager…" : "No manager assigned"} />
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Posting as <span className="font-medium text-foreground">{writingAgent?.displayName || "Linking account…"}</span>
+                  {writingAgent?.managerId ? <> · manager: {manager.data || "Loading assigned manager…"}</> : null}
+                </p>
+              )}
 
-              {(
-                <Section title="Client Information" description="Client identity is restricted operational data and is never copied into community posts.">
+              <Section
+                title="Who you sold to"
+                description="Kept private. Client details never appear in community posts."
+                action={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-9"
+                    onClick={() => {
+                      const mode: ClientMode = clientMode === "new" ? "existing" : "new";
+                      setClientMode(mode);
+                      if (mode === "new") {
+                        setLinkedClient(null);
+                        setClientSearch("");
+                        setClientQuery("");
+                      }
+                    }}
+                  >
+                    {clientMode === "new" ? "Find an existing client" : "Enter a new client"}
+                  </Button>
+                }
+              >
                   {clientMode === "existing" && (
                     <div className="mb-4 space-y-2">
                       <Label htmlFor="deal-client-search">Find the client</Label>
@@ -952,10 +985,9 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
                     <Field label="Date of birth" id="deal-dob" value={form.clientDob} onChange={(value) => update("clientDob", value)} type="date" />
                   </div>
                 </Section>
-              )}
 
-              {(
-                <Section title="Policy Details" description="Carrier and application details are checked again by the server before create.">
+              <Section title="What you sold" description="Carrier, product and price. The server checks these again before the deal is created.">
+                <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label htmlFor="deal-carrier">Carrier</Label>
                     <Select value={form.carrierId} onValueChange={(value) => update("carrierId", value)}>
@@ -963,81 +995,111 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
                       <SelectContent>{(carriers.data ?? []).map((carrier) => <SelectItem key={carrier.id} value={carrier.id}>{carrier.name}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  {carrierBook.isError && <p role="status">Carrier history could not refresh. Verify existing coverage in the carrier portal before writing.</p>}
-                  {previousPolicies.length > 0 && <aside role="status" className="mt-3 rounded-lg border border-border p-3 text-sm">
-                    <strong>Review existing coverage before writing</strong>
-                    <p>This writing agent has carrier records under the same client name. Confirm the insured’s identity, existing coverage and reason for additional coverage with your manager. A different payment card does not distinguish policies.</p>
-                    <ul>{previousPolicies.map(policy => <li key={policy.key}>{policy.policyNumber || "Number unavailable"} · {policy.statusLabel} · {policy.soldOn || "Sale date unavailable"}{policy.chargeback ? " · Recorded chargeback" : ""}</li>)}</ul>
-                  </aside>}
-                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <Field label="Product sold" id="deal-product" value={form.product} onChange={(value) => update("product", value)} placeholder="Select product…" list="deal-product-options" />
-                      <datalist id="deal-product-options">
-                        {(carrierProducts.data ?? []).map((row) => <option key={row.product} value={row.product} />)}
-                      </datalist>
-                    </div>
-                    <Field label="Policy number" id="deal-policy" value={form.policyNumber} onChange={(value) => update("policyNumber", sanitizePolicyInput(value))} placeholder="e.g., POL-123456" autoComplete="off" />
-                    <p className="text-xs text-muted-foreground">Leave it blank if the carrier has not given it yet. If it is still missing after 14 days, the deal goes back to your leads so you can chase it. A made-up number is refused.</p>
-                    <Field label="Effective date" id="deal-effective-date" value={form.effectiveDate} onChange={(value) => update("effectiveDate", value)} type="date" />
-                    <div className="space-y-1.5">
-                      <Field label="Sale date" id="deal-application-date" value={form.applicationDate} onChange={(value) => update("applicationDate", value)} type="date" max={TODAY} />
-                      <p className="text-xs text-muted-foreground">Counts toward this month. Change it to log an older sale.</p>
-                    </div>
-                    <Field label="Face amount" id="deal-face" value={form.faceAmount} onChange={(value) => update("faceAmount", value)} type="number" min="1" step="1" inputMode="decimal" placeholder="e.g., 50000" />
-                    <Field label={form.premiumMode === "monthly" ? "Monthly premium" : "Premium (per payment)"} id="deal-modal-premium" value={form.modalPremium} onChange={(value) => update("modalPremium", value)} type="number" min="0.01" step="0.01" inputMode="decimal" placeholder="e.g., 99.99" />
-                    <div className="space-y-1.5">
-                      <Label htmlFor="deal-payment-method">Payment method</Label>
-                      <Select value={form.paymentMethod || "not_recorded"} onValueChange={(value) => update("paymentMethod", value === "not_recorded" ? "" : value as PaymentMethod)}>
-                        <SelectTrigger id="deal-payment-method" className="h-11 sm:h-10"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="not_recorded">Not set yet</SelectItem>
-                          <SelectItem value="bank_draft">Bank draft</SelectItem>
-                          <SelectItem value="credit_card">Credit card</SelectItem>
-                          <SelectItem value="debit_card">Debit card</SelectItem>
-                          <SelectItem value="direct_express">Direct Express</SelectItem>
-                          <SelectItem value="check">Check</SelectItem>
-                          <SelectItem value="social_security">Social Security</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <Field label="Draft day" id="deal-draft-day" value={form.draftDay} onChange={(value) => update("draftDay", value)} type="number" min="1" max="28" step="1" inputMode="numeric" placeholder="Not set yet — 1 to 28" />
-                    <div className="space-y-1.5">
-                      <Label htmlFor="deal-premium-mode">Payment frequency</Label>
-                      <Select value={form.premiumMode} onValueChange={(value) => update("premiumMode", value as PremiumMode)}>
-                        <SelectTrigger id="deal-premium-mode" className="h-11 sm:h-10"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="monthly">Monthly</SelectItem><SelectItem value="quarterly">Quarterly</SelectItem>
-                          <SelectItem value="semiannual">Semiannual</SelectItem><SelectItem value="annual">Annual</SelectItem>
-                          <SelectItem value="single_pay">Single Pay</SelectItem><SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1.5" role="group" aria-labelledby="deal-lead-type-label">
-                      <Label id="deal-lead-type-label">What kind of lead was this?</Label>
-                      <div className="flex flex-wrap gap-2">
-                        {LEAD_TYPES.map((type) => (
-                          <button
-                            key={type.key}
-                            type="button"
-                            aria-pressed={form.leadSource === type.label}
-                            title={type.hint}
-                            onClick={() => update("leadSource", type.label)}
-                            className={cn(
-                              "min-h-11 rounded-full border px-4 text-sm font-semibold transition-colors",
-                              form.leadSource === type.label ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-foreground hover:bg-muted",
-                            )}
-                          >
-                            {type.label}
-                          </button>
-                        ))}
-                      </div>
-                      <p className="text-xs text-muted-foreground">One tap. It tells us which leads actually close, so the next ones are better.</p>
-                    </div>
-                    {factor === null && (
-                      <Field label="Annual paid premium" id="deal-paid-premium" value={form.annualizedPaidPremium} onChange={(value) => update("annualizedPaidPremium", value)} type="number" min="0.01" step="0.01" inputMode="decimal" placeholder="Enter for this frequency" />
-                    )}
+                  <div>
+                    <Field label="Product sold" id="deal-product" value={form.product} onChange={(value) => update("product", value)} placeholder="Select product…" list="deal-product-options" />
+                    <datalist id="deal-product-options">
+                      {(carrierProducts.data ?? []).map((row) => <option key={row.product} value={row.product} />)}
+                    </datalist>
                   </div>
-                  <div className="mt-4 space-y-1.5">
+                  <Field label={form.premiumMode === "monthly" ? "Monthly premium" : "Premium (per payment)"} id="deal-modal-premium" value={form.modalPremium} onChange={(value) => update("modalPremium", value)} type="number" min="0.01" step="0.01" inputMode="decimal" placeholder="e.g., 99.99" />
+                  <div className="space-y-1.5">
+                    <Label htmlFor="deal-premium-mode">Payment frequency</Label>
+                    <Select value={form.premiumMode} onValueChange={(value) => update("premiumMode", value as PremiumMode)}>
+                      <SelectTrigger id="deal-premium-mode" className="h-11 sm:h-10"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="monthly">Monthly</SelectItem><SelectItem value="quarterly">Quarterly</SelectItem>
+                        <SelectItem value="semiannual">Semiannual</SelectItem><SelectItem value="annual">Annual</SelectItem>
+                        <SelectItem value="single_pay">Single Pay</SelectItem><SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {factor === null && (
+                    <Field label="Annual paid premium" id="deal-paid-premium" value={form.annualizedPaidPremium} onChange={(value) => update("annualizedPaidPremium", value)} type="number" min="0.01" step="0.01" inputMode="decimal" placeholder="Enter for this frequency" />
+                  )}
+                  <Field label="Face amount" id="deal-face" value={form.faceAmount} onChange={(value) => update("faceAmount", value)} type="number" min="1" step="1" inputMode="decimal" placeholder="e.g., 50000" />
+                  <div className="sm:col-span-2">
+                    <Field
+                      label="Policy number"
+                      id="deal-policy"
+                      value={form.policyNumber}
+                      onChange={(value) => { update("policyNumber", sanitizePolicyInput(value)); setPolicyCheck({ state: "idle" }); }}
+                      onBlur={() => { void checkPolicyNumber(); }}
+                      placeholder="Leave blank until the carrier issues it"
+                      autoComplete="off"
+                    />
+                    <p
+                      className={cn("mt-1 text-xs", policyCheck.state === "duplicate" || policyCheck.state === "error" ? "text-destructive" : policyCheck.state === "unused" ? "text-success" : "text-muted-foreground")}
+                      role={policyCheck.state === "duplicate" ? "alert" : undefined}
+                    >
+                      {policyCheck.state === "checking"
+                        ? "Checking for a duplicate…"
+                        : policyCheck.message ?? "Optional for 30 days. If it is still missing after 14 days the deal goes back to your leads. A made-up number is refused."}
+                    </p>
+                  </div>
+                </div>
+                {carrierBook.isError && <p role="status" className="mt-3 text-sm">Carrier history could not refresh. Verify existing coverage in the carrier portal before writing.</p>}
+                {previousPolicies.length > 0 && <aside role="status" className="mt-3 rounded-lg border border-border p-3 text-sm">
+                  <strong>Review existing coverage before writing</strong>
+                  <p>This writing agent has carrier records under the same client name. Confirm the insured’s identity, existing coverage and reason for additional coverage with your manager. A different payment card does not distinguish policies.</p>
+                  <ul>{previousPolicies.map(policy => <li key={policy.key}>{policy.policyNumber || "Number unavailable"} · {policy.statusLabel} · {policy.soldOn || "Sale date unavailable"}{policy.chargeback ? " · Recorded chargeback" : ""}</li>)}</ul>
+                </aside>}
+                <div className="mt-4 space-y-1.5" role="group" aria-labelledby="deal-lead-type-label">
+                  <Label id="deal-lead-type-label">What kind of lead was this?</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {LEAD_TYPES.map((type) => (
+                      <button
+                        key={type.key}
+                        type="button"
+                        aria-pressed={form.leadSource === type.label}
+                        title={type.hint}
+                        onClick={() => update("leadSource", type.label)}
+                        className={cn(
+                          "min-h-11 rounded-full border px-4 text-sm font-semibold transition-colors",
+                          form.leadSource === type.label ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-foreground hover:bg-muted",
+                        )}
+                      >
+                        {type.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <p className="mt-4 text-sm text-muted-foreground">
+                  Annual premium <strong className="text-base text-success">{formatMoney(calculatedAnnualPaid)}</strong> / year
+                </p>
+              </Section>
+
+              <Collapsible open={detailsOpen} onOpenChange={setDetailsOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button type="button" variant="outline" className="h-11 w-full justify-between sm:h-10">
+                    <span>{detailsOpen ? "Hide the optional details" : "More details (optional)"}</span>
+                    <ChevronDown className={cn("h-4 w-4 transition-transform", detailsOpen && "rotate-180")} aria-hidden="true" />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-5 pt-5">
+              <Section title="Dates and payment" description="Only if you have them now. The sale date already counts for today.">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Field label="Sale date" id="deal-application-date" value={form.applicationDate} onChange={(value) => update("applicationDate", value)} type="date" max={TODAY} />
+                    <p className="text-xs text-muted-foreground">Change it to log an older sale.</p>
+                  </div>
+                  <Field label="Effective date" id="deal-effective-date" value={form.effectiveDate} onChange={(value) => update("effectiveDate", value)} type="date" />
+                  <div className="space-y-1.5">
+                    <Label htmlFor="deal-payment-method">Payment method</Label>
+                    <Select value={form.paymentMethod || "not_recorded"} onValueChange={(value) => update("paymentMethod", value === "not_recorded" ? "" : value as PaymentMethod)}>
+                      <SelectTrigger id="deal-payment-method" className="h-11 sm:h-10"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="not_recorded">Not set yet</SelectItem>
+                        <SelectItem value="bank_draft">Bank draft</SelectItem>
+                        <SelectItem value="credit_card">Credit card</SelectItem>
+                        <SelectItem value="debit_card">Debit card</SelectItem>
+                        <SelectItem value="direct_express">Direct Express</SelectItem>
+                        <SelectItem value="check">Check</SelectItem>
+                        <SelectItem value="social_security">Social Security</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Field label="Draft day" id="deal-draft-day" value={form.draftDay} onChange={(value) => update("draftDay", value)} type="number" min="1" max="28" step="1" inputMode="numeric" placeholder="1 to 28" />
+                  <div className="space-y-1.5">
                     <Label htmlFor="deal-policy-status">Policy status</Label>
                     <Select value={form.policyStatus} onValueChange={(value) => update("policyStatus", value as PolicyStatus)}>
                       <SelectTrigger id="deal-policy-status" className="h-11 sm:h-10"><SelectValue /></SelectTrigger>
@@ -1046,14 +1108,8 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="mt-4 space-y-1">
-                    <Label>Annual Premium</Label>
-                    <div className="rounded-md border border-border bg-muted/20 px-3 py-2.5">
-                      <p className="text-xl font-bold text-success">{formatMoney(calculatedAnnualPaid)} <span className="text-sm font-normal text-muted-foreground">/ year</span></p>
-                    </div>
-                  </div>
-                </Section>
-              )}
+                </div>
+              </Section>
 
               <Section
                 title="Beneficiaries (Optional)"
@@ -1113,22 +1169,17 @@ export function SubmitDealDialog({ trigger, initialClient, initialDeal, title, d
                 </Section>
               )}
 
-              <div className="rounded-md border border-info/30 bg-info/5 p-3 text-sm">
-                <div className="flex items-start gap-2"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-info" /><p><strong>The deal saves first.</strong> Discord, scanning and analytics delivery are queued separately and can never erase or duplicate this record. Client identity is never copied into community posts.</p></div>
-              </div>
+                </CollapsibleContent>
+              </Collapsible>
             </div>
 
-            <DialogFooter className="flex-row items-center justify-between gap-2 border-t border-border px-5 py-4 sm:justify-between">
-              {/* Agent Cloud's pre-submit review slot. runCheck() existed in this
-                  file but nothing ever called it — the gates it runs and the
-                  duplicate-policy-number question it asks the database were
-                  dead code, so a duplicate only surfaced as a 23505 AFTER the
-                  agent hit Post. Wired to a real control now. */}
-              <Button type="button" variant="outline" className="h-11 gap-2 sm:h-10" onClick={runCheck} disabled={checking || saving || recovering}>
-                {checking ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-                Review before submit
-              </Button>
-              <Button type="submit" className="h-11 gap-2 sm:h-10" disabled={saving || recovering}>
+            <DialogFooter className="flex-row items-center justify-between gap-3 border-t border-border px-5 py-4 sm:justify-between">
+              <p className="min-w-0 text-xs text-muted-foreground" aria-live="polite">
+                {missing.length > 0
+                  ? <>Still needed: {missing.join(", ")}.</>
+                  : "Everything required is filled in. The deal saves first; Discord and analytics follow on their own."}
+              </p>
+              <Button type="submit" className="h-11 shrink-0 gap-2 sm:h-10" disabled={saving || recovering}>
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <FilePlus2 className="h-4 w-4" />} Post Deal
               </Button>
             </DialogFooter>

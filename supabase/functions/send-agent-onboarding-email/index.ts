@@ -1,5 +1,6 @@
 // send-agent-onboarding-email
 import { SPAM_NOTE_HTML, SPAM_NOTE_TEXT } from "../_shared/spam-note.ts";
+import { humanize } from "../_shared/humanize.ts";
 //
 // Drains agent_onboarding_queue: licensed online-training, team Slack,
 // get-licensed, scripts-packet, onboarding-call and onboarding-call reminder
@@ -422,6 +423,14 @@ async function sendViaResend(
   text: string,
   idempotencyKey?: string,
 ): Promise<ResendResult> {
+  // Clean the copy once, at the only place it leaves this function (the same
+  // boundary _shared/email.ts::sendEmail() uses). The raw em/en-dash and smart
+  // quotes are the loudest "a model wrote this" tell, and these mails reach real
+  // hires. humanize() is idempotent. The idempotency key above is built from the
+  // queue row, never from the subject, so retry dedupe is unchanged.
+  const safeSubject = humanize(subject);
+  const safeHtml = humanize(html);
+  const safeText = humanize(text);
   let res: Response;
   try {
     res = await fetch("https://api.resend.com/emails", {
@@ -434,9 +443,9 @@ async function sendViaResend(
       body: JSON.stringify({
         from,
         to: [to],
-        subject,
-        html,
-        text,
+        subject: safeSubject,
+        html: safeHtml,
+        text: safeText,
         reply_to: "info@kingofsales.net",
       }),
     });

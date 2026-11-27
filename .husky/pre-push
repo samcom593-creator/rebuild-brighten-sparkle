@@ -38,6 +38,20 @@ if ! npm run --silent check:metric-truth; then
   exit 1
 fi
 
+# 2026-11-27 (MP-EDGE-EMAIL-EMDASH-RATCHET): a per-file baseline is only true for the tree it was
+# generated from. b33e41ad generated scripts/data/edge-email-emdash-baseline.json, was re-parented
+# by a pull --rebase 35 seconds later onto a main that had changed two of the counted files, and
+# pushed; the guard was wired into verify:core only, so CI was the first thing to see the real tree
+# and main went red. Same shape as the counter above. 0.3s, no network.
+if ! npm run --silent check:edge-email-emdash; then
+  echo ""
+  echo "[pre-push] BLOCKED: the em-dash baseline does not describe the tree you are pushing."
+  echo "[pre-push] A rebase likely changed a counted edge-email function after the baseline was"
+  echo "[pre-push] generated. Humanize the regressed copy (route via sendEmail() or call humanize()"
+  echo "[pre-push] before send), then: node scripts/check-edge-email-emdash.mjs --update"
+  exit 1
+fi
+
 # 2026-11-11: a push that carries migrations must not let CI re-apply an EARLIER migration that is
 # live but unrecorded (that silently reverted a security lockdown). No network unless the push
 # touches supabase/migrations. See scripts/check-migrations-recorded.mjs.

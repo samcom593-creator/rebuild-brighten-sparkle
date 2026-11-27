@@ -1,6 +1,6 @@
 {
   "note": "WIB em-dash ratchet: per-file count of raw em/en-dash chars in recipient-facing edge-email functions (see scripts/check-edge-email-emdash.mjs). Only lower these. sendEmail() humanizes at the boundary, so routing a function through it (and dropping its direct `new Resend(`) is the way to clear an entry.",
-  "total": 189,
+  "total": 169,
   "files": {
     "supabase/functions/add-agent/index.ts": 2,
     "supabase/functions/apex-alert-dispatch/index.ts": 1,
@@ -34,7 +34,6 @@
     "supabase/functions/send-abandoned-followup/index.ts": 1,
     "supabase/functions/send-aged-lead-email/index.ts": 4,
     "supabase/functions/send-agent-nudge/index.ts": 2,
-    "supabase/functions/send-agent-onboarding-email/index.ts": 18,
     "supabase/functions/send-batch-blast/index.ts": 2,
     "supabase/functions/send-bulk-unlicensed-outreach/index.ts": 3,
     "supabase/functions/send-calendly-invite/index.ts": 2,
@@ -49,7 +48,7 @@
     "supabase/functions/send-numbers-reminder/index.ts": 4,
     "supabase/functions/send-password-reset/index.ts": 2,
     "supabase/functions/send-plaque-batch/index.ts": 3,
-    "supabase/functions/send-plaque-recognition/index.ts": 4,
+    "supabase/functions/send-plaque-recognition/index.ts": 2,
     "supabase/functions/send-post-call-followup/index.ts": 6,
     "supabase/functions/send-proactive-coaching/index.ts": 3,
     "supabase/functions/send-reapply-blast/index.ts": 4,

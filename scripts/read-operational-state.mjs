@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { randomBytes, createCipheriv, publicEncrypt, constants } from 'node:crypto';
 
 const PROJECT = 'xrzweoneiieddzxogewk';
-const QUERY_FILES = { release: 'release.sql' };
+const QUERY_FILES = { release: 'release.sql', release_contracts: 'release-contracts.sql' };
 const SIGNERS = ['readymode-recording-url', 'training-recording-url', 'lead-recording-url', 'personal-task-create'];
 const AUDIO_COUNTS = [
   'dialer_calls','calls_with_provider_recording_reference','calls_linked_to_agent','calls_linked_to_application','calls_linked_to_lead',
@@ -24,6 +24,29 @@ const CARRIERS = ['Ethos','Chubb','Combined','other'];
 const CHARGEBACK_SOURCES = ['comp_ledger','debt_outstanding','other'];
 const RELEASE_BASE_SHA = 'cb210345e7afa347008f3417ffa78e916a1f3f45';
 const RELEASE_VERSIONS = ["20261127043000", "20261127044000", "20261127045000", "20261127050000"];
+const RELEASE_FUNCTIONS = {
+  'public.social_draft_review(bigint)': 'authenticated',
+  'public.social_draft_review_set_status(bigint,text,text)': 'authenticated',
+  'public.approve_social_draft(bigint,text)': 'authenticated',
+  'public.social_draft_set_status(bigint,text,text)': 'authenticated',
+  'public.content_queue_review_set_status(text,timestamp with time zone,text)': 'authenticated',
+  'public.training_canonical_self_id()': 'authenticated',
+  'public.training_progress_access()': 'authenticated',
+  'public.submit_apex_deal(uuid,jsonb,uuid)': 'authenticated',
+  'public.deal_coverage_review_queue()': 'authenticated',
+  'public.decide_deal_coverage_review(uuid,text,text,integer)': 'authenticated',
+  'public.resume_deal_coverage_review(uuid,integer)': 'authenticated',
+  'public.deal_coverage_name(text,text)': 'private',
+  'public.deal_coverage_phone(text)': 'private',
+  'public.deal_coverage_payload_hash(jsonb,uuid)': 'private',
+  'public.deal_coverage_candidates(uuid,date,text,text,uuid)': 'private',
+  'public.deal_coverage_manager_access(uuid,uuid)': 'private',
+  'public.deal_coverage_can_decide(uuid,uuid,uuid[])': 'private',
+  'public.deal_coverage_requires_admin(uuid,uuid[])': 'private',
+  'public.enforce_deal_coverage_review()': 'private',
+  'public.submit_apex_deal_before_coverage_review(uuid,jsonb,uuid)': 'private',
+  'public.submit_apex_deal_ledger_impl(uuid,jsonb,uuid)': 'private',
+};
 const COHORT_CONTRACT_FLAGS = ['present','jsonb_return','argument_names_exact','one_default_argument','security_definer','stable',
   'public_search_path','authenticated_execute','anon_execute','public_execute','auth_guard','blocked_user_guard',
   'suspended_user_guard','canonical_self_guard','exact_site_link','no_policy_number_inference','future_timestamp_guard','response_identity'];
@@ -58,6 +81,68 @@ const array = value => { if (!Array.isArray(value) || value.length > 100) throw 
 const date = value => { if (value !== null && (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value))) throw new Error('invalid aggregate date'); return value; };
 
 function sanitize(name, value) {
+  if (name === 'release_contracts') {
+    const exact = (value, keys) => {
+      const row = object(value);
+      if (Object.keys(row).length !== keys.length || Object.keys(row).some(key => !keys.includes(key))) throw new Error('unexpected release metadata field');
+      return row;
+    };
+    const fixedRows = (value, names, key, read) => {
+      const rows = array(value);
+      if (rows.length !== names.length || new Set(rows.map(row => object(row)[key])).size !== names.length) throw new Error('invalid release metadata set');
+      return rows.map(row => {
+        enumeration(object(row)[key], names);
+        return read(row);
+      });
+    };
+    const flags = (row, names) => Object.fromEntries(names.map(key => [key,boolean(row[key])]));
+    const row = exact(value, ['application_functions_executed','customer_rows_read','mutations_executed','migrations','functions',
+      'function_access_pass','tables','table_access_pass','policies','training_policy_pass','guards','guards_pass','recovery']);
+    for (const key of ['application_functions_executed','customer_rows_read','mutations_executed']) {
+      if (row[key] !== false) throw new Error('invalid release metadata boundary');
+    }
+    const migrations = fixedRows(row.migrations, RELEASE_VERSIONS, 'version', value => {
+      const m = exact(value, ['version','recorded']);
+      return { version:m.version, recorded:boolean(m.recorded) };
+    });
+    const functionFlags = ['present','security_definer','authenticated_execute','anon_execute','service_role_execute','public_execute'];
+    const functions = fixedRows(row.functions, Object.keys(RELEASE_FUNCTIONS), 'signature', value => {
+      const f = exact(value, ['signature','kind',...functionFlags]);
+      if (f.kind !== RELEASE_FUNCTIONS[f.signature]) throw new Error('unexpected release function classification');
+      return { signature:f.signature,kind:f.kind,...flags(f,functionFlags) };
+    });
+    const tableFlags = ['present','rls_enabled','api_role_has_privilege','public_has_privilege'];
+    const tables = fixedRows(row.tables, ['deal_coverage_reviews','deal_coverage_post_permits'], 'name', value => {
+      const t = exact(value, ['name',...tableFlags]);
+      return { name:t.name,...flags(t,tableFlags) };
+    });
+    const policyNames = ['Agents can view canonical training progress','Agents can insert canonical training progress','Agents can update canonical training progress'];
+    const policyFlags = ['present','command_matches','authenticated_role','canonical_identity_guard'];
+    const policies = fixedRows(row.policies, policyNames, 'name', value => {
+      const p = exact(value, ['name',...policyFlags]);
+      return { name:p.name,...flags(p,policyFlags) };
+    });
+    const guards = fixedRows(row.guards, ['deal_coverage','social_approval','content_approval'], 'name', value => {
+      const g = exact(value, ['name','required_events_enabled']);
+      return { name:g.name,required_events_enabled:boolean(g.required_events_enabled) };
+    });
+    const r = exact(row.recovery, ['open_case_index_valid','open_case_index_predicate','old_constraint_removed']);
+    if (r.open_case_index_predicate !== null && r.open_case_index_predicate !== "(status = 'open'::text)") throw new Error('unexpected recovery index predicate');
+    const recovery = { open_case_index_valid:boolean(r.open_case_index_valid),
+      open_case_index_predicate:r.open_case_index_predicate,old_constraint_removed:boolean(r.old_constraint_removed) };
+    const results = {
+      function_access_pass:functions.every(f => f.present && !f.anon_execute && !f.public_execute
+        && f.authenticated_execute === (f.kind === 'authenticated') && (f.kind !== 'private' || !f.service_role_execute)),
+      table_access_pass:tables.every(t => t.present && t.rls_enabled && !t.api_role_has_privilege && !t.public_has_privilege),
+      training_policy_pass:policies.every(p => policyFlags.every(key => p[key])),
+      guards_pass:guards.every(g => g.required_events_enabled),
+    };
+    for (const [key, expected] of Object.entries(results)) {
+      if (boolean(row[key]) !== expected) throw new Error('release metadata verdict does not reconcile');
+    }
+    return { application_functions_executed:false,customer_rows_read:false,mutations_executed:false,
+      migrations,functions,tables,policies,guards,recovery,...results };
+  }
   if (name === 'recruiting_links') {
     const row = object(value);
     for (const key of ['application_functions_executed','identity_rows_read','application_rows_read','auth_claims_changed']) {

@@ -39,12 +39,25 @@ describe("parseTeamProfiles: a read that cannot be trusted is refused", () => {
 });
 
 describe("the words on a row", () => {
-  it("Ethos: back is the good word; a licensed person with nothing on file is amber and says 'on file'; someone unlicensed says nothing", () => {
+  it("Ethos: back is the good word; requested but not back is its own amber state; a licensed person with nothing on file says 'on file'; someone unlicensed says nothing", () => {
     expect(ethosWords(teamProfile({ ethos_back: true }), "licensed")).toEqual({ text: "Ethos back", tone: "good" });
     expect(ethosWords(teamProfile({ ethos_back: true }), "unlicensed")).toEqual({ text: "Ethos back", tone: "good" });
+    expect(ethosWords(teamProfile({ ethos_requested: true }), "licensed")).toEqual({ text: "Ethos requested, not back yet", tone: "warn" });
+    expect(ethosWords(teamProfile({ ethos_requested: true }), "unlicensed")).toEqual({ text: "Ethos requested, not back yet", tone: "warn" });
     expect(ethosWords(teamProfile(), "licensed")).toEqual({ text: "No Ethos on file", tone: "warn" });
     expect(ethosWords(teamProfile(), "unlicensed")).toBeNull();
     expect(ethosWords(null, "licensed")).toBeNull();
+  });
+
+  it("the parser keeps every Ethos source the database can name, and a person who is back always counts as requested", () => {
+    const out = parseTeamProfiles([
+      { agent_id: "a", ethos_back: true, ethos_source: "mgn_partner_id", ethos_partner_id: "337551" },
+      { agent_id: "b", ethos_back: true, ethos_source: "sold_ethos" },
+      { agent_id: "c", ethos_back: false, ethos_requested: true, ethos_requested_on: "2026-10-12" },
+    ]);
+    expect(out.a).toMatchObject({ ethos_source: "mgn_partner_id", ethos_partner_id: "337551", ethos_requested: true });
+    expect(out.b).toMatchObject({ ethos_source: "sold_ethos", ethos_requested: true });
+    expect(out.c).toMatchObject({ ethos_back: false, ethos_requested: true, ethos_requested_on: "2026-10-12" });
   });
 
   it("carriers: active names with Ethos first, pending names when none is active, 'none on file' only for the licensed", () => {

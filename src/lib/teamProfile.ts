@@ -13,7 +13,13 @@
  */
 import { usdOrNull } from "@/lib/teamRoster";
 
-export type EthosSource = "ethos_hierarchy" | "ethos_portal" | "review_mark";
+/**
+ * Where "Ethos back" was read from, strongest first: the Ethos hierarchy export, the Ethos portal pull, an Ethos
+ * partner id on the MGN contracting sheet, Ethos business they have sold (you cannot sell on a contract you lack),
+ * or a hand mark in the contracting review. One database function (fn_agent_ethos_evidence) answers for every
+ * My Team read, after 2026-11-27 measured 50 "back" under the first three sources alone against 86 across all of them.
+ */
+export type EthosSource = "ethos_hierarchy" | "ethos_portal" | "mgn_partner_id" | "sold_ethos" | "review_mark";
 
 export interface TeamProfileCarrier {
   carrier: string;
@@ -57,6 +63,12 @@ export interface TeamProfile {
   carriers: TeamProfileCarrier[];
   carriers_active: number;
   sold_carriers: TeamProfileSold[];
+  /** An Ethos contracting request is on file (an approval, or a row on the MGN sheet); true whenever ethos_back is. */
+  ethos_requested: boolean;
+  /** When the request was approved or the sheet row synced, YYYY-MM-DD; null when unknown. */
+  ethos_requested_on: string | null;
+  /** The Ethos partner id from the MGN sheet or roster, when one is on file. */
+  ethos_partner_id: string | null;
 }
 
 export type TeamProfiles = Record<string, TeamProfile>;
@@ -64,7 +76,7 @@ export type TeamProfiles = Record<string, TeamProfile>;
 const str = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v : null);
 const bool = (v: unknown): boolean => v === true;
 const numOf = (v: unknown): number => { const n = Number(v ?? 0); return Number.isFinite(n) ? n : 0; };
-const ETHOS_SOURCES: ReadonlySet<string> = new Set(["ethos_hierarchy", "ethos_portal", "review_mark"]);
+const ETHOS_SOURCES: ReadonlySet<string> = new Set(["ethos_hierarchy", "ethos_portal", "mgn_partner_id", "sold_ethos", "review_mark"]);
 
 /**
  * The RPC rows keyed by agent id. A read that is not a list, or a row without an agent id, throws: a failed or
@@ -110,6 +122,9 @@ export function parseTeamProfiles(data: unknown): TeamProfiles {
         const carrier = str(x.carrier);
         return carrier ? [{ carrier, deals: Math.max(0, Math.round(numOf(x.deals))), alp: numOf(x.alp), last_posted: str(x.last_posted) }] : [];
       }) : [],
+      ethos_requested: bool(r.ethos_requested) || bool(r.ethos_back),
+      ethos_requested_on: str(r.ethos_requested_on),
+      ethos_partner_id: str(r.ethos_partner_id),
     };
   }
   return out;
@@ -121,6 +136,8 @@ export function parseTeamProfiles(data: unknown): TeamProfiles {
 export const ETHOS_SOURCE_WORDS: Record<EthosSource, string> = {
   ethos_hierarchy: "on the Ethos hierarchy export",
   ethos_portal: "on the Ethos portal",
+  mgn_partner_id: "Ethos partner id on the MGN contracting sheet",
+  sold_ethos: "has sold Ethos business",
   review_mark: "marked received in the contracting review",
 };
 
@@ -136,13 +153,15 @@ export function shortDay(dateKey: string | null | undefined, todayKey?: string):
 export interface ProfileWord { text: string; tone: "good" | "warn" | null }
 
 /**
- * The Ethos contract on one row. Back is the fact Sam asked for first. A licensed person with nothing on file is
- * the amber one; someone still getting licensed cannot have it yet, so their row says nothing. null while the
- * facts have not loaded.
+ * The Ethos contract on one row. Back is the fact Sam asked for first. Requested but not back (an approval or a
+ * sheet row, nothing from Ethos yet) is its own amber state, never dressed as either. A licensed person with
+ * nothing on file at all is the other amber one; someone still getting licensed cannot have it yet, so their row
+ * says nothing. null while the facts have not loaded.
  */
 export function ethosWords(profile: TeamProfile | null | undefined, licenseStatus: string | null | undefined): ProfileWord | null {
   if (!profile) return null;
   if (profile.ethos_back) return { text: "Ethos back", tone: "good" };
+  if (profile.ethos_requested) return { text: "Ethos requested, not back yet", tone: "warn" };
   if (licenseStatus === "licensed") return { text: "No Ethos on file", tone: "warn" };
   return null;
 }

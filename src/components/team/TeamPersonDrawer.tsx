@@ -69,9 +69,11 @@ export interface TeamPersonManage {
 function ProfileDetails({ profile, row }: { profile: TeamProfile; row: RosterRow }) {
   const licensed = row.license_status === "licensed";
   const since = shortDay(profile.ethos_since);
+  const requestedOn = shortDay(profile.ethos_requested_on);
   const ethosLine = profile.ethos_back
-    ? `Back${profile.ethos_source ? `, ${ETHOS_SOURCE_WORDS[profile.ethos_source]}` : ""}${since ? ` (${since})` : ""}`
-    : licensed ? "Nothing on file says it is back" : "Not licensed yet";
+    ? `Back${profile.ethos_source ? `, ${ETHOS_SOURCE_WORDS[profile.ethos_source]}` : ""}${since ? ` (${since})` : ""}${profile.ethos_partner_id ? `, partner id ${profile.ethos_partner_id}` : ""}`
+    : profile.ethos_requested ? `Requested${requestedOn ? ` ${requestedOn}` : ""}, not back yet`
+    : licensed ? "Nothing on file says it is back or requested" : "Not licensed yet";
   const ethosMoney = profile.ethos_back && (profile.ethos_issued > 0 || profile.ethos_inforce > 0)
     ? `Issued ${usdOrNull(profile.ethos_issued) ?? "$0"}, in force ${usdOrNull(profile.ethos_inforce) ?? "$0"}${profile.ethos_chargeback > 0 ? `, chargebacks ${usdOrNull(profile.ethos_chargeback)}` : ""}`
     : null;
@@ -85,7 +87,7 @@ function ProfileDetails({ profile, row }: { profile: TeamProfile; row: RosterRow
     <dl className="grid grid-cols-1 gap-x-4 gap-y-3 text-[13px] sm:grid-cols-2">
       <div className="sm:col-span-2">
         <dt className="text-muted-foreground">Ethos contract</dt>
-        <dd className={cn("text-[15px] font-semibold", profile.ethos_back ? "text-tone-good" : licensed ? "text-tone-warm" : "text-foreground")}>{ethosLine}</dd>
+        <dd className={cn("text-[15px] font-semibold", profile.ethos_back ? "text-tone-good" : profile.ethos_requested || licensed ? "text-tone-warm" : "text-foreground")}>{ethosLine}</dd>
         {ethosMoney ? <dd className="text-[13px] text-muted-foreground">{ethosMoney}</dd> : null}
       </div>
       <div className="sm:col-span-2">

@@ -3533,6 +3533,18 @@
         "raw": ""
       }
     ],
+    "fn_agent_ethos_evidence": [
+      {
+        "all": [
+          "p_agent_id"
+        ],
+        "required": [
+          "p_agent_id"
+        ],
+        "unnamed": false,
+        "raw": "p_agent_id uuid"
+      }
+    ],
     "fn_agent_interview_state": [
       {
         "all": [

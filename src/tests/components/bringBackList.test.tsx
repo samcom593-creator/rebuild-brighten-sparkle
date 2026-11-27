@@ -52,7 +52,8 @@ const row = (o: Record<string, unknown>) => ({
   person_key: "p", source: "agent", agent_id: "p", full_name: "Pat Person", phone: "+16025550111", email: "pat@example.test", home_state: "WI",
   license: "licensed", standing: "hidden", fired: false, let_go_reason: null, can_restore: true, manager_name: "Mia Manager", ethos_back: false,
   ethos_source: null, ethos_since: null, ethos_issued: 0, ethos_inforce: 0, carriers: [], carriers_active: 0, deals: 0, lifetime_ap: 0, last_deal: null,
-  last_sign_in_at: null, instagram: null, last_call_outcome: null, last_call_at: null, last_active_on: null, comp_level: null, ...o,
+  last_sign_in_at: null, instagram: null, last_call_outcome: null, last_call_at: null, last_active_on: null, comp_level: null,
+  ethos_requested: false, ethos_requested_on: null, ...o,
 });
 const ROWS = [
   row({ person_key: "e1", source: "ethos_person", agent_id: null, full_name: "Eve Ethos", standing: "no_account", can_restore: false, ethos_back: true, ethos_source: "ethos_hierarchy", ethos_issued: 17970.84, ethos_inforce: 15681.84, carriers: [{ carrier: "Ethos", status: "active", source: "ethos_hierarchy", as_of: "2026-11-19", active: true }], carriers_active: 1, home_state: null, comp_level: "L4" }),

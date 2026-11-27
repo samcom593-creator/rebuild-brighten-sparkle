@@ -118,9 +118,18 @@ describe("person drawer", () => {
     render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false, retryDelay: 0 } } })}><MemoryRouter>
       <TeamPersonDrawer open onOpenChange={vi.fn()} row={rosterRow({ agent_id: "a1" })} onOpenContracting={vi.fn()} profile={teamProfile({ agent_id: "a1" })} profileState="ready" />
     </MemoryRouter></QueryClientProvider>);
-    expect(screen.getByText("Nothing on file says it is back")).toBeInTheDocument();
+    expect(screen.getByText("Nothing on file says it is back or requested")).toBeInTheDocument();
     expect(screen.getByText("None on file")).toBeInTheDocument();
     expect(screen.getByText("Nothing sold yet")).toBeInTheDocument();
+  });
+
+  it("a person whose Ethos was requested but has not come back reads exactly that, with the request date", () => {
+    fb = fakeBackend([agent({ id: "a1" })]);
+    backend.current = fb;
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false, retryDelay: 0 } } })}><MemoryRouter>
+      <TeamPersonDrawer open onOpenChange={vi.fn()} row={rosterRow({ agent_id: "a1" })} onOpenContracting={vi.fn()} profile={teamProfile({ agent_id: "a1", ethos_requested: true, ethos_requested_on: "2026-10-12" })} profileState="ready" />
+    </MemoryRouter></QueryClientProvider>);
+    expect(screen.getByText("Requested Oct 12, not back yet")).toBeInTheDocument();
   });
 
   it("a failed profile read says so in the card instead of showing blank facts", () => {

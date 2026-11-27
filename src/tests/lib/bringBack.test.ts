@@ -15,7 +15,7 @@ const person = (o: Partial<BringBackPerson> = {}): BringBackPerson => ({
   license: "licensed", standing: "hidden", fired: false, let_go_reason: null, can_restore: true, manager_name: "Mia Manager",
   ethos_back: false, ethos_source: null, ethos_since: null, ethos_issued: 0, ethos_inforce: 0, carriers: [], carriers_active: 0,
   deals: 0, lifetime_ap: 0, last_deal: null, last_sign_in_at: null, instagram: null, last_call_outcome: null, last_call_at: null,
-  last_active_on: null, comp_level: null, ...o,
+  last_active_on: null, comp_level: null, ethos_requested: false, ethos_requested_on: null, ...o,
 });
 const noFilters = { state: null, includeLetGo: false, search: "" };
 
@@ -93,6 +93,7 @@ describe("words", () => {
     expect(ethosLine(ethosNoAccount)).toBe("Ethos back, $18.0K issued, $15.7K in force");
     expect(ethosLine(letGo)).toBe("Ethos back, nothing written on it yet");
     expect(ethosLine(hiddenSeller)).toBeNull();
+    expect(ethosLine(person({ ethos_requested: true }))).toBe("Ethos requested, not back yet");
     expect(carriersLine(hiddenSeller)).toBe("Contracts: Aflac");
     expect(carriersLine(person({ carriers: ["Transamerica", "Ethos", "Aflac", "Combined", "Foresters"].map((c) => ({ carrier: c, status: "active", source: "agentlink", as_of: null, active: true })) }))).toBe("Contracts: Ethos, Aflac, Combined, Foresters +1");
     expect(carriersLine(inactiveLicensed)).toBeNull();

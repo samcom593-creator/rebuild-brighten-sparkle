@@ -48,6 +48,9 @@ export interface BringBackPerson {
   /** The latest of their last deal, last sign-in and last logged call, YYYY-MM-DD; null when nothing is on file. */
   last_active_on: string | null;
   comp_level: string | null;
+  /** An Ethos contracting request is on file (approval or MGN sheet row); true whenever ethos_back is. */
+  ethos_requested: boolean;
+  ethos_requested_on: string | null;
 }
 
 const STANDINGS: ReadonlySet<string> = new Set(["no_account", "sheet_only", "hidden", "inactive", "excluded", "let_go"]);
@@ -98,6 +101,8 @@ export function parseBringBack(data: unknown): BringBackPerson[] {
       last_call_at: str(r.last_call_at),
       last_active_on: str(r.last_active_on),
       comp_level: str(r.comp_level),
+      ethos_requested: r.ethos_requested === true || r.ethos_back === true,
+      ethos_requested_on: str(r.ethos_requested_on),
     };
   });
 }
@@ -201,9 +206,9 @@ export function bringBackCounts(people: readonly BringBackPerson[], f: BringBack
 
 // ── Words ─────────────────────────────────────────────────────────────────
 
-/** "Ethos back, $17.9K issued, $15.6K in force" / "Ethos back, nothing written yet" / null. */
+/** "Ethos back, $17.9K issued, $15.6K in force" / "Ethos back, nothing written yet" / "Ethos requested, not back yet" / null. */
 export function ethosLine(p: BringBackPerson): string | null {
-  if (!p.ethos_back) return null;
+  if (!p.ethos_back) return p.ethos_requested ? "Ethos requested, not back yet" : null;
   const issued = usdOrNull(p.ethos_issued);
   const inforce = usdOrNull(p.ethos_inforce);
   if (!issued && !inforce) return "Ethos back, nothing written on it yet";

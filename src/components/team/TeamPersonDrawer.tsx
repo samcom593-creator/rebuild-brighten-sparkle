@@ -3,14 +3,15 @@ import { ArrowUpRight, Mail, Phone, PhoneOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { contactLinkProps, phoneHref } from "@/lib/phone";
-import { daysSince, plural, usdOrNull, type RosterRow } from "@/lib/teamRoster";
+import { daysSince, isSyncOnly, plural, usdOrNull, type RosterRow } from "@/lib/teamRoster";
 import { useContractReview } from "@/hooks/useContractReview";
+import { useFirstStepLinks } from "@/hooks/useFirstStepLinks";
 import { accessSummary, type PersonFacts, type StageKey } from "@/lib/teamStage";
 import type { TeamStage } from "@/lib/teamList";
 import { OnboardingProgress } from "@/components/team/OnboardingProgress";
 import { StageSelect } from "@/components/team/StageBadge";
 import { WorkdaysEditor } from "@/components/team/WorkdaysEditor";
-import { TeamStageMark } from "@/components/team/TeamList";
+import { SendLinksMenu, TeamStageMark } from "@/components/team/TeamList";
 import { RecruitingSystemPanel } from "@/components/team/RecruitingSystemPanel";
 import { CarrierContractsPanel } from "@/components/team/CarrierContractsPanel";
 import { AgentCarrierBookPanel } from "@/components/team/AgentCarrierBookPanel";
@@ -47,6 +48,9 @@ export interface TeamPersonManage {
   setStage: (stage: StageKey) => void;
   setWorkdays: (weekdays: number[], effectiveFrom?: string) => Promise<boolean>;
   onCheckIn?: () => void;
+  /** Send links > Email the first steps: re-queue and send the hired first-steps email to this person. */
+  onEmailFirstSteps?: () => void;
+  emailingFirstSteps?: boolean;
   onSendPortalLogin?: () => void;
   onEditLogin?: () => void;
   onViewApplication?: () => void;
@@ -71,6 +75,8 @@ export function TeamPersonDrawer({ open, onOpenChange, row, onOpenContracting, m
   stage?: TeamStage;
 }) {
   const review = useContractReview(open);
+  // The same read every row's Send links menu makes, so the card and the row send the same links.
+  const firstStepLinks = useFirstStepLinks();
   const name = row?.full_name ?? "Name not on file";
   const phone = row?.phone ?? null;
   const email = row?.email ?? null;
@@ -103,6 +109,17 @@ export function TeamPersonDrawer({ open, onOpenChange, row, onOpenContracting, m
             )}
             {email ? <Button asChild size="sm" variant="outline" className="h-10 gap-1.5"><a href={`mailto:${email}`}><Mail className="h-4 w-4" aria-hidden />Email</a></Button> : null}
             {agentId ? <Button asChild size="sm" variant="outline" className="h-10 gap-1.5"><Link to={`/dashboard/profile?agentId=${agentId}`}><ArrowUpRight className="h-4 w-4" aria-hidden />Profile</Link></Button> : null}
+            {row && !isSyncOnly(row) ? (
+              <SendLinksMenu
+                row={row}
+                name={name}
+                links={firstStepLinks.data}
+                linksFailed={firstStepLinks.isError}
+                onEmailFirstSteps={manage?.onEmailFirstSteps ? () => manage.onEmailFirstSteps?.() : undefined}
+                emailing={manage?.emailingFirstSteps ?? false}
+                className="text-sm"
+              />
+            ) : null}
           </div>
 
           {manage ? (

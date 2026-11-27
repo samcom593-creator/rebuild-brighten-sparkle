@@ -11,6 +11,10 @@
  *   teamStage()       the step as the row shows it: the word, its tone, how far along the bar, and one
  *                     plain fact beside it ("Passed the test", "On the team 23 days", "Last sale 45 days ago").
  *   teamNextStep()    the one thing to do with a person: Call, or Open their card.
+ *   dropOffRisk()     how likely a person is to disappear: how long since anyone talked to them (the check-in
+ *                     stamp, applications.last_contacted_at), weighted by their step. Everyone and the
+ *                     "Talk to first" list put the highest risk first (2026-11-26, Sam: "prevent drop-off ...
+ *                     rank people based on how recently I talked to them").
  *   TEAM_LISTS        every list the page can show, each with one predicate; teamListRows() draws a list
  *                     and teamListCounts() counts the same predicate, so a number always equals its list.
  *   foldMergedTwins() a merged duplicate's production joins its canonical person, and the duplicate row
@@ -177,6 +181,85 @@ export function teamStage(member: TeamMember, todayKey: string): TeamStage {
   }
 }
 
+// ── Drop-off risk ─────────────────────────────────────────────────────────
+
+export type DropOffLevel = "high" | "medium" | "low" | "none";
+
+export interface DropOffRisk {
+  /** Higher is worse. 0 for nobody at risk; the sort key of Everyone and the Talk to first list. */
+  score: number;
+  level: DropOffLevel;
+  /** Whole days since anyone talked to them; null when nobody ever has (or the stamp is unreadable). */
+  days: number | null;
+  /** A few plain words for the row: "Never talked to, no sale yet", "Last talked 14 days ago, not licensed yet". */
+  why: string;
+}
+
+/**
+ * Silence is counted in days up to this cap, so three months and three years of silence weigh the same;
+ * never having talked to someone weighs one day more than the cap, so it always comes first.
+ */
+const SILENCE_CAP_DAYS = 30;
+
+/**
+ * How much a day of silence counts on each step. A new agent nobody talks to is the one who disappears, so
+ * Getting licensed and No sale yet weigh most; Gone quiet is high; Selling weighs least (at most "low").
+ */
+const DROP_OFF_WEIGHT: Record<TeamStepKey, number> = { licensing: 3, no_sale: 3, quiet: 2, selling: 0.5 };
+
+/** A seller whose last sale posted within this many days is not at risk: their sales are the conversation. */
+const RECENT_SALE_DAYS = 14;
+
+/** Score bands. At weight 3: 7 days of silence is medium, 14 days (or never) is high. At weight 2: 10 and 21. */
+const HIGH_AT = 42;
+const MEDIUM_AT = 20;
+
+/** The level's tone: high is the act-now red (like Gone quiet), medium is the nudge amber, the rest carry no colour. */
+export function dropOffTone(level: DropOffLevel): Tone {
+  return level === "high" ? "hot" : level === "medium" ? "warm" : "slate";
+}
+
+const STEP_WORDS: Record<TeamStepKey, string> = { licensing: "not licensed yet", no_sale: "no sale yet", quiet: "no sale in 30 days", selling: "selling" };
+
+/**
+ * How likely a person is to drop off, from how long since anyone talked to them (row.last_contacted_at, the
+ * check-in stamp) weighted by their step. score = weight x days of silence (capped at 30; never talked to
+ * counts as 31, the worst). `todayKey` is the America/Phoenix business day (YYYY-MM-DD).
+ *
+ * Nobody off the team is at risk here (they are not worked from this list), and a seller with a sale in the
+ * last 14 days is "none": they are talking to you with their numbers. A stamp dated after today reads as today.
+ */
+export function dropOffRisk(member: TeamMember, todayKey: string, opts: { isMe?: boolean } = {}): DropOffRisk {
+  const { row } = member;
+  if (isSyncOnly(row)) return { score: 0, level: "none", days: null, why: "Not a person" };
+  if (!onTeam(row)) return { score: 0, level: "none", days: null, why: "Not on the team" };
+  // Nobody checks in with themselves: the viewer's own row is never at risk and never jumps the list.
+  if (opts.isMe) return { score: 0, level: "none", days: null, why: "This is you" };
+  const raw = daysBetween(row.last_contacted_at, todayKey);
+  const days = raw === null ? null : Math.max(0, raw);
+  const step = teamStep(row);
+  const talk = days === null ? "Never talked to" : `Last talked ${daysAgoWords(days)}`;
+  if (step === "selling") {
+    const saleDays = daysBetween(row.last_posted_date, todayKey);
+    if (saleDays !== null && saleDays <= RECENT_SALE_DAYS) return { score: 0, level: "none", days, why: "Selling" };
+    const silence = days === null ? SILENCE_CAP_DAYS + 1 : Math.min(days, SILENCE_CAP_DAYS);
+    const score = DROP_OFF_WEIGHT.selling * silence;
+    const why = saleDays === null ? `${talk}, selling` : `${talk}, last sale ${daysAgoWords(saleDays)}`;
+    return { score, level: score > 0 ? "low" : "none", days, why };
+  }
+  const silence = days === null ? SILENCE_CAP_DAYS + 1 : Math.min(days, SILENCE_CAP_DAYS);
+  const score = DROP_OFF_WEIGHT[step] * silence;
+  const level: DropOffLevel = score >= HIGH_AT ? "high" : score >= MEDIUM_AT ? "medium" : score > 0 ? "low" : "none";
+  return { score, level, days, why: `${talk}, ${STEP_WORDS[step]}` };
+}
+
+/** "Last talked 14 days ago" or "Never talked to", for a row's facts line; null for someone off the team. */
+export function lastTalkedWords(member: TeamMember, todayKey: string): string | null {
+  if (!onTeam(member.row)) return null;
+  const days = daysBetween(member.row.last_contacted_at, todayKey);
+  return days === null ? "Never talked to" : `Last talked ${daysAgoWords(Math.max(0, days))}`;
+}
+
 // ── The one next action ───────────────────────────────────────────────────
 
 export interface TeamNextStep {
@@ -208,7 +291,7 @@ export function teamNextStep(member: TeamMember, opts: { isMe?: boolean } = {}):
 // ── Lists ─────────────────────────────────────────────────────────────────
 
 export type TeamListKey =
-  | "everyone"
+  | "everyone" | "drop_off"
   | "no_sale" | "quiet" | "licensing" | "selling"
   | "new_hires" | "free_leads" | "free_leads_close"
   | "no_login" | "stage_unset" | "no_schedule"
@@ -229,14 +312,20 @@ export interface TeamListDef {
   admitsSyncOnly: boolean;
   /** Needs the team facts (training stage, work days, login), which only admins, managers and the support team read. */
   needsFacts?: boolean;
-  match: (m: TeamMember) => boolean;
+  /** `todayKey` is the America/Phoenix business day; only the lists that count days read it. */
+  /** `myAgentId` is the viewer's own agent id, so a risk list never counts the viewer's own row. */
+  match: (m: TeamMember, todayKey: string, myAgentId?: string | null) => boolean;
 }
 
 const stepIs = (key: TeamStepKey) => (m: TeamMember) => onTeam(m.row) && teamStep(m.row) === key;
 
+const atRisk = (level: DropOffLevel) => level === "high" || level === "medium";
+
 export const TEAM_LISTS: readonly TeamListDef[] = [
-  { key: "everyone", label: "Everyone", rule: "Everyone active on the team.", order: "who needs you first", admitsSyncOnly: false,
+  { key: "everyone", label: "Everyone", rule: "Everyone active on the team.", order: "highest drop-off risk first", admitsSyncOnly: false,
     match: (m) => onTeam(m.row) },
+  { key: "drop_off", label: "Talk to first", rule: "On the team and at high or medium risk of dropping off: too long since anyone talked to them for where they are.", order: "highest drop-off risk first", admitsSyncOnly: false,
+    match: (m, todayKey, myAgentId) => onTeam(m.row) && atRisk(dropOffRisk(m, todayKey, { isMe: myAgentId != null && m.row.agent_id === myAgentId }).level) },
   { key: "no_sale", label: "No sale yet", rule: "Licensed and on the team, with no sale on record yet.", order: "newest first", admitsSyncOnly: false,
     match: stepIs("no_sale") },
   { key: "quiet", label: "Gone quiet", rule: "Sold before, but no sale in the last 30 days.", order: "most recent sale first", admitsSyncOnly: false,
@@ -264,12 +353,16 @@ export const TEAM_LISTS: readonly TeamListDef[] = [
     match: (m) => isSyncOnly(m.row) },
 ];
 
-/** The four numbers on top, in the order of the list under them: who needs you first. */
-export const TEAM_TILE_LISTS: readonly TeamListKey[] = ["no_sale", "quiet", "licensing", "selling"];
+/**
+ * The four numbers on top (the scoreboard is four across at every width): who to talk to first, then three of the
+ * four steps. Getting licensed moved to More lists to make room (2026-11-26); the step lists stay exact and disjoint
+ * in TEAM_STEPS, which the How it works panel still explains in full.
+ */
+export const TEAM_TILE_LISTS: readonly TeamListKey[] = ["drop_off", "no_sale", "quiet", "selling"];
 
 /** The lists in the More lists menu. */
 export const TEAM_MORE_LISTS: readonly TeamListKey[] = [
-  "new_hires", "free_leads", "free_leads_close", "no_login", "stage_unset", "no_schedule", "not_active", "sync_only",
+  "licensing", "new_hires", "free_leads", "free_leads_close", "no_login", "stage_unset", "no_schedule", "not_active", "sync_only",
 ];
 
 export function teamListDef(key: TeamListKey): TeamListDef {
@@ -303,18 +396,27 @@ function compareWithinStep(step: TeamStepKey, a: TeamMember, b: TeamMember): num
   }
 }
 
-/** Everyone in the order to work them. Off-team rows (placeholder, not active) come after, A to Z. */
-export function compareTeamMembers(a: TeamMember, b: TeamMember): number {
-  const aOn = onTeam(a.row);
-  const bOn = onTeam(b.row);
-  if (aOn !== bOn) return aOn ? -1 : 1;
-  if (!aOn) return byName(a, b);
-  const sa = teamStep(a.row);
-  const sb = teamStep(b.row);
-  return STEP_ORDER[sa] - STEP_ORDER[sb] || compareWithinStep(sa, a, b);
+/**
+ * Everyone in the order to work them: the highest drop-off risk first (the longest since anyone talked to them,
+ * weighted by step), then the step order, then the order within the step. Off-team rows (placeholder, not
+ * active) come after, A to Z. `todayKey` is the America/Phoenix business day the silence is counted to.
+ */
+export function compareTeamMembers(todayKey: string, myAgentId: string | null = null): (a: TeamMember, b: TeamMember) => number {
+  const isMe = (m: TeamMember) => myAgentId !== null && m.row.agent_id === myAgentId;
+  return (a, b) => {
+    const aOn = onTeam(a.row);
+    const bOn = onTeam(b.row);
+    if (aOn !== bOn) return aOn ? -1 : 1;
+    if (!aOn) return byName(a, b);
+    const risk = dropOffRisk(b, todayKey, { isMe: isMe(b) }).score - dropOffRisk(a, todayKey, { isMe: isMe(a) }).score;
+    if (risk !== 0) return risk;
+    const sa = teamStep(a.row);
+    const sb = teamStep(b.row);
+    return STEP_ORDER[sa] - STEP_ORDER[sb] || compareWithinStep(sa, a, b);
+  };
 }
 
-function compareForList(key: TeamListKey): (a: TeamMember, b: TeamMember) => number {
+function compareForList(key: TeamListKey, todayKey: string, myAgentId: string | null): (a: TeamMember, b: TeamMember) => number {
   switch (key) {
     case "new_hires":
       return (a, b) => tenure(a) - tenure(b) || byName(a, b);
@@ -326,24 +428,25 @@ function compareForList(key: TeamListKey): (a: TeamMember, b: TeamMember) => num
     case "sync_only":
       return byName;
     default:
-      return compareTeamMembers;
+      // Everyone, Talk to first and the step lists: risk first, then the step order (one step at a time inside a step list).
+      return compareTeamMembers(todayKey, myAgentId);
   }
 }
 
-/** The rows of one list, in its order. */
-export function teamListRows(members: readonly TeamMember[], key: TeamListKey): TeamMember[] {
+/** The rows of one list, in its order. `myAgentId` keeps the viewer's own row out of the drop-off ranking. */
+export function teamListRows(members: readonly TeamMember[], key: TeamListKey, todayKey: string, myAgentId: string | null = null): TeamMember[] {
   const def = teamListDef(key);
-  return members.filter(def.match).sort(compareForList(key));
+  return members.filter((m) => def.match(m, todayKey, myAgentId)).sort(compareForList(key, todayKey, myAgentId));
 }
 
 /**
  * Every list's count, from the same predicate that draws it. A list that needs the team facts is null (shown
  * as "—") until the facts have loaded, because a list nobody could check is unknown, never zero.
  */
-export function teamListCounts(members: readonly TeamMember[], opts: { factsReady: boolean }): Record<TeamListKey, number | null> {
+export function teamListCounts(members: readonly TeamMember[], opts: { factsReady: boolean; todayKey: string; myAgentId?: string | null }): Record<TeamListKey, number | null> {
   const out = {} as Record<TeamListKey, number | null>;
   for (const def of TEAM_LISTS) {
-    out[def.key] = def.needsFacts && !opts.factsReady ? null : members.filter(def.match).length;
+    out[def.key] = def.needsFacts && !opts.factsReady ? null : members.filter((m) => def.match(m, opts.todayKey, opts.myAgentId ?? null)).length;
   }
   return out;
 }

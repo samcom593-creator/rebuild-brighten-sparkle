@@ -7,18 +7,29 @@
 // stage dropdown, a work-days summary, a login line and a Work days button each, two folded panels, and
 // for agents a second roster with eleven groups, three dropdowns and an eight-column table.
 //
-// What it is now: four numbers that each open their list (No sale yet, Gone quiet, Getting licensed,
-// Selling, the four steps everyone on the team is on, so they add up to Everyone); Everyone and More lists;
-// a search; then one list in the order to work it. Every row is a person, their step as a coloured bar and
-// word with one plain fact, and one button: Call, or Open for the people who need nothing today. Tapping a
-// row opens their card, where stage, work days, login and production live. Every number and row comes from
-// src/lib/teamList.ts over the same loaded rows, so a number always equals the list it opens.
+// What it is now: four numbers that each open their list (Talk to first, No sale yet, Gone quiet, Selling);
+// Everyone and More lists; a search; then one list in the order to work it. Every row is a person, their step
+// as a coloured bar and word with one plain fact, how long since anyone talked to them, and the actions: Call,
+// Text and Talked for the people with a phone, Open for everyone else. Tapping a row opens their card, where
+// stage, work days, login and production live. Every number and row comes from src/lib/teamList.ts over the
+// same loaded rows, so a number always equals the list it opens.
+//
+// 2026-11-26 (Sam, voice note): "the goal is again to prevent drop-off ... add buttons, because we'll just
+// talk to them, and then add ranking based on how recently I talked to them." The order is now drop-off risk
+// first (src/lib/teamList.ts dropOffRisk), each row says when they were last talked to, and Talked writes the
+// check-in stamp the ranking reads, so a tap re-sorts the list.
+//
+// Same day, Sam: "make it easy for me to send over links such as the Discord link or anything like that."
+// Every on-team row and the person card carry Send links (SendLinksMenu): text the first-steps links, email
+// the hired first-steps email, or copy the text. The links come from src/hooks/useFirstStepLinks.ts and the
+// text from src/lib/firstStepsLinks.ts.
 import { useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
-  BadgeCheck, ChevronDown, ChevronRight, GraduationCap, ListFilter, Moon, Phone, RefreshCw, Search,
-  ShieldAlert, Target, TrendingUp, UserRound, Users,
+  BadgeCheck, Check, ChevronDown, ChevronRight, Copy, Hourglass, Link2, ListFilter, Mail, MessageSquare, Moon, Phone, RefreshCw,
+  Search, ShieldAlert, Target, TrendingUp, UserRound, Users,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -28,15 +39,17 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { GrowScoreboard, type ScoreTile } from "@/components/recruiting/GrowScoreboard";
 import { OverFiveKBadge } from "@/components/team/OverFiveKBadge";
 import { teamCarrierLine, useTeamCarrierSummary, type TeamCarrierStats } from "@/components/team/AgentCarrierBookPanel";
-import { contactLinkProps, formatPhoneDisplay, phoneHref } from "@/lib/phone";
+import { useFirstStepLinks } from "@/hooks/useFirstStepLinks";
+import { buildFirstStepsText, firstNameOf, firstStepsLinkLines, type FirstStepLinks } from "@/lib/firstStepsLinks";
+import { contactLinkProps, formatPhoneDisplay, isDialablePhone, phoneHref, smsHref } from "@/lib/phone";
 import { firstGrapheme } from "@/lib/personInitials";
-import { plural, usdOrNull } from "@/lib/teamRoster";
+import { plural, usdOrNull, type RosterRow } from "@/lib/teamRoster";
 import { TONE_CLASS, teamStepTone, type Tone } from "@/lib/tones";
 import { cn } from "@/lib/utils";
 import {
   TEAM_BAR_STEPS, TEAM_MORE_LISTS, TEAM_STEPS, TEAM_TILE_LISTS,
-  listAlp30, matchesTeamSearch, parseTeamList, teamListCounts, teamListDef, teamListRows, teamNextStep, teamStage,
-  trainingStageWords, type TeamListKey, type TeamMember, type TeamNextStep, type TeamStage,
+  dropOffRisk, dropOffTone, lastTalkedWords, listAlp30, matchesTeamSearch, onTeam, parseTeamList, teamListCounts, teamListDef,
+  teamListRows, teamNextStep, teamStage, trainingStageWords, type DropOffRisk, type TeamListKey, type TeamMember, type TeamStage,
 } from "@/lib/teamList";
 
 /** Rows shown before "Show more": a team fits, a big roster still renders at once on a phone. */
@@ -51,11 +64,14 @@ const chipClass = (active: boolean) => cn(
 );
 
 const TILE_LOOK: Record<string, Pick<ScoreTile, "hint" | "icon" | "emphasis">> = {
+  drop_off: { hint: "High or medium drop-off risk", icon: <Hourglass />, emphasis: true },
   no_sale: { hint: "Licensed, no sale yet", icon: <Target /> },
   quiet: { hint: "No sale in 30+ days", icon: <Moon />, emphasis: true },
-  licensing: { hint: "Not licensed yet", icon: <GraduationCap /> },
   selling: { hint: "Sold in the last 30 days", icon: <TrendingUp /> },
 };
+
+/** A tile's tone: the step's own, or the act-now red for the people to talk to first. */
+const tileTone = (key: TeamListKey): Tone => (key === "drop_off" ? dropOffTone("high") : teamStepTone(key));
 
 const people = (n: number) => plural(n, "person", "people");
 
@@ -109,13 +125,32 @@ export interface TeamListProps {
   emptyAction?: ReactNode;
   /** The page's less frequent actions (a More menu), at the end of the list's controls. */
   pageActions?: ReactNode;
+  /**
+   * Mark a person talked to today: writes the check-in stamp the drop-off ranking reads (the same write as the
+   * card's "Mark checked in"). Absent for a viewer who may not write it; their rows offer Call and Text only.
+   */
+  onMarkTalked?: (agentId: string) => void;
+  /** Why Talked is off for this person ("No application on file"), or null when it can be pressed. */
+  markTalkedBlocked?: (agentId: string) => string | null;
+  /** The person whose Talked is saving right now, so a double tap cannot write twice. */
+  markingTalkedId?: string | null;
+  /**
+   * Re-queue and send the hired first-steps email to this person (Send links > Email the first steps). Absent for a
+   * viewer who may not; their menu offers Text and Copy only.
+   */
+  onEmailFirstSteps?: (agentId: string) => void;
+  /** The person whose first-steps email is being sent right now. */
+  emailingFirstStepsId?: string | null;
 }
 
 export function TeamList({
   members, status, error, staleSince, fetching = false, onRetry, factsState, onRetryFacts, todayKey, myAgentId,
-  showUpline, selectedId, onOpenPerson, emptyAction, pageActions,
+  showUpline, selectedId, onOpenPerson, emptyAction, pageActions, onMarkTalked, markTalkedBlocked, markingTalkedId = null,
+  onEmailFirstSteps, emailingFirstStepsId = null,
 }: TeamListProps) {
   const [params, setParams] = useSearchParams();
+  // One read for every row's Send links menu; the person card reads the same key, so the two cannot disagree.
+  const firstStepLinks = useFirstStepLinks();
   const requested = parseTeamList(params.get("list"));
   const factsReady = factsState === "ready";
   // A list built on the team facts is not offered to someone who cannot read them.
@@ -127,8 +162,8 @@ export function TeamList({
   const carrier = useTeamCarrierSummary();
 
   const searched = useMemo(() => members.filter((m) => matchesTeamSearch(m, search)), [members, search]);
-  const counts = useMemo(() => teamListCounts(searched, { factsReady }), [searched, factsReady]);
-  const visible = useMemo(() => teamListRows(searched, list), [searched, list]);
+  const counts = useMemo(() => teamListCounts(searched, { factsReady, todayKey, myAgentId }), [searched, factsReady, todayKey, myAgentId]);
+  const visible = useMemo(() => teamListRows(searched, list, todayKey, myAgentId), [searched, list, todayKey, myAgentId]);
   const notShown = Math.max(0, visible.length - shown);
 
   const setParam = (key: string, value: string | null) => {
@@ -157,7 +192,7 @@ export function TeamList({
     definition: teamListDef(key).rule,
     onSelect: () => pickTile(key),
     active: list === key,
-    tone: teamStepTone(key),
+    tone: tileTone(key),
     ...TILE_LOOK[key],
   }));
 
@@ -305,6 +340,13 @@ export function TeamList({
                   selected={selectedId === member.row.agent_id}
                   carrier={carrier.data?.[member.row.agent_id]}
                   onOpen={() => onOpenPerson(member.row.agent_id)}
+                  onMarkTalked={onMarkTalked}
+                  markTalkedBlocked={markTalkedBlocked}
+                  markingTalked={markingTalkedId === member.row.agent_id}
+                  links={firstStepLinks.data}
+                  linksFailed={firstStepLinks.isError}
+                  onEmailFirstSteps={onEmailFirstSteps}
+                  emailingFirstSteps={emailingFirstStepsId === member.row.agent_id}
                 />
               ))}
             </ul>
@@ -363,13 +405,16 @@ function MemberBubble({ name, tone, className }: { name: string | null; tone: To
 }
 
 /**
- * The facts after the step: training stage, whose team, the two flags worth knowing, and the phone. The number
- * is last and hidden on a phone, where the Call button dials it and the card shows it; "No phone on file" always
- * shows, because it is why a row offers no call.
+ * The facts after the step: when anyone last talked to them (the fact the order runs on), the carrier book,
+ * training stage, whose team, the two flags worth knowing, and the phone. The number is last and hidden on a
+ * phone, where the Call button dials it and the card shows it; "No phone on file" always shows, because it is
+ * why a row offers no call.
  */
-function Facts({ member, showUpline, myAgentId, id, carrier }: { member: TeamMember; showUpline: boolean; myAgentId: string | null; id: string; carrier?: TeamCarrierStats }) {
+function Facts({ member, todayKey, showUpline, myAgentId, id, carrier }: { member: TeamMember; todayKey: string; showUpline: boolean; myAgentId: string | null; id: string; carrier?: TeamCarrierStats }) {
   const { row, facts } = member;
   const parts: Array<{ key: string; text: string; className?: string; wideOnly?: boolean }> = [];
+  const talked = lastTalkedWords(member, todayKey);
+  if (talked) parts.push({ key: "talked", text: talked });
   const book = teamCarrierLine(carrier);
   if (book) parts.push({ key: "carrier", text: book.text, className: cn("font-medium", book.tone === "good" ? TONE_CLASS.good.text : book.tone === "bad" ? "text-red-700 dark:text-red-300" : book.tone === "warn" ? TONE_CLASS.warm.text : undefined) });
   const training = trainingStageWords(facts);
@@ -395,34 +440,169 @@ function Facts({ member, showUpline, myAgentId, id, carrier }: { member: TeamMem
 }
 
 /**
- * The button that does the row's next step. Call dials (a phone's dialer, or Google Voice on a computer)
- * and opens their card underneath, so what you set after the call is one tap away; dialing records nothing.
- * Open opens their card.
+ * Send links: text the first-steps links (training, Slack, Discord, the call with Sam), email the hired first-steps
+ * email, or copy the text. Shared by every row and the person card, so the two send the same thing. Each item says
+ * why it is off instead of doing nothing: no phone, not licensed, no email, or the links not loaded yet.
  */
-function NextAction({ member, step, name, onOpen, className }: { member: TeamMember; step: TeamNextStep; name: string; onOpen: () => void; className?: string }) {
-  const tel = step.kind === "call" ? phoneHref(member.row.phone) : null;
-  if (tel) {
+export function SendLinksMenu({ row, name, links, linksFailed, onEmailFirstSteps, emailing = false, compact = false, className }: {
+  row: Pick<RosterRow, "agent_id" | "full_name" | "phone" | "email" | "license_status">;
+  name: string;
+  /** From useFirstStepLinks(); undefined while loading or after a failed read. */
+  links: FirstStepLinks | undefined;
+  linksFailed: boolean;
+  /** Re-queue and send the hired first-steps email; absent when this viewer may not. */
+  onEmailFirstSteps?: (agentId: string) => void;
+  emailing?: boolean;
+  /** Icon-only below 640px, for a row that already holds Call, Text and Talked. */
+  compact?: boolean;
+  className?: string;
+}) {
+  const body = links ? buildFirstStepsText(firstNameOf(row.full_name), links) : null;
+  const linksBlock = linksFailed ? "The links did not load" : !links ? "Loading the links" : null;
+  const dialable = isDialablePhone(row.phone);
+  const sms = body && dialable ? smsHref(row.phone, body) : null;
+  const textBlock = linksBlock ?? (dialable ? null : "No phone on file");
+  const emailBlock = emailing ? "Sending" : row.license_status !== "licensed" ? "Licensed hires only" : !row.email ? "No email on file" : null;
+  const included = links ? firstStepsLinkLines(links).map((l) => l.key === "training" ? "training" : l.key === "call" ? "the call with Sam" : l.label).join(", ") : null;
+  const copy = async () => {
+    if (!body) return;
+    try {
+      if (!navigator.clipboard) throw new Error("no clipboard");
+      await navigator.clipboard.writeText(body);
+      toast.success("Links copied. Paste them into a text or DM.");
+    } catch {
+      toast.error("Copy blocked, use Text the links");
+    }
+  };
+  const item = "min-h-11 gap-2 text-[15px]";
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" className={cn(compact ? "h-11 w-11 px-0 sm:w-auto sm:px-3" : "h-10 gap-1.5", className)} aria-label={`Send links to ${name}`} title="Send links">
+          <Link2 className="h-4 w-4" aria-hidden /> <span className={compact ? "hidden sm:inline" : undefined}>{compact ? "Links" : "Send links"}</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-72">
+        <DropdownMenuLabel className="text-[13px] font-normal text-muted-foreground">
+          {included ? `Includes ${included}` : linksBlock}
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {sms && !textBlock ? (
+          <DropdownMenuItem asChild className={item}>
+            <a href={sms} {...contactLinkProps(sms)} aria-label={`Text the links to ${name}`}>
+              <MessageSquare className="h-4 w-4" aria-hidden /> Text the links
+            </a>
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem disabled className={item} title={textBlock ?? undefined} aria-label={`Text the links to ${name}`}>
+            <MessageSquare className="h-4 w-4" aria-hidden /> Text the links<span className="ml-auto text-[13px] text-muted-foreground">{textBlock}</span>
+          </DropdownMenuItem>
+        )}
+        {onEmailFirstSteps ? (
+          <DropdownMenuItem disabled={Boolean(emailBlock)} className={item} title={emailBlock ?? undefined} aria-label={`Email the first steps to ${name}`} onSelect={() => onEmailFirstSteps(row.agent_id)}>
+            <Mail className="h-4 w-4" aria-hidden /> Email the first steps{emailBlock ? <span className="ml-auto text-[13px] text-muted-foreground">{emailBlock}</span> : null}
+          </DropdownMenuItem>
+        ) : null}
+        <DropdownMenuItem disabled={Boolean(linksBlock)} className={item} title={linksBlock ?? undefined} aria-label={`Copy the links for ${name}`} onSelect={() => { void copy(); }}>
+          <Copy className="h-4 w-4" aria-hidden /> Copy links{linksBlock ? <span className="ml-auto text-[13px] text-muted-foreground">{linksBlock}</span> : null}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+/**
+ * The row's actions. Someone on the team with a phone that can be dialled gets Call (a phone's dialer, or Google
+ * Voice on a computer; it opens their card underneath so what you set after the call is one tap away), Text (the
+ * messages app, or Google Voice), and Talked, which stamps today as the day you spoke so they drop down the
+ * list. Call and Text record nothing. Everyone on the team but you also gets Send links. Everyone else (no
+ * phone, off the team, you) gets Open, which opens their card.
+ */
+function RowActions({ member, name, isMe, onOpen, onMarkTalked, markTalkedBlocked, markingTalked, links, linksFailed, onEmailFirstSteps, emailingFirstSteps, className }: {
+  member: TeamMember;
+  name: string;
+  isMe: boolean;
+  onOpen: () => void;
+  onMarkTalked?: (agentId: string) => void;
+  markTalkedBlocked?: (agentId: string) => string | null;
+  markingTalked: boolean;
+  links: FirstStepLinks | undefined;
+  linksFailed: boolean;
+  onEmailFirstSteps?: (agentId: string) => void;
+  emailingFirstSteps: boolean;
+  className?: string;
+}) {
+  const { row } = member;
+  const step = teamNextStep(member, { isMe });
+  const theirs = onTeam(row) && !isMe;
+  const call = theirs ? phoneHref(row.phone) : null;
+  const text = call ? smsHref(row.phone) : null;
+  const sendLinks = theirs ? (
+    <SendLinksMenu row={row} name={name} links={links} linksFailed={linksFailed} onEmailFirstSteps={onEmailFirstSteps} emailing={emailingFirstSteps} compact />
+  ) : null;
+  if (!call) {
     return (
-      <Button asChild variant="outline" className={className}>
-        <a href={tel} {...contactLinkProps(tel)} aria-label={`Call ${name}: ${step.why}`} title={`Call: ${step.why}`} onClick={onOpen}>
-          <Phone className="h-4 w-4" aria-hidden /> Call
-        </a>
-      </Button>
+      <span className={cn("flex items-center gap-1.5", className)}>
+        <Button type="button" variant="ghost" className="h-11 px-3" aria-label={`Open ${name}`} title={step.why} onClick={onOpen}>
+          Open <ChevronRight className="h-4 w-4" aria-hidden />
+        </Button>
+        {sendLinks}
+      </span>
     );
   }
+  const why = step.kind === "call" ? step.why : "catch up";
+  const blocked = markTalkedBlocked?.(row.agent_id) ?? null;
+  // Call, Text and Links are icon-only on a phone (the name is in the accessible name); Talked keeps its word everywhere.
+  const compact = "h-11 w-11 px-0 sm:w-auto sm:px-3";
   return (
-    <Button type="button" variant="ghost" className={className} aria-label={`Open ${name}`} title={step.why} onClick={onOpen}>
-      Open <ChevronRight className="h-4 w-4" aria-hidden />
-    </Button>
+    <span className={cn("flex items-center gap-1.5", className)}>
+      <Button asChild variant="outline" className={compact}>
+        <a href={call} {...contactLinkProps(call)} aria-label={`Call ${name}: ${why}`} title={`Call: ${why}`} onClick={onOpen}>
+          <Phone className="h-4 w-4" aria-hidden /> <span className="hidden sm:inline">Call</span>
+        </a>
+      </Button>
+      {text ? (
+        <Button asChild variant="outline" className={compact}>
+          <a href={text} {...contactLinkProps(text)} aria-label={`Text ${name}`} title="Text">
+            <MessageSquare className="h-4 w-4" aria-hidden /> <span className="hidden sm:inline">Text</span>
+          </a>
+        </Button>
+      ) : null}
+      {onMarkTalked ? (
+        <Button
+          type="button"
+          variant="outline"
+          className="h-11 px-3"
+          disabled={Boolean(blocked) || markingTalked}
+          aria-label={`Mark ${name} talked to`}
+          title={blocked ?? "Mark talked to today"}
+          onClick={() => onMarkTalked(row.agent_id)}
+        >
+          <Check className="h-4 w-4" aria-hidden /> {markingTalked ? "Saving" : "Talked"}
+        </Button>
+      ) : null}
+      {sendLinks}
+    </span>
+  );
+}
+
+/** The drop-off level as a small coloured word under the step, for high and medium only, with the reason beside it. */
+function DropOffWord({ risk }: { risk: DropOffRisk }) {
+  if (risk.level !== "high" && risk.level !== "medium") return null;
+  return (
+    <span className={cn("pl-14 text-[13px] font-semibold leading-5", TONE_CLASS[dropOffTone(risk.level)].text)} title={risk.why}>
+      {risk.level === "high" ? "High" : "Medium"} drop-off risk
+      <span className="sr-only">: {risk.why}</span>
+    </span>
   );
 }
 
 /**
  * One person on one row: who (the whole row opens their card), their step as a coloured bar and word with
- * one fact, the facts that matter, and one button that does the next step. From 1024px the step sits in its
- * own column so rows read like a table.
+ * one fact and their drop-off risk when it is high or medium, the facts that matter, and the actions. From
+ * 1024px the step sits in its own column so rows read like a table.
  */
-function MemberRow({ member, todayKey, isMe, showUpline, myAgentId, selected, onOpen, carrier }: {
+function MemberRow({ member, todayKey, isMe, showUpline, myAgentId, selected, onOpen, carrier, onMarkTalked, markTalkedBlocked, markingTalked, links, linksFailed, onEmailFirstSteps, emailingFirstSteps }: {
   member: TeamMember;
   carrier?: TeamCarrierStats;
   todayKey: string;
@@ -431,10 +611,17 @@ function MemberRow({ member, todayKey, isMe, showUpline, myAgentId, selected, on
   myAgentId: string | null;
   selected: boolean;
   onOpen: () => void;
+  onMarkTalked?: (agentId: string) => void;
+  markTalkedBlocked?: (agentId: string) => string | null;
+  markingTalked: boolean;
+  links: FirstStepLinks | undefined;
+  linksFailed: boolean;
+  onEmailFirstSteps?: (agentId: string) => void;
+  emailingFirstSteps: boolean;
 }) {
   const r = member.row;
   const stage = teamStage(member, todayKey);
-  const step = teamNextStep(member, { isMe });
+  const risk = dropOffRisk(member, todayKey, { isMe });
   const name = r.full_name?.trim() || "Name not on file";
   const ids = { name: `team-${r.agent_id}-name`, status: `team-${r.agent_id}-status`, facts: `team-${r.agent_id}-facts` };
   return (
@@ -460,12 +647,26 @@ function MemberRow({ member, todayKey, isMe, showUpline, myAgentId, selected, on
           {/* Renders nothing until the Over $5K rule's metric and period are confirmed (src/lib/overFiveK.ts). */}
           <OverFiveKBadge row={r} />
         </span>
-        <span id={ids.status} className="flex min-w-0 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+        <span id={ids.status} className="flex min-w-0 flex-col lg:col-start-2 lg:row-span-2 lg:row-start-1">
           <TeamStageMark stage={stage} stacked />
+          <DropOffWord risk={risk} />
         </span>
-        <span className="lg:col-start-1 lg:row-start-2"><Facts id={ids.facts} member={member} showUpline={showUpline} myAgentId={myAgentId} carrier={carrier} /></span>
+        <span className="lg:col-start-1 lg:row-start-2"><Facts id={ids.facts} member={member} todayKey={todayKey} showUpline={showUpline} myAgentId={myAgentId} carrier={carrier} /></span>
       </button>
-      <NextAction member={member} step={step} name={name} onOpen={onOpen} className="relative z-10 h-11 shrink-0 px-3 lg:w-28" />
+      <RowActions
+        member={member}
+        name={name}
+        isMe={isMe}
+        onOpen={onOpen}
+        onMarkTalked={onMarkTalked}
+        markTalkedBlocked={markTalkedBlocked}
+        markingTalked={markingTalked}
+        links={links}
+        linksFailed={linksFailed}
+        onEmailFirstSteps={onEmailFirstSteps}
+        emailingFirstSteps={emailingFirstSteps}
+        className="relative z-10 shrink-0 lg:w-[22rem] lg:justify-end"
+      />
     </li>
   );
 }
@@ -488,19 +689,30 @@ function HowItWorks() {
             </li>
           ))}
         </ul>
-        <p className="text-muted-foreground">A sale counts once it is posted. The four numbers on top are these four steps, so they add up to Everyone.</p>
+        <p className="text-muted-foreground">A sale counts once it is posted. Everyone on the team is on exactly one step. Getting licensed is under More lists.</p>
+      </div>
+      <div className="space-y-2">
+        <p className="font-semibold text-foreground">Drop-off risk</p>
+        <p className="text-muted-foreground">
+          How long since anyone talked to them, weighted by their step. Getting licensed and No sale yet weigh most: a new agent nobody talks to is the one who disappears. Gone quiet weighs high. Selling weighs least, and a seller with a sale in the last 14 days is not at risk. Never talked to is the worst. Each row says why.
+        </p>
+        <ul className="space-y-1 text-muted-foreground">
+          <li><span className={cn("font-semibold", TONE_CLASS[dropOffTone("high")].text)}>High</span>: two weeks of silence, or never talked to, while getting licensed or waiting on a first sale. Three weeks when gone quiet.</li>
+          <li><span className={cn("font-semibold", TONE_CLASS[dropOffTone("medium")].text)}>Medium</span>: one week of silence while getting licensed or waiting on a first sale. Ten days when gone quiet.</li>
+        </ul>
       </div>
       <div className="space-y-2">
         <p className="font-semibold text-foreground">The order</p>
         <ol className="list-decimal space-y-1 pl-5 text-muted-foreground">
-          <li>No sale yet, the newest first: the first weeks decide whether they start selling.</li>
+          <li>The highest drop-off risk first, whatever their step.</li>
+          <li>Then No sale yet, the newest first: the first weeks decide whether they start selling.</li>
           <li>Gone quiet, the most recent sale first: the easiest to bring back.</li>
           <li>Getting licensed, the furthest along first.</li>
           <li>Selling, the most ALP in the last 30 days first.</li>
         </ol>
       </div>
       <p className="text-muted-foreground">
-        Call dials and opens their card. Dialing records nothing. Their card holds the training stage, work days, login and every production number. Inactive people, placeholder seats and the other lists are under More lists.
+        Call dials and opens their card. Text opens a message. Neither records anything. Talked marks today as the day you spoke, which is what the risk reads, so they move down the list. Links texts, emails or copies the first steps: the training videos, Slack, Discord and the call with Sam. Their card holds the training stage, work days, login and every production number. Inactive people, placeholder seats and the other lists are under More lists.
       </p>
     </div>
   );
@@ -537,6 +749,7 @@ function EmptyList({ list, search, factsState, onClearSearch, onEveryone }: {
   }
   const copy: Partial<Record<TeamListKey, { title: string; description: string; good: boolean }>> = {
     everyone: { title: "Nobody active on your team", description: "Inactive people and placeholder seats are under More lists.", good: false },
+    drop_off: { title: "Nobody is at risk of dropping off", description: "Everyone on the team has been talked to recently enough for where they are.", good: true },
     no_sale: { title: "Everyone licensed has a sale", description: "Nobody licensed is waiting on a first sale.", good: true },
     quiet: { title: "Nobody has gone quiet", description: "Everyone who sold before has a sale in the last 30 days.", good: true },
     licensing: { title: "Everyone is licensed", description: "Nobody on the team is still getting licensed.", good: true },

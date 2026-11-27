@@ -120,6 +120,8 @@ const baseFacts = { agent_id: "fixture", stage: "training", stage_label: "Traini
 // Per-list override that makes the NON-placeholder member match: { row, facts }.
 const MATCHING = {
   everyone:         { row: {} },
+  // MP-TEAM-DROP-OFF (2026-11-26): a licensed hire with no sale and nobody has talked to them yet.
+  drop_off:         { row: { lifetime_deals: 0, l30_deals: 0, license_status: "licensed", last_contacted_at: null } },
   no_sale:          { row: { lifetime_deals: 0, l30_deals: 0, license_status: "licensed" } },
   quiet:            { row: { lifetime_deals: 4, l30_deals: 0, last_posted_date: long_ago } },
   licensing:        { row: { lifetime_deals: 0, l30_deals: 0, license_status: "unlicensed" } },

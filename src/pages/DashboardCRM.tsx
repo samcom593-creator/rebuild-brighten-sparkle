@@ -90,6 +90,9 @@ export default function DashboardCRM() {
   const [viewAppTarget, setViewAppTarget] = useState<{ agentId: string } | null>(null);
   const [deactivateAgent, setDeactivateAgent] = useState<{ id: string; name: string; managerId?: string } | null>(null);
   const [editLoginAgent, setEditLoginAgent] = useState<{ id: string; name: string } | null>(null);
+  const [markingTalkedId, setMarkingTalkedId] = useState<string | null>(null);
+  const [emailingFirstStepsId, setEmailingFirstStepsId] = useState<string | null>(null);
+  const canManage = isAdmin || isManager;
 
   // The canonical roster: who is on this team, with their production, contacts and free-lead status.
   const rosterQuery = useQuery({
@@ -147,6 +150,28 @@ export default function DashboardCRM() {
   const members = useMemo<TeamMember[]>(() => rows.map((row) => ({ row, facts: factsById.get(row.agent_id) ?? null })), [rows, factsById]);
   const factsState = !facts.canRead ? "none" : facts.facts ? "ready" : facts.query.isError ? "error" : "loading";
 
+  // Which agents have an application to stamp. The Talked button on a row is off, and says why, for the ones
+  // who do not; while this read is still in flight the button stays on and the write itself re-checks.
+  const agentIds = useMemo(() => rows.map((row) => row.agent_id).sort(), [rows]);
+  const applicationIds = useQuery({
+    queryKey: ["crm-agent-application-ids", agentIds],
+    enabled: canManage && agentIds.length > 0,
+    staleTime: 5 * 60_000,
+    queryFn: async (): Promise<Record<string, string | null>> => {
+      const out: Record<string, string | null> = {};
+      for (let i = 0; i < agentIds.length; i += 100) {
+        const { data, error } = await supabase.from("agents").select("id, source_application_id").in("id", agentIds.slice(i, i + 100));
+        if (error) throw error;
+        for (const row of data ?? []) out[row.id] = row.source_application_id;
+      }
+      return out;
+    },
+  });
+  const markTalkedBlocked = useCallback((agentId: string): string | null => {
+    const known = applicationIds.data;
+    return known && agentId in known && !known[agentId] ? "No application on file" : null;
+  }, [applicationIds.data]);
+
   const refreshAll = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ["crm-agent-roster"] });
     void queryClient.invalidateQueries({ queryKey: ["team-facts"] });
@@ -194,8 +219,8 @@ export default function DashboardCRM() {
   const selected = team.row;
   const selectedName = selected?.full_name ?? "This agent";
   const personFacts = team.selectedId ? factsById.get(team.selectedId) ?? null : null;
-  const canManage = isAdmin || isManager;
-  const checkIn = async (row: RosterRow) => {
+  // One write for the card's "Mark checked in" and the row's "Talked": the stamp the drop-off ranking reads.
+  const checkIn = async (row: Pick<RosterRow, "agent_id" | "full_name">) => {
     // The check-in stamp lives on the person's application (what last_contacted_at reads from), never invented on agents.
     const { data: agent, error: readError } = await supabase.from("agents").select("source_application_id").eq("id", row.agent_id).maybeSingle();
     if (readError) { toast.error(`Check-in did not save: ${readError.message}`); return; }
@@ -204,7 +229,53 @@ export default function DashboardCRM() {
     const { error } = await supabase.from("applications").update({ last_contacted_at: checkedInAt }).eq("id", agent.source_application_id);
     if (error) { toast.error(`Check-in did not save: ${error.message}`); return; }
     toast.success(`${row.full_name ?? "Agent"} marked checked in`);
+    // The roster carries last_contacted_at, so this refetch is what re-sorts the row.
     refreshAll();
+  };
+  const markTalked = async (agentId: string) => {
+    const row = rows.find((r) => r.agent_id === agentId);
+    if (!row || markingTalkedId) return;
+    setMarkingTalkedId(agentId);
+    try { await checkIn(row); } finally { setMarkingTalkedId(null); }
+  };
+  /**
+   * Send links > Email the first steps: re-queue the hired first-steps email and run the sender, the way
+   * /admin/email-gaps does. meta.resend_nonce is required: the sender folds it into Resend's idempotency key,
+   * and without it Resend refuses the re-send under the previous key (fixed in the sender, 154be324). The toast
+   * reports this person's own queue row, never the round-trip: the sender drains the whole queue, so even a
+   * response that sent someone's email is not proof it sent this one.
+   */
+  const emailFirstSteps = async (agentId: string) => {
+    const row = rows.find((r) => r.agent_id === agentId);
+    if (!row || emailingFirstStepsId) return;
+    const who = row.full_name ?? "This agent";
+    if (row.license_status !== "licensed") { toast.error(`${who} is not licensed yet. The first-steps email goes to licensed hires only.`); return; }
+    if (!row.email) { toast.error(`${who} has no email on file.`); return; }
+    setEmailingFirstStepsId(agentId);
+    try {
+      const { error: queueError } = await supabase.from("agent_onboarding_queue").upsert(
+        { agent_id: agentId, email_kind: "course", target_send_at: new Date().toISOString(), sent_at: null, attempt_count: 0, last_error: null, meta: { resend_nonce: String(Date.now()) } },
+        { onConflict: "agent_id,email_kind" },
+      );
+      if (queueError) { toast.error(`Could not queue the email: ${queueError.message}`); return; }
+      const { data, error } = await supabase.functions.invoke("send-agent-onboarding-email", { body: {} });
+      if (error) { toast.error(`The sender failed: ${error.message}`); return; }
+      const result = (data ?? {}) as { sent?: number; errors?: Array<{ agent_id?: string; error?: string }> };
+      const theirError = result.errors?.find((e) => e.agent_id === agentId)?.error;
+      const { data: after, error: readError } = await supabase.from("agent_onboarding_queue").select("sent_at, last_error")
+        .eq("agent_id", agentId).eq("email_kind", "course").order("target_send_at", { ascending: false }).limit(1);
+      const queued = after?.[0] ?? null;
+      if (!readError && queued?.sent_at) { toast.success(`First steps emailed to ${row.email}`); return; }
+      if (readError) {
+        // The sender answered but the row could not be read back: say exactly that, never "sent".
+        if (Number(result.sent ?? 0) >= 1) toast.message(`The sender ran (${result.sent} sent) but ${who}'s row could not be read back: ${readError.message}`);
+        else toast.error(theirError ?? `Not sent. ${who}'s row could not be read back: ${readError.message}`);
+        return;
+      }
+      toast.error(theirError ?? queued?.last_error ?? `The sender ran and did not send ${who}'s email. Nothing on the row says why.`);
+    } finally {
+      setEmailingFirstStepsId(null);
+    }
   };
   const sendPortalLogin = async (row: RosterRow) => {
     try {
@@ -230,6 +301,8 @@ export default function DashboardCRM() {
     setWorkdays: (days, from) => facts.setWorkdays(selected.agent_id, selectedName, days, from),
     ...(canManage ? {
       onCheckIn: () => { void checkIn(selected); },
+      onEmailFirstSteps: () => { void emailFirstSteps(selected.agent_id); },
+      emailingFirstSteps: emailingFirstStepsId === selected.agent_id,
       ...(isAdmin ? { onSendPortalLogin: () => { void sendPortalLogin(selected); } } : {}),
       onEditLogin: () => setEditLoginAgent({ id: selected.agent_id, name: selectedName }),
       onViewApplication: () => setViewAppTarget({ agentId: selected.agent_id }),
@@ -354,6 +427,11 @@ export default function DashboardCRM() {
             onOpenPerson={team.openPerson}
             emptyAction={emptyAction}
             pageActions={moreMenu}
+            onMarkTalked={canManage ? (id) => { void markTalked(id); } : undefined}
+            markTalkedBlocked={canManage ? markTalkedBlocked : undefined}
+            markingTalkedId={markingTalkedId}
+            onEmailFirstSteps={canManage ? (id) => { void emailFirstSteps(id); } : undefined}
+            emailingFirstStepsId={emailingFirstStepsId}
           />
         ) : mode === "attendance" ? (
           <TeamAttendance />

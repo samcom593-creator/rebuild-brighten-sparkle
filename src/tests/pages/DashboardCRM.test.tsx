@@ -173,7 +173,9 @@ describe("My Team: four numbers, one list", () => {
     await screen.findByText("Ann Lee");
     expect(tileValue("No sale yet")).toBe("2");
     expect(tileValue("Gone quiet")).toBe("1");
-    expect(tileValue("Getting licensed")).toBe("1");
+    // MP-TEAM-DROP-OFF: the first tile is Talk to first (never talked to, or too long, for where they are);
+    // Ann, Bo and Lee have never been talked to and have no sale, Quinn went quiet. Getting licensed moved to More lists.
+    expect(tileValue("Talk to first")).toBe("4");
     expect(tileValue("Selling")).toBe("3");
     expect(screen.getByRole("button", { name: /^Everyone\s*7$/ })).toHaveAttribute("aria-pressed", "true");
     expect(shownNames()).toHaveLength(7);
@@ -191,13 +193,15 @@ describe("My Team: four numbers, one list", () => {
     expect(shownNames()).toHaveLength(7);
   });
 
-  it("lists everyone in the order to work them: no sale yet, gone quiet, getting licensed, then selling", async () => {
+  it("lists everyone in the order to work them: highest drop-off risk first, then the step order; your own row is never ranked", async () => {
     renderPage();
     await screen.findByText("Ann Lee");
-    expect(shownNames()).toEqual(["Ann Lee", "Bo Chen", "Quinn Quiet", "Lee Learner", "Cara Canon", "Sal Seller", "Sam Owner (you)"]);
+    // Nobody in the fixture has been talked to. Ann, Bo (no sale) and Lee (licensing) score the same and keep the
+    // step order; Quinn (gone quiet) weighs less; the sellers least; Sam's own row is excluded from the ranking.
+    expect(shownNames()).toEqual(["Ann Lee", "Bo Chen", "Lee Learner", "Quinn Quiet", "Cara Canon", "Sal Seller", "Sam Owner (you)"]);
   });
 
-  it("each row says the step in words beside its colour, one fact, and offers one button", async () => {
+  it("each row says the step in words beside its colour, one fact, and offers Call, Text, Talked and Links", async () => {
     renderPage();
     await screen.findByText("Ann Lee");
     expect(rowOf("Ann Lee").getByText("No sale yet")).toBeInTheDocument();
@@ -214,7 +218,9 @@ describe("My Team: four numbers, one list", () => {
     expect(rowOf("Ann Lee").queryByText(/Upline/)).toBeNull();
     for (const li of within(screen.getByRole("list", { name: "Everyone" })).getAllByRole("listitem")) {
       const actions = within(li).queryAllByRole("link").length + within(li).getAllByRole("button").length - 1; // minus the row itself
-      expect(actions).toBe(1);
+      // Your own row only opens your card; everyone else with a phone gets Call, Text, Talked and Links.
+      const isMe = within(li).queryByText("(you)") !== null;
+      expect(actions).toBe(isMe ? 1 : 4);
     }
     // No contracting status, overdue wording or follow-up plan on any row.
     expect(within(screen.getByRole("list", { name: "Everyone" })).queryByText(/overdue|behind|follow-up|first contract|agentlink/i)).toBeNull();
@@ -234,14 +240,15 @@ describe("My Team: four numbers, one list", () => {
     expect(db.updates).toHaveLength(0);
   });
 
-  it("sellers and your own row open the card instead of calling", async () => {
+  it("sellers get Call too; your own row opens the card; the row itself still opens the card", async () => {
     renderPage();
     await screen.findByText("Ann Lee");
-    expect(rowOf("Sal Seller").queryByRole("link", { name: /^Call/ })).toBeNull();
-    expect(rowOf("Sal Seller").getByRole("button", { name: "Open Sal Seller" })).toBeInTheDocument();
+    // MP-TEAM-DROP-OFF: every on-team person with a phone can be called, texted and marked talked to.
+    expect(rowOf("Sal Seller").getByRole("link", { name: /^Call Sal Seller/ })).toBeInTheDocument();
+    expect(rowOf("Sal Seller").getByRole("link", { name: "Text Sal Seller" })).toBeInTheDocument();
     expect(rowOf("Sam Owner").getByRole("button", { name: "Open Sam Owner" })).toBeInTheDocument();
     expect(rowOf("Sam Owner").getByText("(you)")).toBeInTheDocument();
-    fireEvent.click(rowOf("Sal Seller").getByRole("button", { name: "Open Sal Seller" }));
+    fireEvent.click(rowOf("Sal Seller").getByRole("button", { name: "Sal Seller" }));
     await waitFor(() => expect(screen.getByTestId("location").textContent).toContain("person=s1"));
   });
 
@@ -263,7 +270,7 @@ describe("My Team: four numbers, one list", () => {
     const menu = await screen.findByRole("menu");
     const items = within(menu).getAllByRole("menuitem").map((m) => m.textContent);
     expect(items).toEqual([
-      "Joined in the last 30 days2", "Free leads now0", "Close to free leads0", "No login yet1", "Training stage not set2",
+      "Getting licensed1", "Joined in the last 30 days2", "Free leads now0", "Close to free leads0", "No login yet1", "Training stage not set2",
       "No work days set5", "Not active1", "Placeholder seats1",
     ]);
     fireEvent.click(within(menu).getByRole("menuitem", { name: /Placeholder seats/ }));

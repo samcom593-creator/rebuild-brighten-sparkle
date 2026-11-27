@@ -1,22 +1,26 @@
 /**
  * My Team's list logic (src/lib/teamList.ts), OVERHAUL-myteam 2026-10-31.
  *
- * Pins the truth the page draws: four steps that are disjoint and cover everyone on the team (so the four
- * numbers add up to Everyone), every count from the same predicate as its list, unknown never shown as zero,
- * the order to work the list in, one next action per person, and merged duplicates folded into their
- * canonical person instead of listed twice.
+ * Pins the truth the page draws: four steps that are disjoint and cover everyone on the team, every count from
+ * the same predicate as its list, unknown never shown as zero, the order to work the list in (drop-off risk
+ * first: how long since anyone talked to them, weighted by step), one next action per person, and merged
+ * duplicates folded into their canonical person instead of listed twice.
  */
 import { describe, expect, it } from "vitest";
 import {
-  TEAM_LISTS, TEAM_MORE_LISTS, TEAM_TILE_LISTS, compareTeamMembers, daysAgoWords, daysBetween, foldMergedTwins,
-  licenseProgressRank, licenseProgressWords, listAlp30, matchesTeamSearch, onTeam, parseTeamList, teamListCounts,
-  teamListDef, teamListRows, teamNextStep, teamStage, teamStep, tenureWords, trainingStageWords, type TeamMember,
+  TEAM_LISTS, TEAM_MORE_LISTS, TEAM_STEPS, TEAM_TILE_LISTS, compareTeamMembers, daysAgoWords, daysBetween, dropOffRisk,
+  dropOffTone, foldMergedTwins, lastTalkedWords, licenseProgressRank, licenseProgressWords, listAlp30, matchesTeamSearch,
+  onTeam, parseTeamList, teamListCounts, teamListDef, teamListRows, teamNextStep, teamStage, teamStep, tenureWords,
+  trainingStageWords, type TeamMember,
 } from "@/lib/teamList";
 import { teamStepTone } from "@/lib/tones";
+import { FIELD_COURSE_URL, buildFirstStepsText, firstNameOf, firstStepLinksFromSettings, firstStepsLinkLines } from "@/lib/firstStepsLinks";
 import { rosterRow } from "../helpers/teamRosterFixtures";
 import { personFacts } from "../helpers/teamStageFixtures";
 
 const TODAY = "2026-10-31";
+/** A check-in stamp `days` days before TODAY, as applications.last_contacted_at stores it (an ISO instant). */
+const talkedDaysAgo = (days: number) => new Date(Date.UTC(2026, 9, 31 - days, 15, 0, 0)).toISOString();
 const member = (o: Parameters<typeof rosterRow>[0] = {}, facts: TeamMember["facts"] = null): TeamMember => ({ row: rosterRow(o), facts });
 
 // One person per step, plus the rows that are not on the team.
@@ -41,21 +45,85 @@ describe("teamStep: where a person is", () => {
     expect(teamStep({ l30_deals: null, lifetime_deals: null, license_status: null })).toBe("licensing");
   });
 
-  it("the four step lists are disjoint and together are exactly Everyone, so the four numbers add up", () => {
-    const counts = teamListCounts(team, { factsReady: true });
-    const stepLists = TEAM_TILE_LISTS.map((key) => teamListRows(team, key).map((m) => m.row.agent_id));
+  it("the four step lists are disjoint and together are exactly Everyone, so their numbers add up", () => {
+    const counts = teamListCounts(team, { factsReady: true, todayKey: TODAY });
+    const stepKeys = TEAM_STEPS.map((s) => s.key);
+    const stepLists = stepKeys.map((key) => teamListRows(team, key, TODAY).map((m) => m.row.agent_id));
     const all = stepLists.flat();
     expect(new Set(all).size).toBe(all.length);
-    expect(all.sort()).toEqual(teamListRows(team, "everyone").map((m) => m.row.agent_id).sort());
-    expect(TEAM_TILE_LISTS.reduce((sum, key) => sum + (counts[key] ?? 0), 0)).toBe(counts.everyone);
+    expect(all.sort()).toEqual(teamListRows(team, "everyone", TODAY).map((m) => m.row.agent_id).sort());
+    expect(stepKeys.reduce((sum, key) => sum + (counts[key] ?? 0), 0)).toBe(counts.everyone);
   });
 
   it("everyone on the team is active and a person: placeholder seats and inactive people are not", () => {
     expect(onTeam(seller.row)).toBe(true);
     expect(onTeam(inactive.row)).toBe(false);
     expect(onTeam(ghost.row)).toBe(false);
-    expect(teamListRows(team, "everyone").map((m) => m.row.agent_id)).not.toContain("g1");
-    expect(teamListRows(team, "everyone").map((m) => m.row.agent_id)).not.toContain("i1");
+    expect(teamListRows(team, "everyone", TODAY).map((m) => m.row.agent_id)).not.toContain("g1");
+    expect(teamListRows(team, "everyone", TODAY).map((m) => m.row.agent_id)).not.toContain("i1");
+  });
+});
+
+describe("dropOffRisk: how long since anyone talked to them, weighted by step", () => {
+  it("never talked to is the worst, and a new agent outranks a seller talked to yesterday", () => {
+    const neverLicensing = member({ license_status: "unlicensed", last_contacted_at: null });
+    const sellerYesterday = member({ l30_deals: 2, lifetime_deals: 2, last_posted_date: "2026-10-16", last_contacted_at: talkedDaysAgo(1) });
+    expect(dropOffRisk(neverLicensing, TODAY)).toMatchObject({ level: "high", days: null, why: "Never talked to, not licensed yet" });
+    expect(dropOffRisk(neverLicensing, TODAY).score).toBeGreaterThan(dropOffRisk(sellerYesterday, TODAY).score);
+    // Never beats any length of silence on the same step, even past the 30-day cap.
+    expect(dropOffRisk(neverLicensing, TODAY).score).toBeGreaterThan(dropOffRisk(member({ license_status: "unlicensed", last_contacted_at: talkedDaysAgo(400) }), TODAY).score);
+  });
+
+  it("getting licensed and no sale yet: a week of silence is medium, two weeks is high, less is low", () => {
+    const noSale = (days: number) => dropOffRisk(member({ license_status: "licensed", last_contacted_at: talkedDaysAgo(days) }), TODAY);
+    expect(noSale(6).level).toBe("low");
+    expect(noSale(7)).toMatchObject({ level: "medium", days: 7, why: "Last talked 7 days ago, no sale yet" });
+    expect(noSale(13).level).toBe("medium");
+    expect(noSale(14)).toMatchObject({ level: "high", days: 14, why: "Last talked 14 days ago, no sale yet" });
+    const licensing = (days: number) => dropOffRisk(member({ license_status: "unlicensed", last_contacted_at: talkedDaysAgo(days) }), TODAY);
+    expect(licensing(1)).toMatchObject({ level: "low", why: "Last talked yesterday, not licensed yet" });
+    expect(licensing(7).level).toBe("medium");
+    expect(licensing(14).level).toBe("high");
+  });
+
+  it("gone quiet weighs high but not most: ten days is medium, three weeks is high", () => {
+    const quietFor = (days: number) => dropOffRisk(member({ l30_deals: 0, lifetime_deals: 3, last_posted_date: "2026-09-01", last_contacted_at: talkedDaysAgo(days) }), TODAY);
+    expect(quietFor(9).level).toBe("low");
+    expect(quietFor(10)).toMatchObject({ level: "medium", why: "Last talked 10 days ago, no sale in 30 days" });
+    expect(quietFor(20).level).toBe("medium");
+    expect(quietFor(21).level).toBe("high");
+    expect(dropOffRisk(member({ l30_deals: 0, lifetime_deals: 3, last_contacted_at: null }), TODAY)).toMatchObject({ level: "high", why: "Never talked to, no sale in 30 days" });
+    // The same silence weighs more on a new agent than on someone who has sold before.
+    expect(quietFor(14).score).toBeLessThan(dropOffRisk(member({ license_status: "licensed", last_contacted_at: talkedDaysAgo(14) }), TODAY).score);
+  });
+
+  it("selling weighs least: a sale in the last 14 days is none, an older sale is at most low", () => {
+    const recent = member({ l30_deals: 1, lifetime_deals: 1, last_posted_date: "2026-10-28", last_contacted_at: null });
+    expect(dropOffRisk(recent, TODAY)).toEqual({ score: 0, level: "none", days: null, why: "Selling" });
+    const fading = member({ l30_deals: 1, lifetime_deals: 1, last_posted_date: "2026-10-10", last_contacted_at: null });
+    expect(dropOffRisk(fading, TODAY)).toMatchObject({ level: "low", why: "Never talked to, last sale 21 days ago" });
+    expect(dropOffRisk(fading, TODAY).score).toBeLessThan(dropOffRisk(member({ license_status: "licensed", last_contacted_at: talkedDaysAgo(7) }), TODAY).score);
+    expect(dropOffRisk(member({ l30_deals: 1, lifetime_deals: 1, last_posted_date: null, last_contacted_at: talkedDaysAgo(20) }), TODAY).why).toBe("Last talked 20 days ago, selling");
+  });
+
+  it("talked to today is no risk; a stamp dated after today reads as today, never a negative count", () => {
+    expect(dropOffRisk(member({ license_status: "unlicensed", last_contacted_at: talkedDaysAgo(0) }), TODAY)).toMatchObject({ score: 0, level: "none", days: 0, why: "Last talked today, not licensed yet" });
+    expect(dropOffRisk(member({ license_status: "licensed", last_contacted_at: "2026-11-03T02:00:00Z" }), TODAY)).toMatchObject({ score: 0, days: 0 });
+  });
+
+  it("nobody off the team is at risk here, and the words say what they are", () => {
+    expect(dropOffRisk(inactive, TODAY)).toEqual({ score: 0, level: "none", days: null, why: "Not on the team" });
+    expect(dropOffRisk(ghost, TODAY)).toEqual({ score: 0, level: "none", days: null, why: "Not a person" });
+    expect(lastTalkedWords(inactive, TODAY)).toBeNull();
+  });
+
+  it("the row's fact says when, or that nobody ever has; high is the act-now red and medium the nudge amber", () => {
+    expect(lastTalkedWords(member({ last_contacted_at: null }), TODAY)).toBe("Never talked to");
+    expect(lastTalkedWords(member({ last_contacted_at: talkedDaysAgo(14) }), TODAY)).toBe("Last talked 14 days ago");
+    expect(lastTalkedWords(member({ last_contacted_at: talkedDaysAgo(1) }), TODAY)).toBe("Last talked yesterday");
+    expect(dropOffTone("high")).toBe("hot");
+    expect(dropOffTone("medium")).toBe("warm");
+    expect(dropOffTone("low")).toBe("slate");
   });
 });
 
@@ -138,8 +206,8 @@ describe("lists: a number always equals the list it opens", () => {
       member({ agent_id: "f2", free_leads_qualified: false, free_leads_needed_for_qual: 2500 }),
       member({ agent_id: "f3", free_leads_qualified: false, free_leads_needed_for_qual: 9000 }),
     ];
-    const counts = teamListCounts(withFacts, { factsReady: true });
-    for (const def of TEAM_LISTS) expect(counts[def.key]).toBe(teamListRows(withFacts, def.key).length);
+    const counts = teamListCounts(withFacts, { factsReady: true, todayKey: TODAY });
+    for (const def of TEAM_LISTS) expect(counts[def.key]).toBe(teamListRows(withFacts, def.key, TODAY).length);
     expect(counts.no_login).toBe(1); // Nia; Quinn has no facts, so he is not counted as having no login
     expect(counts.free_leads).toBe(1);
     expect(counts.free_leads_close).toBe(1);
@@ -148,31 +216,52 @@ describe("lists: a number always equals the list it opens", () => {
   });
 
   it("a list built on the team facts is unknown, not zero, until the facts have loaded", () => {
-    const counts = teamListCounts(team, { factsReady: false });
+    const counts = teamListCounts(team, { factsReady: false, todayKey: TODAY });
     expect(counts.no_login).toBeNull();
     expect(counts.stage_unset).toBeNull();
     expect(counts.no_schedule).toBeNull();
     expect(counts.everyone).toBe(4);
   });
 
+  it("Talk to first is everyone on the team at high or medium risk, highest first, and its count is its list", () => {
+    const rows = [
+      member({ agent_id: "fine", license_status: "licensed", last_contacted_at: talkedDaysAgo(2) }),
+      member({ agent_id: "week", license_status: "licensed", last_contacted_at: talkedDaysAgo(8) }),
+      member({ agent_id: "never", license_status: "unlicensed", last_contacted_at: null }),
+      member({ agent_id: "quiet-3w", l30_deals: 0, lifetime_deals: 2, last_posted_date: "2026-08-01", last_contacted_at: talkedDaysAgo(22) }),
+      member({ agent_id: "sells", l30_deals: 2, lifetime_deals: 2, last_posted_date: "2026-10-29", last_contacted_at: null }),
+      member({ agent_id: "gone", status: "inactive", last_contacted_at: null }),
+      member({ agent_id: "seat", is_sync_only: true, last_contacted_at: null }),
+    ];
+    expect(teamListRows(rows, "drop_off", TODAY).map((m) => m.row.agent_id)).toEqual(["never", "quiet-3w", "week"]);
+    expect(teamListCounts(rows, { factsReady: false, todayKey: TODAY }).drop_off).toBe(3);
+    expect(teamListDef("drop_off").match(ghost, TODAY)).toBe(false);
+    expect(teamListDef("drop_off").admitsSyncOnly).toBe(false);
+    expect(TEAM_TILE_LISTS[0]).toBe("drop_off");
+    expect(TEAM_TILE_LISTS).toHaveLength(4);
+  });
+
   it("joined in the last 30 days is 30 days or less, a start date ahead of today included", () => {
     const rows = [member({ agent_id: "a", tenure_days: 30 }), member({ agent_id: "b", tenure_days: 31 }), member({ agent_id: "c", tenure_days: -2 }), member({ agent_id: "d", tenure_days: null })];
-    expect(teamListRows(rows, "new_hires").map((m) => m.row.agent_id)).toEqual(["c", "a"]);
+    expect(teamListRows(rows, "new_hires", TODAY).map((m) => m.row.agent_id)).toEqual(["c", "a"]);
   });
 
   it("declares, for every list, whether a placeholder seat may be in it, and honours it", () => {
     for (const def of TEAM_LISTS) expect(typeof def.admitsSyncOnly).toBe("boolean");
-    expect(teamListDef("sync_only").match(ghost)).toBe(true);
-    expect(teamListDef("everyone").match(ghost)).toBe(false);
-    expect(teamListDef("licensing").match(ghost)).toBe(false);
+    expect(teamListDef("sync_only").match(ghost, TODAY)).toBe(true);
+    expect(teamListDef("everyone").match(ghost, TODAY)).toBe(false);
+    expect(teamListDef("licensing").match(ghost, TODAY)).toBe(false);
   });
 
   it("an unknown list in the URL falls back to Everyone; More lists holds every list that is not a tile", () => {
     expect(parseTeamList("selling")).toBe("selling");
+    expect(parseTeamList("drop_off")).toBe("drop_off");
+    expect(parseTeamList("licensing")).toBe("licensing");
     expect(parseTeamList("nonsense")).toBe("everyone");
     expect(parseTeamList(null)).toBe("everyone");
     const shown = new Set<string>(["everyone", ...TEAM_TILE_LISTS, ...TEAM_MORE_LISTS]);
     expect(TEAM_LISTS.every((def) => shown.has(def.key))).toBe(true);
+    expect(TEAM_MORE_LISTS).toContain("licensing");
   });
 
   it("adds the 30-day ALP of a list", () => {
@@ -181,23 +270,41 @@ describe("lists: a number always equals the list it opens", () => {
 });
 
 describe("order: who needs you first", () => {
-  it("Everyone runs no sale yet, gone quiet, getting licensed, then selling", () => {
-    expect(teamListRows(team, "everyone").map((m) => m.row.agent_id)).toEqual(["n1", "q1", "l1", "s1"]);
+  it("Everyone puts the highest drop-off risk first: nobody has talked to these four, so the new agents outrank the quiet seller and the active seller is last", () => {
+    expect(teamListRows(team, "everyone", TODAY).map((m) => m.row.agent_id)).toEqual(["n1", "l1", "q1", "s1"]);
+  });
+
+  it("with everyone talked to today, Everyone falls back to no sale yet, gone quiet, getting licensed, then selling", () => {
+    const today = team.map((m) => ({ ...m, row: { ...m.row, last_contacted_at: talkedDaysAgo(0) } }));
+    expect(teamListRows(today, "everyone", TODAY).map((m) => m.row.agent_id)).toEqual(["n1", "q1", "l1", "s1"]);
+  });
+
+  it("risk outranks the step order: a seller nobody has talked to in three weeks sits above a new hire talked to yesterday, and the off-team rows stay after, A to Z", () => {
+    const rows = [
+      member({ agent_id: "n-fresh", full_name: "Nia", license_status: "licensed", last_contacted_at: talkedDaysAgo(1) }),
+      member({ agent_id: "s-silent", full_name: "Sal", l30_deals: 1, lifetime_deals: 1, last_posted_date: "2026-10-10", last_contacted_at: talkedDaysAgo(21) }),
+      member({ agent_id: "l-week", full_name: "Lee", license_status: "unlicensed", last_contacted_at: talkedDaysAgo(7) }),
+      member({ agent_id: "z-off", full_name: "Zed", status: "inactive", last_contacted_at: null }),
+      member({ agent_id: "a-off", full_name: "Amy", status: "terminated", last_contacted_at: null }),
+    ];
+    expect([...rows].sort(compareTeamMembers(TODAY)).map((m) => m.row.agent_id)).toEqual(["l-week", "s-silent", "n-fresh", "a-off", "z-off"]);
   });
 
   it("within a step: newest first, most recent sale first, furthest along first, most ALP first", () => {
+    // Everyone talked to today, so risk ties at zero and the order inside each step is what decides.
+    const now = talkedDaysAgo(0);
     const rows = [
-      member({ agent_id: "n-old", license_status: "licensed", tenure_days: 90 }),
-      member({ agent_id: "n-new", license_status: "licensed", tenure_days: 3 }),
-      member({ agent_id: "q-long", lifetime_deals: 1, last_posted_date: "2026-03-01" }),
-      member({ agent_id: "q-recent", lifetime_deals: 1, last_posted_date: "2026-09-25" }),
-      member({ agent_id: "l-start", license_status: "unlicensed", license_progress: "unlicensed" }),
-      member({ agent_id: "l-far", license_status: "unlicensed", license_progress: "waiting_on_license" }),
-      member({ agent_id: "l-none", license_status: "unlicensed", license_progress: null }),
-      member({ agent_id: "s-small", l30_deals: 1, lifetime_deals: 1, l30_alp: 800 }),
-      member({ agent_id: "s-big", l30_deals: 2, lifetime_deals: 2, l30_alp: 12000 }),
+      member({ agent_id: "n-old", license_status: "licensed", tenure_days: 90, last_contacted_at: now }),
+      member({ agent_id: "n-new", license_status: "licensed", tenure_days: 3, last_contacted_at: now }),
+      member({ agent_id: "q-long", lifetime_deals: 1, last_posted_date: "2026-03-01", last_contacted_at: now }),
+      member({ agent_id: "q-recent", lifetime_deals: 1, last_posted_date: "2026-09-25", last_contacted_at: now }),
+      member({ agent_id: "l-start", license_status: "unlicensed", license_progress: "unlicensed", last_contacted_at: now }),
+      member({ agent_id: "l-far", license_status: "unlicensed", license_progress: "waiting_on_license", last_contacted_at: now }),
+      member({ agent_id: "l-none", license_status: "unlicensed", license_progress: null, last_contacted_at: now }),
+      member({ agent_id: "s-small", l30_deals: 1, lifetime_deals: 1, l30_alp: 800, last_contacted_at: now }),
+      member({ agent_id: "s-big", l30_deals: 2, lifetime_deals: 2, l30_alp: 12000, last_contacted_at: now }),
     ];
-    expect([...rows].sort(compareTeamMembers).map((m) => m.row.agent_id)).toEqual([
+    expect([...rows].sort(compareTeamMembers(TODAY)).map((m) => m.row.agent_id)).toEqual([
       "n-new", "n-old", "q-recent", "q-long", "l-far", "l-start", "l-none", "s-big", "s-small",
     ]);
   });
@@ -207,9 +314,9 @@ describe("order: who needs you first", () => {
       member({ agent_id: "far", full_name: "B", free_leads_needed_for_qual: 4800 }),
       member({ agent_id: "near", full_name: "A", free_leads_needed_for_qual: 300 }),
     ];
-    expect(teamListRows(rows, "free_leads_close").map((m) => m.row.agent_id)).toEqual(["near", "far"]);
+    expect(teamListRows(rows, "free_leads_close", TODAY).map((m) => m.row.agent_id)).toEqual(["near", "far"]);
     const off = [member({ agent_id: "z", full_name: "Zed", status: "inactive" }), member({ agent_id: "a", full_name: "Amy", status: "terminated" })];
-    expect(teamListRows(off, "not_active").map((m) => m.row.agent_id)).toEqual(["a", "z"]);
+    expect(teamListRows(off, "not_active", TODAY).map((m) => m.row.agent_id)).toEqual(["a", "z"]);
   });
 });
 
@@ -223,6 +330,54 @@ describe("search", () => {
     expect(matchesTeamSearch(m, "60")).toBe(false); // two digits are not enough to search a phone
     expect(matchesTeamSearch(m, "   ")).toBe(true);
     expect(matchesTeamSearch(m, "kim")).toBe(false);
+  });
+});
+
+describe("first-steps links: the text a manager sends a new hire", () => {
+  const all = { slack: "https://join.slack.com/t/galaxy/shared_invite/abc", discord: "https://discord.gg/galaxy", call: "https://calendly.com/sam/first-call" };
+
+  it("greets by first name and lists the training videos, Slack, Discord and the call, one plain line each", () => {
+    expect(buildFirstStepsText("Ann", all)).toBe([
+      "Hey Ann, your first steps at Galaxy:",
+      `Training videos: ${FIELD_COURSE_URL}`,
+      "Slack: https://join.slack.com/t/galaxy/shared_invite/abc",
+      "Discord: https://discord.gg/galaxy",
+      "Book your call with Sam: https://calendly.com/sam/first-call",
+      "Reply here if anything is stuck. Sam",
+    ].join("\n"));
+  });
+
+  it("leaves out any link that is not set, never printing undefined, null or a blank line", () => {
+    const text = buildFirstStepsText("Ann", { discord: all.discord });
+    expect(text).toContain("Discord: https://discord.gg/galaxy");
+    expect(text).toContain(`Training videos: ${FIELD_COURSE_URL}`);
+    expect(text).not.toMatch(/Slack|Book your call|undefined|null/);
+    expect(text.split("\n").every((line) => line.trim().length > 0)).toBe(true);
+    expect(buildFirstStepsText("Ann", { slack: "  ", discord: "", call: undefined })).not.toMatch(/Slack|Discord|Book your call/);
+    expect(firstStepsLinkLines(null).map((l) => l.key)).toEqual(["training"]);
+    expect(firstStepsLinkLines(all).map((l) => l.key)).toEqual(["training", "slack", "discord", "call"]);
+  });
+
+  it("is plain text: no markdown, no em-dashes, and a greeting that still reads with no name on file", () => {
+    const text = buildFirstStepsText("Ann", all);
+    // The words are graded, not the links: a real URL may carry an underscore (shared_invite), and that is not markdown.
+    expect(text.replace(/https?:\/\/\S+/g, "")).not.toMatch(/[*_#[\]`—]/);
+    expect(text).not.toMatch(/—/);
+    expect(buildFirstStepsText(null, all).startsWith("Hey there, your first steps at Galaxy:")).toBe(true);
+    expect(buildFirstStepsText("", all).startsWith("Hey there,")).toBe(true);
+    expect(firstNameOf("  Ann  Lee ")).toBe("Ann");
+    expect(firstNameOf(null)).toBe("");
+  });
+
+  it("reads the three links from their system_settings keys, trimmed, and a key that is not set is blank", () => {
+    const links = firstStepLinksFromSettings([
+      { key: "discord_invite_url", value: " https://discord.gg/galaxy " },
+      { key: "onboarding_call_scheduling_url", value: "https://calendly.com/sam/first-call" },
+      { key: "unrelated_setting", value: "nope" },
+    ]);
+    expect(links).toEqual({ slack: "", discord: "https://discord.gg/galaxy", call: "https://calendly.com/sam/first-call" });
+    expect(firstStepLinksFromSettings([])).toEqual({ slack: "", discord: "", call: "" });
+    expect(firstStepLinksFromSettings([{ key: "slack_community_invite_url", value: null }]).slack).toBe("");
   });
 });
 

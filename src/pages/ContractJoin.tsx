@@ -66,6 +66,30 @@ function ContractJoinForm({ slug }: { slug: string }) {
     }
   }, [done?.redirect_url]);
 
+  // MP-ONE-LINK-MGN (2026-11-26). Sam: "make sure it redirects them to the MGN." A licensed person who just
+  // saved is taken to MGN Agent Hub on a short countdown; the button stays for anyone who wants to go now,
+  // and the receipt is on screen long enough to read. Only the allow-listed MGN host is ever assigned.
+  // The countdown runs only when nothing needs the person's attention: a held delivery or an account that
+  // did not provision keeps the receipt on screen until they choose to continue.
+  const REDIRECT_SECONDS = 6;
+  const blocked = !!done && (done.provisioned === false || done.delivery === "manual_review" || done.delivery === "failed" || done.delivery === "not_configured");
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  useEffect(() => {
+    if (!done || done.parked || !redirectAllowed || blocked) { setSecondsLeft(null); return; }
+    setSecondsLeft(REDIRECT_SECONDS);
+    const started = Date.now();
+    const tick = window.setInterval(() => {
+      const left = REDIRECT_SECONDS - Math.floor((Date.now() - started) / 1000);
+      if (left <= 0) {
+        window.clearInterval(tick);
+        window.location.assign(done.redirect_url as string);
+        return;
+      }
+      setSecondsLeft(left);
+    }, 250);
+    return () => window.clearInterval(tick);
+  }, [done, redirectAllowed, blocked]);
+
   const set = (k: Field, v: string) => { setValues((s) => ({ ...s, [k]: k === "phone" ? maskUsPhoneInput(v) : v })); if (problem?.field === k) setProblem(null); };
 
   const submit = async (e: React.FormEvent) => {
@@ -133,6 +157,7 @@ function ContractJoinForm({ slug }: { slug: string }) {
                 <p className="text-sm">Continue to <span className="font-medium">MGN Agent Hub</span> to complete the carrier&apos;s steps. Your manager tracks the submission receipt and carrier confirmation separately.</p>
                 {done.delivery === "manual_review" || done.delivery === "failed" || done.delivery === "not_configured" ? <p role="alert" className="text-sm text-amber-700 dark:text-amber-400">The Ethos submission is held for review. Your manager must resolve the delivery blocker.</p> : <p className="text-sm text-muted-foreground">{done.delivery === "queued" ? "The Ethos request is queued; sheet delivery is not yet confirmed." : "Check the submission receipt with your manager."} Saving this form does not mean the carrier has approved your appointment.</p>}
                 {done.comp_pct != null ? <p className="text-xs text-muted-foreground">Requested at {done.comp_pct}% · 6 Month Advance. Your manager can review this level in Galaxy.</p> : null}
+                {secondsLeft !== null ? <p className="text-sm font-medium" aria-live="polite">Taking you there in {secondsLeft}…</p> : null}
                 <Button className="h-11" onClick={() => window.location.assign(done.redirect_url as string)}>Continue to MGN <ArrowRight className="ml-1 h-4 w-4" aria-hidden /></Button>
               </>
             ) : (

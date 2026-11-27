@@ -23,6 +23,7 @@ import { nonRoutableDomain } from "./non-routable.ts";
 import { lookupSuppressed } from "./suppression.ts";
 import { dropOwnerMuted, loadOwnerMute } from "./owner-mute.ts";
 import { RECRUIT_REPLY_TO, resolveReplyTo } from "./reply-to.ts";
+import { humanize } from "./humanize.ts";
 
 export { RECRUIT_REPLY_TO };
 
@@ -131,8 +132,17 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
     return { ok: false, id: null, error: "recipient is on Resend's suppression list (hard bounce or complaint); not sent", refused: "suppressed" };
   }
 
-  const resolvedHtml = html ?? `<pre style="font-family:Arial,sans-serif;white-space:pre-wrap">${text}</pre>`;
-  const resolvedText = text ?? htmlToText(resolvedHtml);
+  // De-AI-ify every recipient-facing string at the single send boundary so the
+  // raw em/en-dash AI-tell (and the common ChatGPT preambles) can never reach an
+  // inbox, no matter which caller built the copy. humanize() is idempotent, so a
+  // caller that already humanized loses nothing. Owner-mute above matched on the
+  // ORIGINAL subject (keyword routing) on purpose; only the SENT copy is cleaned.
+  // check-edge-email-emdash.mjs exempts every sendEmail() caller because of this.
+  const safeSubject = humanize(subject);
+  const safeHtml    = html ? humanize(html) : undefined;
+  const safeText    = text ? humanize(text) : undefined;
+  const resolvedHtml = safeHtml ?? `<pre style="font-family:Arial,sans-serif;white-space:pre-wrap">${safeText}</pre>`;
+  const resolvedText = safeText ?? htmlToText(resolvedHtml);
 
   const firstTo = deliverable[0];
   const unsubToken = unsubscribe_token ?? encodeURIComponent(String(firstTo));
@@ -154,7 +164,7 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
       to:       deliverable,
       // A caller that passes none (or an empty or dead address) still gets the live inbox.
       reply_to: resolveReplyTo(reply_to ?? DEFAULT_REPLY_TO),
-      subject,
+      subject:  safeSubject,
       html:     finalHtml,
       text:     resolvedText,
       headers: {

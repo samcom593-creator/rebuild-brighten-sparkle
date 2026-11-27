@@ -12,6 +12,7 @@ import { requireSendAuth } from "../_shared/require-send-auth.ts";
 // WP2: an unlicensed recruit is sent their own status page (course, receipt, licensing
 // call), never the licensed-track event, which auto-flips license_status on booking.
 import { statusPageUrl } from "../_shared/scheduling-links.ts";
+import { humanize } from "../_shared/humanize.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -258,8 +259,8 @@ serve(async (req: Request) => {
             await resend.emails.send({
               from: "Galaxy Financial <notifications@galaxyfinancial.org>",
               to: [app.email],
-              subject: nudge.emailSubject,
-              html: nudge.emailBody(firstName, stage),
+              subject: humanize(nudge.emailSubject),
+              html: humanize(nudge.emailBody(firstName, stage)),
             });
             emailSent = true;
             console.log(`Email sent to ${app.email}: ${nudge.type}`);
@@ -337,9 +338,9 @@ serve(async (req: Request) => {
             await resend.emails.send({
               from: "Galaxy Financial <notifications@galaxyfinancial.org>",
               to: ["info@kingofsales.net"],
-              subject: `🚨 Stalled Agent: ${firstName} ${app.last_name} — ${daysSinceContracted} days, stage: ${stage}`,
-              html: `<p><strong>${firstName} ${app.last_name}</strong> has been contracted for ${daysSinceContracted} days and is still in the "${stage}" stage. Personal follow-up recommended.</p>
-                     <p>Email: ${app.email}<br/>Phone: ${app.phone || "N/A"}</p>`,
+              subject: humanize(`🚨 Stalled Agent: ${firstName} ${app.last_name} — ${daysSinceContracted} days, stage: ${stage}`),
+              html: humanize(`<p><strong>${firstName} ${app.last_name}</strong> has been contracted for ${daysSinceContracted} days and is still in the "${stage}" stage. Personal follow-up recommended.</p>
+                     <p>Email: ${app.email}<br/>Phone: ${app.phone || "N/A"}</p>`),
             });
           }
 
@@ -380,14 +381,14 @@ serve(async (req: Request) => {
               from: "Galaxy Financial <notifications@galaxyfinancial.org>",
               to: [app.email],
               cc: ["info@kingofsales.net"],
-              subject: `${firstName}, let's remove the blockers`,
-              html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+              subject: humanize(`${firstName}, let's remove the blockers`),
+              html: humanize(`<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
                 <h2>Hey ${firstName},</h2>
                 <p>It's been 60 days. I know there's something holding you back, and I want to help remove it.</p>
                 <p>Let's get on a quick call — no pressure, just a conversation about what's going on and how we can get you across the finish line.</p>
                 <p><a href="${statusPageUrl(app.id)}" style="background:#059669;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">See your next step →</a></p>
                 <p>— Sam James</p>
-              </div>`,
+              </div>`),
             });
           } catch (e) { console.error("Day 60 email failed:", e); }
         }

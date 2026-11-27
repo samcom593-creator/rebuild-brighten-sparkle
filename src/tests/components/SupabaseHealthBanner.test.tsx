@@ -158,6 +158,49 @@ describe("SupabaseHealthBanner — signed-out visitor", () => {
   });
 });
 
+describe("SupabaseHealthBanner — hidden tab (MP-SITE-SPEED)", () => {
+  // Edge logs for 11 business hours showed ~2,960 of these probes from ~12
+  // browsers, continuing overnight from tabs nobody was looking at. A hidden
+  // tab must not keep the 60 s poll alive; the moment it is visible again it
+  // probes once (so the banner is current when someone looks) and resumes.
+  function setVisibility(state: "visible" | "hidden") {
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => state });
+    document.dispatchEvent(new Event("visibilitychange"));
+  }
+
+  afterEach(() => {
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "visible" });
+  });
+
+  it("stops polling while hidden and probes once on return", async () => {
+    auth.user = { id: "test-user" };
+    vi.mocked(supabase.from).mockReturnValue(buildProbeChain({ error: null }) as any);
+    renderBanner();
+    await runInitialProbe();
+    expect(vi.mocked(supabase.from).mock.calls.length).toBe(1);
+
+    await act(async () => {
+      setVisibility("hidden");
+      await flushMicrotasks();
+    });
+    await runSecondProbe();
+    await runSecondProbe();
+    // Two full poll periods hidden: not one more probe.
+    expect(vi.mocked(supabase.from).mock.calls.length).toBe(1);
+
+    await act(async () => {
+      setVisibility("visible");
+      await flushMicrotasks();
+    });
+    // Immediate probe on return so the banner is current when it is looked at.
+    expect(vi.mocked(supabase.from).mock.calls.length).toBe(2);
+
+    await runSecondProbe();
+    // ...and the interval is running again.
+    expect(vi.mocked(supabase.from).mock.calls.length).toBe(3);
+  });
+});
+
 describe("SupabaseHealthBanner — ok state", () => {
   it("renders nothing when probe succeeds immediately", async () => {
     vi.mocked(supabase.from).mockReturnValue(

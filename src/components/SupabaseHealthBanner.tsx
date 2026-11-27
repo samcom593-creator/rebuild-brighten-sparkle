@@ -241,11 +241,39 @@ export function SupabaseHealthBanner() {
     if (!signedIn && !onAuth) return;
     const firstDelay = signedIn ? 30_000 : 3_000;
     const pollMs = signedIn ? 60_000 : 12_000;
+    // MP-SITE-SPEED (2026-11-27): the poll used to run regardless of tab
+    // visibility, so every forgotten tab kept probing Postgres all night.
+    // Edge logs for 11 business hours showed ~2,960 browser probes
+    // (select=key&limit=1) from ~12 clients, continuing overnight when nobody
+    // was looking at a page. A hidden tab now pauses the interval and probes
+    // once the moment it becomes visible again, so the banner is still current
+    // the instant someone looks at it and costs nothing while they do not.
+    let id: ReturnType<typeof setInterval> | undefined;
+    const hidden = () => typeof document !== "undefined" && document.visibilityState === "hidden";
+    const start = () => {
+      if (id === undefined) id = setInterval(() => probeRef.current(), pollMs);
+    };
+    const stop = () => {
+      if (id !== undefined) {
+        clearInterval(id);
+        id = undefined;
+      }
+    };
+    const onVisibility = () => {
+      if (hidden()) {
+        stop();
+      } else {
+        probeRef.current();
+        start();
+      }
+    };
     const initial = setTimeout(() => probeRef.current(), firstDelay);
-    const id = setInterval(() => probeRef.current(), pollMs);
+    if (!hidden()) start();
+    document.addEventListener("visibilitychange", onVisibility);
     return () => {
       clearTimeout(initial);
-      clearInterval(id);
+      stop();
+      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [signedIn, onAuth]);
 
